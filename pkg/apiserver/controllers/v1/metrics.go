@@ -3,7 +3,6 @@ package v1
 import (
 	"time"
 
-	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -66,32 +65,29 @@ var LapiResponseTime = prometheus.NewHistogramVec(
 	[]string{"endpoint", "method"})
 
 func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
-	name, ok := c.Get("BOUNCER_NAME")
-	if ok {
+	bouncer, _ := getBouncerFromContext(c)
+	if bouncer != nil {
 		LapiNilDecisions.With(prometheus.Labels{
-			"bouncer": name.(string)}).Inc()
+			"bouncer": bouncer.Name}).Inc()
 	}
 }
 
 func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
-	name, ok := c.Get("BOUNCER_NAME")
-	if ok {
+	bouncer, _ := getBouncerFromContext(c)
+	if bouncer != nil {
 		LapiNonNilDecisions.With(prometheus.Labels{
-			"bouncer": name.(string)}).Inc()
+			"bouncer": bouncer.Name}).Inc()
 	}
 }
 
 func PrometheusMachinesMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims := jwt.ExtractClaims(c)
-		if claims != nil {
-			if rawID, ok := claims["id"]; ok {
-				machineID := rawID.(string)
-				LapiMachineHits.With(prometheus.Labels{
-					"machine": machineID,
-					"route":   c.Request.URL.Path,
-					"method":  c.Request.Method}).Inc()
-			}
+		machineID, _ := getMachineIDFromContext(c)
+		if machineID != "" {
+			LapiMachineHits.With(prometheus.Labels{
+				"machine": machineID,
+				"route":   c.Request.URL.Path,
+				"method":  c.Request.Method}).Inc()
 		}
 
 		c.Next()
@@ -100,10 +96,10 @@ func PrometheusMachinesMiddleware() gin.HandlerFunc {
 
 func PrometheusBouncersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		name, ok := c.Get("BOUNCER_NAME")
-		if ok {
+		bouncer, _ := getBouncerFromContext(c)
+		if bouncer != nil {
 			LapiBouncerHits.With(prometheus.Labels{
-				"bouncer": name.(string),
+				"bouncer": bouncer.Name,
 				"route":   c.Request.URL.Path,
 				"method":  c.Request.Method}).Inc()
 		}
