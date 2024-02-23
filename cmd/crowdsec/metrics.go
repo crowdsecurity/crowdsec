@@ -114,13 +114,17 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		}
 
 		decisionsFilters := make(map[string][]string, 0)
+
 		decisions, err := dbClient.QueryDecisionCountByScenario(decisionsFilters)
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)
+
 			return
 		}
+
 		globalActiveDecisions.Reset()
+
 		for _, d := range decisions {
 			globalActiveDecisions.With(prometheus.Labels{"reason": d.Scenario, "origin": d.Origin, "action": d.Type}).Set(float64(d.Count))
 		}
@@ -136,6 +140,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		if err != nil {
 			log.Errorf("Error querying alerts for metrics: %v", err)
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
@@ -173,11 +178,12 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			globalActiveDecisions, globalAlerts, parser.NodesWlHitsOk, parser.NodesWlHits,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
 		)
-
 	}
 }
 
-func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, apiReady chan bool, agentReady chan bool) {
+func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, agentReady chan bool) {
+	<-agentReady
+
 	if !config.Enabled {
 		return
 	}
@@ -185,9 +191,8 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 	defer trace.CatchPanic("crowdsec/servePrometheus")
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
-	<-apiReady
-	<-agentReady
 	log.Debugf("serving metrics after %s ms", time.Since(crowdsecT0))
+
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
 		log.Warningf("prometheus: %s", err)
 	}

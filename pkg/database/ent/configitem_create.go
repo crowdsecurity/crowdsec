@@ -67,50 +67,8 @@ func (cic *ConfigItemCreate) Mutation() *ConfigItemMutation {
 
 // Save creates the ConfigItem in the database.
 func (cic *ConfigItemCreate) Save(ctx context.Context) (*ConfigItem, error) {
-	var (
-		err  error
-		node *ConfigItem
-	)
 	cic.defaults()
-	if len(cic.hooks) == 0 {
-		if err = cic.check(); err != nil {
-			return nil, err
-		}
-		node, err = cic.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*ConfigItemMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = cic.check(); err != nil {
-				return nil, err
-			}
-			cic.mutation = mutation
-			if node, err = cic.sqlSave(ctx); err != nil {
-				return nil, err
-			}
-			mutation.id = &node.ID
-			mutation.done = true
-			return node, err
-		})
-		for i := len(cic.hooks) - 1; i >= 0; i-- {
-			if cic.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = cic.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, cic.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*ConfigItem)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from ConfigItemMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, cic.sqlSave, cic.mutation, cic.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -159,6 +117,9 @@ func (cic *ConfigItemCreate) check() error {
 }
 
 func (cic *ConfigItemCreate) sqlSave(ctx context.Context) (*ConfigItem, error) {
+	if err := cic.check(); err != nil {
+		return nil, err
+	}
 	_node, _spec := cic.createSpec()
 	if err := sqlgraph.CreateNode(ctx, cic.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
@@ -168,50 +129,30 @@ func (cic *ConfigItemCreate) sqlSave(ctx context.Context) (*ConfigItem, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
+	cic.mutation.id = &_node.ID
+	cic.mutation.done = true
 	return _node, nil
 }
 
 func (cic *ConfigItemCreate) createSpec() (*ConfigItem, *sqlgraph.CreateSpec) {
 	var (
 		_node = &ConfigItem{config: cic.config}
-		_spec = &sqlgraph.CreateSpec{
-			Table: configitem.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: configitem.FieldID,
-			},
-		}
+		_spec = sqlgraph.NewCreateSpec(configitem.Table, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
 	)
 	if value, ok := cic.mutation.CreatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: configitem.FieldCreatedAt,
-		})
+		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = &value
 	}
 	if value, ok := cic.mutation.UpdatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: configitem.FieldUpdatedAt,
-		})
+		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = &value
 	}
 	if value, ok := cic.mutation.Name(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: configitem.FieldName,
-		})
+		_spec.SetField(configitem.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
 	if value, ok := cic.mutation.Value(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: configitem.FieldValue,
-		})
+		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 		_node.Value = value
 	}
 	return _node, _spec
@@ -220,11 +161,15 @@ func (cic *ConfigItemCreate) createSpec() (*ConfigItem, *sqlgraph.CreateSpec) {
 // ConfigItemCreateBulk is the builder for creating many ConfigItem entities in bulk.
 type ConfigItemCreateBulk struct {
 	config
+	err      error
 	builders []*ConfigItemCreate
 }
 
 // Save creates the ConfigItem entities in the database.
 func (cicb *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, error) {
+	if cicb.err != nil {
+		return nil, cicb.err
+	}
 	specs := make([]*sqlgraph.CreateSpec, len(cicb.builders))
 	nodes := make([]*ConfigItem, len(cicb.builders))
 	mutators := make([]Mutator, len(cicb.builders))
@@ -241,8 +186,8 @@ func (cicb *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, erro
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, cicb.builders[i+1].mutation)
 				} else {

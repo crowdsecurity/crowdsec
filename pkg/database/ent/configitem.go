@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 )
@@ -23,7 +24,8 @@ type ConfigItem struct {
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// Value holds the value of the "value" field.
-	Value string `json:"value"`
+	Value        string `json:"value"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -38,7 +40,7 @@ func (*ConfigItem) scanValues(columns []string) ([]any, error) {
 		case configitem.FieldCreatedAt, configitem.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type ConfigItem", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -84,16 +86,24 @@ func (ci *ConfigItem) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				ci.Value = value.String
 			}
+		default:
+			ci.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// GetValue returns the ent.Value that was dynamically selected and assigned to the ConfigItem.
+// This includes values selected through modifiers, order, etc.
+func (ci *ConfigItem) GetValue(name string) (ent.Value, error) {
+	return ci.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this ConfigItem.
 // Note that you need to call ConfigItem.Unwrap() before calling this method if this ConfigItem
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (ci *ConfigItem) Update() *ConfigItemUpdateOne {
-	return (&ConfigItemClient{config: ci.config}).UpdateOne(ci)
+	return NewConfigItemClient(ci.config).UpdateOne(ci)
 }
 
 // Unwrap unwraps the ConfigItem entity that was returned from a transaction after it was closed,
@@ -133,9 +143,3 @@ func (ci *ConfigItem) String() string {
 
 // ConfigItems is a parsable slice of ConfigItem.
 type ConfigItems []*ConfigItem
-
-func (ci ConfigItems) config(cfg config) {
-	for _i := range ci {
-		ci[_i].config = cfg
-	}
-}

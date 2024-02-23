@@ -178,6 +178,18 @@ var (
 			},
 		},
 	}
+	// LocksColumns holds the columns for the "locks" table.
+	LocksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// LocksTable holds the schema information for the "locks" table.
+	LocksTable = &schema.Table{
+		Name:       "locks",
+		Columns:    LocksColumns,
+		PrimaryKey: []*schema.Column{LocksColumns[0]},
+	}
 	// MachinesColumns holds the columns for the "machines" table.
 	MachinesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -237,6 +249,7 @@ var (
 		ConfigItemsTable,
 		DecisionsTable,
 		EventsTable,
+		LocksTable,
 		MachinesTable,
 		MetaTable,
 	}
