@@ -46,6 +46,22 @@ type Event struct {
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
 
+func (e *Event) SetMeta(key string, value string) bool {
+	if e.Meta == nil {
+		e.Meta = make(map[string]string)
+	}
+	e.Meta[key] = value
+	return true
+}
+
+func (e *Event) SetParsed(key string, value string) bool {
+	if e.Parsed == nil {
+		e.Parsed = make(map[string]string)
+	}
+	e.Parsed[key] = value
+	return true
+}
+
 func (e *Event) GetType() string {
 	if e.Type == OVFLW {
 		return "overflow"

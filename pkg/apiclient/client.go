@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -167,42 +165,8 @@ type Response struct {
 	//...
 }
 
-type ErrorResponse struct {
-	models.ErrorResponse
-}
-
-func (e *ErrorResponse) Error() string {
-	err := fmt.Sprintf("API error: %s", *e.Message)
-	if len(e.Errors) > 0 {
-		err += fmt.Sprintf(" (%s)", e.Errors)
-	}
-
-	return err
-}
-
 func newResponse(r *http.Response) *Response {
 	return &Response{Response: r}
-}
-
-func CheckResponse(r *http.Response) error {
-	if c := r.StatusCode; 200 <= c && c <= 299 || c == 304 {
-		return nil
-	}
-
-	errorResponse := &ErrorResponse{}
-
-	data, err := io.ReadAll(r.Body)
-	if err == nil && len(data)>0 {
-		err := json.Unmarshal(data, errorResponse)
-		if err != nil {
-			return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
-		}
-	} else {
-		errorResponse.Message = new(string)
-		*errorResponse.Message = fmt.Sprintf("http code %d, no error message", r.StatusCode)
-	}
-
-	return errorResponse
 }
 
 type ListOpts struct {

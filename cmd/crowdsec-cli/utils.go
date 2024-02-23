@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -26,6 +25,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 			return fmt.Errorf("%s isn't a valid range", *ipRange)
 		}
 	}
+
 	if *ip != "" {
 		ipRepr := net.ParseIP(*ip)
 		if ipRepr == nil {
@@ -33,7 +33,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		}
 	}
 
-	//avoid confusion on scope (ip vs Ip and range vs Range)
+	// avoid confusion on scope (ip vs Ip and range vs Range)
 	switch strings.ToLower(*scope) {
 	case "ip":
 		*scope = types.Ip
@@ -44,18 +44,8 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 	case "as":
 		*scope = types.AS
 	}
-	return nil
-}
 
-func getDBClient() (*database.Client, error) {
-	if err := csConfig.LoadAPIServer(true); err != nil || csConfig.DisableAPI {
-		return nil, err
-	}
-	ret, err := database.NewClient(csConfig.DbConfig)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
+	return nil
 }
 
 func removeFromSlice(val string, slice []string) []string {

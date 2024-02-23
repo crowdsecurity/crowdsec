@@ -303,8 +303,12 @@ fi
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install hub items
+
 cscli hub update || true
-cscli hub upgrade || true
+
+if isfalse "$NO_HUB_UPGRADE"; then
+    cscli hub upgrade || true
+fi
 
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs

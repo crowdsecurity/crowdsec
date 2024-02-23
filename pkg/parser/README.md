@@ -45,7 +45,7 @@ statics:
 
 > `filter: "Line.Src endsWith '/foobar'"`
 
- - *optional* `filter` : an [expression](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md) that will be evaluated against the runtime of a line (`Event`)
+ - *optional* `filter` : an [expression](https://github.com/antonmedv/expr/blob/master/docs/language-definition.md) that will be evaluated against the runtime of a line (`Event`)
 	- if the `filter` is present and returns false, node is not evaluated
 	- if `filter` is absent or present and returns true, node is evaluated
 

@@ -1,15 +1,14 @@
-name: Functional tests (sqlite)
+name: (sub) Bats / sqlite + coverage
 
 on:
   workflow_call:
 
 env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
   TEST_COVERAGE: true
 
 jobs:
   build:
-    name: "Build + tests"
+    name: "Functional tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -29,7 +28,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.21.6"
+        go-version: "1.21.7"
 
     - name: "Install bats dependencies"
       env:
@@ -42,7 +41,7 @@ jobs:
         make clean bats-build bats-fixture BUILD_STATIC=1
 
     - name: "Run tests"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
 
     - name: "Collect coverage data"
       run: |

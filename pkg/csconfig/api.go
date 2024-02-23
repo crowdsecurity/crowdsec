@@ -178,6 +178,7 @@ func (l *LocalApiClientCfg) Load() error {
 
 func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
+
 	for _, ip := range lapiCfg.TrustedIPs {
 		cidr := toValidCIDR(ip)
 
@@ -265,7 +266,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		return fmt.Errorf("no listen_uri specified")
 	}
 
-	//inherit log level from common, then api->server
+	// inherit log level from common, then api->server
 	var logLevel log.Level
 	if c.API.Server.LogLevel != nil {
 		logLevel = *c.API.Server.LogLevel
@@ -285,7 +286,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		}
 	}
 
-	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+	if (c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil) && !inCli {
 		log.Printf("push and pull to Central API disabled")
 	}
 
@@ -297,7 +298,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		return err
 	}
 
-	if c.API.Server.CapiWhitelistsPath != "" {
+	if c.API.Server.CapiWhitelistsPath != "" && !inCli {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 

@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"fmt"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -28,34 +27,7 @@ func (bd *BouncerDelete) Where(ps ...predicate.Bouncer) *BouncerDelete {
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (bd *BouncerDelete) Exec(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
-	if len(bd.hooks) == 0 {
-		affected, err = bd.sqlExec(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BouncerMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			bd.mutation = mutation
-			affected, err = bd.sqlExec(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(bd.hooks) - 1; i >= 0; i-- {
-			if bd.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = bd.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, bd.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, bd.sqlExec, bd.mutation, bd.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -68,15 +40,7 @@ func (bd *BouncerDelete) ExecX(ctx context.Context) int {
 }
 
 func (bd *BouncerDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := &sqlgraph.DeleteSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table: bouncer.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: bouncer.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewDeleteSpec(bouncer.Table, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
 	if ps := bd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -88,12 +52,19 @@ func (bd *BouncerDelete) sqlExec(ctx context.Context) (int, error) {
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
+	bd.mutation.done = true
 	return affected, err
 }
 
 // BouncerDeleteOne is the builder for deleting a single Bouncer entity.
 type BouncerDeleteOne struct {
 	bd *BouncerDelete
+}
+
+// Where appends a list predicates to the BouncerDelete builder.
+func (bdo *BouncerDeleteOne) Where(ps ...predicate.Bouncer) *BouncerDeleteOne {
+	bdo.bd.mutation.Where(ps...)
+	return bdo
 }
 
 // Exec executes the deletion query.
@@ -111,5 +82,7 @@ func (bdo *BouncerDeleteOne) Exec(ctx context.Context) error {
 
 // ExecX is like Exec, but panics if an error occurs.
 func (bdo *BouncerDeleteOne) ExecX(ctx context.Context) {
-	bdo.bd.ExecX(ctx)
+	if err := bdo.Exec(ctx); err != nil {
+		panic(err)
+	}
 }

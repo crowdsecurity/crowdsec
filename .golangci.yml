@@ -11,7 +11,7 @@ run:
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 66
+    max-complexity: 53
 
   gci:
     sections:
@@ -26,7 +26,7 @@ linters-settings:
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 64
+    min-complexity: 49
 
   funlen:
     # Checks the number of lines in a function.
@@ -46,14 +46,14 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 9
+    under: 11
 
   misspell:
     locale: US
 
   nestif:
     # lower this after refactoring
-    min-complexity: 27
+    min-complexity: 28
 
   nlreturn:
     block-size: 4
@@ -72,6 +72,10 @@ linters-settings:
         deny:
           - pkg: "github.com/pkg/errors"
             desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
+
+  wsl:
+    # Allow blocks to end with comments
+    allow-trailing-comment: true
 
 linters:
   enable-all: true
@@ -105,6 +109,7 @@ linters:
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     # - errorlint           # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
+    # - execinquery         # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds
     # - exportloopref       # checks for pointers to enclosing loop variables
     # - funlen              # Tool for detection of long functions
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
@@ -203,7 +208,6 @@ linters:
     #
     # Too strict / too many false positives (for now?)
     #
-    - execinquery           # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds
     - exhaustruct           # Checks if all structure fields are initialized
     - forbidigo             # Forbids identifiers
     - gochecknoglobals      # check that no global variables exist
@@ -263,6 +267,10 @@ issues:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
+    - linters:
+        - perfsprint
+      text: "fmt.Errorf can be replaced with errors.New"
+
     #
     # Will fix, easy but some neurons required
     #
@@ -309,10 +317,6 @@ issues:
     #
     # Will fix,  might be trickier
     #
-
-    - linters:
-        - staticcheck
-      text: "x509.ParseCRL has been deprecated since Go 1.19: Use ParseRevocationList instead"
 
     # https://github.com/pkg/errors/issues/245
     - linters:

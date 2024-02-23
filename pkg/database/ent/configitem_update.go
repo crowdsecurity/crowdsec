@@ -71,35 +71,8 @@ func (ciu *ConfigItemUpdate) Mutation() *ConfigItemMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (ciu *ConfigItemUpdate) Save(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
 	ciu.defaults()
-	if len(ciu.hooks) == 0 {
-		affected, err = ciu.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*ConfigItemMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			ciu.mutation = mutation
-			affected, err = ciu.sqlSave(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(ciu.hooks) - 1; i >= 0; i-- {
-			if ciu.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = ciu.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, ciu.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, ciu.sqlSave, ciu.mutation, ciu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -137,16 +110,7 @@ func (ciu *ConfigItemUpdate) defaults() {
 }
 
 func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   configitem.Table,
-			Columns: configitem.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: configitem.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(configitem.Table, configitem.Columns, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
 	if ps := ciu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -155,44 +119,22 @@ func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := ciu.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: configitem.FieldCreatedAt,
-		})
+		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
 	}
 	if ciu.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: configitem.FieldCreatedAt,
-		})
+		_spec.ClearField(configitem.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := ciu.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: configitem.FieldUpdatedAt,
-		})
+		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if ciu.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: configitem.FieldUpdatedAt,
-		})
+		_spec.ClearField(configitem.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := ciu.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: configitem.FieldName,
-		})
+		_spec.SetField(configitem.FieldName, field.TypeString, value)
 	}
 	if value, ok := ciu.mutation.Value(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: configitem.FieldValue,
-		})
+		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, ciu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -202,6 +144,7 @@ func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
+	ciu.mutation.done = true
 	return n, nil
 }
 
@@ -254,6 +197,12 @@ func (ciuo *ConfigItemUpdateOne) Mutation() *ConfigItemMutation {
 	return ciuo.mutation
 }
 
+// Where appends a list predicates to the ConfigItemUpdate builder.
+func (ciuo *ConfigItemUpdateOne) Where(ps ...predicate.ConfigItem) *ConfigItemUpdateOne {
+	ciuo.mutation.Where(ps...)
+	return ciuo
+}
+
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (ciuo *ConfigItemUpdateOne) Select(field string, fields ...string) *ConfigItemUpdateOne {
@@ -263,41 +212,8 @@ func (ciuo *ConfigItemUpdateOne) Select(field string, fields ...string) *ConfigI
 
 // Save executes the query and returns the updated ConfigItem entity.
 func (ciuo *ConfigItemUpdateOne) Save(ctx context.Context) (*ConfigItem, error) {
-	var (
-		err  error
-		node *ConfigItem
-	)
 	ciuo.defaults()
-	if len(ciuo.hooks) == 0 {
-		node, err = ciuo.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*ConfigItemMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			ciuo.mutation = mutation
-			node, err = ciuo.sqlSave(ctx)
-			mutation.done = true
-			return node, err
-		})
-		for i := len(ciuo.hooks) - 1; i >= 0; i-- {
-			if ciuo.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = ciuo.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, ciuo.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*ConfigItem)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from ConfigItemMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, ciuo.sqlSave, ciuo.mutation, ciuo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -335,16 +251,7 @@ func (ciuo *ConfigItemUpdateOne) defaults() {
 }
 
 func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   configitem.Table,
-			Columns: configitem.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: configitem.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(configitem.Table, configitem.Columns, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
 	id, ok := ciuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "ConfigItem.id" for update`)}
@@ -370,44 +277,22 @@ func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem
 		}
 	}
 	if value, ok := ciuo.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: configitem.FieldCreatedAt,
-		})
+		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
 	}
 	if ciuo.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: configitem.FieldCreatedAt,
-		})
+		_spec.ClearField(configitem.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := ciuo.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: configitem.FieldUpdatedAt,
-		})
+		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if ciuo.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: configitem.FieldUpdatedAt,
-		})
+		_spec.ClearField(configitem.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := ciuo.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: configitem.FieldName,
-		})
+		_spec.SetField(configitem.FieldName, field.TypeString, value)
 	}
 	if value, ok := ciuo.mutation.Value(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: configitem.FieldValue,
-		})
+		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 	}
 	_node = &ConfigItem{config: ciuo.config}
 	_spec.Assign = _node.assignValues
@@ -420,5 +305,6 @@ func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem
 		}
 		return nil, err
 	}
+	ciuo.mutation.done = true
 	return _node, nil
 }
