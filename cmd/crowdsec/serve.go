@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -239,6 +240,22 @@ func drainChan(c chan types.Event) {
 	}
 }
 
+// watchdog sends a watchdog signal to systemd every 15 seconds
+func watchdog(ctx context.Context, logger log.FieldLogger) {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			csdaemon.Notify(csdaemon.Watchdog, logger)
+		}
+	}
+
+}
+
 func HandleSignals(cConfig *csconfig.Config) error {
 	var (
 		newConfig *csconfig.Config
@@ -263,14 +280,21 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 
-		csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
+		logger := log.StandardLogger()
+
+		csdaemon.Notify(csdaemon.Ready, logger)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go watchdog(ctx, logger)
 
 		for s := range signalChan {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
 				log.Warning("SIGHUP received, reloading")
-				csdaemon.Notify(csdaemon.Reloading, log.StandardLogger())
+				csdaemon.Notify(csdaemon.Reloading, logger)
 
 				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
@@ -288,7 +312,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
-				csdaemon.Notify(csdaemon.Stopping, log.StandardLogger())
+				csdaemon.Notify(csdaemon.Stopping, logger)
 
 				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
