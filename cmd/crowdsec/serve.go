@@ -263,11 +263,14 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 
+		csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
+
 		for s := range signalChan {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
 				log.Warning("SIGHUP received, reloading")
+				csdaemon.Notify(csdaemon.Reloading, log.StandardLogger())
 
 				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
@@ -285,6 +288,8 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
+				csdaemon.Notify(csdaemon.Stopping, log.StandardLogger())
+
 				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
 					return
@@ -387,7 +392,6 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		csdaemon.NotifySystemd(log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)
 	}
@@ -407,9 +411,9 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 
 		switch ch {
 		case apiTomb.Dead():
-			log.Infof("api shutdown")
+			log.Info("api shutdown")
 		case crowdsecTomb.Dead():
-			log.Infof("crowdsec shutdown")
+			log.Info("crowdsec shutdown")
 		}
 	}
 
