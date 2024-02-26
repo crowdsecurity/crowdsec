@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"runtime"
-	"time"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -62,7 +61,6 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		defer trace.CatchPanic("crowdsec/serveAPIServer")
 		go func() {
 			defer trace.CatchPanic("crowdsec/runAPIServer")
-			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 			if err := apiServer.Run(apiReady); err != nil {
 				log.Fatal(err)
 			}
