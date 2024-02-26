@@ -23,7 +23,7 @@ import (
 )
 
 //nolint:deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
-func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
+func debugHandler(cConfig *csconfig.Config) error {
 	var (
 		tmpFile string
 		err     error
@@ -48,7 +48,7 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	return nil
 }
 
-func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
+func reloadHandler() (*csconfig.Config, error) {
 	var tmpFile string
 
 	// re-initialize tombs
@@ -206,7 +206,7 @@ func shutdownCrowdsec() error {
 	return nil
 }
 
-func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
+func shutdown(cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
 			return fmt.Errorf("failed to shut down crowdsec: %w", err)
@@ -262,24 +262,21 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
-	Loop:
-		for {
-			s := <-signalChan
+
+		for s := range signalChan {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
 				log.Warning("SIGHUP received, reloading")
 
-				if err = shutdown(s, cConfig); err != nil {
+				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
-				if newConfig, err = reloadHandler(s); err != nil {
+				if newConfig, err = reloadHandler(); err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig != nil {
@@ -288,10 +285,9 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
-				if err = shutdown(s, cConfig); err != nil {
+				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 				exitChan <- nil
 			}
