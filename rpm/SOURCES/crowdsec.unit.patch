@@ -9,5 +9,7 @@
 +ExecStartPre=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -t -error
 +ExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml
  #ExecStartPost=/bin/sleep 0.1
+-ExecReload=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml -t -error
++ExecReload=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -t -error
  ExecReload=/bin/kill -HUP $MAINPID
  Restart=always
