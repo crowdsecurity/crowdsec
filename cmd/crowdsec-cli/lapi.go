@@ -44,7 +44,9 @@ func (cli *cliLapi) status() error {
 	password := strfmt.Password(cfg.API.Client.Credentials.Password)
 	login := cfg.API.Client.Credentials.Login
 
-	apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
+	origURL := cfg.API.Client.Credentials.URL
+
+	apiURL, err := url.Parse(origURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
@@ -59,7 +61,7 @@ func (cli *cliLapi) status() error {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiurl,
+	Client, err = apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
 		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
@@ -74,7 +76,7 @@ func (cli *cliLapi) status() error {
 	}
 
 	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
+	log.Infof("Trying to authenticate with username %s on %s", login, origURL)
 
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {

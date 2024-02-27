@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -177,6 +178,14 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	return &ret, nil
 }
 
+func isUnixSocket(c *gin.Context) bool {
+	if localAddr, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		return strings.HasPrefix(localAddr.Network(), "unix")
+	}
+
+	return false
+}
+
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var (
 		err  error
@@ -214,7 +223,11 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 
 	if auth.clientMachine.IpAddress == "" {
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), auth.clientMachine.ID)
+		clientIP := c.ClientIP()
+		if clientIP == "" && isUnixSocket(c) {
+			clientIP = "127.0.0.1"
+		}
+		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.machineID, err)
 			return nil, jwt.ErrFailedAuthentication

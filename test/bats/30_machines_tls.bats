@@ -127,6 +127,8 @@ teardown() {
     sock=$(config_get '.api.server.listen_socket')
     export sock
 
+    # an agent is a machine too
+    config_disable_agent
     ./instance-crowdsec start
 
     rune -0 cscli machines add with-socket --auto --force
@@ -134,7 +136,7 @@ teardown() {
 
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
-    assert_output '[1,"with-socket",true,null,"password"]'
+    assert_output '[1,"with-socket",true,"127.0.0.1","password"]'
 
     # TLS cannot be used with a unix socket
 
