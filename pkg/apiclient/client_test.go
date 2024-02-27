@@ -94,9 +94,6 @@ func TestNewClientOk(t *testing.T) {
 }
 
 func TestNewClientOk_UnixSocket(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
@@ -191,9 +188,6 @@ func TestNewDefaultClient(t *testing.T) {
 }
 
 func TestNewDefaultClient_UnixSocket(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
@@ -227,10 +221,10 @@ func TestNewClientRegisterKO(t *testing.T) {
 		VersionPrefix: "v1",
 	}, &http.Client{})
 
-	if runtime.GOOS != "windows" {
-		cstest.RequireErrorContains(t, err, "dial tcp 127.0.0.1:4242: connect: connection refused")
-	} else {
+	if runtime.GOOS == "windows" {
 		cstest.RequireErrorContains(t, err, " No connection could be made because the target machine actively refused it.")
+	} else {
+		cstest.RequireErrorContains(t, err, "dial tcp 127.0.0.1:4242: connect: connection refused")
 	}
 }
 
@@ -263,9 +257,6 @@ func TestNewClientRegisterOK(t *testing.T) {
 }
 
 func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
 	log.SetLevel(log.TraceLevel)
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
