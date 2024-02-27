@@ -13,8 +13,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIAppsecConfig() *cliItem {
+func NewCLIAppsecConfig(cfg configGetter) *cliItem {
 	return &cliItem{
+		cfg: cfg,
 		name:      cwhub.APPSEC_CONFIGS,
 		singular:  "appsec-config",
 		oneOrMore: "appsec-config(s)",
@@ -46,7 +47,7 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 	}
 }
 
-func NewCLIAppsecRule() *cliItem {
+func NewCLIAppsecRule(cfg configGetter) *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		// Only show the converted rules in human mode
 		if csConfig.Cscli.Output != "human" {
@@ -88,6 +89,7 @@ func NewCLIAppsecRule() *cliItem {
 	}
 
 	return &cliItem{
+		cfg: cfg,
 		name:      "appsec-rules",
 		singular:  "appsec-rule",
 		oneOrMore: "appsec-rule(s)",

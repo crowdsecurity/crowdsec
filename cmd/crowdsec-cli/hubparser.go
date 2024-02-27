@@ -4,8 +4,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIParser() *cliItem {
+func NewCLIParser(cfg configGetter) *cliItem {
 	return &cliItem{
+		cfg: cfg,
 		name:      cwhub.PARSERS,
 		singular:  "parser",
 		oneOrMore: "parser(s)",

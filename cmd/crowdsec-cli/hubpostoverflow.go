@@ -4,8 +4,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIPostOverflow() *cliItem {
+func NewCLIPostOverflow(cfg configGetter) *cliItem {
 	return &cliItem{
+		cfg: cfg,
 		name:      cwhub.POSTOVERFLOWS,
 		singular:  "postoverflow",
 		oneOrMore: "postoverflow(s)",

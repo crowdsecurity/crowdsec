@@ -28,6 +28,7 @@ type cliHelp struct {
 }
 
 type cliItem struct {
+	cfg           configGetter
 	name          string // plural, as used in the hub index
 	singular      string
 	oneOrMore     string // parenthetical pluralizaion: "parser(s)"
@@ -61,7 +62,8 @@ func (cli cliItem) NewCommand() *cobra.Command {
 }
 
 func (cli cliItem) install(args []string, downloadOnly bool, force bool, ignoreError bool) error {
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
+	cfg := cli.cfg()
+	hub, err := require.Hub(cfg, require.RemoteHub(cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -137,7 +139,7 @@ func istalledParentNames(item *cwhub.Item) []string {
 }
 
 func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error {
-	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
+	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -248,7 +250,8 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 }
 
 func (cli cliItem) upgrade(args []string, force bool, all bool) error {
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
+	cfg := cli.cfg()
+	hub, err := require.Hub(cfg, require.RemoteHub(cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -339,21 +342,23 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 }
 
 func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMetrics bool) error {
+	cfg := cli.cfg()
+
 	if rev && !diff {
 		return fmt.Errorf("--rev can only be used with --diff")
 	}
 
 	if url != "" {
-		csConfig.Cscli.PrometheusUrl = url
+		cfg.Cscli.PrometheusUrl = url
 	}
 
 	remote := (*cwhub.RemoteHubCfg)(nil)
 
 	if diff {
-		remote = require.RemoteHub(csConfig)
+		remote = require.RemoteHub(cfg)
 	}
 
-	hub, err := require.Hub(csConfig, remote, log.StandardLogger())
+	hub, err := require.Hub(cfg, remote, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -417,7 +422,7 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 }
 
 func (cli cliItem) list(args []string, all bool) error {
-	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
+	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
