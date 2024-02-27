@@ -140,9 +140,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		var bouncer *ent.Bouncer
 
 		clientIP := c.ClientIP()
-		if clientIP == "" && isUnixSocket(c) {
-			clientIP = "127.0.0.1"
-		}
 
 		logger := log.WithFields(log.Fields{
 			"ip": clientIP,

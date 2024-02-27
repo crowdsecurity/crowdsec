@@ -223,9 +223,6 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 
 	clientIP := c.ClientIP()
-	if clientIP == "" && isUnixSocket(c) {
-		clientIP = "127.0.0.1"
-	}
 
 	if auth.clientMachine.IpAddress == "" {
 		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)

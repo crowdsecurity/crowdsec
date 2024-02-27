@@ -177,6 +177,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	router.ForwardedByClientIP = false
 
+	// set the remore address of the request to 127.0.0.1 if it comes from a unix socket
+	router.Use(func(c *gin.Context) {
+		if c.Request.RemoteAddr == "@" {
+			c.Request.RemoteAddr = "127.0.0.1:65535"
+		}
+	})
+
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		if err = router.SetTrustedProxies(*config.TrustedProxies); err != nil {
 			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
