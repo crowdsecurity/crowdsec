@@ -35,8 +35,8 @@ teardown() {
     config_set "$LOCAL_API_CREDENTIALS" ".url=strenv(socket)"
 
     ./instance-crowdsec start
+
     rune -0 cscli lapi status
-    # XXX not what we want to show in the logs
     assert_stderr --regexp "Trying to authenticate with username .* on $socket"
     assert_stderr --partial "You can successfully interact with Local API (LAPI)"
 }
@@ -45,6 +45,7 @@ teardown() {
     ./instance-crowdsec start
 
     rune -0 cscli lapi status
+    assert_stderr --regexp "Trying to authenticate with username .* on http://127.0.0.1:8080/"
     assert_stderr --partial "You can successfully interact with Local API (LAPI)"
 
     config_set "$LOCAL_API_CREDENTIALS" ".url=strenv(socket)"
@@ -96,7 +97,7 @@ bouncer_socket() {
     curl -fs -H "X-Api-Key: $API_KEY" --unix-socket "$socket" "http://localhost$URI"
 }
 
-@test "cscli - connects from existing bouncer with socket" {
+@test "lapi - connects from existing bouncer with socket" {
     ./instance-crowdsec start
     API_KEY=$(cscli bouncers add testbouncer -o raw)
     export API_KEY
@@ -120,6 +121,38 @@ bouncer_socket() {
     # we can still use TCP of course
 
     rune -0 bouncer_http '/v1/decisions'
+    assert_output 'null'
+    refute_stderr
+}
+
+@test "lapi - listen on socket only" {
+    config_set "del(.api.server.listen_uri)"
+
+    mkdir -p "$sockdir"
+
+    # agent is not able to connect right now
+    config_disable_agent
+    ./instance-crowdsec start
+
+    API_KEY=$(cscli bouncers add testbouncer -o raw)
+    export API_KEY
+
+    # now we can't
+
+    rune -1 cscli lapi status
+    assert_stderr --partial "connection refused"
+
+    rune -7 bouncer_http '/v1/decisions'
+    refute_output
+    refute_stderr
+
+    # here we can
+
+    config_set "$LOCAL_API_CREDENTIALS" ".url=strenv(socket)"
+
+    rune -0 cscli lapi status
+
+    rune -0 bouncer_socket '/v1/decisions'
     assert_output 'null'
     refute_stderr
 }

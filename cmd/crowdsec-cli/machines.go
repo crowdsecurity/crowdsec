@@ -317,8 +317,8 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	if apiURL == "" {
 		if clientCfg != nil && clientCfg.Credentials != nil && clientCfg.Credentials.URL != "" {
 			apiURL = clientCfg.Credentials.URL
-		} else if serverCfg != nil && serverCfg.ListenURI != "" {
-			apiURL = serverCfg.ClientUrl()
+		} else if serverCfg.ClientURL() != "" {
+			apiURL = serverCfg.ClientURL()
 		} else {
 			return fmt.Errorf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 		}

@@ -250,11 +250,17 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
-func (c *LocalApiServerCfg) ClientUrl() string {
+func (c *LocalApiServerCfg) ClientURL() string {
+	if c == nil {
+		return ""
+	}
 	if c.ListenSocket != "" {
 		return c.ListenSocket
 	}
-	return fmt.Sprintf("http://%s", c.ListenURI)
+	if c.ListenURI != "" {
+		return fmt.Sprintf("http://%s", c.ListenURI)
+	}
+	return ""
 }
 
 func (c *Config) LoadAPIServer(inCli bool) error {
