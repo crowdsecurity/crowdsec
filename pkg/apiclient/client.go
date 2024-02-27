@@ -73,7 +73,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 	}
-	transport, baseUrl := CreateTransport(config.URL)
+	transport, baseUrl := createTransport(config.URL)
 	if transport != nil {
 		t.Transport = transport
 	}
@@ -104,7 +104,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 }
 
 func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
-	transport, baseUrl := CreateTransport(URL)
+	transport, baseUrl := createTransport(URL)
 	if client == nil {
 		client = &http.Client{}
 
@@ -137,7 +137,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 }
 
 func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
-	transport, baseUrl := CreateTransport(config.URL)
+	transport, baseUrl := createTransport(config.URL)
 	if client == nil {
 		client = &http.Client{}
 		if transport != nil {
@@ -173,7 +173,7 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	return c, nil
 }
 
-func CreateTransport(url *url.URL) (*http.Transport, *url.URL) {
+func createTransport(url *url.URL) (*http.Transport, *url.URL) {
 	urlString := url.String()
 	if !strings.HasPrefix(urlString, "/") {
 		return nil, url

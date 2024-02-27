@@ -76,6 +76,7 @@ func (cli *cliLapi) status() error {
 	}
 
 	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
+	// use the original string because apiURL would print 'http://unix/'
 	log.Infof("Trying to authenticate with username %s on %s", login, origURL)
 
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
