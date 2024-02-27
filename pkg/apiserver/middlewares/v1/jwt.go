@@ -222,11 +222,12 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		}
 	}
 
+	clientIP := c.ClientIP()
+	if clientIP == "" && isUnixSocket(c) {
+		clientIP = "127.0.0.1"
+	}
+
 	if auth.clientMachine.IpAddress == "" {
-		clientIP := c.ClientIP()
-		if clientIP == "" && isUnixSocket(c) {
-			clientIP = "127.0.0.1"
-		}
 		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.machineID, err)
@@ -234,10 +235,10 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		}
 	}
 
-	if auth.clientMachine.IpAddress != c.ClientIP() && auth.clientMachine.IpAddress != "" {
-		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, c.ClientIP(), auth.clientMachine.IpAddress)
+	if auth.clientMachine.IpAddress != clientIP && auth.clientMachine.IpAddress != "" {
+		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, clientIP, auth.clientMachine.IpAddress)
 
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), auth.clientMachine.ID)
+		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.MachineId, err)
 			return nil, jwt.ErrFailedAuthentication
@@ -246,13 +247,13 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 
 	useragent := strings.Split(c.Request.UserAgent(), "/")
 	if len(useragent) != 2 {
-		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), c.ClientIP())
+		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), clientIP)
 		return nil, jwt.ErrFailedAuthentication
 	}
 
 	if err := j.DbClient.UpdateMachineVersion(useragent[1], auth.clientMachine.ID); err != nil {
 		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
-		log.Errorf("bad user agent from : %s", c.ClientIP())
+		log.Errorf("bad user agent from : %s", clientIP)
 		return nil, jwt.ErrFailedAuthentication
 	}
 
