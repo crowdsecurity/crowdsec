@@ -73,6 +73,8 @@ stages:
 
   - stage: Sign
     dependsOn: Build
+    variables: 
+      - group: 'FOSS Build Variables'
     condition: succeeded()
     jobs:
       - job: Sign
@@ -90,27 +92,33 @@ stages:
           - download: current
             artifact: crowdsec.nupkg
             displayName: "Download build nupkg artifact"
+          - task: AzureKeyVault@2
+            displayName: "Get signing parameters"
+            inputs:
+              azureSubscription: "$(SubscriptionID)"
+              KeyVaultName: "$(KeyVaultName)"
+              SecretsFilter: "TenantId,ClientId,ClientSecret,Certificate,KeyVaultUrl"
           - pwsh: |
               sign code azure-key-vault `
               "**/*.msi" `
               --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
               --publisher-name "CrowdSec" `
-              --azure-key-vault-tenant-id "$(SignTenantId)" `
-              --azure-key-vault-client-id "$(SignClientId)" `
-              --azure-key-vault-client-secret "$(SignClientSecret)" `
-              --azure-key-vault-certificate "$(SignCertificate)" `
-              --azure-key-vault-url "$(SignKeyVaultUrl)"
+              --azure-key-vault-tenant-id "$(TenantId)" `
+              --azure-key-vault-client-id "$(ClientId)" `
+              --azure-key-vault-client-secret "$(ClientSecret)" `
+              --azure-key-vault-certificate "$(Certificate)" `
+              --azure-key-vault-url "$(KeyVaultUrl)"
             displayName: "Sign MSI"
           - pwsh: |
               sign code azure-key-vault `
               "**/*.nupkg" `
               --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
               --publisher-name "CrowdSec" `
-              --azure-key-vault-tenant-id "$(SignTenantId)" `
-              --azure-key-vault-client-id "$(SignClientId)" `
-              --azure-key-vault-client-secret "$(SignClientSecret)" `
-              --azure-key-vault-certificate "$(SignCertificate)" `
-              --azure-key-vault-url "$(SignKeyVaultUrl)"
+              --azure-key-vault-tenant-id "$(TenantId)" `
+              --azure-key-vault-client-id "$(ClientId)" `
+              --azure-key-vault-client-secret "$(ClientSecret)" `
+              --azure-key-vault-certificate "$(Certificate)" `
+              --azure-key-vault-url "$(KeyVaultUrl)"
             displayName: "Sign nupkg"
             
   - stage: Publish
