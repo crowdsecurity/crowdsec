@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -176,14 +175,6 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	}
 
 	return &ret, nil
-}
-
-func isUnixSocket(c *gin.Context) bool {
-	if localAddr, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
-		return strings.HasPrefix(localAddr.Network(), "unix")
-	}
-
-	return false
 }
 
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
