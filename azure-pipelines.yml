@@ -62,18 +62,16 @@ stages:
             displayName: "Build Chocolatey nupkg"
 
           #TODO: replace with publish short step
-          - task: PublishBuildArtifacts@1
+          - task: PublishPipelineArtifact@1
             inputs:
-              PathtoPublish: '$(Build.Repository.LocalPath)\\crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
-              ArtifactName: 'crowdsec.msi'
-              publishLocation: 'Container'
+              targetPath: '$(Build.Repository.LocalPath)\\crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
+              artifact: 'packages'
             displayName: "Upload MSI artifact"
           
-          - task: PublishBuildArtifacts@1
+          - task: PublishPipelineArtifact@1
             inputs:
-              PathtoPublish: '$(Build.Repository.LocalPath)\\windows\\Chocolatey\\crowdsec\\crowdsec.$(GetCrowdsecVersion.BuildVersion).nupkg'
-              ArtifactName: 'crowdsec.nupkg'
-              publishLocation: 'Container'
+              targetPath: '$(Build.Repository.LocalPath)\\windows\\Chocolatey\\crowdsec\\crowdsec.$(GetCrowdsecVersion.BuildVersion).nupkg'
+              artifact: 'packages'
             displayName: "Upload nupkg artifact"
 
   - stage: Sign
@@ -93,11 +91,8 @@ stages:
               custom: 'tool'
               arguments: install --global sign --version 0.9.0-beta.23127.3
           - download: current
-            artifact: crowdsec.msi
+            artifact: packages
             displayName: "Download build MSI artifact"
-          - download: current
-            artifact: crowdsec.nupkg
-            displayName: "Download build nupkg artifact"
           - task: AzureKeyVault@2
             displayName: "Get signing parameters"
             inputs:
@@ -106,8 +101,8 @@ stages:
               SecretsFilter: "TenantId,ClientId,ClientSecret,Certificate,KeyVaultUrl"
           - pwsh: |
               sign code azure-key-vault `
-              "**/*.msi" `
-              --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
+              "*" `
+              --base-directory "$(Pipeline.Workspace)/packages/" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
               --description-url "https://github.com/crowdsecurity/crowdsec" `
@@ -116,20 +111,7 @@ stages:
               --azure-key-vault-client-secret "$(ClientSecret)" `
               --azure-key-vault-certificate "$(Certificate)" `
               --azure-key-vault-url "$(KeyVaultUrl)"
-            displayName: "Sign MSI"
-          - pwsh: |
-              sign code azure-key-vault `
-              "**/*.nupkg" `
-              --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
-              --publisher-name "CrowdSec" `
-              --description "CrowdSec" `
-              --description-url "https://github.com/crowdsecurity/crowdsec" `
-              --azure-key-vault-tenant-id "$(TenantId)" `
-              --azure-key-vault-client-id "$(ClientId)" `
-              --azure-key-vault-client-secret "$(ClientSecret)" `
-              --azure-key-vault-certificate "$(Certificate)" `
-              --azure-key-vault-url "$(KeyVaultUrl)"
-            displayName: "Sign nupkg"
+            displayName: "Sign MSI & nuget package"
             
   - stage: Publish
     dependsOn: Sign
