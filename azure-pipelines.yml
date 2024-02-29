@@ -17,6 +17,9 @@ stages:
     jobs:
       - job: Build
         displayName: "Build"
+        variables: 
+          - name: 'BuildVersion'
+            value: ''
         steps:
           - task: GoTool@0
             displayName: "Install Go"
@@ -43,6 +46,11 @@ stages:
               if ($build_version.Contains("-")) 
               {
                 $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
+              }
+              #Override the version if it's set in the pipeline
+              if ($BuildVersion -ne "")
+              {
+                $build_version = $BuildVersion
               }
               Write-Host  "##vso[task.setvariable variable=BuildVersion;isOutput=true]$build_version"
             displayName: GetCrowdsecVersion
