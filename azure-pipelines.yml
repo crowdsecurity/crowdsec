@@ -109,6 +109,8 @@ stages:
               "**/*.msi" `
               --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
               --publisher-name "CrowdSec" `
+              --description "CrowdSec" `
+              --description-url "https://github.com/crowdsecurity/crowdsec" `
               --azure-key-vault-tenant-id "$(TenantId)" `
               --azure-key-vault-client-id "$(ClientId)" `
               --azure-key-vault-client-secret "$(ClientSecret)" `
@@ -120,6 +122,8 @@ stages:
               "**/*.nupkg" `
               --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
               --publisher-name "CrowdSec" `
+              --description "CrowdSec" `
+              --description-url "https://github.com/crowdsecurity/crowdsec" `
               --azure-key-vault-tenant-id "$(TenantId)" `
               --azure-key-vault-client-id "$(ClientId)" `
               --azure-key-vault-client-secret "$(ClientSecret)" `
