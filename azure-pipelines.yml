@@ -82,6 +82,9 @@ stages:
     jobs:
       - job: Sign
         displayName: "Sign"
+        variables: 
+          - name: build_version
+            value: stageDependencies.Build.Build.outputs['GetCrowdsecVersion.BuildVersion']
         steps:
           - checkout: none
           - task: DotNetCoreCLI@2
@@ -130,12 +133,12 @@ stages:
             displayName: "Sign nuget package"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/msi_package/crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
+              targetPath: '$(Pipeline.Workspace)/msi_package/crowdsec_$(build_version).msi'
               artifact: 'signed_msi_package'
             displayName: "Upload signed MSI artifact"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/nuget_package/crowdsec.$(GetCrowdsecVersion.BuildVersion).nupkg'
+              targetPath: '$(Pipeline.Workspace)/nuget_package/crowdsec.$(build_version).nupkg'
               artifact: 'signed_nuget_package'
             displayName: "Upload signed nuget artifact"
             
