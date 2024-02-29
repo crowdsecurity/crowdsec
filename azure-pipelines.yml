@@ -128,6 +128,16 @@ stages:
               --azure-key-vault-certificate "$(Certificate)" `
               --azure-key-vault-url "$(KeyVaultUrl)"
             displayName: "Sign nuget package"
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Pipeline.Workspace)/msi_package/crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
+              artifact: 'signed_msi_package'
+            displayName: "Upload signed MSI artifact"
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Pipeline.Workspace)/nuget_package/crowdsec.$(GetCrowdsecVersion.BuildVersion).nupkg'
+              artifact: 'signed_nuget_package'
+            displayName: "Upload signed nuget artifact"
             
   - stage: Publish
     dependsOn: Sign
@@ -154,6 +164,6 @@ stages:
                     isPreRelease: true #we force prerelease because the pipeline is invoked on tag creation, which happens when we do a prerelease
                     #the .. is an ugly hack, but I can't find the var that gives D:\a\1 ...
                     assets: |
-                      $(Build.ArtifactStagingDirectory)\..\crowdsec.msi/*.msi
-                      $(Build.ArtifactStagingDirectory)\..\crowdsec.nupkg/*.nupkg
+                      $(Pipeline.Workspace)/signed_msi_package/*.msi
+                      $(Pipeline.Workspace)/signed_nuget_package/*.nupkg
                   condition: ne(variables['GetLatestPrelease.LatestPreRelease'], '')
