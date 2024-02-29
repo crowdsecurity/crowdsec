@@ -37,9 +37,9 @@ stages:
           - pwsh: |
               $build_version=$env:BUILD_SOURCEBRANCHNAME
               #Override the version if it's set in the pipeline
-              if ( $(BuildVersion) -ne "")
+              if ( ${env:USERBUILDVERSION} -ne "")
               {
-                $build_version = ${{ parameters.BuildVersion }}
+                $build_version = ${env:USERBUILDVERSION}
               }
               if ($build_version.StartsWith("v"))
               {
