@@ -12,12 +12,6 @@ pr: none
 pool:
   vmImage: windows-latest
 
-parameters:
-  - name: BuildVersion
-    type: string
-    default: ''
-    displayName: 'Build version'
-
 stages:
   - stage: Build
     jobs:
@@ -43,7 +37,7 @@ stages:
           - pwsh: |
               $build_version=$env:BUILD_SOURCEBRANCHNAME
               #Override the version if it's set in the pipeline
-              if (${{ parameters.BuildVersion }} -ne "")
+              if ( $(BuildVersion) -ne "")
               {
                 $build_version = ${{ parameters.BuildVersion }}
               }
