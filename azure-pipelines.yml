@@ -84,7 +84,7 @@ stages:
         displayName: "Sign"
         variables: 
           - name: build_version
-            value: stageDependencies.Build.Build.outputs['GetCrowdsecVersion.BuildVersion']
+            value: $(stageDependencies.Build.Build.outputs['GetCrowdsecVersion.BuildVersion'])
         steps:
           - checkout: none
           - task: DotNetCoreCLI@2
