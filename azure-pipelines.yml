@@ -78,6 +78,8 @@ stages:
     dependsOn: Build
     variables: 
       - group: 'FOSS Build Variables'
+      - name: BuildVersion
+        value: $[ stageDependencies.Build.Build.outputs['GetCrowdsecVersion.BuildVersion'] ]
     condition: succeeded()
     jobs:
       - job: Sign
@@ -130,12 +132,12 @@ stages:
             displayName: "Sign nuget package"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/msi_package/crowdsec_$(stageDependencies.Build.Build.outputs["GetCrowdsecVersion.BuildVersion"]).msi'
+              targetPath: '$(Pipeline.Workspace)/msi_package/crowdsec_$(BuildVersion).msi'
               artifact: 'signed_msi_package'
             displayName: "Upload signed MSI artifact"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/nuget_package/crowdsec.$(stageDependencies.Build.Build.outputs["GetCrowdsecVersion.BuildVersion"]).nupkg'
+              targetPath: '$(Pipeline.Workspace)/nuget_package/crowdsec.$(BuildVersion).nupkg'
               artifact: 'signed_nuget_package'
             displayName: "Upload signed nuget artifact"
             
