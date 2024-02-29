@@ -12,14 +12,17 @@ pr: none
 pool:
   vmImage: windows-latest
 
+parameters:
+  - name: BuildVersion
+    type: string
+    default: ''
+    displayName: 'Build version'
+
 stages:
   - stage: Build
     jobs:
       - job: Build
         displayName: "Build"
-        variables: 
-          - name: 'BuildVersion'
-            value: ''
         steps:
           - task: GoTool@0
             displayName: "Install Go"
@@ -39,6 +42,11 @@ stages:
       
           - pwsh: |
               $build_version=$env:BUILD_SOURCEBRANCHNAME
+              #Override the version if it's set in the pipeline
+              if (${{ parameters.BuildVersion }} -ne "")
+              {
+                $build_version = ${{ parameters.BuildVersion }}
+              }
               if ($build_version.StartsWith("v"))
               {
                 $build_version = $build_version.Substring(1)
@@ -46,11 +54,6 @@ stages:
               if ($build_version.Contains("-")) 
               {
                 $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
-              }
-              #Override the version if it's set in the pipeline
-              if ($BuildVersion -ne "")
-              {
-                $build_version = $BuildVersion
               }
               Write-Host  "##vso[task.setvariable variable=BuildVersion;isOutput=true]$build_version"
             displayName: GetCrowdsecVersion
