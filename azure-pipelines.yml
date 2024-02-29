@@ -95,7 +95,7 @@ stages:
           - task: AzureKeyVault@2
             displayName: "Get signing parameters"
             inputs:
-              azureSubscription: "$(SubscriptionID)"
+              azureSubscription: "Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)"
               KeyVaultName: "$(KeyVaultName)"
               SecretsFilter: "TenantId,ClientId,ClientSecret,Certificate,KeyVaultUrl"
           - pwsh: |
