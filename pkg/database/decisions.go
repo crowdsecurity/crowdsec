@@ -164,11 +164,11 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	return data, nil
 }
 
-func (c *Client) QueryDecisionCountByScenario(filters map[string][]string) ([]*DecisionsByScenario, error) {
+func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, err := BuildDecisionRequestWithFilter(query, make(map[string][]string))
 
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)

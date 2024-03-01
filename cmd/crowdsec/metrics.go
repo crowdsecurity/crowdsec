@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -116,9 +115,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		decisionsFilters := make(map[string][]string, 0)
-
-		decisions, err := dbClient.QueryDecisionCountByScenario(decisionsFilters)
+		decisions, err := dbClient.QueryDecisionCountByScenario()
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)
@@ -194,7 +191,6 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 	defer trace.CatchPanic("crowdsec/servePrometheus")
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
-	log.Debugf("serving metrics after %s ms", time.Since(crowdsecT0))
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
 		// in time machine, we most likely have the LAPI using the port
