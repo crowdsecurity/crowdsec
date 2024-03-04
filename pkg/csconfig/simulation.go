@@ -2,7 +2,9 @@ package csconfig
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
@@ -44,7 +46,9 @@ func (c *Config) LoadSimulation() error {
 	dec := yaml.NewDecoder(bytes.NewReader(rcfg))
 	dec.KnownFields(true)
 	if err := dec.Decode(&simCfg); err != nil {
-		return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		if !errors.Is(err, io.EOF) {
+			return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		}
 	}
 	if simCfg.Simulation == nil {
 		simCfg.Simulation = new(bool)

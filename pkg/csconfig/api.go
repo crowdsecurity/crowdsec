@@ -98,7 +98,9 @@ func (o *OnlineApiClientCfg) Load() error {
 
 	err = dec.Decode(o.Credentials)
 	if err != nil {
-		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
+		if !errors.Is(err, io.EOF) {
+			return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
+		}
 	}
 
 	switch {
@@ -129,7 +131,9 @@ func (l *LocalApiClientCfg) Load() error {
 
 	err = dec.Decode(&l.Credentials)
 	if err != nil {
-		return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
+		if !errors.Is(err, io.EOF) {
+			return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
+		}
 	}
 
 	if l.Credentials == nil || l.Credentials.URL == "" {

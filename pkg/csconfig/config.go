@@ -3,7 +3,9 @@
 package csconfig
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,8 +65,10 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool
 
 	err = dec.Decode(&cfg)
 	if err != nil {
-		// this is actually the "merged" yaml
-		return nil, "", fmt.Errorf("%s: %w", configFile, err)
+		if !errors.Is(err, io.EOF) {
+			// this is actually the "merged" yaml
+			return nil, "", fmt.Errorf("%s: %w", configFile, err)
+		}
 	}
 
 	if cfg.Prometheus == nil {
