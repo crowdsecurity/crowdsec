@@ -1,6 +1,7 @@
 package csconfig
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
@@ -63,7 +64,7 @@ func (a *CTICfg) Load() error {
 	}
 
 	if a.Key != nil && *a.Key == "" {
-		return fmt.Errorf("empty cti key")
+		return errors.New("empty cti key")
 	}
 
 	if a.Enabled == nil {
@@ -92,9 +93,14 @@ func (o *OnlineApiClientCfg) Load() error {
 		return err
 	}
 
-	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
+	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	dec.KnownFields(true)
+
+	err = dec.Decode(o.Credentials)
 	if err != nil {
-		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
+		if !errors.Is(err, io.EOF) {
+			return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
+		}
 	}
 
 	switch {
@@ -120,9 +126,14 @@ func (l *LocalApiClientCfg) Load() error {
 		return err
 	}
 
-	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
+	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&l.Credentials)
 	if err != nil {
-		return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
+		if !errors.Is(err, io.EOF) {
+			return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
+		}
 	}
 
 	if l.Credentials == nil || l.Credentials.URL == "" {
@@ -136,7 +147,7 @@ func (l *LocalApiClientCfg) Load() error {
 	}
 
 	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
-		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
+		return errors.New("user/password authentication and TLS authentication are mutually exclusive")
 	}
 
 	if l.InsecureSkipVerify == nil {
@@ -263,7 +274,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 	}
 
 	if c.API.Server.ListenURI == "" {
-		return fmt.Errorf("no listen_uri specified")
+		return errors.New("no listen_uri specified")
 	}
 
 	// inherit log level from common, then api->server
@@ -350,7 +361,7 @@ func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
 	decoder := yaml.NewDecoder(fd)
 	if err := decoder.Decode(&fromCfg); err != nil {
 		if errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("empty file")
+			return nil, errors.New("empty file")
 		}
 
 		return nil, err
@@ -389,7 +400,7 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 
 	fd, err := os.Open(s.CapiWhitelistsPath)
 	if err != nil {
-		return fmt.Errorf("while opening capi whitelist file: %s", err)
+		return fmt.Errorf("while opening capi whitelist file: %w", err)
 	}
 
 	defer fd.Close()
@@ -404,7 +415,7 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 
 func (c *Config) LoadAPIClient() error {
 	if c.API == nil || c.API.Client == nil || c.API.Client.CredentialsFilePath == "" || c.DisableAgent {
-		return fmt.Errorf("no API client section in configuration")
+		return errors.New("no API client section in configuration")
 	}
 
 	if err := c.API.Client.Load(); err != nil {
