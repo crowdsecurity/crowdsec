@@ -68,6 +68,7 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.Load()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
@@ -125,6 +126,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.Load()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
@@ -246,6 +248,7 @@ func TestLoadAPIServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadAPIServer(false)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
@@ -309,6 +312,7 @@ func TestParseCapiWhitelists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			wl, err := parseCapiWhitelists(strings.NewReader(tc.input))
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}

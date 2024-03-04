@@ -1,5 +1,4 @@
 // Package csconfig contains the configuration structures for crowdsec and cscli.
-
 package csconfig
 
 import (
