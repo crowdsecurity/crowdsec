@@ -14,6 +14,7 @@ config_paths:
   index_path: /etc/crowdsec/hub/.index.json
   notification_dir: /etc/crowdsec/notifications/
   plugin_dir: /usr/local/lib/crowdsec/plugins/
+  #pattern_dir: /etc/crowdsec/patterns/
 crowdsec_service:
   #console_context_path: /etc/crowdsec/console/context.yaml
   acquisition_path: /etc/crowdsec/acquis.yaml
@@ -27,7 +28,7 @@ db_config:
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
   #max_open_conns: 100
-  #user: 
+  #user:
   #password:
   #db_name:
   #host:
