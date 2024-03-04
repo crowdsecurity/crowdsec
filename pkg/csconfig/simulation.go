@@ -1,10 +1,11 @@
 package csconfig
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 )
@@ -40,7 +41,9 @@ func (c *Config) LoadSimulation() error {
 	if err != nil {
 		return err
 	}
-	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(rcfg))
+	dec.KnownFields(true)
+	if err := dec.Decode(&simCfg); err != nil {
 		return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
 	}
 	if simCfg.Simulation == nil {

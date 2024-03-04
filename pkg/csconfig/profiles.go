@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
@@ -45,7 +45,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 	reader := bytes.NewReader(fcontent)
 
 	dec := yaml.NewDecoder(reader)
-	dec.SetStrict(true)
+	dec.KnownFields(true)
 	for {
 		t := ProfileCfg{}
 		err = dec.Decode(&t)

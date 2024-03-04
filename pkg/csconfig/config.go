@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -57,7 +58,10 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool
 		DisableAPI:   disableAPI,
 	}
 
-	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
+	dec := yaml.NewDecoder(strings.NewReader(configData))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&cfg)
 	if err != nil {
 		// this is actually the "merged" yaml
 		return nil, "", fmt.Errorf("%s: %w", configFile, err)

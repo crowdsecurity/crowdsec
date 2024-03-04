@@ -1,6 +1,7 @@
 package csconfig
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
@@ -92,7 +93,10 @@ func (o *OnlineApiClientCfg) Load() error {
 		return err
 	}
 
-	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
+	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	dec.KnownFields(true)
+
+	err = dec.Decode(o.Credentials)
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
@@ -120,7 +124,10 @@ func (l *LocalApiClientCfg) Load() error {
 		return err
 	}
 
-	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
+	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&l.Credentials)
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
 	}
