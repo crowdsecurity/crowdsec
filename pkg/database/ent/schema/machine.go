@@ -17,17 +17,19 @@ func (Machine) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			UpdateDefault(types.UtcNow),
 		field.Time("last_push").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("last_heartbeat").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
-		field.String("machineId").Unique(),
+		field.String("machineId").
+			Unique().
+			Immutable(),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),
 		field.String("scenarios").MaxLen(100000).Optional(),
