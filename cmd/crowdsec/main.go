@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	_ "net/http/pprof"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -95,7 +95,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
-		return fmt.Errorf("scenario loading failed: %v", err)
+		return fmt.Errorf("scenario loading failed: %w", err)
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
@@ -116,7 +116,7 @@ func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error)
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
+			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
@@ -126,7 +126,7 @@ func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error)
 	}
 
 	if len(dataSources) == 0 {
-		return nil, fmt.Errorf("no datasource enabled")
+		return nil, errors.New("no datasource enabled")
 	}
 
 	return dataSources, nil
@@ -272,7 +272,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
-		return nil, errors.New("You must run at least the API Server or crowdsec")
+		return nil, errors.New("you must run at least the API Server or crowdsec")
 	}
 
 	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
@@ -360,11 +360,14 @@ func main() {
 		if err != nil {
 			log.Fatalf("could not create CPU profile: %s", err)
 		}
+
 		log.Infof("CPU profile will be written to %s", flags.CpuProfile)
+
 		if err := pprof.StartCPUProfile(f); err != nil {
 			f.Close()
 			log.Fatalf("could not start CPU profile: %s", err)
 		}
+
 		defer f.Close()
 		defer pprof.StopCPUProfile()
 	}

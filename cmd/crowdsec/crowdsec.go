@@ -58,7 +58,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	inputEventChan = make(chan types.Event)
 	inputLineChan = make(chan types.Event)
 
-	//start go-routines for parsing, buckets pour and outputs.
+	// start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 
 	parsersTomb.Go(func() error {
@@ -68,7 +68,8 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 			parsersTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 
-				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil { //this error will never happen as parser.Parse is not able to return errors
+				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil {
+					// this error will never happen as parser.Parse is not able to return errors
 					log.Fatalf("starting parse error : %s", err)
 					return err
 				}

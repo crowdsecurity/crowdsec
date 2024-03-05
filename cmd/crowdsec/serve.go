@@ -230,7 +230,7 @@ func drainChan(c chan types.Event) {
 	for {
 		select {
 		case _, ok := <-c:
-			if !ok { //closed
+			if !ok { // closed
 				return
 			}
 		default:
@@ -256,8 +256,8 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	exitChan := make(chan error)
 
-	//Always try to stop CPU profiling to avoid passing flags around
-	//It's a noop if profiling is not enabled
+	// Always try to stop CPU profiling to avoid passing flags around
+	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
 
 	go func() {

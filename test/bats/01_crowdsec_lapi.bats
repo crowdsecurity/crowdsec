@@ -28,7 +28,7 @@ teardown() {
 @test "lapi (.api.server.enable=false)" {
     rune -0 config_set '.api.server.enable=false'
     rune -1 "${CROWDSEC}" -no-cs
-    assert_stderr --partial "You must run at least the API Server or crowdsec"
+    assert_stderr --partial "you must run at least the API Server or crowdsec"
 }
 
 @test "lapi (no .api.server.listen_uri)" {

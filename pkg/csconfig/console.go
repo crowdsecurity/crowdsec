@@ -42,21 +42,27 @@ func (c *ConsoleConfig) EnabledOptions() []string {
 	if c == nil {
 		return ret
 	}
+
 	if c.ShareCustomScenarios != nil && *c.ShareCustomScenarios {
 		ret = append(ret, SEND_CUSTOM_SCENARIOS)
 	}
+
 	if c.ShareTaintedScenarios != nil && *c.ShareTaintedScenarios {
 		ret = append(ret, SEND_TAINTED_SCENARIOS)
 	}
+
 	if c.ShareManualDecisions != nil && *c.ShareManualDecisions {
 		ret = append(ret, SEND_MANUAL_SCENARIOS)
 	}
+
 	if c.ConsoleManagement != nil && *c.ConsoleManagement {
 		ret = append(ret, CONSOLE_MANAGEMENT)
 	}
+
 	if c.ShareContext != nil && *c.ShareContext {
 		ret = append(ret, SEND_CONTEXT)
 	}
+
 	return ret
 }
 
