@@ -102,6 +102,8 @@ var globalPourHistogram = prometheus.NewHistogramVec(
 
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// catch panics here because they are not handled by servePrometheus
+		defer trace.CatchPanic("crowdsec/computeDynamicMetrics")
 		//update cache metrics (stash)
 		cache.UpdateCacheMetrics()
 		//update cache metrics (regexp)
