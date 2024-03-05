@@ -86,7 +86,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, fmt.Errorf("while loading hub index: %w", err)
 		}
 
-		csParsers, err := initCrowdsec(cConfig, hub)
+		csParsers, datasources, err := initCrowdsec(cConfig, hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
@@ -103,7 +103,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(csParsers, cConfig, hub, agentReady)
+		serveCrowdsec(csParsers, cConfig, hub, datasources, agentReady)
 	}
 
 	log.Printf("Reload is finished")
@@ -369,14 +369,14 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			return fmt.Errorf("while loading hub index: %w", err)
 		}
 
-		csParsers, err := initCrowdsec(cConfig, hub)
+		csParsers, datasources, err := initCrowdsec(cConfig, hub)
 		if err != nil {
 			return fmt.Errorf("crowdsec init: %w", err)
 		}
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(csParsers, cConfig, hub, agentReady)
+			serveCrowdsec(csParsers, cConfig, hub, datasources, agentReady)
 		} else {
 			agentReady <- true
 		}

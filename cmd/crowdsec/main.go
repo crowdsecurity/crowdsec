@@ -107,7 +107,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.Config) error {
+func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
 	var err error
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
@@ -116,20 +116,20 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
+			return nil, errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if len(dataSources) == 0 {
-		return fmt.Errorf("no datasource enabled")
+		return nil, fmt.Errorf("no datasource enabled")
 	}
 
-	return nil
+	return dataSources, nil
 }
 
 var (
