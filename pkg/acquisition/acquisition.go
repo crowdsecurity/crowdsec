@@ -349,7 +349,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(outChan, AcquisTomb)
 			} else {
-				err = subsrc.OneShotAcquisition(outChan, AcquisTomb)
+				err = subsrc.OneShotAcquisition(injectProgressBar(outChan, AcquisTomb), AcquisTomb)
 			}
 			if err != nil {
 				//if one of the acqusition returns an error, we kill the others to properly shutdown

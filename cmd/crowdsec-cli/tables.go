@@ -6,7 +6,8 @@ import (
 	"os"
 
 	"github.com/aquasecurity/table"
-	isatty "github.com/mattn/go-isatty"
+
+	"github.com/crowdsecurity/go-cs-lib/cstty"
 )
 
 func shouldWeColorize() bool {
@@ -16,7 +17,7 @@ func shouldWeColorize() bool {
 	if csConfig.Cscli.Color == "no" {
 		return false
 	}
-	return isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	return cstty.IsTTY(os.Stdout.Fd())
 }
 
 func newTable(out io.Writer) *table.Table {

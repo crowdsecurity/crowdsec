@@ -76,7 +76,7 @@ func WindowsRun() error {
 	agentReady := make(chan bool, 1)
 
 	// Enable profiling early
-	if cConfig.Prometheus != nil {
+	if cConfig.Prometheus != nil && !flags.haveTimeMachine() {
 		var dbClient *database.Client
 		var err error
 
