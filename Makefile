@@ -202,8 +202,8 @@ cscli: goversion  ## Build cscli
 crowdsec: goversion  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
-.PHONY: generate ## Generate code for the database and APIs
-generate:
+.PHONY: generate
+generate:  ## Generate code for the database and APIs
 	$(GO) generate ./pkg/database/ent
 	$(GO) generate ./pkg/models
 
