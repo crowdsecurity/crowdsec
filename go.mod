@@ -7,7 +7,7 @@ go 1.21
 // toolchain go1.21.3
 
 require (
-	entgo.io/ent v0.12.4
+	entgo.io/ent v0.12.5
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3

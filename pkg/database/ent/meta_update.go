@@ -59,9 +59,25 @@ func (mu *MetaUpdate) SetKey(s string) *MetaUpdate {
 	return mu
 }
 
+// SetNillableKey sets the "key" field if the given value is not nil.
+func (mu *MetaUpdate) SetNillableKey(s *string) *MetaUpdate {
+	if s != nil {
+		mu.SetKey(*s)
+	}
+	return mu
+}
+
 // SetValue sets the "value" field.
 func (mu *MetaUpdate) SetValue(s string) *MetaUpdate {
 	mu.mutation.SetValue(s)
+	return mu
+}
+
+// SetNillableValue sets the "value" field if the given value is not nil.
+func (mu *MetaUpdate) SetNillableValue(s *string) *MetaUpdate {
+	if s != nil {
+		mu.SetValue(*s)
+	}
 	return mu
 }
 
@@ -274,9 +290,25 @@ func (muo *MetaUpdateOne) SetKey(s string) *MetaUpdateOne {
 	return muo
 }
 
+// SetNillableKey sets the "key" field if the given value is not nil.
+func (muo *MetaUpdateOne) SetNillableKey(s *string) *MetaUpdateOne {
+	if s != nil {
+		muo.SetKey(*s)
+	}
+	return muo
+}
+
 // SetValue sets the "value" field.
 func (muo *MetaUpdateOne) SetValue(s string) *MetaUpdateOne {
 	muo.mutation.SetValue(s)
+	return muo
+}
+
+// SetNillableValue sets the "value" field if the given value is not nil.
+func (muo *MetaUpdateOne) SetNillableValue(s *string) *MetaUpdateOne {
+	if s != nil {
+		muo.SetValue(*s)
+	}
 	return muo
 }
 

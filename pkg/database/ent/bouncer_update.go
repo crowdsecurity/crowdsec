@@ -58,15 +58,39 @@ func (bu *BouncerUpdate) SetName(s string) *BouncerUpdate {
 	return bu
 }
 
+// SetNillableName sets the "name" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableName(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetName(*s)
+	}
+	return bu
+}
+
 // SetAPIKey sets the "api_key" field.
 func (bu *BouncerUpdate) SetAPIKey(s string) *BouncerUpdate {
 	bu.mutation.SetAPIKey(s)
 	return bu
 }
 
+// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableAPIKey(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetAPIKey(*s)
+	}
+	return bu
+}
+
 // SetRevoked sets the "revoked" field.
 func (bu *BouncerUpdate) SetRevoked(b bool) *BouncerUpdate {
 	bu.mutation.SetRevoked(b)
+	return bu
+}
+
+// SetNillableRevoked sets the "revoked" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableRevoked(b *bool) *BouncerUpdate {
+	if b != nil {
+		bu.SetRevoked(*b)
+	}
 	return bu
 }
 
@@ -333,15 +357,39 @@ func (buo *BouncerUpdateOne) SetName(s string) *BouncerUpdateOne {
 	return buo
 }
 
+// SetNillableName sets the "name" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableName(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetName(*s)
+	}
+	return buo
+}
+
 // SetAPIKey sets the "api_key" field.
 func (buo *BouncerUpdateOne) SetAPIKey(s string) *BouncerUpdateOne {
 	buo.mutation.SetAPIKey(s)
 	return buo
 }
 
+// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableAPIKey(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetAPIKey(*s)
+	}
+	return buo
+}
+
 // SetRevoked sets the "revoked" field.
 func (buo *BouncerUpdateOne) SetRevoked(b bool) *BouncerUpdateOne {
 	buo.mutation.SetRevoked(b)
+	return buo
+}
+
+// SetNillableRevoked sets the "revoked" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableRevoked(b *bool) *BouncerUpdateOne {
+	if b != nil {
+		buo.SetRevoked(*b)
+	}
 	return buo
 }
 

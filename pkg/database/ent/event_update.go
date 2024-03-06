@@ -59,9 +59,25 @@ func (eu *EventUpdate) SetTime(t time.Time) *EventUpdate {
 	return eu
 }
 
+// SetNillableTime sets the "time" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableTime(t *time.Time) *EventUpdate {
+	if t != nil {
+		eu.SetTime(*t)
+	}
+	return eu
+}
+
 // SetSerialized sets the "serialized" field.
 func (eu *EventUpdate) SetSerialized(s string) *EventUpdate {
 	eu.mutation.SetSerialized(s)
+	return eu
+}
+
+// SetNillableSerialized sets the "serialized" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableSerialized(s *string) *EventUpdate {
+	if s != nil {
+		eu.SetSerialized(*s)
+	}
 	return eu
 }
 
@@ -274,9 +290,25 @@ func (euo *EventUpdateOne) SetTime(t time.Time) *EventUpdateOne {
 	return euo
 }
 
+// SetNillableTime sets the "time" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableTime(t *time.Time) *EventUpdateOne {
+	if t != nil {
+		euo.SetTime(*t)
+	}
+	return euo
+}
+
 // SetSerialized sets the "serialized" field.
 func (euo *EventUpdateOne) SetSerialized(s string) *EventUpdateOne {
 	euo.mutation.SetSerialized(s)
+	return euo
+}
+
+// SetNillableSerialized sets the "serialized" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableSerialized(s *string) *EventUpdateOne {
+	if s != nil {
+		euo.SetSerialized(*s)
+	}
 	return euo
 }
 
