@@ -130,7 +130,8 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	return nil
 }
 
-func (n *Node) processFilter(cachedExprEnv map[string]interface{}, clog *log.Entry) (bool, error) {
+func (n *Node) processFilter(cachedExprEnv map[string]interface{}) (bool, error) {
+	clog := n.Logger
 	if n.RunTimeFilter == nil {
 		clog.Tracef("Node has not filter, enter")
 		return true, nil
@@ -158,27 +159,8 @@ func (n *Node) processFilter(cachedExprEnv map[string]interface{}, clog *log.Ent
 	return true, nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
-	var NodeHasOKGrok bool
-	clog := n.Logger
-
-	cachedExprEnv := expressionEnv
-
-	clog.Tracef("Event entering node")
-
-	NodeState, err := n.processFilter(cachedExprEnv, clog)
-	if err != nil {
-		return false, err
-	}
-
-	if !NodeState {
-		return false, nil
-	}
-
-	if n.Name != "" {
-		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
-	}
-	exprErr := error(nil)
+func (n *Node) processWhitelist(cachedExprEnv map[string]interface{}, p *types.Event) (bool, error) {
+	var exprErr error
 	isWhitelisted := n.CheckIPsWL(p)
 	if !isWhitelisted {
 		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv, p)
@@ -196,9 +178,38 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			for k := range p.Overflow.Sources {
 				ips = append(ips, k)
 			}
-			clog.Infof("Ban for %s whitelisted, reason [%s]", strings.Join(ips, ","), n.Whitelist.Reason)
+			n.Logger.Infof("Ban for %s whitelisted, reason [%s]", strings.Join(ips, ","), n.Whitelist.Reason)
 			p.Overflow.Whitelisted = true
 		}
+	}
+
+	return isWhitelisted, nil
+}
+
+func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
+	var NodeHasOKGrok bool
+	clog := n.Logger
+
+	cachedExprEnv := expressionEnv
+
+	clog.Tracef("Event entering node")
+
+	NodeState, err := n.processFilter(cachedExprEnv)
+	if err != nil {
+		return false, err
+	}
+
+	if !NodeState {
+		return false, nil
+	}
+
+	if n.Name != "" {
+		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
+	}
+
+	isWhitelisted, err := n.processWhitelist(cachedExprEnv, p)
+	if err != nil {
+		return false, err
 	}
 
 	//Process grok if present, should be exclusive with nodes :)

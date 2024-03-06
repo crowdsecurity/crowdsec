@@ -3,7 +3,7 @@
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 50
+    max-complexity: 48
 
   gci:
     sections:
