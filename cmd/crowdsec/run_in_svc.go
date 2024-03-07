@@ -36,7 +36,7 @@ func StartRunSvc() error {
 	agentReady := make(chan bool, 1)
 
 	// Enable profiling early
-	if cConfig.Prometheus != nil && !flags.haveTimeMachine() {
+	if cConfig.Prometheus != nil {
 		var dbClient *database.Client
 
 		var err error
