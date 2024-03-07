@@ -104,12 +104,12 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// catch panics here because they are not handled by servePrometheus
 		defer trace.CatchPanic("crowdsec/computeDynamicMetrics")
-		//update cache metrics (stash)
+		// update cache metrics (stash)
 		cache.UpdateCacheMetrics()
-		//update cache metrics (regexp)
+		// update cache metrics (regexp)
 		exprhelpers.UpdateRegexpCacheMetrics()
 
-		//decision metrics are only relevant for LAPI
+		// decision metrics are only relevant for LAPI
 		if dbClient == nil {
 			next.ServeHTTP(w, r)
 			return
