@@ -11,13 +11,13 @@ import (
 	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 

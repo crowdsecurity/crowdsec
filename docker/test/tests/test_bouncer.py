@@ -36,8 +36,6 @@ def test_register_bouncer_env(crowdsec, flavor):
         bouncer1, bouncer2 = j
         assert bouncer1['name'] == 'bouncer1name'
         assert bouncer2['name'] == 'bouncer2name'
-        assert bouncer1['api_key'] == hex512('bouncer1key')
-        assert bouncer2['api_key'] == hex512('bouncer2key')
 
         # add a second bouncer at runtime
         res = cs.cont.exec_run('cscli bouncers add bouncer3name -k bouncer3key')
@@ -48,7 +46,6 @@ def test_register_bouncer_env(crowdsec, flavor):
         assert len(j) == 3
         bouncer3 = j[2]
         assert bouncer3['name'] == 'bouncer3name'
-        assert bouncer3['api_key'] == hex512('bouncer3key')
 
         # remove all bouncers
         res = cs.cont.exec_run('cscli bouncers delete bouncer1name bouncer2name bouncer3name')

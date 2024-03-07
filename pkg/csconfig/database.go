@@ -1,6 +1,7 @@
 package csconfig
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -45,6 +46,7 @@ type AuthGCCfg struct {
 
 type FlushDBCfg struct {
 	MaxItems   *int       `yaml:"max_items,omitempty"`
+	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
 	MaxAge     *string    `yaml:"max_age,omitempty"`
 	BouncersGC *AuthGCCfg `yaml:"bouncers_autodelete,omitempty"`
 	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
@@ -52,7 +54,7 @@ type FlushDBCfg struct {
 
 func (c *Config) LoadDBConfig(inCli bool) error {
 	if c.DbConfig == nil {
-		return fmt.Errorf("no database configuration provided")
+		return errors.New("no database configuration provided")
 	}
 
 	if c.Cscli != nil {
@@ -86,6 +88,7 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 
 func (d *DatabaseCfg) ConnectionString() string {
 	connString := ""
+
 	switch d.Type {
 	case "sqlite":
 		var sqliteConnectionStringParameters string
@@ -94,6 +97,7 @@ func (d *DatabaseCfg) ConnectionString() string {
 		} else {
 			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
 		}
+
 		connString = fmt.Sprintf("file:%s?%s", d.DbPath, sqliteConnectionStringParameters)
 	case "mysql":
 		if d.isSocketConfig() {
@@ -108,6 +112,7 @@ func (d *DatabaseCfg) ConnectionString() string {
 			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", d.Host, d.Port, d.User, d.DbName, d.Password, d.Sslmode)
 		}
 	}
+
 	return connString
 }
 
@@ -121,8 +126,10 @@ func (d *DatabaseCfg) ConnectionDialect() (string, string, error) {
 		if d.Type != "pgx" {
 			log.Debugf("database type '%s' is deprecated, switching to 'pgx' instead", d.Type)
 		}
+
 		return "pgx", dialect.Postgres, nil
 	}
+
 	return "", "", fmt.Errorf("unknown database type '%s'", d.Type)
 }
 
