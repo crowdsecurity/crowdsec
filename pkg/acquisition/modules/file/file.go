@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -52,6 +53,7 @@ type FileSource struct {
 	logger             *log.Entry
 	files              []string
 	exclude_regexps    []*regexp.Regexp
+	tailMapMutex       *sync.RWMutex
 }
 
 func (f *FileSource) GetUuid() string {
@@ -350,7 +352,9 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
 			continue
 		}
+		f.tailMapMutex.Lock()
 		f.tails[file] = true
+		f.tailMapMutex.Unlock()
 		t.Go(func() error {
 			defer trace.CatchPanic("crowdsec/acquis/file/live/fsnotify")
 			return f.tailFile(out, t, tail)
@@ -412,11 +416,14 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					continue
 				}
 
+				f.tailMapMutex.RLock()
 				if f.tails[event.Name] {
+					f.tailMapMutex.RUnlock()
 					//we already have a tail on it, do not start a new one
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
+				f.tailMapMutex.RUnlock()
 				//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
 				//do not rely on stat, reclose file immediately as it's opened by Tail
 				fd, err := os.Open(event.Name)
@@ -453,7 +460,9 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
 					break
 				}
+				f.tailMapMutex.Lock()
 				f.tails[event.Name] = true
+				f.tailMapMutex.Unlock()
 				t.Go(func() error {
 					defer trace.CatchPanic("crowdsec/acquis/tailfile")
 					return f.tailFile(out, t, tail)
