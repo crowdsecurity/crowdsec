@@ -79,9 +79,25 @@ func (du *DecisionUpdate) SetScenario(s string) *DecisionUpdate {
 	return du
 }
 
+// SetNillableScenario sets the "scenario" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableScenario(s *string) *DecisionUpdate {
+	if s != nil {
+		du.SetScenario(*s)
+	}
+	return du
+}
+
 // SetType sets the "type" field.
 func (du *DecisionUpdate) SetType(s string) *DecisionUpdate {
 	du.mutation.SetType(s)
+	return du
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableType(s *string) *DecisionUpdate {
+	if s != nil {
+		du.SetType(*s)
+	}
 	return du
 }
 
@@ -226,15 +242,39 @@ func (du *DecisionUpdate) SetScope(s string) *DecisionUpdate {
 	return du
 }
 
+// SetNillableScope sets the "scope" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableScope(s *string) *DecisionUpdate {
+	if s != nil {
+		du.SetScope(*s)
+	}
+	return du
+}
+
 // SetValue sets the "value" field.
 func (du *DecisionUpdate) SetValue(s string) *DecisionUpdate {
 	du.mutation.SetValue(s)
 	return du
 }
 
+// SetNillableValue sets the "value" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableValue(s *string) *DecisionUpdate {
+	if s != nil {
+		du.SetValue(*s)
+	}
+	return du
+}
+
 // SetOrigin sets the "origin" field.
 func (du *DecisionUpdate) SetOrigin(s string) *DecisionUpdate {
 	du.mutation.SetOrigin(s)
+	return du
+}
+
+// SetNillableOrigin sets the "origin" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableOrigin(s *string) *DecisionUpdate {
+	if s != nil {
+		du.SetOrigin(*s)
+	}
 	return du
 }
 
@@ -557,9 +597,25 @@ func (duo *DecisionUpdateOne) SetScenario(s string) *DecisionUpdateOne {
 	return duo
 }
 
+// SetNillableScenario sets the "scenario" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableScenario(s *string) *DecisionUpdateOne {
+	if s != nil {
+		duo.SetScenario(*s)
+	}
+	return duo
+}
+
 // SetType sets the "type" field.
 func (duo *DecisionUpdateOne) SetType(s string) *DecisionUpdateOne {
 	duo.mutation.SetType(s)
+	return duo
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableType(s *string) *DecisionUpdateOne {
+	if s != nil {
+		duo.SetType(*s)
+	}
 	return duo
 }
 
@@ -704,15 +760,39 @@ func (duo *DecisionUpdateOne) SetScope(s string) *DecisionUpdateOne {
 	return duo
 }
 
+// SetNillableScope sets the "scope" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableScope(s *string) *DecisionUpdateOne {
+	if s != nil {
+		duo.SetScope(*s)
+	}
+	return duo
+}
+
 // SetValue sets the "value" field.
 func (duo *DecisionUpdateOne) SetValue(s string) *DecisionUpdateOne {
 	duo.mutation.SetValue(s)
 	return duo
 }
 
+// SetNillableValue sets the "value" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableValue(s *string) *DecisionUpdateOne {
+	if s != nil {
+		duo.SetValue(*s)
+	}
+	return duo
+}
+
 // SetOrigin sets the "origin" field.
 func (duo *DecisionUpdateOne) SetOrigin(s string) *DecisionUpdateOne {
 	duo.mutation.SetOrigin(s)
+	return duo
+}
+
+// SetNillableOrigin sets the "origin" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableOrigin(s *string) *DecisionUpdateOne {
+	if s != nil {
+		duo.SetOrigin(*s)
+	}
 	return duo
 }
 

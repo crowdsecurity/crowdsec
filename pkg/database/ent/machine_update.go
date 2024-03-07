@@ -83,15 +83,39 @@ func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
 	return mu
 }
 
+// SetNillableMachineId sets the "machineId" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableMachineId(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetMachineId(*s)
+	}
+	return mu
+}
+
 // SetPassword sets the "password" field.
 func (mu *MachineUpdate) SetPassword(s string) *MachineUpdate {
 	mu.mutation.SetPassword(s)
 	return mu
 }
 
+// SetNillablePassword sets the "password" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillablePassword(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetPassword(*s)
+	}
+	return mu
+}
+
 // SetIpAddress sets the "ipAddress" field.
 func (mu *MachineUpdate) SetIpAddress(s string) *MachineUpdate {
 	mu.mutation.SetIpAddress(s)
+	return mu
+}
+
+// SetNillableIpAddress sets the "ipAddress" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableIpAddress(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetIpAddress(*s)
+	}
 	return mu
 }
 
@@ -470,15 +494,39 @@ func (muo *MachineUpdateOne) SetMachineId(s string) *MachineUpdateOne {
 	return muo
 }
 
+// SetNillableMachineId sets the "machineId" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableMachineId(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetMachineId(*s)
+	}
+	return muo
+}
+
 // SetPassword sets the "password" field.
 func (muo *MachineUpdateOne) SetPassword(s string) *MachineUpdateOne {
 	muo.mutation.SetPassword(s)
 	return muo
 }
 
+// SetNillablePassword sets the "password" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillablePassword(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetPassword(*s)
+	}
+	return muo
+}
+
 // SetIpAddress sets the "ipAddress" field.
 func (muo *MachineUpdateOne) SetIpAddress(s string) *MachineUpdateOne {
 	muo.mutation.SetIpAddress(s)
+	return muo
+}
+
+// SetNillableIpAddress sets the "ipAddress" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableIpAddress(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetIpAddress(*s)
+	}
 	return muo
 }
 

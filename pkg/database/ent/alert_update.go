@@ -62,6 +62,14 @@ func (au *AlertUpdate) SetScenario(s string) *AlertUpdate {
 	return au
 }
 
+// SetNillableScenario sets the "scenario" field if the given value is not nil.
+func (au *AlertUpdate) SetNillableScenario(s *string) *AlertUpdate {
+	if s != nil {
+		au.SetScenario(*s)
+	}
+	return au
+}
+
 // SetBucketId sets the "bucketId" field.
 func (au *AlertUpdate) SetBucketId(s string) *AlertUpdate {
 	au.mutation.SetBucketId(s)
@@ -1026,6 +1034,14 @@ func (auo *AlertUpdateOne) ClearUpdatedAt() *AlertUpdateOne {
 // SetScenario sets the "scenario" field.
 func (auo *AlertUpdateOne) SetScenario(s string) *AlertUpdateOne {
 	auo.mutation.SetScenario(s)
+	return auo
+}
+
+// SetNillableScenario sets the "scenario" field if the given value is not nil.
+func (auo *AlertUpdateOne) SetNillableScenario(s *string) *AlertUpdateOne {
+	if s != nil {
+		auo.SetScenario(*s)
+	}
 	return auo
 }
 

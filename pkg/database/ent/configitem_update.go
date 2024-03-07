@@ -58,9 +58,25 @@ func (ciu *ConfigItemUpdate) SetName(s string) *ConfigItemUpdate {
 	return ciu
 }
 
+// SetNillableName sets the "name" field if the given value is not nil.
+func (ciu *ConfigItemUpdate) SetNillableName(s *string) *ConfigItemUpdate {
+	if s != nil {
+		ciu.SetName(*s)
+	}
+	return ciu
+}
+
 // SetValue sets the "value" field.
 func (ciu *ConfigItemUpdate) SetValue(s string) *ConfigItemUpdate {
 	ciu.mutation.SetValue(s)
+	return ciu
+}
+
+// SetNillableValue sets the "value" field if the given value is not nil.
+func (ciu *ConfigItemUpdate) SetNillableValue(s *string) *ConfigItemUpdate {
+	if s != nil {
+		ciu.SetValue(*s)
+	}
 	return ciu
 }
 
@@ -186,9 +202,25 @@ func (ciuo *ConfigItemUpdateOne) SetName(s string) *ConfigItemUpdateOne {
 	return ciuo
 }
 
+// SetNillableName sets the "name" field if the given value is not nil.
+func (ciuo *ConfigItemUpdateOne) SetNillableName(s *string) *ConfigItemUpdateOne {
+	if s != nil {
+		ciuo.SetName(*s)
+	}
+	return ciuo
+}
+
 // SetValue sets the "value" field.
 func (ciuo *ConfigItemUpdateOne) SetValue(s string) *ConfigItemUpdateOne {
 	ciuo.mutation.SetValue(s)
+	return ciuo
+}
+
+// SetNillableValue sets the "value" field if the given value is not nil.
+func (ciuo *ConfigItemUpdateOne) SetNillableValue(s *string) *ConfigItemUpdateOne {
+	if s != nil {
+		ciuo.SetValue(*s)
+	}
 	return ciuo
 }
 
