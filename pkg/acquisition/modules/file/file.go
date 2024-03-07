@@ -107,6 +107,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	f.watchedDirectories = make(map[string]bool)
+	f.tailMapMutex = &sync.RWMutex{}
 	f.tails = make(map[string]bool)
 
 	f.watcher, err = fsnotify.NewWatcher()
