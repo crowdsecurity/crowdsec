@@ -72,7 +72,7 @@ type Flags struct {
 	DisableCAPI    bool
 	Transform      string
 	OrderEvent     bool
-	CpuProfile     string
+	CPUProfile     string
 }
 
 type labelsMap map[string]string
@@ -181,7 +181,7 @@ func (f *Flags) Parse() {
 	}
 
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-	flag.StringVar(&f.CpuProfile, "cpu-profile", "", "write cpu profile to file")
+	flag.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
 	flag.Parse()
 }
 
@@ -249,7 +249,12 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	primalHook.Enabled = (cConfig.Common.LogMedia != "stdout")
+	if cConfig.Common.LogMedia != "stdout" {
+		log.AddHook(&FatalHook{
+			Writer:    os.Stderr,
+			LogLevels: []log.Level{log.FatalLevel, log.PanicLevel},
+		})
+	}
 
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
 		return nil, err
@@ -323,7 +328,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 var crowdsecT0 time.Time
 
 func main() {
-	log.AddHook(primalHook)
+	// The initial log level is INFO, even if the user provided an -error or -warning flag
+	// because we need feature flags before parsing cli flags
+	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true})
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
 		log.Fatalf("failed to register features: %s", err)
@@ -355,13 +362,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	if flags.CpuProfile != "" {
-		f, err := os.Create(flags.CpuProfile)
+	if flags.CPUProfile != "" {
+		f, err := os.Create(flags.CPUProfile)
 		if err != nil {
 			log.Fatalf("could not create CPU profile: %s", err)
 		}
 
-		log.Infof("CPU profile will be written to %s", flags.CpuProfile)
+		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
 
 		if err := pprof.StartCPUProfile(f); err != nil {
 			f.Close()
