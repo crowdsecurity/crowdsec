@@ -14,18 +14,21 @@ type ConditionalHook struct {
 }
 
 func (hook *ConditionalHook) Fire(entry *log.Entry) error {
-	if hook.Enabled {
-		line, err := entry.String()
-		if err != nil {
-			return err
-		}
+	// don't log if the hook is disabled
+	// or if the level is fatal (the standard logger will handle it)
+	
+	if !hook.Enabled || entry.Level == log.FatalLevel {
+		return nil
+	}
 
-		_, err = hook.Writer.Write([]byte(line))
-
+	line, err := entry.String()
+	if err != nil {
 		return err
 	}
 
-	return nil
+	_, err = hook.Writer.Write([]byte(line))
+
+	return err
 }
 
 func (hook *ConditionalHook) Levels() []log.Level {
