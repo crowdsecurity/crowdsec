@@ -214,9 +214,9 @@ func (h *Hub) GetItemFQ(itemFQName string) (*Item, error) {
 	return i, nil
 }
 
-// GetItemNames returns a slice of (full) item names for a given type
+// GetNamesByType returns a slice of (full) item names for a given type
 // (eg. for collections: crowdsecurity/apache2 crowdsecurity/nginx).
-func (h *Hub) GetItemNames(itemType string) []string {
+func (h *Hub) GetNamesByType(itemType string) []string {
 	m := h.GetItemMap(itemType)
 	if m == nil {
 		return nil
@@ -230,8 +230,8 @@ func (h *Hub) GetItemNames(itemType string) []string {
 	return names
 }
 
-// GetAllItems returns a slice of all the items of a given type, installed or not.
-func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
+// GetItemsByType returns a slice of all the items of a given type, installed or not.
+func (h *Hub) GetItemsByType(itemType string) ([]*Item, error) {
 	if !slices.Contains(ItemTypes, itemType) {
 		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
@@ -250,8 +250,8 @@ func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
 	return ret, nil
 }
 
-// GetInstalledItems returns a slice of the installed items of a given type.
-func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
+// GetInstalledItemsByType returns a slice of the installed items of a given type.
+func (h *Hub) GetInstalledItemsByType(itemType string) ([]*Item, error) {
 	if !slices.Contains(ItemTypes, itemType) {
 		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
@@ -269,9 +269,9 @@ func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	return retItems, nil
 }
 
-// GetInstalledItemNames returns the names of the installed items of a given type.
-func (h *Hub) GetInstalledItemNames(itemType string) ([]string, error) {
-	items, err := h.GetInstalledItems(itemType)
+// GetInstalledNamesByType returns the names of the installed items of a given type.
+func (h *Hub) GetInstalledNamesByType(itemType string) ([]string, error) {
+	items, err := h.GetInstalledItemsByType(itemType)
 	if err != nil {
 		return nil, err
 	}

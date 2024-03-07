@@ -61,7 +61,7 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	items, err := hub.GetInstalledItemNames(itemType)
+	items, err := hub.GetInstalledNamesByType(itemType)
 	if err != nil {
 		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
 		return nil, cobra.ShellCompDirectiveDefault
