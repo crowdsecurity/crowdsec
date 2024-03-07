@@ -38,6 +38,7 @@ BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
+CSCTI_FOLDER = ./cmd/cscti/
 PLUGINS_DIR_PREFIX = ./cmd/notification-
 
 CROWDSEC_BIN = crowdsec$(EXT)
@@ -198,6 +199,10 @@ clean: clean-debian clean-rpm testclean  ## Remove build artifacts
 cscli: goversion  ## Build cscli
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
+.PHONY: cscti
+cscti: goversion  ## Build cscti
+	@$(MAKE) -C $(CSCTI_FOLDER) build $(MAKE_FLAGS)
+
 .PHONY: crowdsec
 crowdsec: goversion  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
@@ -206,6 +211,8 @@ crowdsec: goversion  ## Build crowdsec
 generate:  ## Generate code for the database and APIs
 	$(GO) generate ./pkg/database/ent
 	$(GO) generate ./pkg/models
+	$(GO) generate ./pkg/cti
+	@echo "Code generation complete."
 
 .PHONY: testclean
 testclean: bats-clean  ## Remove test artifacts

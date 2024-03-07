@@ -1,0 +1,655 @@
+openapi: "3.0.1"
+info:
+  description: "CTI by Crowdsec"
+  version: "2022-02-16T14:00:00"
+  title: "CTI v2"
+  contact:
+    name: "Crowdsec team"
+    url: "https://github.com/crowdsecurity/crowdsec"
+    email: "support@crowdsec.net"
+externalDocs:
+  description: CTI Documentation
+  url: https://docs.crowdsec.net/docs/next/cti_api/intro/
+servers:
+  - url: "https://cti.api.crowdsec.net/v2"
+paths:
+  /smoke:
+    get:
+      description: "Search for CTI informations"
+      summary: "Search for CTI informations"
+      security:
+        - api_key: []
+      parameters:
+        - name: "ips"
+          in: "query"
+          required: true
+          description: "List of IPs to query, separated by comma"
+          example: "0.0.0.0,1.1.1.1"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "200 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchCTIResponse"
+        "400":
+          description: "400 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "500 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "403 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "404 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: "429 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /smoke/{ip}:
+    get:
+      description: "Get CTI informations about the given IP"
+      summary: "CTI information on a given IP"
+      parameters:
+        - name: "ip"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "200 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCTIResponse"
+        "400":
+          description: "400 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "500 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "403 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "404 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: "429 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - api_key: []
+  /fire:
+    get:
+      description: "Get fire CTI informations (IPs belonging to the community-blocklist)"
+      summary: "Get fire CTI informations (IPs belonging to the community-blocklist)"
+      security:
+        - api_key: []
+      parameters:
+        - name: "page"
+          in: "query"
+          required: false
+          description: "The page to fetch"
+          example: 1
+          schema:
+            type: "number"
+        - name: "limit"
+          in: "query"
+          required: false
+          description: "The number of items to fetch"
+          example: 50
+          schema:
+            type: "number"
+        - name: "since"
+          in: "query"
+          required: false
+          description: "Filter records updated since - duration in h (hours), d(days), m(minutes) )"
+          example: "3d"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "200 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FireCTIResponse"
+        "400":
+          description: "400 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "500 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "403 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "404 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: "429 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    api_key:
+      type: "apiKey"
+      name: "x-api-key"
+      in: "header"
+  schemas:
+    CTIObject:
+      title: "IP CTI Object"
+      type: "object"
+      required:
+        - as_name
+        - as_num
+        - behaviors
+        - location
+        - history
+        - ip
+        - references
+        - ip_range
+        - ip_range_score
+        - classifications
+        - reverse_dns
+        - scores
+        - target_countries
+        - mitre_techniques
+        - cves
+        - background_noise_score
+        - background_noise
+        - attack_details
+        - reputation
+        - ip_range_24
+        - ip_range_24_reputation
+        - ip_range_24_score
+      properties:
+        ip:
+          type: string
+          description: Requested IP
+          example: "1.2.3.4"
+        reputation:
+          type: string
+          description: The reputation of the IP address
+          example: "malicious"
+          enum:
+            - malicious
+            - suspicious
+            - unknown
+            - known
+            - safe
+        ip_range:
+          type: string
+          description: The range to which the IP belongs
+          example: "1.2.3.0/16"
+          nullable: true
+        ip_range_score:
+          type: number
+          description: The score of the range (ip_range) the IP belongs to. 0 is good/unknown, 5 is worse
+          example: 2
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+        ip_range_24:
+          type: string
+          description: The /24 range to which the IP belongs
+          example: "1.2.3.0/24"
+          nullable: true
+        ip_range_24_reputation:
+          type: string
+          description: The /24 range to which the IP belongs
+          nullable: true
+          example: "malicious"
+          enum:
+            - malicious
+            - suspicious
+            - unknown
+            - known
+            - safe
+        ip_range_24_score:
+          type: number
+          description: The score of the /24 range (ip_range_24) the IP belongs to. 0 is good/unknown, 5 is worse
+          nullable: true
+          example: 2
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+        as_name:
+          type: string
+          description: The autonomous system name to which the IP belongs
+          example: ACME
+          nullable: true
+        as_num:
+          type: number
+          description: The autonomous system number to which the IP belongs
+          example: 99999
+          nullable: true
+        background_noise_score:
+          type: number
+          description: The background noise score of the IP ranging from 0 to 10 (highly noisy)
+          example: 8
+          nullable: true
+        background_noise:
+          type: string
+          description: The background noise level of the IP address
+          example: high
+          nullable: true
+          enum:
+            - low
+            - medium
+            - high
+            - none
+        location:
+          type: object
+          description: Location information about the IP address
+          required:
+            - country
+            - city
+            - latitude
+            - longitude
+          properties:
+            country:
+              type: string
+              description: The two letters country code of the IP
+              example: US
+              nullable: true
+            city:
+              type: "string"
+              description: The associated City of the IP
+              example: New York
+              nullable: true
+            latitude:
+              type: number
+              description: Coordinates of the IP
+              example: 40.7597
+              nullable: true
+            longitude:
+              type: number
+              description: Coordinates of the IP
+              example: 40.7597
+              nullable: true
+        reverse_dns:
+          type: string
+          description: Reverse dns lookup of the IP
+          example: acbd.my_domain.net
+          nullable: true
+        behaviors:
+          type: array
+          description: A list of the attack categories for which the IP was reported
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: The category of the attack, often in the form "protocol-or-scope:attack_type"
+                example: "http:scan"
+              label:
+                type: string
+                description: Human-friendly description of the category
+                example: HTTP Scan
+              description:
+                type: string
+                description: Human-friendly description of the category
+                example: IP has been reported for performing actions related to HTTP vulnerability scanning and discovery
+        references:
+          type: array
+          description: A list of the references for which the IP was see
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: The reference, often in the form "list:list_name"
+                example: "list:my_list"
+              label:
+                type: string
+                description: Human-friendly description of the reference
+                example: My List
+              description:
+                type: string
+                description: Human-friendly description of the reference
+                example: IP was referenced in My List
+        history:
+          type: object
+          properties:
+            first_seen:
+              type: string
+              description: Date of the first time this IP was reported. Due to "progressive data degradation", this date might be later than the first time the IP was actually seen
+              example: "2021-03-03T23:00:00"
+            last_seen:
+              type: string
+              description: Date of the last time this IP was reported
+              example: "2021-03-03T23:30:00"
+            full_age:
+              type: number
+              description: Delta in days between first seen and today
+              example: 220
+            days_age:
+              type: number
+              description: Delta in days between first and last seen timestamps
+              example: 189
+        classifications:
+          type: object
+          properties:
+            false_positives:
+              type: array
+              description: A list of false positives tags associated with the IP. Any IP with `false_positives` tags shouldn't be considered as malicious
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: The name of the false positive, often in the form "protocol-or-scope:attack_type"
+                    example: "seo:crawler"
+                  label:
+                    type: string
+                    description: Human-friendly name of the category
+                    example: SEO crawler
+                  description:
+                    type: string
+                    description: Human-friendly description of the category
+                    example: IP belongs to a known SEO crawler and should not be flagged as a threat.
+            classifications:
+              type: array
+              description: A list of categories associated with the IP. Those data can be sourced from 3rd parties (i.e. tor exit nodes list)
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: The name of the category, often in the form "protocol-or-scope:attack_type"
+                    example: "community-blocklist"
+                  label:
+                    type: string
+                    description: Human-friendly name of the category
+                    example: CrowdSec Community Blocklist
+                  description:
+                    type: string
+                    description: Human-friendly description of the category
+                    example: IP belong to the CrowdSec Community Blocklist
+        mitre_techniques:
+          type: array
+          description: A list of Mitre Enterprise Techniques associated with the IP.
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: The ID of the Mitre technique"
+                example: "T1190"
+              label:
+                type: string
+                description: The name of the Mitre technique
+                example: Exploit Public-Facing Application
+              description:
+                type: string
+                description: Description of the Mitre technique
+                example: Adversaries may attempt to exploit a weakness in an Internet-facing host or system to initially access a network.
+        cves:
+          type: array
+          description: A list of CVEs reported for this IP.
+          items:
+            type: string
+        attack_details:
+          type: array
+          description: A more exhaustive list of the scenarios for which a given IP was reported
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Name of the scenario (see hub.crowdsec.net)
+                example: crowdsecurity/http-bad-user-agent
+              label:
+                type: string
+                description: Human-friendly descriptions of scenarios
+                example: Known Bad User-Agent
+              description:
+                type: string
+                description: Human-friendly descriptions of scenarios
+                example: Detect bad user-agents
+              references:
+                type: array
+                items:
+                  type: string
+        target_countries:
+          type: object
+          description: The top 10 reports repartition by country about the IP, as a percentage
+        scores:
+          type: object
+          properties:
+            overall:
+              type: object
+              properties:
+                aggressiveness:
+                  type: number
+                  description: Overall aggressiveness score
+                threat:
+                  type: number
+                  description: Overall threat score
+                trust:
+                  type: number
+                  description: Overall trust score
+                anomaly:
+                  type: number
+                  description: Overall anomaly score
+                total:
+                  type: number
+                  description: Overall score
+            last_day:
+              type: object
+              properties:
+                aggressiveness:
+                  type: number
+                  description: Last day aggressiveness score
+                threat:
+                  type: number
+                  description: Last day threat score
+                trust:
+                  type: number
+                  description: Last day trust score
+                anomaly:
+                  type: number
+                  description: Last day anomaly score
+                total:
+                  type: number
+                  description: Last day score
+            last_week:
+              type: object
+              properties:
+                aggressiveness:
+                  type: number
+                  description: Last week aggressiveness score
+                threat:
+                  type: number
+                  description: Last week threat score
+                trust:
+                  type: number
+                  description: Last week trust score
+                anomaly:
+                  type: number
+                  description: Last week anomaly score
+                total:
+                  type: number
+                  description: Last week score
+            last_month:
+              type: object
+              properties:
+                aggressiveness:
+                  type: number
+                  description: Last month aggressiveness score
+                threat:
+                  type: number
+                  description: Last month threat score
+                trust:
+                  type: number
+                  description: Last month trust score
+                anomaly:
+                  type: number
+                  description: Last month anomaly score
+                total:
+                  type: number
+                  description: Last month score
+
+    FireIPCTIResponse:
+      title: "Fire IP CTI Response"
+      allOf:
+        - $ref: "#/components/schemas/CTIObject"
+        - type: object
+          properties:
+            state:
+              type: string
+              description: "state of the IP in the community blocklist: validated means IP is currently part of community blocklist, refused means it was part of the community blocklist, but was manually purged (ie. false positive)"
+              enum:
+                - validated
+                - refused
+              example: validated
+            expiration:
+              type: string
+              description: Date at which the IP address expire from the community blocklist
+              example: "2022-03-04T10:00:00"
+    SearchCTIResponse:
+      title: "Search CTI Response"
+      type: "object"
+      required:
+        - items
+        - total
+        - not_found
+      properties:
+        total:
+          type: number
+          description: IP of the request
+        not_found:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CTIObject"
+    QueryCTIResponse:
+      title: "Query IP CTI Response"
+      $ref: "#/components/schemas/CTIObject"
+    FireCTIResponse:
+      title: "Fire CTI response"
+      type: "object"
+      required:
+        - _links
+        - items
+      properties:
+        _links:
+          type: object
+          required:
+            - self
+            - next
+            - first
+          properties:
+            self:
+              type: object
+              required:
+                - href
+              properties:
+                href:
+                  type: string
+              description: "Url of the current result set"
+              example: https://cti.api.dev.crowdsec.net/v1/fire?page=3&since=4h
+            prev:
+              type: object
+              required:
+                - href
+              properties:
+                href:
+                  type: string
+              description: "Url of the previous page of result set"
+              example: https://cti.api.dev.crowdsec.net/v1/fire?page=2&since=4h
+            next:
+              type: object
+              required:
+                - href
+              properties:
+                href:
+                  type: string
+              description: "Url of the next page of result set"
+              example: https://cti.api.dev.crowdsec.net/v1/fire?page=4&since=4h
+            first:
+              type: object
+              required:
+                - href
+              properties:
+                href:
+                  type: string
+                  nullable: true
+              description: "Url of the first page of result set"
+              example: https://cti.api.dev.crowdsec.net/v1/fire?since=4
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FireIPCTIResponse"
+    ErrorResponse:
+      type: "object"
+      required:
+        - "message"
+      properties:
+        message:
+          type: "string"
+          description: "Error message"
+        errors:
+          type: "string"
+          description: "More details on individual errors"
+      title: "Error response"
+      description: "Error response return by the API"

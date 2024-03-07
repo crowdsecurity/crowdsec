@@ -3,7 +3,7 @@ package exprhelpers
 import (
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/crowdsecurity/crowdsec/pkg/cti"
 )
 
 type exprCustomFunc struct {
@@ -17,7 +17,7 @@ var exprFuncs = []exprCustomFunc{
 		name:     "CrowdsecCTI",
 		function: CrowdsecCTI,
 		signature: []interface{}{
-			new(func(string) (*cticlient.SmokeItem, error)),
+			new(func(string) (*cti.CTIObject, error)),
 		},
 	},
 	{
