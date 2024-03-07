@@ -249,7 +249,12 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	primalHook.Enabled = (cConfig.Common.LogMedia != "stdout")
+	if cConfig.Common.LogMedia != "stdout" {
+		log.AddHook(&FatalHook{
+			Writer:    os.Stderr,
+			LogLevels: []log.Level{log.FatalLevel, log.PanicLevel},
+		})
+	}
 
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
 		return nil, err
@@ -323,7 +328,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 var crowdsecT0 time.Time
 
 func main() {
-	log.AddHook(primalHook)
+	// The initial log level is INFO, even if the user provided an -error or -warning flag
+	// because we need feature flags before parsing cli flags
+	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true})
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
 		log.Fatalf("failed to register features: %s", err)
