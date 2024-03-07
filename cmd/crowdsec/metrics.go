@@ -196,6 +196,9 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 	log.Debugf("serving metrics after %s ms", time.Since(crowdsecT0))
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
-		log.Warningf("prometheus: %s", err)
+		// in time machine, we most likely have the LAPI using the port
+		if !flags.haveTimeMachine() {
+			log.Warningf("prometheus: %s", err)
+		}
 	}
 }
