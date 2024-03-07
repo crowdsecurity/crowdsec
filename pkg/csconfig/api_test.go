@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -68,6 +68,7 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.Load()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
@@ -125,6 +126,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.Load()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
@@ -147,7 +149,11 @@ func TestLoadAPIServer(t *testing.T) {
 	require.NoError(t, err)
 
 	configData := os.ExpandEnv(string(fcontent))
-	err = yaml.UnmarshalStrict([]byte(configData), &config)
+
+	dec := yaml.NewDecoder(strings.NewReader(configData))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&config)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -242,6 +248,7 @@ func TestLoadAPIServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadAPIServer(false)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
@@ -305,6 +312,7 @@ func TestParseCapiWhitelists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			wl, err := parseCapiWhitelists(strings.NewReader(tc.input))
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}

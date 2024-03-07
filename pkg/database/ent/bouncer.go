@@ -24,7 +24,7 @@ type Bouncer struct {
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// APIKey holds the value of the "api_key" field.
-	APIKey string `json:"api_key"`
+	APIKey string `json:"-"`
 	// Revoked holds the value of the "revoked" field.
 	Revoked bool `json:"revoked"`
 	// IPAddress holds the value of the "ip_address" field.
@@ -193,8 +193,7 @@ func (b *Bouncer) String() string {
 	builder.WriteString("name=")
 	builder.WriteString(b.Name)
 	builder.WriteString(", ")
-	builder.WriteString("api_key=")
-	builder.WriteString(b.APIKey)
+	builder.WriteString("api_key=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("revoked=")
 	builder.WriteString(fmt.Sprintf("%v", b.Revoked))

@@ -60,7 +60,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: "while unmarshaling simulation file './testdata/config.yaml' : yaml: unmarshal errors",
+			expectedErr: "while unmarshaling simulation file './testdata/config.yaml': yaml: unmarshal errors",
 		},
 		{
 			name: "basic bad file content",
@@ -71,7 +71,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: "while unmarshaling simulation file './testdata/config.yaml' : yaml: unmarshal errors",
+			expectedErr: "while unmarshaling simulation file './testdata/config.yaml': yaml: unmarshal errors",
 		},
 	}
 

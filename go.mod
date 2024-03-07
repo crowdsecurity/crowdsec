@@ -33,7 +33,6 @@ require (
 	github.com/dghubble/sling v1.3.0
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/enescakir/emoji v1.0.0
 	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.9.1
@@ -92,7 +91,6 @@ require (
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	gotest.tools/v3 v3.5.0
 	k8s.io/apiserver v0.28.4
 )
 
@@ -210,6 +208,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
+	gotest.tools/v3 v3.5.0 // indirect
 	k8s.io/api v0.28.4 // indirect
 	k8s.io/apimachinery v0.28.4 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect

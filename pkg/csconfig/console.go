@@ -5,7 +5,7 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
@@ -37,10 +37,40 @@ type ConsoleConfig struct {
 	ShareContext          *bool `yaml:"share_context"`
 }
 
+func (c *ConsoleConfig) EnabledOptions() []string {
+	ret := []string{}
+	if c == nil {
+		return ret
+	}
+
+	if c.ShareCustomScenarios != nil && *c.ShareCustomScenarios {
+		ret = append(ret, SEND_CUSTOM_SCENARIOS)
+	}
+
+	if c.ShareTaintedScenarios != nil && *c.ShareTaintedScenarios {
+		ret = append(ret, SEND_TAINTED_SCENARIOS)
+	}
+
+	if c.ShareManualDecisions != nil && *c.ShareManualDecisions {
+		ret = append(ret, SEND_MANUAL_SCENARIOS)
+	}
+
+	if c.ConsoleManagement != nil && *c.ConsoleManagement {
+		ret = append(ret, CONSOLE_MANAGEMENT)
+	}
+
+	if c.ShareContext != nil && *c.ShareContext {
+		ret = append(ret, SEND_CONTEXT)
+	}
+
+	return ret
+}
+
 func (c *ConsoleConfig) IsPAPIEnabled() bool {
 	if c == nil || c.ConsoleManagement == nil {
 		return false
 	}
+
 	return *c.ConsoleManagement
 }
 
@@ -48,31 +78,36 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	c.ConsoleConfig = &ConsoleConfig{}
 	if _, err := os.Stat(c.ConsoleConfigPath); err != nil && os.IsNotExist(err) {
 		log.Debugf("no console configuration to load")
+
 		c.ConsoleConfig.ShareCustomScenarios = ptr.Of(true)
 		c.ConsoleConfig.ShareTaintedScenarios = ptr.Of(true)
 		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
 		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
 		c.ConsoleConfig.ShareContext = ptr.Of(false)
+
 		return nil
 	}
 
 	yamlFile, err := os.ReadFile(c.ConsoleConfigPath)
 	if err != nil {
-		return fmt.Errorf("reading console config file '%s': %s", c.ConsoleConfigPath, err)
+		return fmt.Errorf("reading console config file '%s': %w", c.ConsoleConfigPath, err)
 	}
+
 	err = yaml.Unmarshal(yamlFile, c.ConsoleConfig)
 	if err != nil {
-		return fmt.Errorf("unmarshaling console config file '%s': %s", c.ConsoleConfigPath, err)
+		return fmt.Errorf("unmarshaling console config file '%s': %w", c.ConsoleConfigPath, err)
 	}
 
 	if c.ConsoleConfig.ShareCustomScenarios == nil {
 		log.Debugf("no share_custom scenarios found, setting to true")
 		c.ConsoleConfig.ShareCustomScenarios = ptr.Of(true)
 	}
+
 	if c.ConsoleConfig.ShareTaintedScenarios == nil {
 		log.Debugf("no share_tainted scenarios found, setting to true")
 		c.ConsoleConfig.ShareTaintedScenarios = ptr.Of(true)
 	}
+
 	if c.ConsoleConfig.ShareManualDecisions == nil {
 		log.Debugf("no share_manual scenarios found, setting to false")
 		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)

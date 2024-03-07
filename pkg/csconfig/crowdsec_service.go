@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
@@ -133,19 +133,16 @@ func (c *Config) LoadCrowdsec() error {
 	}
 
 	if err = c.LoadAPIClient(); err != nil {
-		return fmt.Errorf("loading api client: %s", err)
+		return fmt.Errorf("loading api client: %w", err)
 	}
 
 	return nil
 }
 
 func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
-	var out []byte
-	var err error
-
 	// XXX: MakeDirs
-
-	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
+	out, err := yaml.Marshal(c.ContextToSend)
+	if err != nil {
 		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
 	}
 
