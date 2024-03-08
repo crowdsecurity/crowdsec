@@ -335,7 +335,8 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 
 		inotifyPoll := true
 		if f.config.PollWithoutInotify != nil {
-			inotifyPoll = *f.config.PollWithoutInotify
+			//The config directive is set to true to disable, so invert it
+			inotifyPoll = !*f.config.PollWithoutInotify
 		} else {
 			networkFS, fsType, err := types.IsNetworkFS(file)
 			if err != nil {
@@ -450,10 +451,11 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 
 				inotifyPoll := true
 				if f.config.PollWithoutInotify != nil {
-					inotifyPoll = *f.config.PollWithoutInotify
+					//The config directive is set to true to disable, so invert it
+					inotifyPoll = !*f.config.PollWithoutInotify
 				} else {
 					if f.config.PollWithoutInotify != nil {
-						inotifyPoll = *f.config.PollWithoutInotify
+						inotifyPoll = !*f.config.PollWithoutInotify
 					} else {
 						networkFS, fsType, err := types.IsNetworkFS(event.Name)
 						if err != nil {
