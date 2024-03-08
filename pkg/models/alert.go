@@ -399,6 +399,11 @@ func (m *Alert) contextValidateDecisions(ctx context.Context, formats strfmt.Reg
 	for i := 0; i < len(m.Decisions); i++ {
 
 		if m.Decisions[i] != nil {
+
+			if swag.IsZero(m.Decisions[i]) { // not required
+				return nil
+			}
+
 			if err := m.Decisions[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
@@ -419,6 +424,11 @@ func (m *Alert) contextValidateEvents(ctx context.Context, formats strfmt.Regist
 	for i := 0; i < len(m.Events); i++ {
 
 		if m.Events[i] != nil {
+
+			if swag.IsZero(m.Events[i]) { // not required
+				return nil
+			}
+
 			if err := m.Events[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("events" + "." + strconv.Itoa(i))
@@ -469,6 +479,7 @@ func (m *Alert) contextValidateMeta(ctx context.Context, formats strfmt.Registry
 func (m *Alert) contextValidateSource(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Source != nil {
+
 		if err := m.Source.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("source")

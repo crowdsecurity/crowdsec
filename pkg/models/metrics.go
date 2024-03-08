@@ -141,6 +141,11 @@ func (m *Metrics) contextValidateBouncers(ctx context.Context, formats strfmt.Re
 	for i := 0; i < len(m.Bouncers); i++ {
 
 		if m.Bouncers[i] != nil {
+
+			if swag.IsZero(m.Bouncers[i]) { // not required
+				return nil
+			}
+
 			if err := m.Bouncers[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("bouncers" + "." + strconv.Itoa(i))
@@ -161,6 +166,11 @@ func (m *Metrics) contextValidateMachines(ctx context.Context, formats strfmt.Re
 	for i := 0; i < len(m.Machines); i++ {
 
 		if m.Machines[i] != nil {
+
+			if swag.IsZero(m.Machines[i]) { // not required
+				return nil
+			}
+
 			if err := m.Machines[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("machines" + "." + strconv.Itoa(i))
