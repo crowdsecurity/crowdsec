@@ -400,7 +400,10 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			err = s.httpServer.Serve(listener)
 		}
 
-		if err != nil && err != http.ErrServerClosed {
+		switch {
+		case errors.Is(err, http.ErrServerClosed):
+			break
+		case err != nil:
 			serverError <- err
 		}
 	}
@@ -413,7 +416,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 
 		tcpListener, err = net.Listen("tcp", s.URL)
 		if err != nil {
-			serverError <- fmt.Errorf("listening on %s: %v", s.URL, err)
+			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
 			return
 		}
 		log.Infof("CrowdSec Local API listening on %s", s.URL)
@@ -429,7 +432,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		_ = os.RemoveAll(s.UnixSocket)
 		unixListener, err = net.Listen("unix", s.UnixSocket)
 		if err != nil {
-			serverError <- fmt.Errorf("while creating unix listener: %v", err)
+			serverError <- fmt.Errorf("while creating unix listener: %w", err)
 			return
 		}
 		log.Infof("CrowdSec Local API listening on Unix socket %s", s.UnixSocket)

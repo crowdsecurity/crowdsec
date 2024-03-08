@@ -6,7 +6,10 @@
 *.dylib
 *~
 .pc
+
+# IDEs
 .vscode
+.idea
 
 # If vendor is included, allow prebuilt (wasm?) libraries.
 !vendor/**/*.so
@@ -34,7 +37,7 @@ test/coverage/*
 *.swo
 
 # Dependencies are not vendored by default, but a tarball is created by "make vendor"
-# and provided in the release. Used by freebsd, gentoo, etc.
+# and provided in the release. Used by gentoo, etc.
 vendor/
 vendor.tgz
 
@@ -57,5 +60,3 @@ msi
 __pycache__
 *.py[cod]
 *.egg-info
-
-.idea

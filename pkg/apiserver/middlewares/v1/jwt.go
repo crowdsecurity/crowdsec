@@ -76,7 +76,8 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	if !validCert {
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
-		return nil, fmt.Errorf("failed cert authentication")
+
+		return nil, errors.New("failed cert authentication")
 	}
 
 	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
@@ -95,7 +96,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 				"cn": extractedCN,
 			}).Errorf("error generating password: %s", err)
 
-			return nil, fmt.Errorf("error generating password")
+			return nil, errors.New("error generating password")
 		}
 
 		password := strfmt.Password(pwd)

@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 func TestPrepareAPIURL_NoProtocol(t *testing.T) {
