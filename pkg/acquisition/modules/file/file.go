@@ -348,6 +348,17 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			}
 		}
 
+		filink, err := os.Lstat(file)
+
+		if err != nil {
+			f.logger.Errorf("Could not lstat() new file %s, ignoring it : %s", file, err)
+			continue
+		}
+
+		if filink.Mode()&os.ModeSymlink == os.ModeSymlink && inotifyPoll {
+			f.logger.Warnf("File %s is a symlink, but inotify poll is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
+		}
+
 		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: inotifyPoll, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
 		if err != nil {
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
@@ -453,6 +464,17 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 							inotifyPoll = false
 						}
 					}
+				}
+
+				filink, err := os.Lstat(event.Name)
+
+				if err != nil {
+					logger.Errorf("Could not lstat() new file %s, ignoring it : %s", event.Name, err)
+					continue
+				}
+
+				if filink.Mode()&os.ModeSymlink == os.ModeSymlink && inotifyPoll {
+					logger.Warnf("File %s is a symlink, but inotify poll is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", event.Name)
 				}
 
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
