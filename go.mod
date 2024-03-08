@@ -63,8 +63,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/nxadm/tail v1.4.8
-	github.com/oschwald/geoip2-golang v1.4.0
-	github.com/oschwald/maxminddb-golang v1.8.0
+	github.com/oschwald/geoip2-golang v1.9.0
+	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
