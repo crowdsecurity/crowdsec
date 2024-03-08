@@ -272,7 +272,7 @@ func (c *LocalApiServerCfg) ClientURL() string {
 	}
 
 	if c.ListenURI != "" {
-		return fmt.Sprintf("http://%s", c.ListenURI)
+		return "http://" + c.ListenURI
 	}
 
 	return ""

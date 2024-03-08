@@ -158,7 +158,7 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 		req.Header.Add("User-Agent", t.UserAgent)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.Token))
+	req.Header.Add("Authorization", "Bearer "+t.Token)
 
 	return req, nil
 }
@@ -171,7 +171,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if log.GetLevel() >= log.TraceLevel {
-		//requestToDump := cloneRequest(req)
+		// requestToDump := cloneRequest(req)
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("req-jwt: %s", string(dump))
 	}

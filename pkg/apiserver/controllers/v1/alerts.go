@@ -174,7 +174,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 		// if coming from cscli, alert already has decisions
 		if len(alert.Decisions) != 0 {
-			//alert already has a decision (cscli decisions add etc.), generate uuid here
+			// alert already has a decision (cscli decisions add etc.), generate uuid here
 			for _, decision := range alert.Decisions {
 				decision.UUID = uuid.NewString()
 			}

@@ -160,11 +160,13 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	return nil
 }
 
+// prepareAPIURL checks/fixes a LAPI connection url (http, https or socket) and returns an URL struct
 func prepareAPIURL(clientCfg *csconfig.LocalApiClientCfg, apiURL string) (*url.URL, error) {
 	if apiURL == "" {
 		if clientCfg == nil || clientCfg.Credentials == nil || clientCfg.Credentials.URL == "" {
-			return nil, fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
+			return nil, errors.New("no Local API URL. Please provide it in your configuration or with the -u parameter")
 		}
+
 		apiURL = clientCfg.Credentials.URL
 	}
 
@@ -187,7 +189,7 @@ func (cli *cliLapi) newStatusCmd() *cobra.Command {
 		Short:             "Check authentication to Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.status()
 		},
 	}

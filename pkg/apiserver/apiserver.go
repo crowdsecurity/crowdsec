@@ -67,7 +67,7 @@ func recoverFromPanic(c *gin.Context) {
 	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
 	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
 	if strErr, ok := err.(error); ok {
-		//stolen from http2/server.go in x/net
+		// stolen from http2/server.go in x/net
 		var (
 			errClientDisconnected = errors.New("client disconnected")
 			errClosedBody         = errors.New("body closed by handler")
@@ -125,10 +125,10 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 
 	logger := &lumberjack.Logger{
 		Filename:   logFile,
-		MaxSize:    500, //megabytes
+		MaxSize:    500, // megabytes
 		MaxBackups: 3,
-		MaxAge:     28,   //days
-		Compress:   true, //disabled by default
+		MaxAge:     28,   // days
+		Compress:   true, // disabled by default
 	}
 
 	if config.LogMaxSize != 0 {
@@ -231,8 +231,8 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	var (
-		apiClient         *apic
-		papiClient        *Papi
+		apiClient  *apic
+		papiClient *Papi
 	)
 
 	controller.AlertsAddChan = nil
@@ -326,11 +326,11 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 
-		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+		// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.apic.apiClient.IsEnrolled() {
 			if s.consoleConfig.IsPAPIEnabled() {
 				if s.papi.URL != "" {
-					log.Infof("Starting PAPI decision receiver")
+					log.Info("Starting PAPI decision receiver")
 					s.papi.pullTomb.Go(func() error {
 						if err := s.papi.Pull(); err != nil {
 							log.Errorf("papi pull: %s", err)
@@ -362,7 +362,9 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 	}
 
-	s.httpServerTomb.Go(func() error { return s.listenAndServeLAPI(apiReady) })
+	s.httpServerTomb.Go(func() error {
+		return s.listenAndServeLAPI(apiReady)
+	})
 
 	if err := s.httpServerTomb.Wait(); err != nil {
 		return fmt.Errorf("local API server stopped with error: %w", err)
@@ -376,10 +378,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 // it's meant to be run in a separate goroutine
 func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 	var (
-		tcpListener net.Listener
-		unixListener net.Listener
-		err      error
-		serverError = make(chan error, 2)
+		tcpListener    net.Listener
+		unixListener   net.Listener
+		err            error
+		serverError    = make(chan error, 2)
 		listenerClosed = make(chan struct{})
 	)
 
@@ -448,7 +450,8 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 	case err := <-serverError:
 		return err
 	case <-s.httpServerTomb.Dying():
-		log.Infof("Shutting down API server")
+		log.Info("Shutting down API server")
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -491,7 +494,7 @@ func (s *APIServer) Shutdown() error {
 		}
 	}
 
-	//close io.writer logger given to gin
+	// close io.writer logger given to gin
 	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
 		pipe.Close()
 	}

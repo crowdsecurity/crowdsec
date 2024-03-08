@@ -87,9 +87,9 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		Where(machine.MachineId(ret.machineID)).
 		First(j.DbClient.CTX)
 	if ent.IsNotFound(err) {
-		//Machine was not found, let's create it
+		// Machine was not found, let's create it
 		log.Infof("machine %s not found, create it", ret.machineID)
-		//let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
+		// let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
 		pwd, err := GenerateAPIKey(dummyAPIKeySize)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -329,7 +329,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 
 	errInit := ret.MiddlewareInit()
 	if errInit != nil {
-		return &JWT{}, fmt.Errorf("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
+		return &JWT{}, errors.New("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
 	}
 
 	jwtMiddleware.Middleware = ret

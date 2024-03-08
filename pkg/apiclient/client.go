@@ -74,12 +74,12 @@ func NewClient(config *Config) (*ApiClient, error) {
 		UpdateScenario: config.UpdateScenario,
 	}
 
-	transport, baseUrl := createTransport(config.URL)
+	transport, baseURL := createTransport(config.URL)
 	if transport != nil {
 		t.Transport = transport
 	}
 
-	t.URL = baseUrl
+	t.URL = baseURL
 
 	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	tlsconfig.RootCAs = CaCertPool
@@ -92,7 +92,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 		ht.TLSClientConfig = &tlsconfig
 	}
 
-	c := &ApiClient{client: t.Client(), BaseURL: baseUrl, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
+	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -106,7 +106,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 }
 
 func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
-	transport, baseUrl := createTransport(URL)
+	transport, baseURL := createTransport(URL)
 
 	if client == nil {
 		client = &http.Client{}
@@ -128,7 +128,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 		}
 	}
 
-	c := &ApiClient{client: client, BaseURL: baseUrl, UserAgent: userAgent, URLPrefix: prefix}
+	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -142,7 +142,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 }
 
 func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
-	transport, baseUrl := createTransport(config.URL)
+	transport, baseURL := createTransport(config.URL)
 
 	if client == nil {
 		client = &http.Client{}
@@ -154,13 +154,14 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 				tlsconfig.RootCAs = CaCertPool
 				tlsconfig.Certificates = []tls.Certificate{*Cert}
 			}
+
 			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
 		}
 	} else if client.Transport == nil && transport != nil {
 		client.Transport = transport
 	}
 
-	c := &ApiClient{client: client, BaseURL: baseUrl, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -201,9 +202,9 @@ func createTransport(url *url.URL) (*http.Transport, *url.URL) {
 
 type Response struct {
 	Response *http.Response
-	//add our pagination stuff
-	//NextPage int
-	//...
+	// add our pagination stuff
+	// NextPage int
+	// ...
 }
 
 func newResponse(r *http.Response) *Response {
@@ -211,14 +212,14 @@ func newResponse(r *http.Response) *Response {
 }
 
 type ListOpts struct {
-	//Page    int
-	//PerPage int
+	// Page    int
+	// PerPage int
 }
 
 type DeleteOpts struct {
-	//??
+	// ??
 }
 
 type AddOpts struct {
-	//??
+	// ??
 }
