@@ -77,6 +77,7 @@ func setupUnixSocketWithPrefix(socket string, urlPrefix string) (mux *http.Serve
 	_ = server.Listener.Close()
 	server.Listener = l
 	server.Start()
+
 	return mux, socket, server.Close
 }
 
@@ -123,10 +124,12 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 
 	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
 	defer teardown()
+
 	apiURL, err := url.Parse(urlx)
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -152,6 +155,7 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("test Unable to list alerts : %+v", err)
 	}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Fatalf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusCreated)
 	}
@@ -214,20 +218,25 @@ func TestNewDefaultClient(t *testing.T) {
 func TestNewDefaultClient_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
+
 	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
 	defer teardown()
+
 	apiURL, err := url.Parse(urlx)
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 	})
+
 	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
 	assert.Contains(t, err.Error(), `performing request: API error: brr`)
 	log.Printf("err-> %s", err)
@@ -282,8 +291,10 @@ func TestNewClientRegisterOK(t *testing.T) {
 
 func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
+
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
+
 	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
 	defer teardown()
 
@@ -298,6 +309,7 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := RegisterClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -308,6 +320,7 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 }
 

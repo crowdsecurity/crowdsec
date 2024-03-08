@@ -60,9 +60,11 @@ func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
 		if !option {
 			return
 		}
+
 		if isUnixSocket(gctx) {
 			return
 		}
+
 		incomingIP := gctx.ClientIP()
 		if incomingIP != "127.0.0.1" && incomingIP != "::1" {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})

@@ -73,10 +73,12 @@ func NewClient(config *Config) (*ApiClient, error) {
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 	}
+
 	transport, baseUrl := createTransport(config.URL)
 	if transport != nil {
 		t.Transport = transport
 	}
+
 	t.URL = baseUrl
 
 	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
@@ -105,6 +107,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 
 func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
 	transport, baseUrl := createTransport(URL)
+
 	if client == nil {
 		client = &http.Client{}
 
@@ -114,9 +117,11 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 			if ht, ok := http.DefaultTransport.(*http.Transport); ok {
 				tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 				tlsconfig.RootCAs = CaCertPool
+
 				if Cert != nil {
 					tlsconfig.Certificates = []tls.Certificate{*Cert}
 				}
+
 				ht.TLSClientConfig = &tlsconfig
 				client.Transport = ht
 			}
@@ -138,6 +143,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 
 func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	transport, baseUrl := createTransport(config.URL)
+
 	if client == nil {
 		client = &http.Client{}
 		if transport != nil {

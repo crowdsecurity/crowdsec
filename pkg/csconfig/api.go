@@ -202,6 +202,7 @@ func (l *LocalApiClientCfg) Load() error {
 
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
+
 	for _, ip := range c.TrustedIPs {
 		cidr := toValidCIDR(ip)
 
@@ -265,12 +266,15 @@ func (c *LocalApiServerCfg) ClientURL() string {
 	if c == nil {
 		return ""
 	}
+
 	if c.ListenSocket != "" {
 		return c.ListenSocket
 	}
+
 	if c.ListenURI != "" {
 		return fmt.Sprintf("http://%s", c.ListenURI)
 	}
+
 	return ""
 }
 
@@ -281,7 +285,9 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 
 	if c.API.Server == nil {
 		log.Warning("crowdsec local API is disabled")
+
 		c.DisableAPI = true
+
 		return nil
 	}
 
@@ -292,6 +298,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 
 	if !*c.API.Server.Enable {
 		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
+
 		c.DisableAPI = true
 	}
 

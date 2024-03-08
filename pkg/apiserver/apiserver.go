@@ -419,6 +419,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
 			return
 		}
+
 		log.Infof("CrowdSec Local API listening on %s", s.URL)
 		startServer(tcpListener, true)
 	}()
@@ -430,11 +431,13 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		}
 
 		_ = os.RemoveAll(s.UnixSocket)
+
 		unixListener, err = net.Listen("unix", s.UnixSocket)
 		if err != nil {
 			serverError <- fmt.Errorf("while creating unix listener: %w", err)
 			return
 		}
+
 		log.Infof("CrowdSec Local API listening on Unix socket %s", s.UnixSocket)
 		startServer(unixListener, false)
 	}()
@@ -452,6 +455,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
 			log.Errorf("while shutting down http server: %v", err)
 		}
+
 		close(listenerClosed)
 	case <-listenerClosed:
 		if s.UnixSocket != "" {

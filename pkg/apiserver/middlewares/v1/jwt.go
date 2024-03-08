@@ -61,6 +61,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	if j.TlsAuth == nil {
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
+
 		return nil, errors.New("TLS auth is not configured")
 	}
 
@@ -111,6 +112,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		if ret.clientMachine.AuthType != types.TlsAuthType {
 			return nil, fmt.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 		}
+
 		ret.machineID = ret.clientMachine.MachineId
 	}
 
@@ -243,6 +245,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	if err := j.DbClient.UpdateMachineVersion(useragent[1], auth.clientMachine.ID); err != nil {
 		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
 		log.Errorf("bad user agent from : %s", clientIP)
+
 		return nil, jwt.ErrFailedAuthentication
 	}
 
@@ -328,6 +331,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 	if errInit != nil {
 		return &JWT{}, fmt.Errorf("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
 	}
+
 	jwtMiddleware.Middleware = ret
 
 	return jwtMiddleware, nil
