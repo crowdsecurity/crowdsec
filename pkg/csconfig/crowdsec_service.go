@@ -12,6 +12,11 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
+const (
+	defaultMetricsInterval = 30 * time.Minute
+	minimumMetricsInterval = 15 * time.Minute
+)
+
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
 	Enable                    *bool             `yaml:"enable"`
@@ -142,11 +147,6 @@ func (c *Config) LoadCrowdsec() error {
 
 	return nil
 }
-
-const (
-	defaultMetricsInterval = 30 * time.Second
-	minimumMetricsInterval = 15 * time.Second
-)
 
 func (c *CrowdsecServiceCfg) setMetricsInterval() {
 	switch {

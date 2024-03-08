@@ -1,9 +1,8 @@
 package database
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
@@ -26,9 +25,15 @@ func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy st
 		SetPayload(payload).
 		Save(c.CTX)
 
-	if err != nil {
+	switch {
+	case ent.IsConstraintError(err):
+		// pretty safe guess, it's the unique index
+		c.Log.Infof("storing metrics snapshot for '%s' at %s: already exists", generatedBy, collectedAt)
+		// it's polite to accept a duplicate snapshot without any error
+		return nil, nil
+	case err != nil:
 		c.Log.Warningf("CreateMetric: %s", err)
-		return nil, errors.Wrapf(InsertFail, "creating metrics set for '%s' at %s", generatedBy, collectedAt)
+		return nil, fmt.Errorf("storing metrics snapshot for '%s' at %s: %w", generatedBy, collectedAt, InsertFail)
 	}
 
 	return metric, nil

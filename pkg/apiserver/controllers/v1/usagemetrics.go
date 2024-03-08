@@ -131,11 +131,13 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	}
 
 	if _, err := c.DBClient.CreateMetric(generatedType, generatedBy, collectedAt, string(jsonPayload)); err != nil {
-		log.Errorf("Failed to store usage metrics: %s", err)
+		log.Error(err)
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
-	// empty body
+	// if CreateMetrics() returned nil, the metric was already there, we're good
+	// and don't split hair about 201 vs 200/204
+
 	gctx.Status(http.StatusCreated)
 }
