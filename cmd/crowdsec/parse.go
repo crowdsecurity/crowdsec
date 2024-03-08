@@ -11,7 +11,6 @@ import (
 )
 
 func runParse(input chan types.Event, output chan types.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
-
 LOOP:
 	for {
 		select {
@@ -56,5 +55,6 @@ LOOP:
 			output <- parsed
 		}
 	}
+
 	return nil
 }

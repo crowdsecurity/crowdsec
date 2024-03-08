@@ -23,39 +23,42 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, error) {
+// initCrowdsec prepares the log processor service
+func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []acquisition.DataSource, error) {
 	var err error
 
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
-		return nil, fmt.Errorf("while loading context: %w", err)
+		return nil, nil, fmt.Errorf("while loading context: %w", err)
 	}
 
 	// Start loading configs
 	csParsers := parser.NewParsers(hub)
 	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
-		return nil, fmt.Errorf("while loading parsers: %w", err)
+		return nil, nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
 	if err := LoadBuckets(cConfig, hub); err != nil {
-		return nil, fmt.Errorf("while loading scenarios: %w", err)
+		return nil, nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
 	if err := appsec.LoadAppsecRules(hub); err != nil {
-		return nil, fmt.Errorf("while loading appsec rules: %w", err)
+		return nil, nil, fmt.Errorf("while loading appsec rules: %w", err)
 	}
 
-	if err := LoadAcquisition(cConfig); err != nil {
-		return nil, fmt.Errorf("while loading acquisition config: %w", err)
+	datasources, err := LoadAcquisition(cConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("while loading acquisition config: %w", err)
 	}
 
-	return csParsers, nil
+	return csParsers, datasources, nil
 }
 
-func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub) error {
+// runCrowdsec starts the log processor service
+func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
 	inputEventChan = make(chan types.Event)
 	inputLineChan = make(chan types.Event)
 
-	//start go-routines for parsing, buckets pour and outputs.
+	// start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 
 	parsersTomb.Go(func() error {
@@ -65,7 +68,8 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 			parsersTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 
-				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil { //this error will never happen as parser.Parse is not able to return errors
+				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil {
+					// this error will never happen as parser.Parse is not able to return errors
 					log.Fatalf("starting parse error : %s", err)
 					return err
 				}
@@ -161,7 +165,8 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	return nil
 }
 
-func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, agentReady chan bool) {
+// serveCrowdsec wraps the log processor service
+func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisition.DataSource, agentReady chan bool) {
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 
@@ -171,7 +176,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub
 			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
 			agentReady <- true
 
-			if err := runCrowdsec(cConfig, parsers, hub); err != nil {
+			if err := runCrowdsec(cConfig, parsers, hub, datasources); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
@@ -275,7 +280,7 @@ func waitOnTomb() {
 		case <-acquisTomb.Dead():
 			/*if it's acquisition dying it means that we were in "cat" mode.
 			while shutting down, we need to give time for all buckets to process in flight data*/
-			log.Warning("Acquisition is finished, shutting down")
+			log.Info("Acquisition is finished, shutting down")
 			/*
 				While it might make sense to want to shut-down parser/buckets/etc. as soon as acquisition is finished,
 				we might have some pending buckets: buckets that overflowed, but whose LeakRoutine are still alive because they

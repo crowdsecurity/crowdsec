@@ -20,8 +20,8 @@ func StartRunSvc() error {
 
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
-	//Always try to stop CPU profiling to avoid passing flags around
-	//It's a noop if profiling is not enabled
+	// Always try to stop CPU profiling to avoid passing flags around
+	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
 
 	isRunninginService, err := svc.IsWindowsService()

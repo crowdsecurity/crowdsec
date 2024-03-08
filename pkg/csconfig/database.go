@@ -3,12 +3,15 @@ package csconfig
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"entgo.io/ent/dialect"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -69,6 +72,35 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
 	}
 
+	if !inCli && c.DbConfig.Type == "sqlite" {
+		if c.DbConfig.UseWal == nil {
+			dbDir := filepath.Dir(c.DbConfig.DbPath)
+			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			if err != nil {
+				log.Warnf("unable to determine if database is on network filesystem: %s", err)
+				log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+				return nil
+			}
+			if isNetwork {
+				log.Debugf("database is on network filesystem (%s), setting useWal to false", fsType)
+				c.DbConfig.UseWal = ptr.Of(false)
+			} else {
+				log.Debugf("database is on local filesystem (%s), setting useWal to true", fsType)
+				c.DbConfig.UseWal = ptr.Of(true)
+			}
+		} else if *c.DbConfig.UseWal {
+			dbDir := filepath.Dir(c.DbConfig.DbPath)
+			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			if err != nil {
+				log.Warnf("unable to determine if database is on network filesystem: %s", err)
+				return nil
+			}
+			if isNetwork {
+				log.Warnf("database seems to be stored on a network share (%s), but useWal is set to true. Proceed at your own risk.", fsType)
+			}
+		}
+	}
+
 	if c.DbConfig.DecisionBulkSize == 0 {
 		log.Tracef("No decision_bulk_size value provided, using default value of %d", defaultDecisionBulkSize)
 		c.DbConfig.DecisionBulkSize = defaultDecisionBulkSize
@@ -77,10 +109,6 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 	if c.DbConfig.DecisionBulkSize > maxDecisionBulkSize {
 		log.Warningf("decision_bulk_size too high (%d), setting to the maximum value of %d", c.DbConfig.DecisionBulkSize, maxDecisionBulkSize)
 		c.DbConfig.DecisionBulkSize = maxDecisionBulkSize
-	}
-
-	if !inCli && c.DbConfig.Type == "sqlite" && c.DbConfig.UseWal == nil {
-		log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
 	}
 
 	return nil

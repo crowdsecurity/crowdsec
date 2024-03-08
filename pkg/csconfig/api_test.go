@@ -194,6 +194,7 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath:           "./testdata/test.db",
 					Type:             "sqlite",
 					MaxOpenConns:     ptr.Of(DEFAULT_MAX_OPEN_CONNS),
+					UseWal:           ptr.Of(true), // autodetected
 					DecisionBulkSize: defaultDecisionBulkSize,
 				},
 				ConsoleConfigPath: DefaultConfigPath("console.yaml"),

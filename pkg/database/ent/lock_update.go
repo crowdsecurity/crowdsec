@@ -34,6 +34,14 @@ func (lu *LockUpdate) SetName(s string) *LockUpdate {
 	return lu
 }
 
+// SetNillableName sets the "name" field if the given value is not nil.
+func (lu *LockUpdate) SetNillableName(s *string) *LockUpdate {
+	if s != nil {
+		lu.SetName(*s)
+	}
+	return lu
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (lu *LockUpdate) SetCreatedAt(t time.Time) *LockUpdate {
 	lu.mutation.SetCreatedAt(t)
@@ -118,6 +126,14 @@ type LockUpdateOne struct {
 // SetName sets the "name" field.
 func (luo *LockUpdateOne) SetName(s string) *LockUpdateOne {
 	luo.mutation.SetName(s)
+	return luo
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (luo *LockUpdateOne) SetNillableName(s *string) *LockUpdateOne {
+	if s != nil {
+		luo.SetName(*s)
+	}
 	return luo
 }
 

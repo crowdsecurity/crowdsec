@@ -3,6 +3,7 @@ package cwhub
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -34,7 +35,7 @@ func (h *Hub) GetDataDir() string {
 // All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
 func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
-		return nil, fmt.Errorf("no hub configuration found")
+		return nil, errors.New("no hub configuration found")
 	}
 
 	if logger == nil {

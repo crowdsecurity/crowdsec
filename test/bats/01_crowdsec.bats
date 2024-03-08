@@ -38,7 +38,7 @@ teardown() {
 
 @test "crowdsec (no api and no agent)" {
     rune -0 wait-for \
-        --err "You must run at least the API Server or crowdsec" \
+        --err "you must run at least the API Server or crowdsec" \
         "${CROWDSEC}" -no-api -no-cs
 }
 
