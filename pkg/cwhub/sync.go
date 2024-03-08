@@ -77,9 +77,9 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 	if strings.HasPrefix(path, hubDir) {
 		logger.Tracef("in hub dir")
 
-		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-		//.../hub/scenarios/crowdsec/ssh_bf.yaml
-		//.../hub/profiles/crowdsec/linux.yaml
+		// .../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
+		// .../hub/scenarios/crowdsec/ssh_bf.yaml
+		// .../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
 			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
@@ -93,13 +93,14 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 		}
 	} else if strings.HasPrefix(path, installDir) { // we're in install /etc/crowdsec/<type>/...
 		logger.Tracef("in install dir")
+
 		if len(subs) < 3 {
 			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
-		///.../config/parser/stage/file.yaml
-		///.../config/postoverflow/stage/file.yaml
-		///.../config/scenarios/scenar.yaml
-		///.../config/collections/linux.yaml //file is empty
+		// .../config/parser/stage/file.yaml
+		// .../config/postoverflow/stage/file.yaml
+		// .../config/scenarios/scenar.yaml
+		// .../config/collections/linux.yaml //file is empty
 		ret = &itemFileInfo{
 			inhub:   false,
 			fname:   subs[len(subs)-1],

@@ -1,12 +1,12 @@
 package cwhub
 
 import (
-	"path/filepath"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -32,7 +32,7 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
-	tmpFile, err := os.CreateTemp(filepath.Dir(destPath), filepath.Base(destPath) + ".*.tmp")
+	tmpFile, err := os.CreateTemp(filepath.Dir(destPath), filepath.Base(destPath)+".*.tmp")
 	if err != nil {
 		return err
 	}
