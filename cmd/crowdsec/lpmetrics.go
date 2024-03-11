@@ -164,6 +164,9 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 			case errors.Is(err, context.DeadlineExceeded):
 				m.logger.Warnf("timeout sending lp metrics")
 				continue
+			case err != nil && resp != nil && resp.Response.StatusCode == http.StatusNotFound:
+				m.logger.Warnf("metrics endpoint not found, older LAPI?")
+				continue
 			case err != nil:
 				m.logger.Warnf("failed to send lp metrics: %s", err)
 				continue
