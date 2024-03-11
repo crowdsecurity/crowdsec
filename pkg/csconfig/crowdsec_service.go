@@ -151,13 +151,13 @@ func (c *Config) LoadCrowdsec() error {
 func (c *CrowdsecServiceCfg) setMetricsInterval() {
 	switch {
 	case c.MetricsInterval == nil:
-		c.MetricsInterval = ptr.Of(defaultMetricsInterval)
 		log.Tracef("metrics_interval is not set, default to %s", defaultMetricsInterval)
+		c.MetricsInterval = ptr.Of(defaultMetricsInterval)
 	case *c.MetricsInterval == time.Duration(0):
 		log.Info("metrics_interval is set to 0, disabling metrics")
 	case *c.MetricsInterval < minimumMetricsInterval:
+		log.Warnf("metrics_interval is too low (%s), setting it to %s", *c.MetricsInterval, minimumMetricsInterval)
 		c.MetricsInterval = ptr.Of(minimumMetricsInterval)
-		log.Warnf("metrics_interval is too low, setting it to %s", minimumMetricsInterval)
 	default:
 		log.Tracef("metrics_interval set to %s", c.MetricsInterval)
 	}
