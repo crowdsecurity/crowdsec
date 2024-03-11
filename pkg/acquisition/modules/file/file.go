@@ -333,10 +333,9 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			continue
 		}
 
-		inotifyPoll := true
+		pollFile := false
 		if f.config.PollWithoutInotify != nil {
-			//The config directive is set to true to disable, so invert it
-			inotifyPoll = !*f.config.PollWithoutInotify
+			pollFile = *f.config.PollWithoutInotify
 		} else {
 			networkFS, fsType, err := types.IsNetworkFS(file)
 			if err != nil {
@@ -345,7 +344,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			f.logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
 			if networkFS {
 				f.logger.Warnf("Disabling inotify poll on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
-				inotifyPoll = false
+				pollFile = true
 			}
 		}
 
@@ -356,11 +355,11 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			continue
 		}
 
-		if filink.Mode()&os.ModeSymlink == os.ModeSymlink && inotifyPoll {
+		if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
 			f.logger.Warnf("File %s is a symlink, but inotify poll is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
 		}
 
-		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: inotifyPoll, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
+		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: pollFile, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
 		if err != nil {
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
 			continue
@@ -449,13 +448,12 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					continue
 				}
 
-				inotifyPoll := true
+				pollFile := false
 				if f.config.PollWithoutInotify != nil {
-					//The config directive is set to true to disable, so invert it
-					inotifyPoll = !*f.config.PollWithoutInotify
+					pollFile = *f.config.PollWithoutInotify
 				} else {
 					if f.config.PollWithoutInotify != nil {
-						inotifyPoll = !*f.config.PollWithoutInotify
+						pollFile = *f.config.PollWithoutInotify
 					} else {
 						networkFS, fsType, err := types.IsNetworkFS(event.Name)
 						if err != nil {
@@ -463,7 +461,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 						}
 						f.logger.Debugf("fs for %s is network: %t (%s)", event.Name, networkFS, fsType)
 						if networkFS {
-							inotifyPoll = false
+							pollFile = true
 						}
 					}
 				}
@@ -475,12 +473,12 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					continue
 				}
 
-				if filink.Mode()&os.ModeSymlink == os.ModeSymlink && inotifyPoll {
+				if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
 					logger.Warnf("File %s is a symlink, but inotify poll is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", event.Name)
 				}
 
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
-				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: inotifyPoll, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
+				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: pollFile, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
 				if err != nil {
 					logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
 					break
