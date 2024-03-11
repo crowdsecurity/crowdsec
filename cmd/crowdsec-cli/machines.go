@@ -4,6 +4,7 @@ import (
 	saferand "crypto/rand"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -134,7 +135,7 @@ Note: This command requires database direct access, so is intended to be run on 
 			}
 			cli.db, err = database.NewClient(cli.cfg().DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %w", err)
 			}
 
 			return nil
@@ -155,7 +156,7 @@ func (cli *cliMachines) list() error {
 
 	machines, err := cli.db.ListMachines()
 	if err != nil {
-		return fmt.Errorf("unable to list machines: %s", err)
+		return fmt.Errorf("unable to list machines: %w", err)
 	}
 
 	switch cli.cfg().Cscli.Output {
@@ -166,7 +167,7 @@ func (cli *cliMachines) list() error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(machines); err != nil {
-			return fmt.Errorf("failed to marshal")
+			return errors.New("failed to marshal")
 		}
 
 		return nil
@@ -175,7 +176,7 @@ func (cli *cliMachines) list() error {
 
 		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 		if err != nil {
-			return fmt.Errorf("failed to write header: %s", err)
+			return fmt.Errorf("failed to write header: %w", err)
 		}
 
 		for _, m := range machines {
@@ -257,12 +258,12 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	// create machineID if not specified by user
 	if len(args) == 0 {
 		if !autoAdd {
-			return fmt.Errorf("please specify a machine name to add, or use --auto")
+			return errors.New("please specify a machine name to add, or use --auto")
 		}
 
 		machineID, err = generateID("")
 		if err != nil {
-			return fmt.Errorf("unable to generate machine id: %s", err)
+			return fmt.Errorf("unable to generate machine id: %w", err)
 		}
 	} else {
 		machineID = args[0]
@@ -281,20 +282,20 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 		case os.IsNotExist(err) || force:
 			dumpFile = credFile
 		case err != nil:
-			return fmt.Errorf("unable to stat '%s': %s", credFile, err)
+			return fmt.Errorf("unable to stat '%s': %w", credFile, err)
 		default:
 			return fmt.Errorf(`credentials file '%s' already exists: please remove it, use "--force" or specify a different file with "-f" ("-f -" for standard output)`, credFile)
 		}
 	}
 
 	if dumpFile == "" {
-		return fmt.Errorf(`please specify a file to dump credentials to, with -f ("-f -" for standard output)`)
+		return errors.New(`please specify a file to dump credentials to, with -f ("-f -" for standard output)`)
 	}
 
 	// create a password if it's not specified by user
 	if machinePassword == "" && !interactive {
 		if !autoAdd {
-			return fmt.Errorf("please specify a password with --password or use --auto")
+			return errors.New("please specify a password with --password or use --auto")
 		}
 
 		machinePassword = generatePassword(passwordLength)
@@ -309,7 +310,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 
 	_, err = cli.db.CreateMachine(&machineID, &password, "", true, force, types.PasswordAuthType)
 	if err != nil {
-		return fmt.Errorf("unable to create machine: %s", err)
+		return fmt.Errorf("unable to create machine: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Machine '%s' successfully added to the local API.\n", machineID)
@@ -320,7 +321,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 		} else if serverCfg != nil && serverCfg.ListenURI != "" {
 			apiURL = "http://" + serverCfg.ListenURI
 		} else {
-			return fmt.Errorf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
+			return errors.New("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 		}
 	}
 
@@ -332,12 +333,12 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
-		return fmt.Errorf("unable to marshal api credentials: %s", err)
+		return fmt.Errorf("unable to marshal api credentials: %w", err)
 	}
 
 	if dumpFile != "" && dumpFile != "-" {
 		if err = os.WriteFile(dumpFile, apiConfigDump, 0o600); err != nil {
-			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
+			return fmt.Errorf("write api credentials in '%s' failed: %w", dumpFile, err)
 		}
 
 		fmt.Fprintf(os.Stderr, "API credentials written to '%s'.\n", dumpFile)
@@ -438,7 +439,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 
 	deleted, err := cli.db.BulkDeleteWatchers(machines)
 	if err != nil {
-		return fmt.Errorf("unable to prune machines: %s", err)
+		return fmt.Errorf("unable to prune machines: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "successfully delete %d machines\n", deleted)
@@ -479,7 +480,7 @@ cscli machines prune --not-validated-only --force`,
 
 func (cli *cliMachines) validate(machineID string) error {
 	if err := cli.db.ValidateMachine(machineID); err != nil {
-		return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
+		return fmt.Errorf("unable to validate machine '%s': %w", machineID, err)
 	}
 
 	log.Infof("machine '%s' validated successfully", machineID)
@@ -495,7 +496,7 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.validate(args[0])
 		},
 	}
