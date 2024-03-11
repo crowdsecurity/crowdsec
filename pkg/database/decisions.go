@@ -49,7 +49,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
-		case "scopes":
+		case "scopes", "scope": //Swagger mentions both of them, let's just support both to make sure we don't break anything
 			scopes := strings.Split(value[0], ",")
 			for i, scope := range scopes {
 				switch strings.ToLower(scope) {
