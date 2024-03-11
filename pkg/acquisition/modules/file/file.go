@@ -452,17 +452,13 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				if f.config.PollWithoutInotify != nil {
 					pollFile = *f.config.PollWithoutInotify
 				} else {
-					if f.config.PollWithoutInotify != nil {
-						pollFile = *f.config.PollWithoutInotify
-					} else {
-						networkFS, fsType, err := types.IsNetworkFS(event.Name)
-						if err != nil {
-							f.logger.Warningf("Could not get fs type for %s : %s", event.Name, err)
-						}
-						f.logger.Debugf("fs for %s is network: %t (%s)", event.Name, networkFS, fsType)
-						if networkFS {
-							pollFile = true
-						}
+					networkFS, fsType, err := types.IsNetworkFS(event.Name)
+					if err != nil {
+						f.logger.Warningf("Could not get fs type for %s : %s", event.Name, err)
+					}
+					f.logger.Debugf("fs for %s is network: %t (%s)", event.Name, networkFS, fsType)
+					if networkFS {
+						pollFile = true
 					}
 				}
 
