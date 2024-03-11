@@ -343,7 +343,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			}
 			f.logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
 			if networkFS {
-				f.logger.Warnf("Disabling inotify poll on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
+				f.logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
 				pollFile = true
 			}
 		}
@@ -356,7 +356,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		}
 
 		if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
-			f.logger.Warnf("File %s is a symlink, but inotify poll is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
+			f.logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
 		}
 
 		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: pollFile, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
@@ -474,7 +474,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				}
 
 				if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
-					logger.Warnf("File %s is a symlink, but inotify poll is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", event.Name)
+					logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", event.Name)
 				}
 
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
