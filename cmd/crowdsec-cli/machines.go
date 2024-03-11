@@ -413,13 +413,13 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	}
 
 	if !notValidOnly {
-		if pending, err := cli.db.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(duration)); err == nil {
+		if pending, err := cli.db.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(-duration)); err == nil {
 			machines = append(machines, pending...)
 		}
 	}
 
 	if len(machines) == 0 {
-		fmt.Println("no machines to prune")
+		fmt.Println("No machines to prune.")
 		return nil
 	}
 

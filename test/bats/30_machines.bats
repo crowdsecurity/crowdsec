@@ -90,3 +90,17 @@ teardown() {
     rune -0 jq '. | length' <(output)
     assert_output 1
 }
+
+@test "cscli machines prune" {
+    rune -0 cscli metrics
+
+    rune -0 cscli machines prune
+    assert_output 'No machines to prune.'
+
+    rune -0 cscli machines list -o json
+    rune -0 jq -r '.[-1].machineId' <(output)
+    rune -0 cscli machines delete "$output"
+
+    rune -0 cscli machines prune
+    assert_output 'No machines to prune.'
+}
