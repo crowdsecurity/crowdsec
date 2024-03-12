@@ -103,7 +103,7 @@ func GetFSType(path string) (string, error) {
 		return "", err
 	}
 
-	fsType, ok := fsTypeMapping[buf.Type]
+	fsType, ok := fsTypeMapping[int64(buf.Type)]
 	if !ok {
 		return "", fmt.Errorf("unknown fstype %d", buf.Type)
 	}
