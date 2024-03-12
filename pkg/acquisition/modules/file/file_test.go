@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -56,7 +57,7 @@ exclude_regexps: ["as[a-$d"]`,
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), subLogger)
+			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -222,7 +223,7 @@ filename: test_files/test_delete.log`,
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger)
+			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.expectedConfigErr)
 			if tc.expectedConfigErr != "" {
 				return
@@ -384,7 +385,7 @@ force_inotify: true`, testPattern),
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger)
+			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
 			require.NoError(t, err)
 
 			if tc.afterConfigure != nil {
@@ -455,7 +456,7 @@ exclude_regexps: ["\\.gz$"]`
 	})
 
 	f := fileacquisition.FileSource{}
-	if err := f.Configure([]byte(config), subLogger); err != nil {
+	if err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE); err != nil {
 		subLogger.Fatalf("unexpected error: %s", err)
 	}
 

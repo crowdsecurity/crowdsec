@@ -52,9 +52,10 @@ type TLSConfig struct {
 }
 
 type KafkaSource struct {
-	Config KafkaConfiguration
-	logger *log.Entry
-	Reader *kafka.Reader
+	metricsLevel int
+	Config       KafkaConfiguration
+	logger       *log.Entry
+	Reader       *kafka.Reader
 }
 
 func (k *KafkaSource) GetUuid() string {
@@ -86,8 +87,9 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	return err
 }
 
-func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	k.logger = logger
+	k.metricsLevel = MetricsLevel
 
 	k.logger.Debugf("start configuring %s source", dataSourceName)
 
@@ -170,7 +172,9 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			Module:  k.GetName(),
 		}
 		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
-		linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
+		if k.metricsLevel != configuration.METRICS_NONE {
+			linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
+		}
 		var evt types.Event
 
 		if !k.Config.UseTimeMachine {

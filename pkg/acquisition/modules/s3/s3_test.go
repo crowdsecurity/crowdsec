@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ sqs_name: foobar
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := S3Source{}
-			err := f.Configure([]byte(test.config), nil)
+			err := f.Configure([]byte(test.config), nil, configuration.METRICS_NONE)
 			if err == nil {
 				t.Fatalf("expected error, got none")
 			}
@@ -111,7 +112,7 @@ polling_method: list
 		t.Run(test.name, func(t *testing.T) {
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
-			err := f.Configure([]byte(test.config), logger)
+			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -306,7 +307,7 @@ prefix: foo/
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
 			logger.Logger.SetLevel(log.TraceLevel)
-			err := f.Configure([]byte(test.config), logger)
+			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -381,7 +382,7 @@ sqs_name: test
 			linesRead := 0
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
-			err := f.Configure([]byte(test.config), logger)
+			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}

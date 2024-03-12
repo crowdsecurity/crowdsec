@@ -28,12 +28,13 @@ type KubernetesAuditConfiguration struct {
 }
 
 type KubernetesAuditSource struct {
-	config  KubernetesAuditConfiguration
-	logger  *log.Entry
-	mux     *http.ServeMux
-	server  *http.Server
-	outChan chan types.Event
-	addr    string
+	metricsLevel int
+	config       KubernetesAuditConfiguration
+	logger       *log.Entry
+	mux          *http.ServeMux
+	server       *http.Server
+	outChan      chan types.Event
+	addr         string
 }
 
 var eventCount = prometheus.NewCounterVec(
@@ -93,8 +94,9 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) error {
+func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
 	ka.logger = logger
+	ka.metricsLevel = MetricsLevel
 
 	err := ka.UnmarshalConfig(config)
 	if err != nil {
@@ -161,7 +163,10 @@ func (ka *KubernetesAuditSource) Dump() interface{} {
 }
 
 func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.Request) {
-	requestCount.WithLabelValues(ka.addr).Inc()
+
+	if ka.metricsLevel != configuration.METRICS_NONE {
+		requestCount.WithLabelValues(ka.addr).Inc()
+	}
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -185,7 +190,9 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 
 	remoteIP := strings.Split(r.RemoteAddr, ":")[0]
 	for _, auditEvent := range auditEvents.Items {
-		eventCount.WithLabelValues(ka.addr).Inc()
+		if ka.metricsLevel != configuration.METRICS_NONE {
+			eventCount.WithLabelValues(ka.addr).Inc()
+		}
 		bytesEvent, err := json.Marshal(auditEvent)
 		if err != nil {
 			ka.logger.Errorf("Error marshaling audit event: %s", err)

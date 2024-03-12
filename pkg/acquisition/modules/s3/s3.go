@@ -47,15 +47,16 @@ type S3Configuration struct {
 }
 
 type S3Source struct {
-	Config     S3Configuration
-	logger     *log.Entry
-	s3Client   s3iface.S3API
-	sqsClient  sqsiface.SQSAPI
-	readerChan chan S3Object
-	t          *tomb.Tomb
-	out        chan types.Event
-	ctx        aws.Context
-	cancel     context.CancelFunc
+	MetricsLevel int
+	Config       S3Configuration
+	logger       *log.Entry
+	s3Client     s3iface.S3API
+	sqsClient    sqsiface.SQSAPI
+	readerChan   chan S3Object
+	t            *tomb.Tomb
+	out          chan types.Event
+	ctx          aws.Context
+	cancel       context.CancelFunc
 }
 
 type S3Object struct {
@@ -345,7 +346,9 @@ func (s *S3Source) sqsPoll() error {
 			logger.Tracef("SQS output: %v", out)
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
-				sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
+				if s.MetricsLevel != configuration.METRICS_NONE {
+					sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
+				}
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
 					logger.Errorf("Error while parsing SQS message: %s", err)
@@ -426,14 +429,20 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		default:
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
-			linesRead.WithLabelValues(bucket).Inc()
+			if s.MetricsLevel != configuration.METRICS_NONE {
+				linesRead.WithLabelValues(bucket).Inc()
+			}
 			l := types.Line{}
 			l.Raw = text
 			l.Labels = s.Config.Labels
 			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = s.GetName()
-			l.Src = bucket + "/" + key
+			if s.MetricsLevel == configuration.METRICS_FULL {
+				l.Src = bucket + "/" + key
+			} else if s.MetricsLevel == configuration.METRICS_AGGREGATE {
+				l.Src = bucket
+			}
 			var evt types.Event
 			if !s.Config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
@@ -446,7 +455,9 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
 	}
-	objectsRead.WithLabelValues(bucket).Inc()
+	if s.MetricsLevel != configuration.METRICS_NONE {
+		objectsRead.WithLabelValues(bucket).Inc()
+	}
 	return nil
 }
 
@@ -505,7 +516,7 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err

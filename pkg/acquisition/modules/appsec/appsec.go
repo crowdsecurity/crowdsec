@@ -49,6 +49,7 @@ type AppsecSourceConfig struct {
 
 // runtime structure of AppsecSourceConfig
 type AppsecSource struct {
+	metricsLevel  int
 	config        AppsecSourceConfig
 	logger        *log.Entry
 	mux           *http.ServeMux
@@ -149,13 +150,13 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
-func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse appsec configuration")
 	}
 	w.logger = logger
-
+	w.metricsLevel = MetricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {

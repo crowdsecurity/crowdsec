@@ -54,7 +54,7 @@ type DataSource interface {
 	GetMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module
 	GetAggregMetrics() []prometheus.Collector                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
 	UnmarshalConfig([]byte) error                                       // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure([]byte, *log.Entry) error                                 // Complete the YAML datasource configuration and perform runtime checks.
+	Configure([]byte, *log.Entry, int) error                            // Complete the YAML datasource configuration and perform runtime checks.
 	ConfigureByDSN(string, map[string]string, *log.Entry, string) error // Configure the datasource
 	GetMode() string                                                    // Get the mode (TAIL, CAT or SERVER)
 	GetName() string                                                    // Get the name of the module
@@ -94,7 +94,7 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (*DataSource, error) {
 	// we dump it back to []byte, because we want to decode the yaml blob twice:
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
@@ -122,7 +122,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 			return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 		}
 		/* configure the actual datasource */
-		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
+		if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
 			return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
 
 		}
@@ -180,10 +180,30 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	return sources, nil
 }
 
+func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
+	if prom == nil {
+		return configuration.METRICS_FULL
+
+	}
+	if prom.Enabled == false {
+		return configuration.METRICS_NONE
+	}
+	if prom.Level == "aggregated" {
+		return configuration.METRICS_AGGREGATE
+	}
+
+	if prom.Level == "full" {
+		return configuration.METRICS_FULL
+	}
+	return configuration.METRICS_FULL
+
+}
+
 // LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
+func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
 	var sources []DataSource
 
+	metrics_level := GetMetricsLevelFromPromCfg(prom)
 	for _, acquisFile := range config.AcquisitionFiles {
 		log.Infof("loading acquisition file : %s", acquisFile)
 		yamlFile, err := os.Open(acquisFile)
@@ -225,7 +245,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			}
 			uniqueId := uuid.NewString()
 			sub.UniqueId = uniqueId
-			src, err := DataSourceConfigure(sub)
+			src, err := DataSourceConfigure(sub, metrics_level)
 			if err != nil {
 				var dserr *DataSourceUnavailableError
 				if errors.As(err, &dserr) {
