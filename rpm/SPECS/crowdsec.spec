@@ -8,7 +8,7 @@ License:        MIT
 URL:            https://crowdsec.net
 Source0:        https://github.com/crowdsecurity/%{name}/archive/v%(echo $VERSION).tar.gz
 Source1:        80-%{name}.preset
-Patch1:         user.patch
+Patch0:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  systemd
