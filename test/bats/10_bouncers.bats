@@ -25,7 +25,13 @@ teardown() {
 
 @test "there are 0 bouncers" {
     rune -0 cscli bouncers list -o json
-    assert_output "[]"
+    assert_json '[]'
+
+    rune -0 cscli bouncers list -o human
+    assert_output --partial "Name"
+
+    rune -0 cscli bouncers list -o raw
+    assert_output --partial 'name'
 }
 
 @test "we can add one bouncer, and delete it" {
@@ -68,3 +74,13 @@ teardown() {
     rune -1 cscli bouncers delete ciTestBouncer
     rune -1 cscli bouncers delete foobarbaz
 }
+
+@test "cscli bouncers prune" {
+    rune -0 cscli bouncers prune
+    assert_output 'No bouncers to prune.'
+    rune -0 cscli bouncers add ciTestBouncer
+
+    rune -0 cscli bouncers prune
+    assert_output 'No bouncers to prune.'
+}
+

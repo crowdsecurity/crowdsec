@@ -361,3 +361,24 @@ teardown() {
     rune -0 cscli setup
     assert_output --partial 'cscli setup [command]'
 }
+
+@test "cscli config feature-flags" {
+    # disabled
+    rune -0 cscli config feature-flags
+    assert_line '✗ cscli_setup: Enable cscli setup command (service detection)'
+
+    # enabled in feature.yaml
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
+    rune -0 cscli config feature-flags
+    assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
+
+    # enabled in environment
+    # shellcheck disable=SC2031
+    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
+    rune -0 cscli config feature-flags
+    assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
+
+    # there are no retired features
+    rune -0 cscli config feature-flags --retired
+}
