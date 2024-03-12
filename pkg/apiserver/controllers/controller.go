@@ -59,6 +59,17 @@ func serveHealth() http.HandlerFunc {
 	return health.NewHandler(checker)
 }
 
+func eitherAuthMiddleware(jwtMiddleware gin.HandlerFunc, apiKeyMiddleware gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// XXX: what when there's no api key for a RC?
+		if c.GetHeader("X-Api-Key") != "" {
+			apiKeyMiddleware(c)
+		} else {
+			jwtMiddleware(c)
+	        }
+	}
+}
+
 func (c *Controller) NewV1() error {
 	var err error
 
@@ -115,6 +126,12 @@ func (c *Controller) NewV1() error {
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.StreamDecision)
 		apiKeyAuth.HEAD("/decisions/stream", c.HandlerV1.StreamDecision)
+	}
+
+	eitherAuth := groupV1.Group("")
+	eitherAuth.Use(eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.MiddlewareFunc()))
+	{
+		eitherAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
 	}
 
 	return nil

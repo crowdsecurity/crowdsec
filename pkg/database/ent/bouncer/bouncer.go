@@ -35,6 +35,12 @@ const (
 	FieldLastPull = "last_pull"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
+	// FieldOsname holds the string denoting the osname field in the database.
+	FieldOsname = "osname"
+	// FieldOsversion holds the string denoting the osversion field in the database.
+	FieldOsversion = "osversion"
+	// FieldFeatureflags holds the string denoting the featureflags field in the database.
+	FieldFeatureflags = "featureflags"
 	// Table holds the table name of the bouncer in the database.
 	Table = "bouncers"
 )
@@ -53,6 +59,9 @@ var Columns = []string{
 	FieldUntil,
 	FieldLastPull,
 	FieldAuthType,
+	FieldOsname,
+	FieldOsversion,
+	FieldFeatureflags,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -68,8 +77,6 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
-	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -145,4 +152,19 @@ func ByLastPull(opts ...sql.OrderTermOption) OrderOption {
 // ByAuthType orders the results by the auth_type field.
 func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAuthType, opts...).ToFunc()
+}
+
+// ByOsname orders the results by the osname field.
+func ByOsname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsname, opts...).ToFunc()
+}
+
+// ByOsversion orders the results by the osversion field.
+func ByOsversion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsversion, opts...).ToFunc()
+}
+
+// ByFeatureflags orders the results by the featureflags field.
+func ByFeatureflags(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFeatureflags, opts...).ToFunc()
 }

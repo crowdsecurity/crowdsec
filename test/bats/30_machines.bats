@@ -104,3 +104,40 @@ teardown() {
     rune -0 cscli machines prune
     assert_output 'No machines to prune.'
 }
+
+@test "usage metrics" {
+    # a registered log processor can send metrics for the console
+    token=$(lp_login)
+    usage_metrics="http://localhost:8080/v1/usage-metrics"
+
+    payload=$(cat <<-EOT
+	remediation_components: []
+	log_processors:
+	  -
+	    - version: "v1.0"
+	      feature_flags:
+	          - marshmallows
+	      meta:
+	        window_size_seconds: 600
+	        utc_startup_timestamp: 1707399316
+	        utc_now_timestamp: 1707485349
+	      os:
+	        name: CentOS
+	        version: "8"
+	      metrics:
+	        - name: logs_parsed
+	          value: 5000
+	          unit: count
+	          labels: {}
+	      console_options:
+	        - share_context
+	      datasources:
+	        syslog: 1
+	        file: 4
+	EOT
+    )
+
+    echo -e "$payload" >/tmp/bbb
+    rune -0 curl -f -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    refute_output
+}

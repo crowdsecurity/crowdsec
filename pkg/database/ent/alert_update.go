@@ -32,27 +32,9 @@ func (au *AlertUpdate) Where(ps ...predicate.Alert) *AlertUpdate {
 	return au
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (au *AlertUpdate) SetCreatedAt(t time.Time) *AlertUpdate {
-	au.mutation.SetCreatedAt(t)
-	return au
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (au *AlertUpdate) ClearCreatedAt() *AlertUpdate {
-	au.mutation.ClearCreatedAt()
-	return au
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (au *AlertUpdate) SetUpdatedAt(t time.Time) *AlertUpdate {
 	au.mutation.SetUpdatedAt(t)
-	return au
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (au *AlertUpdate) ClearUpdatedAt() *AlertUpdate {
-	au.mutation.ClearUpdatedAt()
 	return au
 }
 
@@ -660,11 +642,7 @@ func (au *AlertUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (au *AlertUpdate) defaults() {
-	if _, ok := au.mutation.CreatedAt(); !ok && !au.mutation.CreatedAtCleared() {
-		v := alert.UpdateDefaultCreatedAt()
-		au.mutation.SetCreatedAt(v)
-	}
-	if _, ok := au.mutation.UpdatedAt(); !ok && !au.mutation.UpdatedAtCleared() {
+	if _, ok := au.mutation.UpdatedAt(); !ok {
 		v := alert.UpdateDefaultUpdatedAt()
 		au.mutation.SetUpdatedAt(v)
 	}
@@ -679,17 +657,8 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := au.mutation.CreatedAt(); ok {
-		_spec.SetField(alert.FieldCreatedAt, field.TypeTime, value)
-	}
-	if au.mutation.CreatedAtCleared() {
-		_spec.ClearField(alert.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := au.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if au.mutation.UpdatedAtCleared() {
-		_spec.ClearField(alert.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := au.mutation.Scenario(); ok {
 		_spec.SetField(alert.FieldScenario, field.TypeString, value)
@@ -1007,27 +976,9 @@ type AlertUpdateOne struct {
 	mutation *AlertMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (auo *AlertUpdateOne) SetCreatedAt(t time.Time) *AlertUpdateOne {
-	auo.mutation.SetCreatedAt(t)
-	return auo
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (auo *AlertUpdateOne) ClearCreatedAt() *AlertUpdateOne {
-	auo.mutation.ClearCreatedAt()
-	return auo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (auo *AlertUpdateOne) SetUpdatedAt(t time.Time) *AlertUpdateOne {
 	auo.mutation.SetUpdatedAt(t)
-	return auo
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (auo *AlertUpdateOne) ClearUpdatedAt() *AlertUpdateOne {
-	auo.mutation.ClearUpdatedAt()
 	return auo
 }
 
@@ -1648,11 +1599,7 @@ func (auo *AlertUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (auo *AlertUpdateOne) defaults() {
-	if _, ok := auo.mutation.CreatedAt(); !ok && !auo.mutation.CreatedAtCleared() {
-		v := alert.UpdateDefaultCreatedAt()
-		auo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := auo.mutation.UpdatedAt(); !ok && !auo.mutation.UpdatedAtCleared() {
+	if _, ok := auo.mutation.UpdatedAt(); !ok {
 		v := alert.UpdateDefaultUpdatedAt()
 		auo.mutation.SetUpdatedAt(v)
 	}
@@ -1684,17 +1631,8 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 			}
 		}
 	}
-	if value, ok := auo.mutation.CreatedAt(); ok {
-		_spec.SetField(alert.FieldCreatedAt, field.TypeTime, value)
-	}
-	if auo.mutation.CreatedAtCleared() {
-		_spec.ClearField(alert.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := auo.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if auo.mutation.UpdatedAtCleared() {
-		_spec.ClearField(alert.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := auo.mutation.Scenario(); ok {
 		_spec.SetField(alert.FieldScenario, field.TypeString, value)

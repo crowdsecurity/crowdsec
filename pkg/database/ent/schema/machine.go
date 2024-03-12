@@ -5,6 +5,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 // Machine holds the schema definition for the Machine entity.
@@ -17,17 +18,19 @@ func (Machine) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			UpdateDefault(types.UtcNow),
 		field.Time("last_push").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("last_heartbeat").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
-		field.String("machineId").Unique(),
+		field.String("machineId").
+			Unique().
+			Immutable(),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),
 		field.String("scenarios").MaxLen(100000).Optional(),
@@ -36,8 +39,22 @@ func (Machine) Fields() []ent.Field {
 			Default(false),
 		field.String("status").Optional(),
 		field.String("auth_type").Default(types.PasswordAuthType).StructTag(`json:"auth_type"`),
+		field.String("osname").Optional(),
+		field.String("osversion").Optional(),
+		field.String("featureflags").Optional(),
+		field.JSON("hubstate", &models.HubItems{}).Optional(),
 	}
 }
+
+//type HubItemState struct {
+//	Version string `json:"version"`
+//	Status string `json:"status"`
+//}
+//
+//type HubState struct {
+//	// the key is the FQName (type:author/name)
+//	Items map[string]HubItemState `json:"hub_items"`
+//}
 
 // Edges of the Machine.
 func (Machine) Edges() []ent.Edge {

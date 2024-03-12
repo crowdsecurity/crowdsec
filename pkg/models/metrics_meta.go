@@ -18,10 +18,10 @@ import (
 type MetricsMeta struct {
 
 	// UTC timestamp of the current time
-	UtcNowTimestamp float64 `json:"utc_now_timestamp,omitempty"`
+	UtcNowTimestamp int64 `json:"utc_now_timestamp,omitempty"`
 
 	// UTC timestamp of the startup of the software
-	UtcStartupTimestamp float64 `json:"utc_startup_timestamp,omitempty"`
+	UtcStartupTimestamp int64 `json:"utc_startup_timestamp,omitempty"`
 
 	// Size, in seconds, of the window used to compute the metric
 	WindowSizeSeconds int64 `json:"window_size_seconds,omitempty"`

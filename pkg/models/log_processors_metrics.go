@@ -95,6 +95,9 @@ type LogProcessorsMetricsItems0 struct {
 
 	// Number of datasources per type
 	Datasources map[string]int64 `json:"datasources,omitempty"`
+
+	// hub items
+	HubItems HubItems `json:"hub_items,omitempty"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -111,6 +114,8 @@ func (m *LogProcessorsMetricsItems0) UnmarshalJSON(raw []byte) error {
 		ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
 
 		Datasources map[string]int64 `json:"datasources,omitempty"`
+
+		HubItems HubItems `json:"hub_items,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -119,6 +124,8 @@ func (m *LogProcessorsMetricsItems0) UnmarshalJSON(raw []byte) error {
 	m.ConsoleOptions = dataAO1.ConsoleOptions
 
 	m.Datasources = dataAO1.Datasources
+
+	m.HubItems = dataAO1.HubItems
 
 	return nil
 }
@@ -136,11 +143,15 @@ func (m LogProcessorsMetricsItems0) MarshalJSON() ([]byte, error) {
 		ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
 
 		Datasources map[string]int64 `json:"datasources,omitempty"`
+
+		HubItems HubItems `json:"hub_items,omitempty"`
 	}
 
 	dataAO1.ConsoleOptions = m.ConsoleOptions
 
 	dataAO1.Datasources = m.Datasources
+
+	dataAO1.HubItems = m.HubItems
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
@@ -160,6 +171,10 @@ func (m *LogProcessorsMetricsItems0) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateConsoleOptions(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateHubItems(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -187,6 +202,26 @@ func (m *LogProcessorsMetricsItems0) validateConsoleOptions(formats strfmt.Regis
 	return nil
 }
 
+func (m *LogProcessorsMetricsItems0) validateHubItems(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.HubItems) { // not required
+		return nil
+	}
+
+	if m.HubItems != nil {
+		if err := m.HubItems.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("hub_items")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("hub_items")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ContextValidate validate this log processors metrics items0 based on the context it is used
 func (m *LogProcessorsMetricsItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -197,6 +232,10 @@ func (m *LogProcessorsMetricsItems0) ContextValidate(ctx context.Context, format
 	}
 
 	if err := m.contextValidateConsoleOptions(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateHubItems(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -213,6 +252,24 @@ func (m *LogProcessorsMetricsItems0) contextValidateConsoleOptions(ctx context.C
 			return ve.ValidateName("console_options")
 		} else if ce, ok := err.(*errors.CompositeError); ok {
 			return ce.ValidateName("console_options")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *LogProcessorsMetricsItems0) contextValidateHubItems(ctx context.Context, formats strfmt.Registry) error {
+
+	if swag.IsZero(m.HubItems) { // not required
+		return nil
+	}
+
+	if err := m.HubItems.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("hub_items")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("hub_items")
 		}
 		return err
 	}

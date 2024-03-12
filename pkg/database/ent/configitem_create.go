@@ -107,6 +107,12 @@ func (cic *ConfigItemCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (cic *ConfigItemCreate) check() error {
+	if _, ok := cic.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ConfigItem.created_at"`)}
+	}
+	if _, ok := cic.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ConfigItem.updated_at"`)}
+	}
 	if _, ok := cic.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "ConfigItem.name"`)}
 	}
@@ -141,11 +147,11 @@ func (cic *ConfigItemCreate) createSpec() (*ConfigItem, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := cic.mutation.CreatedAt(); ok {
 		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = &value
+		_node.CreatedAt = value
 	}
 	if value, ok := cic.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = &value
+		_node.UpdatedAt = value
 	}
 	if value, ok := cic.mutation.Name(); ok {
 		_spec.SetField(configitem.FieldName, field.TypeString, value)

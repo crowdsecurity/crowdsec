@@ -276,3 +276,19 @@ rune() {
     run --separate-stderr "$@"
 }
 export -f rune
+
+# as a log processor, connect to lapi and get a token
+lp_login() {
+    local cred
+    cred=$(config_get .api.client.credentials_path)
+    local url
+    url="$(yq '.url' < "$cred")/v1/watchers/login"
+    local resp
+    resp=$(yq -oj -I0 '{"machine_id":.login,"password":.password}' < "$cred" | curl -s -X POST "$url" --data-binary @-)
+    if [[ "$(yq -e '.code' <<<"$resp")" != 200 ]]; then
+        echo "login_lp: failed to login" >&3
+        return 1
+    fi
+    echo "$resp" | yq -r '.token'
+}
+export -f lp_login

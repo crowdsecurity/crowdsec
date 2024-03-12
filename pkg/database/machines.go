@@ -2,12 +2,14 @@ package database
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -15,6 +17,29 @@ import (
 
 const CapiMachineID = types.CAPIOrigin
 const CapiListsMachineID = types.ListOrigin
+
+func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.BaseMetrics, hubItems *models.HubItems) error {
+	os := baseMetrics.Os
+	features := strings.Join(baseMetrics.FeatureFlags, ",")
+
+	heartbeat := time.Unix(int64(baseMetrics.Meta.UtcNowTimestamp), 0)
+
+	_, err := c.Ent.Machine.
+		Update().
+		Where(machine.MachineIdEQ(machineID)).
+		SetNillableVersion(baseMetrics.Version).
+		SetOsname(os.Name).
+		SetOsversion(os.Version).
+		SetFeatureflags(features).
+		SetLastHeartbeat(heartbeat).
+		SetHubstate(hubItems).
+		// TODO: update scenarios
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update base machine metrics in database: %s", err)
+	}
+	return nil
+}
 
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)

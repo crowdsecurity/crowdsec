@@ -109,6 +109,21 @@ func AuthType(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldAuthType, v))
 }
 
+// Osname applies equality check predicate on the "osname" field. It's identical to OsnameEQ.
+func Osname(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsname, v))
+}
+
+// Osversion applies equality check predicate on the "osversion" field. It's identical to OsversionEQ.
+func Osversion(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsversion, v))
+}
+
+// Featureflags applies equality check predicate on the "featureflags" field. It's identical to FeatureflagsEQ.
+func Featureflags(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldFeatureflags, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldCreatedAt, v))
@@ -149,16 +164,6 @@ func CreatedAtLTE(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldLTE(FieldCreatedAt, v))
 }
 
-// CreatedAtIsNil applies the IsNil predicate on the "created_at" field.
-func CreatedAtIsNil() predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldIsNull(FieldCreatedAt))
-}
-
-// CreatedAtNotNil applies the NotNil predicate on the "created_at" field.
-func CreatedAtNotNil() predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldNotNull(FieldCreatedAt))
-}
-
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
 func UpdatedAtEQ(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldUpdatedAt, v))
@@ -197,16 +202,6 @@ func UpdatedAtLT(v time.Time) predicate.Bouncer {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// UpdatedAtIsNil applies the IsNil predicate on the "updated_at" field.
-func UpdatedAtIsNil() predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldIsNull(FieldUpdatedAt))
-}
-
-// UpdatedAtNotNil applies the NotNil predicate on the "updated_at" field.
-func UpdatedAtNotNil() predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldNotNull(FieldUpdatedAt))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -727,6 +722,231 @@ func AuthTypeEqualFold(v string) predicate.Bouncer {
 // AuthTypeContainsFold applies the ContainsFold predicate on the "auth_type" field.
 func AuthTypeContainsFold(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldContainsFold(FieldAuthType, v))
+}
+
+// OsnameEQ applies the EQ predicate on the "osname" field.
+func OsnameEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsname, v))
+}
+
+// OsnameNEQ applies the NEQ predicate on the "osname" field.
+func OsnameNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldOsname, v))
+}
+
+// OsnameIn applies the In predicate on the "osname" field.
+func OsnameIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldOsname, vs...))
+}
+
+// OsnameNotIn applies the NotIn predicate on the "osname" field.
+func OsnameNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldOsname, vs...))
+}
+
+// OsnameGT applies the GT predicate on the "osname" field.
+func OsnameGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldOsname, v))
+}
+
+// OsnameGTE applies the GTE predicate on the "osname" field.
+func OsnameGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldOsname, v))
+}
+
+// OsnameLT applies the LT predicate on the "osname" field.
+func OsnameLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldOsname, v))
+}
+
+// OsnameLTE applies the LTE predicate on the "osname" field.
+func OsnameLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldOsname, v))
+}
+
+// OsnameContains applies the Contains predicate on the "osname" field.
+func OsnameContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldOsname, v))
+}
+
+// OsnameHasPrefix applies the HasPrefix predicate on the "osname" field.
+func OsnameHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldOsname, v))
+}
+
+// OsnameHasSuffix applies the HasSuffix predicate on the "osname" field.
+func OsnameHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldOsname, v))
+}
+
+// OsnameIsNil applies the IsNil predicate on the "osname" field.
+func OsnameIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldOsname))
+}
+
+// OsnameNotNil applies the NotNil predicate on the "osname" field.
+func OsnameNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldOsname))
+}
+
+// OsnameEqualFold applies the EqualFold predicate on the "osname" field.
+func OsnameEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldOsname, v))
+}
+
+// OsnameContainsFold applies the ContainsFold predicate on the "osname" field.
+func OsnameContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldOsname, v))
+}
+
+// OsversionEQ applies the EQ predicate on the "osversion" field.
+func OsversionEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsversion, v))
+}
+
+// OsversionNEQ applies the NEQ predicate on the "osversion" field.
+func OsversionNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldOsversion, v))
+}
+
+// OsversionIn applies the In predicate on the "osversion" field.
+func OsversionIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldOsversion, vs...))
+}
+
+// OsversionNotIn applies the NotIn predicate on the "osversion" field.
+func OsversionNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldOsversion, vs...))
+}
+
+// OsversionGT applies the GT predicate on the "osversion" field.
+func OsversionGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldOsversion, v))
+}
+
+// OsversionGTE applies the GTE predicate on the "osversion" field.
+func OsversionGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldOsversion, v))
+}
+
+// OsversionLT applies the LT predicate on the "osversion" field.
+func OsversionLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldOsversion, v))
+}
+
+// OsversionLTE applies the LTE predicate on the "osversion" field.
+func OsversionLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldOsversion, v))
+}
+
+// OsversionContains applies the Contains predicate on the "osversion" field.
+func OsversionContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldOsversion, v))
+}
+
+// OsversionHasPrefix applies the HasPrefix predicate on the "osversion" field.
+func OsversionHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldOsversion, v))
+}
+
+// OsversionHasSuffix applies the HasSuffix predicate on the "osversion" field.
+func OsversionHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldOsversion, v))
+}
+
+// OsversionIsNil applies the IsNil predicate on the "osversion" field.
+func OsversionIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldOsversion))
+}
+
+// OsversionNotNil applies the NotNil predicate on the "osversion" field.
+func OsversionNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldOsversion))
+}
+
+// OsversionEqualFold applies the EqualFold predicate on the "osversion" field.
+func OsversionEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldOsversion, v))
+}
+
+// OsversionContainsFold applies the ContainsFold predicate on the "osversion" field.
+func OsversionContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldOsversion, v))
+}
+
+// FeatureflagsEQ applies the EQ predicate on the "featureflags" field.
+func FeatureflagsEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldFeatureflags, v))
+}
+
+// FeatureflagsNEQ applies the NEQ predicate on the "featureflags" field.
+func FeatureflagsNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldFeatureflags, v))
+}
+
+// FeatureflagsIn applies the In predicate on the "featureflags" field.
+func FeatureflagsIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldFeatureflags, vs...))
+}
+
+// FeatureflagsNotIn applies the NotIn predicate on the "featureflags" field.
+func FeatureflagsNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldFeatureflags, vs...))
+}
+
+// FeatureflagsGT applies the GT predicate on the "featureflags" field.
+func FeatureflagsGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldFeatureflags, v))
+}
+
+// FeatureflagsGTE applies the GTE predicate on the "featureflags" field.
+func FeatureflagsGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldFeatureflags, v))
+}
+
+// FeatureflagsLT applies the LT predicate on the "featureflags" field.
+func FeatureflagsLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldFeatureflags, v))
+}
+
+// FeatureflagsLTE applies the LTE predicate on the "featureflags" field.
+func FeatureflagsLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldFeatureflags, v))
+}
+
+// FeatureflagsContains applies the Contains predicate on the "featureflags" field.
+func FeatureflagsContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldFeatureflags, v))
+}
+
+// FeatureflagsHasPrefix applies the HasPrefix predicate on the "featureflags" field.
+func FeatureflagsHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldFeatureflags, v))
+}
+
+// FeatureflagsHasSuffix applies the HasSuffix predicate on the "featureflags" field.
+func FeatureflagsHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldFeatureflags, v))
+}
+
+// FeatureflagsIsNil applies the IsNil predicate on the "featureflags" field.
+func FeatureflagsIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldFeatureflags))
+}
+
+// FeatureflagsNotNil applies the NotNil predicate on the "featureflags" field.
+func FeatureflagsNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldFeatureflags))
+}
+
+// FeatureflagsEqualFold applies the EqualFold predicate on the "featureflags" field.
+func FeatureflagsEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldFeatureflags, v))
+}
+
+// FeatureflagsContainsFold applies the ContainsFold predicate on the "featureflags" field.
+func FeatureflagsContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldFeatureflags, v))
 }
 
 // And groups predicates with the AND operator between them.

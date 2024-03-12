@@ -150,6 +150,48 @@ func (bc *BouncerCreate) SetNillableAuthType(s *string) *BouncerCreate {
 	return bc
 }
 
+// SetOsname sets the "osname" field.
+func (bc *BouncerCreate) SetOsname(s string) *BouncerCreate {
+	bc.mutation.SetOsname(s)
+	return bc
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsname(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsname(*s)
+	}
+	return bc
+}
+
+// SetOsversion sets the "osversion" field.
+func (bc *BouncerCreate) SetOsversion(s string) *BouncerCreate {
+	bc.mutation.SetOsversion(s)
+	return bc
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsversion(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsversion(*s)
+	}
+	return bc
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (bc *BouncerCreate) SetFeatureflags(s string) *BouncerCreate {
+	bc.mutation.SetFeatureflags(s)
+	return bc
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableFeatureflags(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetFeatureflags(*s)
+	}
+	return bc
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (bc *BouncerCreate) Mutation() *BouncerMutation {
 	return bc.mutation
@@ -213,6 +255,12 @@ func (bc *BouncerCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (bc *BouncerCreate) check() error {
+	if _, ok := bc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Bouncer.created_at"`)}
+	}
+	if _, ok := bc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Bouncer.updated_at"`)}
+	}
 	if _, ok := bc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Bouncer.name"`)}
 	}
@@ -256,11 +304,11 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := bc.mutation.CreatedAt(); ok {
 		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = &value
+		_node.CreatedAt = value
 	}
 	if value, ok := bc.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = &value
+		_node.UpdatedAt = value
 	}
 	if value, ok := bc.mutation.Name(); ok {
 		_spec.SetField(bouncer.FieldName, field.TypeString, value)
@@ -297,6 +345,18 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	if value, ok := bc.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 		_node.AuthType = value
+	}
+	if value, ok := bc.mutation.Osname(); ok {
+		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
+		_node.Osname = value
+	}
+	if value, ok := bc.mutation.Osversion(); ok {
+		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
+		_node.Osversion = value
+	}
+	if value, ok := bc.mutation.Featureflags(); ok {
+		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
+		_node.Featureflags = value
 	}
 	return _node, _spec
 }

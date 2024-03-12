@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 // Machine is the model entity for the Machine schema.
@@ -18,9 +20,9 @@ type Machine struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// LastPush holds the value of the "last_push" field.
 	LastPush *time.Time `json:"last_push,omitempty"`
 	// LastHeartbeat holds the value of the "last_heartbeat" field.
@@ -41,6 +43,14 @@ type Machine struct {
 	Status string `json:"status,omitempty"`
 	// AuthType holds the value of the "auth_type" field.
 	AuthType string `json:"auth_type"`
+	// Osname holds the value of the "osname" field.
+	Osname string `json:"osname,omitempty"`
+	// Osversion holds the value of the "osversion" field.
+	Osversion string `json:"osversion,omitempty"`
+	// Featureflags holds the value of the "featureflags" field.
+	Featureflags string `json:"featureflags,omitempty"`
+	// Hubstate holds the value of the "hubstate" field.
+	Hubstate *models.HubItems `json:"hubstate,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MachineQuery when eager-loading is set.
 	Edges        MachineEdges `json:"edges"`
@@ -70,11 +80,13 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case machine.FieldHubstate:
+			values[i] = new([]byte)
 		case machine.FieldIsValidated:
 			values[i] = new(sql.NullBool)
 		case machine.FieldID:
 			values[i] = new(sql.NullInt64)
-		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType:
+		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType, machine.FieldOsname, machine.FieldOsversion, machine.FieldFeatureflags:
 			values[i] = new(sql.NullString)
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
@@ -103,15 +115,13 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				m.CreatedAt = new(time.Time)
-				*m.CreatedAt = value.Time
+				m.CreatedAt = value.Time
 			}
 		case machine.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				m.UpdatedAt = new(time.Time)
-				*m.UpdatedAt = value.Time
+				m.UpdatedAt = value.Time
 			}
 		case machine.FieldLastPush:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -175,6 +185,32 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.AuthType = value.String
 			}
+		case machine.FieldOsname:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osname", values[i])
+			} else if value.Valid {
+				m.Osname = value.String
+			}
+		case machine.FieldOsversion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osversion", values[i])
+			} else if value.Valid {
+				m.Osversion = value.String
+			}
+		case machine.FieldFeatureflags:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field featureflags", values[i])
+			} else if value.Valid {
+				m.Featureflags = value.String
+			}
+		case machine.FieldHubstate:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field hubstate", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &m.Hubstate); err != nil {
+					return fmt.Errorf("unmarshal field hubstate: %w", err)
+				}
+			}
 		default:
 			m.selectValues.Set(columns[i], values[i])
 		}
@@ -216,15 +252,11 @@ func (m *Machine) String() string {
 	var builder strings.Builder
 	builder.WriteString("Machine(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
-	if v := m.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := m.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	if v := m.LastPush; v != nil {
 		builder.WriteString("last_push=")
@@ -258,6 +290,18 @@ func (m *Machine) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(m.AuthType)
+	builder.WriteString(", ")
+	builder.WriteString("osname=")
+	builder.WriteString(m.Osname)
+	builder.WriteString(", ")
+	builder.WriteString("osversion=")
+	builder.WriteString(m.Osversion)
+	builder.WriteString(", ")
+	builder.WriteString("featureflags=")
+	builder.WriteString(m.Featureflags)
+	builder.WriteString(", ")
+	builder.WriteString("hubstate=")
+	builder.WriteString(fmt.Sprintf("%v", m.Hubstate))
 	builder.WriteByte(')')
 	return builder.String()
 }

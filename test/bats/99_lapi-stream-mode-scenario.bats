@@ -26,7 +26,7 @@ setup() {
 
 api() {
     URI="$1"
-    curl -s -H "X-Api-Key:${API_KEY}" "${CROWDSEC_API_URL}${URI}"
+    curl -f -s -H "X-Api-Key:${API_KEY}" "${CROWDSEC_API_URL}${URI}"
 }
 
 output_new_decisions() {

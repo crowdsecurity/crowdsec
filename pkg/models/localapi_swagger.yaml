@@ -1047,6 +1047,8 @@ definitions:
           properties:
             console_options:
               $ref: '#/definitions/ConsoleOptions'
+            hub_items:
+              $ref: '#/definitions/HubItems'
             datasources:
               type: object
               description: Number of datasources per type
@@ -1129,10 +1131,10 @@ definitions:
         type: integer
         description: Size, in seconds, of the window used to compute the metric
       utc_startup_timestamp:
-        type: number
+        type: integer
         description: UTC timestamp of the startup of the software
       utc_now_timestamp:
-        type: number
+        type: integer
         description: UTC timestamp of the current time
   MetricsLabels:
     title: MetricsLabels
@@ -1146,6 +1148,21 @@ definitions:
     items:
       type: string
       description: enabled console options
+  HubItems:
+    title: HubItems
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/HubItem'
+  HubItem:
+    title: HubItem
+    type: object
+    properties:
+      version:
+        type: string
+        description: version of the hub item
+      status:
+        type: string
+        description: status of the hub item (official, custom, tainted, etc.)
   ErrorResponse:
     type: "object"
     required:

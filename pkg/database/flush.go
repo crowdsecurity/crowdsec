@@ -85,6 +85,8 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	baJob.SingletonMode()
 	scheduler.StartAsync()
 
+	// TODO: flush metrics here (MetricsMaxAge)
+
 	return scheduler, nil
 }
 
