@@ -31,7 +31,6 @@ Requires: crontabs
 %setup -q -T -b 0
 
 %patch0
-%patch1
 
 %build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
