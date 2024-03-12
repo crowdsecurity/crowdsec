@@ -185,7 +185,7 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 		return configuration.METRICS_FULL
 
 	}
-	if prom.Enabled == false {
+	if !prom.Enabled {
 		return configuration.METRICS_NONE
 	}
 	if prom.Level == "aggregated" {
