@@ -242,8 +242,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		dumpStates = true
 	}
 
-	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		// if we're in time-machine mode, we don't want to log to file
+	if flags.haveTimeMachine() {
+		// in time-machine mode, we want to see what's happening
 		cConfig.Common.LogMedia = "stdout"
 	}
 

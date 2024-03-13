@@ -121,6 +121,7 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
 	}
 
+	// XXX: syslog?
 	if config.LogMedia != "file" {
 		return clog, "", nil
 	}
