@@ -367,7 +367,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		URL:                  r.URL,
 		Proto:                r.Proto,
 		Body:                 body,
-		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
+		Args:                 ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,
