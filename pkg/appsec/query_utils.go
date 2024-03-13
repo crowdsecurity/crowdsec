@@ -69,7 +69,7 @@ func unescape(input string) string {
 				res.WriteByte(ci)
 				continue
 			}
-			res.WriteByte(byte(hi<<4 | lo))
+			res.WriteByte(hi<<4 | lo)
 			i += 2
 			continue
 		}
