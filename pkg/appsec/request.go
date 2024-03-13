@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -355,6 +356,11 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		}
 	}
 
+	parsed_args, err := ParseQuery(parsedURL.RawQuery)
+	if err != nil {
+		logger.Debugf("While parsing query %s : %s", parsedURL.RawQuery, err)
+	}
+
 	return ParsedRequest{
 		RemoteAddr:           r.RemoteAddr,
 		UUID:                 uuid.New().String(),
@@ -367,10 +373,45 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		URL:                  r.URL,
 		Proto:                r.Proto,
 		Body:                 body,
-		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
+		Args:                 parsed_args,
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,
 		HTTPRequest:          originalHTTPRequest,
 	}, nil
+}
+
+// parseQuery and parseQuery are copied net/url package, but allow semicolon in values
+func ParseQuery(query string) (url.Values, error) {
+	m := make(url.Values)
+	err := parseQuery(m, query)
+	return m, err
+}
+
+func parseQuery(m url.Values, query string) (err error) {
+	for query != "" {
+		var key string
+		key, query, _ = strings.Cut(query, "&")
+
+		if key == "" {
+			continue
+		}
+		key, value, _ := strings.Cut(key, "=")
+		key, err1 := url.QueryUnescape(key)
+		if err1 != nil {
+			if err == nil {
+				err = err1
+			}
+			continue
+		}
+		value, err1 = url.QueryUnescape(value)
+		if err1 != nil {
+			if err == nil {
+				err = err1
+			}
+			continue
+		}
+		m[key] = append(m[key], value)
+	}
+	return err
 }
