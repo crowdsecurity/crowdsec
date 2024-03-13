@@ -143,6 +143,57 @@ func TestParseQuery(t *testing.T) {
 				"xx":   []string{"qu?uz"},
 			},
 		},
+		{
+			name:  "hexadecimal characters",
+			query: "foo=bar%20baz",
+			expected: url.Values{
+				"foo": []string{"bar baz"},
+			},
+		},
+		{
+			name:  "hexadecimal characters upper and lower case",
+			query: "foo=Ba%42%42&bar=w%2f%2F",
+			expected: url.Values{
+				"foo": []string{"BaBB"},
+				"bar": []string{"w//"},
+			},
+		},
+		{
+			name:  "hexadecimal characters with invalid characters",
+			query: "foo=bar%20baz%2",
+			expected: url.Values{
+				"foo": []string{"bar baz%2"},
+			},
+		},
+		{
+			name:  "hexadecimal characters with invalid hex characters",
+			query: "foo=bar%xx",
+			expected: url.Values{
+				"foo": []string{"bar%xx"},
+			},
+		},
+		{
+			name:  "hexadecimal characters with invalid 2nd hex character",
+			query: "foo=bar%2x",
+			expected: url.Values{
+				"foo": []string{"bar%2x"},
+			},
+		},
+		{
+			name:  "url +",
+			query: "foo=bar+x",
+			expected: url.Values{
+				"foo": []string{"bar x"},
+			},
+		},
+		{
+			name:  "url &&",
+			query: "foo=bar&&lol=bur",
+			expected: url.Values{
+				"foo": []string{"bar"},
+				"lol": []string{"bur"},
+			},
+		},
 	}
 
 	for _, test := range tests {
