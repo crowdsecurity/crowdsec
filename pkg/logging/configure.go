@@ -2,10 +2,13 @@ package logging
 
 import (
 	"fmt"
+	"io"
+	"log/syslog"
 	"path/filepath"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -63,6 +66,14 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 			Compress:   _compress,
 		}
 		log.SetOutput(LogOutput)
+	} else if cfgMode == "syslog" {
+		fmt.Println("syslog")
+		hook, err := lSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "")
+		if err != nil {
+			return err
+		}
+		log.AddHook(hook)
+		log.SetOutput(io.Discard)
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
