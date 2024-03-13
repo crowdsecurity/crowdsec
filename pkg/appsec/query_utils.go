@@ -28,7 +28,6 @@ func parseQuery(m url.Values, query string) {
 		value = unescape(value)
 		m[key] = append(m[key], value)
 	}
-	return
 }
 
 func hexDigitToByte(digit byte) (byte, bool) {
