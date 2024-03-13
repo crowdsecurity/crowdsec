@@ -198,10 +198,7 @@ func TestParseQuery(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := ParseQuery(test.query)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
+			res := ParseQuery(test.query)
 			if !reflect.DeepEqual(res, test.expected) {
 				t.Fatalf("unexpected result: %v", res)
 			}

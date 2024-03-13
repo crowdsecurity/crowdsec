@@ -355,11 +355,6 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		}
 	}
 
-	parsed_args, err := ParseQuery(parsedURL.RawQuery)
-	if err != nil {
-		logger.Debugf("While parsing query %s : %s", parsedURL.RawQuery, err)
-	}
-
 	return ParsedRequest{
 		RemoteAddr:           r.RemoteAddr,
 		UUID:                 uuid.New().String(),
@@ -372,7 +367,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		URL:                  r.URL,
 		Proto:                r.Proto,
 		Body:                 body,
-		Args:                 parsed_args,
+		Args:                 ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,

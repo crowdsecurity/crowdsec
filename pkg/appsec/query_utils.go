@@ -8,13 +8,13 @@ import (
 )
 
 // parseQuery and parseQuery are copied net/url package, but allow semicolon in values
-func ParseQuery(query string) (url.Values, error) {
+func ParseQuery(query string) url.Values {
 	m := make(url.Values)
-	err := parseQuery(m, query)
-	return m, err
+	parseQuery(m, query)
+	return m
 }
 
-func parseQuery(m url.Values, query string) (err error) {
+func parseQuery(m url.Values, query string) {
 	for query != "" {
 		var key string
 		key, query, _ = strings.Cut(query, "&")
@@ -28,7 +28,7 @@ func parseQuery(m url.Values, query string) (err error) {
 		value = unescape(value)
 		m[key] = append(m[key], value)
 	}
-	return err
+	return
 }
 
 func hexDigitToByte(digit byte) (byte, bool) {
