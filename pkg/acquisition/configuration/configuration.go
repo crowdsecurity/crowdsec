@@ -25,3 +25,8 @@ const (
 	METRICS_AGGREGATE
 	METRICS_FULL
 )
+
+const (
+	CFG_METRICS_AGGREGATE = "aggregated"
+	CFG_METRICS_FULL      = "full"
+)
