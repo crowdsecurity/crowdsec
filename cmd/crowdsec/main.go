@@ -123,7 +123,7 @@ func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error)
 			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
+		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec, cConfig.Prometheus)
 		if err != nil {
 			return nil, err
 		}

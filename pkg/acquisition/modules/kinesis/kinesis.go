@@ -38,6 +38,7 @@ type KinesisConfiguration struct {
 }
 
 type KinesisSource struct {
+	metricsLevel    int
 	Config          KinesisConfiguration
 	logger          *log.Entry
 	kClient         *kinesis.Kinesis
@@ -149,8 +150,9 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	k.logger = logger
+	k.metricsLevel = MetricsLevel
 
 	err := k.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -283,11 +285,15 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry, shardId string) {
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
-			linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
-			linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
+			if k.metricsLevel != configuration.METRICS_NONE {
+				linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+				linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
+			}
 		} else {
-			linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
-			linesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
+			if k.metricsLevel != configuration.METRICS_NONE {
+				linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+				linesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
+			}
 		}
 		var data []CloudwatchSubscriptionLogEvent
 		var err error

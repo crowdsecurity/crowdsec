@@ -20,6 +20,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -130,7 +131,7 @@ query: >
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			lokiSource := loki.LokiSource{}
-			err := lokiSource.Configure([]byte(test.config), subLogger)
+			err := lokiSource.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			if test.password != "" {
@@ -346,7 +347,7 @@ since: 1h
 			"type": "loki",
 		})
 		lokiSource := loki.LokiSource{}
-		err := lokiSource.Configure([]byte(ts.config), subLogger)
+		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
@@ -436,7 +437,7 @@ query: >
 			lokiTomb := tomb.Tomb{}
 			lokiSource := loki.LokiSource{}
 
-			err := lokiSource.Configure([]byte(ts.config), subLogger)
+			err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -514,7 +515,7 @@ query: >
 	title := time.Now().String()
 	lokiSource := loki.LokiSource{}
 
-	err := lokiSource.Configure([]byte(config), subLogger)
+	err := lokiSource.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}

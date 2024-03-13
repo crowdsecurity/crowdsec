@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -143,7 +144,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 	})
 	for _, test := range tests {
 		f := KinesisSource{}
-		err := f.Configure([]byte(test.config), subLogger)
+		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -172,7 +173,7 @@ stream_name: stream-1-shard`,
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithFields(log.Fields{
 			"type": "kinesis",
-		}))
+		}), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -218,7 +219,7 @@ stream_name: stream-2-shards`,
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithFields(log.Fields{
 			"type": "kinesis",
-		}))
+		}), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -267,7 +268,7 @@ from_subscription: true`,
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithFields(log.Fields{
 			"type": "kinesis",
-		}))
+		}), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}

@@ -46,6 +46,7 @@ type DockerConfiguration struct {
 }
 
 type DockerSource struct {
+	metricsLevel          int
 	Config                DockerConfiguration
 	runningContainerState map[string]*ContainerConfig
 	compiledContainerName []*regexp.Regexp
@@ -128,9 +129,9 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	d.logger = logger
-
+	d.metricsLevel = MetricsLevel
 	err := d.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -325,7 +326,9 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 					l.Src = containerConfig.Name
 					l.Process = true
 					l.Module = d.GetName()
-					linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
+					if d.metricsLevel != configuration.METRICS_NONE {
+						linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
+					}
 					evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
 					out <- evt
 					d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
