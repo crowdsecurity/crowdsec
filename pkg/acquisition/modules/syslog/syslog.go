@@ -29,10 +29,11 @@ type SyslogConfiguration struct {
 }
 
 type SyslogSource struct {
-	config     SyslogConfiguration
-	logger     *log.Entry
-	server     *syslogserver.SyslogServer
-	serverTomb *tomb.Tomb
+	metricsLevel int
+	config       SyslogConfiguration
+	logger       *log.Entry
+	server       *syslogserver.SyslogServer
+	serverTomb   *tomb.Tomb
 }
 
 var linesReceived = prometheus.NewCounterVec(
@@ -121,10 +122,10 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
-
+	s.metricsLevel = MetricsLevel
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -198,7 +199,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 
 			logger := s.logger.WithField("client", syslogLine.Client)
 			logger.Tracef("raw: %s", syslogLine)
-			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+			if s.metricsLevel != configuration.METRICS_NONE {
+				linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+			}
 			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
 			err := p.Parse(syslogLine.Message)
 			if err != nil {
@@ -211,10 +214,14 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 					continue
 				}
 				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+				if s.metricsLevel != configuration.METRICS_NONE {
+					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+				}
 			} else {
 				line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+				if s.metricsLevel != configuration.METRICS_NONE {
+					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+				}
 			}
 
 			line = strings.TrimSuffix(line, "\n")
