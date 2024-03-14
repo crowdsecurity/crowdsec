@@ -320,6 +320,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	delete(r.Header, URIHeaderName)
 	delete(r.Header, VerbHeaderName)
 	delete(r.Header, UserAgentHeaderName)
+	delete(r.Header, APIKeyHeaderName)
 
 	originalHTTPRequest := r.Clone(r.Context())
 	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
