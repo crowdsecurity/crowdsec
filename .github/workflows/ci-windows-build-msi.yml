@@ -40,7 +40,7 @@ jobs:
     - name: Build
       run: make windows_installer BUILD_RE2_WASM=1
     - name: Upload MSI
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: crowdsec*msi
         name: crowdsec.msi
