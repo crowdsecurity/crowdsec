@@ -318,8 +318,8 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	if apiURL == "" {
 		if clientCfg != nil && clientCfg.Credentials != nil && clientCfg.Credentials.URL != "" {
 			apiURL = clientCfg.Credentials.URL
-		} else if serverCfg != nil && serverCfg.ListenURI != "" {
-			apiURL = "http://" + serverCfg.ListenURI
+		} else if serverCfg.ClientURL() != "" {
+			apiURL = serverCfg.ClientURL()
 		} else {
 			return errors.New("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 		}

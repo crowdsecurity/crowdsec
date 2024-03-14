@@ -44,7 +44,9 @@ func (cli *cliLapi) status() error {
 	password := strfmt.Password(cfg.API.Client.Credentials.Password)
 	login := cfg.API.Client.Credentials.Login
 
-	apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
+	origURL := cfg.API.Client.Credentials.URL
+
+	apiURL, err := url.Parse(origURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
@@ -59,7 +61,7 @@ func (cli *cliLapi) status() error {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiurl,
+	Client, err = apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
 		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
@@ -74,7 +76,8 @@ func (cli *cliLapi) status() error {
 	}
 
 	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
+	// use the original string because apiURL would print 'http://unix/'
+	log.Infof("Trying to authenticate with username %s on %s", login, origURL)
 
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
@@ -101,23 +104,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 
 	password := strfmt.Password(generatePassword(passwordLength))
 
-	if apiURL == "" {
-		if cfg.API.Client == nil || cfg.API.Client.Credentials == nil || cfg.API.Client.Credentials.URL == "" {
-			return fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
-		}
-
-		apiURL = cfg.API.Client.Credentials.URL
-	}
-	/*URL needs to end with /, but user doesn't care*/
-	if !strings.HasSuffix(apiURL, "/") {
-		apiURL += "/"
-	}
-	/*URL needs to start with http://, but user doesn't care*/
-	if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
-		apiURL = "http://" + apiURL
-	}
-
-	apiurl, err := url.Parse(apiURL)
+	apiurl, err := prepareAPIURL(cfg.API.Client, apiURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
@@ -173,13 +160,36 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	return nil
 }
 
+// prepareAPIURL checks/fixes a LAPI connection url (http, https or socket) and returns an URL struct
+func prepareAPIURL(clientCfg *csconfig.LocalApiClientCfg, apiURL string) (*url.URL, error) {
+	if apiURL == "" {
+		if clientCfg == nil || clientCfg.Credentials == nil || clientCfg.Credentials.URL == "" {
+			return nil, errors.New("no Local API URL. Please provide it in your configuration or with the -u parameter")
+		}
+
+		apiURL = clientCfg.Credentials.URL
+	}
+
+	// URL needs to end with /, but user doesn't care
+	if !strings.HasSuffix(apiURL, "/") {
+		apiURL += "/"
+	}
+
+	// URL needs to start with http://, but user doesn't care
+	if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") && !strings.HasPrefix(apiURL, "/") {
+		apiURL = "http://" + apiURL
+	}
+
+	return url.Parse(apiURL)
+}
+
 func (cli *cliLapi) newStatusCmd() *cobra.Command {
 	cmdLapiStatus := &cobra.Command{
 		Use:               "status",
 		Short:             "Check authentication to Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.status()
 		},
 	}

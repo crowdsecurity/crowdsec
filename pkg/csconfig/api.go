@@ -141,12 +141,25 @@ func (l *LocalApiClientCfg) Load() error {
 	}
 
 	if l.Credentials != nil && l.Credentials.URL != "" {
-		if !strings.HasSuffix(l.Credentials.URL, "/") {
+		// don't append a trailing slash if the URL is a unix socket
+		if strings.HasPrefix(l.Credentials.URL, "http") && !strings.HasSuffix(l.Credentials.URL, "/") {
 			l.Credentials.URL += "/"
 		}
 	}
 
-	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+	// is the configuration asking for client authentication via TLS?
+	credTLSClientAuth := l.Credentials.CertPath != "" || l.Credentials.KeyPath != ""
+
+	// is the configuration asking for TLS encryption and server authentication?
+	credTLS := credTLSClientAuth || l.Credentials.CACertPath != ""
+
+	credSocket := strings.HasPrefix(l.Credentials.URL, "/")
+
+	if credTLS && credSocket {
+		return errors.New("cannot use TLS with a unix socket")
+	}
+
+	if credTLSClientAuth && l.Credentials.Login != "" {
 		return errors.New("user/password authentication and TLS authentication are mutually exclusive")
 	}
 
@@ -187,10 +200,10 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
+func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
 
-	for _, ip := range lapiCfg.TrustedIPs {
+	for _, ip := range c.TrustedIPs {
 		cidr := toValidCIDR(ip)
 
 		_, ipNet, err := net.ParseCIDR(cidr)
@@ -225,6 +238,7 @@ type CapiWhitelist struct {
 type LocalApiServerCfg struct {
 	Enable                        *bool               `yaml:"enable"`
 	ListenURI                     string              `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
+	ListenSocket                  string              `yaml:"listen_socket,omitempty"`
 	TLS                           *TLSCfg             `yaml:"tls"`
 	DbConfig                      *DatabaseCfg        `yaml:"-"`
 	LogDir                        string              `yaml:"-"`
@@ -248,6 +262,22 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
+func (c *LocalApiServerCfg) ClientURL() string {
+	if c == nil {
+		return ""
+	}
+
+	if c.ListenSocket != "" {
+		return c.ListenSocket
+	}
+
+	if c.ListenURI != "" {
+		return "http://" + c.ListenURI
+	}
+
+	return ""
+}
+
 func (c *Config) LoadAPIServer(inCli bool) error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
@@ -255,7 +285,9 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 
 	if c.API.Server == nil {
 		log.Warning("crowdsec local API is disabled")
+
 		c.DisableAPI = true
+
 		return nil
 	}
 
@@ -266,6 +298,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 
 	if !*c.API.Server.Enable {
 		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
+
 		c.DisableAPI = true
 	}
 
@@ -273,8 +306,8 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		return nil
 	}
 
-	if c.API.Server.ListenURI == "" {
-		return errors.New("no listen_uri specified")
+	if c.API.Server.ListenURI == "" && c.API.Server.ListenSocket == "" {
+		return errors.New("no listen_uri or listen_socket specified")
 	}
 
 	// inherit log level from common, then api->server
@@ -393,21 +426,21 @@ func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
 	return ret, nil
 }
 
-func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
-	if s.CapiWhitelistsPath == "" {
+func (c *LocalApiServerCfg) LoadCapiWhitelists() error {
+	if c.CapiWhitelistsPath == "" {
 		return nil
 	}
 
-	fd, err := os.Open(s.CapiWhitelistsPath)
+	fd, err := os.Open(c.CapiWhitelistsPath)
 	if err != nil {
 		return fmt.Errorf("while opening capi whitelist file: %w", err)
 	}
 
 	defer fd.Close()
 
-	s.CapiWhitelists, err = parseCapiWhitelists(fd)
+	c.CapiWhitelists, err = parseCapiWhitelists(fd)
 	if err != nil {
-		return fmt.Errorf("while parsing capi whitelist file '%s': %w", s.CapiWhitelistsPath, err)
+		return fmt.Errorf("while parsing capi whitelist file '%s': %w", c.CapiWhitelistsPath, err)
 	}
 
 	return nil
