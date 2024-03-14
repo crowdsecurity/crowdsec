@@ -58,6 +58,7 @@ config_prepare() {
     # remove trailing slash from CONFIG_DIR
     # since it's assumed to be missing during the tests
     yq e -i '
+        .api.server.listen_socket="/run/crowdsec.sock" |
         .config_paths.config_dir |= sub("/$", "")
     ' "${CONFIG_DIR}/config.yaml"
 }

@@ -61,6 +61,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	if j.TlsAuth == nil {
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
+
 		return nil, errors.New("TLS auth is not configured")
 	}
 
@@ -76,7 +77,8 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	if !validCert {
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
-		return nil, fmt.Errorf("failed cert authentication")
+
+		return nil, errors.New("failed cert authentication")
 	}
 
 	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
@@ -85,9 +87,9 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		Where(machine.MachineId(ret.machineID)).
 		First(j.DbClient.CTX)
 	if ent.IsNotFound(err) {
-		//Machine was not found, let's create it
+		// Machine was not found, let's create it
 		log.Infof("machine %s not found, create it", ret.machineID)
-		//let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
+		// let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
 		pwd, err := GenerateAPIKey(dummyAPIKeySize)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -95,7 +97,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 				"cn": extractedCN,
 			}).Errorf("error generating password: %s", err)
 
-			return nil, fmt.Errorf("error generating password")
+			return nil, errors.New("error generating password")
 		}
 
 		password := strfmt.Password(pwd)
@@ -110,6 +112,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		if ret.clientMachine.AuthType != types.TlsAuthType {
 			return nil, fmt.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 		}
+
 		ret.machineID = ret.clientMachine.MachineId
 	}
 
@@ -213,18 +216,20 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		}
 	}
 
+	clientIP := c.ClientIP()
+
 	if auth.clientMachine.IpAddress == "" {
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), auth.clientMachine.ID)
+		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.machineID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
 
-	if auth.clientMachine.IpAddress != c.ClientIP() && auth.clientMachine.IpAddress != "" {
-		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, c.ClientIP(), auth.clientMachine.IpAddress)
+	if auth.clientMachine.IpAddress != clientIP && auth.clientMachine.IpAddress != "" {
+		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, clientIP, auth.clientMachine.IpAddress)
 
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), auth.clientMachine.ID)
+		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.MachineId, err)
 			return nil, jwt.ErrFailedAuthentication
@@ -233,13 +238,14 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 
 	useragent := strings.Split(c.Request.UserAgent(), "/")
 	if len(useragent) != 2 {
-		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), c.ClientIP())
+		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), clientIP)
 		return nil, jwt.ErrFailedAuthentication
 	}
 
 	if err := j.DbClient.UpdateMachineVersion(useragent[1], auth.clientMachine.ID); err != nil {
 		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
-		log.Errorf("bad user agent from : %s", c.ClientIP())
+		log.Errorf("bad user agent from : %s", clientIP)
+
 		return nil, jwt.ErrFailedAuthentication
 	}
 
@@ -323,8 +329,9 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 
 	errInit := ret.MiddlewareInit()
 	if errInit != nil {
-		return &JWT{}, fmt.Errorf("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
+		return &JWT{}, errors.New("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
 	}
+
 	jwtMiddleware.Middleware = ret
 
 	return jwtMiddleware, nil
