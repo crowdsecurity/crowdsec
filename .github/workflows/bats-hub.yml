@@ -53,7 +53,7 @@ jobs:
       run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
-      uses: schneegans/dynamic-badges-action@v1.6.0
+      uses: schneegans/dynamic-badges-action@v1.7.0
       if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
@@ -64,7 +64,7 @@ jobs:
         color: ${{ env.SCENARIO_BADGE_COLOR }}
 
     - name: "Create Scenarios badge"
-      uses: schneegans/dynamic-badges-action@v1.6.0
+      uses: schneegans/dynamic-badges-action@v1.7.0
       if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}

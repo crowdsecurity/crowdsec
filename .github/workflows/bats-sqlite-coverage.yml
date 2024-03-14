@@ -77,7 +77,7 @@ jobs:
       if: ${{ always() }}
 
     - name: Upload crowdsec coverage to codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: ./coverage-bats.out
         flags: bats
