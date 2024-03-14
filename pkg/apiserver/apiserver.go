@@ -250,8 +250,8 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 
-		if apiClient.apiClient.IsEnrolled() {
-			if config.ConsoleConfig.IsPAPIEnabled() {
+		if config.ConsoleConfig.IsPAPIEnabled() {
+			if apiClient.apiClient.IsEnrolled() {
 				log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
 				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
@@ -260,9 +260,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 				}
 
 				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+			} else {
+				log.Error("Machine is not enrolled in the console, can't synchronize with the console")
 			}
-		} else {
-			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	}
 
