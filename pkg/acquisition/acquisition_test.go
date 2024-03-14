@@ -35,7 +35,7 @@ func (f *MockSource) UnmarshalConfig(cfg []byte) error {
 	return nil
 }
 
-func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
+func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
 	f.logger = logger
 	if err := f.UnmarshalConfig(cfg); err != nil {
 		return err
@@ -182,7 +182,7 @@ wowo: ajsajasjas
 		t.Run(tc.TestName, func(t *testing.T) {
 			common := configuration.DataSourceCommonCfg{}
 			yaml.Unmarshal([]byte(tc.String), &common)
-			ds, err := DataSourceConfigure(common)
+			ds, err := DataSourceConfigure(common, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 			if tc.ExpectedError != "" {
 				return
@@ -283,7 +283,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFile(&tc.Config)
+			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 			if tc.ExpectedError != "" {
 				return
@@ -305,7 +305,7 @@ type MockCat struct {
 	logger                            *log.Entry
 }
 
-func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
+func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
@@ -349,7 +349,7 @@ type MockTail struct {
 	logger                            *log.Entry
 }
 
-func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
+func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
@@ -497,8 +497,10 @@ type MockSourceByDSN struct {
 	logger                            *log.Entry //nolint: unused
 }
 
-func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error                        { return nil }
-func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry) error           { return nil }
+func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }
+func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
+	return nil
+}
 func (f *MockSourceByDSN) GetMode() string                                         { return f.Mode }
 func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
 func (f *MockSourceByDSN) StreamingAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
