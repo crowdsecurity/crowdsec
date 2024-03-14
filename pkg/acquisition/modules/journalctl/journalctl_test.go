@@ -10,6 +10,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -52,7 +53,7 @@ journalctl_filter:
 
 	for _, test := range tests {
 		f := JournalCtlSource{}
-		err := f.Configure([]byte(test.config), subLogger)
+		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -144,9 +145,9 @@ journalctl_filter:
 	}
 	for _, ts := range tests {
 		var (
-			logger *log.Logger
+			logger    *log.Logger
 			subLogger *log.Entry
-			hook *test.Hook
+			hook      *test.Hook
 		)
 
 		if ts.expectedOutput != "" {
@@ -165,7 +166,7 @@ journalctl_filter:
 		out := make(chan types.Event, 100)
 		j := JournalCtlSource{}
 
-		err := j.Configure([]byte(ts.config), subLogger)
+		err := j.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -218,9 +219,9 @@ journalctl_filter:
 	}
 	for _, ts := range tests {
 		var (
-			logger *log.Logger
+			logger    *log.Logger
 			subLogger *log.Entry
-			hook *test.Hook
+			hook      *test.Hook
 		)
 
 		if ts.expectedOutput != "" {
@@ -239,7 +240,7 @@ journalctl_filter:
 		out := make(chan types.Event)
 		j := JournalCtlSource{}
 
-		err := j.Configure([]byte(ts.config), subLogger)
+		err := j.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}

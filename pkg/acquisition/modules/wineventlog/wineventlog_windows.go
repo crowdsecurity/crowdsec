@@ -34,11 +34,12 @@ type WinEventLogConfiguration struct {
 }
 
 type WinEventLogSource struct {
-	config    WinEventLogConfiguration
-	logger    *log.Entry
-	evtConfig *winlog.SubscribeConfig
-	query     string
-	name      string
+	metricsLevel int
+	config       WinEventLogConfiguration
+	logger       *log.Entry
+	evtConfig    *winlog.SubscribeConfig
+	query        string
+	name         string
 }
 
 type QueryList struct {
@@ -188,7 +189,9 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					continue
 				}
 				for _, event := range renderedEvents {
-					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+					if w.metricsLevel != configuration.METRICS_NONE {
+						linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+					}
 					l := types.Line{}
 					l.Raw = event
 					l.Module = w.GetName()
@@ -270,8 +273,9 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	w.logger = logger
+	w.metricsLevel = MetricsLevel
 
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {

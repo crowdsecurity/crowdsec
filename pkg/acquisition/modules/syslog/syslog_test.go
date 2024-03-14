@@ -9,6 +9,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -56,7 +57,7 @@ listen_addr: 10.0.0`,
 	})
 	for _, test := range tests {
 		s := SyslogSource{}
-		err := s.Configure([]byte(test.config), subLogger)
+		err := s.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -137,7 +138,7 @@ listen_addr: 127.0.0.1`,
 				"type": "syslog",
 			})
 			s := SyslogSource{}
-			err := s.Configure([]byte(ts.config), subLogger)
+			err := s.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
