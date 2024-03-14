@@ -342,6 +342,10 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	}
 
 	var remoteAddrNormalized string
+	if r.RemoteAddr == "@" {
+		r.RemoteAddr = "127.0.0.1:65535"
+	}
+	// TODO we need to implement forwrded headers
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		log.Errorf("Invalid appsec remote IP source %v: %s", r.RemoteAddr, err.Error())
