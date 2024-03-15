@@ -188,7 +188,7 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		p.Logger.Infof("Received blocklist_unsubscribe command from PAPI, unsubscribing from blocklist %s", unsubscribeMsg.Name)
 
 		filter := make(map[string][]string)
-		filter["scopes"] = []string{types.ListOrigin}
+		filter["origin"] = []string{types.ListOrigin}
 		filter["scenario"] = []string{unsubscribeMsg.Name}
 
 		_, deletedDecisions, err := p.DBClient.SoftDeleteDecisionsWithFilter(filter)
