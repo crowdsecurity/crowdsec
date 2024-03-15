@@ -4,7 +4,6 @@ run:
   skip-dirs:
     - pkg/time/rate
   skip-files:
-    - pkg/database/ent/generate.go
     - pkg/yamlpatch/merge.go
     - pkg/yamlpatch/merge_test.go
 
@@ -32,17 +31,31 @@ linters-settings:
     # Checks the number of lines in a function.
     # If lower than 0, disable the check.
     # Default: 60
-    lines: -1
+    # lower this after refactoring
+    lines: 437
     # Checks the number of statements in a function.
     # If lower than 0, disable the check.
     # Default: 40
-    statements: -1
+    # lower this after refactoring
+    statements: 122
 
   govet:
     check-shadowing: true
+    enable:
+     - atomicalign
+     - deepequalerrors
+     # TODO: - fieldalignment
+     - findcall
+     - nilness
+     # TODO: - reflectvaluecompare
+     - shadow
+     - sortslice
+     - timeformat
+     - unusedwrite
 
   lll:
-    line-length: 140
+    # lower this after refactoring
+    line-length: 2607
 
   maintidx:
     # raise this after refactoring
@@ -72,6 +85,12 @@ linters-settings:
         deny:
           - pkg: "github.com/pkg/errors"
             desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
+        files:
+          - "!**/pkg/database/*.go"
+          - "!**/pkg/exprhelpers/*.go"
+          - "!**/pkg/acquisition/modules/appsec/appsec.go"
+          - "!**/pkg/acquisition/modules/loki/internal/lokiclient/loki_client.go"
+          - "!**/pkg/apiserver/controllers/v1/errors.go"
       yaml:
         files:
           - "!**/cmd/crowdsec-cli/alerts.go"
@@ -176,6 +195,7 @@ linters:
     # - importas            # Enforces consistent import aliases
     # - ineffassign         # Detects when assignments to existing variables are not used
     # - interfacebloat      # A linter that checks the number of methods inside an interface.
+    # - lll                 # Reports long lines
     # - logrlint            # Check logr arguments.
     # - maintidx            # maintidx measures the maintainability index of each function.
     # - makezero            # Finds slice declarations with non-zero initial length
@@ -213,7 +233,6 @@ linters:
     - goimports             # In addition to fixing imports, goimports also formats your code in the same style as gofmt.
     - gosec                 # (gas): Inspects source code for security problems
     - inamedparam           # reports interfaces with unnamed method parameters
-    - lll                   # Reports long lines
     - musttag               # enforce field tags in (un)marshaled structs
     - promlinter            # Check Prometheus metrics naming via promlint
     - protogetter           # Reports direct reads from proto message fields when getters should be used
@@ -362,13 +381,3 @@ issues:
     - linters:
         - nonamedreturns
       text: "named return .* with type .* found"
-
-    #
-    # Will fix,  might be trickier
-    #
-
-    # https://github.com/pkg/errors/issues/245
-    - linters:
-        - depguard
-      text: "import 'github.com/pkg/errors' is not allowed .*"
-

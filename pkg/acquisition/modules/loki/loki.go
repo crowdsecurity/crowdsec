@@ -6,13 +6,13 @@ https://grafana.com/docs/loki/latest/api/#get-lokiapiv1tail
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
