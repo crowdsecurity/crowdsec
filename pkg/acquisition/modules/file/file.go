@@ -506,7 +506,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			}
 			logger.Warningf(errMsg)
 			t.Kill(fmt.Errorf(errMsg))
-			return fmt.Errorf(errMsg)
+			return nil
 		case line := <-tail.Lines:
 			if line == nil {
 				logger.Warningf("tail for %s is empty", tail.Filename)
