@@ -16,3 +16,5 @@ Set-Location .\windows\Chocolatey\crowdsec
 Copy-Item ..\..\..\crowdsec_$version.msi tools\crowdsec.msi
 
 choco pack --version $version
+
+Copy-Item crowdsec.$version.nupkg ..\..\..\

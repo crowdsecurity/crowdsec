@@ -148,12 +148,12 @@ stages:
             displayName: "Sign nuget package"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/crowdsec_$(BuildVersion).msi'
+              targetPath: '$(Build.SourcesDirectory)/crowdsec_$(BuildVersion).msi'
               artifact: 'signed_msi_package'
             displayName: "Upload signed MSI artifact"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/crowdsec.$(BuildVersion).nupkg'
+              targetPath: '$(Build.SourcesDirectory)/crowdsec.$(BuildVersion).nupkg'
               artifact: 'signed_nuget_package'
             displayName: "Upload signed nuget artifact"
             
