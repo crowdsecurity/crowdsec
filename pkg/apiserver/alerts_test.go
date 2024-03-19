@@ -151,7 +151,7 @@ func TestCreateAlertChannels(t *testing.T) {
 		wg.Done()
 	}()
 
-	go lapi.InsertAlertFromFile(t, "./tests/alert_ssh-bf.json")
+	lapi.InsertAlertFromFile(t, "./tests/alert_ssh-bf.json")
 	wg.Wait()
 	assert.Len(t, pd.Alert.Decisions, 1)
 	apiServer.Close()

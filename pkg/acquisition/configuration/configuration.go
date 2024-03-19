@@ -19,3 +19,14 @@ type DataSourceCommonCfg struct {
 var TAIL_MODE = "tail"
 var CAT_MODE = "cat"
 var SERVER_MODE = "server" // No difference with tail, just a bit more verbose
+
+const (
+	METRICS_NONE = iota
+	METRICS_AGGREGATE
+	METRICS_FULL
+)
+
+const (
+	CFG_METRICS_AGGREGATE = "aggregated"
+	CFG_METRICS_FULL      = "full"
+)

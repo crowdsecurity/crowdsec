@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/aquasecurity/table"
-	"github.com/enescakir/emoji"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
@@ -21,6 +21,7 @@ func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
 		status := fmt.Sprintf("%v  %s", item.State.Emoji(), item.State.Text())
 		t.AddRow(item.Name, status, item.State.LocalVersion, item.State.LocalPath)
 	}
+
 	renderTableTitle(out, title)
 	t.Render()
 }
@@ -42,6 +43,7 @@ func scenarioMetricsTable(out io.Writer, itemName string, metrics map[string]int
 	if metrics["instantiation"] == 0 {
 		return
 	}
+
 	t := newTable(out)
 	t.SetHeaders("Current Count", "Overflows", "Instantiated", "Poured", "Expired")
 
@@ -72,6 +74,7 @@ func parserMetricsTable(out io.Writer, itemName string, metrics map[string]map[s
 				strconv.Itoa(stats["parsed"]),
 				strconv.Itoa(stats["unparsed"]),
 			)
+
 			showTable = true
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -58,7 +59,7 @@ xpath_query: test`,
 	})
 	for _, test := range tests {
 		f := WinEventLogSource{}
-		err := f.Configure([]byte(test.config), subLogger)
+		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		assert.Contains(t, err.Error(), test.expectedErr)
 	}
 }
@@ -117,7 +118,7 @@ event_level: bla`,
 	})
 	for _, test := range tests {
 		f := WinEventLogSource{}
-		f.Configure([]byte(test.config), subLogger)
+		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		q, err := f.buildXpathQuery()
 		if test.expectedErr != "" {
 			if err == nil {
@@ -194,7 +195,7 @@ event_ids:
 		to := &tomb.Tomb{}
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
-		f.Configure([]byte(test.config), subLogger)
+		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		f.StreamingAcquisition(c, to)
 		time.Sleep(time.Second)
 		lines := test.expectedLines

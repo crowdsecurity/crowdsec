@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
@@ -60,7 +61,7 @@ container_name:
 
 	for _, test := range tests {
 		f := DockerSource{}
-		err := f.Configure([]byte(test.config), subLogger)
+		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -162,7 +163,7 @@ container_name_regexp:
 
 	for _, ts := range tests {
 		var (
-			logger *log.Logger
+			logger    *log.Logger
 			subLogger *log.Entry
 		)
 
@@ -182,7 +183,7 @@ container_name_regexp:
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
 
-		err := dockerSource.Configure([]byte(ts.config), subLogger)
+		err := dockerSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -304,7 +305,7 @@ func TestOneShot(t *testing.T) {
 	for _, ts := range tests {
 		var (
 			subLogger *log.Entry
-			logger *log.Logger
+			logger    *log.Logger
 		)
 
 		if ts.expectedOutput != "" {

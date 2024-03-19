@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +82,7 @@ webhook_path: /k8s-audit`,
 
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(test.config), subLogger)
+			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 
 			require.NoError(t, err)
 			f.StreamingAcquisition(out, tb)
@@ -253,7 +254,7 @@ webhook_path: /k8s-audit`,
 			f := KubernetesAuditSource{}
 			err := f.UnmarshalConfig([]byte(test.config))
 			require.NoError(t, err)
-			err = f.Configure([]byte(test.config), subLogger)
+			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 
 			require.NoError(t, err)
 

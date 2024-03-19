@@ -33,6 +33,7 @@ func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "listing bouncers: %s", err)
 	}
+
 	return result, nil
 }
 
@@ -48,8 +49,10 @@ func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authTy
 		if ent.IsConstraintError(err) {
 			return nil, fmt.Errorf("bouncer %s already exists", name)
 		}
-		return nil, fmt.Errorf("unable to create bouncer: %s", err)
+
+		return nil, fmt.Errorf("unable to create bouncer: %w", err)
 	}
+
 	return bouncer, nil
 }
 
@@ -63,7 +66,7 @@ func (c *Client) DeleteBouncer(name string) error {
 	}
 
 	if nbDeleted == 0 {
-		return fmt.Errorf("bouncer doesn't exist")
+		return errors.New("bouncer doesn't exist")
 	}
 
 	return nil
@@ -74,36 +77,41 @@ func (c *Client) BulkDeleteBouncers(bouncers []*ent.Bouncer) (int, error) {
 	for i, b := range bouncers {
 		ids[i] = b.ID
 	}
+
 	nbDeleted, err := c.Ent.Bouncer.Delete().Where(bouncer.IDIn(ids...)).Exec(c.CTX)
 	if err != nil {
-		return nbDeleted, fmt.Errorf("unable to delete bouncers: %s", err)
+		return nbDeleted, fmt.Errorf("unable to delete bouncers: %w", err)
 	}
+
 	return nbDeleted, nil
 }
 
-func (c *Client) UpdateBouncerLastPull(lastPull time.Time, ID int) error {
-	_, err := c.Ent.Bouncer.UpdateOneID(ID).
+func (c *Client) UpdateBouncerLastPull(lastPull time.Time, id int) error {
+	_, err := c.Ent.Bouncer.UpdateOneID(id).
 		SetLastPull(lastPull).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine last pull in database: %s", err)
+		return fmt.Errorf("unable to update machine last pull in database: %w", err)
 	}
+
 	return nil
 }
 
-func (c *Client) UpdateBouncerIP(ipAddr string, ID int) error {
-	_, err := c.Ent.Bouncer.UpdateOneID(ID).SetIPAddress(ipAddr).Save(c.CTX)
+func (c *Client) UpdateBouncerIP(ipAddr string, id int) error {
+	_, err := c.Ent.Bouncer.UpdateOneID(id).SetIPAddress(ipAddr).Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update bouncer ip address in database: %s", err)
+		return fmt.Errorf("unable to update bouncer ip address in database: %w", err)
 	}
+
 	return nil
 }
 
-func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, ID int) error {
-	_, err := c.Ent.Bouncer.UpdateOneID(ID).SetVersion(version).SetType(bType).Save(c.CTX)
+func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, id int) error {
+	_, err := c.Ent.Bouncer.UpdateOneID(id).SetVersion(version).SetType(bType).Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update bouncer type and version in database: %s", err)
+		return fmt.Errorf("unable to update bouncer type and version in database: %w", err)
 	}
+
 	return nil
 }
 

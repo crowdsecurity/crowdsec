@@ -16,7 +16,7 @@ func TestDownloadFile(t *testing.T) {
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 
-	//OK
+	// OK
 	httpmock.RegisterResponder(
 		"GET",
 		"https://example.com/xx",
@@ -36,15 +36,15 @@ func TestDownloadFile(t *testing.T) {
 	assert.Equal(t, "example content oneoneone", string(content))
 	require.NoError(t, err)
 
-	//bad uri
+	// bad uri
 	err = downloadFile("https://zz.com", examplePath)
 	require.Error(t, err)
 
-	//404
+	// 404
 	err = downloadFile("https://example.com/x", examplePath)
 	require.Error(t, err)
 
-	//bad target
+	// bad target
 	err = downloadFile("https://example.com/xx", "")
 	require.Error(t, err)
 }

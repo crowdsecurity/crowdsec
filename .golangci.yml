@@ -4,7 +4,6 @@ run:
   skip-dirs:
     - pkg/time/rate
   skip-files:
-    - pkg/database/ent/generate.go
     - pkg/yamlpatch/merge.go
     - pkg/yamlpatch/merge_test.go
 
@@ -32,17 +31,31 @@ linters-settings:
     # Checks the number of lines in a function.
     # If lower than 0, disable the check.
     # Default: 60
-    lines: -1
+    # lower this after refactoring
+    lines: 437
     # Checks the number of statements in a function.
     # If lower than 0, disable the check.
     # Default: 40
-    statements: -1
+    # lower this after refactoring
+    statements: 122
 
   govet:
     check-shadowing: true
+    enable:
+     - atomicalign
+     - deepequalerrors
+     # TODO: - fieldalignment
+     - findcall
+     - nilness
+     # TODO: - reflectvaluecompare
+     - shadow
+     - sortslice
+     - timeformat
+     - unusedwrite
 
   lll:
-    line-length: 140
+    # lower this after refactoring
+    line-length: 2607
 
   maintidx:
     # raise this after refactoring
@@ -68,10 +81,65 @@ linters-settings:
 
   depguard:
     rules:
-      main:
+      wrap:
         deny:
           - pkg: "github.com/pkg/errors"
             desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
+        files:
+          - "!**/pkg/database/*.go"
+          - "!**/pkg/exprhelpers/*.go"
+          - "!**/pkg/acquisition/modules/appsec/appsec.go"
+          - "!**/pkg/acquisition/modules/loki/internal/lokiclient/loki_client.go"
+          - "!**/pkg/apiserver/controllers/v1/errors.go"
+      yaml:
+        files:
+          - "!**/cmd/crowdsec-cli/alerts.go"
+          - "!**/cmd/crowdsec-cli/capi.go"
+          - "!**/cmd/crowdsec-cli/config_show.go"
+          - "!**/cmd/crowdsec-cli/hubtest.go"
+          - "!**/cmd/crowdsec-cli/lapi.go"
+          - "!**/cmd/crowdsec-cli/simulation.go"
+          - "!**/cmd/crowdsec/crowdsec.go"
+          - "!**/cmd/notification-dummy/main.go"
+          - "!**/cmd/notification-email/main.go"
+          - "!**/cmd/notification-http/main.go"
+          - "!**/cmd/notification-slack/main.go"
+          - "!**/cmd/notification-splunk/main.go"
+          - "!**/pkg/acquisition/acquisition.go"
+          - "!**/pkg/acquisition/acquisition_test.go"
+          - "!**/pkg/acquisition/modules/appsec/appsec.go"
+          - "!**/pkg/acquisition/modules/cloudwatch/cloudwatch.go"
+          - "!**/pkg/acquisition/modules/docker/docker.go"
+          - "!**/pkg/acquisition/modules/file/file.go"
+          - "!**/pkg/acquisition/modules/journalctl/journalctl.go"
+          - "!**/pkg/acquisition/modules/kafka/kafka.go"
+          - "!**/pkg/acquisition/modules/kinesis/kinesis.go"
+          - "!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go"
+          - "!**/pkg/acquisition/modules/loki/loki.go"
+          - "!**/pkg/acquisition/modules/loki/timestamp_test.go"
+          - "!**/pkg/acquisition/modules/s3/s3.go"
+          - "!**/pkg/acquisition/modules/syslog/syslog.go"
+          - "!**/pkg/acquisition/modules/wineventlog/wineventlog_windows.go"
+          - "!**/pkg/appsec/appsec.go"
+          - "!**/pkg/appsec/loader.go"
+          - "!**/pkg/csplugin/broker.go"
+          - "!**/pkg/csplugin/broker_test.go"
+          - "!**/pkg/dumps/bucket_dump.go"
+          - "!**/pkg/dumps/parser_dump.go"
+          - "!**/pkg/hubtest/coverage.go"
+          - "!**/pkg/hubtest/hubtest_item.go"
+          - "!**/pkg/hubtest/parser_assert.go"
+          - "!**/pkg/hubtest/scenario_assert.go"
+          - "!**/pkg/leakybucket/buckets_test.go"
+          - "!**/pkg/leakybucket/manager_load.go"
+          - "!**/pkg/metabase/metabase.go"
+          - "!**/pkg/parser/node.go"
+          - "!**/pkg/parser/node_test.go"
+          - "!**/pkg/parser/parsing_test.go"
+          - "!**/pkg/parser/stage.go"
+        deny:
+          - pkg: "gopkg.in/yaml.v2"
+            desc: "yaml.v2 is deprecated for new code in favor of yaml.v3"
 
   wsl:
     # Allow blocks to end with comments
@@ -127,6 +195,7 @@ linters:
     # - importas            # Enforces consistent import aliases
     # - ineffassign         # Detects when assignments to existing variables are not used
     # - interfacebloat      # A linter that checks the number of methods inside an interface.
+    # - lll                 # Reports long lines
     # - logrlint            # Check logr arguments.
     # - maintidx            # maintidx measures the maintainability index of each function.
     # - makezero            # Finds slice declarations with non-zero initial length
@@ -164,7 +233,6 @@ linters:
     - goimports             # In addition to fixing imports, goimports also formats your code in the same style as gofmt.
     - gosec                 # (gas): Inspects source code for security problems
     - inamedparam           # reports interfaces with unnamed method parameters
-    - lll                   # Reports long lines
     - musttag               # enforce field tags in (un)marshaled structs
     - promlinter            # Check Prometheus metrics naming via promlint
     - protogetter           # Reports direct reads from proto message fields when getters should be used
@@ -313,13 +381,3 @@ issues:
     - linters:
         - nonamedreturns
       text: "named return .* with type .* found"
-
-    #
-    # Will fix,  might be trickier
-    #
-
-    # https://github.com/pkg/errors/issues/245
-    - linters:
-        - depguard
-      text: "import 'github.com/pkg/errors' is not allowed .*"
-

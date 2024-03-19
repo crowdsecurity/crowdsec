@@ -43,7 +43,8 @@ var linesRead = prometheus.NewCounterVec(
 
 // CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
 type CloudwatchSource struct {
-	Config CloudwatchSourceConfiguration
+	metricsLevel int
+	Config       CloudwatchSourceConfiguration
 	/*runtime stuff*/
 	logger           *log.Entry
 	t                *tomb.Tomb
@@ -152,11 +153,12 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	err := cw.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
+	cw.metricsLevel = MetricsLevel
 
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 
@@ -385,7 +387,9 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 					if !stream.t.Alive() {
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
 						cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
-						openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
+						if cw.metricsLevel != configuration.METRICS_NONE {
+							openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
+						}
 						break
 					}
 					shouldCreate = false
@@ -395,7 +399,9 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 			//let's start watching this stream
 			if shouldCreate {
-				openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
+				if cw.metricsLevel != configuration.METRICS_NONE {
+					openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
+				}
 				newStream.t = tomb.Tomb{}
 				newStream.logger = cw.logger.WithFields(log.Fields{"stream": newStream.StreamName})
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
@@ -409,7 +415,9 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 			for idx, stream := range cw.monitoredStreams {
 				if !cw.monitoredStreams[idx].t.Alive() {
 					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
-					openedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
+					if cw.metricsLevel != configuration.METRICS_NONE {
+						openedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
+					}
 				} else {
 					newMonitoredStreams = append(newMonitoredStreams, stream)
 				}
@@ -485,7 +493,9 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 								cfg.logger.Warningf("cwLogToEvent error, discarded event : %s", err)
 							} else {
 								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
-								linesRead.With(prometheus.Labels{"group": cfg.GroupName, "stream": cfg.StreamName}).Inc()
+								if cw.metricsLevel != configuration.METRICS_NONE {
+									linesRead.With(prometheus.Labels{"group": cfg.GroupName, "stream": cfg.StreamName}).Inc()
+								}
 								outChan <- evt
 							}
 						}

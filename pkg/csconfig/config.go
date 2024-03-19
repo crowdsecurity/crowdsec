@@ -1,15 +1,18 @@
 // Package csconfig contains the configuration structures for crowdsec and cscli.
-
 package csconfig
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
@@ -57,10 +60,15 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool
 		DisableAPI:   disableAPI,
 	}
 
-	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
+	dec := yaml.NewDecoder(strings.NewReader(configData))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&cfg)
 	if err != nil {
-		// this is actually the "merged" yaml
-		return nil, "", fmt.Errorf("%s: %w", configFile, err)
+		if !errors.Is(err, io.EOF) {
+			// this is actually the "merged" yaml
+			return nil, "", fmt.Errorf("%s: %w", configFile, err)
+		}
 	}
 
 	if cfg.Prometheus == nil {
@@ -111,7 +119,7 @@ func NewDefaultConfig() *Config {
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
-		Level:   "full",
+		Level:   configuration.CFG_METRICS_FULL,
 	}
 	configPaths := ConfigurationPaths{
 		ConfigDir:          DefaultConfigPath("."),

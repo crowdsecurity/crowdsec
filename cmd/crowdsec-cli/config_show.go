@@ -100,6 +100,7 @@ API Client:
 {{- if .API.Server }}
 Local API Server{{if and .API.Server.Enable (not (ValueBool .API.Server.Enable))}} (disabled){{end}}:
   - Listen URL              : {{.API.Server.ListenURI}}
+  - Listen Socket           : {{.API.Server.ListenSocket}}
   - Profile File            : {{.API.Server.ProfilesPath}}
 
 {{- if .API.Server.TLS }}
@@ -182,31 +183,26 @@ Central API:
 {{- end }}
 `
 
-func runConfigShow(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliConfig) show(key string) error {
+	cfg := cli.cfg()
 
-	if err := csConfig.LoadAPIClient(); err != nil {
+	if err := cfg.LoadAPIClient(); err != nil {
 		log.Errorf("failed to load API client configuration: %s", err)
 		// don't return, we can still show the configuration
-	}
-
-	key, err := flags.GetString("key")
-	if err != nil {
-		return err
 	}
 
 	if key != "" {
 		return showConfigKey(key)
 	}
 
-	switch csConfig.Cscli.Output {
+	switch cfg.Cscli.Output {
 	case "human":
 		// The tests on .Enable look funny because the option has a true default which has
 		// not been set yet (we don't really load the LAPI) and go templates don't dereference
 		// pointers in boolean tests. Prefix notation is the cherry on top.
 		funcs := template.FuncMap{
 			// can't use generics here
-			"ValueBool": func(b *bool) bool { return b!=nil && *b },
+			"ValueBool": func(b *bool) bool { return b != nil && *b },
 		}
 
 		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)
@@ -214,19 +210,19 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = tmp.Execute(os.Stdout, csConfig)
+		err = tmp.Execute(os.Stdout, cfg)
 		if err != nil {
 			return err
 		}
 	case "json":
-		data, err := json.MarshalIndent(csConfig, "", "  ")
+		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
 		fmt.Printf("%s\n", string(data))
 	case "raw":
-		data, err := yaml.Marshal(csConfig)
+		data, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
@@ -237,18 +233,22 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewConfigShowCmd() *cobra.Command {
-	cmdConfigShow := &cobra.Command{
+func (cli *cliConfig) newShowCmd() *cobra.Command {
+	var key string
+
+	cmd := &cobra.Command{
 		Use:               "show",
 		Short:             "Displays current config",
 		Long:              `Displays the current cli configuration.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runConfigShow,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.show(key)
+		},
 	}
 
-	flags := cmdConfigShow.Flags()
-	flags.StringP("key", "", "", "Display only this value (Config.API.Server.ListenURI)")
+	flags := cmd.Flags()
+	flags.StringVarP(&key, "key", "", "", "Display only this value (Config.API.Server.ListenURI)")
 
-	return cmdConfigShow
+	return cmd
 }

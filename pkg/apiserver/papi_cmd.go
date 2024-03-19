@@ -37,6 +37,10 @@ type forcePull struct {
 	Blocklist *blocklistLink `json:"blocklist,omitempty"`
 }
 
+type listUnsubscribe struct {
+	Name string `json:"name"`
+}
+
 func DecisionCmd(message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "delete":
@@ -163,13 +167,38 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 
 func ManagementCmd(message *Message, p *Papi, sync bool) error {
 	if sync {
-		log.Infof("Ignoring management command from PAPI in sync mode")
+		p.Logger.Infof("Ignoring management command from PAPI in sync mode")
 		return nil
 	}
 
 	switch message.Header.OperationCmd {
+
+	case "blocklist_unsubscribe":
+		data, err := json.Marshal(message.Data)
+		if err != nil {
+			return err
+		}
+		unsubscribeMsg := listUnsubscribe{}
+		if err := json.Unmarshal(data, &unsubscribeMsg); err != nil {
+			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
+		}
+		if unsubscribeMsg.Name == "" {
+			return fmt.Errorf("message for '%s' contains bad data format: missing blocklist name", message.Header.OperationType)
+		}
+		p.Logger.Infof("Received blocklist_unsubscribe command from PAPI, unsubscribing from blocklist %s", unsubscribeMsg.Name)
+
+		filter := make(map[string][]string)
+		filter["origin"] = []string{types.ListOrigin}
+		filter["scenario"] = []string{unsubscribeMsg.Name}
+
+		_, deletedDecisions, err := p.DBClient.SoftDeleteDecisionsWithFilter(filter)
+		if err != nil {
+			return fmt.Errorf("unable to delete decisions for list %s : %w", unsubscribeMsg.Name, err)
+		}
+		p.Logger.Infof("deleted %d decisions for list %s", len(deletedDecisions), unsubscribeMsg.Name)
+
 	case "reauth":
-		log.Infof("Received reauth command from PAPI, resetting token")
+		p.Logger.Infof("Received reauth command from PAPI, resetting token")
 		p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
 	case "force_pull":
 		data, err := json.Marshal(message.Data)
@@ -182,13 +211,13 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		}
 
 		if forcePullMsg.Blocklist == nil {
-			log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+			p.Logger.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
 			err = p.apic.PullTop(true)
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %s", err)
 			}
 		} else {
-			log.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
+			p.Logger.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
 			err = p.apic.PullBlocklist(&modelscapi.BlocklistLink{
 				Name:        &forcePullMsg.Blocklist.Name,
 				URL:         &forcePullMsg.Blocklist.Url,

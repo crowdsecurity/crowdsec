@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -102,12 +103,14 @@ var globalPourHistogram = prometheus.NewHistogramVec(
 
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//update cache metrics (stash)
+		// catch panics here because they are not handled by servePrometheus
+		defer trace.CatchPanic("crowdsec/computeDynamicMetrics")
+		// update cache metrics (stash)
 		cache.UpdateCacheMetrics()
-		//update cache metrics (regexp)
+		// update cache metrics (regexp)
 		exprhelpers.UpdateRegexpCacheMetrics()
 
-		//decision metrics are only relevant for LAPI
+		// decision metrics are only relevant for LAPI
 		if dbClient == nil {
 			next.ServeHTTP(w, r)
 			return
@@ -159,7 +162,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 
 	// Registering prometheus
 	// If in aggregated mode, do not register events associated with a source, to keep the cardinality low
-	if config.Level == "aggregated" {
+	if config.Level == configuration.CFG_METRICS_AGGREGATE {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
@@ -194,6 +197,9 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 	log.Debugf("serving metrics after %s ms", time.Since(crowdsecT0))
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
-		log.Warningf("prometheus: %s", err)
+		// in time machine, we most likely have the LAPI using the port
+		if !flags.haveTimeMachine() {
+			log.Warningf("prometheus: %s", err)
+		}
 	}
 }

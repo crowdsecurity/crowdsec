@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	_ "net/http/pprof"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -72,7 +72,11 @@ type Flags struct {
 	DisableCAPI    bool
 	Transform      string
 	OrderEvent     bool
-	CpuProfile     string
+	CPUProfile     string
+}
+
+func (f *Flags) haveTimeMachine() bool {
+	return f.OneShotDSN != ""
 }
 
 type labelsMap map[string]string
@@ -95,7 +99,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
-		return fmt.Errorf("scenario loading failed: %v", err)
+		return fmt.Errorf("scenario loading failed: %w", err)
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
@@ -107,7 +111,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.Config) error {
+func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
 	var err error
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
@@ -116,20 +120,20 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
+			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
+		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec, cConfig.Prometheus)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if len(dataSources) == 0 {
-		return fmt.Errorf("no datasource enabled")
+		return nil, errors.New("no datasource enabled")
 	}
 
-	return nil
+	return dataSources, nil
 }
 
 var (
@@ -181,7 +185,7 @@ func (f *Flags) Parse() {
 	}
 
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-	flag.StringVar(&f.CpuProfile, "cpu-profile", "", "write cpu profile to file")
+	flag.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
 	flag.Parse()
 }
 
@@ -249,7 +253,12 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	primalHook.Enabled = (cConfig.Common.LogMedia != "stdout")
+	if cConfig.Common.LogMedia != "stdout" {
+		log.AddHook(&FatalHook{
+			Writer:    os.Stderr,
+			LogLevels: []log.Level{log.FatalLevel, log.PanicLevel},
+		})
+	}
 
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
 		return nil, err
@@ -272,7 +281,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
-		return nil, errors.New("You must run at least the API Server or crowdsec")
+		return nil, errors.New("you must run at least the API Server or crowdsec")
 	}
 
 	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
@@ -323,7 +332,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 var crowdsecT0 time.Time
 
 func main() {
-	log.AddHook(primalHook)
+	// The initial log level is INFO, even if the user provided an -error or -warning flag
+	// because we need feature flags before parsing cli flags
+	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true})
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
 		log.Fatalf("failed to register features: %s", err)
@@ -355,16 +366,19 @@ func main() {
 		os.Exit(0)
 	}
 
-	if flags.CpuProfile != "" {
-		f, err := os.Create(flags.CpuProfile)
+	if flags.CPUProfile != "" {
+		f, err := os.Create(flags.CPUProfile)
 		if err != nil {
 			log.Fatalf("could not create CPU profile: %s", err)
 		}
-		log.Infof("CPU profile will be written to %s", flags.CpuProfile)
+
+		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
+
 		if err := pprof.StartCPUProfile(f); err != nil {
 			f.Close()
 			log.Fatalf("could not start CPU profile: %s", err)
 		}
+
 		defer f.Close()
 		defer pprof.StopCPUProfile()
 	}

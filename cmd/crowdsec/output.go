@@ -27,7 +27,7 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 		}
 
 		for k, src := range alert.Sources {
-			refsrc := *alert.Alert //copy
+			refsrc := *alert.Alert // copy
 
 			log.Tracef("source[%s]", k)
 
@@ -81,7 +81,7 @@ LOOP:
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, client); err != nil {
 					log.Errorf("while pushing to api : %s", err)
-					//just push back the events to the queue
+					// just push back the events to the queue
 					cacheMutex.Lock()
 					cache = append(cache, cachecopy...)
 					cacheMutex.Unlock()
@@ -110,8 +110,8 @@ LOOP:
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
 			log.Printf("%s", *event.Overflow.Alert.Message)
-			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
-			//dump after postoveflow processing to avoid missing whitelist info
+			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+			// dump after postoveflow processing to avoid missing whitelist info
 			if dumpStates && event.Overflow.Alert != nil {
 				if bucketOverflows == nil {
 					bucketOverflows = make([]types.Event, 0)
