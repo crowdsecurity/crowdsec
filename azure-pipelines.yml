@@ -114,16 +114,16 @@ stages:
               --azure-key-vault-url "$(KeyVaultUrl)"
             displayName: "Sign crowdsec binaries"
           - pwsh: |
-              .\make_installer.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
+              .\make_installer.ps1 -version '$(BuildVersion)'
             displayName: "Build Crowdsec MSI"
             name: BuildMSI
           - pwsh: |
-              .\make_chocolatey.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
+              .\make_chocolatey.ps1 -version '$(BuildVersion)'
             displayName: "Build Chocolatey nupkg"
           - pwsh: |
               sign code azure-key-vault `
-              "**/*.msi" `
-              --base-directory "$(Pipeline.Workspace)/msi_package/" `
+              "*.msi" `
+              --base-directory "$(Pipeline.Workspace)" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
               --description-url "https://github.com/crowdsecurity/crowdsec" `
@@ -135,8 +135,8 @@ stages:
             displayName: "Sign MSI package"
           - pwsh: |
               sign code azure-key-vault `
-              "**/*.nupkg" `
-              --base-directory "$(Pipeline.Workspace)/nuget_package/" `
+              "*.nupkg" `
+              --base-directory "$(Pipeline.Workspace)" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
               --description-url "https://github.com/crowdsecurity/crowdsec" `
