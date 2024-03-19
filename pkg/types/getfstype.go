@@ -4,13 +4,13 @@ package types
 
 import (
 	"fmt"
-	"syscall"
+	"golang.org/x/sys/unix"
 )
 
 // Generated with `man statfs | grep _MAGIC | awk '{split(tolower($1),a,"_"); print $2 ": \"" a[1] "\","}'`
 // ext2/3/4 duplicates removed to just have ext4
 // XIAFS removed as well
-var fsTypeMapping map[int]string = map[int]string{
+var fsTypeMapping map[int64]string = map[int64]string{
 	0xadf5:     "adfs",
 	0xadff:     "affs",
 	0x5346414f: "afs",
@@ -95,15 +95,16 @@ var fsTypeMapping map[int]string = map[int]string{
 }
 
 func GetFSType(path string) (string, error) {
-	var buf syscall.Statfs_t
+	var buf unix.Statfs_t
 
-	err := syscall.Statfs(path, &buf)
+	err := unix.Statfs(path, &buf)
 
 	if err != nil {
 		return "", err
 	}
 
-	fsType, ok := fsTypeMapping[int(buf.Type)]
+	fsType, ok := fsTypeMapping[int64(buf.Type)] //nolint:unconvert
+
 	if !ok {
 		return "", fmt.Errorf("unknown fstype %d", buf.Type)
 	}

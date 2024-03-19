@@ -32,6 +32,7 @@ const keyLength = 32
 
 type APIServer struct {
 	URL            string
+	UnixSocket     string
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
 	logFile        string
@@ -66,7 +67,7 @@ func recoverFromPanic(c *gin.Context) {
 	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
 	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
 	if strErr, ok := err.(error); ok {
-		//stolen from http2/server.go in x/net
+		// stolen from http2/server.go in x/net
 		var (
 			errClientDisconnected = errors.New("client disconnected")
 			errClosedBody         = errors.New("body closed by handler")
@@ -124,10 +125,10 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 
 	logger := &lumberjack.Logger{
 		Filename:   logFile,
-		MaxSize:    500, //megabytes
+		MaxSize:    500, // megabytes
 		MaxBackups: 3,
-		MaxAge:     28,   //days
-		Compress:   true, //disabled by default
+		MaxAge:     28,   // days
+		Compress:   true, // disabled by default
 	}
 
 	if config.LogMaxSize != 0 {
@@ -176,6 +177,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	router.ForwardedByClientIP = false
 
+	// set the remore address of the request to 127.0.0.1 if it comes from a unix socket
+	router.Use(func(c *gin.Context) {
+		if c.Request.RemoteAddr == "@" {
+			c.Request.RemoteAddr = "127.0.0.1:65535"
+		}
+	})
+
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		if err = router.SetTrustedProxies(*config.TrustedProxies); err != nil {
 			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
@@ -223,8 +231,8 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	var (
-		apiClient         *apic
-		papiClient        *Papi
+		apiClient  *apic
+		papiClient *Papi
 	)
 
 	controller.AlertsAddChan = nil
@@ -267,6 +275,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	return &APIServer{
 		URL:            config.ListenURI,
+		UnixSocket:     config.ListenSocket,
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
@@ -317,11 +326,11 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 
-		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+		// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.apic.apiClient.IsEnrolled() {
 			if s.consoleConfig.IsPAPIEnabled() {
 				if s.papi.URL != "" {
-					log.Infof("Starting PAPI decision receiver")
+					log.Info("Starting PAPI decision receiver")
 					s.papi.pullTomb.Go(func() error {
 						if err := s.papi.Pull(); err != nil {
 							log.Errorf("papi pull: %s", err)
@@ -353,29 +362,31 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 	}
 
-	s.httpServerTomb.Go(func() error { s.listenAndServeURL(apiReady); return nil })
+	s.httpServerTomb.Go(func() error {
+		return s.listenAndServeLAPI(apiReady)
+	})
+
+	if err := s.httpServerTomb.Wait(); err != nil {
+		return fmt.Errorf("local API server stopped with error: %w", err)
+        }
 
 	return nil
 }
 
-// listenAndServeURL starts the http server and blocks until it's closed
+// listenAndServeLAPI starts the http server and blocks until it's closed
 // it also updates the URL field with the actual address the server is listening on
 // it's meant to be run in a separate goroutine
-func (s *APIServer) listenAndServeURL(apiReady chan bool) {
-	serverError := make(chan error, 1)
+func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
+	var (
+		tcpListener    net.Listener
+		unixListener   net.Listener
+		err            error
+		serverError    = make(chan error, 2)
+		listenerClosed = make(chan struct{})
+	)
 
-	go func() {
-		listener, err := net.Listen("tcp", s.URL)
-		if err != nil {
-			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
-			return
-		}
-
-		s.URL = listener.Addr().String()
-		log.Infof("CrowdSec Local API listening on %s", s.URL)
-		apiReady <- true
-
-		if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
+	startServer := func(listener net.Listener, canTLS bool) {
+		if canTLS && s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
 			if s.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
@@ -391,25 +402,71 @@ func (s *APIServer) listenAndServeURL(apiReady chan bool) {
 			err = s.httpServer.Serve(listener)
 		}
 
-		if err != nil && err != http.ErrServerClosed {
-			serverError <- fmt.Errorf("while serving local API: %w", err)
+		switch {
+		case errors.Is(err, http.ErrServerClosed):
+			break
+		case err != nil:
+			serverError <- err
+		}
+	}
+
+	// Starting TCP listener
+	go func() {
+		if s.URL == "" {
 			return
 		}
+
+		tcpListener, err = net.Listen("tcp", s.URL)
+		if err != nil {
+			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
+			return
+		}
+
+		log.Infof("CrowdSec Local API listening on %s", s.URL)
+		startServer(tcpListener, true)
 	}()
+
+	// Starting Unix socket listener
+	go func() {
+		if s.UnixSocket == "" {
+			return
+		}
+
+		_ = os.RemoveAll(s.UnixSocket)
+
+		unixListener, err = net.Listen("unix", s.UnixSocket)
+		if err != nil {
+			serverError <- fmt.Errorf("while creating unix listener: %w", err)
+			return
+		}
+
+		log.Infof("CrowdSec Local API listening on Unix socket %s", s.UnixSocket)
+		startServer(unixListener, false)
+	}()
+
+	apiReady <- true
 
 	select {
 	case err := <-serverError:
-		log.Fatalf("while starting API server: %s", err)
+		return err
 	case <-s.httpServerTomb.Dying():
-		log.Infof("Shutting down API server")
-		// do we need a graceful shutdown here?
+		log.Info("Shutting down API server")
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := s.httpServer.Shutdown(ctx); err != nil {
-			log.Errorf("while shutting down http server: %s", err)
+			log.Errorf("while shutting down http server: %v", err)
+		}
+
+		close(listenerClosed)
+	case <-listenerClosed:
+		if s.UnixSocket != "" {
+			_ = os.RemoveAll(s.UnixSocket)
 		}
 	}
+
+	return nil
 }
 
 func (s *APIServer) Close() {
@@ -437,7 +494,7 @@ func (s *APIServer) Shutdown() error {
 		}
 	}
 
-	//close io.writer logger given to gin
+	// close io.writer logger given to gin
 	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
 		pipe.Close()
 	}

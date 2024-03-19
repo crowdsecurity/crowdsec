@@ -46,6 +46,7 @@ type FileConfiguration struct {
 }
 
 type FileSource struct {
+	metricsLevel       int
 	config             FileConfiguration
 	watcher            *fsnotify.Watcher
 	watchedDirectories map[string]bool
@@ -98,8 +99,9 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	f.logger = logger
+	f.metricsLevel = MetricsLevel
 
 	err := f.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -535,12 +537,19 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			if line.Text == "" { //skip empty lines
 				continue
 			}
-			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
+			if f.metricsLevel != configuration.METRICS_NONE {
+				linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
+			}
+			src := tail.Filename
+			if f.metricsLevel == configuration.METRICS_AGGREGATE {
+				src = filepath.Base(tail.Filename)
+			}
+
 			l := types.Line{
 				Raw:     trimLine(line.Text),
 				Labels:  f.config.Labels,
 				Time:    line.Time,
-				Src:     tail.Filename,
+				Src:     src,
 				Process: true,
 				Module:  f.GetName(),
 			}

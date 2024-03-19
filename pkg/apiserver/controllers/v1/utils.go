@@ -2,7 +2,9 @@ package v1
 
 import (
 	"errors"
+	"net"
 	"net/http"
+	"strings"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -23,6 +25,14 @@ func getBouncerFromContext(ctx *gin.Context) (*ent.Bouncer, error) {
 	}
 
 	return bouncerInfo, nil
+}
+
+func isUnixSocket(c *gin.Context) bool {
+	if localAddr, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		return strings.HasPrefix(localAddr.Network(), "unix")
+	}
+
+	return false
 }
 
 func getMachineIDFromContext(ctx *gin.Context) (string, error) {
@@ -47,8 +57,16 @@ func getMachineIDFromContext(ctx *gin.Context) (string, error) {
 
 func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
 	return func(gctx *gin.Context) {
+		if !option {
+			return
+		}
+
+		if isUnixSocket(gctx) {
+			return
+		}
+
 		incomingIP := gctx.ClientIP()
-		if option && incomingIP != "127.0.0.1" && incomingIP != "::1" {
+		if incomingIP != "127.0.0.1" && incomingIP != "::1" {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			gctx.Abort()
 		}

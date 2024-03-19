@@ -19,7 +19,7 @@ import (
 const (
 	APIKeyHeader      = "X-Api-Key"
 	BouncerContextKey = "bouncer_info"
-	dummyAPIKeySize = 54
+	dummyAPIKeySize   = 54
 	// max allowed by bcrypt 72 = 54 bytes in base64
 )
 
@@ -82,10 +82,10 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 	bouncer, err := a.DbClient.SelectBouncerByName(bouncerName)
 
-	//This is likely not the proper way, but isNotFound does not seem to work
+	// This is likely not the proper way, but isNotFound does not seem to work
 	if err != nil && strings.Contains(err.Error(), "bouncer not found") {
-		//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
-		//Set a random API key, but it will never be used
+		// Because we have a valid cert, automatically create the bouncer in the database if it does not exist
+		// Set a random API key, but it will never be used
 		apiKey, err := GenerateAPIKey(dummyAPIKeySize)
 		if err != nil {
 			logger.Errorf("error generating mock api key: %s", err)
@@ -100,11 +100,11 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 			return nil
 		}
 	} else if err != nil {
-		//error while selecting bouncer
+		// error while selecting bouncer
 		logger.Errorf("while selecting bouncers: %s", err)
 		return nil
 	} else if bouncer.AuthType != types.TlsAuthType {
-		//bouncer was found in DB
+		// bouncer was found in DB
 		logger.Errorf("bouncer isn't allowed to auth by TLS")
 		return nil
 	}
@@ -139,8 +139,10 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bouncer *ent.Bouncer
 
+		clientIP := c.ClientIP()
+
 		logger := log.WithFields(log.Fields{
-			"ip": c.ClientIP(),
+			"ip": clientIP,
 		})
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
@@ -152,6 +154,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		if bouncer == nil {
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
+
 			return
 		}
 
@@ -160,7 +163,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		})
 
 		if bouncer.IPAddress == "" {
-			if err := a.DbClient.UpdateBouncerIP(c.ClientIP(), bouncer.ID); err != nil {
+			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
@@ -169,11 +172,11 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 		}
 
-		//Don't update IP on HEAD request, as it's used by the appsec to check the validity of the API key provided
-		if bouncer.IPAddress != c.ClientIP() && bouncer.IPAddress != "" && c.Request.Method != http.MethodHead {
-			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, c.ClientIP(), bouncer.IPAddress)
+		// Don't update IP on HEAD request, as it's used by the appsec to check the validity of the API key provided
+		if bouncer.IPAddress != clientIP && bouncer.IPAddress != "" && c.Request.Method != http.MethodHead {
+			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, clientIP, bouncer.IPAddress)
 
-			if err := a.DbClient.UpdateBouncerIP(c.ClientIP(), bouncer.ID); err != nil {
+			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
@@ -199,6 +202,5 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		c.Set(BouncerContextKey, bouncer)
-		c.Next()
 	}
 }

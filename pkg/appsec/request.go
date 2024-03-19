@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	URIHeaderName    = "X-Crowdsec-Appsec-Uri"
-	VerbHeaderName   = "X-Crowdsec-Appsec-Verb"
-	HostHeaderName   = "X-Crowdsec-Appsec-Host"
-	IPHeaderName     = "X-Crowdsec-Appsec-Ip"
-	APIKeyHeaderName = "X-Crowdsec-Appsec-Api-Key"
+	URIHeaderName       = "X-Crowdsec-Appsec-Uri"
+	VerbHeaderName      = "X-Crowdsec-Appsec-Verb"
+	HostHeaderName      = "X-Crowdsec-Appsec-Host"
+	IPHeaderName        = "X-Crowdsec-Appsec-Ip"
+	APIKeyHeaderName    = "X-Crowdsec-Appsec-Api-Key"
+	UserAgentHeaderName = "X-Crowdsec-Appsec-User-Agent"
 )
 
 type ParsedRequest struct {
@@ -311,11 +312,14 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		logger.Debugf("missing '%s' header", HostHeaderName)
 	}
 
+	userAgent := r.Header.Get(UserAgentHeaderName) //This one is optional
+
 	// delete those headers before coraza process the request
 	delete(r.Header, IPHeaderName)
 	delete(r.Header, HostHeaderName)
 	delete(r.Header, URIHeaderName)
 	delete(r.Header, VerbHeaderName)
+	delete(r.Header, UserAgentHeaderName)
 
 	originalHTTPRequest := r.Clone(r.Context())
 	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -323,6 +327,13 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	originalHTTPRequest.RequestURI = clientURI
 	originalHTTPRequest.Method = clientMethod
 	originalHTTPRequest.Host = clientHost
+	if userAgent != "" {
+		originalHTTPRequest.Header.Set("User-Agent", userAgent)
+		r.Header.Set("User-Agent", userAgent) //Override the UA in the original request, as this is what will be used by the waf engine
+	} else {
+		//If we don't have a forwarded UA, delete the one that was set by the bouncer
+		originalHTTPRequest.Header.Del("User-Agent")
+	}
 
 	parsedURL, err := url.Parse(clientURI)
 	if err != nil {
@@ -356,7 +367,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		URL:                  r.URL,
 		Proto:                r.Proto,
 		Body:                 body,
-		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
+		Args:                 ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,

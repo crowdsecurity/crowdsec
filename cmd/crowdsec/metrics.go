@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -161,7 +162,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 
 	// Registering prometheus
 	// If in aggregated mode, do not register events associated with a source, to keep the cardinality low
-	if config.Level == "aggregated" {
+	if config.Level == configuration.CFG_METRICS_AGGREGATE {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,

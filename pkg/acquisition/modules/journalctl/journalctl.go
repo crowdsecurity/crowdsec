@@ -26,10 +26,11 @@ type JournalCtlConfiguration struct {
 }
 
 type JournalCtlSource struct {
-	config JournalCtlConfiguration
-	logger *log.Entry
-	src    string
-	args   []string
+	metricsLevel int
+	config       JournalCtlConfiguration
+	logger       *log.Entry
+	src          string
+	args         []string
 }
 
 const journalctlCmd string = "journalctl"
@@ -131,7 +132,9 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Src = j.src
 			l.Process = true
 			l.Module = j.GetName()
-			linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			if j.metricsLevel != configuration.METRICS_NONE {
+				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			}
 			var evt types.Event
 			if !j.config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
@@ -194,8 +197,9 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	j.logger = logger
+	j.metricsLevel = MetricsLevel
 
 	err := j.UnmarshalConfig(yamlConfig)
 	if err != nil {
