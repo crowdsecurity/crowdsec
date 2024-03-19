@@ -12,10 +12,12 @@ import (
 )
 
 const (
-	CAPIPullLockTimeout = 120
+	CAPIPullLockTimeout = 10
+	CapiPullLockName    = "pullCAPI"
 )
 
 func (c *Client) AcquireLock(name string) error {
+	log.Debugf("acquiring lock %s", name)
 	_, err := c.Ent.Lock.Create().
 		SetName(name).
 		SetCreatedAt(types.UtcNow()).
@@ -30,6 +32,7 @@ func (c *Client) AcquireLock(name string) error {
 }
 
 func (c *Client) ReleaseLock(name string) error {
+	log.Debugf("releasing lock %s", name)
 	_, err := c.Ent.Lock.Delete().Where(lock.NameEQ(name)).Exec(c.CTX)
 	if err != nil {
 		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
@@ -38,11 +41,12 @@ func (c *Client) ReleaseLock(name string) error {
 }
 
 func (c *Client) ReleaseLockWithTimeout(name string, timeout int) error {
-	log.Debugf("(%s) releasing orphin locks", name)
+	log.Debugf("releasing lock %s with timeout of %d minutes", name, timeout)
 	_, err := c.Ent.Lock.Delete().Where(
 		lock.NameEQ(name),
-		lock.CreatedAtLT(time.Now().Add(-time.Duration(timeout)*time.Minute)),
+		lock.CreatedAtLT(time.Now().UTC().Add(-time.Duration(timeout)*time.Minute)),
 	).Exec(c.CTX)
+
 	if err != nil {
 		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
 	}
@@ -54,14 +58,22 @@ func (c *Client) IsLocked(err error) bool {
 }
 
 func (c *Client) AcquirePullCAPILock() error {
-	lockName := "pullCAPI"
-	err := c.ReleaseLockWithTimeout(lockName, CAPIPullLockTimeout)
+
+	/*delete orphan "old" lock if present*/
+	err := c.ReleaseLockWithTimeout(CapiPullLockName, CAPIPullLockTimeout)
 	if err != nil {
 		log.Errorf("unable to release pullCAPI lock: %s", err)
 	}
-	return c.AcquireLock(lockName)
+	return c.AcquireLock(CapiPullLockName)
 }
 
 func (c *Client) ReleasePullCAPILock() error {
-	return c.ReleaseLockWithTimeout("pullCAPI", CAPIPullLockTimeout)
+	log.Debugf("deleting lock %s", CapiPullLockName)
+	_, err := c.Ent.Lock.Delete().Where(
+		lock.NameEQ(CapiPullLockName),
+	).Exec(c.CTX)
+	if err != nil {
+		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+	}
+	return nil
 }
