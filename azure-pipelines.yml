@@ -53,26 +53,21 @@ stages:
             displayName: GetCrowdsecVersion
             name: GetCrowdsecVersion
           - pwsh: |
-              .\make_installer.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
-            displayName: "Build Crowdsec MSI"
-            name: BuildMSI
-
-          - pwsh: |
-              .\make_chocolatey.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
-            displayName: "Build Chocolatey nupkg"
-
-          #TODO: replace with publish short step
+              Get-ChildItem -Path .\cmd -Directory | ForEach-Object {
+                $dirName = $_.Name
+                Get-ChildItem -Path .\cmd\$dirName -File -Filter '*.exe' | ForEach-Object {
+                  $fileName = $_.Name
+                  $destDir = Join-Path $(Build.ArtifactStagingDirectory) cmd\$dirName
+                  New-Item -ItemType Directory -Path $destDir -Force
+                  Copy-Item -Path .\cmd\$dirName\$fileName -Destination $destDir
+                }
+              }
+            displayName: "Copy binaries to staging directory"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Build.Repository.LocalPath)\\crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
-              artifact: 'msi_package'
-            displayName: "Upload MSI artifact"
-          
-          - task: PublishPipelineArtifact@1
-            inputs:
-              targetPath: '$(Build.Repository.LocalPath)\\windows\\Chocolatey\\crowdsec\\crowdsec.$(GetCrowdsecVersion.BuildVersion).nupkg'
-              artifact: 'nuget_package'
-            displayName: "Upload nupkg artifact"
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+              artifact: 'unsigned_binaries'
+            displayName: "Upload binaries artifact"
 
   - stage: Sign
     dependsOn: Build
@@ -85,19 +80,20 @@ stages:
       - job: Sign
         displayName: "Sign"
         steps:
-          - checkout: none
+          - download: current
+            artifact: unsigned_binaries
+            displayName: "Download binaries artifact"
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: '$(Pipeline.Workspace)/unsigned_binaries'
+              TargetFolder: '$(Pipeline.Workspace)'
+            displayName: "Copy binaries to workspace"
           - task: DotNetCoreCLI@2
             displayName: "Install SignTool tool"
             inputs:
               command: 'custom'
               custom: 'tool'
               arguments: install --global sign --version 0.9.0-beta.23127.3
-          - download: current
-            artifact: msi_package
-            displayName: "Download build MSI artifact"
-          - download: current
-            artifact: nuget_package
-            displayName: "Download build nuget artifact"
           - task: AzureKeyVault@2
             displayName: "Get signing parameters"
             inputs:
@@ -106,7 +102,27 @@ stages:
               SecretsFilter: "TenantId,ClientId,ClientSecret,Certificate,KeyVaultUrl"
           - pwsh: |
               sign code azure-key-vault `
-              "*" `
+              "**/*.exe" `
+              --base-directory "$(Pipeline.Workspace)/cmd/" `
+              --publisher-name "CrowdSec" `
+              --description "CrowdSec" `
+              --description-url "https://github.com/crowdsecurity/crowdsec" `
+              --azure-key-vault-tenant-id "$(TenantId)" `
+              --azure-key-vault-client-id "$(ClientId)" `
+              --azure-key-vault-client-secret "$(ClientSecret)" `
+              --azure-key-vault-certificate "$(Certificate)" `
+              --azure-key-vault-url "$(KeyVaultUrl)"
+            displayName: "Sign crowdsec binaries"
+          - pwsh: |
+              .\make_installer.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
+            displayName: "Build Crowdsec MSI"
+            name: BuildMSI
+          - pwsh: |
+              .\make_chocolatey.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
+            displayName: "Build Chocolatey nupkg"
+          - pwsh: |
+              sign code azure-key-vault `
+              "**/*.msi" `
               --base-directory "$(Pipeline.Workspace)/msi_package/" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
@@ -119,7 +135,7 @@ stages:
             displayName: "Sign MSI package"
           - pwsh: |
               sign code azure-key-vault `
-              "*" `
+              "**/*.nupkg" `
               --base-directory "$(Pipeline.Workspace)/nuget_package/" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
@@ -132,12 +148,12 @@ stages:
             displayName: "Sign nuget package"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/msi_package/crowdsec_$(BuildVersion).msi'
+              targetPath: '$(Pipeline.Workspace)/crowdsec_$(BuildVersion).msi'
               artifact: 'signed_msi_package'
             displayName: "Upload signed MSI artifact"
           - task: PublishPipelineArtifact@1
             inputs:
-              targetPath: '$(Pipeline.Workspace)/nuget_package/crowdsec.$(BuildVersion).nupkg'
+              targetPath: '$(Pipeline.Workspace)/crowdsec.$(BuildVersion).nupkg'
               artifact: 'signed_nuget_package'
             displayName: "Upload signed nuget artifact"
             
@@ -164,7 +180,6 @@ stages:
                     assetUploadMode: 'replace'
                     addChangeLog: false
                     isPreRelease: true #we force prerelease because the pipeline is invoked on tag creation, which happens when we do a prerelease
-                    #the .. is an ugly hack, but I can't find the var that gives D:\a\1 ...
                     assets: |
                       $(Pipeline.Workspace)/signed_msi_package/*.msi
                       $(Pipeline.Workspace)/signed_nuget_package/*.nupkg
