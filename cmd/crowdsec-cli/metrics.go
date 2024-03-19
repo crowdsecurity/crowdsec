@@ -272,9 +272,7 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 
 	// if no sections are specified, we want all of them
 	if len(sections) == 0 {
-		for section := range ms {
-			sections = append(sections, section)
-		}
+		sections = maptools.SortedKeys(ms)
 	}
 
 	for _, section := range sections {
@@ -283,7 +281,7 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 
 	switch formatType {
 	case "human":
-		for section := range want {
+		for _, section := range maptools.SortedKeys(want) {
 			want[section].Table(out, noUnit, showEmpty)
 		}
 	case "json":
@@ -376,7 +374,7 @@ cscli metrics list`,
 }
 
 // expandAlias returns a list of sections. The input can be a list of sections or alias.
-func (cli *cliMetrics) expandSectionGroups(args []string) []string {
+func (cli *cliMetrics) expandAlias(args []string) []string {
 	ret := []string{}
 
 	for _, section := range args {
@@ -422,7 +420,7 @@ cscli metrics show acquisition parsers scenarios stash -o json`,
 		// Positional args are optional
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
-			args = cli.expandSectionGroups(args)
+			args = cli.expandAlias(args)
 			return cli.show(args, url, noUnit)
 		},
 	}
