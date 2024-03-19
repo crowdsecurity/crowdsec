@@ -86,7 +86,7 @@ stages:
           - task: CopyFiles@2
             inputs:
               SourceFolder: '$(Pipeline.Workspace)/unsigned_binaries'
-              TargetFolder: '$(Pipeline.Workspace)'
+              TargetFolder: '$(Build.SourcesDirectory)'
             displayName: "Copy binaries to workspace"
           - task: DotNetCoreCLI@2
             displayName: "Install SignTool tool"
@@ -103,7 +103,7 @@ stages:
           - pwsh: |
               sign code azure-key-vault `
               "**/*.exe" `
-              --base-directory "$(Pipeline.Workspace)/cmd/" `
+              --base-directory "$(Build.SourcesDirectory)/cmd/" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
               --description-url "https://github.com/crowdsecurity/crowdsec" `
@@ -123,7 +123,7 @@ stages:
           - pwsh: |
               sign code azure-key-vault `
               "*.msi" `
-              --base-directory "$(Pipeline.Workspace)" `
+              --base-directory "$(Build.SourcesDirectory)" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
               --description-url "https://github.com/crowdsecurity/crowdsec" `
@@ -136,7 +136,7 @@ stages:
           - pwsh: |
               sign code azure-key-vault `
               "*.nupkg" `
-              --base-directory "$(Pipeline.Workspace)" `
+              --base-directory "$(Build.SourcesDirectory)" `
               --publisher-name "CrowdSec" `
               --description "CrowdSec" `
               --description-url "https://github.com/crowdsecurity/crowdsec" `
