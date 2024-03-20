@@ -195,7 +195,7 @@ func (cli *cliDecisions) newListCmd() *cobra.Command {
 		Example: `cscli decisions list -i 1.2.3.4
 cscli decisions list -r 1.2.3.0/24
 cscli decisions list -s crowdsecurity/ssh-bf
-cscli decisions list -t ban
+cscli decisions list --origin lists --scenario list_name
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -436,6 +436,7 @@ func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
 cscli decisions delete -i 1.2.3.4
 cscli decisions delete --id 42
 cscli decisions delete --type captcha
+cscli decisions delete --origin lists  --scenario list_name
 `,
 		/*TBD : refaire le Long/Example*/
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
