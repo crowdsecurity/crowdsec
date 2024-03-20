@@ -32,6 +32,9 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
+	// Download to a temporary location to avoid corrupting files
+	// that are currently in use or memory mapped.
+
 	tmpFile, err := os.CreateTemp(filepath.Dir(destPath), filepath.Base(destPath)+".*.tmp")
 	if err != nil {
 		return err
