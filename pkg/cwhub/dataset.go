@@ -43,6 +43,11 @@ func downloadFile(url string, destPath string) error {
 		os.Remove(tmpFileName)
 	}()
 
+	// a check on stdout is used while scripting to know if the hub has been upgraded
+	// and a configuration reload is required
+	// TODO: use a better way to communicate this
+	fmt.Printf("updated %s\n", filepath.Base(destPath))
+
 	// avoid reading the whole file in memory
 	_, err = io.Copy(tmpFile, resp.Body)
 	if err != nil {
