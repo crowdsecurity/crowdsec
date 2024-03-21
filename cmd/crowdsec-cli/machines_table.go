@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -10,11 +11,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
+var tableHeaders = []string{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Feature Flags", "Last Heartbeat"}
+
 func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 	t := newLightTable(out)
-	t.SetHeaders("Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaders(tableHeaders...)
+
+	alignment := []table.Alignment{}
+
+	for i := 0; i < len(tableHeaders); i++ {
+		alignment = append(alignment, table.AlignLeft)
+	}
+
+	t.SetHeaderAlignment(alignment...)
+	t.SetAlignment(alignment...)
 
 	for _, m := range machines {
 		validated := emoji.Prohibited
@@ -27,7 +37,7 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb)
+		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, fmt.Sprintf("%s/%s", m.Osname, m.Osversion), m.AuthType, m.Featureflags, hb)
 	}
 
 	t.Render()
