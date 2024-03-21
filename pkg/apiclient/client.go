@@ -39,6 +39,7 @@ type ApiClient struct {
 	Metrics        *MetricsService
 	Signal         *SignalService
 	HeartBeat      *HeartBeatService
+	UsageMetrics   *UsageMetricsService
 }
 
 func (a *ApiClient) GetClient() *http.Client {
@@ -101,6 +102,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.Signal = (*SignalService)(&c.common)
 	c.DecisionDelete = (*DecisionDeleteService)(&c.common)
 	c.HeartBeat = (*HeartBeatService)(&c.common)
+	c.UsageMetrics = (*UsageMetricsService)(&c.common)
 
 	return c, nil
 }
@@ -137,6 +139,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	c.Signal = (*SignalService)(&c.common)
 	c.DecisionDelete = (*DecisionDeleteService)(&c.common)
 	c.HeartBeat = (*HeartBeatService)(&c.common)
+	c.UsageMetrics = (*UsageMetricsService)(&c.common)
 
 	return c, nil
 }

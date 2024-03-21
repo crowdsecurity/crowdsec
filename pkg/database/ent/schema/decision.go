@@ -19,10 +19,10 @@ func (Decision) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			UpdateDefault(types.UtcNow),
 		field.Time("until").Nillable().Optional().SchemaType(map[string]string{
 			dialect.MySQL: "datetime",
 		}),

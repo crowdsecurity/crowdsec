@@ -39,6 +39,7 @@ type DatabaseCfg struct {
 }
 
 type AuthGCCfg struct {
+	// XXX: define these as custom type (with days etc.) ?
 	Cert                  *string `yaml:"cert,omitempty"`
 	CertDuration          *time.Duration
 	Api                   *string `yaml:"api_key,omitempty"`
@@ -48,11 +49,12 @@ type AuthGCCfg struct {
 }
 
 type FlushDBCfg struct {
-	MaxItems   *int       `yaml:"max_items,omitempty"`
+	MaxItems *int `yaml:"max_items,omitempty"`
 	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
-	MaxAge     *string    `yaml:"max_age,omitempty"`
-	BouncersGC *AuthGCCfg `yaml:"bouncers_autodelete,omitempty"`
-	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
+	MaxAge        *string        `yaml:"max_age,omitempty"`
+	BouncersGC    *AuthGCCfg     `yaml:"bouncers_autodelete,omitempty"`
+	AgentsGC      *AuthGCCfg     `yaml:"agents_autodelete,omitempty"`
+	MetricsMaxAge *time.Duration `yaml:"metrics_max_age,omitempty"`
 }
 
 func (c *Config) LoadDBConfig(inCli bool) error {

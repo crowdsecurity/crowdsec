@@ -18,9 +18,9 @@ type ConfigItem struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// Value holds the value of the "value" field.
@@ -64,15 +64,13 @@ func (ci *ConfigItem) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ci.CreatedAt = new(time.Time)
-				*ci.CreatedAt = value.Time
+				ci.CreatedAt = value.Time
 			}
 		case configitem.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ci.UpdatedAt = new(time.Time)
-				*ci.UpdatedAt = value.Time
+				ci.UpdatedAt = value.Time
 			}
 		case configitem.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -122,15 +120,11 @@ func (ci *ConfigItem) String() string {
 	var builder strings.Builder
 	builder.WriteString("ConfigItem(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", ci.ID))
-	if v := ci.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(ci.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := ci.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(ci.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(ci.Name)

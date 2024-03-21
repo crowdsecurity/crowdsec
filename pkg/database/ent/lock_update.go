@@ -28,20 +28,6 @@ func (lu *LockUpdate) Where(ps ...predicate.Lock) *LockUpdate {
 	return lu
 }
 
-// SetName sets the "name" field.
-func (lu *LockUpdate) SetName(s string) *LockUpdate {
-	lu.mutation.SetName(s)
-	return lu
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (lu *LockUpdate) SetNillableName(s *string) *LockUpdate {
-	if s != nil {
-		lu.SetName(*s)
-	}
-	return lu
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (lu *LockUpdate) SetCreatedAt(t time.Time) *LockUpdate {
 	lu.mutation.SetCreatedAt(t)
@@ -97,9 +83,6 @@ func (lu *LockUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := lu.mutation.Name(); ok {
-		_spec.SetField(lock.FieldName, field.TypeString, value)
-	}
 	if value, ok := lu.mutation.CreatedAt(); ok {
 		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
 	}
@@ -121,20 +104,6 @@ type LockUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *LockMutation
-}
-
-// SetName sets the "name" field.
-func (luo *LockUpdateOne) SetName(s string) *LockUpdateOne {
-	luo.mutation.SetName(s)
-	return luo
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (luo *LockUpdateOne) SetNillableName(s *string) *LockUpdateOne {
-	if s != nil {
-		luo.SetName(*s)
-	}
-	return luo
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -221,9 +190,6 @@ func (luo *LockUpdateOne) sqlSave(ctx context.Context) (_node *Lock, err error) 
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := luo.mutation.Name(); ok {
-		_spec.SetField(lock.FieldName, field.TypeString, value)
 	}
 	if value, ok := luo.mutation.CreatedAt(); ok {
 		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)

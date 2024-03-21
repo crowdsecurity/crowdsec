@@ -19,10 +19,10 @@ func (Alert) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			UpdateDefault(types.UtcNow),
 		field.String("scenario"),
 		field.String("bucketId").Default("").Optional(),
 		field.String("message").Default("").Optional(),

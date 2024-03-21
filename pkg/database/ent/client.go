@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 )
 
 // Client is the client that holds all ent builders.
@@ -46,6 +47,8 @@ type Client struct {
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
 	Meta *MetaClient
+	// Metric is the client for interacting with the Metric builders.
+	Metric *MetricClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -65,6 +68,7 @@ func (c *Client) init() {
 	c.Lock = NewLockClient(c.config)
 	c.Machine = NewMachineClient(c.config)
 	c.Meta = NewMetaClient(c.config)
+	c.Metric = NewMetricClient(c.config)
 }
 
 type (
@@ -165,6 +169,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
+		Metric:     NewMetricClient(cfg),
 	}, nil
 }
 
@@ -192,6 +197,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
+		Metric:     NewMetricClient(cfg),
 	}, nil
 }
 
@@ -222,7 +228,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
-		c.Meta,
+		c.Meta, c.Metric,
 	} {
 		n.Use(hooks...)
 	}
@@ -233,7 +239,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
-		c.Meta,
+		c.Meta, c.Metric,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -258,6 +264,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Machine.mutate(ctx, m)
 	case *MetaMutation:
 		return c.Meta.mutate(ctx, m)
+	case *MetricMutation:
+		return c.Metric.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -1455,13 +1463,147 @@ func (c *MetaClient) mutate(ctx context.Context, m *MetaMutation) (Value, error)
 	}
 }
 
+// MetricClient is a client for the Metric schema.
+type MetricClient struct {
+	config
+}
+
+// NewMetricClient returns a client for the Metric from the given config.
+func NewMetricClient(c config) *MetricClient {
+	return &MetricClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `metric.Hooks(f(g(h())))`.
+func (c *MetricClient) Use(hooks ...Hook) {
+	c.hooks.Metric = append(c.hooks.Metric, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `metric.Intercept(f(g(h())))`.
+func (c *MetricClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Metric = append(c.inters.Metric, interceptors...)
+}
+
+// Create returns a builder for creating a Metric entity.
+func (c *MetricClient) Create() *MetricCreate {
+	mutation := newMetricMutation(c.config, OpCreate)
+	return &MetricCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Metric entities.
+func (c *MetricClient) CreateBulk(builders ...*MetricCreate) *MetricCreateBulk {
+	return &MetricCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MetricClient) MapCreateBulk(slice any, setFunc func(*MetricCreate, int)) *MetricCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MetricCreateBulk{err: fmt.Errorf("calling to MetricClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MetricCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MetricCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Metric.
+func (c *MetricClient) Update() *MetricUpdate {
+	mutation := newMetricMutation(c.config, OpUpdate)
+	return &MetricUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MetricClient) UpdateOne(m *Metric) *MetricUpdateOne {
+	mutation := newMetricMutation(c.config, OpUpdateOne, withMetric(m))
+	return &MetricUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MetricClient) UpdateOneID(id int) *MetricUpdateOne {
+	mutation := newMetricMutation(c.config, OpUpdateOne, withMetricID(id))
+	return &MetricUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Metric.
+func (c *MetricClient) Delete() *MetricDelete {
+	mutation := newMetricMutation(c.config, OpDelete)
+	return &MetricDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MetricClient) DeleteOne(m *Metric) *MetricDeleteOne {
+	return c.DeleteOneID(m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MetricClient) DeleteOneID(id int) *MetricDeleteOne {
+	builder := c.Delete().Where(metric.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MetricDeleteOne{builder}
+}
+
+// Query returns a query builder for Metric.
+func (c *MetricClient) Query() *MetricQuery {
+	return &MetricQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMetric},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Metric entity by its id.
+func (c *MetricClient) Get(ctx context.Context, id int) (*Metric, error) {
+	return c.Query().Where(metric.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MetricClient) GetX(ctx context.Context, id int) *Metric {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *MetricClient) Hooks() []Hook {
+	return c.hooks.Metric
+}
+
+// Interceptors returns the client interceptors.
+func (c *MetricClient) Interceptors() []Interceptor {
+	return c.inters.Metric
+}
+
+func (c *MetricClient) mutate(ctx context.Context, m *MetricMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MetricCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MetricUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MetricUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MetricDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Metric mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta []ent.Hook
+		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta,
+		Metric []ent.Hook
 	}
 	inters struct {
-		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine,
-		Meta []ent.Interceptor
+		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta,
+		Metric []ent.Interceptor
 	}
 )

@@ -28,6 +28,8 @@ type Tx struct {
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
 	Meta *MetaClient
+	// Metric is the client for interacting with the Metric builders.
+	Metric *MetricClient
 
 	// lazily loaded.
 	client     *Client
@@ -167,6 +169,7 @@ func (tx *Tx) init() {
 	tx.Lock = NewLockClient(tx.config)
 	tx.Machine = NewMachineClient(tx.config)
 	tx.Meta = NewMetaClient(tx.config)
+	tx.Metric = NewMetricClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

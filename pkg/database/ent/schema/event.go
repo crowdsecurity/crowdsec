@@ -18,10 +18,10 @@ func (Event) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			UpdateDefault(types.UtcNow),
 		field.Time("time"),
 		field.String("serialized").MaxLen(8191),
 		field.Int("alert_events").Optional(),

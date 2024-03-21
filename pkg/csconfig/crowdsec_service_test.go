@@ -58,6 +58,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 2500,
+				MetricsInterval:           ptr.Of(defaultMetricsInterval),
 				AcquisitionFiles:          []string{acquisFullPath},
 				SimulationFilePath:        "./testdata/simulation.yaml",
 				// context is loaded in pkg/alertcontext
@@ -98,6 +99,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 0,
+				MetricsInterval:           ptr.Of(defaultMetricsInterval),
 				AcquisitionFiles:          []string{acquisFullPath, acquisInDirFullPath},
 				// context is loaded in pkg/alertcontext
 //				ContextToSend: map[string][]string{
@@ -136,6 +138,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 10,
+				MetricsInterval:           ptr.Of(defaultMetricsInterval),
 				AcquisitionFiles:          []string{},
 				SimulationFilePath:        "",
 				// context is loaded in pkg/alertcontext

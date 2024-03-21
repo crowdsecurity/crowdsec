@@ -275,6 +275,12 @@ func (dc *DecisionCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (dc *DecisionCreate) check() error {
+	if _, ok := dc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Decision.created_at"`)}
+	}
+	if _, ok := dc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Decision.updated_at"`)}
+	}
 	if _, ok := dc.mutation.Scenario(); !ok {
 		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "Decision.scenario"`)}
 	}
@@ -321,11 +327,11 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := dc.mutation.CreatedAt(); ok {
 		_spec.SetField(decision.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = &value
+		_node.CreatedAt = value
 	}
 	if value, ok := dc.mutation.UpdatedAt(); ok {
 		_spec.SetField(decision.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = &value
+		_node.UpdatedAt = value
 	}
 	if value, ok := dc.mutation.Until(); ok {
 		_spec.SetField(decision.FieldUntil, field.TypeTime, value)

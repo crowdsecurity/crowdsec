@@ -18,9 +18,9 @@ type Bouncer struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// APIKey holds the value of the "api_key" field.
@@ -38,7 +38,13 @@ type Bouncer struct {
 	// LastPull holds the value of the "last_pull" field.
 	LastPull time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
-	AuthType     string `json:"auth_type"`
+	AuthType string `json:"auth_type"`
+	// Osname holds the value of the "osname" field.
+	Osname string `json:"osname,omitempty"`
+	// Osversion holds the value of the "osversion" field.
+	Osversion string `json:"osversion,omitempty"`
+	// Featureflags holds the value of the "featureflags" field.
+	Featureflags string `json:"featureflags,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -51,7 +57,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
 			values[i] = new(sql.NullInt64)
-		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType:
+		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
 			values[i] = new(sql.NullString)
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
@@ -80,15 +86,13 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				b.CreatedAt = new(time.Time)
-				*b.CreatedAt = value.Time
+				b.CreatedAt = value.Time
 			}
 		case bouncer.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				b.UpdatedAt = new(time.Time)
-				*b.UpdatedAt = value.Time
+				b.UpdatedAt = value.Time
 			}
 		case bouncer.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -144,6 +148,24 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.AuthType = value.String
 			}
+		case bouncer.FieldOsname:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osname", values[i])
+			} else if value.Valid {
+				b.Osname = value.String
+			}
+		case bouncer.FieldOsversion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osversion", values[i])
+			} else if value.Valid {
+				b.Osversion = value.String
+			}
+		case bouncer.FieldFeatureflags:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field featureflags", values[i])
+			} else if value.Valid {
+				b.Featureflags = value.String
+			}
 		default:
 			b.selectValues.Set(columns[i], values[i])
 		}
@@ -180,15 +202,11 @@ func (b *Bouncer) String() string {
 	var builder strings.Builder
 	builder.WriteString("Bouncer(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", b.ID))
-	if v := b.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(b.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := b.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(b.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(b.Name)
@@ -215,6 +233,15 @@ func (b *Bouncer) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(b.AuthType)
+	builder.WriteString(", ")
+	builder.WriteString("osname=")
+	builder.WriteString(b.Osname)
+	builder.WriteString(", ")
+	builder.WriteString("osversion=")
+	builder.WriteString(b.Osversion)
+	builder.WriteString(", ")
+	builder.WriteString("featureflags=")
+	builder.WriteString(b.Featureflags)
 	builder.WriteByte(')')
 	return builder.String()
 }

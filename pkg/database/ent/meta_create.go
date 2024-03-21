@@ -141,6 +141,12 @@ func (mc *MetaCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MetaCreate) check() error {
+	if _, ok := mc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Meta.created_at"`)}
+	}
+	if _, ok := mc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Meta.updated_at"`)}
+	}
 	if _, ok := mc.mutation.Key(); !ok {
 		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "Meta.key"`)}
 	}
@@ -180,11 +186,11 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := mc.mutation.CreatedAt(); ok {
 		_spec.SetField(meta.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = &value
+		_node.CreatedAt = value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
 		_spec.SetField(meta.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = &value
+		_node.UpdatedAt = value
 	}
 	if value, ok := mc.mutation.Key(); ok {
 		_spec.SetField(meta.FieldKey, field.TypeString, value)
