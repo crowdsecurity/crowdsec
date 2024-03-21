@@ -4,39 +4,40 @@ import (
 	"context"
 	"errors"
 	"net/http"
-        "github.com/sirupsen/logrus"
-        "github.com/blackfireio/osinfo"
 	"time"
+
+	"github.com/blackfireio/osinfo"
+	"github.com/sirupsen/logrus"
 
 	"gopkg.in/tomb.v2"
 
-        "github.com/crowdsecurity/go-cs-lib/ptr"
-        "github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
-        "github.com/crowdsecurity/crowdsec/pkg/acquisition"
-        "github.com/crowdsecurity/crowdsec/pkg/apiclient"
-        "github.com/crowdsecurity/crowdsec/pkg/cwhub"
-        "github.com/crowdsecurity/crowdsec/pkg/cwversion"
-        "github.com/crowdsecurity/crowdsec/pkg/fflag"
-        "github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
-	apic *apiclient.ApiClient
+	apic     *apiclient.ApiClient
 	interval time.Duration
-	static staticMetrics
-	logger *logrus.Entry
+	static   staticMetrics
+	logger   *logrus.Entry
 }
 
 type staticMetrics struct {
-	osName            string
-	osVersion         string
-	startupTS         int64
-	featureFlags      []string
-	consoleOptions    []string
-	datasourceMap     map[string]int64
-	hubState	  models.HubItems
+	osName         string
+	osVersion      string
+	startupTS      int64
+	featureFlags   []string
+	consoleOptions []string
+	datasourceMap  map[string]int64
+	hubState       models.HubItems
 }
 
 func getHubState(hub *cwhub.Hub) models.HubItems {
@@ -96,49 +97,47 @@ func detectOS() (string, string) {
 	return osInfo.Name, osInfo.Version
 }
 
-
 func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
-		consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) *MetricsProvider {
+	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) *MetricsProvider {
 	return &MetricsProvider{
-		apic: apic,
+		apic:     apic,
 		interval: interval,
-		logger: logger,
-		static: newStaticMetrics(consoleOptions, datasources, hub),
+		logger:   logger,
+		static:   newStaticMetrics(consoleOptions, datasources, hub),
 	}
 }
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	meta := &models.MetricsMeta{
 		UtcStartupTimestamp: m.static.startupTS,
-		WindowSizeSeconds: int64(m.interval.Seconds()),
+		WindowSizeSeconds:   int64(m.interval.Seconds()),
 	}
 
 	os := &models.OSversion{
-		Name: m.static.osName,
+		Name:    m.static.osName,
 		Version: m.static.osVersion,
 	}
 
 	base := models.BaseMetrics{
-		Meta: meta,
-		Os: os,
-		Version: ptr.Of(cwversion.VersionStr()),
+		Meta:         meta,
+		Os:           os,
+		Version:      ptr.Of(cwversion.VersionStr()),
 		FeatureFlags: m.static.featureFlags,
 	}
 
 	item0 := &models.LogProcessorsMetricsItems0{
-		BaseMetrics: base,
+		BaseMetrics:    base,
 		ConsoleOptions: m.static.consoleOptions,
-		Datasources: m.static.datasourceMap,
-		HubItems: m.static.hubState,
+		Datasources:    m.static.datasourceMap,
+		HubItems:       m.static.hubState,
 	}
 
 	// TODO: more metric details... ?
 
 	return &models.AllMetrics{
-                LogProcessors: []models.LogProcessorsMetrics{{item0}},
+		LogProcessors: []models.LogProcessorsMetrics{{item0}},
 	}
 }
-
 
 func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
@@ -149,7 +148,7 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 
 	met := m.metricsPayload()
 
-	ticker := time.NewTicker(m.interval)
+	ticker := time.NewTicker(1) //Send on start
 
 	for {
 		select {
@@ -176,6 +175,8 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 				m.logger.Warnf("failed to send lp metrics: %s", resp.Response.Status)
 				continue
 			}
+
+			ticker.Reset(m.interval)
 
 			m.logger.Tracef("lp usage metrics sent")
 		case <-myTomb.Dying():

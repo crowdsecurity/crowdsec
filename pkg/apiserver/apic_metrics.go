@@ -2,10 +2,14 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"slices"
+
+	"github.com/davecgh/go-spew/spew"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -13,6 +17,67 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
+
+func (a *apic) GetUsageMetrics() (*models.AllMetrics, error) {
+	lpsMetrics, err := a.dbClient.GetLPsUsageMetrics()
+
+	if err != nil {
+		return nil, err
+	}
+
+	spew.Dump(lpsMetrics)
+
+	bouncersMetrics, err := a.dbClient.GetBouncersUsageMetrics()
+	if err != nil {
+		return nil, err
+	}
+
+	spew.Dump(bouncersMetrics)
+
+	allMetrics := &models.AllMetrics{}
+
+	allLps := a.dbClient.ListMachines()
+	allBouncers := a.dbClient.ListBouncers()
+
+	for _, lpsMetric := range lpsMetrics {
+		lpName := lpsMetric.GeneratedBy
+		metrics := models.LogProcessorsMetricsItems0{}
+
+		err := json.Unmarshal([]byte(lpsMetric.Payload), &metrics)
+
+		if err != nil {
+			log.Errorf("unable to unmarshal LPs metrics (%s)", err)
+			continue
+		}
+
+		lp, err := a.dbClient.QueryMachineByID(lpName)
+
+		if err != nil {
+			log.Errorf("unable to get LP information for %s: %s", lpName, err)
+			continue
+		}
+
+		if lp.Hubstate != nil {
+			metrics.HubItems = *lp.Hubstate
+		}
+
+		metrics.Os = &models.OSversion{
+			Name:    lp.Osname,
+			Version: lp.Osversion,
+		}
+
+		metrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
+		metrics.Version = &lp.Version
+		//TODO: meta
+
+	}
+
+	//bouncerInfos := make(map[string]string)
+
+	//TODO: add LAPI metrics
+
+	return allMetrics, nil
+}
 
 func (a *apic) GetMetrics() (*models.Metrics, error) {
 	machines, err := a.dbClient.ListMachines()
@@ -157,6 +222,27 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			a.pushTomb.Kill(nil)
 
 			return
+		}
+	}
+}
+
+func (a *apic) SendUsageMetrics() {
+	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
+
+	ticker := time.NewTicker(5 * time.Second)
+
+	for {
+		select {
+		case <-a.metricsTomb.Dying():
+			//The normal metrics routine also kills push/pull tombs, does that make sense ?
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			_, err := a.GetUsageMetrics()
+			if err != nil {
+				log.Errorf("unable to get usage metrics (%s)", err)
+			}
+
 		}
 	}
 }

@@ -15,7 +15,6 @@ import (
 // RemoveOldMetrics
 // avoid errors.Wrapf
 
-
 func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy string, collectedAt time.Time, payload string) (*ent.Metric, error) {
 	metric, err := c.Ent.Metric.
 		Create().
@@ -37,4 +36,36 @@ func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy st
 	}
 
 	return metric, nil
+}
+
+func (c *Client) GetLPsUsageMetrics() ([]*ent.Metric, error) {
+	metrics, err := c.Ent.Metric.Query().
+		Where(
+			metric.GeneratedTypeEQ(metric.GeneratedTypeLP),
+			metric.PushedAtIsNil(),
+		).
+		Order(ent.Desc(metric.FieldCollectedAt)).
+		All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("GetLPsUsageMetrics: %s", err)
+		return nil, fmt.Errorf("getting LPs usage metrics: %w", err)
+	}
+
+	return metrics, nil
+}
+
+func (c *Client) GetBouncersUsageMetrics() ([]*ent.Metric, error) {
+	metrics, err := c.Ent.Metric.Query().
+		Where(
+			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
+			metric.PushedAtIsNil(),
+		).
+		Order(ent.Desc(metric.FieldCollectedAt)).
+		All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("GetBouncersUsageMetrics: %s", err)
+		return nil, fmt.Errorf("getting bouncers usage metrics: %w", err)
+	}
+
+	return metrics, nil
 }

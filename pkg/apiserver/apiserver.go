@@ -25,6 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -360,6 +361,15 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			s.apic.SendMetrics(make(chan bool))
 			return nil
 		})
+
+		if fflag.CAPIUsageMetrics.IsEnabled() {
+			log.Infof("CAPI_USAGE_METRICS flag is enabled, starting usage metrics routine")
+			s.apic.metricsTomb.Go(func() error {
+				s.apic.SendUsageMetrics()
+				return nil
+			})
+		}
+
 	}
 
 	s.httpServerTomb.Go(func() error {
@@ -368,7 +378,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 	if err := s.httpServerTomb.Wait(); err != nil {
 		return fmt.Errorf("local API server stopped with error: %w", err)
-        }
+	}
 
 	return nil
 }
