@@ -441,6 +441,20 @@ var exprFuncs = []exprCustomFunc{
 			new(func(float64, float64) bool),
 		},
 	},
+	{
+		name:     "LibInjectionIsSQLI",
+		function: LibInjectionIsSQLI,
+		signature: []interface{}{
+			new(func(string) bool),
+		},
+	},
+	{
+		name:     "LibInjectionIsXSS",
+		function: LibInjectionIsXSS,
+		signature: []interface{}{
+			new(func(string) bool),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
