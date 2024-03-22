@@ -3,18 +3,19 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"slices"
 
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -25,36 +26,53 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, error) {
 		return nil, err
 	}
 
-	spew.Dump(lpsMetrics)
+	//spew.Dump(lpsMetrics)
 
 	bouncersMetrics, err := a.dbClient.GetBouncersUsageMetrics()
 	if err != nil {
 		return nil, err
 	}
 
-	spew.Dump(bouncersMetrics)
+	//spew.Dump(bouncersMetrics)
 
 	allMetrics := &models.AllMetrics{}
 
-	allLps := a.dbClient.ListMachines()
-	allBouncers := a.dbClient.ListBouncers()
+	/*allLps, err  := a.dbClient.ListMachines()
+
+	if err != nil {
+		return nil, err
+	}
+
+	allBouncers, err := a.dbClient.ListBouncers()
+
+	if err != nil {
+		return nil, err
+	}*/
+
+	lpsCache := make(map[string]*ent.Machine)
+	bouncersCache := make(map[string]*ent.Bouncer)
 
 	for _, lpsMetric := range lpsMetrics {
 		lpName := lpsMetric.GeneratedBy
 		metrics := models.LogProcessorsMetricsItems0{}
 
 		err := json.Unmarshal([]byte(lpsMetric.Payload), &metrics)
-
 		if err != nil {
 			log.Errorf("unable to unmarshal LPs metrics (%s)", err)
 			continue
 		}
 
-		lp, err := a.dbClient.QueryMachineByID(lpName)
+		var lp *ent.Machine
 
-		if err != nil {
-			log.Errorf("unable to get LP information for %s: %s", lpName, err)
-			continue
+		if _, ok := lpsCache[lpName]; !ok {
+			lp, err = a.dbClient.QueryMachineByID(lpName)
+
+			if err != nil {
+				log.Errorf("unable to get LP information for %s: %s", lpName, err)
+				continue
+			}
+		} else {
+			lp = lpsCache[lpName]
 		}
 
 		if lp.Hubstate != nil {
@@ -70,6 +88,40 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, error) {
 		metrics.Version = &lp.Version
 		//TODO: meta
 
+		allMetrics.LogProcessors = append(allMetrics.LogProcessors, models.LogProcessorsMetrics{&metrics})
+	}
+
+	for _, bouncersMetric := range bouncersMetrics {
+		bouncerName := bouncersMetric.GeneratedBy
+		metrics := models.RemediationComponentsMetricsItems0{}
+
+		err := json.Unmarshal([]byte(bouncersMetric.Payload), &metrics)
+		if err != nil {
+			log.Errorf("unable to unmarshal bouncers metrics (%s)", err)
+			continue
+		}
+
+		var bouncer *ent.Bouncer
+
+		if _, ok := bouncersCache[bouncerName]; !ok {
+			bouncer, err = a.dbClient.SelectBouncerByName(bouncerName)
+			if err != nil {
+				log.Errorf("unable to get bouncer information for %s: %s", bouncerName, err)
+				continue
+			}
+		} else {
+			bouncer = bouncersCache[bouncerName]
+		}
+
+		metrics.Os = &models.OSversion{
+			Name:    bouncer.Osname,
+			Version: bouncer.Osversion,
+		}
+		metrics.Type = bouncer.Type
+		metrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
+		//TODO: meta
+
+		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, models.RemediationComponentsMetrics{&metrics})
 	}
 
 	//bouncerInfos := make(map[string]string)
@@ -238,11 +290,15 @@ func (a *apic) SendUsageMetrics() {
 			ticker.Stop()
 			return
 		case <-ticker.C:
-			_, err := a.GetUsageMetrics()
+			metrics, err := a.GetUsageMetrics()
 			if err != nil {
 				log.Errorf("unable to get usage metrics (%s)", err)
 			}
-
+			jsonStr, err := json.Marshal(metrics)
+			if err != nil {
+				log.Errorf("unable to marshal usage metrics (%s)", err)
+			}
+			fmt.Printf("Usage metrics: %s\n", string(jsonStr))
 		}
 	}
 }
