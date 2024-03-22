@@ -7,10 +7,26 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
+// hubTransport wraps a Transport to set a custom User-Agent.
+type hubTransport struct {
+	Transport http.RoundTripper
+}
+
+func (t *hubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("User-Agent", "crowdsec/"+version.String())
+	return t.Transport.RoundTrip(req)
+}
+
+// hubClient is the HTTP client used to communicate with the CrowdSec Hub.
 var hubClient = &http.Client{
 	Timeout: 120 * time.Second,
+	Transport: &hubTransport{
+		Transport: http.DefaultTransport,
+	},
 }
 
 // safePath returns a joined path and ensures that it does not escape the base directory.
