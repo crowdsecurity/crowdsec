@@ -48,9 +48,9 @@ func TestDownloadFile(t *testing.T) {
 
 	// bad target
 	err = downloadFile(ts.URL+"/xx", "")
-	cstest.RequireErrorContains(t, err, "no such file or directory")
+	cstest.RequireErrorContains(t, err, cstest.PathNotFoundMessage)
 
 	// destination directory does not exist
 	err = downloadFile(ts.URL+"/xx", filepath.Join(t.TempDir(), "missing/example.txt"))
-	cstest.RequireErrorContains(t, err, "no such file or directory")
+	cstest.RequireErrorContains(t, err, cstest.PathNotFoundMessage)
 }
