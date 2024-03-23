@@ -56,7 +56,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.56
+        version: v1.57
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
         # the cache is already managed above, enabling it here
