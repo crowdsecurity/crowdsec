@@ -34,7 +34,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
-	alert.Events = make([]*models.Event, 0)
+	alert.Events = make([]*models.Event, len(evt.Appsec.GetRuleIDs()))
 	alert.Meta = make(models.Meta, 0)
 	for _, key := range []string{"target_uri", "method"} {
 
@@ -64,7 +64,40 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		}
 	}
 
-	alert.EventsCount = ptr.Of(int32(1))
+	now := ptr.Of(time.Now().UTC().Format(time.RFC3339))
+
+	for _, matched_rule := range inEvt.Appsec.MatchedRules {
+		evtRule := models.Event{}
+
+		evtRule.Timestamp = now
+
+		evtRule.Meta = make(models.Meta, 0)
+
+		for _, key := range []string{"id", "name", "method", "uri", "matched_zones"} {
+			value := ""
+
+			switch matched_rule[key].(type) {
+			case string:
+				value = matched_rule[key].(string)
+			case int:
+				value = fmt.Sprintf("%d", matched_rule[key].(int))
+			default:
+				value = fmt.Sprintf("%v", matched_rule[key])
+			}
+
+			if value == "" {
+				continue
+			}
+
+			evtRule.Meta = append(evtRule.Meta, &models.MetaItems0{
+				Key:   key,
+				Value: value,
+			})
+		}
+		alert.Events = append(alert.Events, &evtRule)
+	}
+
+	alert.EventsCount = ptr.Of(int32(len(evt.Appsec.MatchedRules)))
 	alert.Leakspeed = ptr.Of("")
 	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
