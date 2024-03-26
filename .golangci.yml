@@ -1,12 +1,5 @@
 # https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
 
-run:
-  skip-dirs:
-    - pkg/time/rate
-  skip-files:
-    - pkg/yamlpatch/merge.go
-    - pkg/yamlpatch/merge_test.go
-
 linters-settings:
   cyclop:
     # lower this after refactoring
@@ -18,6 +11,10 @@ linters-settings:
      - default
      - prefix(github.com/crowdsecurity)
      - prefix(github.com/crowdsecurity/crowdsec)
+
+  gomoddirectives:
+    replace-allow-list:
+      - golang.org/x/time/rate
 
   gocognit:
     # lower this after refactoring
@@ -40,7 +37,6 @@ linters-settings:
     statements: 122
 
   govet:
-    check-shadowing: true
     enable:
      - atomicalign
      - deepequalerrors
@@ -295,14 +291,20 @@ issues:
   # “Look, that’s why there’s rules, understand? So that you think before you
   # break ‘em.” ― Terry Pratchett
 
+  exclude-dirs:
+    - pkg/time/rate
+
+  exclude-files:
+    - pkg/yamlpatch/merge.go
+    - pkg/yamlpatch/merge_test.go
+
+  exclude-generated-strict: true
+
   max-issues-per-linter: 0
   max-same-issues: 0
   exclude-rules:
 
     # Won't fix:
-
-    - path: go.mod
-      text: "replacement are not allowed: golang.org/x/time/rate"
 
     # `err` is often shadowed, we may continue to do it
     - linters:
