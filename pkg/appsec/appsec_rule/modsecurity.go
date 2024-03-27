@@ -19,7 +19,8 @@ var zonesMap map[string]string = map[string]string{
 	"HEADERS":         "REQUEST_HEADERS",
 	"METHOD":          "REQUEST_METHOD",
 	"PROTOCOL":        "REQUEST_PROTOCOL",
-	"URI":             "REQUEST_URI",
+	"URI":             "REQUEST_FILENAME",
+	"URI_FULL":        "REQUEST_URI",
 	"RAW_BODY":        "REQUEST_BODY",
 	"FILENAMES":       "FILES",
 }
