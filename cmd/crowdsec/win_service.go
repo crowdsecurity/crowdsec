@@ -41,7 +41,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 					changes <- c.CurrentStatus
 				case svc.Stop, svc.Shutdown:
 					changes <- svc.Status{State: svc.StopPending}
-					err := shutdown(nil, m.config)
+					err := shutdown(m.config)
 					if err != nil {
 						log.Errorf("Error while shutting down: %s", err)
 						// don't return, we still want to notify windows that we are stopped ?
