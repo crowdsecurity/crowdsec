@@ -1284,6 +1284,254 @@ func TestAppsecRuleMatches(t *testing.T) {
 	}
 }
 
+func TestAppsecRuleTransforms(t *testing.T) {
+
+	log.SetLevel(log.TraceLevel)
+	tests := []appsecRuleTest{
+		{
+			name:             "Basic matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:  "rule1",
+					Zones: []string{"URI"},
+					Match: appsec_rule.Match{Type: "equals", Value: "/toto"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/toto",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "lowercase",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"URI"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "/toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/TOTO",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "uppercase",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"URI"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "/TOTO"},
+					Transform: []string{"uppercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/toto",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "b64decode",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "toto"},
+					Transform: []string{"b64decode"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=dG90bw",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "b64decode with extra padding",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "toto"},
+					Transform: []string{"b64decode"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=dG90bw===",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "length",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "gte", Value: "3"},
+					Transform: []string{"length"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=toto",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "urldecode",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "BB/A"},
+					Transform: []string{"urldecode"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=%42%42%2F%41",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "trim",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "BB/A"},
+					Transform: []string{"urldecode", "trim"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=%20%20%42%42%2F%41%20%20",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "normalizepath",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "b/c"},
+					Transform: []string{"normalizepath"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=a/../b/c",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+		{
+			name:             "normalizepath #2",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "equals", Value: "b/c/"},
+					Transform: []string{"normalizepath"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/?foo=a/../b/c/////././././",
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loadAppSecEngine(test, t)
+		})
+	}
+}
+
 func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(log.TraceLevel)
