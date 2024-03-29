@@ -30,7 +30,6 @@ type ParsedRequest struct {
 	Host                 string                  `json:"host,omitempty"`
 	ClientIP             string                  `json:"client_ip,omitempty"`
 	URI                  string                  `json:"uri,omitempty"`
-	Path                 string                  `json:"path,omitempty"`
 	Args                 url.Values              `json:"args,omitempty"`
 	ClientHost           string                  `json:"client_host,omitempty"`
 	Headers              http.Header             `json:"headers,omitempty"`
@@ -367,7 +366,6 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		ClientHost:           clientHost,
 		ClientIP:             clientIP,
 		URI:                  clientURI,
-		Path:                 parsedURL.Path,
 		Method:               clientMethod,
 		Host:                 clientHost,
 		Headers:              r.Header,
