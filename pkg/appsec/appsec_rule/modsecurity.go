@@ -29,8 +29,14 @@ var transformMap map[string]string = map[string]string{
 	"lowercase": "t:lowercase",
 	"uppercase": "t:uppercase",
 	"b64decode": "t:base64Decode",
-	"hexdecode": "t:hexDecode",
-	"length":    "t:length",
+	//"hexdecode":          "t:hexDecode", -> not supported by coraza
+	"length":             "t:length",
+	"urldecode":          "t:urlDecode",
+	"trim":               "t:trim",
+	"normalize_path":     "t:normalizePath",
+	"normalizepath":      "t:normalizePath",
+	"htmlentitydecode":   "t:htmlEntityDecode",
+	"html_entity_decode": "t:htmlEntityDecode",
 }
 
 var matchMap map[string]string = map[string]string{
