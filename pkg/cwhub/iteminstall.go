@@ -58,14 +58,14 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		return nil
 	}
 
+	if err := i.enable(); err != nil {
+		return fmt.Errorf("while enabling %s: %w", i.Name, err)
+	}
+
 	// a check on stdout is used while scripting to know if the hub has been upgraded
 	// and a configuration reload is required
 	// TODO: use a better way to communicate this
 	fmt.Printf("installed %s\n", i.Name)
-
-	if err := i.enable(); err != nil {
-		return fmt.Errorf("while enabling %s: %w", i.Name, err)
-	}
 
 	i.hub.logger.Infof("Enabled %s", i.Name)
 

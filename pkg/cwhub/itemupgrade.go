@@ -17,8 +17,6 @@ import (
 
 // Upgrade downloads and applies the last version of the item from the hub.
 func (i *Item) Upgrade(force bool) (bool, error) {
-	updated := false
-
 	if i.State.IsLocal() {
 		i.hub.logger.Infof("not upgrading %s: local item", i.Name)
 		return false, nil
@@ -53,17 +51,16 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		if i.State.Tainted {
 			i.hub.logger.Warningf("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
 		}
-	} else {
-		// a check on stdout is used while scripting to know if the hub has been upgraded
-		// and a configuration reload is required
-		// TODO: use a better way to communicate this
-		fmt.Printf("updated %s\n", i.Name)
-		i.hub.logger.Infof("%v %s: updated", emoji.Package, i.Name)
-
-		updated = true
+		return false, nil
 	}
 
-	return updated, nil
+	// a check on stdout is used while scripting to know if the hub has been upgraded
+	// and a configuration reload is required
+	// TODO: use a better way to communicate this
+	fmt.Printf("updated %s\n", i.Name)
+	i.hub.logger.Infof("%v %s: updated", emoji.Package, i.Name)
+
+	return true, nil
 }
 
 // downloadLatest downloads the latest version of the item to the hub directory.
