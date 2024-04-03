@@ -42,7 +42,7 @@ def test_flavor_content(crowdsec, flavor):
         x = cs.cont.exec_run(
             'ls -1 /usr/local/lib/crowdsec/plugins/')
         stdout = x.output.decode()
-        if 'slim' in flavor or 'geoip' in flavor:
+        if 'slim' in flavor:
             # the exact return code and full message depend
             # on the 'ls' implementation (busybox vs coreutils)
             assert x.exit_code != 0
