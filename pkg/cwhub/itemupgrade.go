@@ -187,6 +187,8 @@ func (i *Item) download(overwrite bool) (bool, error) {
 		return false, fmt.Errorf("while opening %s: %w", finalPath, err)
 	}
 
+	defer reader.Close()
+
 	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, reader, i.hub.logger); err != nil {
 		return false, fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
 	}

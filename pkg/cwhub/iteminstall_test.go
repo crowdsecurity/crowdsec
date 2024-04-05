@@ -35,7 +35,8 @@ func testTaint(hub *Hub, t *testing.T, item *Item) {
 	// truncate the file
 	f, err := os.Create(item.State.LocalPath)
 	require.NoError(t, err)
-	f.Close()
+	err = f.Close()
+	require.NoError(t, err)
 
 	// Local sync and check status
 	err = hub.localSync()
