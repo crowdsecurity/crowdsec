@@ -51,6 +51,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		if i.State.Tainted {
 			i.hub.logger.Warningf("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
 		}
+
 		return false, nil
 	}
 
