@@ -48,15 +48,20 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		}
 	}
 
-	filePath, err := i.downloadLatest(force, true)
+	downloaded, err := i.downloadLatest(force, true)
 	if err != nil {
 		return err
 	}
 
-	if downloadOnly {
-		i.hub.logger.Infof("Downloaded %s to %s", i.Name, filePath)
+	if downloadOnly && downloaded {
+		i.hub.logger.Infof("Downloaded %s", i.Name)
 		return nil
 	}
+
+	// a check on stdout is used while scripting to know if the hub has been upgraded
+	// and a configuration reload is required
+	// TODO: use a better way to communicate this
+	fmt.Printf("installed %s\n", i.Name)
 
 	if err := i.enable(); err != nil {
 		return fmt.Errorf("while enabling %s: %w", i.Name, err)

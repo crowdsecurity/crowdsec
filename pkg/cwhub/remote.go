@@ -1,9 +1,12 @@
 package cwhub
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/downloader"
 )
 
 // RemoteHubCfg is used to retrieve index and items from the remote hub.
@@ -28,34 +31,28 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 }
 
 // fetchIndex downloads the index from the hub and returns the content.
-func (r *RemoteHubCfg) fetchIndex() ([]byte, error) {
+func (r *RemoteHubCfg) fetchIndex(destPath string) (bool, error) {
 	if r == nil {
-		return nil, ErrNilRemoteHub
+		return false, ErrNilRemoteHub
 	}
 
 	url, err := r.urlTo(r.IndexPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build hub index request: %w", err)
+		return false, fmt.Errorf("failed to build hub index request: %w", err)
 	}
 
-	resp, err := hubClient.Get(url)
+	ctx := context.Background()
+
+	downloaded, err := downloader.
+		New(url).
+		WithHTTPClient(hubClient).
+		ToFile(destPath).
+		CompareContent().
+		WithLogger(logrus.WithFields(logrus.Fields{"url": url})).
+		Download(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed http request for hub index: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, IndexNotFoundError{url, r.Branch}
-		}
-
-		return nil, fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		return false, err
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read request answer for hub index: %w", err)
-	}
-
-	return body, nil
+	return downloaded, nil
 }

@@ -3,15 +3,14 @@ package cwhub
 // Install, upgrade and remove items from the hub to the local configuration
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"path/filepath"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/downloader"
 
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
@@ -68,7 +67,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 }
 
 // downloadLatest downloads the latest version of the item to the hub directory.
-func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
+func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (bool, error) {
 	i.hub.logger.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
@@ -84,98 +83,85 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 			i.hub.logger.Tracef("collection, recurse")
 
 			if _, err := sub.downloadLatest(overwrite, updateOnly); err != nil {
-				return "", err
+				return false, err
 			}
 		}
 
 		downloaded := sub.State.Downloaded
 
 		if _, err := sub.download(overwrite); err != nil {
-			return "", err
+			return false, err
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if sub.Downloaded is false because maybe the item has been disabled by the user.
 		if !sub.State.Installed && !downloaded {
 			if err := sub.enable(); err != nil {
-				return "", fmt.Errorf("enabling '%s': %w", sub.Name, err)
+				return false, fmt.Errorf("enabling '%s': %w", sub.Name, err)
 			}
 		}
 	}
 
 	if !i.State.Installed && updateOnly && i.State.Downloaded && !overwrite {
 		i.hub.logger.Debugf("skipping upgrade of %s: not installed", i.Name)
-		return "", nil
+		return false, nil
 	}
 
-	ret, err := i.download(overwrite)
-	if err != nil {
-		return "", err
-	}
-
-	return ret, nil
+	return i.download(overwrite)
 }
 
-// FetchLatest downloads the latest item from the hub, verifies the hash and returns the content and the used url.
-func (i *Item) FetchLatest() ([]byte, string, error) {
-	if i.latestHash() == "" {
-		return nil, "", errors.New("latest hash missing from index")
-	}
-
+// FetchContentTo downloads the last version of the item's YAML file to the specified path.
+func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to build request: %w", err)
+		return false, "", fmt.Errorf("failed to build request: %w", err)
 	}
 
-	resp, err := hubClient.Get(url)
+	wantHash := i.latestHash()
+	if wantHash == "" {
+		return false, "", errors.New("latest hash missing from index")
+	}
+
+	d := downloader.
+		New(url).
+		WithHTTPClient(hubClient).
+		ToFile(destPath).
+		WithMakeDirs(true).
+		WithLogger(logrus.WithFields(logrus.Fields{"url": url})).
+		CompareContent().
+		VerifyHash("sha256", wantHash)
+
+	// TODO: recommend hub update if hash does not match
+	// TODO: use real context
+
+	ctx := context.Background()
+
+	downloaded, err := d.Download(ctx)
 	if err != nil {
-		return nil, "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("bad http code %d", resp.StatusCode)
+		return false, "", fmt.Errorf("while downloading %s to %s: %w", i.Name, url, err)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", err
-	}
-
-	hash := sha256.New()
-	if _, err = hash.Write(body); err != nil {
-		return nil, "", fmt.Errorf("while hashing %s: %w", i.Name, err)
-	}
-
-	meow := hex.EncodeToString(hash.Sum(nil))
-	if meow != i.Versions[i.Version].Digest {
-		i.hub.logger.Errorf("Downloaded version doesn't match index, please 'hub update'")
-		i.hub.logger.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
-
-		return nil, "", errors.New("invalid download hash")
-	}
-
-	return body, url, nil
+	return downloaded, url, nil
 }
 
 // download downloads the item from the hub and writes it to the hub directory.
-func (i *Item) download(overwrite bool) (string, error) {
+func (i *Item) download(overwrite bool) (bool, error) {
 	// ensure that target file is within target dir
 	finalPath, err := i.downloadPath()
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
 	if i.State.IsLocal() {
 		i.hub.logger.Warningf("%s is local, can't download", i.Name)
-		return finalPath, nil
+		return false, nil
 	}
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if i.State.Tainted {
 			i.hub.logger.Debugf("%s: tainted, not updated", i.Name)
-			return "", nil
+			return false, nil
 		}
 
 		if i.State.UpToDate {
@@ -184,45 +170,30 @@ func (i *Item) download(overwrite bool) (string, error) {
 		}
 	}
 
-	body, url, err := i.FetchLatest()
+	downloaded, _, err := i.FetchContentTo(finalPath)
 	if err != nil {
-		what := i.Name
-		if url != "" {
-			what += " from " + url
-		}
-
-		return "", fmt.Errorf("while downloading %s: %w", what, err)
+		return false, fmt.Errorf("while downloading %s: %w", i.Name, err)
 	}
 
-	// all good, install
-
-	parentDir := filepath.Dir(finalPath)
-
-	if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
-		return "", fmt.Errorf("while creating %s: %w", parentDir, err)
-	}
-
-	// check actual file
-	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
-		i.hub.logger.Warningf("%s: overwrite", i.Name)
-		i.hub.logger.Debugf("target: %s", finalPath)
-	} else {
-		i.hub.logger.Infof("%s: OK", i.Name)
-	}
-
-	if err = os.WriteFile(finalPath, body, 0o644); err != nil {
-		return "", fmt.Errorf("while writing %s: %w", finalPath, err)
+	if downloaded {
+		i.hub.logger.Infof("Downloaded %s", i.Name)
 	}
 
 	i.State.Downloaded = true
 	i.State.Tainted = false
 	i.State.UpToDate = true
 
-	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body), i.hub.logger); err != nil {
-		return "", fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
+	// read content to get the list of data files
+	reader, err := os.Open(finalPath)
+	if err != nil {
+		return false, fmt.Errorf("while opening %s: %w", finalPath, err)
 	}
 
-	return finalPath, nil
+	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, reader, i.hub.logger); err != nil {
+		return false, fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
+	}
+
+	return true, nil
 }
 
 // DownloadDataIfNeeded downloads the data set for the item.

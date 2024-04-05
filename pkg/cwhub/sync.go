@@ -56,11 +56,11 @@ func getSHA256(filepath string) (string, error) {
 
 // information used to create a new Item, from a file path.
 type itemFileInfo struct {
-	inhub   bool
 	fname   string
 	stage   string
 	ftype   string
 	fauthor string
+	inhub   bool
 }
 
 func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo, error) {
