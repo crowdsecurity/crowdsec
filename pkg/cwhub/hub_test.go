@@ -29,6 +29,10 @@ func TestUpdateIndex(t *testing.T) {
 	tmpIndex, err := os.CreateTemp("", "index.json")
 	require.NoError(t, err)
 
+	// close the file to avoid preventing the rename on windows
+	err = tmpIndex.Close()
+	require.NoError(t, err)
+
 	t.Cleanup(func() {
 		os.Remove(tmpIndex.Name())
 	})
