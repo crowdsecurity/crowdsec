@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -64,6 +66,18 @@ func downloadFile(url string, destPath string) error {
 	// and a configuration reload is required
 	// TODO: use a better way to communicate this
 	fmt.Printf("updated %s\n", filepath.Base(destPath))
+
+	if runtime.GOOS == "windows" {
+		// On Windows, rename will fail if the destination file already exists
+		// so we remove it first.
+		err = os.Remove(destPath)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			break
+		case err != nil:
+			return err
+		}
+	}
 
 	if err = os.Rename(tmpFileName, destPath); err != nil {
 		return err
