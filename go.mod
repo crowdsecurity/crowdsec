@@ -31,7 +31,7 @@ require (
 	github.com/crowdsecurity/grokky v0.2.1
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dghubble/sling v1.3.0
+	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/fatih/color v1.15.0
@@ -46,7 +46,7 @@ require (
 	github.com/goccy/go-yaml v1.11.0
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/google/go-querystring v1.0.0
+	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.3.0
 	github.com/google/winops v0.0.0-20230712152054-af9b550d0601
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
