@@ -187,9 +187,9 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 		FileSize = FileInfo.Size()
 		logger.Info("Log file has been reopened successfully")
 	}
-	_, err = io.WriteString(&FileWriteCtx{Ctx: ctx, Writer: FileWriter}, log)
+	n, err := io.WriteString(&FileWriteCtx{Ctx: ctx, Writer: FileWriter}, log)
 	if err == nil {
-		FileSize += int64(len(log))
+		FileSize += int64(n)
 		if FileSize > int64(cfg.LogRotate.MaxSize)*1024*1024 {
 			logger.Debug("Rotating log file", "file", cfg.LogPath)
 			// Rotate the log file
