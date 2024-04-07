@@ -42,10 +42,10 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func Monit(cfg PluginConfig) {
-	logger.Debug("Starting monit")
+	logger.Trace("Starting monit process")
 	queue := make([]string, 0)
 	queueMutex := &sync.Mutex{}
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	if cfg.FileWriter == nil {
 		cfg.FileWriter, _ = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	}
@@ -80,7 +80,7 @@ func Monit(cfg PluginConfig) {
 					logger.Info("Log file has been reopened successfully")
 					originalFileInfo, _ = cfg.FileWriter.Stat()
 				}
-				_, err = cfg.FileWriter.WriteString(log + "\n")
+				_, err = cfg.FileWriter.WriteString(log)
 				if err != nil {
 					logger.Error("Failed to write log", "error", err)
 					newQueue = append(newQueue, log)
@@ -88,7 +88,11 @@ func Monit(cfg PluginConfig) {
 			}
 			cfg.FileWriter.Sync()
 			queueMutex.Lock()
-			queue = newQueue
+			if len(newQueue) > 0 {
+				queue = newQueue
+			} else {
+				queue = make([]string, 0)
+			}
 			queueMutex.Unlock()
 			// TODO! Implement log rotation
 			// if cfg.LogRotate.Enabled {
@@ -122,9 +126,7 @@ func (s *FilePlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	}
 	cfg := s.PluginConfigByName[notification.Name]
 
-	go func() {
-		cfg.WriteChan <- notification.Text
-	}()
+	cfg.WriteChan <- notification.Text
 
 	return &protobufs.Empty{}, nil
 }
