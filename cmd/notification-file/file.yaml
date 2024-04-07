@@ -17,7 +17,7 @@ format: |
 log_path: "/tmp/crowdsec_alerts.json"
 rotate:
   enabled: true # Change to false if you want to handle log rotate on system basis
-  max_size: 500
+  max_size: 500 # in MB
   max_files: 5
   max_age: 5
   compress: true
