@@ -157,7 +157,7 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Error("Context is cancelled")
+			logger.Error("Context is canceled")
 			return nil
 		default:
 			if !FileWriteMutex.TryLock() {
