@@ -170,13 +170,18 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 			}
 			currentFileInfo, _ := os.Stat(cfg.LogPath)
 			if !os.SameFile(originalFileInfo, currentFileInfo) {
-				// The file has been rotated
+				// The file has been rotated outside our control
 				logger.Info("Log file has been rotated or missing attempting to reopen it")
 				FileWriter.Close()
 				FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
 					return err
 				}
+				FileInfo, err := FileWriter.Stat()
+				if err != nil {
+					return err
+				}
+				FileSize = FileInfo.Size()
 				logger.Info("Log file has been reopened successfully")
 			}
 			_, err = FileWriter.WriteString(log)
