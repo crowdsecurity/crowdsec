@@ -62,10 +62,6 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (r *LogRotate) rotateLogs(cfg PluginConfig) {
-	// Check if rotation is enabled
-	if !r.Enabled {
-		return
-	}
 	// Rotate the log file
 	err := r.rotateLogFile(cfg.LogPath, r.MaxFiles)
 	if err != nil {
@@ -194,7 +190,7 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 	n, err := io.WriteString(&FileWriteCtx{Ctx: ctx, Writer: FileWriter}, log)
 	if err == nil {
 		FileSize += int64(n)
-		if FileSize > int64(cfg.LogRotate.MaxSize)*1024*1024 {
+		if FileSize > int64(cfg.LogRotate.MaxSize)*1024*1024 && cfg.LogRotate.Enabled {
 			logger.Debug("Rotating log file", "file", cfg.LogPath)
 			// Rotate the log file
 			cfg.LogRotate.rotateLogs(cfg)
