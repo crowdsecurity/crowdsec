@@ -21,5 +21,3 @@ rotate:
   max_files: 5
   max_age: 5
   compress: true
-log_format:
-  custom_format: "%msg%" # https://github.com/t-tomalak/logrus-easy-formatter
