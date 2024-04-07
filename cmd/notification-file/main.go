@@ -23,6 +23,18 @@ var (
 	FileSize       int64
 )
 
+type FileWriteCtx struct {
+	Ctx    context.Context
+	Writer io.Writer
+}
+
+func (w *FileWriteCtx) Write(p []byte) (n int, err error) {
+	if err := w.Ctx.Err(); err != nil {
+		return 0, err
+	}
+	return w.Writer.Write(p)
+}
+
 type PluginConfig struct {
 	Name      string    `yaml:"name"`
 	LogLevel  string    `yaml:"log_level"`
@@ -133,7 +145,6 @@ func compressFile(src string) error {
 	// Create a gzip writer
 	gw := gzip.NewWriter(dstFile)
 	defer gw.Close()
-
 	// Read the source file and write its contents to the gzip writer
 	b, err := io.ReadAll(srcFile)
 	if err != nil {
@@ -154,48 +165,38 @@ func compressFile(src string) error {
 }
 
 func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error {
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Error("Context is canceled")
-			return nil
-		default:
-			if !FileWriteMutex.TryLock() {
-				continue
-			}
-			defer FileWriteMutex.Unlock()
-			originalFileInfo, err := FileWriter.Stat()
-			if err != nil {
-				logger.Error("Failed to get file info", "error", err)
-			}
-			currentFileInfo, _ := os.Stat(cfg.LogPath)
-			if !os.SameFile(originalFileInfo, currentFileInfo) {
-				// The file has been rotated outside our control
-				logger.Info("Log file has been rotated or missing attempting to reopen it")
-				FileWriter.Close()
-				FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					return err
-				}
-				FileInfo, err := FileWriter.Stat()
-				if err != nil {
-					return err
-				}
-				FileSize = FileInfo.Size()
-				logger.Info("Log file has been reopened successfully")
-			}
-			_, err = FileWriter.WriteString(log)
-			if err == nil {
-				FileSize += int64(len(log))
-				if FileSize > int64(cfg.LogRotate.MaxSize)*1024*1024 {
-					logger.Debug("Rotating log file", cfg.LogPath)
-					// Rotate the log file
-					cfg.LogRotate.rotateLogs(cfg)
-				}
-			}
+	FileWriteMutex.Lock()
+	defer FileWriteMutex.Unlock()
+	originalFileInfo, err := FileWriter.Stat()
+	if err != nil {
+		logger.Error("Failed to get file info", "error", err)
+	}
+	currentFileInfo, _ := os.Stat(cfg.LogPath)
+	if !os.SameFile(originalFileInfo, currentFileInfo) {
+		// The file has been rotated outside our control
+		logger.Info("Log file has been rotated or missing attempting to reopen it")
+		FileWriter.Close()
+		FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
 			return err
 		}
+		FileInfo, err := FileWriter.Stat()
+		if err != nil {
+			return err
+		}
+		FileSize = FileInfo.Size()
+		logger.Info("Log file has been reopened successfully")
 	}
+	_, err = io.WriteString(&FileWriteCtx{Ctx: ctx, Writer: FileWriter}, log)
+	if err == nil {
+		FileSize += int64(len(log))
+		if FileSize > int64(cfg.LogRotate.MaxSize)*1024*1024 {
+			logger.Debug("Rotating log file", "file", cfg.LogPath)
+			// Rotate the log file
+			cfg.LogRotate.rotateLogs(cfg)
+		}
+	}
+	return err
 }
 
 func (s *FilePlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
