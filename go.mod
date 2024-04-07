@@ -37,7 +37,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-co-op/gocron v1.17.0
+	github.com/go-co-op/gocron v1.37.0
 	github.com/go-openapi/errors v0.20.1
 	github.com/go-openapi/strfmt v0.19.11
 	github.com/go-openapi/swag v0.22.3
@@ -47,7 +47,7 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/go-querystring v1.1.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.4.0
 	github.com/google/winops v0.0.0-20230712152054-af9b550d0601
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/gorilla/websocket v1.5.0
@@ -198,6 +198,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.mongodb.org/mongo-driver v1.9.4 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
