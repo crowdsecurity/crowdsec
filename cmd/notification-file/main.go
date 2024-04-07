@@ -62,6 +62,10 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (r *LogRotate) rotateLogs(cfg PluginConfig) {
+	// Check if rotation is enabled
+	if !r.Enabled {
+		return
+	}
 	// Rotate the log file
 	err := r.rotateLogFile(cfg.LogPath, r.MaxFiles)
 	if err != nil {
