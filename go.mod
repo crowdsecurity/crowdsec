@@ -34,7 +34,7 @@ require (
 	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/fatih/color v1.15.0
+	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-co-op/gocron v1.17.0
