@@ -134,7 +134,6 @@ labels:
   type: apache2
 ```
 
-
 ## Recommended configuration
 
 ### Volumes
@@ -146,6 +145,14 @@ to avoid losing credentials and decision data in case of container destruction a
 * Acquisition: `/etc/crowdsec/acquis.d` and/or `/etc/crowdsec.acquis.yaml` (yes, they can be nested in `/etc/crowdsec`)
 * Database when using SQLite (default): `/var/lib/crowdsec/data`
 
+### Hub updates
+
+To ensure you have the latest version of the collections, scenarios, parsers, etc., you can set the variable `DO_HUB_UPGRADE` to true.
+This will perform an update/upgrade of the hub every time the container is started.
+
+Be aware that if your container is misbehaving and caught in a restart loop, the CrowdSec hub may ban your IP for some time and your containers
+will run with the version of the hub that is cached in the container's image. If you enable `DO_HUB_UPGRADE`, do it when your infrastructure is running
+correctly and make sure you have some monitoring in place.
 
 ## Start a Crowdsec instance
 
