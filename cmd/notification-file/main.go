@@ -145,12 +145,9 @@ func compressFile(src string) error {
 	// Create a gzip writer
 	gw := gzip.NewWriter(dstFile)
 	defer gw.Close()
+
 	// Read the source file and write its contents to the gzip writer
-	b, err := io.ReadAll(srcFile)
-	if err != nil {
-		return err
-	}
-	_, err = gw.Write(b)
+	_, err = io.Copy(gw, srcFile)
 	if err != nil {
 		return err
 	}
