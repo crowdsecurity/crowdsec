@@ -316,7 +316,7 @@ config.yaml) each time the container is run.
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
 | __Hub management__      | | |
-| `NO_HUB_UPGRADE`        | false | Skip hub update / upgrade when the container starts |
+| `DO_HUB_UPGRADE`        | false | Force hub update / upgrade when the container starts. If for some reason the container restarts too often, it may lead to a temporary ban from hub updates. |
 | `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
 | `PARSERS`               | | Parsers to install, separated by space |
 | `SCENARIOS`             | | Scenarios to install, separated by space |
