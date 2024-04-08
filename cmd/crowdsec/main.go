@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/trace"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -229,6 +230,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	if err != nil {
 		return nil, fmt.Errorf("while loading configuration file: %w", err)
 	}
+
+	// set up directory for trace files
+	trace.Init(cConfig.ConfigPaths.DataDir)
 
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
 

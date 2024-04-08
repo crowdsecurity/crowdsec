@@ -18,13 +18,12 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/trace"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/trace"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -87,8 +86,11 @@ func recoverFromPanic(c *gin.Context) {
 		log.Warningf("client %s disconnected : %s", c.ClientIP(), err)
 		c.Abort()
 	} else {
-		filename := trace.WriteStackTrace(err)
 		log.Warningf("client %s error : %s", c.ClientIP(), err)
+		filename, err := trace.WriteStackTrace(err)
+		if err != nil {
+			log.Errorf("also while writing stacktrace: %s", err)
+		}
 		log.Warningf("stacktrace written to %s, please join to your issue", filename)
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
@@ -300,6 +302,8 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	if err != nil {
 		return fmt.Errorf("while creating TLS config: %w", err)
 	}
+
+	panic("a problem!")
 
 	s.httpServer = &http.Server{
 		Addr:      s.URL,

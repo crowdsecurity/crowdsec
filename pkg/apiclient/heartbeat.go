@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/crowdsec/pkg/trace"
 )
 
 type HeartBeatService service

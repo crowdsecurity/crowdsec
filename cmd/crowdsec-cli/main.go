@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/trace"
 )
 
 var ConfigFilePath string
@@ -81,6 +82,9 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 		if err != nil {
 			return nil, "", err
 		}
+
+		// set up directory for trace files
+		trace.Init(config.ConfigPaths.DataDir)
 
 		return config, merged, nil
 	}

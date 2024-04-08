@@ -18,7 +18,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
-	"github.com/crowdsecurity/go-cs-lib/trace"
+
+	"github.com/crowdsecurity/crowdsec/pkg/trace"
 )
 
 type (
