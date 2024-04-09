@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/trace"
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 	SUPPORT_CAPI_STATUS_PATH             = "capi_status.txt"
 	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH        = "config/profiles.yaml"
+	SUPPORT_CRASH_PATH                   = "crash/"
 )
 
 // from https://github.com/acarl005/stripansi
@@ -264,6 +266,11 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
+func collectCrash() ([]string, error) {
+	log.Info("Collecting crash dumps")
+	return trace.List()
+}
+
 type cliSupport struct{}
 
 func NewCLISupport() *cliSupport {
@@ -429,6 +436,20 @@ cscli support dump -f /tmp/crowdsec-support.zip
 					fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
 					infos[SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname] = content
 				}
+			}
+
+			crash, err := collectCrash()
+			if err != nil {
+				log.Errorf("could not collect crash dumps: %s", err)
+			}
+
+			for _, filename := range crash {
+				content, err := os.ReadFile(filename)
+				if err != nil {
+					log.Errorf("could not read crash dump %s: %s", filename, err)
+				}
+					
+				infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
 			}
 
 			w := bytes.NewBuffer(nil)

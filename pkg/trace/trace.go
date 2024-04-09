@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"sort"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -17,6 +18,8 @@ import (
 // by calling Init() after reading the configuration (i.e. config_paths.data_dir should be
 // persistent even within containers)
 var traceDir = os.TempDir()
+
+var mutex = &sync.Mutex{}
 
 const (
 	// crashFileGlob is the glob pattern to match crash files
@@ -30,24 +33,23 @@ const (
 // Init sets the location of the trace files, to avoid passing them each time to CatchPanic()
 func Init(dir string) {
 	traceDir = dir
-
-	// ideally we would periodically purge, but once per start is good enough.
-	// after all we're collecting crash traces, uptime must be pretty short on this machine
-	Purge()
 }
 
-
-func fileModTime(file string) time.Time {
-	fi, err := os.Stat(file)
+// List returns a list of all crash files in the trace directory
+func List() ([]string, error) {
+	files, err := filepath.Glob(filepath.Join(traceDir, crashFileGlob))
 	if err != nil {
-		return time.Time{}
+		return nil, err
 	}
-	return fi.ModTime()
+	return files, nil
 }
 
 func Purge() {
-	// Find all crash files in the directory
-	files, err := filepath.Glob(filepath.Join(traceDir, crashFileGlob))
+	// Run in a mutex in case of concurrent, recoverable panics from apiserver
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	files, err := List()
 	if err != nil {
 		log.Errorf("error listing crash files for cleanup: %s", err)
 		return
@@ -100,6 +102,8 @@ func Purge() {
 
 // WriteStackTrace writes a stack trace to a file in the trace directory and returns the file name
 func WriteStackTrace(iErr any) (string, error) {
+	Purge()
+
 	tmpfile, err := os.CreateTemp(traceDir, crashFileGlob)
 	if err != nil {
 		return "", err
