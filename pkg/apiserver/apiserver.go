@@ -303,8 +303,6 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		return fmt.Errorf("while creating TLS config: %w", err)
 	}
 
-	panic("a problem!")
-
 	s.httpServer = &http.Server{
 		Addr:      s.URL,
 		Handler:   s.router,
