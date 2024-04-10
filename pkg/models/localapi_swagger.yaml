@@ -26,7 +26,7 @@ produces:
 paths:
   /decisions/stream:
     get:
-      description: Returns a list of new/expired decisions. Intended for bouncers that need to "stream" decisions
+      description: Returns a list of new/expired decisions. Intended for remediation component that need to "stream" decisions
       summary: getDecisionsStream
       tags:
         - Remediation component
@@ -39,7 +39,7 @@ paths:
           in: query
           required: false
           type: boolean
-          description: 'If true, means that the bouncers is starting and a full list must be provided'
+          description: 'If true, means that the remediation component is starting and a full list must be provided'
         - name: scopes
           in: query
           required: false
@@ -73,7 +73,7 @@ paths:
       security:
       - APIKeyAuthorizer: []
     head:
-      description: Returns a list of new/expired decisions. Intended for bouncers that need to "stream" decisions
+      description: Returns a list of new/expired decisions. Intended for remediation component that need to "stream" decisions
       summary: GetDecisionsStream
       tags:
         - Remediation component
