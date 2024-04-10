@@ -8,10 +8,10 @@ import (
 	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/trace"
 )
 
 func (a *apic) GetMetrics() (*models.Metrics, error) {

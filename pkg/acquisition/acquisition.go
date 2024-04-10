@@ -15,6 +15,8 @@ import (
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	appsecacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
@@ -31,7 +33,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/trace"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 

@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -27,7 +28,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/trace"
 )
 
 const (
@@ -448,7 +448,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				if err != nil {
 					log.Errorf("could not read crash dump %s: %s", filename, err)
 				}
-					
+
 				infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
 			}
 

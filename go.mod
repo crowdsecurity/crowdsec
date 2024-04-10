@@ -27,7 +27,7 @@ require (
 	github.com/corazawaf/libinjection-go v0.1.2
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20240108124027-a62b8d8e5607
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
-	github.com/crowdsecurity/go-cs-lib v0.0.6
+	github.com/crowdsecurity/go-cs-lib v0.0.8-0.20240410073243-64c009442046
 	github.com/crowdsecurity/grokky v0.2.1
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
