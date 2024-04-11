@@ -26,10 +26,10 @@ produces:
 paths:
   /decisions/stream:
     get:
-      description: Returns a list of new/expired decisions. Intended for bouncers that need to "stream" decisions
+      description: Returns a list of new/expired decisions. Intended for remediation component that need to "stream" decisions
       summary: getDecisionsStream
       tags:
-        - bouncers
+        - Remediation component
       operationId: getDecisionsStream
       deprecated: false
       produces:
@@ -39,7 +39,7 @@ paths:
           in: query
           required: false
           type: boolean
-          description: 'If true, means that the bouncers is starting and a full list must be provided'
+          description: 'If true, means that the remediation component is starting and a full list must be provided'
         - name: scopes
           in: query
           required: false
@@ -73,10 +73,10 @@ paths:
       security:
       - APIKeyAuthorizer: []
     head:
-      description: Returns a list of new/expired decisions. Intended for bouncers that need to "stream" decisions
+      description: Returns a list of new/expired decisions. Intended for remediation component that need to "stream" decisions
       summary: GetDecisionsStream
       tags:
-        - bouncers
+        - Remediation component
       operationId: headDecisionsStream
       deprecated: false
       produces:
@@ -100,7 +100,7 @@ paths:
       description: Returns information about existing decisions
       summary: getDecisions
       tags:
-        - bouncers
+        - Remediation component
       operationId: getDecisions
       deprecated: false
       produces:
@@ -164,7 +164,7 @@ paths:
       description: Returns information about existing decisions
       summary: GetDecisions
       tags:
-        - bouncers
+        - Remediation component
       operationId: headDecisions
       deprecated: false
       produces:
@@ -1008,7 +1008,7 @@ definitions:
     title: "error response"
     description: "error response return by the API"
 tags:
-  - name: bouncers
+  - name: Remediation component
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
   - name: watchers
     description: 'Operations about watchers : cscli & crowdsec'
