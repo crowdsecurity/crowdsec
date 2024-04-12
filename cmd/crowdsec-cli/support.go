@@ -294,7 +294,7 @@ func collectPprofs() ([]byte, []byte, []byte) {
 func collectPprof(h *http.Client, endpoint string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/debug/pprof/%s", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort, endpoint), nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not create request to get cpu profile: %s", err)
+		return nil, err
 	}
 
 	resp, err := h.Do(req)
