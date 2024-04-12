@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/blackfireio/osinfo"
 	"github.com/go-openapi/strfmt"
@@ -47,6 +48,9 @@ const (
 	SUPPORT_CAPI_STATUS_PATH             = "capi_status.txt"
 	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH        = "config/profiles.yaml"
+	SUPPORT_PPROF_CPU_PATH               = "pprof/cpu.pprof"
+	SUPPORT_PPROF_MEM_PATH               = "pprof/mem.pprof"
+	SUPPORT_PPROF_ROUTINES_PATH          = "pprof/routines.pprof"
 )
 
 // from https://github.com/acarl005/stripansi
@@ -264,6 +268,50 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
+func collectPprofs() ([]byte, []byte, []byte) {
+	log.Info("Collecting pprof data")
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	cpu, err := collectPprof(client, "profile")
+	if err != nil {
+		cpu = []byte(fmt.Sprintf("could not read cpu profile: %s", err))
+	}
+
+	mem, err := collectPprof(client, "heap")
+	if err != nil {
+		mem = []byte(fmt.Sprintf("could not read mem profile: %s", err))
+	}
+
+	routines, err := collectPprof(client, "goroutine")
+	if err != nil {
+		routines = []byte(fmt.Sprintf("could not read goroutine profile: %s", err))
+	}
+
+	return cpu, mem, routines
+}
+
+func collectPprof(h *http.Client, endpoint string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/debug/pprof/%s", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort, endpoint), nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not create request to get cpu profile: %s", err)
+	}
+
+	resp, err := h.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
 type cliSupport struct{}
 
 func NewCLISupport() *cliSupport {
@@ -420,6 +468,9 @@ cscli support dump -f /tmp/crowdsec-support.zip
 					LAPIURLPrefix,
 					hub)
 				infos[SUPPORT_CROWDSEC_PROFILE_PATH] = collectCrowdsecProfile()
+				if csConfig.Prometheus.Enabled {
+					infos[SUPPORT_PPROF_CPU_PATH], infos[SUPPORT_PPROF_MEM_PATH], infos[SUPPORT_PPROF_ROUTINES_PATH] = collectPprofs()
+				}
 			}
 
 			if !skipAgent {
