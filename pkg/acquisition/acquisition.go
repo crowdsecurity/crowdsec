@@ -22,6 +22,7 @@ import (
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	gcppubsubacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/gcp_pubsub"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
@@ -78,6 +79,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"loki":        func() DataSource { return &lokiacquisition.LokiSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
 	"appsec":      func() DataSource { return &appsecacquisition.AppsecSource{} },
+	"pubsub":      func() DataSource { return &gcppubsubacquisition.PubSubSource{} },
 }
 
 var transformRuntimes = map[string]*vm.Program{}
