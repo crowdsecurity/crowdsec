@@ -304,12 +304,7 @@ func collectPprof(h *http.Client, endpoint string) ([]byte, error) {
 
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
+	return io.ReadAll(resp.Body)
 }
 
 type cliSupport struct{}
