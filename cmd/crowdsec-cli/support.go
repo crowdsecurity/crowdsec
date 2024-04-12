@@ -448,7 +448,13 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
 
-			err = os.WriteFile(outFile, w.Bytes(), 0o600)
+			if outFile == "-" {
+				_, err = os.Stdout.Write(w.Bytes())
+				outFile = "stdout"
+			} else {
+				err = os.WriteFile(outFile, w.Bytes(), 0o600)
+			}
+
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
