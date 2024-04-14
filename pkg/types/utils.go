@@ -14,7 +14,7 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, LogFormat string, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, LogFormat string, forceColors bool) error {
 	/*Configure logs*/
 	if cfgMode == "file" {
 		_maxsize := 500
