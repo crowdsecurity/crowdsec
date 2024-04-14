@@ -2,6 +2,7 @@ common:
   daemonize: false
   log_media: file
   log_level: info
+  log_fromat: native
   log_dir:  C:\ProgramData\CrowdSec\log\
 config_paths:
   config_dir:  C:\ProgramData\CrowdSec\config\
@@ -21,7 +22,7 @@ db_config:
   log_level: info
   type: sqlite
   db_path:  C:\ProgramData\CrowdSec\data\crowdsec.db
-  #user: 
+  #user:
   #password:
   #db_name:
   #host:

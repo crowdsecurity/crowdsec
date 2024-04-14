@@ -2,6 +2,7 @@ common:
   daemonize: true
   log_media: file
   log_level: info
+  log_format: native
   log_dir: /var/log/
   log_max_size: 20
   compress_logs: true
@@ -27,7 +28,7 @@ db_config:
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
   #max_open_conns: 100
-  #user: 
+  #user:
   #password:
   #db_name:
   #host:
