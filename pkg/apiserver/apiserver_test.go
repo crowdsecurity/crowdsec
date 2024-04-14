@@ -352,7 +352,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, cfg.LogFormat, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(&cfg)
