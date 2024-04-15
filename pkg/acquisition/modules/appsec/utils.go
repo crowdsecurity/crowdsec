@@ -15,6 +15,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func appendMeta(meta models.Meta, key string, value string) models.Meta {
+	if value == "" {
+		return meta
+	}
+	meta = append(meta, &models.MetaItems0{
+		Key:   key,
+		Value: value,
+	})
+	return meta
+}
+
 func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	//if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches {
@@ -74,25 +85,23 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		evtRule.Meta = make(models.Meta, 0)
 
 		for _, key := range []string{"id", "name", "method", "uri", "matched_zones"} {
-			value := ""
 
 			switch matched_rule[key].(type) {
 			case string:
-				value = matched_rule[key].(string)
+				evtRule.Meta = appendMeta(evtRule.Meta, key, matched_rule[key].(string))
 			case int:
-				value = fmt.Sprintf("%d", matched_rule[key].(int))
+				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", matched_rule[key].(int)))
+			case []string:
+				for _, v := range matched_rule[key].([]string) {
+					evtRule.Meta = appendMeta(evtRule.Meta, key, v)
+				}
+			case []int:
+				for _, v := range matched_rule[key].([]int) {
+					evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", v))
+				}
 			default:
-				value = fmt.Sprintf("%v", matched_rule[key])
+				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%v", matched_rule[key]))
 			}
-
-			if value == "" {
-				continue
-			}
-
-			evtRule.Meta = append(evtRule.Meta, &models.MetaItems0{
-				Key:   key,
-				Value: value,
-			})
 		}
 		alert.Events = append(alert.Events, &evtRule)
 	}
