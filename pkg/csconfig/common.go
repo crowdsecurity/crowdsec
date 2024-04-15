@@ -17,8 +17,8 @@ type CommonCfg struct {
 	WorkingDir     string     `yaml:"working_dir,omitempty"` // TODO: This is just for backward compat. Remove this later
 	CompressLogs   *bool      `yaml:"compress_logs,omitempty"`
 	LogMaxSize     int        `yaml:"log_max_size,omitempty"`
-  LogFormat      string     `yaml:"log_format,omitempty"`
-  LogMaxAge      int        `yaml:"log_max_age,omitempty"`
+  	LogFormat      string     `yaml:"log_format,omitempty"`
+  	LogMaxAge      int        `yaml:"log_max_age,omitempty"`
 	LogMaxFiles    int        `yaml:"log_max_files,omitempty"`
 	ForceColorLogs bool       `yaml:"force_color_logs,omitempty"`
 }
