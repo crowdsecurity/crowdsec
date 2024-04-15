@@ -33,6 +33,14 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		if compress != nil {
 			_compress = *compress
 		}
+		
+		if LogFormat == "json" {
+			logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
+		} else if LogFormat == "text" {
+			logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+		} else {
+			return fmt.Errorf("log format '%s' unknown", LogFormat)
+		}
 
 		LogOutput = &lumberjack.Logger{
 			Filename:   filepath.Join(cfgFolder, "crowdsec.log"),
@@ -47,14 +55,6 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-
-	if LogFormat == "json" {
-    	logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
-	} else if LogFormat == "text" {
-    	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
-  	} else {
-		return fmt.Errorf("log format '%s' unknown", LogFormat)
-	}
 
 	log.SetFormatter(logFormatter)
 	return nil
