@@ -134,7 +134,6 @@ labels:
   type: apache2
 ```
 
-
 ## Recommended configuration
 
 ### Volumes
@@ -146,6 +145,14 @@ to avoid losing credentials and decision data in case of container destruction a
 * Acquisition: `/etc/crowdsec/acquis.d` and/or `/etc/crowdsec.acquis.yaml` (yes, they can be nested in `/etc/crowdsec`)
 * Database when using SQLite (default): `/var/lib/crowdsec/data`
 
+### Hub updates
+
+To ensure you have the latest version of the collections, scenarios, parsers, etc., you can set the variable `DO_HUB_UPGRADE` to true.
+This will perform an update/upgrade of the hub every time the container is started.
+
+Be aware that if your container is misbehaving and caught in a restart loop, the CrowdSec hub may ban your IP for some time and your containers
+will run with the version of the hub that is cached in the container's image. If you enable `DO_HUB_UPGRADE`, do it when your infrastructure is running
+correctly and make sure you have some monitoring in place.
 
 ## Start a Crowdsec instance
 
@@ -316,7 +323,7 @@ config.yaml) each time the container is run.
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
 | __Hub management__      | | |
-| `NO_HUB_UPGRADE`        | false | Skip hub update / upgrade when the container starts |
+| `DO_HUB_UPGRADE`        | false | Force hub update / upgrade when the container starts. If for some reason the container restarts too often, it may lead to a temporary ban from hub updates. |
 | `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
 | `PARSERS`               | | Parsers to install, separated by space |
 | `SCENARIOS`             | | Scenarios to install, separated by space |

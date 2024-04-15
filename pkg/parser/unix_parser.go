@@ -98,7 +98,7 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	patternsDir := filepath.Join(cConfig.ConfigPaths.ConfigDir, "patterns/")
+	patternsDir := cConfig.ConfigPaths.PatternDir
 	log.Infof("Loading grok library %s", patternsDir)
 	/* load base regexps for two grok parsers */
 	parsers.Ctx, err = Init(map[string]interface{}{"patterns": patternsDir,

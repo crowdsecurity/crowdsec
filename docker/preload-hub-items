@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# pre-download everything but don't install anything
+
+echo "Pre-downloading Hub content..."
+
+types=$(cscli hub types -o raw)
+
+for itemtype in $types; do
+    ALL_ITEMS=$(cscli "$itemtype" list -a -o json | itemtype="$itemtype" yq '.[env(itemtype)][] | .name')
+    if [[ -n "${ALL_ITEMS}" ]]; then
+        #shellcheck disable=SC2086
+        cscli "$itemtype" install \
+            $ALL_ITEMS \
+            --download-only \
+            --error
+    fi
+done
+
+echo " done."
