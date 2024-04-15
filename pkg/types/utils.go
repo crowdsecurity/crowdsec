@@ -49,10 +49,10 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	log.SetLevel(logLevel)
 
 	if LogFormat == "json" {
-    logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
+    	logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
 	} else if LogFormat == "text" {
-    logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
-  } else {
+    	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+  	} else {
 		return fmt.Errorf("log format '%s' unknown", LogFormat)
 	}
 
