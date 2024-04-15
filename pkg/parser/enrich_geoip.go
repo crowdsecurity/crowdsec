@@ -26,7 +26,7 @@ func IpToRange(field string, p *types.Event, plog *log.Entry) (map[string]string
 
 	if r == nil {
 		plog.Warnf("No range found for ip '%s'", field)
-		return nil, nil //nolint:nilerr
+		return nil, nil
 	}
 
 	record := r.(*net.IPNet)
