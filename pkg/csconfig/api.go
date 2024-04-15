@@ -257,6 +257,7 @@ type LocalApiServerCfg struct {
 	LogMaxSize                    int                 `yaml:"-"`
 	LogMaxAge                     int                 `yaml:"-"`
 	LogMaxFiles                   int                 `yaml:"-"`
+	LogFormat					  string			  `yaml:"-"`
 	TrustedIPs                    []string            `yaml:"trusted_ips,omitempty"`
 	PapiLogLevel                  *log.Level          `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
@@ -353,6 +354,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 	c.API.Server.CompressLogs = c.Common.CompressLogs
 	c.API.Server.LogMaxSize = c.Common.LogMaxSize
 	c.API.Server.LogMaxAge = c.Common.LogMaxAge
+	c.API.Server.LogFormat = c.Common.LogFormat
 	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
 
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
