@@ -2,7 +2,7 @@ common:
   daemonize: false
   log_media: file
   log_level: info
-  log_fromat: native
+  log_format: text
   log_dir:  C:\ProgramData\CrowdSec\log\
 config_paths:
   config_dir:  C:\ProgramData\CrowdSec\config\

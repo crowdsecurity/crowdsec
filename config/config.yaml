@@ -2,7 +2,7 @@ common:
   daemonize: true
   log_media: file
   log_level: info
-  log_format: native
+  log_format: text
   log_dir: /var/log/
   log_max_size: 20
   compress_logs: true
