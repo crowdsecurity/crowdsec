@@ -3,14 +3,17 @@ package appsecacquisition
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/types/variables"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -38,6 +41,34 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		Value: ptr.Of(inEvt.Parsed["source_ip"]),
 		IP:    inEvt.Parsed["source_ip"],
 		Scope: ptr.Of(types.Ip),
+	}
+
+	asndata, err := exprhelpers.GeoIPASNEnrich(inEvt.Parsed["source_ip"])
+
+	if err != nil {
+		log.Errorf("Unable to enrich ip '%s'", inEvt.Parsed["source_ip"])
+	} else if asndata != nil {
+		record := asndata.(*geoip2.ASN)
+		source.AsName = record.AutonomousSystemOrganization
+		source.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	}
+
+	cityData, err := exprhelpers.GeoIPEnrich(inEvt.Parsed["source_ip"])
+	if err != nil {
+		log.Errorf("Unable to enrich ip '%s'", inEvt.Parsed["source_ip"])
+	} else if cityData != nil {
+		record := cityData.(*geoip2.City)
+		source.Cn = record.Country.IsoCode
+		source.Latitude = float32(record.Location.Latitude)
+		source.Longitude = float32(record.Location.Longitude)
+	}
+
+	rangeData, err := exprhelpers.GeoIPRangeEnrich(inEvt.Parsed["source_ip"])
+	if err != nil {
+		log.Errorf("Unable to enrich ip '%s'", inEvt.Parsed["source_ip"])
+	} else if rangeData != nil {
+		record := rangeData.(*net.IPNet)
+		source.Range = record.String()
 	}
 
 	evt.Overflow.Sources = make(map[string]models.Source)
