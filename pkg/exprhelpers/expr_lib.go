@@ -1,9 +1,11 @@
 package exprhelpers
 
 import (
+	"net"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/oschwald/geoip2-golang"
 )
 
 type exprCustomFunc struct {
@@ -453,6 +455,27 @@ var exprFuncs = []exprCustomFunc{
 		function: LibInjectionIsXSS,
 		signature: []interface{}{
 			new(func(string) bool),
+		},
+	},
+	{
+		name:     "GeoIPEnrich",
+		function: GeoIPEnrich,
+		signature: []interface{}{
+			new(func(string) *geoip2.City),
+		},
+	},
+	{
+		name:     "GeoIPASNEnrich",
+		function: GeoIPASNEnrich,
+		signature: []interface{}{
+			new(func(string) *geoip2.ASN),
+		},
+	},
+	{
+		name:     "GeoIPRangeEnrich",
+		function: GeoIPRangeEnrich,
+		signature: []interface{}{
+			new(func(string) *net.IPNet),
 		},
 	},
 }

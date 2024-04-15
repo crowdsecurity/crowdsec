@@ -64,7 +64,7 @@ type Node struct {
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
-func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
+func (n *Node) validate(ectx EnricherCtx) error {
 
 	//stage is being set automagically
 	if n.Stage == "" {
@@ -563,7 +563,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		return fmt.Errorf("Node is empty")
 	}
 
-	if err := n.validate(pctx, ectx); err != nil {
+	if err := n.validate(ectx); err != nil {
 		return err
 	}
 
