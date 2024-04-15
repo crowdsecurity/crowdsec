@@ -84,7 +84,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 		evtRule.Meta = make(models.Meta, 0)
 
-		for _, key := range []string{"id", "name", "method", "uri", "matched_zones"} {
+		for _, key := range []string{"id", "name", "method", "uri", "matched_zones", "msg"} {
 
 			switch value := matched_rule[key].(type) {
 			case string:
