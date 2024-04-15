@@ -33,13 +33,14 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		if compress != nil {
 			_compress = *compress
 		}
+
+		// Set text as formatter if log_format: text is configured or log_format: ""
+		logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
 		
 		if LogFormat == "json" {
 			logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
-		} else if LogFormat == "text" {
-			logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
-		} else {
-			return fmt.Errorf("log format '%s' unknown", LogFormat)
+		} else if LogFormat == "" {
+			log.Warn("no log_format configured default to 'text' format")
 		}
 
 		LogOutput = &lumberjack.Logger{
@@ -53,6 +54,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
+
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
 
