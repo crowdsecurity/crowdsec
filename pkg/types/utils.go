@@ -14,7 +14,7 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, LogFormat string, forceColors bool) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, LogFormat string, compress *bool, forceColors bool) error {
 
 	// Set text as default formatter if log_format: text is configured or log_format: ""
 	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
