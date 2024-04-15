@@ -86,21 +86,21 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 		for _, key := range []string{"id", "name", "method", "uri", "matched_zones"} {
 
-			switch matched_rule[key].(type) {
+			switch value := matched_rule[key].(type) {
 			case string:
-				evtRule.Meta = appendMeta(evtRule.Meta, key, matched_rule[key].(string))
+				evtRule.Meta = appendMeta(evtRule.Meta, key, value)
 			case int:
-				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", matched_rule[key].(int)))
+				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", value))
 			case []string:
-				for _, v := range matched_rule[key].([]string) {
+				for _, v := range value {
 					evtRule.Meta = appendMeta(evtRule.Meta, key, v)
 				}
 			case []int:
-				for _, v := range matched_rule[key].([]int) {
+				for _, v := range value {
 					evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", v))
 				}
 			default:
-				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%v", matched_rule[key]))
+				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%v", value))
 			}
 		}
 		alert.Events = append(alert.Events, &evtRule)
