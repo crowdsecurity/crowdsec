@@ -102,6 +102,18 @@ func GeoIPInit(datadir string) error {
 	return nil
 }
 
+func GeoIPClose() {
+	if geoIPCityReader != nil {
+		geoIPCityReader.Close()
+	}
+	if geoIPASNReader != nil {
+		geoIPASNReader.Close()
+	}
+	if geoIPRangeReader != nil {
+		geoIPRangeReader.Close()
+	}
+}
+
 func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)

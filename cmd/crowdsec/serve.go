@@ -177,6 +177,9 @@ func ShutdownCrowdsecRoutines() error {
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
 
+	// close the potential geoips reader we have to avoid leaking ressources on reload
+	exprhelpers.GeoIPClose()
+
 	return reterr
 }
 
