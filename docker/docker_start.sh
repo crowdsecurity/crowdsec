@@ -304,8 +304,9 @@ conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install hub items
 
-if istrue "$DO_HUB_UPGRADE"; then
-    cscli hub update || true
+cscli hub update || true
+
+if isfalse "$NO_HUB_UPGRADE"; then
     cscli hub upgrade || true
 fi
 
