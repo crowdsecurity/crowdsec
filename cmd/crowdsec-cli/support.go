@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/blackfireio/osinfo"
 	"github.com/go-openapi/strfmt"
@@ -270,9 +269,7 @@ func collectAcquisitionConfig() map[string][]byte {
 
 func collectPprofs() ([]byte, []byte, []byte) {
 	log.Info("Collecting pprof data")
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := &http.Client{}
 	cpu, err := collectPprof(client, "profile")
 	if err != nil {
 		cpu = []byte(fmt.Sprintf("could not read cpu profile: %s", err))
@@ -292,7 +289,7 @@ func collectPprofs() ([]byte, []byte, []byte) {
 }
 
 func collectPprof(h *http.Client, endpoint string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/debug/pprof/%s", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort, endpoint), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/debug/pprof/%s?debug=1", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort, endpoint), nil)
 	if err != nil {
 		return nil, err
 	}
