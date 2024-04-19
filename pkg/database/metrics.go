@@ -69,3 +69,16 @@ func (c *Client) GetBouncersUsageMetrics() ([]*ent.Metric, error) {
 
 	return metrics, nil
 }
+
+func (c *Client) MarkUsageMetricsAsSent(ids []int) error {
+	_, err := c.Ent.Metric.Update().
+		Where(metric.IDIn(ids...)).
+		SetPushedAt(time.Now()).
+		Save(c.CTX)
+	if err != nil {
+		c.Log.Warningf("MarkUsageMetricsAsSent: %s", err)
+		return fmt.Errorf("marking usage metrics as sent: %w", err)
+	}
+
+	return nil
+}

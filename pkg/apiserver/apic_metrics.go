@@ -19,35 +19,24 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func (a *apic) GetUsageMetrics() (*models.AllMetrics, error) {
+func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	lpsMetrics, err := a.dbClient.GetLPsUsageMetrics()
+	metricsIds := make([]int, 0)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//spew.Dump(lpsMetrics)
 
 	bouncersMetrics, err := a.dbClient.GetBouncersUsageMetrics()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//spew.Dump(bouncersMetrics)
 
 	allMetrics := &models.AllMetrics{}
-
-	/*allLps, err  := a.dbClient.ListMachines()
-
-	if err != nil {
-		return nil, err
-	}
-
-	allBouncers, err := a.dbClient.ListBouncers()
-
-	if err != nil {
-		return nil, err
-	}*/
 
 	lpsCache := make(map[string]*ent.Machine)
 	bouncersCache := make(map[string]*ent.Bouncer)
@@ -86,9 +75,9 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, error) {
 
 		metrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
 		metrics.Version = &lp.Version
-		//TODO: meta
 
 		allMetrics.LogProcessors = append(allMetrics.LogProcessors, models.LogProcessorsMetrics{&metrics})
+		metricsIds = append(metricsIds, lpsMetric.ID)
 	}
 
 	for _, bouncersMetric := range bouncersMetrics {
@@ -119,16 +108,21 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, error) {
 		}
 		metrics.Type = bouncer.Type
 		metrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-		//TODO: meta
+		metrics.Version = &bouncer.Version
 
 		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, models.RemediationComponentsMetrics{&metrics})
+		metricsIds = append(metricsIds, bouncersMetric.ID)
 	}
 
 	//bouncerInfos := make(map[string]string)
 
 	//TODO: add LAPI metrics
 
-	return allMetrics, nil
+	return allMetrics, metricsIds, nil
+}
+
+func (a *apic) MarkUsageMetricsAsSent(ids []int) error {
+	return a.dbClient.MarkUsageMetricsAsSent(ids)
 }
 
 func (a *apic) GetMetrics() (*models.Metrics, error) {
@@ -290,7 +284,7 @@ func (a *apic) SendUsageMetrics() {
 			ticker.Stop()
 			return
 		case <-ticker.C:
-			metrics, err := a.GetUsageMetrics()
+			metrics, metricsId, err := a.GetUsageMetrics()
 			if err != nil {
 				log.Errorf("unable to get usage metrics (%s)", err)
 			}
@@ -299,6 +293,11 @@ func (a *apic) SendUsageMetrics() {
 				log.Errorf("unable to marshal usage metrics (%s)", err)
 			}
 			fmt.Printf("Usage metrics: %s\n", string(jsonStr))
+			//TODO: actually send the data
+			err = a.MarkUsageMetricsAsSent(metricsId)
+			if err != nil {
+				log.Errorf("unable to mark usage metrics as sent (%s)", err)
+			}
 		}
 	}
 }
