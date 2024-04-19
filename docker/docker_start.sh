@@ -60,22 +60,42 @@ run_hub_update() {
     fi
 }
 
-run_hub_update_if_from_volume() {
-    path=$(readlink -f "/etc/crowdsec/hub/.index.json") # even though it's unlikely, resolve symlink
+is_mounted() {
+    path=$(readlink -f "$1")
     mounts=$(awk '{print $2}' /proc/mounts)
     while true; do
         if grep -qE ^"$path"$ <<< "$mounts"; then
-            echo "$path was found in a volume, running hub update"
-            run_hub_update
+            echo "$path was found in a volume"
             return 0
         fi
         path=$(dirname "$path")
         if [ "$path" = "/" ]; then
-            echo "It looks like the hub index is not in a volume, skipping update"
             return 1
         fi
     done
     return 1 #unreachable
+}
+
+run_hub_update_if_from_volume() {
+    is_mounted "/etc/crowdsec/hub/.index.json"
+    if [ $? -eq 0 ]; then
+        echo "Running hub update"
+        run_hub_update
+    else
+        echo "Skipping hub update, index file is not in a volume"
+    fi
+}
+
+run_hub_upgrade_if_from_volume() {
+    isfalse "$NO_HUB_UPGRADE" || return 0
+    is_mounted "/var/lib/crowdsec/data"
+    if [ $? -eq 0 ]; then
+        echo "Running hub upgrade"
+        cscli hub upgrade
+    else
+        echo "Skipping hub upgrade, data directory is not in a volume"
+    fi
+
 }
 
 # conf_get <key> [file_path]
@@ -339,10 +359,7 @@ conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 ## Install hub items
 
 run_hub_update_if_from_volume || true
-
-if isfalse "$NO_HUB_UPGRADE"; then
-    cscli hub upgrade || true
-fi
+run_hub_upgrade_if_from_volume || true
 
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs
