@@ -50,6 +50,34 @@ cscli() {
     command cscli -c "$CONFIG_FILE" "$@"
 }
 
+run_hub_update() {
+    index_modification_time=$(stat -c %Y /etc/crowdsec/hub/.index.json 2>/dev/null)
+    #Run cscli hub update if no date or if the index file is older than 24h
+    if [ -z "$index_modification_time" ] || [ $(( $(date +%s) - $index_modification_time )) -gt 86400 ]; then
+        cscli hub update
+    else
+        echo "Skipping hub update, index file is recent"
+    fi
+}
+
+run_hub_update_if_from_volume() {
+    path=$(readlink -f "/etc/crowdsec/hub/.index.json") # even though it's unlikely, resolve symlink
+    mounts=$(awk '{print $2}' /proc/mounts)
+    while true; do
+        if grep -qE ^"$path"$ <<< "$mounts"; then
+            echo "$path was found in a volume, running hub update"
+            run_hub_update
+            return 0
+        fi
+        path=$(dirname "$path")
+        if [ "$path" = "/" ]; then
+            echo "It looks like the hub index is not in a volume, skipping update"
+            return 1
+        fi
+    done
+    return 1 #unreachable
+}
+
 # conf_get <key> [file_path]
 # retrieve a value from a file (by default $CONFIG_FILE)
 conf_get() {
@@ -120,6 +148,12 @@ cscli_if_clean() {
             echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
             cscli $error_only "$itemtype" "$action" "$obj" "$@"
+            if [ "$?" -ne 0 ]; then
+                echo "Failed to $action $itemtype/$obj, running hub update before retrying"
+                run_hub_update
+                # shellcheck disable=SC2086
+                cscli $error_only "$itemtype" "$action" "$obj" "$@"
+            fi
         fi
     done
 }
@@ -304,7 +338,7 @@ conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install hub items
 
-cscli hub update || true
+run_hub_update_if_from_volume || true
 
 if isfalse "$NO_HUB_UPGRADE"; then
     cscli hub upgrade || true
