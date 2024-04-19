@@ -4,6 +4,7 @@ package types
 
 import (
 	"fmt"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -92,6 +93,7 @@ var fsTypeMapping map[int64]string = map[int64]string{
 	0xabba1974: "xenfs",
 	0x012ff7b4: "xenix",
 	0x58465342: "xfs",
+	0x2fc12fc1: "zfs",
 }
 
 func GetFSType(path string) (string, error) {
