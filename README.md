@@ -93,7 +93,7 @@ CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.
 
 ## :point_right: What it is not
 
-CrowdSec is not a SIEM, storing your logs (neither locally nor remotely). Your data are analyzed locally and forgotten.
+CrowdSec is not a SIEM, storing your logs (neither locally nor remotely). Your data is analyzed locally and forgotten.
 
 Signals sent to the curation platform are limited to the very strict minimum: IP, Scenario, Timestamp. They are only used to allow the system to spot new rogue IPs, and rule out false positives or poisoning attempts.
 
