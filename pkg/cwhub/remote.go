@@ -41,7 +41,7 @@ func (r *RemoteHubCfg) fetchIndex(destPath string) (bool, error) {
 		return false, fmt.Errorf("failed to build hub index request: %w", err)
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	downloaded, err := downloader.
 		New(url).

@@ -130,9 +130,8 @@ func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
 		VerifyHash("sha256", wantHash)
 
 	// TODO: recommend hub update if hash does not match
-	// TODO: use real context
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	downloaded, err := d.Download(ctx)
 	if err != nil {

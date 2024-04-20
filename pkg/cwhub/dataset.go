@@ -53,8 +53,7 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *lo
 					WithShelfLife(7 * 24 * time.Hour)
 			}
 
-			// TODO: real context
-			ctx := context.Background()
+			ctx := context.TODO()
 
 			downloaded, err := d.Download(ctx)
 			if err != nil {
