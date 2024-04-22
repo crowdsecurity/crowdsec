@@ -44,12 +44,12 @@ func (r *RemoteHubCfg) fetchIndex(destPath string) (bool, error) {
 	ctx := context.TODO()
 
 	downloaded, err := downloader.
-		New(url).
+		New().
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
 		CompareContent().
 		WithLogger(logrus.WithFields(logrus.Fields{"url": url})).
-		Download(ctx)
+		Download(ctx, url)
 	if err != nil {
 		return false, err
 	}

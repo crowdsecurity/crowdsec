@@ -42,7 +42,7 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *lo
 			}
 
 			d := downloader.
-				New(dataS.SourceURL).
+				New().
 				WithHTTPClient(hubClient).
 				ToFile(destPath).
 				CompareContent().
@@ -55,7 +55,7 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *lo
 
 			ctx := context.TODO()
 
-			downloaded, err := d.Download(ctx)
+			downloaded, err := d.Download(ctx, dataS.SourceURL)
 			if err != nil {
 				return fmt.Errorf("while getting data: %w", err)
 			}

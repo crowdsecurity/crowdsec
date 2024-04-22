@@ -121,7 +121,7 @@ func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
 	}
 
 	d := downloader.
-		New(url).
+		New().
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
 		WithMakeDirs(true).
@@ -133,7 +133,7 @@ func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
 
 	ctx := context.TODO()
 
-	downloaded, err := d.Download(ctx)
+	downloaded, err := d.Download(ctx, url)
 	if err != nil {
 		return false, "", fmt.Errorf("while downloading %s to %s: %w", i.Name, url, err)
 	}
