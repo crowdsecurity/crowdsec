@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,12 +13,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/blackfireio/osinfo"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -47,6 +50,7 @@ const (
 	SUPPORT_CAPI_STATUS_PATH             = "capi_status.txt"
 	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH        = "config/profiles.yaml"
+	SUPPORT_CRASH_PATH                   = "crash/"
 )
 
 // from https://github.com/acarl005/stripansi
@@ -62,7 +66,7 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	if csConfig.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
-		return nil, nil, fmt.Errorf("prometheus_uri is not set")
+		return nil, nil, errors.New("prometheus_uri is not set")
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
@@ -70,7 +74,7 @@ func collectMetrics() ([]byte, []byte, error) {
 	ms := NewMetricStore()
 
 	if err := ms.Fetch(csConfig.Cscli.PrometheusUrl); err != nil {
-		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %s", err)
+		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %w", err)
 	}
 
 	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
@@ -79,21 +83,21 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
+		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %w", err)
 	}
 
 	client := &http.Client{}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get metrics from prometheus endpoint: %s", err)
+		return nil, nil, fmt.Errorf("could not get metrics from prometheus endpoint: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %s", err)
+		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %w", err)
 	}
 
 	return humanMetrics.Bytes(), body, nil
@@ -121,19 +125,18 @@ func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
 
 	info, err := osinfo.GetOSInfo()
-
 	if err != nil {
 		return nil, err
 	}
 
 	w := bytes.NewBuffer(nil)
-	w.WriteString(fmt.Sprintf("Architecture: %s\n", info.Architecture))
-	w.WriteString(fmt.Sprintf("Family: %s\n", info.Family))
-	w.WriteString(fmt.Sprintf("ID: %s\n", info.ID))
-	w.WriteString(fmt.Sprintf("Name: %s\n", info.Name))
-	w.WriteString(fmt.Sprintf("Codename: %s\n", info.Codename))
-	w.WriteString(fmt.Sprintf("Version: %s\n", info.Version))
-	w.WriteString(fmt.Sprintf("Build: %s\n", info.Build))
+	fmt.Fprintf(w, "Architecture: %s\n", info.Architecture)
+	fmt.Fprintf(w, "Family: %s\n", info.Family)
+	fmt.Fprintf(w, "ID: %s\n", info.ID)
+	fmt.Fprintf(w, "Name: %s\n", info.Name)
+	fmt.Fprintf(w, "Codename: %s\n", info.Codename)
+	fmt.Fprintf(w, "Version: %s\n", info.Version)
+	fmt.Fprintf(w, "Build: %s\n", info.Build)
 
 	return w.Bytes(), nil
 }
@@ -163,7 +166,7 @@ func collectBouncers(dbClient *database.Client) ([]byte, error) {
 
 	bouncers, err := dbClient.ListBouncers()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list bouncers: %s", err)
+		return nil, fmt.Errorf("unable to list bouncers: %w", err)
 	}
 
 	getBouncersTable(out, bouncers)
@@ -176,7 +179,7 @@ func collectAgents(dbClient *database.Client) ([]byte, error) {
 
 	machines, err := dbClient.ListMachines()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list machines: %s", err)
+		return nil, fmt.Errorf("unable to list machines: %w", err)
 	}
 
 	getAgentsTable(out, machines)
@@ -262,6 +265,11 @@ func collectAcquisitionConfig() map[string][]byte {
 	}
 
 	return ret
+}
+
+func collectCrash() ([]string, error) {
+	log.Info("Collecting crash dumps")
+	return trace.List()
 }
 
 type cliSupport struct{}
@@ -431,11 +439,31 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				}
 			}
 
+			crash, err := collectCrash()
+			if err != nil {
+				log.Errorf("could not collect crash dumps: %s", err)
+			}
+
+			for _, filename := range crash {
+				content, err := os.ReadFile(filename)
+				if err != nil {
+					log.Errorf("could not read crash dump %s: %s", filename, err)
+				}
+
+				infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
+			}
+
 			w := bytes.NewBuffer(nil)
 			zipWriter := zip.NewWriter(w)
 
 			for filename, data := range infos {
-				fw, err := zipWriter.Create(filename)
+				header := &zip.FileHeader{
+					Name:   filename,
+					Method: zip.Deflate,
+					// TODO: retain mtime where possible (esp. trace)
+					Modified: time.Now(),
+				}
+				fw, err := zipWriter.CreateHeader(header)
 				if err != nil {
 					log.Errorf("Could not add zip entry for %s: %s", filename, err)
 					continue

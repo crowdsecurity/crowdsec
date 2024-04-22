@@ -37,17 +37,10 @@ linters-settings:
     statements: 122
 
   govet:
-    enable:
-     - atomicalign
-     - deepequalerrors
-     # TODO: - fieldalignment
-     - findcall
-     - nilness
-     # TODO: - reflectvaluecompare
-     - shadow
-     - sortslice
-     - timeformat
-     - unusedwrite
+    enable-all: true
+    disable:
+     - reflectvaluecompare
+     - fieldalignment
 
   lll:
     # lower this after refactoring
