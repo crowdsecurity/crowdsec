@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 	"strings"
 
 	"github.com/blackfireio/osinfo"
@@ -456,7 +457,13 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			zipWriter := zip.NewWriter(w)
 
 			for filename, data := range infos {
-				fw, err := zipWriter.Create(filename)
+				header := &zip.FileHeader{
+					Name:  filename,
+					Method: zip.Deflate,
+					// TODO: retain mtime where possible (esp. trace)
+					Modified: time.Now(),
+				}
+				fw, err := zipWriter.CreateHeader(header)
 				if err != nil {
 					log.Errorf("Could not add zip entry for %s: %s", filename, err)
 					continue

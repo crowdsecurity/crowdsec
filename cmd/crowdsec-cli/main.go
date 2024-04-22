@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -85,7 +87,9 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 		}
 
 		// set up directory for trace files
-		trace.Init(config.ConfigPaths.DataDir)
+		if err := trace.Init(filepath.Join(config.ConfigPaths.DataDir, "trace")); err != nil {
+			return nil, "", fmt.Errorf("while setting up trace directory: %w", err)
+		}
 
 		return config, merged, nil
 	}

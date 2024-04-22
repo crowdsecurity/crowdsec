@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strings"
@@ -232,8 +233,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, fmt.Errorf("while loading configuration file: %w", err)
 	}
 
-	// set up directory for trace files
-	trace.Init(cConfig.ConfigPaths.DataDir)
+	if err := trace.Init(filepath.Join(cConfig.ConfigPaths.DataDir, "trace")); err != nil {
+		return nil, fmt.Errorf("while setting up trace directory: %w", err)
+	}
 
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
 
