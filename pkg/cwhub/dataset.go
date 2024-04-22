@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -32,6 +34,9 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
+	// Download to a temporary location to avoid corrupting files
+	// that are currently in use or memory mapped.
+
 	tmpFile, err := os.CreateTemp(filepath.Dir(destPath), filepath.Base(destPath)+".*.tmp")
 	if err != nil {
 		return err
@@ -55,6 +60,23 @@ func downloadFile(url string, destPath string) error {
 
 	if err = tmpFile.Close(); err != nil {
 		return err
+	}
+
+	// a check on stdout is used while scripting to know if the hub has been upgraded
+	// and a configuration reload is required
+	// TODO: use a better way to communicate this
+	fmt.Printf("updated %s\n", filepath.Base(destPath))
+
+	if runtime.GOOS == "windows" {
+		// On Windows, rename will fail if the destination file already exists
+		// so we remove it first.
+		err = os.Remove(destPath)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			break
+		case err != nil:
+			return err
+		}
 	}
 
 	if err = os.Rename(tmpFileName, destPath); err != nil {

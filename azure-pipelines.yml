@@ -15,19 +15,13 @@ pool:
 stages:
   - stage: Build
     jobs:
-      - job:
+      - job: Build
         displayName: "Build"
         steps:
-          - task: DotNetCoreCLI@2
-            displayName: "Install SignClient"
-            inputs:
-              command: 'custom'
-              custom: 'tool'
-              arguments: 'install --global SignClient --version 1.3.155'
           - task: GoTool@0
             displayName: "Install Go"
             inputs:
-                version: '1.21.8'
+                version: '1.21.9'
 
           - pwsh: |
               choco install -y make
@@ -39,24 +33,14 @@ stages:
               #we are not calling make windows_installer because we want to sign the binaries before they are added to the MSI
               script: |
                 make build BUILD_RE2_WASM=1
-          - task: AzureKeyVault@2
-            inputs:
-              azureSubscription: 'Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)'
-              KeyVaultName: 'CodeSigningSecrets'
-              SecretsFilter: 'CodeSigningUser,CodeSigningPassword'
-              RunAsPreJob: false
-
-          - task: DownloadSecureFile@1
-            inputs:
-              secureFile: appsettings.json
-
-          - pwsh: |
-              SignClient.exe Sign --name "crowdsec-binaries" `
-              --input "**/*.exe" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
-              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
-            displayName: "Sign Crowdsec binaries + plugins"
+      
           - pwsh: |
               $build_version=$env:BUILD_SOURCEBRANCHNAME
+              #Override the version if it's set in the pipeline
+              if ( ${env:USERBUILDVERSION} -ne "")
+              {
+                $build_version = ${env:USERBUILDVERSION}
+              }
               if ($build_version.StartsWith("v"))
               {
                 $build_version = $build_version.Substring(1)
@@ -69,35 +53,112 @@ stages:
             displayName: GetCrowdsecVersion
             name: GetCrowdsecVersion
           - pwsh: |
-              .\make_installer.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
+              Get-ChildItem -Path .\cmd -Directory | ForEach-Object {
+                $dirName = $_.Name
+                Get-ChildItem -Path .\cmd\$dirName -File -Filter '*.exe' | ForEach-Object {
+                  $fileName = $_.Name
+                  $destDir = Join-Path $(Build.ArtifactStagingDirectory) cmd\$dirName
+                  New-Item -ItemType Directory -Path $destDir -Force
+                  Copy-Item -Path .\cmd\$dirName\$fileName -Destination $destDir
+                }
+              }
+            displayName: "Copy binaries to staging directory"
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+              artifact: 'unsigned_binaries'
+            displayName: "Upload binaries artifact"
+
+  - stage: Sign
+    dependsOn: Build
+    variables: 
+      - group: 'FOSS Build Variables'
+      - name: BuildVersion
+        value: $[ stageDependencies.Build.Build.outputs['GetCrowdsecVersion.BuildVersion'] ]
+    condition: succeeded()
+    jobs:
+      - job: Sign
+        displayName: "Sign"
+        steps:
+          - download: current
+            artifact: unsigned_binaries
+            displayName: "Download binaries artifact"
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: '$(Pipeline.Workspace)/unsigned_binaries'
+              TargetFolder: '$(Build.SourcesDirectory)'
+            displayName: "Copy binaries to workspace"
+          - task: DotNetCoreCLI@2
+            displayName: "Install SignTool tool"
+            inputs:
+              command: 'custom'
+              custom: 'tool'
+              arguments: install --global sign --version 0.9.0-beta.23127.3
+          - task: AzureKeyVault@2
+            displayName: "Get signing parameters"
+            inputs:
+              azureSubscription: "Azure subscription"
+              KeyVaultName: "$(KeyVaultName)"
+              SecretsFilter: "TenantId,ClientId,ClientSecret,Certificate,KeyVaultUrl"
+          - pwsh: |
+              sign code azure-key-vault `
+              "**/*.exe" `
+              --base-directory "$(Build.SourcesDirectory)/cmd/" `
+              --publisher-name "CrowdSec" `
+              --description "CrowdSec" `
+              --description-url "https://github.com/crowdsecurity/crowdsec" `
+              --azure-key-vault-tenant-id "$(TenantId)" `
+              --azure-key-vault-client-id "$(ClientId)" `
+              --azure-key-vault-client-secret "$(ClientSecret)" `
+              --azure-key-vault-certificate "$(Certificate)" `
+              --azure-key-vault-url "$(KeyVaultUrl)"
+            displayName: "Sign crowdsec binaries"
+          - pwsh: |
+              .\make_installer.ps1 -version '$(BuildVersion)'
             displayName: "Build Crowdsec MSI"
             name: BuildMSI
-
           - pwsh: |
-              .\make_chocolatey.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
+              .\make_chocolatey.ps1 -version '$(BuildVersion)'
             displayName: "Build Chocolatey nupkg"
-
           - pwsh: |
-              SignClient.exe Sign --name "crowdsec-msi" `
-              --input "*.msi" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
-              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
-            displayName: "Sign Crowdsec MSI"
-
-          - task: PublishBuildArtifacts@1
+              sign code azure-key-vault `
+              "*.msi" `
+              --base-directory "$(Build.SourcesDirectory)" `
+              --publisher-name "CrowdSec" `
+              --description "CrowdSec" `
+              --description-url "https://github.com/crowdsecurity/crowdsec" `
+              --azure-key-vault-tenant-id "$(TenantId)" `
+              --azure-key-vault-client-id "$(ClientId)" `
+              --azure-key-vault-client-secret "$(ClientSecret)" `
+              --azure-key-vault-certificate "$(Certificate)" `
+              --azure-key-vault-url "$(KeyVaultUrl)"
+            displayName: "Sign MSI package"
+          - pwsh: |
+              sign code azure-key-vault `
+              "*.nupkg" `
+              --base-directory "$(Build.SourcesDirectory)" `
+              --publisher-name "CrowdSec" `
+              --description "CrowdSec" `
+              --description-url "https://github.com/crowdsecurity/crowdsec" `
+              --azure-key-vault-tenant-id "$(TenantId)" `
+              --azure-key-vault-client-id "$(ClientId)" `
+              --azure-key-vault-client-secret "$(ClientSecret)" `
+              --azure-key-vault-certificate "$(Certificate)" `
+              --azure-key-vault-url "$(KeyVaultUrl)"
+            displayName: "Sign nuget package"
+          - task: PublishPipelineArtifact@1
             inputs:
-              PathtoPublish: '$(Build.Repository.LocalPath)\\crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
-              ArtifactName: 'crowdsec.msi'
-              publishLocation: 'Container'
-            displayName: "Upload MSI artifact"
-          
-          - task: PublishBuildArtifacts@1
+              targetPath: '$(Build.SourcesDirectory)/crowdsec_$(BuildVersion).msi'
+              artifact: 'signed_msi_package'
+            displayName: "Upload signed MSI artifact"
+          - task: PublishPipelineArtifact@1
             inputs:
-              PathtoPublish: '$(Build.Repository.LocalPath)\\windows\\Chocolatey\\crowdsec\\crowdsec.$(GetCrowdsecVersion.BuildVersion).nupkg'
-              ArtifactName: 'crowdsec.nupkg'
-              publishLocation: 'Container'
-            displayName: "Upload nupkg artifact"
+              targetPath: '$(Build.SourcesDirectory)/crowdsec.$(BuildVersion).nupkg'
+              artifact: 'signed_nuget_package'
+            displayName: "Upload signed nuget artifact"
+            
   - stage: Publish
-    dependsOn: Build
+    dependsOn: Sign
     jobs:
       - deployment: "Publish"
         displayName: "Publish to GitHub"
@@ -119,8 +180,7 @@ stages:
                     assetUploadMode: 'replace'
                     addChangeLog: false
                     isPreRelease: true #we force prerelease because the pipeline is invoked on tag creation, which happens when we do a prerelease
-                    #the .. is an ugly hack, but I can't find the var that gives D:\a\1 ...
                     assets: |
-                      $(Build.ArtifactStagingDirectory)\..\crowdsec.msi/*.msi
-                      $(Build.ArtifactStagingDirectory)\..\crowdsec.nupkg/*.nupkg
+                      $(Pipeline.Workspace)/signed_msi_package/*.msi
+                      $(Pipeline.Workspace)/signed_nuget_package/*.nupkg
                   condition: ne(variables['GetLatestPrelease.LatestPreRelease'], '')

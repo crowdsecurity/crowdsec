@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.21.8-alpine3.18 AS build
+FROM golang:1.21.9-alpine3.18 AS build
 
 ARG BUILD_VERSION
 
@@ -16,7 +16,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
     cd re2-${RE2_VERSION} && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    go install github.com/mikefarah/yq/v4@v4.40.4
+    go install github.com/mikefarah/yq/v4@v4.43.1
 
 COPY . .
 
@@ -43,11 +43,12 @@ COPY --from=build /go/bin/yq /usr/local/bin/crowdsec /usr/local/bin/cscli /usr/l
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
+COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 ENTRYPOINT /bin/bash /docker_start.sh
 
-FROM slim as plugins
+FROM slim as full
 
 # Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
 # The files are here for reference, as users will need to mount a new version to be actually able to use notifications
@@ -60,11 +61,3 @@ COPY --from=build \
     /staging/etc/crowdsec/notifications/
 
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
-
-FROM slim as geoip
-
-COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
-
-FROM plugins as full
-
-COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec

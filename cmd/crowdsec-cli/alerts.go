@@ -177,9 +177,9 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	return nil
 }
 
-type cliAlerts struct{
+type cliAlerts struct {
 	client *apiclient.ApiClient
-	cfg configGetter
+	cfg    configGetter
 }
 
 func NewCLIAlerts(getconfig configGetter) *cliAlerts {
@@ -253,8 +253,10 @@ func (cli *cliAlerts) NewListCmd() *cobra.Command {
 		Example: `cscli alerts list
 cscli alerts list --ip 1.2.3.4
 cscli alerts list --range 1.2.3.0/24
+cscli alerts list --origin lists
 cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
+		Long:              `List alerts with optional filters`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
@@ -358,7 +360,7 @@ func (cli *cliAlerts) NewDeleteCmd() *cobra.Command {
 	var (
 		ActiveDecision *bool
 		AlertDeleteAll bool
-		delAlertByID string
+		delAlertByID   string
 	)
 
 	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
@@ -449,7 +451,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			return nil
 		},
 	}
-	
+
 	flags := cmd.Flags()
 	flags.SortFlags = false
 	flags.StringVar(alertDeleteFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
@@ -520,7 +522,7 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 	var (
 		maxItems int
-		maxAge string
+		maxAge   string
 	)
 
 	cmd := &cobra.Command{
