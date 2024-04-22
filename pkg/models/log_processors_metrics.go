@@ -31,6 +31,9 @@ type LogProcessorsMetrics struct {
 	// last push date
 	LastPush int64 `json:"last_push,omitempty"`
 
+	// last update date
+	LastUpdate int64 `json:"last_update,omitempty"`
+
 	// name of the log processor
 	Name string `json:"name,omitempty"`
 }
@@ -54,6 +57,8 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 
 		LastPush int64 `json:"last_push,omitempty"`
 
+		LastUpdate int64 `json:"last_update,omitempty"`
+
 		Name string `json:"name,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
@@ -67,6 +72,8 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 	m.HubItems = dataAO1.HubItems
 
 	m.LastPush = dataAO1.LastPush
+
+	m.LastUpdate = dataAO1.LastUpdate
 
 	m.Name = dataAO1.Name
 
@@ -91,6 +98,8 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 
 		LastPush int64 `json:"last_push,omitempty"`
 
+		LastUpdate int64 `json:"last_update,omitempty"`
+
 		Name string `json:"name,omitempty"`
 	}
 
@@ -101,6 +110,8 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 	dataAO1.HubItems = m.HubItems
 
 	dataAO1.LastPush = m.LastPush
+
+	dataAO1.LastUpdate = m.LastUpdate
 
 	dataAO1.Name = m.Name
 

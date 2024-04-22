@@ -14,7 +14,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -77,6 +79,12 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 		metrics.Name = lpName
 		metrics.LastPush = lp.LastPush.UTC().Unix()
+		metrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
+
+		//To prevent marshalling a nil slice to null, which gets rejected by the API
+		if metrics.Metrics == nil {
+			metrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		}
 
 		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &metrics)
 		metricsIds = append(metricsIds, lpsMetric.ID)
@@ -114,13 +122,42 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.Name = bouncerName
 		metrics.LastPull = bouncer.LastPull.UTC().Unix()
 
+		//To prevent marshalling a nil slice to null, which gets rejected by the API
+		if metrics.Metrics == nil {
+			metrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		}
+
 		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &metrics)
 		metricsIds = append(metricsIds, bouncersMetric.ID)
 	}
 
-	//bouncerInfos := make(map[string]string)
+	//FIXME: all of this should only be done once on startup/reload
+	allMetrics.Lapi = &models.LapiMetrics{
+		ConsoleOptions: models.ConsoleOptions{
+			"FIXME",
+		},
+	}
+	allMetrics.Lapi.Os = &models.OSversion{
+		Name:    "FIXME",
+		Version: "FIXME",
+	}
+	allMetrics.Lapi.Version = ptr.Of(cwversion.VersionStr())
+	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
-	//TODO: add LAPI metrics
+	allMetrics.Lapi.Meta = &models.MetricsMeta{
+		UtcStartupTimestamp: time.Now().UTC().Unix(),
+		UtcNowTimestamp:     time.Now().UTC().Unix(),
+		WindowSizeSeconds:   int64(a.metricsInterval.Seconds()),
+	}
+	allMetrics.Lapi.Metrics = make([]*models.MetricsDetailItem, 0)
+
+	if allMetrics.RemediationComponents == nil {
+		allMetrics.RemediationComponents = make([]*models.RemediationComponentsMetrics, 0)
+	}
+
+	if allMetrics.LogProcessors == nil {
+		allMetrics.LogProcessors = make([]*models.LogProcessorsMetrics, 0)
+	}
 
 	return allMetrics, metricsIds, nil
 }
@@ -306,6 +343,8 @@ func (a *apic) SendUsageMetrics() {
 				err = a.MarkUsageMetricsAsSent(metricsId)
 				if err != nil {
 					log.Errorf("unable to mark usage metrics as sent: %s", err)
+				} else {
+					log.Infof("Usage metrics sent")
 				}
 			}
 		}

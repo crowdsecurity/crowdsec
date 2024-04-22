@@ -108,7 +108,6 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 			"type":    item0.Type,
 			"metrics": item0.Metrics,
 			"meta":    item0.Meta,
-			// TODO: RC stuff like traffic stats
 		}
 		baseMetrics = item0.BaseMetrics
 	default:

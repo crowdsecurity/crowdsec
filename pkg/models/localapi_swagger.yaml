@@ -1060,6 +1060,9 @@ definitions:
           last_push:
             type: integer
             description: last push date
+          last_update:
+            type: integer
+            description: last update date
   LapiMetrics:
     title: LapiMetrics
     type: object
