@@ -7,87 +7,16 @@ package models
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-openapi/validate"
 )
 
 // LogProcessorsMetrics LogProcessorsMetrics
 //
 // swagger:model LogProcessorsMetrics
-type LogProcessorsMetrics []*LogProcessorsMetricsItems0
-
-// Validate validates this log processors metrics
-func (m LogProcessorsMetrics) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	iLogProcessorsMetricsSize := int64(len(m))
-
-	if err := validate.MaxItems("", "body", iLogProcessorsMetricsSize, 1); err != nil {
-		return err
-	}
-
-	for i := 0; i < len(m); i++ {
-		if swag.IsZero(m[i]) { // not required
-			continue
-		}
-
-		if m[i] != nil {
-			if err := m[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-// ContextValidate validate this log processors metrics based on the context it is used
-func (m LogProcessorsMetrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	for i := 0; i < len(m); i++ {
-
-		if m[i] != nil {
-
-			if swag.IsZero(m[i]) { // not required
-				return nil
-			}
-
-			if err := m[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-// LogProcessorsMetricsItems0 log processors metrics items0
-//
-// swagger:model LogProcessorsMetricsItems0
-type LogProcessorsMetricsItems0 struct {
+type LogProcessorsMetrics struct {
 	BaseMetrics
 
 	// console options
@@ -107,7 +36,7 @@ type LogProcessorsMetricsItems0 struct {
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
-func (m *LogProcessorsMetricsItems0) UnmarshalJSON(raw []byte) error {
+func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 	// AO0
 	var aO0 BaseMetrics
 	if err := swag.ReadJSON(raw, &aO0); err != nil {
@@ -145,7 +74,7 @@ func (m *LogProcessorsMetricsItems0) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON marshals this object to a JSON structure
-func (m LogProcessorsMetricsItems0) MarshalJSON() ([]byte, error) {
+func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 	_parts := make([][]byte, 0, 2)
 
 	aO0, err := swag.WriteJSON(m.BaseMetrics)
@@ -183,8 +112,8 @@ func (m LogProcessorsMetricsItems0) MarshalJSON() ([]byte, error) {
 	return swag.ConcatJSON(_parts...), nil
 }
 
-// Validate validates this log processors metrics items0
-func (m *LogProcessorsMetricsItems0) Validate(formats strfmt.Registry) error {
+// Validate validates this log processors metrics
+func (m *LogProcessorsMetrics) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	// validation for a type composition with BaseMetrics
@@ -206,7 +135,7 @@ func (m *LogProcessorsMetricsItems0) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *LogProcessorsMetricsItems0) validateConsoleOptions(formats strfmt.Registry) error {
+func (m *LogProcessorsMetrics) validateConsoleOptions(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.ConsoleOptions) { // not required
 		return nil
@@ -224,7 +153,7 @@ func (m *LogProcessorsMetricsItems0) validateConsoleOptions(formats strfmt.Regis
 	return nil
 }
 
-func (m *LogProcessorsMetricsItems0) validateHubItems(formats strfmt.Registry) error {
+func (m *LogProcessorsMetrics) validateHubItems(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.HubItems) { // not required
 		return nil
@@ -244,8 +173,8 @@ func (m *LogProcessorsMetricsItems0) validateHubItems(formats strfmt.Registry) e
 	return nil
 }
 
-// ContextValidate validate this log processors metrics items0 based on the context it is used
-func (m *LogProcessorsMetricsItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this log processors metrics based on the context it is used
+func (m *LogProcessorsMetrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	// validation for a type composition with BaseMetrics
@@ -267,7 +196,7 @@ func (m *LogProcessorsMetricsItems0) ContextValidate(ctx context.Context, format
 	return nil
 }
 
-func (m *LogProcessorsMetricsItems0) contextValidateConsoleOptions(ctx context.Context, formats strfmt.Registry) error {
+func (m *LogProcessorsMetrics) contextValidateConsoleOptions(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.ConsoleOptions.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
@@ -281,7 +210,7 @@ func (m *LogProcessorsMetricsItems0) contextValidateConsoleOptions(ctx context.C
 	return nil
 }
 
-func (m *LogProcessorsMetricsItems0) contextValidateHubItems(ctx context.Context, formats strfmt.Registry) error {
+func (m *LogProcessorsMetrics) contextValidateHubItems(ctx context.Context, formats strfmt.Registry) error {
 
 	if swag.IsZero(m.HubItems) { // not required
 		return nil
@@ -300,7 +229,7 @@ func (m *LogProcessorsMetricsItems0) contextValidateHubItems(ctx context.Context
 }
 
 // MarshalBinary interface implementation
-func (m *LogProcessorsMetricsItems0) MarshalBinary() ([]byte, error) {
+func (m *LogProcessorsMetrics) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -308,8 +237,8 @@ func (m *LogProcessorsMetricsItems0) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *LogProcessorsMetricsItems0) UnmarshalBinary(b []byte) error {
-	var res LogProcessorsMetricsItems0
+func (m *LogProcessorsMetrics) UnmarshalBinary(b []byte) error {
+	var res LogProcessorsMetrics
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

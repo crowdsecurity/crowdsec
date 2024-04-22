@@ -42,7 +42,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 	for _, lpsMetric := range lpsMetrics {
 		lpName := lpsMetric.GeneratedBy
-		metrics := models.LogProcessorsMetricsItems0{}
+		metrics := models.LogProcessorsMetrics{}
 
 		err := json.Unmarshal([]byte(lpsMetric.Payload), &metrics)
 		if err != nil {
@@ -78,13 +78,13 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.Name = lpName
 		metrics.LastPush = lp.LastPush.UTC().Unix()
 
-		allMetrics.LogProcessors = append(allMetrics.LogProcessors, models.LogProcessorsMetrics{&metrics})
+		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &metrics)
 		metricsIds = append(metricsIds, lpsMetric.ID)
 	}
 
 	for _, bouncersMetric := range bouncersMetrics {
 		bouncerName := bouncersMetric.GeneratedBy
-		metrics := models.RemediationComponentsMetricsItems0{}
+		metrics := models.RemediationComponentsMetrics{}
 
 		err := json.Unmarshal([]byte(bouncersMetric.Payload), &metrics)
 		if err != nil {
@@ -114,7 +114,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.Name = bouncerName
 		metrics.LastPull = bouncer.LastPull.UTC().Unix()
 
-		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, models.RemediationComponentsMetrics{&metrics})
+		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &metrics)
 		metricsIds = append(metricsIds, bouncersMetric.ID)
 	}
 

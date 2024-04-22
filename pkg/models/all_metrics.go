@@ -20,10 +20,10 @@ import (
 type AllMetrics struct {
 
 	// log processors metrics
-	LogProcessors []LogProcessorsMetrics `json:"log_processors"`
+	LogProcessors []*LogProcessorsMetrics `json:"log_processors"`
 
 	// remediation components metrics
-	RemediationComponents []RemediationComponentsMetrics `json:"remediation_components"`
+	RemediationComponents []*RemediationComponentsMetrics `json:"remediation_components"`
 }
 
 // Validate validates this all metrics
@@ -50,14 +50,19 @@ func (m *AllMetrics) validateLogProcessors(formats strfmt.Registry) error {
 	}
 
 	for i := 0; i < len(m.LogProcessors); i++ {
+		if swag.IsZero(m.LogProcessors[i]) { // not required
+			continue
+		}
 
-		if err := m.LogProcessors[i].Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("log_processors" + "." + strconv.Itoa(i))
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("log_processors" + "." + strconv.Itoa(i))
+		if m.LogProcessors[i] != nil {
+			if err := m.LogProcessors[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("log_processors" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("log_processors" + "." + strconv.Itoa(i))
+				}
+				return err
 			}
-			return err
 		}
 
 	}
@@ -71,14 +76,19 @@ func (m *AllMetrics) validateRemediationComponents(formats strfmt.Registry) erro
 	}
 
 	for i := 0; i < len(m.RemediationComponents); i++ {
+		if swag.IsZero(m.RemediationComponents[i]) { // not required
+			continue
+		}
 
-		if err := m.RemediationComponents[i].Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("remediation_components" + "." + strconv.Itoa(i))
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("remediation_components" + "." + strconv.Itoa(i))
+		if m.RemediationComponents[i] != nil {
+			if err := m.RemediationComponents[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("remediation_components" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("remediation_components" + "." + strconv.Itoa(i))
+				}
+				return err
 			}
-			return err
 		}
 
 	}
@@ -108,13 +118,20 @@ func (m *AllMetrics) contextValidateLogProcessors(ctx context.Context, formats s
 
 	for i := 0; i < len(m.LogProcessors); i++ {
 
-		if err := m.LogProcessors[i].ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("log_processors" + "." + strconv.Itoa(i))
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("log_processors" + "." + strconv.Itoa(i))
+		if m.LogProcessors[i] != nil {
+
+			if swag.IsZero(m.LogProcessors[i]) { // not required
+				return nil
 			}
-			return err
+
+			if err := m.LogProcessors[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("log_processors" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("log_processors" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
 		}
 
 	}
@@ -126,13 +143,20 @@ func (m *AllMetrics) contextValidateRemediationComponents(ctx context.Context, f
 
 	for i := 0; i < len(m.RemediationComponents); i++ {
 
-		if err := m.RemediationComponents[i].ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("remediation_components" + "." + strconv.Itoa(i))
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("remediation_components" + "." + strconv.Itoa(i))
+		if m.RemediationComponents[i] != nil {
+
+			if swag.IsZero(m.RemediationComponents[i]) { // not required
+				return nil
 			}
-			return err
+
+			if err := m.RemediationComponents[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("remediation_components" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("remediation_components" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
 		}
 
 	}

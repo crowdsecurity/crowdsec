@@ -83,7 +83,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	case 1:
 		// the final slice can't have more than one item,
 		// guaranteed by the swagger schema
-		item0 := input.LogProcessors[0][0]
+		item0 := input.LogProcessors[0]
 		payload = map[string]any{
 			"console_options": item0.ConsoleOptions,
 			"datasources":     item0.Datasources,
@@ -103,7 +103,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	case 0:
 		break
 	case 1:
-		item0 := input.RemediationComponents[0][0]
+		item0 := input.RemediationComponents[0]
 		payload = map[string]any{
 			"type":    item0.Type,
 			"metrics": item0.Metrics,

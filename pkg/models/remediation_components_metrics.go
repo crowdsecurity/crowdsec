@@ -7,87 +7,16 @@ package models
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-openapi/validate"
 )
 
 // RemediationComponentsMetrics RemediationComponentsMetrics
 //
 // swagger:model RemediationComponentsMetrics
-type RemediationComponentsMetrics []*RemediationComponentsMetricsItems0
-
-// Validate validates this remediation components metrics
-func (m RemediationComponentsMetrics) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	iRemediationComponentsMetricsSize := int64(len(m))
-
-	if err := validate.MaxItems("", "body", iRemediationComponentsMetricsSize, 1); err != nil {
-		return err
-	}
-
-	for i := 0; i < len(m); i++ {
-		if swag.IsZero(m[i]) { // not required
-			continue
-		}
-
-		if m[i] != nil {
-			if err := m[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-// ContextValidate validate this remediation components metrics based on the context it is used
-func (m RemediationComponentsMetrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	for i := 0; i < len(m); i++ {
-
-		if m[i] != nil {
-
-			if swag.IsZero(m[i]) { // not required
-				return nil
-			}
-
-			if err := m[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-// RemediationComponentsMetricsItems0 remediation components metrics items0
-//
-// swagger:model RemediationComponentsMetricsItems0
-type RemediationComponentsMetricsItems0 struct {
+type RemediationComponentsMetrics struct {
 	BaseMetrics
 
 	// last pull date
@@ -101,7 +30,7 @@ type RemediationComponentsMetricsItems0 struct {
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
-func (m *RemediationComponentsMetricsItems0) UnmarshalJSON(raw []byte) error {
+func (m *RemediationComponentsMetrics) UnmarshalJSON(raw []byte) error {
 	// AO0
 	var aO0 BaseMetrics
 	if err := swag.ReadJSON(raw, &aO0); err != nil {
@@ -131,7 +60,7 @@ func (m *RemediationComponentsMetricsItems0) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON marshals this object to a JSON structure
-func (m RemediationComponentsMetricsItems0) MarshalJSON() ([]byte, error) {
+func (m RemediationComponentsMetrics) MarshalJSON() ([]byte, error) {
 	_parts := make([][]byte, 0, 2)
 
 	aO0, err := swag.WriteJSON(m.BaseMetrics)
@@ -161,8 +90,8 @@ func (m RemediationComponentsMetricsItems0) MarshalJSON() ([]byte, error) {
 	return swag.ConcatJSON(_parts...), nil
 }
 
-// Validate validates this remediation components metrics items0
-func (m *RemediationComponentsMetricsItems0) Validate(formats strfmt.Registry) error {
+// Validate validates this remediation components metrics
+func (m *RemediationComponentsMetrics) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	// validation for a type composition with BaseMetrics
@@ -176,8 +105,8 @@ func (m *RemediationComponentsMetricsItems0) Validate(formats strfmt.Registry) e
 	return nil
 }
 
-// ContextValidate validate this remediation components metrics items0 based on the context it is used
-func (m *RemediationComponentsMetricsItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this remediation components metrics based on the context it is used
+func (m *RemediationComponentsMetrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	// validation for a type composition with BaseMetrics
@@ -192,7 +121,7 @@ func (m *RemediationComponentsMetricsItems0) ContextValidate(ctx context.Context
 }
 
 // MarshalBinary interface implementation
-func (m *RemediationComponentsMetricsItems0) MarshalBinary() ([]byte, error) {
+func (m *RemediationComponentsMetrics) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -200,8 +129,8 @@ func (m *RemediationComponentsMetricsItems0) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *RemediationComponentsMetricsItems0) UnmarshalBinary(b []byte) error {
-	var res RemediationComponentsMetricsItems0
+func (m *RemediationComponentsMetrics) UnmarshalBinary(b []byte) error {
+	var res RemediationComponentsMetrics
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

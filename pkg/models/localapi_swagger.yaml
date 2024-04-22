@@ -1026,46 +1026,45 @@ definitions:
           type: string
   RemediationComponentsMetrics:
     title: RemediationComponentsMetrics
-    type: array
-    maxItems: 1
-    items:
-      allOf:
-        - $ref: '#/definitions/BaseMetrics'
-        - type: object
-          properties: 
-            type:
-              type: string
-              description: type of the remediation component
-            name: 
-              type: string
-              description: name of the remediation component
-            last_pull:
-              type: integer
-              description: last pull date
+    type: object
+    allOf:
+      - $ref: '#/definitions/BaseMetrics'
+      - properties: 
+          type:
+            type: string
+            description: type of the remediation component
+          name: 
+            type: string
+            description: name of the remediation component
+          last_pull:
+            type: integer
+            description: last pull date
   LogProcessorsMetrics:
     title: LogProcessorsMetrics
-    type: array
-    maxItems: 1
-    items:
-      allOf:
-        - $ref: '#/definitions/BaseMetrics'
-        - type: object
-          properties:
-            console_options:
-              $ref: '#/definitions/ConsoleOptions'
-            hub_items:
-              $ref: '#/definitions/HubItems'
-            datasources:
-              type: object
-              description: Number of datasources per type
-              additionalProperties: 
-                type: integer
-            name:
-              type: string
-              description: name of the log processor
-            last_push:
+    type: object
+    allOf:
+      - $ref: '#/definitions/BaseMetrics'
+      - properties:
+          console_options:
+            $ref: '#/definitions/ConsoleOptions'
+          hub_items:
+            $ref: '#/definitions/HubItems'
+          datasources:
+            type: object
+            description: Number of datasources per type
+            additionalProperties: 
               type: integer
-              description: last push date
+          name:
+            type: string
+            description: name of the log processor
+          last_push:
+            type: integer
+            description: last push date
+    #items:
+    #  allOf:
+    #    - $ref: '#/definitions/BaseMetrics'
+    #    - type: object
+          
   AllMetrics:
     title: AllMetrics
     type: object

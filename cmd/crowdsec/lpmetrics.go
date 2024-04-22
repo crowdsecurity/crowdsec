@@ -125,7 +125,7 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		FeatureFlags: m.static.featureFlags,
 	}
 
-	item0 := &models.LogProcessorsMetricsItems0{
+	met := &models.LogProcessorsMetrics{
 		BaseMetrics:    base,
 		ConsoleOptions: m.static.consoleOptions,
 		Datasources:    m.static.datasourceMap,
@@ -135,7 +135,7 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	// TODO: more metric details... ?
 
 	return &models.AllMetrics{
-		LogProcessors: []models.LogProcessorsMetrics{{item0}},
+		LogProcessors: []*models.LogProcessorsMetrics{met},
 	}
 }
 
@@ -153,7 +153,7 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	for {
 		select {
 		case <-ticker.C:
-			met.LogProcessors[0][0].Meta.UtcNowTimestamp = time.Now().Unix()
+			met.LogProcessors[0].Meta.UtcNowTimestamp = time.Now().Unix()
 
 			ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
