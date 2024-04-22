@@ -387,7 +387,3 @@ issues:
     - linters:
         - nonamedreturns
       text: "named return .* with type .* found"
-
-    - linters:
-        - staticcheck
-      text: "csdaemon.NotifySystemd is deprecated: Use Notify instead."
