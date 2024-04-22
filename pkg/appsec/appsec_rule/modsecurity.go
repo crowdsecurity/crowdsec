@@ -15,6 +15,8 @@ var zonesMap map[string]string = map[string]string{
 	"ARGS_NAMES":      "ARGS_GET_NAMES",
 	"BODY_ARGS":       "ARGS_POST",
 	"BODY_ARGS_NAMES": "ARGS_POST_NAMES",
+	"COOKIES":         "REQUEST_COOKIES",
+	"COOKIES_NAMES":   "REQUEST_COOKIES_NAMES",
 	"HEADERS_NAMES":   "REQUEST_HEADERS_NAMES",
 	"HEADERS":         "REQUEST_HEADERS",
 	"METHOD":          "REQUEST_METHOD",
