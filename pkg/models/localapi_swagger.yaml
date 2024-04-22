@@ -1036,6 +1036,12 @@ definitions:
             type:
               type: string
               description: type of the remediation component
+            name: 
+              type: string
+              description: name of the remediation component
+            last_pull:
+              type: integer
+              description: last pull date
   LogProcessorsMetrics:
     title: LogProcessorsMetrics
     type: array
@@ -1054,6 +1060,12 @@ definitions:
               description: Number of datasources per type
               additionalProperties: 
                 type: integer
+            name:
+              type: string
+              description: name of the log processor
+            last_push:
+              type: integer
+              description: last push date
   AllMetrics:
     title: AllMetrics
     type: object

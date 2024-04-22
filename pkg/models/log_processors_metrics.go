@@ -98,6 +98,12 @@ type LogProcessorsMetricsItems0 struct {
 
 	// hub items
 	HubItems HubItems `json:"hub_items,omitempty"`
+
+	// last push date
+	LastPush int64 `json:"last_push,omitempty"`
+
+	// name of the log processor
+	Name string `json:"name,omitempty"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -116,6 +122,10 @@ func (m *LogProcessorsMetricsItems0) UnmarshalJSON(raw []byte) error {
 		Datasources map[string]int64 `json:"datasources,omitempty"`
 
 		HubItems HubItems `json:"hub_items,omitempty"`
+
+		LastPush int64 `json:"last_push,omitempty"`
+
+		Name string `json:"name,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -126,6 +136,10 @@ func (m *LogProcessorsMetricsItems0) UnmarshalJSON(raw []byte) error {
 	m.Datasources = dataAO1.Datasources
 
 	m.HubItems = dataAO1.HubItems
+
+	m.LastPush = dataAO1.LastPush
+
+	m.Name = dataAO1.Name
 
 	return nil
 }
@@ -145,6 +159,10 @@ func (m LogProcessorsMetricsItems0) MarshalJSON() ([]byte, error) {
 		Datasources map[string]int64 `json:"datasources,omitempty"`
 
 		HubItems HubItems `json:"hub_items,omitempty"`
+
+		LastPush int64 `json:"last_push,omitempty"`
+
+		Name string `json:"name,omitempty"`
 	}
 
 	dataAO1.ConsoleOptions = m.ConsoleOptions
@@ -152,6 +170,10 @@ func (m LogProcessorsMetricsItems0) MarshalJSON() ([]byte, error) {
 	dataAO1.Datasources = m.Datasources
 
 	dataAO1.HubItems = m.HubItems
+
+	dataAO1.LastPush = m.LastPush
+
+	dataAO1.Name = m.Name
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {

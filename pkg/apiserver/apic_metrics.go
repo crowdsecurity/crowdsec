@@ -3,7 +3,6 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -76,6 +75,9 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
 		metrics.Version = &lp.Version
 
+		metrics.Name = lpName
+		metrics.LastPush = lp.LastPush.UTC().Unix()
+
 		allMetrics.LogProcessors = append(allMetrics.LogProcessors, models.LogProcessorsMetrics{&metrics})
 		metricsIds = append(metricsIds, lpsMetric.ID)
 	}
@@ -109,6 +111,8 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.Type = bouncer.Type
 		metrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
 		metrics.Version = &bouncer.Version
+		metrics.Name = bouncerName
+		metrics.LastPull = bouncer.LastPull.UTC().Unix()
 
 		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, models.RemediationComponentsMetrics{&metrics})
 		metricsIds = append(metricsIds, bouncersMetric.ID)
@@ -288,15 +292,21 @@ func (a *apic) SendUsageMetrics() {
 			if err != nil {
 				log.Errorf("unable to get usage metrics (%s)", err)
 			}
-			jsonStr, err := json.Marshal(metrics)
+			/*jsonStr, err := json.Marshal(metrics)
 			if err != nil {
 				log.Errorf("unable to marshal usage metrics (%s)", err)
-			}
-			fmt.Printf("Usage metrics: %s\n", string(jsonStr))
-			//TODO: actually send the data
-			err = a.MarkUsageMetricsAsSent(metricsId)
+			}*/
+			//fmt.Printf("Usage metrics: %s\n", string(jsonStr))
+			_, _, err = a.apiClient.UsageMetrics.Add(context.Background(), metrics)
+
 			if err != nil {
-				log.Errorf("unable to mark usage metrics as sent (%s)", err)
+				log.Errorf("unable to send usage metrics (%s)", err)
+			} else {
+
+				err = a.MarkUsageMetricsAsSent(metricsId)
+				if err != nil {
+					log.Errorf("unable to mark usage metrics as sent (%s)", err)
+				}
 			}
 		}
 	}

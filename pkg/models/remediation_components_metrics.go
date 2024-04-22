@@ -90,6 +90,12 @@ func (m RemediationComponentsMetrics) ContextValidate(ctx context.Context, forma
 type RemediationComponentsMetricsItems0 struct {
 	BaseMetrics
 
+	// last pull date
+	LastPull int64 `json:"last_pull,omitempty"`
+
+	// name of the remediation component
+	Name string `json:"name,omitempty"`
+
 	// type of the remediation component
 	Type string `json:"type,omitempty"`
 }
@@ -105,11 +111,19 @@ func (m *RemediationComponentsMetricsItems0) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		LastPull int64 `json:"last_pull,omitempty"`
+
+		Name string `json:"name,omitempty"`
+
 		Type string `json:"type,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.LastPull = dataAO1.LastPull
+
+	m.Name = dataAO1.Name
 
 	m.Type = dataAO1.Type
 
@@ -126,8 +140,16 @@ func (m RemediationComponentsMetricsItems0) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		LastPull int64 `json:"last_pull,omitempty"`
+
+		Name string `json:"name,omitempty"`
+
 		Type string `json:"type,omitempty"`
 	}
+
+	dataAO1.LastPull = m.LastPull
+
+	dataAO1.Name = m.Name
 
 	dataAO1.Type = m.Type
 
