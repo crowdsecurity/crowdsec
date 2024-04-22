@@ -11,13 +11,12 @@ import (
 type UsageMetricsService service
 
 func (s *UsageMetricsService) Add(ctx context.Context, metrics *models.AllMetrics) (interface{}, *Response, error) {
-	u := fmt.Sprintf("%s/usage-metrics/", s.client.URLPrefix)
+	u := fmt.Sprintf("%s/usage-metrics", s.client.URLPrefix)
 
 	req, err := s.client.NewRequest(http.MethodPost, u, &metrics)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	var response interface{}
 
 	resp, err := s.client.Do(ctx, req, &response)

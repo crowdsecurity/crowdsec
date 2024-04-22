@@ -34,12 +34,18 @@ func CheckResponse(r *http.Response) error {
 
 	data, err := io.ReadAll(r.Body)
 	if err != nil || len(data) == 0 {
-		ret.Message = ptr.Of(fmt.Sprintf("http code %d, no error message", r.StatusCode))
+		ret.Message = ptr.Of(fmt.Sprintf("http code %d, no response body", r.StatusCode))
 		return ret
 	}
 
-	if err := json.Unmarshal(data, ret); err != nil {
-		return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
+	switch r.StatusCode {
+	case 422:
+		ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid request: %s", r.StatusCode, string(data)))
+	default:
+		if err := json.Unmarshal(data, ret); err != nil {
+			ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid body: %s", r.StatusCode, string(data)))
+			return ret
+		}
 	}
 
 	return ret

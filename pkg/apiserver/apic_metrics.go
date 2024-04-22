@@ -290,7 +290,7 @@ func (a *apic) SendUsageMetrics() {
 		case <-ticker.C:
 			metrics, metricsId, err := a.GetUsageMetrics()
 			if err != nil {
-				log.Errorf("unable to get usage metrics (%s)", err)
+				log.Errorf("unable to get usage metrics: %s", err)
 			}
 			/*jsonStr, err := json.Marshal(metrics)
 			if err != nil {
@@ -300,12 +300,12 @@ func (a *apic) SendUsageMetrics() {
 			_, _, err = a.apiClient.UsageMetrics.Add(context.Background(), metrics)
 
 			if err != nil {
-				log.Errorf("unable to send usage metrics (%s)", err)
+				log.Errorf("unable to send usage metrics: %s", err)
 			} else {
 
 				err = a.MarkUsageMetricsAsSent(metricsId)
 				if err != nil {
-					log.Errorf("unable to mark usage metrics as sent (%s)", err)
+					log.Errorf("unable to mark usage metrics as sent: %s", err)
 				}
 			}
 		}
