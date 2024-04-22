@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/blackfireio/osinfo"
 	"github.com/go-openapi/strfmt"
@@ -65,7 +66,7 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	if csConfig.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
-		return nil, nil, fmt.Errorf("prometheus_uri is not set")
+		return nil, nil, errors.New("prometheus_uri is not set")
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
@@ -73,7 +74,7 @@ func collectMetrics() ([]byte, []byte, error) {
 	ms := NewMetricStore()
 
 	if err := ms.Fetch(csConfig.Cscli.PrometheusUrl); err != nil {
-		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %s", err)
+		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %w", err)
 	}
 
 	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
@@ -82,21 +83,21 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
+		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %w", err)
 	}
 
 	client := &http.Client{}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get metrics from prometheus endpoint: %s", err)
+		return nil, nil, fmt.Errorf("could not get metrics from prometheus endpoint: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %s", err)
+		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %w", err)
 	}
 
 	return humanMetrics.Bytes(), body, nil
@@ -124,19 +125,18 @@ func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
 
 	info, err := osinfo.GetOSInfo()
-
 	if err != nil {
 		return nil, err
 	}
 
 	w := bytes.NewBuffer(nil)
-	w.WriteString(fmt.Sprintf("Architecture: %s\n", info.Architecture))
-	w.WriteString(fmt.Sprintf("Family: %s\n", info.Family))
-	w.WriteString(fmt.Sprintf("ID: %s\n", info.ID))
-	w.WriteString(fmt.Sprintf("Name: %s\n", info.Name))
-	w.WriteString(fmt.Sprintf("Codename: %s\n", info.Codename))
-	w.WriteString(fmt.Sprintf("Version: %s\n", info.Version))
-	w.WriteString(fmt.Sprintf("Build: %s\n", info.Build))
+	fmt.Fprintf(w, "Architecture: %s\n", info.Architecture)
+	fmt.Fprintf(w, "Family: %s\n", info.Family)
+	fmt.Fprintf(w, "ID: %s\n", info.ID)
+	fmt.Fprintf(w, "Name: %s\n", info.Name)
+	fmt.Fprintf(w, "Codename: %s\n", info.Codename)
+	fmt.Fprintf(w, "Version: %s\n", info.Version)
+	fmt.Fprintf(w, "Build: %s\n", info.Build)
 
 	return w.Bytes(), nil
 }
@@ -166,7 +166,7 @@ func collectBouncers(dbClient *database.Client) ([]byte, error) {
 
 	bouncers, err := dbClient.ListBouncers()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list bouncers: %s", err)
+		return nil, fmt.Errorf("unable to list bouncers: %w", err)
 	}
 
 	getBouncersTable(out, bouncers)
@@ -179,7 +179,7 @@ func collectAgents(dbClient *database.Client) ([]byte, error) {
 
 	machines, err := dbClient.ListMachines()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list machines: %s", err)
+		return nil, fmt.Errorf("unable to list machines: %w", err)
 	}
 
 	getAgentsTable(out, machines)
@@ -458,7 +458,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 
 			for filename, data := range infos {
 				header := &zip.FileHeader{
-					Name:  filename,
+					Name:   filename,
 					Method: zip.Deflate,
 					// TODO: retain mtime where possible (esp. trace)
 					Modified: time.Now(),

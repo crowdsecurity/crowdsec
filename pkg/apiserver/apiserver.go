@@ -84,14 +84,16 @@ func recoverFromPanic(c *gin.Context) {
 	}
 
 	if brokenPipe {
-		log.Warningf("client %s disconnected : %s", c.ClientIP(), err)
+		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
 	} else {
-		log.Warningf("client %s error : %s", c.ClientIP(), err)
+		log.Warningf("client %s error: %s", c.ClientIP(), err)
+
 		filename, err := trace.WriteStackTrace(err)
 		if err != nil {
 			log.Errorf("also while writing stacktrace: %s", err)
 		}
+
 		log.Warningf("stacktrace written to %s, please join to your issue", filename)
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}

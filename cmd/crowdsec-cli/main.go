@@ -19,9 +19,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
-var ConfigFilePath string
-var csConfig *csconfig.Config
-var dbClient *database.Client
+var (
+	ConfigFilePath string
+	csConfig       *csconfig.Config
+	dbClient       *database.Client
+)
 
 type configGetter func() *csconfig.Config
 
