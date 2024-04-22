@@ -1060,11 +1060,14 @@ definitions:
           last_push:
             type: integer
             description: last push date
-    #items:
-    #  allOf:
-    #    - $ref: '#/definitions/BaseMetrics'
-    #    - type: object
-          
+  LapiMetrics:
+    title: LapiMetrics
+    type: object
+    allOf:
+      - $ref: '#/definitions/BaseMetrics'
+      - properties:
+          console_options:
+            $ref: '#/definitions/ConsoleOptions'
   AllMetrics:
     title: AllMetrics
     type: object
@@ -1079,6 +1082,8 @@ definitions:
         items:
           $ref: '#/definitions/LogProcessorsMetrics'
         description: log processors metrics
+      lapi:
+        $ref: '#/definitions/LapiMetrics'
   BaseMetrics:
     title: BaseMetrics
     type: object

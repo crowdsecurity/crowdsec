@@ -19,6 +19,9 @@ import (
 // swagger:model AllMetrics
 type AllMetrics struct {
 
+	// lapi
+	Lapi *LapiMetrics `json:"lapi,omitempty"`
+
 	// log processors metrics
 	LogProcessors []*LogProcessorsMetrics `json:"log_processors"`
 
@@ -29,6 +32,10 @@ type AllMetrics struct {
 // Validate validates this all metrics
 func (m *AllMetrics) Validate(formats strfmt.Registry) error {
 	var res []error
+
+	if err := m.validateLapi(formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := m.validateLogProcessors(formats); err != nil {
 		res = append(res, err)
@@ -41,6 +48,25 @@ func (m *AllMetrics) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *AllMetrics) validateLapi(formats strfmt.Registry) error {
+	if swag.IsZero(m.Lapi) { // not required
+		return nil
+	}
+
+	if m.Lapi != nil {
+		if err := m.Lapi.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("lapi")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("lapi")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -100,6 +126,10 @@ func (m *AllMetrics) validateRemediationComponents(formats strfmt.Registry) erro
 func (m *AllMetrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateLapi(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateLogProcessors(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -111,6 +141,27 @@ func (m *AllMetrics) ContextValidate(ctx context.Context, formats strfmt.Registr
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *AllMetrics) contextValidateLapi(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Lapi != nil {
+
+		if swag.IsZero(m.Lapi) { // not required
+			return nil
+		}
+
+		if err := m.Lapi.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("lapi")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("lapi")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
