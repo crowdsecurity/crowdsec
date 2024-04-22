@@ -328,25 +328,21 @@ func (a *apic) SendUsageMetrics() {
 			metrics, metricsId, err := a.GetUsageMetrics()
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
+				continue
 			}
-			/*jsonStr, err := json.Marshal(metrics)
-			if err != nil {
-				log.Errorf("unable to marshal usage metrics (%s)", err)
-			}*/
-			//fmt.Printf("Usage metrics: %s\n", string(jsonStr))
 			_, _, err = a.apiClient.UsageMetrics.Add(context.Background(), metrics)
 
 			if err != nil {
 				log.Errorf("unable to send usage metrics: %s", err)
-			} else {
-
-				err = a.MarkUsageMetricsAsSent(metricsId)
-				if err != nil {
-					log.Errorf("unable to mark usage metrics as sent: %s", err)
-				} else {
-					log.Infof("Usage metrics sent")
-				}
+				continue
 			}
+			err = a.MarkUsageMetricsAsSent(metricsId)
+			if err != nil {
+				log.Errorf("unable to mark usage metrics as sent: %s", err)
+				continue
+			}
+			log.Infof("Usage metrics sent")
+
 		}
 	}
 }
