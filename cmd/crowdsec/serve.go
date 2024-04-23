@@ -284,7 +284,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 		csdaemon.Notify(csdaemon.Ready, logger)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(context.TODO())
 		defer cancel()
 
 		go watchdog(ctx, logger)
