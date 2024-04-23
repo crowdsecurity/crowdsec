@@ -583,7 +583,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			}
 			l := types.Line{}
 			l.Raw = line
-			l.Labels = d.Config.Labels
+			l.Labels = container.Labels
 			l.Time = time.Now().UTC()
 			l.Src = container.Name
 			l.Process = true
