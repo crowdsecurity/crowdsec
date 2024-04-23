@@ -457,8 +457,12 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 				}
 				d.logger.Debugf("container labels +%v", parsedLabels["labels"])
 				labels := make(map[string]string)
-				for k, v := range parsedLabels["labels"].(map[string]string) {
-					labels[k] = v
+				for k, v := range parsedLabels["labels"].(map[string]interface{}) {
+					if v, ok := v.(string); ok {
+						labels[k] = v
+						continue
+					}
+					d.logger.Errorf("label %s is not a string", k)
 				}
 				return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: parsedLabels["labels"].(map[string]string), Tty: d.getContainerTTY(container.ID)}, true
 			}
