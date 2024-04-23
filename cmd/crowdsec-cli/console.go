@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -36,7 +38,7 @@ func NewCLIConsole(cfg configGetter) *cliConsole {
 }
 
 func (cli *cliConsole) NewCommand() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "console [action]",
 		Short:             "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
 		Args:              cobra.MinimumNArgs(1),
@@ -203,7 +205,7 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("All features have been enabled successfully")
 			} else {
 				if len(args) == 0 {
-					return fmt.Errorf("you must specify at least one feature to enable")
+					return errors.New("you must specify at least one feature to enable")
 				}
 				if err := cli.setConsoleOpts(args, true); err != nil {
 					return err
@@ -288,11 +290,11 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 				}
 
 				rows := [][]string{
-					{csconfig.SEND_MANUAL_SCENARIOS, fmt.Sprintf("%t", *consoleCfg.ShareManualDecisions)},
-					{csconfig.SEND_CUSTOM_SCENARIOS, fmt.Sprintf("%t", *consoleCfg.ShareCustomScenarios)},
-					{csconfig.SEND_TAINTED_SCENARIOS, fmt.Sprintf("%t", *consoleCfg.ShareTaintedScenarios)},
-					{csconfig.SEND_CONTEXT, fmt.Sprintf("%t", *consoleCfg.ShareContext)},
-					{csconfig.CONSOLE_MANAGEMENT, fmt.Sprintf("%t", *consoleCfg.ConsoleManagement)},
+					{csconfig.SEND_MANUAL_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareManualDecisions)},
+					{csconfig.SEND_CUSTOM_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareCustomScenarios)},
+					{csconfig.SEND_TAINTED_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareTaintedScenarios)},
+					{csconfig.SEND_CONTEXT, strconv.FormatBool(*consoleCfg.ShareContext)},
+					{csconfig.CONSOLE_MANAGEMENT, strconv.FormatBool(*consoleCfg.ConsoleManagement)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)

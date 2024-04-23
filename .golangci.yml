@@ -58,7 +58,7 @@ linters-settings:
     min-complexity: 28
 
   nlreturn:
-    block-size: 4
+    block-size: 5
 
   nolintlint:
     allow-unused: false # report any unused nolint directives
