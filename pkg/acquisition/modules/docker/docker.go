@@ -41,7 +41,7 @@ type DockerConfiguration struct {
 	ContainerID                       []string `yaml:"container_id"`
 	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
 	ContainerIDRegexp                 []string `yaml:"container_id_regexp"`
-	AutoDiscover                      bool     `yaml:"auto_discover"`
+	UseContainerLabels                bool     `yaml:"use_container_labels"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -87,11 +87,11 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
 	}
 
-	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 && !d.Config.AutoDiscover {
+	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 && !d.Config.UseContainerLabels {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
 	}
 
-	if d.Config.AutoDiscover && len(d.Config.ContainerName) > 0 && len(d.Config.ContainerID) > 0 && len(d.Config.ContainerIDRegexp) > 0 && len(d.Config.ContainerNameRegexp) > 0 {
+	if d.Config.UseContainerLabels && len(d.Config.ContainerName) > 0 && len(d.Config.ContainerID) > 0 && len(d.Config.ContainerIDRegexp) > 0 && len(d.Config.ContainerNameRegexp) > 0 {
 		return fmt.Errorf("auto_discover and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
@@ -446,7 +446,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 
 	}
 
-	if d.Config.AutoDiscover {
+	if d.Config.UseContainerLabels {
 		parsedLabels := d.getContainerLabels(container.ID)
 		if len(parsedLabels) != 0 {
 			if v, ok := parsedLabels["enable"]; ok && strings.ToLower(v.(string)) == "true" {
