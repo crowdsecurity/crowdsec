@@ -11,6 +11,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // MetricsDetailItem MetricsDetailItem
@@ -22,13 +23,16 @@ type MetricsDetailItem struct {
 	Labels MetricsLabels `json:"labels,omitempty"`
 
 	// name of the metric
-	Name string `json:"name,omitempty"`
+	// Required: true
+	Name *string `json:"name"`
 
 	// unit of the metric
-	Unit string `json:"unit,omitempty"`
+	// Required: true
+	Unit *string `json:"unit"`
 
 	// value of the metric
-	Value float64 `json:"value,omitempty"`
+	// Required: true
+	Value *float64 `json:"value"`
 }
 
 // Validate validates this metrics detail item
@@ -36,6 +40,18 @@ func (m *MetricsDetailItem) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateLabels(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUnit(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateValue(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -59,6 +75,33 @@ func (m *MetricsDetailItem) validateLabels(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *MetricsDetailItem) validateName(formats strfmt.Registry) error {
+
+	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MetricsDetailItem) validateUnit(formats strfmt.Registry) error {
+
+	if err := validate.Required("unit", "body", m.Unit); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MetricsDetailItem) validateValue(formats strfmt.Registry) error {
+
+	if err := validate.Required("value", "body", m.Value); err != nil {
+		return err
 	}
 
 	return nil

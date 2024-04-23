@@ -1142,6 +1142,10 @@ definitions:
       labels:
         $ref: '#/definitions/MetricsLabels'
         description: labels of the metric
+    required:
+      - name
+      - value
+      - unit
   MetricsMeta:
     title: MetricsMeta
     type: object
