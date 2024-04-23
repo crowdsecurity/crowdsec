@@ -21,7 +21,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
 
-/*prometheus*/
+// Prometheus
+
 var globalParserHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_parser_hits_total",
@@ -29,6 +30,7 @@ var globalParserHits = prometheus.NewCounterVec(
 	},
 	[]string{"source", "type"},
 )
+
 var globalParserHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_parser_hits_ok_total",
@@ -36,6 +38,7 @@ var globalParserHitsOk = prometheus.NewCounterVec(
 	},
 	[]string{"source", "type"},
 )
+
 var globalParserHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_parser_hits_ko_total",
@@ -136,7 +139,6 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		}
 
 		alerts, err := dbClient.AlertsCountPerScenario(alertsFilter)
-
 		if err != nil {
 			log.Errorf("Error querying alerts for metrics: %v", err)
 			next.ServeHTTP(w, r)
