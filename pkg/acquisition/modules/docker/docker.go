@@ -464,7 +464,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 					}
 					d.logger.Errorf("label %s is not a string", k)
 				}
-				return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: parsedLabels["labels"].(map[string]string), Tty: d.getContainerTTY(container.ID)}, true
+				return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(container.ID)}, true
 			}
 		}
 	}
