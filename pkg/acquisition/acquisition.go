@@ -235,6 +235,10 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 					log.Debugf("skipping empty item in %s", acquisFile)
 					continue
 				}
+				if sub.Source == "docker" {
+					//docker acquisition is only acquisition that can have empty labels
+					continue
+				}
 				return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
 			}
 			if sub.Source == "" {
