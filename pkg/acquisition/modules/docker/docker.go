@@ -41,7 +41,6 @@ type DockerConfiguration struct {
 	ContainerID                       []string `yaml:"container_id"`
 	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
 	ContainerIDRegexp                 []string `yaml:"container_id_regexp"`
-	ForceInotify                      bool     `yaml:"force_inotify"`
 	AutoDiscover                      bool     `yaml:"auto_discover"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
