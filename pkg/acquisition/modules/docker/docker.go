@@ -448,6 +448,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		parsedLabels := d.getContainerLabels(container.ID)
 		if len(parsedLabels) != 0 {
 			if v, ok := parsedLabels["enable"]; ok && strings.ToLower(v.(string)) == "true" {
+				d.logger.Debugf("container labels +%v", parsedLabels)
 				if labels, ok := parsedLabels["labels"]; ok {
 					if labelsMap, ok := labels.(map[string]string); ok {
 						return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labelsMap, Tty: d.getContainerTTY(container.ID)}, true
