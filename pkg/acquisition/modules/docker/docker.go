@@ -91,7 +91,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
 	}
 
-	if d.Config.UseContainerLabels && len(d.Config.ContainerName) > 0 && len(d.Config.ContainerID) > 0 && len(d.Config.ContainerIDRegexp) > 0 && len(d.Config.ContainerNameRegexp) > 0 {
+	if d.Config.UseContainerLabels && len(d.Config.ContainerName) > 0 || len(d.Config.ContainerID) > 0 || len(d.Config.ContainerIDRegexp) > 0 || len(d.Config.ContainerNameRegexp) > 0 {
 		return fmt.Errorf("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
