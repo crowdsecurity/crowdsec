@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -204,6 +205,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("parsing api url %s: %w", apiURL, err)
 			}
+
 			cli.client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
@@ -211,7 +213,6 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-
 			if err != nil {
 				return fmt.Errorf("new api client: %w", err)
 			}
@@ -229,7 +230,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 }
 
 func (cli *cliAlerts) NewListCmd() *cobra.Command {
-	var alertListFilter = apiclient.AlertsListOpts{
+	alertListFilter := apiclient.AlertsListOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
 		ScenarioEquals: new(string),
@@ -363,7 +364,7 @@ func (cli *cliAlerts) NewDeleteCmd() *cobra.Command {
 		delAlertByID   string
 	)
 
-	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
+	alertDeleteFilter := apiclient.AlertsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
 		ScenarioEquals: new(string),
@@ -391,7 +392,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				*alertDeleteFilter.ScenarioEquals == "" && *alertDeleteFilter.IPEquals == "" &&
 				*alertDeleteFilter.RangeEquals == "" && delAlertByID == "" {
 				_ = cmd.Usage()
-				return fmt.Errorf("at least one filter or --all must be specified")
+				return errors.New("at least one filter or --all must be specified")
 			}
 
 			return nil
@@ -478,7 +479,7 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 			cfg := cli.cfg()
 			if len(args) == 0 {
 				printHelp(cmd)
-				return fmt.Errorf("missing alert_id")
+				return errors.New("missing alert_id")
 			}
 			for _, alertID := range args {
 				id, err := strconv.Atoi(alertID)
