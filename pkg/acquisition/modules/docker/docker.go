@@ -42,6 +42,7 @@ type DockerConfiguration struct {
 	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
 	ContainerIDRegexp                 []string `yaml:"container_id_regexp"`
 	ForceInotify                      bool     `yaml:"force_inotify"`
+	AutoDiscover                      bool     `yaml:"auto_discover"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -87,8 +88,12 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
 	}
 
-	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 {
+	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 && !d.Config.AutoDiscover {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
+	}
+
+	if d.Config.AutoDiscover && len(d.Config.ContainerName) > 0 && len(d.Config.ContainerID) > 0 && len(d.Config.ContainerIDRegexp) > 0 && len(d.Config.ContainerNameRegexp) > 0 {
+		return fmt.Errorf("auto_discover and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
 	d.CheckIntervalDuration, err = time.ParseDuration(d.Config.CheckInterval)
@@ -375,6 +380,36 @@ func (d *DockerSource) getContainerTTY(containerId string) bool {
 	return containerDetails.Config.Tty
 }
 
+func (d *DockerSource) getContainerLabels(containerId string) map[string]interface{} {
+	containerDetails, err := d.Client.ContainerInspect(context.Background(), containerId)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+	return d.parseLabels(containerDetails.Config.Labels)
+}
+
+func (d *DockerSource) parseLabels(labels map[string]string) map[string]interface{} {
+	result := make(map[string]interface{})
+	for key, value := range labels {
+		parseKeyToMap(&result, key, value)
+	}
+	return result
+}
+
+func parseKeyToMap(m *map[string]interface{}, key string, value string) {
+	if !strings.HasPrefix(key, "crowdsec") {
+		return
+	}
+	parts := strings.Split(key, ".")
+	for i := 1; i < len(parts)-1; i++ {
+		if _, ok := (*m)[parts[i]]; !ok {
+			(*m)[parts[i]] = make(map[string]interface{})
+		}
+		*m = (*m)[parts[i]].(map[string]interface{})
+	}
+	(*m)[parts[len(parts)-1]] = value
+}
+
 func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*ContainerConfig, bool) {
 	for _, containerID := range d.Config.ContainerID {
 		if containerID == container.ID {
@@ -407,6 +442,21 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 			}
 		}
 
+	}
+
+	if d.Config.AutoDiscover {
+		parsedLabels := d.getContainerLabels(container.ID)
+		if len(parsedLabels) != 0 {
+			if v, ok := parsedLabels["enable"]; ok && strings.ToLower(v.(string)) == "true" {
+				if labels, ok := parsedLabels["labels"]; ok {
+					if labelsMap, ok := labels.(map[string]string); ok {
+						return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labelsMap, Tty: d.getContainerTTY(container.ID)}, true
+					}
+					d.logger.Errorf("container has nested map inside 'labels' keys, expected a map[string]string")
+				}
+				d.logger.Error("container has 'crowdsec.enable=true' label set to true but no 'labels' keys found")
+			}
+		}
 	}
 
 	return &ContainerConfig{}, false
