@@ -402,6 +402,9 @@ func parseKeyToMap(m *map[string]interface{}, key string, value string) {
 	}
 	parts := strings.Split(key, ".")
 	for i := 1; i < len(parts)-1; i++ {
+		if i == len(parts)-1 {
+			break
+		}
 		if _, ok := (*m)[parts[i]]; !ok {
 			(*m)[parts[i]] = make(map[string]interface{})
 		}
