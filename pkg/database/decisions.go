@@ -37,6 +37,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 		if v[0] == "false" {
 			query = query.Where(decision.SimulatedEQ(false))
 		}
+
 		delete(filter, "simulated")
 	} else {
 		query = query.Where(decision.SimulatedEQ(false))
@@ -49,7 +50,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
-		case "scopes", "scope": //Swagger mentions both of them, let's just support both to make sure we don't break anything
+		case "scopes", "scope": // Swagger mentions both of them, let's just support both to make sure we don't break anything
 			scopes := strings.Split(value[0], ",")
 			for i, scope := range scopes {
 				switch strings.ToLower(scope) {
@@ -63,6 +64,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 					scopes[i] = types.AS
 				}
 			}
+
 			query = query.Where(decision.ScopeIn(scopes...))
 		case "value":
 			query = query.Where(decision.ValueEQ(value[0]))
@@ -164,11 +166,11 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	return data, nil
 }
 
-func (c *Client) QueryDecisionCountByScenario(filters map[string][]string) ([]*DecisionsByScenario, error) {
+func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, err := BuildDecisionRequestWithFilter(query, make(map[string][]string))
 
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
@@ -277,10 +279,12 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
@@ -294,17 +298,20 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
 	}
+
 	return data, nil
 }
 
-func (c *Client) DeleteDecisionById(decisionId int) ([]*ent.Decision, error) {
-	toDelete, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionId)).All(c.CTX)
+func (c *Client) DeleteDecisionById(decisionID int) ([]*ent.Decision, error) {
+	toDelete, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("DeleteDecisionById : %s", err)
-		return nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
+		return nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
+
 	count, err := c.BulkDeleteDecisions(toDelete, false)
 	c.Log.Debugf("deleted %d decisions", count)
+
 	return toDelete, err
 }
 
@@ -317,6 +324,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	  else, return bans that are *contained* by the given value (value is the outer) */
 
 	decisions := c.Ent.Decision.Query()
+
 	for param, value := range filter {
 		switch param {
 		case "contains":
@@ -359,48 +367,48 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	} else if ip_sz == 16 {
 		if contains { /*decision contains {start_ip,end_ip}*/
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					decision.StartIPLT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						decision.StartSuffixLTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					decision.EndIPGT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						decision.EndSuffixGTE(end_sfx),
 					),
 				),
 			))
 		} else {
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					decision.StartIPGT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						decision.StartSuffixGTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					decision.EndIPLT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						decision.EndSuffixLTE(end_sfx),
 					),
 				),
@@ -415,11 +423,13 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		c.Log.Warningf("DeleteDecisionsWithFilter : %s", err)
 		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
+
 	count, err := c.BulkDeleteDecisions(toDelete, false)
 	if err != nil {
 		c.Log.Warningf("While deleting decisions : %s", err)
 		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
+
 	return strconv.Itoa(count), toDelete, nil
 }
 
@@ -432,6 +442,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 	decisions := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
+
 	for param, value := range filter {
 		switch param {
 		case "contains":
@@ -480,24 +491,24 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		/*decision contains {start_ip,end_ip}*/
 		if contains {
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					decision.StartIPLT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						decision.StartSuffixLTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					decision.EndIPGT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						decision.EndSuffixGTE(end_sfx),
 					),
 				),
@@ -505,24 +516,24 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		} else {
 			/*decision is contained within {start_ip,end_ip}*/
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					decision.StartIPGT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						decision.StartSuffixGTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					decision.EndIPLT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						decision.EndSuffixLTE(end_sfx),
 					),
 				),
@@ -531,6 +542,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	} else if ip_sz != 0 {
 		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
+
 	DecisionsToDelete, err := decisions.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
@@ -541,13 +553,14 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	if err != nil {
 		return "0", nil, errors.Wrapf(DeleteFail, "soft delete decisions with provided filter : %s", err)
 	}
+
 	return strconv.Itoa(count), DecisionsToDelete, err
 }
 
-// BulkDeleteDecisions set the expiration of a bulk of decisions to now() or hard deletes them.
+// BulkDeleteDecisions sets the expiration of a bulk of decisions to now() or hard deletes them.
 // We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
 func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDelete bool) (int, error) {
-	const bulkSize = 256 //scientifically proven to be the best value for bulk delete
+	const bulkSize = 256 // scientifically proven to be the best value for bulk delete
 
 	var (
 		nbUpdates    int
@@ -576,6 +589,7 @@ func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDele
 				return totalUpdates, fmt.Errorf("hard delete decisions with provided filter: %w", err)
 			}
 		}
+
 		totalUpdates += nbUpdates
 	}
 
@@ -612,6 +626,7 @@ func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 
 	contains := true
 	decisions := c.Ent.Decision.Query()
+
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
 		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
@@ -667,6 +682,7 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 				decision.IPSizeEQ(int64(ip_sz)),
 			))
 		}
+
 		return decisions, nil
 	}
 
@@ -674,24 +690,24 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 		/*decision contains {start_ip,end_ip}*/
 		if contains {
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					decision.StartIPLT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						decision.StartSuffixLTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					decision.EndIPGT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						decision.EndSuffixGTE(end_sfx),
 					),
 				),
@@ -699,29 +715,30 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 		} else {
 			/*decision is contained within {start_ip,end_ip}*/
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					decision.StartIPGT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						decision.StartSuffixGTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					decision.EndIPLT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						decision.EndSuffixLTE(end_sfx),
 					),
 				),
 			))
 		}
+
 		return decisions, nil
 	}
 
@@ -735,8 +752,10 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 func decisionPredicatesFromStr(s string, predicateFunc func(string) predicate.Decision) []predicate.Decision {
 	words := strings.Split(s, ",")
 	predicates := make([]predicate.Decision, len(words))
+
 	for i, word := range words {
 		predicates[i] = predicateFunc(word)
 	}
+
 	return predicates
 }
