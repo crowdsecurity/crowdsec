@@ -92,7 +92,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if d.Config.UseContainerLabels && len(d.Config.ContainerName) > 0 && len(d.Config.ContainerID) > 0 && len(d.Config.ContainerIDRegexp) > 0 && len(d.Config.ContainerNameRegexp) > 0 {
-		return fmt.Errorf("auto_discover and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
+		return fmt.Errorf("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
 	d.CheckIntervalDuration, err = time.ParseDuration(d.Config.CheckInterval)
