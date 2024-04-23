@@ -81,3 +81,4 @@ jobs:
       with:
         files: ./coverage-bats.out
         flags: bats
+        token: ${{ secrets.CODECOV_TOKEN }}
