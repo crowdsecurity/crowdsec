@@ -452,10 +452,10 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		if len(parsedLabels) != 0 {
 			if v, ok := parsedLabels["enable"]; ok && strings.ToLower(v.(string)) == "true" {
 				if _, ok = parsedLabels["labels"].(map[string]string); !ok {
+					d.logger.Debugf("container labels +%v", parsedLabels["labels"])
 					d.logger.Error("container has 'crowdsec.enable=true' label set to true but no 'labels' keys found")
 					return &ContainerConfig{}, false
 				}
-				d.logger.Debugf("container labels +%v", parsedLabels["labels"])
 				return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: parsedLabels["labels"].(map[string]string), Tty: d.getContainerTTY(container.ID)}, true
 			}
 		}
