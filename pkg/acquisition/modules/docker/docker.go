@@ -451,15 +451,12 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		parsedLabels := d.getContainerLabels(container.ID)
 		if len(parsedLabels) != 0 {
 			if v, ok := parsedLabels["enable"]; ok && strings.ToLower(v.(string)) == "true" {
-				d.logger.Debugf("container labels +%v", parsedLabels)
-				if labels, ok := parsedLabels["labels"]; ok {
-					d.logger.Debugf("container labels %+v", labels)
-					if labelsMap, ok := labels.(map[string]string); ok {
-						return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labelsMap, Tty: d.getContainerTTY(container.ID)}, true
-					}
-					d.logger.Errorf("container has nested map inside 'labels' keys, expected a map[string]string")
+				if _, ok = parsedLabels["labels"].(map[string]string); !ok {
+					d.logger.Error("container has 'crowdsec.enable=true' label set to true but no 'labels' keys found")
+					return &ContainerConfig{}, false
 				}
-				d.logger.Error("container has 'crowdsec.enable=true' label set to true but no 'labels' keys found")
+				d.logger.Debugf("container labels +%v", parsedLabels["labels"])
+				return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: parsedLabels["labels"].(map[string]string), Tty: d.getContainerTTY(container.ID)}, true
 			}
 		}
 	}
