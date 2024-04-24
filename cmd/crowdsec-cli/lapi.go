@@ -56,7 +56,7 @@ func (cli *cliLapi) status() error {
 		return err
 	}
 
-	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}

@@ -147,9 +147,9 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 	}
 
 	if all {
-		getter := hub.GetInstalledItems
+		getter := hub.GetInstalledItemsByType
 		if purge {
-			getter = hub.GetAllItems
+			getter = hub.GetItemsByType
 		}
 
 		items, err := getter(cli.name)
@@ -262,7 +262,7 @@ func (cli cliItem) upgrade(args []string, force bool, all bool) error {
 	}
 
 	if all {
-		items, err := hub.GetInstalledItems(cli.name)
+		items, err := hub.GetInstalledItemsByType(cli.name)
 		if err != nil {
 			return err
 		}

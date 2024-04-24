@@ -17,7 +17,7 @@ import (
 
 // selectItems returns a slice of items of a given type, selected by name and sorted by case-insensitive name
 func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]*cwhub.Item, error) {
-	itemNames := hub.GetItemNames(itemType)
+	itemNames := hub.GetNamesByType(itemType)
 
 	notExist := []string{}
 

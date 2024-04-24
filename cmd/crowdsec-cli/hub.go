@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliHub struct {
+type cliHub struct{
 	cfg configGetter
 }
 
@@ -137,7 +137,7 @@ func (cli *cliHub) upgrade(force bool) error {
 	}
 
 	for _, itemType := range cwhub.ItemTypes {
-		items, err := hub.GetInstalledItems(itemType)
+		items, err := hub.GetInstalledItemsByType(itemType)
 		if err != nil {
 			return err
 		}
