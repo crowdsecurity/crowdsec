@@ -6,7 +6,7 @@ import (
 
 func NewCLIParser(cfg configGetter) *cliItem {
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      cwhub.PARSERS,
 		singular:  "parser",
 		oneOrMore: "parser(s)",

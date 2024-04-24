@@ -15,7 +15,7 @@ import (
 
 func NewCLIAppsecConfig(cfg configGetter) *cliItem {
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      cwhub.APPSEC_CONFIGS,
 		singular:  "appsec-config",
 		oneOrMore: "appsec-config(s)",
@@ -58,11 +58,11 @@ func NewCLIAppsecRule(cfg configGetter) *cliItem {
 
 		yamlContent, err := os.ReadFile(item.State.LocalPath)
 		if err != nil {
-			return fmt.Errorf("unable to read file %s : %s", item.State.LocalPath, err)
+			return fmt.Errorf("unable to read file %s: %w", item.State.LocalPath, err)
 		}
 
 		if err := yaml.Unmarshal(yamlContent, &appsecRule); err != nil {
-			return fmt.Errorf("unable to unmarshal yaml file %s : %s", item.State.LocalPath, err)
+			return fmt.Errorf("unable to unmarshal yaml file %s: %w", item.State.LocalPath, err)
 		}
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {
@@ -71,7 +71,7 @@ func NewCLIAppsecRule(cfg configGetter) *cliItem {
 			for _, rule := range appsecRule.Rules {
 				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
 				if err != nil {
-					return fmt.Errorf("unable to convert rule %s : %s", rule.Name, err)
+					return fmt.Errorf("unable to convert rule %s: %w", rule.Name, err)
 				}
 
 				fmt.Println(convertedRule)
@@ -89,7 +89,7 @@ func NewCLIAppsecRule(cfg configGetter) *cliItem {
 	}
 
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      "appsec-rules",
 		singular:  "appsec-rule",
 		oneOrMore: "appsec-rule(s)",

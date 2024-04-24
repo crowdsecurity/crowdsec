@@ -6,7 +6,7 @@ import (
 
 func NewCLIContext(cfg configGetter) *cliItem {
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      cwhub.CONTEXTS,
 		singular:  "context",
 		oneOrMore: "context(s)",

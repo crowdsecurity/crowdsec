@@ -6,7 +6,7 @@ import (
 
 func NewCLIPostOverflow(cfg configGetter) *cliItem {
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      cwhub.POSTOVERFLOWS,
 		singular:  "postoverflow",
 		oneOrMore: "postoverflow(s)",

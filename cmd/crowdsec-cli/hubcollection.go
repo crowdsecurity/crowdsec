@@ -6,7 +6,7 @@ import (
 
 func NewCLICollection(cfg configGetter) *cliItem {
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      cwhub.COLLECTIONS,
 		singular:  "collection",
 		oneOrMore: "collection(s)",

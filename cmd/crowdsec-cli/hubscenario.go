@@ -6,7 +6,7 @@ import (
 
 func NewCLIScenario(cfg configGetter) *cliItem {
 	return &cliItem{
-		cfg: cfg,
+		cfg:       cfg,
 		name:      cwhub.SCENARIOS,
 		singular:  "scenario",
 		oneOrMore: "scenario(s)",
