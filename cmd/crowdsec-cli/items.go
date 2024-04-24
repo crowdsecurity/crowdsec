@@ -116,7 +116,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 		}
 
 		if err := csvwriter.Write(header); err != nil {
-			return fmt.Errorf("failed to write header: %s", err)
+			return fmt.Errorf("failed to write header: %w", err)
 		}
 
 		for _, itemType := range itemTypes {
@@ -132,7 +132,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				}
 
 				if err := csvwriter.Write(row); err != nil {
-					return fmt.Errorf("failed to write raw output: %s", err)
+					return fmt.Errorf("failed to write raw output: %w", err)
 				}
 			}
 		}
@@ -150,12 +150,12 @@ func inspectItem(item *cwhub.Item, showMetrics bool) error {
 		enc.SetIndent(2)
 
 		if err := enc.Encode(item); err != nil {
-			return fmt.Errorf("unable to encode item: %s", err)
+			return fmt.Errorf("unable to encode item: %w", err)
 		}
 	case "json":
 		b, err := json.MarshalIndent(*item, "", "  ")
 		if err != nil {
-			return fmt.Errorf("unable to marshal item: %s", err)
+			return fmt.Errorf("unable to marshal item: %w", err)
 		}
 
 		fmt.Print(string(b))
