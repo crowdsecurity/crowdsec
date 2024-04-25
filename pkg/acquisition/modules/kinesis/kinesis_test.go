@@ -71,7 +71,7 @@ func WriteToStream(streamName string, count int, shards int, sub bool) {
 	}
 	sess := session.Must(session.NewSession())
 	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
-	for i := 0; i < count; i++ {
+	for i := range count {
 		partition := "partition"
 		if shards != 1 {
 			partition = fmt.Sprintf("partition-%d", i%shards)
@@ -182,7 +182,7 @@ stream_name: stream-1-shard`,
 		//Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
-		for i := 0; i < test.count; i++ {
+		for i := range test.count {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
 		}
@@ -227,7 +227,7 @@ stream_name: stream-2-shards`,
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		c := 0
-		for i := 0; i < test.count; i++ {
+		for range test.count {
 			<-out
 			c += 1
 		}
@@ -273,7 +273,7 @@ from_subscription: true`,
 		//Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, true)
-		for i := 0; i < test.count; i++ {
+		for i := range test.count {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
 		}

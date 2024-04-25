@@ -151,7 +151,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 		b.ResetTimer()
 	}
 
-	for n := 0; n < count; n++ {
+	for range(count) {
 		if !testFile(tests, *pctx, pnodes) {
 			return errors.New("test failed")
 		}
@@ -285,7 +285,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 
 	valid = true
 
-	for mapIdx := 0; mapIdx < len(expectMaps); mapIdx++ {
+	for mapIdx := range(len(expectMaps)) {
 		for expKey, expVal := range expectMaps[mapIdx] {
 			outVal, ok := outMaps[mapIdx][expKey]
 			if !ok {

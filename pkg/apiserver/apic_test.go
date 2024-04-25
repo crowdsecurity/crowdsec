@@ -1077,7 +1077,7 @@ func TestAPICPush(t *testing.T) {
 			expectedCalls: 2,
 			alerts: func() []*models.Alert {
 				alerts := make([]*models.Alert, 100)
-				for i := 0; i < 100; i++ {
+				for i := range 100 {
 					alerts[i] = &models.Alert{
 						Scenario:        ptr.Of("crowdsec/test"),
 						ScenarioHash:    ptr.Of("certified"),

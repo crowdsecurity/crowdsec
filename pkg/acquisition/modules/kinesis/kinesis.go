@@ -209,7 +209,7 @@ func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubsc
 
 func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, streamARN string) error {
 	maxTries := k.Config.MaxRetries
-	for i := 0; i < maxTries; i++ {
+	for i := range maxTries {
 		_, err := k.kClient.DescribeStreamConsumer(&kinesis.DescribeStreamConsumerInput{
 			ConsumerName: aws.String(consumerName),
 			StreamARN:    aws.String(streamARN),
@@ -250,7 +250,7 @@ func (k *KinesisSource) DeregisterConsumer() error {
 
 func (k *KinesisSource) WaitForConsumerRegistration(consumerARN string) error {
 	maxTries := k.Config.MaxRetries
-	for i := 0; i < maxTries; i++ {
+	for i := range maxTries {
 		describeOutput, err := k.kClient.DescribeStreamConsumer(&kinesis.DescribeStreamConsumerInput{
 			ConsumerARN: aws.String(consumerARN),
 		})

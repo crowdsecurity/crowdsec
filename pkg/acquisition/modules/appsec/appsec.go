@@ -202,7 +202,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
 
-	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
+	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
 		//we copy AppsecRutime for each runner
 		wrt := *w.AppsecRuntime

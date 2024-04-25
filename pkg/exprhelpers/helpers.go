@@ -270,7 +270,7 @@ func flatten(args []interface{}, v reflect.Value) []interface{} {
 	}
 
 	if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			args = flatten(args, v.Index(i))
 		}
 	} else {

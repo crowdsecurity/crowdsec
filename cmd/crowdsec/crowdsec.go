@@ -70,7 +70,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	parsersTomb.Go(func() error {
 		parserWg.Add(1)
 
-		for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
+		for range cConfig.Crowdsec.ParserRoutinesCount {
 			parsersTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 
@@ -101,7 +101,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 			}
 		}
 
-		for i := 0; i < cConfig.Crowdsec.BucketsRoutinesCount; i++ {
+		for range cConfig.Crowdsec.BucketsRoutinesCount {
 			bucketsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runPour")
 
@@ -127,7 +127,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	outputsTomb.Go(func() error {
 		outputWg.Add(1)
 
-		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
+		for range cConfig.Crowdsec.OutputRoutinesCount {
 			outputsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runOutput")
 
