@@ -197,13 +197,6 @@ linters:
     - gocognit # revive
 
     #
-    # Disabled until fixed for go 1.22
-    #
-
-    - copyloopvar         # copyloopvar is a linter detects places where loop variables are copied
-    - intrange            # intrange is a linter to find places where for loops could make use of an integer range.
-
-    #
     # Enabled
     #
 
@@ -211,6 +204,7 @@ linters:
     # - asciicheck          # checks that all code identifiers does not have non-ASCII symbols in the name
     # - bidichk             # Checks for dangerous unicode character sequences
     # - bodyclose           # checks whether HTTP response body is closed successfully
+    # - copyloopvar         # copyloopvar is a linter detects places where loop variables are copied
     # - decorder            # check declaration order and count of types, constants, variables and functions
     # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
     # - dupword             # checks for duplicate words in the source code
@@ -234,6 +228,7 @@ linters:
     # - importas            # Enforces consistent import aliases
     # - ineffassign         # Detects when assignments to existing variables are not used
     # - interfacebloat      # A linter that checks the number of methods inside an interface.
+    # - intrange            # intrange is a linter to find places where for loops could make use of an integer range.
     # - loggercheck         # (logrlint): Checks key value pairs for common logger libraries (kitlog,klog,logr,zap).
     # - logrlint            # Check logr arguments.
     # - maintidx            # maintidx measures the maintainability index of each function.

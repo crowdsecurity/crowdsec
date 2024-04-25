@@ -24,7 +24,7 @@ func isYAMLFileName(path string) bool {
 // returns error if the symlink is dangling or too many symlinks are followed
 func resolveSymlink(path string) (string, error) {
 	const maxSymlinks = 10 // Prevent infinite loops
-	for i := 0; i < maxSymlinks; i++ {
+	for range maxSymlinks {
 		fi, err := os.Lstat(path)
 		if err != nil {
 			return "", err // dangling link
