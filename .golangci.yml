@@ -82,11 +82,6 @@ linters-settings:
           - "!**/pkg/apiserver/controllers/v1/errors.go"
       yaml:
         files:
-          - "!**/cmd/notification-dummy/main.go"
-          - "!**/cmd/notification-email/main.go"
-          - "!**/cmd/notification-http/main.go"
-          - "!**/cmd/notification-slack/main.go"
-          - "!**/cmd/notification-splunk/main.go"
           - "!**/pkg/acquisition/acquisition.go"
           - "!**/pkg/acquisition/acquisition_test.go"
           - "!**/pkg/acquisition/modules/appsec/appsec.go"

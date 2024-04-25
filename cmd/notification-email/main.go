@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	mail "github.com/xhit/go-simple-mail/v2"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var baseLogger hclog.Logger = hclog.New(&hclog.LoggerOptions{

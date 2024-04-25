@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{

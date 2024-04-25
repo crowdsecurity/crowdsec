@@ -10,7 +10,7 @@ import (
 	plugin "github.com/hashicorp/go-plugin"
 
 	"github.com/slack-go/slack"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type PluginConfig struct {
