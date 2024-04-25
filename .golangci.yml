@@ -82,13 +82,6 @@ linters-settings:
           - "!**/pkg/apiserver/controllers/v1/errors.go"
       yaml:
         files:
-          - "!**/cmd/crowdsec-cli/alerts.go"
-          - "!**/cmd/crowdsec-cli/capi.go"
-          - "!**/cmd/crowdsec-cli/config_show.go"
-          - "!**/cmd/crowdsec-cli/hubtest.go"
-          - "!**/cmd/crowdsec-cli/lapi.go"
-          - "!**/cmd/crowdsec-cli/simulation.go"
-          - "!**/cmd/crowdsec/crowdsec.go"
           - "!**/cmd/notification-dummy/main.go"
           - "!**/cmd/notification-email/main.go"
           - "!**/cmd/notification-http/main.go"
