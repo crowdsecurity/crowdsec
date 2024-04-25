@@ -14,7 +14,7 @@ import (
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
@@ -136,7 +136,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				nucleiFileName := fmt.Sprintf("%s.yaml", testName)
 				nucleiFilePath := filepath.Join(testPath, nucleiFileName)
 
-				nucleiFile, err := os.OpenFile(nucleiFilePath, os.O_RDWR|os.O_CREATE, 0755)
+				nucleiFile, err := os.OpenFile(nucleiFilePath, os.O_RDWR|os.O_CREATE, 0o755)
 				if err != nil {
 					return err
 				}
