@@ -12,10 +12,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
 type PluginConfig struct {
@@ -90,18 +91,23 @@ func getTLSClient(c *PluginConfig) error {
 
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
+
 	transport := &http.Transport{
 		TLSClientConfig: tlsConfig,
 	}
+
 	if c.UnixSocket != "" {
 		logger.Info(fmt.Sprintf("Using socket '%s'", c.UnixSocket))
+
 		transport.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
 			return net.Dial("unix", strings.TrimSuffix(c.UnixSocket, "/"))
 		}
 	}
+
 	c.Client = &http.Client{
 		Transport: transport,
 	}
+
 	return nil
 }
 
@@ -109,6 +115,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
+
 	cfg := s.PluginConfigByName[notification.Name]
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
@@ -121,11 +128,14 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	if err != nil {
 		return nil, err
 	}
+
 	for headerName, headerValue := range cfg.Headers {
 		logger.Debug(fmt.Sprintf("adding header %s: %s", headerName, headerValue))
 		request.Header.Add(headerName, headerValue)
 	}
+
 	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, notification.Text))
+
 	resp, err := cfg.Client.Do(request.WithContext(ctx))
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to make HTTP request : %s", err))
@@ -135,7 +145,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 
 	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body got error %s", err)
+		return nil, fmt.Errorf("failed to read response body got error %w", err)
 	}
 
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
@@ -143,6 +153,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		logger.Warn(fmt.Sprintf("HTTP server returned non 200 status code: %d", resp.StatusCode))
 		logger.Debug(fmt.Sprintf("HTTP server returned body: %s", string(respData)))
+
 		return &protobufs.Empty{}, nil
 	}
 
@@ -151,21 +162,25 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 
 func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
+
 	err := yaml.Unmarshal(config.Config, &d)
 	if err != nil {
 		return nil, err
 	}
+
 	err = getTLSClient(&d)
 	if err != nil {
 		return nil, err
 	}
+
 	s.PluginConfigByName[d.Name] = d
 	logger.Debug(fmt.Sprintf("HTTP plugin '%s' use URL '%s'", d.Name, d.URL))
+
 	return &protobufs.Empty{}, err
 }
 
 func main() {
-	var handshake = plugin.HandshakeConfig{
+	handshake := plugin.HandshakeConfig{
 		ProtocolVersion:  1,
 		MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
 		MagicCookieValue: os.Getenv("CROWDSEC_PLUGIN_KEY"),
