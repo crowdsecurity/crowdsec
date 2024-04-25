@@ -636,6 +636,16 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 		if len(alertItem.Meta) > 0 {
 			metaBulk := make([]*ent.MetaCreate, len(alertItem.Meta))
 			for i, metaItem := range alertItem.Meta {
+				key := metaItem.Key
+				value := metaItem.Value
+				if len(metaItem.Value) > 4095 {
+					c.Log.Warningf("truncated meta %s : value too long", metaItem.Key)
+					value = value[:4095]
+				}
+				if len(metaItem.Key) > 255 {
+					c.Log.Warningf("truncated meta %s : key too long", metaItem.Key)
+					key = key[:255]
+				}
 				metaBulk[i] = c.Ent.Meta.Create().
 					SetKey(metaItem.Key).
 					SetValue(metaItem.Value)
