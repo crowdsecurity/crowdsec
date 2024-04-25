@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -118,9 +119,11 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 	switch detectConfigFile {
 	case "-":
 		log.Tracef("Reading detection rules from stdin")
+
 		detectReader = os.Stdin
 	default:
 		log.Tracef("Reading detection rules: %s", detectConfigFile)
+
 		detectReader, err = os.Open(detectConfigFile)
 		if err != nil {
 			return err
@@ -171,6 +174,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 		_, err := exec.LookPath("systemctl")
 		if err != nil {
 			log.Debug("systemctl not available: snubbing systemd")
+
 			snubSystemd = true
 		}
 	}
@@ -182,6 +186,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 
 	if forcedOSFamily == "" && forcedOSID != "" {
 		log.Debug("force-os-id is set: force-os-family defaults to 'linux'")
+
 		forcedOSFamily = "linux"
 	}
 
@@ -219,6 +224,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	fmt.Println(setup)
 
 	return nil
@@ -318,6 +324,7 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 
 func runSetupValidate(cmd *cobra.Command, args []string) error {
 	fromFile := args[0]
+
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading stdin: %w", err)
@@ -325,7 +332,7 @@ func runSetupValidate(cmd *cobra.Command, args []string) error {
 
 	if err = setup.Validate(input); err != nil {
 		fmt.Printf("%v\n", err)
-		return fmt.Errorf("invalid setup file")
+		return errors.New("invalid setup file")
 	}
 
 	return nil

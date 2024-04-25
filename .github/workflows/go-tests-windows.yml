@@ -52,6 +52,7 @@ jobs:
       with:
         files: coverage.out
         flags: unit-windows
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v4

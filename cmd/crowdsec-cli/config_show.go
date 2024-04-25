@@ -10,13 +10,15 @@ import (
 	"github.com/sanity-io/litter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-func showConfigKey(key string) error {
+func (cli *cliConfig) showKey(key string) error {
+	cfg := cli.cfg()
+
 	type Env struct {
 		Config *csconfig.Config
 	}
@@ -30,15 +32,15 @@ func showConfigKey(key string) error {
 		return err
 	}
 
-	output, err := expr.Run(program, Env{Config: csConfig})
+	output, err := expr.Run(program, Env{Config: cfg})
 	if err != nil {
 		return err
 	}
 
-	switch csConfig.Cscli.Output {
+	switch cfg.Cscli.Output {
 	case "human", "raw":
 		// Don't use litter for strings, it adds quotes
-		// that we didn't have before
+		// that would break compatibility with previous versions
 		switch output.(type) {
 		case string:
 			fmt.Println(output)
@@ -51,13 +53,14 @@ func showConfigKey(key string) error {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
-		fmt.Printf("%s\n", string(data))
+		fmt.Println(string(data))
 	}
 
 	return nil
 }
 
-var configShowTemplate = `Global:
+func (cli *cliConfig) template() string {
+	return `Global:
 
 {{- if .ConfigPaths }}
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
@@ -182,18 +185,10 @@ Central API:
 {{- end }}
 {{- end }}
 `
+}
 
-func (cli *cliConfig) show(key string) error {
+func (cli *cliConfig) show() error {
 	cfg := cli.cfg()
-
-	if err := cfg.LoadAPIClient(); err != nil {
-		log.Errorf("failed to load API client configuration: %s", err)
-		// don't return, we can still show the configuration
-	}
-
-	if key != "" {
-		return showConfigKey(key)
-	}
 
 	switch cfg.Cscli.Output {
 	case "human":
@@ -205,7 +200,7 @@ func (cli *cliConfig) show(key string) error {
 			"ValueBool": func(b *bool) bool { return b != nil && *b },
 		}
 
-		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)
+		tmp, err := template.New("config").Funcs(funcs).Parse(cli.template())
 		if err != nil {
 			return err
 		}
@@ -220,14 +215,14 @@ func (cli *cliConfig) show(key string) error {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
-		fmt.Printf("%s\n", string(data))
+		fmt.Println(string(data))
 	case "raw":
 		data, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
-		fmt.Printf("%s\n", string(data))
+		fmt.Println(string(data))
 	}
 
 	return nil
@@ -243,7 +238,16 @@ func (cli *cliConfig) newShowCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.show(key)
+			if err := cli.cfg().LoadAPIClient(); err != nil {
+				log.Errorf("failed to load API client configuration: %s", err)
+				// don't return, we can still show the configuration
+			}
+
+			if key != "" {
+				return cli.showKey(key)
+			}
+
+			return cli.show()
 		},
 	}
 

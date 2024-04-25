@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -10,14 +12,18 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
-var ConfigFilePath string
-var csConfig *csconfig.Config
-var dbClient *database.Client
+var (
+	ConfigFilePath string
+	csConfig       *csconfig.Config
+	dbClient       *database.Client
+)
 
 type configGetter func() *csconfig.Config
 
@@ -80,6 +86,11 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 		config, merged, err := csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			return nil, "", err
+		}
+
+		// set up directory for trace files
+		if err := trace.Init(filepath.Join(config.ConfigPaths.DataDir, "trace")); err != nil {
+			return nil, "", fmt.Errorf("while setting up trace directory: %w", err)
 		}
 
 		return config, merged, nil
@@ -249,13 +260,13 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLINotifications(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLISupport().NewCommand())
 	cmd.AddCommand(NewCLIPapi(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLICollection().NewCommand())
-	cmd.AddCommand(NewCLIParser().NewCommand())
-	cmd.AddCommand(NewCLIScenario().NewCommand())
-	cmd.AddCommand(NewCLIPostOverflow().NewCommand())
-	cmd.AddCommand(NewCLIContext().NewCommand())
-	cmd.AddCommand(NewCLIAppsecConfig().NewCommand())
-	cmd.AddCommand(NewCLIAppsecRule().NewCommand())
+	cmd.AddCommand(NewCLICollection(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIParser(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIScenario(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIPostOverflow(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIContext(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIAppsecConfig(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIAppsecRule(cli.cfg).NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
 		cmd.AddCommand(NewSetupCmd())
