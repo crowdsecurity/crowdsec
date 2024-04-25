@@ -74,7 +74,7 @@ func (cli *cliSimulation) NewEnableCmd() *cobra.Command {
 
 			if len(args) > 0 {
 				for _, scenario := range args {
-					var item = hub.GetItem(cwhub.SCENARIOS, scenario)
+					item := hub.GetItem(cwhub.SCENARIOS, scenario)
 					if item == nil {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue

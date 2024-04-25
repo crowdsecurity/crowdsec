@@ -85,7 +85,6 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		URL:           apiurl,
 		VersionPrefix: CAPIURLPrefix,
 	}, nil)
-
 	if err != nil {
 		return fmt.Errorf("api client register ('%s'): %w", types.CAPIBaseURL, err)
 	}
