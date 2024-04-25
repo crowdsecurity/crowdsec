@@ -159,7 +159,6 @@ func TestJsonExtractSlice(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			env := map[string]interface{}{
 				"blob":   test.jsonBlob,
@@ -215,7 +214,6 @@ func TestJsonExtractObject(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			env := map[string]interface{}{
 				"blob":   test.jsonBlob,

@@ -94,7 +94,6 @@ func TestPathExists(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		env := setup.NewExprEnvironment(setup.DetectOptions{}, setup.ExprOS{})
 
 		t.Run(tc.path, func(t *testing.T) {
@@ -148,7 +147,6 @@ func TestVersionCheck(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		e := setup.ExprOS{RawVersion: tc.version}
 
 		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
@@ -248,7 +246,6 @@ func TestListSupported(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -333,7 +330,6 @@ func TestApplyRules(t *testing.T) {
 	env := setup.ExprEnvironment{}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -424,7 +420,6 @@ detect:
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 			defer os.Remove(f.Name())
@@ -518,7 +513,6 @@ detect:
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 			defer os.Remove(f.Name())
@@ -830,7 +824,6 @@ func TestDetectForcedOS(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 			defer os.Remove(f.Name())
@@ -1015,7 +1008,6 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 			defer os.Remove(f.Name())

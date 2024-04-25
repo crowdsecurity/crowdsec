@@ -102,7 +102,6 @@ func TestNewProfile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			profilesCfg := []*csconfig.ProfileCfg{
 				test.profileCfg,
@@ -196,7 +195,6 @@ func TestEvaluateProfile(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			profilesCfg := []*csconfig.ProfileCfg{
 				tt.args.profileCfg,
