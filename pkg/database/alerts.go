@@ -647,13 +647,13 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 					key = key[:255]
 				}
 				metaBulk[i] = c.Ent.Meta.Create().
-					SetKey(metaItem.Key).
-					SetValue(metaItem.Value)
+					SetKey(key).
+					SetValue(value)
 			}
 
 			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(c.CTX)
 			if err != nil {
-				return nil, errors.Wrapf(BulkError, "creating alert meta: %s", err)
+				c.Log.Warningf("error creating alert meta: %s", err)
 			}
 		}
 
