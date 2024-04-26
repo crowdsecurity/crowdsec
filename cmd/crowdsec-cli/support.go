@@ -477,16 +477,13 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			if outFile == "-" {
-				_, err = os.Stdout.Write(w.Bytes())
-				outFile = "stdout"
-			} else {
-				err = os.WriteFile(outFile, w.Bytes(), 0o600)
+				os.Stdout.Write(w.Bytes())
+				return
 			}
-
+			err = os.WriteFile(outFile, w.Bytes(), 0o600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
-
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}
