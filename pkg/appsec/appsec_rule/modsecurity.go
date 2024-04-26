@@ -11,20 +11,23 @@ type ModsecurityRule struct {
 }
 
 var zonesMap map[string]string = map[string]string{
-	"ARGS":            "ARGS_GET",
-	"ARGS_NAMES":      "ARGS_GET_NAMES",
-	"BODY_ARGS":       "ARGS_POST",
-	"BODY_ARGS_NAMES": "ARGS_POST_NAMES",
-	"COOKIES":         "REQUEST_COOKIES",
-	"COOKIES_NAMES":   "REQUEST_COOKIES_NAMES",
-	"HEADERS_NAMES":   "REQUEST_HEADERS_NAMES",
-	"HEADERS":         "REQUEST_HEADERS",
-	"METHOD":          "REQUEST_METHOD",
-	"PROTOCOL":        "REQUEST_PROTOCOL",
-	"URI":             "REQUEST_FILENAME",
-	"URI_FULL":        "REQUEST_URI",
-	"RAW_BODY":        "REQUEST_BODY",
-	"FILENAMES":       "FILES",
+	"ARGS":             "ARGS_GET",
+	"ARGS_NAMES":       "ARGS_GET_NAMES",
+	"BODY_ARGS":        "ARGS_POST",
+	"BODY_ARGS_NAMES":  "ARGS_POST_NAMES",
+	"COOKIES":          "REQUEST_COOKIES",
+	"COOKIES_NAMES":    "REQUEST_COOKIES_NAMES",
+	"FILES":            "FILES",
+	"FILES_NAMES":      "FILES_NAMES",
+	"FILES_TOTAL_SIZE": "FILES_COMBINED_SIZE",
+	"HEADERS_NAMES":    "REQUEST_HEADERS_NAMES",
+	"HEADERS":          "REQUEST_HEADERS",
+	"METHOD":           "REQUEST_METHOD",
+	"PROTOCOL":         "REQUEST_PROTOCOL",
+	"URI":              "REQUEST_FILENAME",
+	"URI_FULL":         "REQUEST_URI",
+	"RAW_BODY":         "REQUEST_BODY",
+	"FILENAMES":        "FILES",
 }
 
 var transformMap map[string]string = map[string]string{
