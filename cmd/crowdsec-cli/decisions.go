@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -346,7 +347,7 @@ cscli decisions add --scope username --value foobar
 				addScope = types.Range
 			} else if addValue == "" {
 				printHelp(cmd)
-				return fmt.Errorf("missing arguments, a value is required (--ip, --range or --scope and --value)")
+				return errors.New("missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {
@@ -371,7 +372,7 @@ cscli decisions add --scope username --value foobar
 				Scenario:        &addReason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
-				//setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
+				// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
 				Source: &models.Source{
 					AsName:   empty,
 					AsNumber: empty,
@@ -411,7 +412,7 @@ cscli decisions add --scope username --value foobar
 }
 
 func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
-	var delFilter = apiclient.DecisionsDeleteOpts{
+	delFilter := apiclient.DecisionsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
 		TypeEquals:     new(string),
@@ -448,7 +449,7 @@ cscli decisions delete --origin lists  --scenario list_name
 				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
 				*delFilter.OriginEquals == "" && delDecisionID == "" {
 				cmd.Usage()
-				return fmt.Errorf("at least one filter or --all must be specified")
+				return errors.New("at least one filter or --all must be specified")
 			}
 
 			return nil
