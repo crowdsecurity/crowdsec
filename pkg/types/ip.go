@@ -97,13 +97,12 @@ func IP2Ints(pip net.IP) (int, int64, int64, error) {
 
 	if pip4 != nil {
 		ip_nw32 := binary.BigEndian.Uint32(pip4)
-
 		return 4, uint2int(uint64(ip_nw32)), uint2int(ip_sfx), nil
-	} else if pip16 != nil {
+	}
+	if pip16 != nil {
 		ip_nw = binary.BigEndian.Uint64(pip16[0:8])
 		ip_sfx = binary.BigEndian.Uint64(pip16[8:16])
 		return 16, uint2int(ip_nw), uint2int(ip_sfx), nil
-	} else {
-		return -1, 0, 0, fmt.Errorf("unexpected len %d for %s", len(pip), pip)
 	}
+	return -1, 0, 0, fmt.Errorf("unexpected len %d for %s", len(pip), pip)
 }
