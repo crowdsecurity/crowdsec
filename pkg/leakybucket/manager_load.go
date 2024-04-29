@@ -380,19 +380,17 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.processors = append(bucketFactory.processors, &BayesianBucket{})
 	}
 
-	if len(bucketFactory.Data) > 0 {
-		for _, data := range bucketFactory.Data {
-			if data.DestPath == "" {
-				bucketFactory.logger.Errorf("no dest_file provided for '%s'", bucketFactory.Name)
-				continue
-			}
-			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
-			if err != nil {
-				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
-			}
-			if data.Type == "regexp" { //cache only makes sense for regexp
-				exprhelpers.RegexpCacheInit(data.DestPath, *data)
-			}
+	for _, data := range bucketFactory.Data {
+		if data.DestPath == "" {
+			bucketFactory.logger.Errorf("no dest_file provided for '%s'", bucketFactory.Name)
+			continue
+		}
+		err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
+		if err != nil {
+			bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
+		}
+		if data.Type == "regexp" { //cache only makes sense for regexp
+			exprhelpers.RegexpCacheInit(data.DestPath, *data)
 		}
 	}
 

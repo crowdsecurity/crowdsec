@@ -91,10 +91,7 @@ func truncate(values []string, contextValueLen int) (string, error) {
 		return "", fmt.Errorf("unable to dump metas: %s", err)
 	}
 	ret = string(valueByte)
-	for {
-		if len(ret) <= contextValueLen {
-			break
-		}
+	for len(ret) > contextValueLen {
 		// if there is only 1 value left and that the size is too big, truncate it
 		if len(values) == 1 {
 			valueToTruncate := values[0]
