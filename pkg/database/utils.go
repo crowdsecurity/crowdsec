@@ -49,20 +49,17 @@ func LastAddress(n *net.IPNet) net.IP {
 		ip[3]|^n.Mask[3])
 }
 
+// GetIpsFromIpRange takes a CIDR range and returns the start and end IP
 func GetIpsFromIpRange(host string) (int64, int64, error) {
-	var ipStart int64
-	var ipEnd int64
-	var err error
-	var parsedRange *net.IPNet
-
-	if _, parsedRange, err = net.ParseCIDR(host); err != nil {
-		return ipStart, ipEnd, fmt.Errorf("'%s' is not a valid CIDR", host)
+	_, parsedRange, err := net.ParseCIDR(host)
+	if err != nil {
+		return 0, 0, fmt.Errorf("'%s' is not a valid CIDR", host)
 	}
 	if parsedRange == nil {
-		return ipStart, ipEnd, fmt.Errorf("unable to parse network : %s", err)
+		return 0, 0, fmt.Errorf("unable to parse network : %s", err)
 	}
-	ipStart = int64(IP2Int(parsedRange.IP))
-	ipEnd = int64(IP2Int(LastAddress(parsedRange)))
+	ipStart := int64(IP2Int(parsedRange.IP))
+	ipEnd := int64(IP2Int(LastAddress(parsedRange)))
 
 	return ipStart, ipEnd, nil
 }
