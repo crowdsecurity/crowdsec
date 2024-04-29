@@ -18,22 +18,22 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func ShowMetrics(hubItem *cwhub.Item) error {
+func ShowMetrics(prometheusURL string, hubItem *cwhub.Item) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
-		metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		metrics := GetParserMetric(prometheusURL, hubItem.Name)
 		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
-		metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
 		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, sub := range hubItem.SubItems() {
-			if err := ShowMetrics(sub); err != nil {
+			if err := ShowMetrics(prometheusURL, sub); err != nil {
 				return err
 			}
 		}
 	case cwhub.APPSEC_RULES:
-		metrics := GetAppsecRuleMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		metrics := GetAppsecRuleMetric(prometheusURL, hubItem.Name)
 		appsecMetricsTable(color.Output, hubItem.Name, metrics)
 	default: // no metrics for this item type
 	}
