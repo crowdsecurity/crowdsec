@@ -911,12 +911,17 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 }
 
 func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int, deleteCounters map[string]map[string]int) {
-	if *alert.Source.Scope == types.CAPIOrigin {
+	switch *alert.Source.Scope {
+	case types.CAPIOrigin:
 		*alert.Source.Scope = types.CommunityBlocklistPullSourceScope
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", addCounters[types.CAPIOrigin]["all"], deleteCounters[types.CAPIOrigin]["all"]))
-	} else if *alert.Source.Scope == types.ListOrigin {
+		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+			addCounters[types.CAPIOrigin]["all"],
+			deleteCounters[types.CAPIOrigin]["all"]))
+	case types.ListOrigin:
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", addCounters[types.ListOrigin][*alert.Scenario], deleteCounters[types.ListOrigin][*alert.Scenario]))
+		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+				addCounters[types.ListOrigin][*alert.Scenario],
+				deleteCounters[types.ListOrigin][*alert.Scenario]))
 	}
 }
 
@@ -988,11 +993,12 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 }
 
 func updateCounterForDecision(counter map[string]map[string]int, origin *string, scenario *string, totalDecisions int) {
-	if *origin == types.CAPIOrigin {
+	switch *origin {
+	case types.CAPIOrigin:
 		counter[*origin]["all"] += totalDecisions
-	} else if *origin == types.ListOrigin {
+	case types.ListOrigin:
 		counter[*origin][*scenario] += totalDecisions
-	} else {
+	default:
 		log.Warningf("Unknown origin %s", *origin)
 	}
 }
