@@ -121,14 +121,14 @@ type crzLogger struct {
 	logLevel      log.Level
 }
 
-func NewCrzLogger(logger *log.Entry) crzLogger {
-	return crzLogger{logger: logger, logLevel: logger.Logger.GetLevel()}
+func NewCrzLogger(logger *log.Entry) *crzLogger {
+	return &crzLogger{logger: logger, logLevel: logger.Logger.GetLevel()}
 }
 
-func (c crzLogger) NewMutedEvt(lvl log.Level) dbg.Event {
+func (c *crzLogger) NewMutedEvt(lvl log.Level) dbg.Event {
 	return &crzLogEvent{muted: true, logger: c.logger, level: lvl}
 }
-func (c crzLogger) NewEvt(lvl log.Level) dbg.Event {
+func (c *crzLogger) NewEvt(lvl log.Level) dbg.Event {
 	evt := &crzLogEvent{fields: map[string]interface{}{}, logger: c.logger, level: lvl}
 	if c.defaultFields != nil {
 		for k, v := range c.defaultFields {
@@ -138,17 +138,17 @@ func (c crzLogger) NewEvt(lvl log.Level) dbg.Event {
 	return evt
 }
 
-func (c crzLogger) WithOutput(w io.Writer) dbg.Logger {
+func (c *crzLogger) WithOutput(w io.Writer) dbg.Logger {
 	return c
 }
 
-func (c crzLogger) WithLevel(lvl dbg.Level) dbg.Logger {
+func (c *crzLogger) WithLevel(lvl dbg.Level) dbg.Logger {
 	c.logLevel = log.Level(lvl)
 	c.logger.Logger.SetLevel(c.logLevel)
 	return c
 }
 
-func (c crzLogger) With(fs ...dbg.ContextField) dbg.Logger {
+func (c *crzLogger) With(fs ...dbg.ContextField) dbg.Logger {
 	var e dbg.Event = c.NewEvt(c.logLevel)
 	for _, f := range fs {
 		e = f(e)
@@ -157,14 +157,14 @@ func (c crzLogger) With(fs ...dbg.ContextField) dbg.Logger {
 	return c
 }
 
-func (c crzLogger) Trace() dbg.Event {
+func (c *crzLogger) Trace() dbg.Event {
 	if c.logLevel < log.TraceLevel {
 		return c.NewMutedEvt(log.TraceLevel)
 	}
 	return c.NewEvt(log.TraceLevel)
 }
 
-func (c crzLogger) Debug() dbg.Event {
+func (c *crzLogger) Debug() dbg.Event {
 	if c.logLevel < log.DebugLevel {
 		return c.NewMutedEvt(log.DebugLevel)
 
@@ -172,21 +172,21 @@ func (c crzLogger) Debug() dbg.Event {
 	return c.NewEvt(log.DebugLevel)
 }
 
-func (c crzLogger) Info() dbg.Event {
+func (c *crzLogger) Info() dbg.Event {
 	if c.logLevel < log.InfoLevel {
 		return c.NewMutedEvt(log.InfoLevel)
 	}
 	return c.NewEvt(log.InfoLevel)
 }
 
-func (c crzLogger) Warn() dbg.Event {
+func (c *crzLogger) Warn() dbg.Event {
 	if c.logLevel < log.WarnLevel {
 		return c.NewMutedEvt(log.WarnLevel)
 	}
 	return c.NewEvt(log.WarnLevel)
 }
 
-func (c crzLogger) Error() dbg.Event {
+func (c *crzLogger) Error() dbg.Event {
 	if c.logLevel < log.ErrorLevel {
 		return c.NewMutedEvt(log.ErrorLevel)
 	}
