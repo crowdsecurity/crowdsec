@@ -23,10 +23,10 @@ func (Machine) Fields() []ent.Field {
 			UpdateDefault(types.UtcNow),
 		field.Time("last_push").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Nillable().Optional(),
 		field.Time("last_heartbeat").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Nillable().Optional(),
 		field.String("machineId").
 			Unique().
 			Immutable(),
