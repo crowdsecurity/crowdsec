@@ -33,7 +33,7 @@ BUILD_REQUIRE_GO_MINOR ?= 21
 
 GO = go
 GOTEST = $(GO) test
-
+GOARCH = $(dpkg --print-architecture)
 BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
