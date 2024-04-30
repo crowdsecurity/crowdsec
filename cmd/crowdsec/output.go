@@ -26,11 +26,12 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 			continue
 		}
 
-		for k, src := range alert.Sources {
+		for k := range alert.Sources {
 			refsrc := *alert.Alert // copy
 
 			log.Tracef("source[%s]", k)
 
+			src := alert.Sources[k]
 			refsrc.Source = &src
 			dedupCache = append(dedupCache, &refsrc)
 		}
