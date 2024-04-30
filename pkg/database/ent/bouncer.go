@@ -18,9 +18,9 @@ type Bouncer struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// APIKey holds the value of the "api_key" field.
@@ -80,15 +80,13 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				b.CreatedAt = new(time.Time)
-				*b.CreatedAt = value.Time
+				b.CreatedAt = value.Time
 			}
 		case bouncer.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				b.UpdatedAt = new(time.Time)
-				*b.UpdatedAt = value.Time
+				b.UpdatedAt = value.Time
 			}
 		case bouncer.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -180,15 +178,11 @@ func (b *Bouncer) String() string {
 	var builder strings.Builder
 	builder.WriteString("Bouncer(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", b.ID))
-	if v := b.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(b.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := b.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(b.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(b.Name)
