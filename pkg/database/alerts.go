@@ -795,6 +795,13 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 		alertIDs = append(alertIDs, ids...)
 	}
 
+	if owner != nil {
+		err = owner.Update().SetLastPush(time.Now().UTC()).Exec(c.CTX)
+		if err != nil {
+			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
+		}
+	}
+
 	return alertIDs, nil
 }
 
