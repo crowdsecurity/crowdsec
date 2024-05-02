@@ -54,8 +54,8 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool) error {
-	switch csConfig.Cscli.Output {
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
+	switch output {
 	case "human":
 		nothingToDisplay := true
 
@@ -143,8 +143,8 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 	return nil
 }
 
-func inspectItem(item *cwhub.Item, showMetrics bool) error {
-	switch csConfig.Cscli.Output {
+func inspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string) error {
+	switch output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
 		enc.SetIndent(2)
@@ -161,7 +161,7 @@ func inspectItem(item *cwhub.Item, showMetrics bool) error {
 		fmt.Print(string(b))
 	}
 
-	if csConfig.Cscli.Output != "human" {
+	if output != "human" {
 		return nil
 	}
 
@@ -174,7 +174,7 @@ func inspectItem(item *cwhub.Item, showMetrics bool) error {
 	if showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
 
-		if err := ShowMetrics(item); err != nil {
+		if err := ShowMetrics(prometheusURL, item); err != nil {
 			return err
 		}
 	}

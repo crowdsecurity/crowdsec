@@ -112,7 +112,7 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(cli.name, args, toComplete)
+			return compAllItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.install(args, downloadOnly, force, ignoreError)
@@ -238,7 +238,7 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cli.name, args, toComplete)
+			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.remove(args, purge, force, all)
@@ -333,7 +333,7 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 		Example:           cli.upgradeHelp.example,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cli.name, args, toComplete)
+			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.upgrade(args, force, all)
@@ -381,7 +381,7 @@ func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMet
 			continue
 		}
 
-		if err = inspectItem(item, !noMetrics); err != nil {
+		if err = inspectItem(item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl); err != nil {
 			return err
 		}
 
@@ -411,7 +411,7 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cli.name, args, toComplete)
+			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.inspect(args, url, diff, rev, noMetrics)
@@ -428,6 +428,8 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 }
 
 func (cli cliItem) list(args []string, all bool) error {
+	cfg := cli.cfg()
+
 	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
 	if err != nil {
 		return err
@@ -440,7 +442,7 @@ func (cli cliItem) list(args []string, all bool) error {
 		return err
 	}
 
-	if err = listItems(color.Output, []string{cli.name}, items, false); err != nil {
+	if err = listItems(color.Output, []string{cli.name}, items, false, cfg.Cscli.Output); err != nil {
 		return err
 	}
 

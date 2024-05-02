@@ -36,8 +36,8 @@ func suggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) str
 	return msg
 }
 
-func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	hub, err := require.Hub(csConfig, nil, nil)
+func compAllItems(itemType string, args []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+	hub, err := require.Hub(cfg(), nil, nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
@@ -55,8 +55,8 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
-func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	hub, err := require.Hub(csConfig, nil, nil)
+func compInstalledItems(itemType string, args []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+	hub, err := require.Hub(cfg(), nil, nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}

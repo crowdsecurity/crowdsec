@@ -210,16 +210,6 @@ func CreatedAtLTE(v time.Time) predicate.Alert {
 	return predicate.Alert(sql.FieldLTE(FieldCreatedAt, v))
 }
 
-// CreatedAtIsNil applies the IsNil predicate on the "created_at" field.
-func CreatedAtIsNil() predicate.Alert {
-	return predicate.Alert(sql.FieldIsNull(FieldCreatedAt))
-}
-
-// CreatedAtNotNil applies the NotNil predicate on the "created_at" field.
-func CreatedAtNotNil() predicate.Alert {
-	return predicate.Alert(sql.FieldNotNull(FieldCreatedAt))
-}
-
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
 func UpdatedAtEQ(v time.Time) predicate.Alert {
 	return predicate.Alert(sql.FieldEQ(FieldUpdatedAt, v))
@@ -258,16 +248,6 @@ func UpdatedAtLT(v time.Time) predicate.Alert {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Alert {
 	return predicate.Alert(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// UpdatedAtIsNil applies the IsNil predicate on the "updated_at" field.
-func UpdatedAtIsNil() predicate.Alert {
-	return predicate.Alert(sql.FieldIsNull(FieldUpdatedAt))
-}
-
-// UpdatedAtNotNil applies the NotNil predicate on the "updated_at" field.
-func UpdatedAtNotNil() predicate.Alert {
-	return predicate.Alert(sql.FieldNotNull(FieldUpdatedAt))
 }
 
 // ScenarioEQ applies the EQ predicate on the "scenario" field.

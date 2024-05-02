@@ -26,8 +26,6 @@ func init() {
 	alertDescCreatedAt := alertFields[0].Descriptor()
 	// alert.DefaultCreatedAt holds the default value on creation for the created_at field.
 	alert.DefaultCreatedAt = alertDescCreatedAt.Default.(func() time.Time)
-	// alert.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	alert.UpdateDefaultCreatedAt = alertDescCreatedAt.UpdateDefault.(func() time.Time)
 	// alertDescUpdatedAt is the schema descriptor for updated_at field.
 	alertDescUpdatedAt := alertFields[1].Descriptor()
 	// alert.DefaultUpdatedAt holds the default value on creation for the updated_at field.
@@ -64,8 +62,6 @@ func init() {
 	bouncerDescCreatedAt := bouncerFields[0].Descriptor()
 	// bouncer.DefaultCreatedAt holds the default value on creation for the created_at field.
 	bouncer.DefaultCreatedAt = bouncerDescCreatedAt.Default.(func() time.Time)
-	// bouncer.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	bouncer.UpdateDefaultCreatedAt = bouncerDescCreatedAt.UpdateDefault.(func() time.Time)
 	// bouncerDescUpdatedAt is the schema descriptor for updated_at field.
 	bouncerDescUpdatedAt := bouncerFields[1].Descriptor()
 	// bouncer.DefaultUpdatedAt holds the default value on creation for the updated_at field.
@@ -94,8 +90,6 @@ func init() {
 	configitemDescCreatedAt := configitemFields[0].Descriptor()
 	// configitem.DefaultCreatedAt holds the default value on creation for the created_at field.
 	configitem.DefaultCreatedAt = configitemDescCreatedAt.Default.(func() time.Time)
-	// configitem.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	configitem.UpdateDefaultCreatedAt = configitemDescCreatedAt.UpdateDefault.(func() time.Time)
 	// configitemDescUpdatedAt is the schema descriptor for updated_at field.
 	configitemDescUpdatedAt := configitemFields[1].Descriptor()
 	// configitem.DefaultUpdatedAt holds the default value on creation for the updated_at field.
@@ -108,8 +102,6 @@ func init() {
 	decisionDescCreatedAt := decisionFields[0].Descriptor()
 	// decision.DefaultCreatedAt holds the default value on creation for the created_at field.
 	decision.DefaultCreatedAt = decisionDescCreatedAt.Default.(func() time.Time)
-	// decision.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	decision.UpdateDefaultCreatedAt = decisionDescCreatedAt.UpdateDefault.(func() time.Time)
 	// decisionDescUpdatedAt is the schema descriptor for updated_at field.
 	decisionDescUpdatedAt := decisionFields[1].Descriptor()
 	// decision.DefaultUpdatedAt holds the default value on creation for the updated_at field.
@@ -126,8 +118,6 @@ func init() {
 	eventDescCreatedAt := eventFields[0].Descriptor()
 	// event.DefaultCreatedAt holds the default value on creation for the created_at field.
 	event.DefaultCreatedAt = eventDescCreatedAt.Default.(func() time.Time)
-	// event.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	event.UpdateDefaultCreatedAt = eventDescCreatedAt.UpdateDefault.(func() time.Time)
 	// eventDescUpdatedAt is the schema descriptor for updated_at field.
 	eventDescUpdatedAt := eventFields[1].Descriptor()
 	// event.DefaultUpdatedAt holds the default value on creation for the updated_at field.
@@ -150,8 +140,6 @@ func init() {
 	machineDescCreatedAt := machineFields[0].Descriptor()
 	// machine.DefaultCreatedAt holds the default value on creation for the created_at field.
 	machine.DefaultCreatedAt = machineDescCreatedAt.Default.(func() time.Time)
-	// machine.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	machine.UpdateDefaultCreatedAt = machineDescCreatedAt.UpdateDefault.(func() time.Time)
 	// machineDescUpdatedAt is the schema descriptor for updated_at field.
 	machineDescUpdatedAt := machineFields[1].Descriptor()
 	// machine.DefaultUpdatedAt holds the default value on creation for the updated_at field.
@@ -162,14 +150,10 @@ func init() {
 	machineDescLastPush := machineFields[2].Descriptor()
 	// machine.DefaultLastPush holds the default value on creation for the last_push field.
 	machine.DefaultLastPush = machineDescLastPush.Default.(func() time.Time)
-	// machine.UpdateDefaultLastPush holds the default value on update for the last_push field.
-	machine.UpdateDefaultLastPush = machineDescLastPush.UpdateDefault.(func() time.Time)
 	// machineDescLastHeartbeat is the schema descriptor for last_heartbeat field.
 	machineDescLastHeartbeat := machineFields[3].Descriptor()
 	// machine.DefaultLastHeartbeat holds the default value on creation for the last_heartbeat field.
 	machine.DefaultLastHeartbeat = machineDescLastHeartbeat.Default.(func() time.Time)
-	// machine.UpdateDefaultLastHeartbeat holds the default value on update for the last_heartbeat field.
-	machine.UpdateDefaultLastHeartbeat = machineDescLastHeartbeat.UpdateDefault.(func() time.Time)
 	// machineDescScenarios is the schema descriptor for scenarios field.
 	machineDescScenarios := machineFields[7].Descriptor()
 	// machine.ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
@@ -188,8 +172,6 @@ func init() {
 	metaDescCreatedAt := metaFields[0].Descriptor()
 	// meta.DefaultCreatedAt holds the default value on creation for the created_at field.
 	meta.DefaultCreatedAt = metaDescCreatedAt.Default.(func() time.Time)
-	// meta.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
-	meta.UpdateDefaultCreatedAt = metaDescCreatedAt.UpdateDefault.(func() time.Time)
 	// metaDescUpdatedAt is the schema descriptor for updated_at field.
 	metaDescUpdatedAt := metaFields[1].Descriptor()
 	// meta.DefaultUpdatedAt holds the default value on creation for the updated_at field.
