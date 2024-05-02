@@ -150,14 +150,10 @@ func init() {
 	machineDescLastPush := machineFields[2].Descriptor()
 	// machine.DefaultLastPush holds the default value on creation for the last_push field.
 	machine.DefaultLastPush = machineDescLastPush.Default.(func() time.Time)
-	// machine.UpdateDefaultLastPush holds the default value on update for the last_push field.
-	machine.UpdateDefaultLastPush = machineDescLastPush.UpdateDefault.(func() time.Time)
 	// machineDescLastHeartbeat is the schema descriptor for last_heartbeat field.
 	machineDescLastHeartbeat := machineFields[3].Descriptor()
 	// machine.DefaultLastHeartbeat holds the default value on creation for the last_heartbeat field.
 	machine.DefaultLastHeartbeat = machineDescLastHeartbeat.Default.(func() time.Time)
-	// machine.UpdateDefaultLastHeartbeat holds the default value on update for the last_heartbeat field.
-	machine.UpdateDefaultLastHeartbeat = machineDescLastHeartbeat.UpdateDefault.(func() time.Time)
 	// machineDescScenarios is the schema descriptor for scenarios field.
 	machineDescScenarios := machineFields[7].Descriptor()
 	// machine.ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.

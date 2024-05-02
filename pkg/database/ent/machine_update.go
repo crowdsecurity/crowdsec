@@ -42,6 +42,14 @@ func (mu *MachineUpdate) SetLastPush(t time.Time) *MachineUpdate {
 	return mu
 }
 
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableLastPush(t *time.Time) *MachineUpdate {
+	if t != nil {
+		mu.SetLastPush(*t)
+	}
+	return mu
+}
+
 // ClearLastPush clears the value of the "last_push" field.
 func (mu *MachineUpdate) ClearLastPush() *MachineUpdate {
 	mu.mutation.ClearLastPush()
@@ -51,6 +59,14 @@ func (mu *MachineUpdate) ClearLastPush() *MachineUpdate {
 // SetLastHeartbeat sets the "last_heartbeat" field.
 func (mu *MachineUpdate) SetLastHeartbeat(t time.Time) *MachineUpdate {
 	mu.mutation.SetLastHeartbeat(t)
+	return mu
+}
+
+// SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableLastHeartbeat(t *time.Time) *MachineUpdate {
+	if t != nil {
+		mu.SetLastHeartbeat(*t)
+	}
 	return mu
 }
 
@@ -323,14 +339,6 @@ func (mu *MachineUpdate) defaults() {
 		v := machine.UpdateDefaultUpdatedAt()
 		mu.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := mu.mutation.LastPush(); !ok && !mu.mutation.LastPushCleared() {
-		v := machine.UpdateDefaultLastPush()
-		mu.mutation.SetLastPush(v)
-	}
-	if _, ok := mu.mutation.LastHeartbeat(); !ok && !mu.mutation.LastHeartbeatCleared() {
-		v := machine.UpdateDefaultLastHeartbeat()
-		mu.mutation.SetLastHeartbeat(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -501,6 +509,14 @@ func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
 	return muo
 }
 
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableLastPush(t *time.Time) *MachineUpdateOne {
+	if t != nil {
+		muo.SetLastPush(*t)
+	}
+	return muo
+}
+
 // ClearLastPush clears the value of the "last_push" field.
 func (muo *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
 	muo.mutation.ClearLastPush()
@@ -510,6 +526,14 @@ func (muo *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
 // SetLastHeartbeat sets the "last_heartbeat" field.
 func (muo *MachineUpdateOne) SetLastHeartbeat(t time.Time) *MachineUpdateOne {
 	muo.mutation.SetLastHeartbeat(t)
+	return muo
+}
+
+// SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableLastHeartbeat(t *time.Time) *MachineUpdateOne {
+	if t != nil {
+		muo.SetLastHeartbeat(*t)
+	}
 	return muo
 }
 
@@ -794,14 +818,6 @@ func (muo *MachineUpdateOne) defaults() {
 	if _, ok := muo.mutation.UpdatedAt(); !ok {
 		v := machine.UpdateDefaultUpdatedAt()
 		muo.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := muo.mutation.LastPush(); !ok && !muo.mutation.LastPushCleared() {
-		v := machine.UpdateDefaultLastPush()
-		muo.mutation.SetLastPush(v)
-	}
-	if _, ok := muo.mutation.LastHeartbeat(); !ok && !muo.mutation.LastHeartbeatCleared() {
-		v := machine.UpdateDefaultLastHeartbeat()
-		muo.mutation.SetLastHeartbeat(v)
 	}
 }
 

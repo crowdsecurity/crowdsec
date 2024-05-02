@@ -4,8 +4,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // Machine holds the schema definition for the Machine entity.
@@ -24,10 +24,10 @@ func (Machine) Fields() []ent.Field {
 			UpdateDefault(types.UtcNow),
 		field.Time("last_push").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Nillable().Optional(),
 		field.Time("last_heartbeat").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Nillable().Optional(),
 		field.String("machineId").
 			Unique().
 			Immutable(),

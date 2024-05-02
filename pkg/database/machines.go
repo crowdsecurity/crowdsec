@@ -159,14 +159,6 @@ func (c *Client) BulkDeleteWatchers(machines []*ent.Machine) (int, error) {
 	return nbDeleted, nil
 }
 
-func (c *Client) UpdateMachineLastPush(machineID string) error {
-	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastPush(time.Now().UTC()).Save(c.CTX)
-	if err != nil {
-		return errors.Wrapf(UpdateFail, "updating machine last_push: %s", err)
-	}
-	return nil
-}
-
 func (c *Client) UpdateMachineLastHeartBeat(machineID string) error {
 	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastHeartbeat(time.Now().UTC()).Save(c.CTX)
 	if err != nil {
