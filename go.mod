@@ -17,7 +17,7 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.9.2
 	github.com/aquasecurity/table v1.8.0
 	github.com/aws/aws-lambda-go v1.47.0
-	github.com/aws/aws-sdk-go v1.51.16
+	github.com/aws/aws-sdk-go v1.52.0
 	github.com/beevik/etree v1.3.0
 	github.com/blackfireio/osinfo v1.0.5
 	github.com/bluele/gcache v0.0.2
