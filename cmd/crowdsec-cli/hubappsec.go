@@ -50,7 +50,7 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 func NewCLIAppsecRule(cfg configGetter) *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		// Only show the converted rules in human mode
-		if csConfig.Cscli.Output != "human" {
+		if cfg().Cscli.Output != "human" {
 			return nil
 		}
 

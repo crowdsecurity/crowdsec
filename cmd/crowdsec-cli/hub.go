@@ -47,7 +47,9 @@ cscli hub upgrade`,
 }
 
 func (cli *cliHub) list(all bool) error {
-	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cfg, nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -69,7 +71,7 @@ func (cli *cliHub) list(all bool) error {
 		}
 	}
 
-	err = listItems(color.Output, cwhub.ItemTypes, items, true)
+	err = listItems(color.Output, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
 	if err != nil {
 		return err
 	}
