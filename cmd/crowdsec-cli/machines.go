@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"slices"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/aquasecurity/table"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -24,8 +26,10 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -147,21 +151,69 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmd.AddCommand(cli.newDeleteCmd())
 	cmd.AddCommand(cli.newValidateCmd())
 	cmd.AddCommand(cli.newPruneCmd())
+	cmd.AddCommand(cli.newInspectCmd())
 
 	return cmd
 }
 
-func (cli *cliMachines) list() error {
-	out := color.Output
+func showItems(out io.Writer, itemType string, items map[string]models.HubItem) {
+	t := newLightTable(out)
+	t.SetHeaders("Name", "Status", "Version")
+	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
-	machines, err := cli.db.ListMachines()
-	if err != nil {
-		return fmt.Errorf("unable to list machines: %w", err)
+	for name, item := range items {
+		t.AddRow(name, item.Status, item.Version)
 	}
+
+	renderTableTitle(out, strings.ToUpper(itemType))
+	t.Render()
+}
+
+func showHubState(out io.Writer, machines []*ent.Machine) {
+
+	//FIXME: ugly
+	items := make(map[string]map[string]models.HubItem)
+
+	for _, itemType := range cwhub.ItemTypes {
+		items[itemType] = map[string]models.HubItem{}
+	}
+
+	for _, machine := range machines {
+		state := machine.Hubstate
+
+		if state == nil {
+			continue
+		}
+
+		for name, item := range *state {
+			//here, name is type:actual_name
+			//we want to split it to get the type
+			split := strings.Split(name, ":")
+			if len(split) != 2 {
+				log.Warningf("invalid hub item name '%s'", name)
+				continue
+			}
+			items[split[0]][split[1]] = item
+			//items[split[0]] = append(items[split[0]], item)
+		}
+	}
+
+	for _, t := range cwhub.ItemTypes {
+		showItems(out, t, items[t])
+	}
+}
+
+func (cli *cliMachines) machinesShow(machines []*ent.Machine, showHub bool) error {
+	//FIXME: should showHub be used for json/raw output ?
+	out := color.Output
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
 		getAgentsTable(out, machines)
+		if showHub {
+			showHubState(out, machines)
+		}
 	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
@@ -174,7 +226,7 @@ func (cli *cliMachines) list() error {
 	case "raw":
 		csvwriter := csv.NewWriter(out)
 
-		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
+		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os", "feature_flags"})
 		if err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
@@ -187,15 +239,24 @@ func (cli *cliMachines) list() error {
 
 			hb, _ := getLastHeartbeat(m)
 
-			if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb}); err != nil {
+			if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb, fmt.Sprintf("%s/%s", m.Osname, m.Osversion), m.Featureflags}); err != nil {
 				return fmt.Errorf("failed to write raw output: %w", err)
 			}
 		}
 
 		csvwriter.Flush()
 	}
-
 	return nil
+}
+
+func (cli *cliMachines) list() error {
+
+	machines, err := cli.db.ListMachines()
+	if err != nil {
+		return fmt.Errorf("unable to list machines: %w", err)
+	}
+
+	return cli.machinesShow(machines, false)
 }
 
 func (cli *cliMachines) newListCmd() *cobra.Command {
@@ -399,7 +460,7 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force bool) error {
 	if duration < 2*time.Minute && !notValidOnly {
 		if yes, err := askYesNo(
-				"The duration you provided is less than 2 minutes. " +
+			"The duration you provided is less than 2 minutes. "+
 				"This can break installations if the machines are only temporarily disconnected. Continue?", false); err != nil {
 			return err
 		} else if !yes {
@@ -428,7 +489,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 
 	if !force {
 		if yes, err := askYesNo(
-				"You are about to PERMANENTLY remove the above machines from the database. " +
+			"You are about to PERMANENTLY remove the above machines from the database. "+
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err
 		} else if !yes {
@@ -500,6 +561,36 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 			return cli.validate(args[0])
 		},
 	}
+
+	return cmd
+}
+
+func (cli *cliMachines) inspect(machineID string, showHub bool) error {
+	machine, err := cli.db.QueryMachineByID(machineID)
+	if err != nil {
+		return fmt.Errorf("unable to get machine '%s': %w", machineID, err)
+	}
+
+	return cli.machinesShow([]*ent.Machine{machine}, showHub)
+}
+
+func (cli *cliMachines) newInspectCmd() *cobra.Command {
+	var showHub bool
+
+	cmd := &cobra.Command{
+		Use:               "inspect [machine_name]",
+		Short:             "inspect a machine by name",
+		Example:           `cscli machines inspect "machine1"`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return cli.inspect(args[0], showHub)
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.BoolVarP(&showHub, "hub", "H", false, "show hub state")
 
 	return cmd
 }
