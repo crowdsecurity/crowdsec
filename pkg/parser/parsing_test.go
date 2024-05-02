@@ -131,7 +131,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	}
 	for n := 0; n < count; n++ {
 		if testFile(tests, *pctx, pnodes) != true {
-			return fmt.Errorf("test failed !")
+			return errors.New("test failed !")
 		}
 	}
 	return nil
@@ -296,7 +296,7 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 	*/
 	if len(testSet.Results) == 0 && len(results) == 0 {
 		log.Fatal("No results, no tests, abort.")
-		return false, fmt.Errorf("no tests, no results")
+		return false, errors.New("no tests, no results")
 	}
 
 reCheck:

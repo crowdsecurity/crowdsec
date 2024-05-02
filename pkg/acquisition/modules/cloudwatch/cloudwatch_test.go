@@ -1,6 +1,7 @@
 package cloudwatchacquisition
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -43,7 +44,7 @@ func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
 func checkForLocalStackAvailability() error {
 	v := os.Getenv("AWS_ENDPOINT_FORCE")
 	if v == "" {
-		return fmt.Errorf("missing aws endpoint for tests : AWS_ENDPOINT_FORCE")
+		return errors.New("missing aws endpoint for tests : AWS_ENDPOINT_FORCE")
 	}
 
 	v = strings.TrimPrefix(v, "http://")

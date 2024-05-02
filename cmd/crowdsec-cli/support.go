@@ -154,7 +154,7 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 
-	if err := listItems(out, []string{itemType}, items, false); err != nil {
+	if err := listItems(out, []string{itemType}, items, false, "human"); err != nil {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 
