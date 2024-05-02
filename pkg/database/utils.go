@@ -13,12 +13,14 @@ func IP2Int(ip net.IP) uint32 {
 	if len(ip) == 16 {
 		return binary.BigEndian.Uint32(ip[12:16])
 	}
+
 	return binary.BigEndian.Uint32(ip)
 }
 
 func Int2ip(nn uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, nn)
+
 	return ip
 }
 
@@ -26,13 +28,14 @@ func IsIpv4(host string) bool {
 	return net.ParseIP(host) != nil
 }
 
-//Stolen from : https://github.com/llimllib/ipaddress/
+// Stolen from : https://github.com/llimllib/ipaddress/
 // Return the final address of a net range. Convert to IPv4 if possible,
 // otherwise return an ipv6
 func LastAddress(n *net.IPNet) net.IP {
 	ip := n.IP.To4()
 	if ip == nil {
 		ip = n.IP
+
 		return net.IP{
 			ip[0] | ^n.Mask[0], ip[1] | ^n.Mask[1], ip[2] | ^n.Mask[2],
 			ip[3] | ^n.Mask[3], ip[4] | ^n.Mask[4], ip[5] | ^n.Mask[5],
@@ -55,9 +58,11 @@ func GetIpsFromIpRange(host string) (int64, int64, error) {
 	if err != nil {
 		return 0, 0, fmt.Errorf("'%s' is not a valid CIDR", host)
 	}
+
 	if parsedRange == nil {
-		return 0, 0, fmt.Errorf("unable to parse network : %s", err)
+		return 0, 0, fmt.Errorf("unable to parse network: %w", err)
 	}
+
 	ipStart := int64(IP2Int(parsedRange.IP))
 	ipEnd := int64(IP2Int(LastAddress(parsedRange)))
 
@@ -66,20 +71,25 @@ func GetIpsFromIpRange(host string) (int64, int64, error) {
 
 func ParseDuration(d string) (time.Duration, error) {
 	durationStr := d
+
 	if strings.HasSuffix(d, "d") {
 		days := strings.Split(d, "d")[0]
 		if len(days) == 0 {
 			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
 		}
+
 		daysInt, err := strconv.Atoi(days)
 		if err != nil {
 			return 0, err
 		}
+
 		durationStr = strconv.Itoa(daysInt*24) + "h"
 	}
+
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
 		return 0, err
 	}
+
 	return duration, nil
 }
