@@ -4,8 +4,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type BucketPourInfo map[string][]types.Event

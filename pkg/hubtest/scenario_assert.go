@@ -2,6 +2,7 @@ package hubtest
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -77,13 +78,12 @@ func (s *ScenarioAssert) LoadTest(filename string, bucketpour string) error {
 
 func (s *ScenarioAssert) AssertFile(testFile string) error {
 	file, err := os.Open(s.File)
-
 	if err != nil {
-		return fmt.Errorf("failed to open")
+		return errors.New("failed to open")
 	}
 
 	if err := s.LoadTest(testFile, ""); err != nil {
-		return fmt.Errorf("unable to load parser dump file '%s': %s", testFile, err)
+		return fmt.Errorf("unable to load parser dump file '%s': %w", testFile, err)
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -134,7 +134,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 
 			continue
 		}
-		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
+		// fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
 	}
 
 	file.Close()
@@ -142,7 +142,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 	if s.NbAssert == 0 {
 		assertData, err := s.AutoGenFromFile(testFile)
 		if err != nil {
-			return fmt.Errorf("couldn't generate assertion: %s", err)
+			return fmt.Errorf("couldn't generate assertion: %w", err)
 		}
 
 		s.AutoGenAssertData = assertData
@@ -157,8 +157,8 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 }
 
 func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
-	//debug doesn't make much sense with the ability to evaluate "on the fly"
-	//var debugFilter *exprhelpers.ExprDebugger
+	// debug doesn't make much sense with the ability to evaluate "on the fly"
+	// var debugFilter *exprhelpers.ExprDebugger
 	var output interface{}
 
 	env := map[string]interface{}{"results": *s.TestData}
@@ -171,7 +171,7 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
 	// }
 
-	//dump opcode in trace level
+	// dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
 	output, err = expr.Run(runtimeFilter, map[string]interface{}{"results": *s.TestData})

@@ -48,7 +48,7 @@ func (s *PluginSuite) writeconfig(config PluginConfig) {
 	data, err := yaml.Marshal(&config)
 	require.NoError(t, err, "unable to marshal config file")
 
-	err = os.WriteFile(s.pluginConfig, data, 0644)
+	err = os.WriteFile(s.pluginConfig, data, 0o644)
 	require.NoError(t, err, "unable to write config file %s", s.pluginConfig)
 }
 
@@ -135,6 +135,7 @@ func (s *PluginSuite) TestBrokerInit() {
 			if tc.action != nil {
 				tc.action(t)
 			}
+
 			_, err := s.InitBroker(&tc.procCfg)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
