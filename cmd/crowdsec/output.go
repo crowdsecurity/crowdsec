@@ -46,8 +46,8 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 
 func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error {
 	ctx := context.Background()
-	alertsToPush, err := dedupAlerts(alerts)
 
+	alertsToPush, err := dedupAlerts(alerts)
 	if err != nil {
 		return fmt.Errorf("failed to transform alerts for api: %w", err)
 	}

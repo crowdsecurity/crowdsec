@@ -130,8 +130,6 @@ linters-settings:
         disabled: true
       - name: comment-spacings
         disabled: true
-      - name: confusing-naming
-        disabled: false
       - name: confusing-results
         disabled: true
       - name: context-as-argument
@@ -180,16 +178,12 @@ linters-settings:
         disabled: true
       - name: modifies-parameter
         disabled: true
-      - name: modifies-value-receiver
-        disabled: false
       - name: optimize-operands-order
         disabled: true
       - name: nested-structs
         disabled: true
       - name: package-comments
         disabled: true
-      - name: range-val-address
-        disabled: false
       - name: redundant-import-alias
         disabled: true
       - name: struct-tag
