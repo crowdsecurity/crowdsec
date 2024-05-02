@@ -13,8 +13,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIAppsecConfig() *cliItem {
+func NewCLIAppsecConfig(cfg configGetter) *cliItem {
 	return &cliItem{
+		cfg:       cfg,
 		name:      cwhub.APPSEC_CONFIGS,
 		singular:  "appsec-config",
 		oneOrMore: "appsec-config(s)",
@@ -46,10 +47,10 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 	}
 }
 
-func NewCLIAppsecRule() *cliItem {
+func NewCLIAppsecRule(cfg configGetter) *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		// Only show the converted rules in human mode
-		if csConfig.Cscli.Output != "human" {
+		if cfg().Cscli.Output != "human" {
 			return nil
 		}
 
@@ -57,11 +58,11 @@ func NewCLIAppsecRule() *cliItem {
 
 		yamlContent, err := os.ReadFile(item.State.LocalPath)
 		if err != nil {
-			return fmt.Errorf("unable to read file %s : %s", item.State.LocalPath, err)
+			return fmt.Errorf("unable to read file %s: %w", item.State.LocalPath, err)
 		}
 
 		if err := yaml.Unmarshal(yamlContent, &appsecRule); err != nil {
-			return fmt.Errorf("unable to unmarshal yaml file %s : %s", item.State.LocalPath, err)
+			return fmt.Errorf("unable to unmarshal yaml file %s: %w", item.State.LocalPath, err)
 		}
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {
@@ -70,7 +71,7 @@ func NewCLIAppsecRule() *cliItem {
 			for _, rule := range appsecRule.Rules {
 				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
 				if err != nil {
-					return fmt.Errorf("unable to convert rule %s : %s", rule.Name, err)
+					return fmt.Errorf("unable to convert rule %s: %w", rule.Name, err)
 				}
 
 				fmt.Println(convertedRule)
@@ -88,6 +89,7 @@ func NewCLIAppsecRule() *cliItem {
 	}
 
 	return &cliItem{
+		cfg:       cfg,
 		name:      "appsec-rules",
 		singular:  "appsec-rule",
 		oneOrMore: "appsec-rule(s)",

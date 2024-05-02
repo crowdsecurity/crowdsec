@@ -17,12 +17,12 @@ import (
 )
 
 func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.Hub) (*apiclient.ApiClient, error) {
-	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
 		return nil, fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
 
-	appsecRules, err := hub.GetInstalledItemNames(cwhub.APPSEC_RULES)
+	appsecRules, err := hub.GetInstalledNamesByType(cwhub.APPSEC_RULES)
 	if err != nil {
 		return nil, fmt.Errorf("loading list of installed hub appsec rules: %w", err)
 	}
@@ -52,11 +52,11 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 		PapiURL:       papiURL,
 		VersionPrefix: "v1",
 		UpdateScenario: func() ([]string, error) {
-			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 			if err != nil {
 				return nil, err
 			}
-			appsecRules, err := hub.GetInstalledItemNames(cwhub.APPSEC_RULES)
+			appsecRules, err := hub.GetInstalledNamesByType(cwhub.APPSEC_RULES)
 			if err != nil {
 				return nil, err
 			}

@@ -10,7 +10,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -85,7 +85,6 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		URL:           apiurl,
 		VersionPrefix: CAPIURLPrefix,
 	}, nil)
-
 	if err != nil {
 		return fmt.Errorf("api client register ('%s'): %w", types.CAPIBaseURL, err)
 	}
@@ -175,7 +174,7 @@ func (cli *cliCapi) status() error {
 		return err
 	}
 
-	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}

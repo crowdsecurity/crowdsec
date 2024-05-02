@@ -13,7 +13,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -56,7 +56,7 @@ func (cli *cliLapi) status() error {
 		return err
 	}
 
-	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
@@ -116,7 +116,6 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 		URL:           apiurl,
 		VersionPrefix: LAPIURLPrefix,
 	}, nil)
-
 	if err != nil {
 		return fmt.Errorf("api client register: %w", err)
 	}
@@ -585,7 +584,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 }
 
 func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
-	var ret = make([]string, 0)
+	ret := make([]string, 0)
 
 	for _, subnode := range node.LeavesNodes {
 		if subnode.Grok.RunTimeRegexp != nil {

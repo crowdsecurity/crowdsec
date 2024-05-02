@@ -44,7 +44,7 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 	ret := models.HubItems{}
 
 	for _, itemType := range cwhub.ItemTypes {
-		items, _ := hub.GetInstalledItems(itemType)
+		items, _ := hub.GetInstalledItemsByType(itemType)
 		for _, item := range items {
 			status := "official"
 			if item.State.IsLocal() {

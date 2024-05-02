@@ -104,7 +104,7 @@ func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
 
 	if hub != nil {
-		items, err := hub.GetInstalledItems(cwhub.CONTEXTS)
+		items, err := hub.GetInstalledItemsByType(cwhub.CONTEXTS)
 		if err != nil {
 			return err
 		}

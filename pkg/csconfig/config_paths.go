@@ -1,6 +1,7 @@
 package csconfig
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 )
@@ -19,11 +20,11 @@ type ConfigurationPaths struct {
 func (c *Config) loadConfigurationPaths() error {
 	var err error
 	if c.ConfigPaths == nil {
-		return fmt.Errorf("no configuration paths provided")
+		return errors.New("no configuration paths provided")
 	}
 
 	if c.ConfigPaths.DataDir == "" {
-		return fmt.Errorf("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
+		return errors.New("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
 	}
 
 	if c.ConfigPaths.HubDir == "" {
