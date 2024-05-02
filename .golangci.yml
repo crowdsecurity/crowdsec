@@ -396,9 +396,7 @@ issues:
   exclude-dirs:
     - pkg/time/rate
 
-  exclude-files:
-    - pkg/yamlpatch/merge.go
-    - pkg/yamlpatch/merge_test.go
+  exclude-files: []
 
   exclude-generated-strict: true
 

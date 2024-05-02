@@ -49,18 +49,18 @@ func TestParserConfigs(t *testing.T) {
 	}
 	for idx := range CfgTests {
 		err := CfgTests[idx].NodeCfg.compile(pctx, EnricherCtx{})
-		if CfgTests[idx].Compiles == true && err != nil {
+		if CfgTests[idx].Compiles && err != nil {
 			t.Fatalf("Compile: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}
-		if CfgTests[idx].Compiles == false && err == nil {
+		if !CfgTests[idx].Compiles && err == nil {
 			t.Fatalf("Compile: (%d/%d) expected error", idx+1, len(CfgTests))
 		}
 
 		err = CfgTests[idx].NodeCfg.validate(pctx, EnricherCtx{})
-		if CfgTests[idx].Valid == true && err != nil {
+		if CfgTests[idx].Valid && err != nil {
 			t.Fatalf("Valid: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}
-		if CfgTests[idx].Valid == false && err == nil {
+		if !CfgTests[idx].Valid && err == nil {
 			t.Fatalf("Valid: (%d/%d) expected error", idx+1, len(CfgTests))
 		}
 	}

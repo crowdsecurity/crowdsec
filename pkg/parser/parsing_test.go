@@ -130,7 +130,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 		b.ResetTimer()
 	}
 	for n := 0; n < count; n++ {
-		if testFile(tests, *pctx, pnodes) != true {
+		if !testFile(tests, *pctx, pnodes) {
 			return errors.New("test failed !")
 		}
 	}
@@ -304,7 +304,7 @@ reCheck:
 	for ridx, result := range results {
 		for eidx, expected := range testSet.Results {
 			explain, match := matchEvent(expected, result, debug)
-			if match == true {
+			if match {
 				log.Infof("expected %d/%d matches result %d/%d", eidx, len(testSet.Results), ridx, len(results))
 				if len(explain) > 0 {
 					log.Printf("-> %s", explain[len(explain)-1])
