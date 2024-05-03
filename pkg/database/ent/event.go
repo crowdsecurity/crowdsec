@@ -19,9 +19,9 @@ type Event struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Time holds the value of the "time" field.
 	Time time.Time `json:"time,omitempty"`
 	// Serialized holds the value of the "serialized" field.
@@ -92,15 +92,13 @@ func (e *Event) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				e.CreatedAt = new(time.Time)
-				*e.CreatedAt = value.Time
+				e.CreatedAt = value.Time
 			}
 		case event.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				e.UpdatedAt = new(time.Time)
-				*e.UpdatedAt = value.Time
+				e.UpdatedAt = value.Time
 			}
 		case event.FieldTime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -161,15 +159,11 @@ func (e *Event) String() string {
 	var builder strings.Builder
 	builder.WriteString("Event(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", e.ID))
-	if v := e.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(e.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := e.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(e.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("time=")
 	builder.WriteString(e.Time.Format(time.ANSIC))

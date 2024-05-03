@@ -213,6 +213,12 @@ func (bc *BouncerCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (bc *BouncerCreate) check() error {
+	if _, ok := bc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Bouncer.created_at"`)}
+	}
+	if _, ok := bc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Bouncer.updated_at"`)}
+	}
 	if _, ok := bc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Bouncer.name"`)}
 	}
@@ -256,11 +262,11 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := bc.mutation.CreatedAt(); ok {
 		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = &value
+		_node.CreatedAt = value
 	}
 	if value, ok := bc.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = &value
+		_node.UpdatedAt = value
 	}
 	if value, ok := bc.mutation.Name(); ok {
 		_spec.SetField(bouncer.FieldName, field.TypeString, value)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -88,7 +89,7 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 			return fmt.Errorf("error while traversing directory %s: %w", path, err)
 		}
 
-		name := filepath.Join(cfg.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
+		name := filepath.Join(cfg.ConfigPaths.NotificationDir, info.Name()) // Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
 			if err != nil {
@@ -266,7 +267,7 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
-			//Create a single profile with plugin name as notification name
+			// Create a single profile with plugin name as notification name
 			return pluginBroker.Init(cfg.PluginConfig, []*csconfig.ProfileCfg{
 				{
 					Notifications: []string{
@@ -320,8 +321,8 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 				Alert:     alert,
 			}
 
-			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(fmt.Errorf("terminating"))
+			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
+			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
 
 			return nil
@@ -416,8 +417,8 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					break
 				}
 			}
-			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(fmt.Errorf("terminating"))
+			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
+			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
 
 			return nil

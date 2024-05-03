@@ -154,7 +154,7 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 
-	if err := listItems(out, []string{itemType}, items, false); err != nil {
+	if err := listItems(out, []string{itemType}, items, false, "human"); err != nil {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 
@@ -199,7 +199,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
 
-	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}
@@ -319,7 +319,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 `,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		Run: func(_ *cobra.Command, _ []string) {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
@@ -473,15 +473,19 @@ cscli support dump -f /tmp/crowdsec-support.zip
 
 			err = zipWriter.Close()
 			if err != nil {
-				log.Fatalf("could not finalize zip file: %s", err)
+				return fmt.Errorf("could not finalize zip file: %s", err)
 			}
 
+			if outFile == "-" {
+				_, err = os.Stdout.Write(w.Bytes())
+				return err
+			}
 			err = os.WriteFile(outFile, w.Bytes(), 0o600)
 			if err != nil {
-				log.Fatalf("could not write zip file to %s: %s", outFile, err)
+				return fmt.Errorf("could not write zip file to %s: %s", outFile, err)
 			}
-
 			log.Infof("Written zip file to %s", outFile)
+			return nil
 		},
 	}
 

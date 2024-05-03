@@ -19,9 +19,9 @@ type Decision struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Until holds the value of the "until" field.
 	Until *time.Time `json:"until,omitempty"`
 	// Scenario holds the value of the "scenario" field.
@@ -116,15 +116,13 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				d.CreatedAt = new(time.Time)
-				*d.CreatedAt = value.Time
+				d.CreatedAt = value.Time
 			}
 		case decision.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				d.UpdatedAt = new(time.Time)
-				*d.UpdatedAt = value.Time
+				d.UpdatedAt = value.Time
 			}
 		case decision.FieldUntil:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -252,15 +250,11 @@ func (d *Decision) String() string {
 	var builder strings.Builder
 	builder.WriteString("Decision(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", d.ID))
-	if v := d.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(d.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := d.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(d.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	if v := d.Until; v != nil {
 		builder.WriteString("until=")

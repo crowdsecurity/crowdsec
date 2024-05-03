@@ -103,7 +103,7 @@ After running this command your will need to validate the enrollment in the weba
 				return err
 			}
 
-			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get installed scenarios: %w", err)
 			}
