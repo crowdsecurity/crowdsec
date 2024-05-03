@@ -6,6 +6,9 @@
 set -e
 shopt -s inherit_errexit
 
+# Note that "if function_name" in bash matches when the function returns 0,
+# meaning successful execution.
+
 # match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
@@ -52,8 +55,8 @@ cscli() {
 
 run_hub_update() {
     index_modification_time=$(stat -c %Y /etc/crowdsec/hub/.index.json 2>/dev/null)
-    #Run cscli hub update if no date or if the index file is older than 24h
-    if [ -z "$index_modification_time" ] || [ $(( $(date +%s) - $index_modification_time )) -gt 86400 ]; then
+    # Run cscli hub update if no date or if the index file is older than 24h
+    if [ -z "$index_modification_time" ] || [ $(( $(date +%s) - index_modification_time )) -gt 86400 ]; then
         cscli hub update
     else
         echo "Skipping hub update, index file is recent"
@@ -77,8 +80,7 @@ is_mounted() {
 }
 
 run_hub_update_if_from_volume() {
-    is_mounted "/etc/crowdsec/hub/.index.json"
-    if [ $? -eq 0 ]; then
+    if is_mounted "/etc/crowdsec/hub/.index.json"; then
         echo "Running hub update"
         run_hub_update
     else
@@ -88,8 +90,7 @@ run_hub_update_if_from_volume() {
 
 run_hub_upgrade_if_from_volume() {
     isfalse "$NO_HUB_UPGRADE" || return 0
-    is_mounted "/var/lib/crowdsec/data"
-    if [ $? -eq 0 ]; then
+    if is_mounted "/var/lib/crowdsec/data"; then
         echo "Running hub upgrade"
         cscli hub upgrade
     else
@@ -167,8 +168,7 @@ cscli_if_clean() {
             error_only=""
             echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
-            cscli $error_only "$itemtype" "$action" "$obj" "$@"
-            if [ "$?" -ne 0 ]; then
+            if ! cscli $error_only "$itemtype" "$action" "$obj" "$@"; then
                 echo "Failed to $action $itemtype/$obj, running hub update before retrying"
                 run_hub_update
                 # shellcheck disable=SC2086
@@ -334,9 +334,9 @@ fi
 if [ "$GID" != "" ]; then
     if istrue "$(conf_get '.db_config.type == "sqlite"')"; then
         # don't fail if the db is not there yet
-        chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null \
-            && echo "sqlite database permissions updated" \
-            || true
+        if chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null; then
+            echo "sqlite database permissions updated"
+        fi
     fi
 fi
 
