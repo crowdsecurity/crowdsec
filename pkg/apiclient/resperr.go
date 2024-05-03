@@ -39,7 +39,7 @@ func CheckResponse(r *http.Response) error {
 	}
 
 	switch r.StatusCode {
-	case 422:
+	case http.StatusUnprocessableEntity:
 		ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid request: %s", r.StatusCode, string(data)))
 	default:
 		if err := json.Unmarshal(data, ret); err != nil {
