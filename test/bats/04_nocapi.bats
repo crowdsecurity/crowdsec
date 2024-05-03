@@ -66,7 +66,7 @@ teardown() {
     config_disable_capi
     ./instance-crowdsec start
     rune -0 cscli lapi status
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_line "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli metrics" {

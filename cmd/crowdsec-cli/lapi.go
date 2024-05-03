@@ -75,16 +75,16 @@ func (cli *cliLapi) status() error {
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
+	fmt.Printf("Loaded credentials from %s\n", cfg.API.Client.CredentialsFilePath)
 	// use the original string because apiURL would print 'http://unix/'
-	log.Infof("Trying to authenticate with username %s on %s", login, origURL)
+	fmt.Printf("Trying to authenticate with username %s on %s\n", login, origURL)
 
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
-	log.Infof("You can successfully interact with Local API (LAPI)")
+	fmt.Println("You can successfully interact with Local API (LAPI)")
 
 	return nil
 }

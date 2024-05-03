@@ -278,6 +278,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 func main() {
 	cmd := newCliRoot().NewCommand()
 	if err := cmd.Execute(); err != nil {
-		log.Fatal(err)
+		color.New(color.FgRed).Fprint(os.Stderr, "Error: ")
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }

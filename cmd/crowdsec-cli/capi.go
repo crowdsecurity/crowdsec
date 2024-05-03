@@ -194,15 +194,15 @@ func (cli *cliCapi) status() error {
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cfg.API.Server.OnlineClient.Credentials.Login, apiurl)
+	fmt.Printf("Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
+	fmt.Printf("Trying to authenticate with username %s on %s\n", cfg.API.Server.OnlineClient.Credentials.Login, apiurl)
 
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 
-	log.Info("You can successfully interact with Central API (CAPI)")
+	fmt.Println("You can successfully interact with Central API (CAPI)")
 
 	return nil
 }

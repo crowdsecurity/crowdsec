@@ -37,22 +37,22 @@ teardown() {
     ./instance-crowdsec start
 
     rune -0 cscli lapi status
-    assert_stderr --regexp "Trying to authenticate with username .* on $socket"
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --regexp "Trying to authenticate with username .* on $socket"
+    assert_line "You can successfully interact with Local API (LAPI)"
 }
 
 @test "crowdsec - listen on both socket and TCP" {
     ./instance-crowdsec start
 
     rune -0 cscli lapi status
-    assert_stderr --regexp "Trying to authenticate with username .* on http://127.0.0.1:8080/"
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --regexp "Trying to authenticate with username .* on http://127.0.0.1:8080/"
+    assert_line "You can successfully interact with Local API (LAPI)"
 
     config_set "$LOCAL_API_CREDENTIALS" ".url=strenv(socket)"
 
     rune -0 cscli lapi status
-    assert_stderr --regexp "Trying to authenticate with username .* on $socket"
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --regexp "Trying to authenticate with username .* on $socket"
+    assert_line "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli - authenticate new machine with socket" {

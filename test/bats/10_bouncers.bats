@@ -56,12 +56,9 @@ teardown() {
 
 @test "we can't add the same bouncer twice" {
     rune -0 cscli bouncers add ciTestBouncer
-    rune -1 cscli bouncers add ciTestBouncer -o json
+    rune -1 cscli bouncers add ciTestBouncer
 
-    # XXX temporary hack to filter out unwanted log lines that may appear before
-    # log configuration (= not json)
-    rune -0 jq -c '[.level,.msg]' <(stderr | grep "^{")
-    assert_output '["fatal","unable to create bouncer: bouncer ciTestBouncer already exists"]'
+    assert_stderr 'Error: unable to create bouncer: bouncer ciTestBouncer already exists'
 
     rune -0 cscli bouncers list -o json
     rune -0 jq '. | length' <(output)

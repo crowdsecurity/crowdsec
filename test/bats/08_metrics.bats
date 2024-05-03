@@ -25,7 +25,7 @@ teardown() {
 @test "cscli metrics (crowdsec not running)" {
     rune -1 cscli metrics
     # crowdsec is down
-    assert_stderr --partial 'failed to fetch metrics: executing GET request for URL \"http://127.0.0.1:6060/metrics\" failed: Get \"http://127.0.0.1:6060/metrics\": dial tcp 127.0.0.1:6060: connect: connection refused'
+    assert_stderr --partial 'Error: failed to fetch metrics: executing GET request for URL "http://127.0.0.1:6060/metrics" failed: Get "http://127.0.0.1:6060/metrics": dial tcp 127.0.0.1:6060: connect: connection refused'
 }
 
 @test "cscli metrics (bad configuration)" {

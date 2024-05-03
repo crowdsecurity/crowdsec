@@ -34,8 +34,7 @@ teardown() {
     # no "usage" output after every error
     rune -1 cscli blahblah
     # error is displayed as log entry, not with print
-    assert_stderr --partial 'level=fatal msg="unknown command \"blahblah\" for \"cscli\""'
-    refute_stderr --partial 'unknown command "blahblah" for "cscli"'
+    assert_stderr --partial 'Error: unknown command "blahblah" for "cscli"'
 }
 
 @test "cscli version" {
@@ -214,9 +213,9 @@ teardown() {
     rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status
 
-    assert_stderr --partial "Loaded credentials from"
-    assert_stderr --partial "Trying to authenticate with username"
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --partial "Loaded credentials from"
+    assert_output --partial "Trying to authenticate with username"
+    assert_output --partial "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli - missing LAPI credentials file" {
@@ -261,9 +260,8 @@ teardown() {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     config_set "${LOCAL_API_CREDENTIALS}" '.url="http://127.0.0.1:-80"'
 
-    rune -1 cscli lapi status -o json
-    rune -0 jq -r '.msg' <(stderr)
-    assert_output 'parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
+    rune -1 cscli lapi status
+    assert_stderr 'Error: parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
 }
 
 @test "cscli - bad LAPI password" {
@@ -271,9 +269,8 @@ teardown() {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     config_set "${LOCAL_API_CREDENTIALS}" '.password="meh"'
 
-    rune -1 cscli lapi status -o json
-    rune -0 jq -r '.msg' <(stderr)
-    assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
+    rune -1 cscli lapi status
+    assert_stderr 'Error: failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
 }
 
 @test "'cscli completion' with or without configuration file" {
@@ -355,7 +352,7 @@ teardown() {
     # it is possible to enable subcommands with feature flags defined in feature.yaml
 
     rune -1 cscli setup
-    assert_stderr --partial 'unknown command \"setup\" for \"cscli\"'
+    assert_stderr 'Error: unknown command "setup" for "cscli"'
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
     echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
     rune -0 cscli setup
