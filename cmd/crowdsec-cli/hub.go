@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliHub struct {
+type cliHub struct{
 	cfg configGetter
 }
 
@@ -47,7 +47,9 @@ cscli hub upgrade`,
 }
 
 func (cli *cliHub) list(all bool) error {
-	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cfg, nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -69,7 +71,7 @@ func (cli *cliHub) list(all bool) error {
 		}
 	}
 
-	err = listItems(color.Output, cwhub.ItemTypes, items, true)
+	err = listItems(color.Output, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
 	if err != nil {
 		return err
 	}
@@ -137,7 +139,7 @@ func (cli *cliHub) upgrade(force bool) error {
 	}
 
 	for _, itemType := range cwhub.ItemTypes {
-		items, err := hub.GetInstalledItems(itemType)
+		items, err := hub.GetInstalledItemsByType(itemType)
 		if err != nil {
 			return err
 		}

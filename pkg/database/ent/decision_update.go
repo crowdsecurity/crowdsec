@@ -29,27 +29,9 @@ func (du *DecisionUpdate) Where(ps ...predicate.Decision) *DecisionUpdate {
 	return du
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (du *DecisionUpdate) SetCreatedAt(t time.Time) *DecisionUpdate {
-	du.mutation.SetCreatedAt(t)
-	return du
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (du *DecisionUpdate) ClearCreatedAt() *DecisionUpdate {
-	du.mutation.ClearCreatedAt()
-	return du
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (du *DecisionUpdate) SetUpdatedAt(t time.Time) *DecisionUpdate {
 	du.mutation.SetUpdatedAt(t)
-	return du
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (du *DecisionUpdate) ClearUpdatedAt() *DecisionUpdate {
-	du.mutation.ClearUpdatedAt()
 	return du
 }
 
@@ -392,11 +374,7 @@ func (du *DecisionUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (du *DecisionUpdate) defaults() {
-	if _, ok := du.mutation.CreatedAt(); !ok && !du.mutation.CreatedAtCleared() {
-		v := decision.UpdateDefaultCreatedAt()
-		du.mutation.SetCreatedAt(v)
-	}
-	if _, ok := du.mutation.UpdatedAt(); !ok && !du.mutation.UpdatedAtCleared() {
+	if _, ok := du.mutation.UpdatedAt(); !ok {
 		v := decision.UpdateDefaultUpdatedAt()
 		du.mutation.SetUpdatedAt(v)
 	}
@@ -411,17 +389,8 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := du.mutation.CreatedAt(); ok {
-		_spec.SetField(decision.FieldCreatedAt, field.TypeTime, value)
-	}
-	if du.mutation.CreatedAtCleared() {
-		_spec.ClearField(decision.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := du.mutation.UpdatedAt(); ok {
 		_spec.SetField(decision.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if du.mutation.UpdatedAtCleared() {
-		_spec.ClearField(decision.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := du.mutation.Until(); ok {
 		_spec.SetField(decision.FieldUntil, field.TypeTime, value)
@@ -547,27 +516,9 @@ type DecisionUpdateOne struct {
 	mutation *DecisionMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (duo *DecisionUpdateOne) SetCreatedAt(t time.Time) *DecisionUpdateOne {
-	duo.mutation.SetCreatedAt(t)
-	return duo
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (duo *DecisionUpdateOne) ClearCreatedAt() *DecisionUpdateOne {
-	duo.mutation.ClearCreatedAt()
-	return duo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (duo *DecisionUpdateOne) SetUpdatedAt(t time.Time) *DecisionUpdateOne {
 	duo.mutation.SetUpdatedAt(t)
-	return duo
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (duo *DecisionUpdateOne) ClearUpdatedAt() *DecisionUpdateOne {
-	duo.mutation.ClearUpdatedAt()
 	return duo
 }
 
@@ -923,11 +874,7 @@ func (duo *DecisionUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (duo *DecisionUpdateOne) defaults() {
-	if _, ok := duo.mutation.CreatedAt(); !ok && !duo.mutation.CreatedAtCleared() {
-		v := decision.UpdateDefaultCreatedAt()
-		duo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := duo.mutation.UpdatedAt(); !ok && !duo.mutation.UpdatedAtCleared() {
+	if _, ok := duo.mutation.UpdatedAt(); !ok {
 		v := decision.UpdateDefaultUpdatedAt()
 		duo.mutation.SetUpdatedAt(v)
 	}
@@ -959,17 +906,8 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			}
 		}
 	}
-	if value, ok := duo.mutation.CreatedAt(); ok {
-		_spec.SetField(decision.FieldCreatedAt, field.TypeTime, value)
-	}
-	if duo.mutation.CreatedAtCleared() {
-		_spec.ClearField(decision.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := duo.mutation.UpdatedAt(); ok {
 		_spec.SetField(decision.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if duo.mutation.UpdatedAtCleared() {
-		_spec.ClearField(decision.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := duo.mutation.Until(); ok {
 		_spec.SetField(decision.FieldUntil, field.TypeTime, value)

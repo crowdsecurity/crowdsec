@@ -42,7 +42,7 @@ issue:
           3. Check [Releases](https://github.com/crowdsecurity/crowdsec/releases/latest) to make sure your agent is on the latest version.
 
     - prefix: kind
-      list: ['feature', 'bug', 'packaging', 'enhancement']
+      list: ['feature', 'bug', 'packaging', 'enhancement', 'refactoring']
       multiple: false
       author_association:
         author: true
@@ -54,6 +54,7 @@ issue:
           @$AUTHOR: There are no 'kind' label on this issue. You need a 'kind' label to start the triage process.
           * `/kind feature`
           * `/kind enhancement`
+          * `/kind refactoring`
           * `/kind bug`
           * `/kind packaging`
 
@@ -65,12 +66,13 @@ pull_request:
   labels:
     - prefix: kind
       multiple: false
-      list: [ 'feature', 'enhancement', 'fix', 'chore', 'dependencies']
+      list: [ 'feature', 'enhancement', 'fix', 'chore', 'dependencies', 'refactoring']
       needs:
         comment: |
           @$AUTHOR: There are no 'kind' label on this PR. You need a 'kind' label to generate the release automatically.
           * `/kind feature`
           * `/kind enhancement`
+          * `/kind refactoring`
           * `/kind fix`
           * `/kind chore`
           * `/kind dependencies`

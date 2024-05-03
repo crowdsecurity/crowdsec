@@ -4,8 +4,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIContext() *cliItem {
+func NewCLIContext(cfg configGetter) *cliItem {
 	return &cliItem{
+		cfg:       cfg,
 		name:      cwhub.CONTEXTS,
 		singular:  "context",
 		oneOrMore: "context(s)",

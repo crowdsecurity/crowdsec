@@ -29,27 +29,9 @@ func (eu *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
 	return eu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
-	eu.mutation.SetCreatedAt(t)
-	return eu
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (eu *EventUpdate) ClearCreatedAt() *EventUpdate {
-	eu.mutation.ClearCreatedAt()
-	return eu
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (eu *EventUpdate) SetUpdatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetUpdatedAt(t)
-	return eu
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (eu *EventUpdate) ClearUpdatedAt() *EventUpdate {
-	eu.mutation.ClearUpdatedAt()
 	return eu
 }
 
@@ -161,11 +143,7 @@ func (eu *EventUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (eu *EventUpdate) defaults() {
-	if _, ok := eu.mutation.CreatedAt(); !ok && !eu.mutation.CreatedAtCleared() {
-		v := event.UpdateDefaultCreatedAt()
-		eu.mutation.SetCreatedAt(v)
-	}
-	if _, ok := eu.mutation.UpdatedAt(); !ok && !eu.mutation.UpdatedAtCleared() {
+	if _, ok := eu.mutation.UpdatedAt(); !ok {
 		v := event.UpdateDefaultUpdatedAt()
 		eu.mutation.SetUpdatedAt(v)
 	}
@@ -193,17 +171,8 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := eu.mutation.CreatedAt(); ok {
-		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
-	}
-	if eu.mutation.CreatedAtCleared() {
-		_spec.ClearField(event.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := eu.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if eu.mutation.UpdatedAtCleared() {
-		_spec.ClearField(event.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := eu.mutation.Time(); ok {
 		_spec.SetField(event.FieldTime, field.TypeTime, value)
@@ -260,27 +229,9 @@ type EventUpdateOne struct {
 	mutation *EventMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (euo *EventUpdateOne) SetCreatedAt(t time.Time) *EventUpdateOne {
-	euo.mutation.SetCreatedAt(t)
-	return euo
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (euo *EventUpdateOne) ClearCreatedAt() *EventUpdateOne {
-	euo.mutation.ClearCreatedAt()
-	return euo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (euo *EventUpdateOne) SetUpdatedAt(t time.Time) *EventUpdateOne {
 	euo.mutation.SetUpdatedAt(t)
-	return euo
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (euo *EventUpdateOne) ClearUpdatedAt() *EventUpdateOne {
-	euo.mutation.ClearUpdatedAt()
 	return euo
 }
 
@@ -405,11 +356,7 @@ func (euo *EventUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (euo *EventUpdateOne) defaults() {
-	if _, ok := euo.mutation.CreatedAt(); !ok && !euo.mutation.CreatedAtCleared() {
-		v := event.UpdateDefaultCreatedAt()
-		euo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := euo.mutation.UpdatedAt(); !ok && !euo.mutation.UpdatedAtCleared() {
+	if _, ok := euo.mutation.UpdatedAt(); !ok {
 		v := event.UpdateDefaultUpdatedAt()
 		euo.mutation.SetUpdatedAt(v)
 	}
@@ -454,17 +401,8 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			}
 		}
 	}
-	if value, ok := euo.mutation.CreatedAt(); ok {
-		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
-	}
-	if euo.mutation.CreatedAtCleared() {
-		_spec.ClearField(event.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := euo.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if euo.mutation.UpdatedAtCleared() {
-		_spec.ClearField(event.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := euo.mutation.Time(); ok {
 		_spec.SetField(event.FieldTime, field.TypeTime, value)
