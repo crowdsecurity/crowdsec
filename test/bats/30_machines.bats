@@ -113,7 +113,6 @@ teardown() {
     payload=$(cat <<-EOT
 	remediation_components: []
 	log_processors:
-	  -
 	    - version: "v1.0"
 	      feature_flags:
 	          - marshmallows
