@@ -61,10 +61,12 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-func collectMetrics() ([]byte, []byte, error) {
+func (cli *cliSupport) collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
 
-	if csConfig.Cscli.PrometheusUrl == "" {
+	cfg := cli.cfg()
+
+	if cfg.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
 		return nil, nil, errors.New("prometheus_uri is not set")
 	}
@@ -73,7 +75,7 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	ms := NewMetricStore()
 
-	if err := ms.Fetch(csConfig.Cscli.PrometheusUrl); err != nil {
+	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
 		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %w", err)
 	}
 
@@ -81,7 +83,7 @@ func collectMetrics() ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, cfg.Cscli.PrometheusUrl, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %w", err)
 	}
@@ -187,8 +189,10 @@ func collectAgents(dbClient *database.Client) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func collectAPIStatus(login string, password string, endpoint string, prefix string, hub *cwhub.Hub) []byte {
-	if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
+func (cli *cliSupport) collectAPIStatus(login string, password string, endpoint string, prefix string, hub *cwhub.Hub) []byte {
+	cfg := cli.cfg()
+
+	if cfg.API.Client == nil || cfg.API.Client.Credentials == nil {
 		return []byte("No agent credentials found, are we LAPI ?")
 	}
 
@@ -226,10 +230,11 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	}
 }
 
-func collectCrowdsecConfig() []byte {
+func (cli *cliSupport) collectCrowdsecConfig() []byte {
+	cfg := cli.cfg()
 	log.Info("Collecting crowdsec config")
 
-	config, err := os.ReadFile(*csConfig.FilePath)
+	config, err := os.ReadFile(*cfg.FilePath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read config file: %s", err))
 	}
@@ -239,10 +244,11 @@ func collectCrowdsecConfig() []byte {
 	return r.ReplaceAll(config, []byte("$1 ****REDACTED****"))
 }
 
-func collectCrowdsecProfile() []byte {
+func (cli *cliSupport) collectCrowdsecProfile() []byte {
+	cfg := cli.cfg()
 	log.Info("Collecting crowdsec profile")
 
-	config, err := os.ReadFile(csConfig.API.Server.ProfilesPath)
+	config, err := os.ReadFile(cfg.API.Server.ProfilesPath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read profile file: %s", err))
 	}
@@ -250,12 +256,13 @@ func collectCrowdsecProfile() []byte {
 	return config
 }
 
-func collectAcquisitionConfig() map[string][]byte {
+func (cli *cliSupport) collectAcquisitionConfig() map[string][]byte {
+	cfg := cli.cfg()
 	log.Info("Collecting acquisition config")
 
 	ret := make(map[string][]byte)
 
-	for _, filename := range csConfig.Crowdsec.AcquisitionFiles {
+	for _, filename := range cfg.Crowdsec.AcquisitionFiles {
 		fileContent, err := os.ReadFile(filename)
 		if err != nil {
 			ret[filename] = []byte(fmt.Sprintf("could not read file: %s", err))
@@ -301,6 +308,9 @@ func (cli cliSupport) NewCommand() *cobra.Command {
 func (cli *cliSupport) dump(outFile string) error {
 	var err error
 	var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
+
+	cfg := cli.cfg()
+
 	infos := map[string][]byte{
 		SUPPORT_VERSION_PATH:  collectVersion(),
 		SUPPORT_FEATURES_PATH: collectFeatures(),
@@ -310,7 +320,7 @@ func (cli *cliSupport) dump(outFile string) error {
 		outFile = "/tmp/crowdsec-support.zip"
 	}
 
-	dbClient, err = database.NewClient(csConfig.DbConfig)
+	dbClient, err = database.NewClient(cfg.DbConfig)
 	if err != nil {
 		log.Warnf("Could not connect to database: %s", err)
 		skipDB = true
@@ -318,18 +328,18 @@ func (cli *cliSupport) dump(outFile string) error {
 		infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
 	}
 
-	if err = csConfig.LoadAPIServer(true); err != nil {
+	if err = cfg.LoadAPIServer(true); err != nil {
 		log.Warnf("could not load LAPI, skipping CAPI check")
 		skipLAPI = true
 		infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())
 	}
 
-	if err = csConfig.LoadCrowdsec(); err != nil {
+	if err = cfg.LoadCrowdsec(); err != nil {
 		log.Warnf("could not load agent config, skipping crowdsec config check")
 		skipAgent = true
 	}
 
-	hub, err := require.Hub(csConfig, nil, nil)
+	hub, err := require.Hub(cfg, nil, nil)
 	if err != nil {
 		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 		skipHub = true
@@ -340,7 +350,7 @@ func (cli *cliSupport) dump(outFile string) error {
 		infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
 	}
 
-	if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
+	if cfg.API.Client == nil || cfg.API.Client.Credentials == nil {
 		log.Warn("no agent credentials found, skipping LAPI connectivity check")
 		if _, ok := infos[SUPPORT_LAPI_STATUS_PATH]; ok {
 			infos[SUPPORT_LAPI_STATUS_PATH] = append(infos[SUPPORT_LAPI_STATUS_PATH], []byte("\nNo LAPI credentials found")...)
@@ -348,12 +358,12 @@ func (cli *cliSupport) dump(outFile string) error {
 		skipLAPI = true
 	}
 
-	if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
+	if cfg.API.Server == nil || cfg.API.Server.OnlineClient == nil || cfg.API.Server.OnlineClient.Credentials == nil {
 		log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
 		skipCAPI = true
 	}
 
-	infos[SUPPORT_METRICS_HUMAN_PATH], infos[SUPPORT_METRICS_PROMETHEUS_PATH], err = collectMetrics()
+	infos[SUPPORT_METRICS_HUMAN_PATH], infos[SUPPORT_METRICS_PROMETHEUS_PATH], err = cli.collectMetrics()
 	if err != nil {
 		log.Warnf("could not collect prometheus metrics information: %s", err)
 		infos[SUPPORT_METRICS_HUMAN_PATH] = []byte(err.Error())
@@ -366,7 +376,7 @@ func (cli *cliSupport) dump(outFile string) error {
 		infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
 	}
 
-	infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
+	infos[SUPPORT_CROWDSEC_CONFIG_PATH] = cli.collectCrowdsecConfig()
 
 	if !skipHub {
 		infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
@@ -392,25 +402,25 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	if !skipCAPI {
 		log.Info("Collecting CAPI status")
-		infos[SUPPORT_CAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Server.OnlineClient.Credentials.Login,
-			csConfig.API.Server.OnlineClient.Credentials.Password,
-			csConfig.API.Server.OnlineClient.Credentials.URL,
+		infos[SUPPORT_CAPI_STATUS_PATH] = cli.collectAPIStatus(cfg.API.Server.OnlineClient.Credentials.Login,
+			cfg.API.Server.OnlineClient.Credentials.Password,
+			cfg.API.Server.OnlineClient.Credentials.URL,
 			CAPIURLPrefix,
 			hub)
 	}
 
 	if !skipLAPI {
 		log.Info("Collection LAPI status")
-		infos[SUPPORT_LAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Client.Credentials.Login,
-			csConfig.API.Client.Credentials.Password,
-			csConfig.API.Client.Credentials.URL,
+		infos[SUPPORT_LAPI_STATUS_PATH] = cli.collectAPIStatus(cfg.API.Client.Credentials.Login,
+			cfg.API.Client.Credentials.Password,
+			cfg.API.Client.Credentials.URL,
 			LAPIURLPrefix,
 			hub)
-		infos[SUPPORT_CROWDSEC_PROFILE_PATH] = collectCrowdsecProfile()
+		infos[SUPPORT_CROWDSEC_PROFILE_PATH] = cli.collectCrowdsecProfile()
 	}
 
 	if !skipAgent {
-		acquis := collectAcquisitionConfig()
+		acquis := cli.collectAcquisitionConfig()
 
 		for filename, content := range acquis {
 			fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
