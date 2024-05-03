@@ -122,7 +122,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.Name = bouncerName
 		metrics.LastPull = bouncer.LastPull.UTC().Unix()
 
-		//To prevent marshalling a nil slice to null, which gets rejected by the API
+		//To prevent marshaling a nil slice to null, which gets rejected by the API
 		if metrics.Metrics == nil {
 			metrics.Metrics = make([]*models.MetricsDetailItem, 0)
 		}
