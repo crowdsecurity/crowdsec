@@ -66,11 +66,11 @@ bats-check-requirements:  ## Check dependencies for functional tests
 	@$(TEST_DIR)/bin/check-requirements
 
 bats-update-tools:  ## Install/update tools required for functional tests
-	# yq v4.40.4
-	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@1c3d55106075bd37df197b4bc03cb4a413fdb903
-	# cfssl v1.6.4
-	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
-	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
+	# yq v4.43.1
+	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@c35ec752e38ea0c096d3c44e13cfc0797ac394d8
+	# cfssl v1.6.5
+	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@96259aa29c9cc9b2f4e04bad7d4bc152e5405dda
+	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@96259aa29c9cc9b2f4e04bad7d4bc152e5405dda
 
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment  ## Build binaries for functional tests

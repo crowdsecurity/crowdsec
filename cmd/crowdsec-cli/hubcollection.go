@@ -4,8 +4,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLICollection() *cliItem {
+func NewCLICollection(cfg configGetter) *cliItem {
 	return &cliItem{
+		cfg:       cfg,
 		name:      cwhub.COLLECTIONS,
 		singular:  "collection",
 		oneOrMore: "collection(s)",

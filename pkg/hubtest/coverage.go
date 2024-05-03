@@ -2,27 +2,30 @@ package hubtest
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/go-cs-lib/maptools"
+
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/go-cs-lib/maptools"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 type Coverage struct {
 	Name       string
 	TestsCount int
-	PresentIn  map[string]bool //poorman's set
+	PresentIn  map[string]bool // poorman's set
 }
 
 func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES)) == 0 {
-		return nil, fmt.Errorf("no appsec rules in hub index")
+		return nil, errors.New("no appsec rules in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
@@ -40,16 +43,18 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 	// parser the expressions a-la-oneagain
 	appsecTestConfigs, err := filepath.Glob(".appsec-tests/*/config.yaml")
 	if err != nil {
-		return nil, fmt.Errorf("while find appsec-tests config: %s", err)
+		return nil, fmt.Errorf("while find appsec-tests config: %w", err)
 	}
 
 	for _, appsecTestConfigPath := range appsecTestConfigs {
 		configFileData := &HubTestItemConfig{}
+
 		yamlFile, err := os.ReadFile(appsecTestConfigPath)
 		if err != nil {
 			log.Printf("unable to open appsec test config file '%s': %s", appsecTestConfigPath, err)
 			continue
 		}
+
 		err = yaml.Unmarshal(yamlFile, configFileData)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal: %v", err)
@@ -57,14 +62,17 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 
 		for _, appsecRulesFile := range configFileData.AppsecRules {
 			appsecRuleData := &appsec_rule.CustomRule{}
+
 			yamlFile, err := os.ReadFile(appsecRulesFile)
 			if err != nil {
 				log.Printf("unable to open appsec rule '%s': %s", appsecRulesFile, err)
 			}
+
 			err = yaml.Unmarshal(yamlFile, appsecRuleData)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshal: %v", err)
 			}
+
 			appsecRuleName := appsecRuleData.Name
 
 			for idx, cov := range coverage {
@@ -81,7 +89,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 
 func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.PARSERS)) == 0 {
-		return nil, fmt.Errorf("no parsers in hub index")
+		return nil, errors.New("no parsers in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
@@ -99,13 +107,13 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/parser.assert")
 	if err != nil {
-		return nil, fmt.Errorf("while find parser asserts : %s", err)
+		return nil, fmt.Errorf("while find parser asserts: %w", err)
 	}
 
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
-			return nil, fmt.Errorf("while reading %s : %s", assert, err)
+			return nil, fmt.Errorf("while reading %s: %w", assert, err)
 		}
 
 		scanner := bufio.NewScanner(file)
@@ -167,7 +175,7 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 
 func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.SCENARIOS)) == 0 {
-		return nil, fmt.Errorf("no scenarios in hub index")
+		return nil, errors.New("no scenarios in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
@@ -185,13 +193,13 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/scenario.assert")
 	if err != nil {
-		return nil, fmt.Errorf("while find scenario asserts : %s", err)
+		return nil, fmt.Errorf("while find scenario asserts: %w", err)
 	}
 
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
-			return nil, fmt.Errorf("while reading %s : %s", assert, err)
+			return nil, fmt.Errorf("while reading %s: %w", assert, err)
 		}
 
 		scanner := bufio.NewScanner(file)

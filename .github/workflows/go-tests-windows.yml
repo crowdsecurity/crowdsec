@@ -34,7 +34,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.21.9"
+        go-version: "1.22.2"
 
     - name: Build
       run: |
@@ -52,6 +52,7 @@ jobs:
       with:
         files: coverage.out
         flags: unit-windows
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v4

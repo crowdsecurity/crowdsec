@@ -1,13 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -36,7 +37,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 				return err
 			}
 			if cli.cfg().Cscli.SimulationConfig == nil {
-				return fmt.Errorf("no simulation configured")
+				return errors.New("no simulation configured")
 			}
 
 			return nil
@@ -73,7 +74,7 @@ func (cli *cliSimulation) NewEnableCmd() *cobra.Command {
 
 			if len(args) > 0 {
 				for _, scenario := range args {
-					var item = hub.GetItem(cwhub.SCENARIOS, scenario)
+					item := hub.GetItem(cwhub.SCENARIOS, scenario)
 					if item == nil {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue
@@ -99,11 +100,11 @@ func (cli *cliSimulation) NewEnableCmd() *cobra.Command {
 					log.Printf("simulation mode for '%s' enabled", scenario)
 				}
 				if err := cli.dumpSimulationFile(); err != nil {
-					return fmt.Errorf("simulation enable: %s", err)
+					return fmt.Errorf("simulation enable: %w", err)
 				}
 			} else if forceGlobalSimulation {
 				if err := cli.enableGlobalSimulation(); err != nil {
-					return fmt.Errorf("unable to enable global simulation mode: %s", err)
+					return fmt.Errorf("unable to enable global simulation mode: %w", err)
 				}
 			} else {
 				printHelp(cmd)
@@ -146,11 +147,11 @@ func (cli *cliSimulation) NewDisableCmd() *cobra.Command {
 					log.Printf("simulation mode for '%s' disabled", scenario)
 				}
 				if err := cli.dumpSimulationFile(); err != nil {
-					return fmt.Errorf("simulation disable: %s", err)
+					return fmt.Errorf("simulation disable: %w", err)
 				}
 			} else if forceGlobalSimulation {
 				if err := cli.disableGlobalSimulation(); err != nil {
-					return fmt.Errorf("unable to disable global simulation mode: %s", err)
+					return fmt.Errorf("unable to disable global simulation mode: %w", err)
 				}
 			} else {
 				printHelp(cmd)
@@ -202,7 +203,7 @@ func (cli *cliSimulation) enableGlobalSimulation() error {
 	cfg.Cscli.SimulationConfig.Exclusions = []string{}
 
 	if err := cli.dumpSimulationFile(); err != nil {
-		return fmt.Errorf("unable to dump simulation file: %s", err)
+		return fmt.Errorf("unable to dump simulation file: %w", err)
 	}
 
 	log.Printf("global simulation: enabled")
@@ -215,12 +216,12 @@ func (cli *cliSimulation) dumpSimulationFile() error {
 
 	newConfigSim, err := yaml.Marshal(cfg.Cscli.SimulationConfig)
 	if err != nil {
-		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
+		return fmt.Errorf("unable to marshal simulation configuration: %w", err)
 	}
 
 	err = os.WriteFile(cfg.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
 	if err != nil {
-		return fmt.Errorf("write simulation config in '%s' failed: %s", cfg.ConfigPaths.SimulationFilePath, err)
+		return fmt.Errorf("write simulation config in '%s' failed: %w", cfg.ConfigPaths.SimulationFilePath, err)
 	}
 
 	log.Debugf("updated simulation file %s", cfg.ConfigPaths.SimulationFilePath)
@@ -237,12 +238,12 @@ func (cli *cliSimulation) disableGlobalSimulation() error {
 
 	newConfigSim, err := yaml.Marshal(cfg.Cscli.SimulationConfig)
 	if err != nil {
-		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
+		return fmt.Errorf("unable to marshal new simulation configuration: %w", err)
 	}
 
 	err = os.WriteFile(cfg.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
 	if err != nil {
-		return fmt.Errorf("unable to write new simulation config in '%s': %s", cfg.ConfigPaths.SimulationFilePath, err)
+		return fmt.Errorf("unable to write new simulation config in '%s': %w", cfg.ConfigPaths.SimulationFilePath, err)
 	}
 
 	log.Printf("global simulation: disabled")
@@ -269,8 +270,10 @@ func (cli *cliSimulation) status() {
 		}
 	} else {
 		log.Println("global simulation: disabled")
+
 		if len(cfg.Cscli.SimulationConfig.Exclusions) > 0 {
 			log.Println("Scenarios in simulation mode :")
+
 			for _, scenario := range cfg.Cscli.SimulationConfig.Exclusions {
 				log.Printf("  - %s", scenario)
 			}
