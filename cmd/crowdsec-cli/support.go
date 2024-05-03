@@ -270,7 +270,6 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
-<<<<<<< HEAD
 func collectPprofs() ([]byte, []byte, []byte) {
 	log.Info("Collecting pprof data")
 	client := &http.Client{}
