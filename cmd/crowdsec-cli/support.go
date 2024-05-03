@@ -272,10 +272,14 @@ func collectCrash() ([]string, error) {
 	return trace.List()
 }
 
-type cliSupport struct{}
+type cliSupport struct{
+	cfg configGetter
+}
 
-func NewCLISupport() *cliSupport {
-	return &cliSupport{}
+func NewCLISupport(cfg configGetter) *cliSupport {
+	return &cliSupport{
+		cfg: cfg,
+	}
 }
 
 func (cli cliSupport) NewCommand() *cobra.Command {
@@ -294,13 +298,182 @@ func (cli cliSupport) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliSupport) dump(outFile string) error {
+	var err error
+	var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
+	infos := map[string][]byte{
+		SUPPORT_VERSION_PATH:  collectVersion(),
+		SUPPORT_FEATURES_PATH: collectFeatures(),
+	}
+
+	if outFile == "" {
+		outFile = "/tmp/crowdsec-support.zip"
+	}
+
+	dbClient, err = database.NewClient(csConfig.DbConfig)
+	if err != nil {
+		log.Warnf("Could not connect to database: %s", err)
+		skipDB = true
+		infos[SUPPORT_BOUNCERS_PATH] = []byte(err.Error())
+		infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
+	}
+
+	if err = csConfig.LoadAPIServer(true); err != nil {
+		log.Warnf("could not load LAPI, skipping CAPI check")
+		skipLAPI = true
+		infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())
+	}
+
+	if err = csConfig.LoadCrowdsec(); err != nil {
+		log.Warnf("could not load agent config, skipping crowdsec config check")
+		skipAgent = true
+	}
+
+	hub, err := require.Hub(csConfig, nil, nil)
+	if err != nil {
+		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
+		skipHub = true
+		infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
+		infos[SUPPORT_SCENARIOS_PATH] = []byte(err.Error())
+		infos[SUPPORT_POSTOVERFLOWS_PATH] = []byte(err.Error())
+		infos[SUPPORT_CONTEXTS_PATH] = []byte(err.Error())
+		infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
+	}
+
+	if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
+		log.Warn("no agent credentials found, skipping LAPI connectivity check")
+		if _, ok := infos[SUPPORT_LAPI_STATUS_PATH]; ok {
+			infos[SUPPORT_LAPI_STATUS_PATH] = append(infos[SUPPORT_LAPI_STATUS_PATH], []byte("\nNo LAPI credentials found")...)
+		}
+		skipLAPI = true
+	}
+
+	if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
+		log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
+		skipCAPI = true
+	}
+
+	infos[SUPPORT_METRICS_HUMAN_PATH], infos[SUPPORT_METRICS_PROMETHEUS_PATH], err = collectMetrics()
+	if err != nil {
+		log.Warnf("could not collect prometheus metrics information: %s", err)
+		infos[SUPPORT_METRICS_HUMAN_PATH] = []byte(err.Error())
+		infos[SUPPORT_METRICS_PROMETHEUS_PATH] = []byte(err.Error())
+	}
+
+	infos[SUPPORT_OS_INFO_PATH], err = collectOSInfo()
+	if err != nil {
+		log.Warnf("could not collect OS information: %s", err)
+		infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
+	}
+
+	infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
+
+	if !skipHub {
+		infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
+		infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
+		infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+		infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+		infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
+	}
+
+	if !skipDB {
+		infos[SUPPORT_BOUNCERS_PATH], err = collectBouncers(dbClient)
+		if err != nil {
+			log.Warnf("could not collect bouncers information: %s", err)
+			infos[SUPPORT_BOUNCERS_PATH] = []byte(err.Error())
+		}
+
+		infos[SUPPORT_AGENTS_PATH], err = collectAgents(dbClient)
+		if err != nil {
+			log.Warnf("could not collect agents information: %s", err)
+			infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
+		}
+	}
+
+	if !skipCAPI {
+		log.Info("Collecting CAPI status")
+		infos[SUPPORT_CAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Server.OnlineClient.Credentials.Login,
+			csConfig.API.Server.OnlineClient.Credentials.Password,
+			csConfig.API.Server.OnlineClient.Credentials.URL,
+			CAPIURLPrefix,
+			hub)
+	}
+
+	if !skipLAPI {
+		log.Info("Collection LAPI status")
+		infos[SUPPORT_LAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Client.Credentials.Login,
+			csConfig.API.Client.Credentials.Password,
+			csConfig.API.Client.Credentials.URL,
+			LAPIURLPrefix,
+			hub)
+		infos[SUPPORT_CROWDSEC_PROFILE_PATH] = collectCrowdsecProfile()
+	}
+
+	if !skipAgent {
+		acquis := collectAcquisitionConfig()
+
+		for filename, content := range acquis {
+			fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
+			infos[SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname] = content
+		}
+	}
+
+	crash, err := collectCrash()
+	if err != nil {
+		log.Errorf("could not collect crash dumps: %s", err)
+	}
+
+	for _, filename := range crash {
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			log.Errorf("could not read crash dump %s: %s", filename, err)
+		}
+
+		infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
+	}
+
+	w := bytes.NewBuffer(nil)
+	zipWriter := zip.NewWriter(w)
+
+	for filename, data := range infos {
+		header := &zip.FileHeader{
+			Name:   filename,
+			Method: zip.Deflate,
+			// TODO: retain mtime where possible (esp. trace)
+			Modified: time.Now(),
+		}
+		fw, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			log.Errorf("Could not add zip entry for %s: %s", filename, err)
+			continue
+		}
+		fw.Write([]byte(stripAnsiString(string(data))))
+	}
+
+	err = zipWriter.Close()
+	if err != nil {
+		return fmt.Errorf("could not finalize zip file: %s", err)
+	}
+
+	if outFile == "-" {
+		_, err = os.Stdout.Write(w.Bytes())
+		return err
+	}
+	err = os.WriteFile(outFile, w.Bytes(), 0o600)
+	if err != nil {
+		return fmt.Errorf("could not write zip file to %s: %s", outFile, err)
+	}
+	log.Infof("Written zip file to %s", outFile)
+	return nil
+}
+
 func (cli cliSupport) NewDumpCmd() *cobra.Command {
 	var outFile string
 
 	cmd := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump all your configuration to a zip file for easier support",
-		Long: `Dump the following informations:
+		Long: `Dump the following information:
 - Crowdsec version
 - OS version
 - Installed collections list
@@ -320,172 +493,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			var err error
-			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
-			infos := map[string][]byte{
-				SUPPORT_VERSION_PATH:  collectVersion(),
-				SUPPORT_FEATURES_PATH: collectFeatures(),
-			}
-
-			if outFile == "" {
-				outFile = "/tmp/crowdsec-support.zip"
-			}
-
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				log.Warnf("Could not connect to database: %s", err)
-				skipDB = true
-				infos[SUPPORT_BOUNCERS_PATH] = []byte(err.Error())
-				infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
-			}
-
-			if err = csConfig.LoadAPIServer(true); err != nil {
-				log.Warnf("could not load LAPI, skipping CAPI check")
-				skipLAPI = true
-				infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())
-			}
-
-			if err = csConfig.LoadCrowdsec(); err != nil {
-				log.Warnf("could not load agent config, skipping crowdsec config check")
-				skipAgent = true
-			}
-
-			hub, err := require.Hub(csConfig, nil, nil)
-			if err != nil {
-				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
-				skipHub = true
-				infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
-				infos[SUPPORT_SCENARIOS_PATH] = []byte(err.Error())
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = []byte(err.Error())
-				infos[SUPPORT_CONTEXTS_PATH] = []byte(err.Error())
-				infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
-			}
-
-			if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
-				log.Warn("no agent credentials found, skipping LAPI connectivity check")
-				if _, ok := infos[SUPPORT_LAPI_STATUS_PATH]; ok {
-					infos[SUPPORT_LAPI_STATUS_PATH] = append(infos[SUPPORT_LAPI_STATUS_PATH], []byte("\nNo LAPI credentials found")...)
-				}
-				skipLAPI = true
-			}
-
-			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
-				skipCAPI = true
-			}
-
-			infos[SUPPORT_METRICS_HUMAN_PATH], infos[SUPPORT_METRICS_PROMETHEUS_PATH], err = collectMetrics()
-			if err != nil {
-				log.Warnf("could not collect prometheus metrics information: %s", err)
-				infos[SUPPORT_METRICS_HUMAN_PATH] = []byte(err.Error())
-				infos[SUPPORT_METRICS_PROMETHEUS_PATH] = []byte(err.Error())
-			}
-
-			infos[SUPPORT_OS_INFO_PATH], err = collectOSInfo()
-			if err != nil {
-				log.Warnf("could not collect OS information: %s", err)
-				infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
-			}
-
-			infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
-
-			if !skipHub {
-				infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
-				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
-				infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
-				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
-			}
-
-			if !skipDB {
-				infos[SUPPORT_BOUNCERS_PATH], err = collectBouncers(dbClient)
-				if err != nil {
-					log.Warnf("could not collect bouncers information: %s", err)
-					infos[SUPPORT_BOUNCERS_PATH] = []byte(err.Error())
-				}
-
-				infos[SUPPORT_AGENTS_PATH], err = collectAgents(dbClient)
-				if err != nil {
-					log.Warnf("could not collect agents information: %s", err)
-					infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
-				}
-			}
-
-			if !skipCAPI {
-				log.Info("Collecting CAPI status")
-				infos[SUPPORT_CAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Server.OnlineClient.Credentials.Login,
-					csConfig.API.Server.OnlineClient.Credentials.Password,
-					csConfig.API.Server.OnlineClient.Credentials.URL,
-					CAPIURLPrefix,
-					hub)
-			}
-
-			if !skipLAPI {
-				log.Info("Collection LAPI status")
-				infos[SUPPORT_LAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Client.Credentials.Login,
-					csConfig.API.Client.Credentials.Password,
-					csConfig.API.Client.Credentials.URL,
-					LAPIURLPrefix,
-					hub)
-				infos[SUPPORT_CROWDSEC_PROFILE_PATH] = collectCrowdsecProfile()
-			}
-
-			if !skipAgent {
-				acquis := collectAcquisitionConfig()
-
-				for filename, content := range acquis {
-					fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
-					infos[SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname] = content
-				}
-			}
-
-			crash, err := collectCrash()
-			if err != nil {
-				log.Errorf("could not collect crash dumps: %s", err)
-			}
-
-			for _, filename := range crash {
-				content, err := os.ReadFile(filename)
-				if err != nil {
-					log.Errorf("could not read crash dump %s: %s", filename, err)
-				}
-
-				infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
-			}
-
-			w := bytes.NewBuffer(nil)
-			zipWriter := zip.NewWriter(w)
-
-			for filename, data := range infos {
-				header := &zip.FileHeader{
-					Name:   filename,
-					Method: zip.Deflate,
-					// TODO: retain mtime where possible (esp. trace)
-					Modified: time.Now(),
-				}
-				fw, err := zipWriter.CreateHeader(header)
-				if err != nil {
-					log.Errorf("Could not add zip entry for %s: %s", filename, err)
-					continue
-				}
-				fw.Write([]byte(stripAnsiString(string(data))))
-			}
-
-			err = zipWriter.Close()
-			if err != nil {
-				return fmt.Errorf("could not finalize zip file: %s", err)
-			}
-
-			if outFile == "-" {
-				_, err = os.Stdout.Write(w.Bytes())
-				return err
-			}
-			err = os.WriteFile(outFile, w.Bytes(), 0o600)
-			if err != nil {
-				return fmt.Errorf("could not write zip file to %s: %s", outFile, err)
-			}
-			log.Infof("Written zip file to %s", outFile)
-			return nil
+			return cli.dump(outFile)
 		},
 	}
 
