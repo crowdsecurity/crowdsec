@@ -401,9 +401,6 @@ func parseKeyToMap(m map[string]interface{}, key string, value string) {
 	}
 	parts := strings.Split(key, ".")
 	for i := 1; i < len(parts)-1; i++ {
-		if i == len(parts)-1 {
-			break
-		}
 		if _, ok := m[parts[i]]; !ok {
 			m[parts[i]] = make(map[string]interface{})
 		}
@@ -448,25 +445,43 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 
 	if d.Config.UseContainerLabels {
 		parsedLabels := d.getContainerLabels(container.ID)
-		if len(parsedLabels) != 0 {
-			if v, ok := parsedLabels["enable"]; ok && strings.ToLower(v.(string)) == "true" {
-				if _, ok = parsedLabels["labels"]; !ok {
-					d.logger.Error("container has 'crowdsec.enable' label set to true but no 'labels' keys found")
-					return &ContainerConfig{}, false
-				}
-				d.logger.Debugf("container labels +%v", parsedLabels["labels"])
-				labels := make(map[string]string)
-				for k, v := range parsedLabels["labels"].(map[string]interface{}) {
-					if v, ok := v.(string); ok {
-						log.Debugf("label %s is a string with value %s", k, v)
-						labels[k] = v
-						continue
-					}
-					d.logger.Errorf("label %s is not a string", k)
-				}
-				return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(container.ID)}, true
-			}
+		if len(parsedLabels) == 0 {
+			d.logger.Tracef("container has no 'crowdsec' labels set, ignoring container: %s", container.ID)
+			return &ContainerConfig{}, false
 		}
+		if _, ok := parsedLabels["enable"]; !ok {
+			d.logger.Errorf("container has 'crowdsec' labels set but no 'crowdsec.enable' key found")
+			return &ContainerConfig{}, false
+		}
+		enable, ok := parsedLabels["enable"].(string)
+		if !ok {
+			d.logger.Error("container has 'crowdsec.enable' label set but it's not a string")
+			return &ContainerConfig{}, false
+		}
+		if strings.ToLower(enable) != "true" {
+			d.logger.Debugf("container has 'crowdsec.enable' label not set to true ignoring container: %s", container.ID)
+			return &ContainerConfig{}, false
+		}
+		if _, ok = parsedLabels["labels"]; !ok {
+			d.logger.Error("container has 'crowdsec.enable' label set to true but no 'labels' keys found")
+			return &ContainerConfig{}, false
+		}
+		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
+		if !ok {
+			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
+			return &ContainerConfig{}, false
+		}
+		d.logger.Debugf("container labels %+v", labelsTypeCast)
+		labels := make(map[string]string)
+		for k, v := range labelsTypeCast {
+			if v, ok := v.(string); ok {
+				log.Debugf("label %s is a string with value %s", k, v)
+				labels[k] = v
+				continue
+			}
+			d.logger.Errorf("label %s is not a string", k)
+		}
+		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(container.ID)}, true
 	}
 
 	return &ContainerConfig{}, false
