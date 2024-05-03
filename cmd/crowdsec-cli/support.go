@@ -305,6 +305,23 @@ func (cli cliSupport) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) error {
+	header := &zip.FileHeader{
+		Name:   filename,
+		Method: zip.Deflate,
+		Modified: mtime,
+	}
+	fw, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		return fmt.Errorf("could not add zip entry for %s: %s", filename, err)
+	}
+	_, err = io.Copy(fw, reader)
+	if err != nil {
+		return fmt.Errorf("could not write zip entry for %s: %s", filename, err)
+	}
+	return nil
+}
+
 func (cli *cliSupport) dump(outFile string) error {
 	var err error
 	var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
@@ -446,18 +463,13 @@ func (cli *cliSupport) dump(outFile string) error {
 	zipWriter := zip.NewWriter(w)
 
 	for filename, data := range infos {
-		header := &zip.FileHeader{
-			Name:   filename,
-			Method: zip.Deflate,
-			// TODO: retain mtime where possible (esp. trace)
-			Modified: time.Now(),
-		}
-		fw, err := zipWriter.CreateHeader(header)
-		if err != nil {
-			log.Errorf("Could not add zip entry for %s: %s", filename, err)
+		// TODO: retain mtime where possible (esp. trace)
+		// TODO: avoid stripping here
+		reader := strings.NewReader(stripAnsiString(string(data)))
+		if err = cli.writeToZip(zipWriter, filename, time.Now(), reader); err != nil {
+			log.Error(err)
 			continue
 		}
-		fw.Write([]byte(stripAnsiString(string(data))))
 	}
 
 	err = zipWriter.Close()
