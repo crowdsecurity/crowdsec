@@ -114,28 +114,23 @@ func (cli *cliSupport) dumpVersion(zw *zip.Writer) {
 func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
 	log.Info("Collecting feature flags")
 
-	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
+	w := new(bytes.Buffer)
+	for _, k := range fflag.Crowdsec.GetEnabledFeatures() {
+		fmt.Fprintln(w, k)
+	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		defer pw.Close()
-		for _, k := range enabledFeatures {
-			fmt.Fprintln(pw, k)
-		}
-	}()
-
-	cli.writeToZip(zw, SUPPORT_FEATURES_PATH, time.Now(), pr)
+	cli.writeToZip(zw, SUPPORT_FEATURES_PATH, time.Now(), w)
 }
 
-func collectOSInfo() ([]byte, error) {
+func (cli *cliSupport) dumpOSInfo(zw *zip.Writer) error {
 	log.Info("Collecting OS info")
 
 	info, err := osinfo.GetOSInfo()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	w := bytes.NewBuffer(nil)
+	w := new(bytes.Buffer)
 	fmt.Fprintf(w, "Architecture: %s\n", info.Architecture)
 	fmt.Fprintf(w, "Family: %s\n", info.Family)
 	fmt.Fprintf(w, "ID: %s\n", info.ID)
@@ -144,7 +139,9 @@ func collectOSInfo() ([]byte, error) {
 	fmt.Fprintf(w, "Version: %s\n", info.Version)
 	fmt.Fprintf(w, "Build: %s\n", info.Build)
 
-	return w.Bytes(), nil
+	cli.writeToZip(zw, SUPPORT_OS_INFO_PATH, time.Now(), w)
+
+	return nil
 }
 
 func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
@@ -234,18 +231,24 @@ func (cli *cliSupport) collectAPIStatus(login string, password string, endpoint 
 	}
 }
 
-func (cli *cliSupport) collectCrowdsecConfig() []byte {
-	cfg := cli.cfg()
+func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	log.Info("Collecting crowdsec config")
+	cfg := cli.cfg()
 
 	config, err := os.ReadFile(*cfg.FilePath)
 	if err != nil {
-		return []byte(fmt.Sprintf("could not read config file: %s", err))
+		return fmt.Errorf("could not read config file: %w", err)
 	}
 
 	r := regexp.MustCompile(`(\s+password:|\s+user:|\s+host:)\s+.*`)
 
-	return r.ReplaceAll(config, []byte("$1 ****REDACTED****"))
+	redacted := r.ReplaceAll(config, []byte("$1 ****REDACTED****"))
+
+	// XXX: retain mtime of config file??
+
+	cli.writeToZip(zw, SUPPORT_CROWDSEC_CONFIG_PATH, time.Now(), bytes.NewReader(redacted))
+
+	return nil
 }
 
 func (cli *cliSupport) collectCrowdsecProfile() []byte {
@@ -338,6 +341,9 @@ func (cli *cliSupport) dump(outFile string) error {
 		outFile = "/tmp/crowdsec-support.zip"
 	}
 
+	w := bytes.NewBuffer(nil)
+	zipWriter := zip.NewWriter(w)
+
 	dbClient, err = database.NewClient(cfg.DbConfig)
 	if err != nil {
 		log.Warnf("Could not connect to database: %s", err)
@@ -388,13 +394,13 @@ func (cli *cliSupport) dump(outFile string) error {
 		infos[SUPPORT_METRICS_PROMETHEUS_PATH] = []byte(err.Error())
 	}
 
-	infos[SUPPORT_OS_INFO_PATH], err = collectOSInfo()
-	if err != nil {
+	if err = cli.dumpOSInfo(zipWriter); err != nil {
 		log.Warnf("could not collect OS information: %s", err)
-		infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
 	}
 
-	infos[SUPPORT_CROWDSEC_CONFIG_PATH] = cli.collectCrowdsecConfig()
+	if err = cli.dumpConfigYAML(zipWriter); err != nil {
+		log.Warnf("could not collect main config file: %s", err)
+	}
 
 	if !skipHub {
 		infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
@@ -459,9 +465,6 @@ func (cli *cliSupport) dump(outFile string) error {
 
 		infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
 	}
-
-	w := bytes.NewBuffer(nil)
-	zipWriter := zip.NewWriter(w)
 
 	cli.dumpVersion(zipWriter)
 	cli.dumpFeatures(zipWriter)
