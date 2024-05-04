@@ -105,22 +105,26 @@ func (cli *cliSupport) collectMetrics() ([]byte, []byte, error) {
 	return humanMetrics.Bytes(), body, nil
 }
 
-func collectVersion() []byte {
+func (cli *cliSupport) dumpVersion(zw *zip.Writer) {
 	log.Info("Collecting version")
-	return []byte(cwversion.ShowStr())
+
+	cli.writeToZip(zw, SUPPORT_VERSION_PATH, time.Now(), strings.NewReader(cwversion.ShowStr()))
 }
 
-func collectFeatures() []byte {
+func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
 	log.Info("Collecting feature flags")
 
 	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
 
-	w := bytes.NewBuffer(nil)
-	for _, k := range enabledFeatures {
-		fmt.Fprintf(w, "%s\n", k)
-	}
+	pr, pw := io.Pipe()
+	go func() {
+		defer pw.Close()
+		for _, k := range enabledFeatures {
+			fmt.Fprintln(pw, k)
+		}
+	}()
 
-	return w.Bytes()
+	cli.writeToZip(zw, SUPPORT_FEATURES_PATH, time.Now(), pr)
 }
 
 func collectOSInfo() ([]byte, error) {
@@ -328,10 +332,7 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	cfg := cli.cfg()
 
-	infos := map[string][]byte{
-		SUPPORT_VERSION_PATH:  collectVersion(),
-		SUPPORT_FEATURES_PATH: collectFeatures(),
-	}
+	infos := map[string][]byte{}
 
 	if outFile == "" {
 		outFile = "/tmp/crowdsec-support.zip"
@@ -462,6 +463,9 @@ func (cli *cliSupport) dump(outFile string) error {
 	w := bytes.NewBuffer(nil)
 	zipWriter := zip.NewWriter(w)
 
+	cli.dumpVersion(zipWriter)
+	cli.dumpFeatures(zipWriter)
+
 	for filename, data := range infos {
 		// TODO: retain mtime where possible (esp. trace)
 		// TODO: avoid stripping here
@@ -498,17 +502,13 @@ func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 		Long: `Dump the following information:
 - Crowdsec version
 - OS version
-- Installed collections list
-- Installed parsers list
-- Installed scenarios list
-- Installed postoverflows list
-- Installed context list
-- Bouncers list
-- Machines list
-- CAPI status
-- LAPI status
+- Enabled feature flags
+- Installed collections, parsers, scenarios...
+- Bouncers and machines list
+- CAPI/LAPI status
 - Crowdsec config (sensitive information like username and password are redacted)
-- Crowdsec metrics`,
+- Crowdsec metrics
+- Stack trace in case of process crash`,
 		Example: `cscli support dump
 cscli support dump -f /tmp/crowdsec-support.zip
 `,
