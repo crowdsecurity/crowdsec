@@ -289,7 +289,7 @@ func NewCLISupport(cfg configGetter) *cliSupport {
 	}
 }
 
-func (cli cliSupport) NewCommand() *cobra.Command {
+func (cli *cliSupport) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
@@ -489,7 +489,7 @@ func (cli *cliSupport) dump(outFile string) error {
 	return nil
 }
 
-func (cli cliSupport) NewDumpCmd() *cobra.Command {
+func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 	var outFile string
 
 	cmd := &cobra.Command{
