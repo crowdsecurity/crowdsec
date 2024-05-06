@@ -33,24 +33,20 @@ import (
 )
 
 const (
-	SUPPORT_METRICS_HUMAN_PATH           = "metrics/metrics.human"
-	SUPPORT_METRICS_PROMETHEUS_PATH      = "metrics/metrics.prometheus"
-	SUPPORT_VERSION_PATH                 = "version.txt"
-	SUPPORT_FEATURES_PATH                = "features.txt"
-	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
-	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
-	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
-	SUPPORT_CONTEXTS_PATH                = "hub/scenarios.txt"
-	SUPPORT_COLLECTIONS_PATH             = "hub/collections.txt"
-	SUPPORT_POSTOVERFLOWS_PATH           = "hub/postoverflows.txt"
-	SUPPORT_BOUNCERS_PATH                = "lapi/bouncers.txt"
-	SUPPORT_AGENTS_PATH                  = "lapi/agents.txt"
-	SUPPORT_CROWDSEC_CONFIG_PATH         = "config/crowdsec.yaml"
-	SUPPORT_LAPI_STATUS_PATH             = "lapi_status.txt"
-	SUPPORT_CAPI_STATUS_PATH             = "capi_status.txt"
-	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
-	SUPPORT_CROWDSEC_PROFILE_PATH        = "config/profiles.yaml"
-	SUPPORT_CRASH_PATH                   = "crash/"
+	SUPPORT_METRICS_HUMAN_PATH      = "metrics/metrics.human"
+	SUPPORT_METRICS_PROMETHEUS_PATH = "metrics/metrics.prometheus"
+	SUPPORT_VERSION_PATH            = "version.txt"
+	SUPPORT_FEATURES_PATH           = "features.txt"
+	SUPPORT_OS_INFO_PATH            = "osinfo.txt"
+	SUPPORT_HUB_DIR                 = "hub/"
+	SUPPORT_BOUNCERS_PATH           = "lapi/bouncers.txt"
+	SUPPORT_AGENTS_PATH             = "lapi/agents.txt"
+	SUPPORT_CROWDSEC_CONFIG_PATH    = "config/crowdsec.yaml"
+	SUPPORT_LAPI_STATUS_PATH        = "lapi_status.txt"
+	SUPPORT_CAPI_STATUS_PATH        = "capi_status.txt"
+	SUPPORT_ACQUISITION_CONFIG_DIR  = "config/acquis/"
+	SUPPORT_CROWDSEC_PROFILE_PATH   = "config/profiles.yaml"
+	SUPPORT_CRASH_PATH              = "crash/"
 )
 
 // StringHook collects log entries in a string
@@ -163,24 +159,28 @@ func (cli *cliSupport) dumpOSInfo(zw *zip.Writer) error {
 	return nil
 }
 
-func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
+func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType string) error {
 	var err error
 
-	out := bytes.NewBuffer(nil)
+	out := new(bytes.Buffer)
 
 	log.Infof("Collecting %s list", itemType)
 
 	items := make(map[string][]*cwhub.Item)
 
 	if items[itemType], err = selectItems(hub, itemType, nil, true); err != nil {
-		log.Warnf("could not collect %s list: %s", itemType, err)
+		return fmt.Errorf("could not collect %s list: %w", itemType, err)
 	}
 
 	if err := listItems(out, []string{itemType}, items, false, "human"); err != nil {
-		log.Warnf("could not collect %s list: %s", itemType, err)
+		return fmt.Errorf("could not list %s: %w", itemType, err)
 	}
 
-	return out.Bytes()
+	stripped := stripAnsiString(out.String())
+
+	cli.writeToZip(zw, SUPPORT_HUB_DIR + itemType + ".txt", time.Now(), strings.NewReader(stripped))
+
+	return nil
 }
 
 func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
@@ -312,7 +312,7 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
 		if err != nil {
 			log.Warnf("could not open file %s: %s", filename, err)
 		}
-		if err = cli.writeToZip(zw, SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname, time.Now(), reader); err != nil {
+		if err = cli.writeToZip(zw, SUPPORT_ACQUISITION_CONFIG_DIR+fname, time.Now(), reader); err != nil {
 			log.Warnf("could not add file %s to zip: %s", filename, err)
 		}
 	}
@@ -369,8 +369,7 @@ func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime 
 }
 
 func (cli *cliSupport) dump(outFile string) error {
-	var err error
-	var skipHub, skipCAPI, skipLAPI, skipAgent bool
+	var skipCAPI, skipLAPI, skipAgent bool
 
 	collector := &StringHook{
 		LogLevels: log.AllLevels,
@@ -407,12 +406,6 @@ func (cli *cliSupport) dump(outFile string) error {
 	hub, err := require.Hub(cfg, nil, nil)
 	if err != nil {
 		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
-		skipHub = true
-		infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
-		infos[SUPPORT_SCENARIOS_PATH] = []byte(err.Error())
-		infos[SUPPORT_POSTOVERFLOWS_PATH] = []byte(err.Error())
-		infos[SUPPORT_CONTEXTS_PATH] = []byte(err.Error())
-		infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
 	}
 
 	if cfg.API.Client == nil || cfg.API.Client.Credentials == nil {
@@ -445,14 +438,12 @@ func (cli *cliSupport) dump(outFile string) error {
 		log.Warnf("could not collect main config file: %s", err)
 	}
 
-	//	XXX: cli.dumpHub(zipWriter)
-
-	if !skipHub {
-		infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
-		infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
-		infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
-		infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.CONTEXTS)
-		infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
+	if hub != nil {
+		for _, itemType := range cwhub.ItemTypes {
+			if err = cli.dumpHubItems(zipWriter, hub, itemType); err != nil {
+				log.Warnf("could not collect %s information: %s", itemType, err)
+			}
+		}
 	}
 
 	if err = cli.dumpBouncers(zipWriter, db); err != nil {
@@ -527,9 +518,9 @@ func (cli *cliSupport) dump(outFile string) error {
 	}
 
 	// log of the dump process, without color codes
-	collected_output := stripAnsiString(collector.LogBuilder.String())
+	collectedOutput := stripAnsiString(collector.LogBuilder.String())
 
-	cli.writeToZip(zipWriter, "dump.log", time.Now(), strings.NewReader(collected_output))
+	cli.writeToZip(zipWriter, "dump.log", time.Now(), strings.NewReader(collectedOutput))
 
 	err = zipWriter.Close()
 	if err != nil {
