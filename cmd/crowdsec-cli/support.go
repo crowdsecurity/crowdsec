@@ -3,13 +3,16 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,7 +76,7 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-func (cli *cliSupport) dumpMetrics(zw *zip.Writer) error {
+func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
 	cfg := cli.cfg()
@@ -94,7 +97,7 @@ func (cli *cliSupport) dumpMetrics(zw *zip.Writer) error {
 		return fmt.Errorf("could not format prometheus metrics: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, cfg.Cscli.PrometheusUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.Cscli.PrometheusUrl, nil)
 	if err != nil {
 		return fmt.Errorf("could not create request to prometheus endpoint: %w", err)
 	}
@@ -291,47 +294,39 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	return nil
 }
 
-func collectPprof(h *http.Client, endpoint string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/debug/pprof/%s?debug=1", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort, endpoint), nil)
+func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, endpoint string) error {
+	log.Infof("Collecting pprof/%s data", endpoint)
+
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf(
+			"http://%s/debug/pprof/%s?debug=1",
+			net.JoinHostPort(
+				csConfig.Prometheus.ListenAddr,
+				strconv.Itoa(csConfig.Prometheus.ListenPort),
+			),
+			endpoint,
+		),
+		nil,
+	)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("could not create request to pprof endpoint: %w", err)
 	}
 
-	resp, err := h.Do(req)
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("could not get pprof data from endpoint: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	return io.ReadAll(resp.Body)
-}
-
-func (cli *cliSupport) dumpPProf(zw *zip.Writer) error {
-	log.Info("Collecting pprof data, could be slow")
-
-	client := &http.Client{}
-
-	cpu, err := collectPprof(client, "profile")
-	if err != nil {
-		return fmt.Errorf("could not read cpu profile: %w", err)
-	}
-
-	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"cpu.pprof", time.Now(), bytes.NewReader(cpu))
-
-	mem, err := collectPprof(client, "heap")
-	if err != nil {
-		return fmt.Errorf("could not read mem profile: %w", err)
-	}
-
-	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"mem.pprof", time.Now(), bytes.NewReader(mem))
-
-	routines, err := collectPprof(client, "goroutine")
-	if err != nil {
-		return fmt.Errorf("could not read goroutine profile: %w", err)
-	}
-
-	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"goroutine.pprof", time.Now(), bytes.NewReader(routines))
+	cli.writeToZip(zw, SUPPORT_PPROF_DIR+endpoint+".pprof", time.Now(), resp.Body)
 
 	return nil
 }
@@ -404,9 +399,6 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 		Short:             "Provide commands to help during support",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
 	}
 
 	cmd.AddCommand(cli.NewDumpCmd())
@@ -453,7 +445,7 @@ func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile 
 	cli.writeToZip(zw, filename, mtime, fin)
 }
 
-func (cli *cliSupport) dump(outFile string) error {
+func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	var skipCAPI, skipLAPI, skipAgent bool
 
 	collector := &StringHook{
@@ -464,7 +456,7 @@ func (cli *cliSupport) dump(outFile string) error {
 	cfg := cli.cfg()
 
 	if outFile == "" {
-		outFile = "/tmp/crowdsec-support.zip"
+		outFile = filepath.Join(os.TempDir(), "crowdsec-support.zip")
 	}
 
 	w := bytes.NewBuffer(nil)
@@ -505,7 +497,7 @@ func (cli *cliSupport) dump(outFile string) error {
 		skipCAPI = true
 	}
 
-	if err = cli.dumpMetrics(zipWriter); err != nil {
+	if err = cli.dumpMetrics(ctx, zipWriter); err != nil {
 		log.Warn(err)
 	}
 
@@ -544,8 +536,18 @@ func (cli *cliSupport) dump(outFile string) error {
 			log.Warnf("could not collect LAPI status: %s", err)
 		}
 
-		if err = cli.dumpPProf(zipWriter); err != nil {
-			log.Warnf("could not collect pprof data: %s", err)
+		// call pprof separately, one might fail for timeout
+
+		if err = cli.dumpPprof(ctx, zipWriter, "goroutine"); err != nil {
+			log.Warnf("could not collect pprof goroutine data: %s", err)
+		}
+
+		if err = cli.dumpPprof(ctx, zipWriter, "heap"); err != nil {
+			log.Warnf("could not collect pprof heap data: %s", err)
+		}
+
+		if err = cli.dumpPprof(ctx, zipWriter, "profile"); err != nil {
+			log.Warnf("could not collect pprof cpu data: %s", err)
 		}
 
 		cli.dumpProfiles(zipWriter)
@@ -613,8 +615,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 `,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.dump(outFile)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.dump(cmd.Context(), outFile)
 		},
 	}
 
