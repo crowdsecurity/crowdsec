@@ -53,6 +53,25 @@ const (
 	SUPPORT_CRASH_PATH                   = "crash/"
 )
 
+// StringHook collects log entries in a string
+type StringHook struct {
+    LogLevels []log.Level
+    LogBuilder strings.Builder
+}
+
+func (hook *StringHook) Levels() []log.Level {
+    return hook.LogLevels
+}
+
+func (hook *StringHook) Fire(entry *log.Entry) error {
+    logEntry, err := entry.String()
+    if err != nil {
+        return err
+    }
+    hook.LogBuilder.WriteString(logEntry)
+    return nil
+}
+
 // from https://github.com/acarl005/stripansi
 var reStripAnsi = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
 
@@ -164,30 +183,50 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 	return out.Bytes()
 }
 
-func collectBouncers(dbClient *database.Client) ([]byte, error) {
-	out := bytes.NewBuffer(nil)
+func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
+	log.Info("Collecting bouncers")
 
-	bouncers, err := dbClient.ListBouncers()
+	if db == nil {
+		log.Warnf("could not collect bouncer information: no database connection")
+		return nil
+	}
+
+	out := new(bytes.Buffer)
+
+	bouncers, err := db.ListBouncers()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list bouncers: %w", err)
+		return fmt.Errorf("unable to list bouncers: %w", err)
 	}
 
 	getBouncersTable(out, bouncers)
 
-	return out.Bytes(), nil
+	stripped := stripAnsiString(out.String())
+
+	cli.writeToZip(zw, SUPPORT_BOUNCERS_PATH, time.Now(), strings.NewReader(stripped))
+	return nil
 }
 
-func collectAgents(dbClient *database.Client) ([]byte, error) {
-	out := bytes.NewBuffer(nil)
+func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
+	log.Info("Collecting agents")
 
-	machines, err := dbClient.ListMachines()
+	if db == nil {
+		log.Warnf("could not collect agent information: no database connection")
+		return nil
+	}
+
+	out := new(bytes.Buffer)
+
+	machines, err := db.ListMachines()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list machines: %w", err)
+		return fmt.Errorf("unable to list machines: %w", err)
 	}
 
 	getAgentsTable(out, machines)
 
-	return out.Bytes(), nil
+	stripped := stripAnsiString(out.String())
+
+	cli.writeToZip(zw, SUPPORT_AGENTS_PATH, time.Now(), strings.NewReader(stripped))
+	return nil
 }
 
 func (cli *cliSupport) collectAPIStatus(login string, password string, endpoint string, prefix string, hub *cwhub.Hub) []byte {
@@ -331,7 +370,12 @@ func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime 
 
 func (cli *cliSupport) dump(outFile string) error {
 	var err error
-	var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
+	var skipHub, skipCAPI, skipLAPI, skipAgent bool
+
+	collector := &StringHook{
+		LogLevels: log.AllLevels,
+	}
+	log.AddHook(collector)
 
 	cfg := cli.cfg()
 
@@ -344,12 +388,9 @@ func (cli *cliSupport) dump(outFile string) error {
 	w := bytes.NewBuffer(nil)
 	zipWriter := zip.NewWriter(w)
 
-	dbClient, err = database.NewClient(cfg.DbConfig)
+	db, err := database.NewClient(cfg.DbConfig)
 	if err != nil {
 		log.Warnf("Could not connect to database: %s", err)
-		skipDB = true
-		infos[SUPPORT_BOUNCERS_PATH] = []byte(err.Error())
-		infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
 	}
 
 	if err = cfg.LoadAPIServer(true); err != nil {
@@ -387,6 +428,8 @@ func (cli *cliSupport) dump(outFile string) error {
 		skipCAPI = true
 	}
 
+	//	XXX: cli.dumpMetrics(zipWriter)
+
 	infos[SUPPORT_METRICS_HUMAN_PATH], infos[SUPPORT_METRICS_PROMETHEUS_PATH], err = cli.collectMetrics()
 	if err != nil {
 		log.Warnf("could not collect prometheus metrics information: %s", err)
@@ -402,27 +445,25 @@ func (cli *cliSupport) dump(outFile string) error {
 		log.Warnf("could not collect main config file: %s", err)
 	}
 
+	//	XXX: cli.dumpHub(zipWriter)
+
 	if !skipHub {
 		infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
 		infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
 		infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
-		infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+		infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.CONTEXTS)
 		infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
 	}
 
-	if !skipDB {
-		infos[SUPPORT_BOUNCERS_PATH], err = collectBouncers(dbClient)
-		if err != nil {
-			log.Warnf("could not collect bouncers information: %s", err)
-			infos[SUPPORT_BOUNCERS_PATH] = []byte(err.Error())
-		}
-
-		infos[SUPPORT_AGENTS_PATH], err = collectAgents(dbClient)
-		if err != nil {
-			log.Warnf("could not collect agents information: %s", err)
-			infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
-		}
+	if err = cli.dumpBouncers(zipWriter, db); err != nil {
+		log.Warnf("could not collect bouncers information: %s", err)
 	}
+
+	if err = cli.dumpAgents(zipWriter, db); err != nil {
+		log.Warnf("could not collect agents information: %s", err)
+	}
+
+	//	XXX: cli.dumpCapiStatus(zipWriter)
 
 	if !skipCAPI {
 		log.Info("Collecting CAPI status")
@@ -432,6 +473,8 @@ func (cli *cliSupport) dump(outFile string) error {
 			CAPIURLPrefix,
 			hub)
 	}
+
+	//	XXX: cli.dumpLapiStatus(zipWriter)
 
 	if !skipLAPI {
 		log.Info("Collection LAPI status")
@@ -443,6 +486,8 @@ func (cli *cliSupport) dump(outFile string) error {
 		infos[SUPPORT_CROWDSEC_PROFILE_PATH] = cli.collectCrowdsecProfile()
 	}
 
+	//	XXX: cli.dumpAcquisitionConfig(zipWriter)
+
 	if !skipAgent {
 		acquis := cli.collectAcquisitionConfig()
 
@@ -451,6 +496,8 @@ func (cli *cliSupport) dump(outFile string) error {
 			infos[SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname] = content
 		}
 	}
+
+	//	XXX: cli.dumpCrash(zipWriter)
 
 	crash, err := collectCrash()
 	if err != nil {
@@ -469,6 +516,9 @@ func (cli *cliSupport) dump(outFile string) error {
 	cli.dumpVersion(zipWriter)
 	cli.dumpFeatures(zipWriter)
 
+	//	XXX: cli.dumpPProf(zipWriter)
+	//	XXX: cli.dumpLogs(zipWriter)
+
 	for filename, data := range infos {
 		// TODO: retain mtime where possible (esp. trace)
 		// TODO: avoid stripping here
@@ -478,6 +528,8 @@ func (cli *cliSupport) dump(outFile string) error {
 			continue
 		}
 	}
+
+	cli.writeToZip(zipWriter, "dump.log", time.Now(), strings.NewReader(collector.LogBuilder.String()))
 
 	err = zipWriter.Close()
 	if err != nil {
