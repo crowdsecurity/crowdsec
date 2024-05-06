@@ -158,7 +158,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType str
 
 	out := new(bytes.Buffer)
 
-	log.Infof("Collecting %s list", itemType)
+	log.Infof("Collecting hub: %s", itemType)
 
 	items := make(map[string][]*cwhub.Item)
 
@@ -286,16 +286,19 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	return nil
 }
 
-func (cli *cliSupport) collectCrowdsecProfile() []byte {
+func (cli *cliSupport) dumpProfiles(zw *zip.Writer) error {
 	cfg := cli.cfg()
 	log.Info("Collecting crowdsec profile")
 
-	config, err := os.ReadFile(cfg.API.Server.ProfilesPath)
+	profiles, err := os.Open(cfg.API.Server.ProfilesPath)
 	if err != nil {
-		return []byte(fmt.Sprintf("could not read profile file: %s", err))
+		return fmt.Errorf("could not read profile file: %s", err)
 	}
+	defer profiles.Close()
 
-	return config
+	cli.writeToZip(zw, SUPPORT_CROWDSEC_PROFILE_PATH, time.Now(), profiles)
+
+	return nil
 }
 
 func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
@@ -308,6 +311,7 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
 		if err != nil {
 			log.Warnf("could not open file %s: %s", filename, err)
 		}
+		defer reader.Close()
 		if err = cli.writeToZip(zw, SUPPORT_ACQUISITION_CONFIG_DIR+fname, time.Now(), reader); err != nil {
 			log.Warnf("could not add file %s to zip: %s", filename, err)
 		}
@@ -442,8 +446,6 @@ func (cli *cliSupport) dump(outFile string) error {
 		log.Warnf("could not collect agents information: %s", err)
 	}
 
-	//	XXX: cli.dumpCapiStatus(zipWriter)
-
 	if !skipCAPI {
 		if err = cli.dumpCAPIStatus(zipWriter, hub); err != nil {
 			log.Warnf("could not collect CAPI status: %s", err)
@@ -455,7 +457,9 @@ func (cli *cliSupport) dump(outFile string) error {
 			log.Warnf("could not collect LAPI status: %s", err)
 		}
 
-		// TODO: XXX: 	infos[SUPPORT_CROWDSEC_PROFILE_PATH] = cli.collectCrowdsecProfile()
+		if err = cli.dumpProfiles(zipWriter); err != nil {
+			log.Warnf("could not collect profiles: %s", err)
+		}
 	}
 
 	if !skipAgent {
