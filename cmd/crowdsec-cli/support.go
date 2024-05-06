@@ -3,12 +3,10 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,20 +14,16 @@ import (
 	"time"
 
 	"github.com/blackfireio/osinfo"
-	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
-	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 const (
@@ -245,50 +239,32 @@ func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 
 	fmt.Fprintln(out, "You can successfully interact with Local API (LAPI)")
 
-	cli.writeToZip(zw, SUPPORT_AGENTS_PATH, time.Now(), out)
+	cli.writeToZip(zw, SUPPORT_LAPI_STATUS_PATH, time.Now(), out)
 	return nil
 }
 
-func (cli *cliSupport) collectAPIStatus(login string, password string, endpoint string, prefix string, hub *cwhub.Hub) []byte {
+func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
+	log.Info("Collecting CAPI status")
 
-	if cfg.API.Client == nil || cfg.API.Client.Credentials == nil {
-		return []byte("No agent credentials found, are we LAPI ?")
+	cred := cfg.API.Server.OnlineClient.Credentials
+
+	out := new(bytes.Buffer)
+
+	fmt.Fprintf(out, "CAPI credentials file: %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
+	fmt.Fprintf(out, "CAPI URL: %s\n", cred.URL)
+	fmt.Fprintf(out, "CAPI username: %s\n", cred.Login)
+
+	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
+		return fmt.Errorf("could not authenticate to Central API (CAPI): %w", err)
 	}
 
-	pwd := strfmt.Password(password)
+	fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
 
-	apiurl, err := url.Parse(endpoint)
-	if err != nil {
-		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
-	}
-
-	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-	if err != nil {
-		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
-	}
-
-	Client, err = apiclient.NewDefaultClient(apiurl,
-		prefix,
-		fmt.Sprintf("crowdsec/%s", version.String()),
-		nil)
-	if err != nil {
-		return []byte(fmt.Sprintf("could not init client: %s", err))
-	}
-
-	t := models.WatcherAuthRequest{
-		MachineID: &login,
-		Password:  &pwd,
-		Scenarios: scenarios,
-	}
-
-	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
-	if err != nil {
-		return []byte(fmt.Sprintf("Could not authenticate to API: %s", err))
-	} else {
-		return []byte("Successfully authenticated to LAPI")
-	}
+	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), out)
+	return nil
 }
+
 
 func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	log.Info("Collecting crowdsec config")
@@ -469,12 +445,9 @@ func (cli *cliSupport) dump(outFile string) error {
 	//	XXX: cli.dumpCapiStatus(zipWriter)
 
 	if !skipCAPI {
-		log.Info("Collecting CAPI status")
-		infos[SUPPORT_CAPI_STATUS_PATH] = cli.collectAPIStatus(cfg.API.Server.OnlineClient.Credentials.Login,
-			cfg.API.Server.OnlineClient.Credentials.Password,
-			cfg.API.Server.OnlineClient.Credentials.URL,
-			CAPIURLPrefix,
-			hub)
+		if err = cli.dumpCAPIStatus(zipWriter, hub); err != nil {
+			log.Warnf("could not collect CAPI status: %s", err)
+		}
 	}
 
 	if !skipLAPI {
