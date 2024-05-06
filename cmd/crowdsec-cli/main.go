@@ -15,14 +15,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 var (
 	ConfigFilePath string
 	csConfig       *csconfig.Config
-	dbClient       *database.Client
 )
 
 type configGetter func() *csconfig.Config

@@ -331,7 +331,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				outFile = "/tmp/crowdsec-support.zip"
 			}
 
-			dbClient, err = database.NewClient(csConfig.DbConfig)
+			dbClient, err := database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Warnf("Could not connect to database: %s", err)
 				skipDB = true

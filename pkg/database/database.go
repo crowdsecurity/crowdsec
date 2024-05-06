@@ -48,7 +48,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	var client *ent.Client
 	var err error
 	if config == nil {
-		return &Client{}, errors.New("DB config is empty")
+		return nil, errors.New("DB config is empty")
 	}
 	/*The logger that will be used by db operations*/
 	clog := log.New()
@@ -63,27 +63,27 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	entOpt := ent.Log(entLogger.Debug)
 	typ, dia, err := config.ConnectionDialect()
 	if err != nil {
-		return &Client{}, err //unsupported database caught here
+		return nil, err //unsupported database caught here
 	}
 	if config.Type == "sqlite" {
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
 			if err != nil {
-				return &Client{}, fmt.Errorf("failed to create SQLite database file %q: %w", config.DbPath, err)
+				return nil, fmt.Errorf("failed to create SQLite database file %q: %w", config.DbPath, err)
 			}
 			if err := f.Close(); err != nil {
-				return &Client{}, fmt.Errorf("failed to create SQLite database file %q: %w", config.DbPath, err)
+				return nil, fmt.Errorf("failed to create SQLite database file %q: %w", config.DbPath, err)
 			}
 		}
 		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
 		if err := setFilePerm(config.DbPath, 0640); err != nil {
-			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
+			return nil, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
 	}
 	drv, err := getEntDriver(typ, dia, config.ConnectionString(), config)
 	if err != nil {
-		return &Client{}, fmt.Errorf("failed opening connection to %s: %v", config.Type, err)
+		return nil, fmt.Errorf("failed opening connection to %s: %v", config.Type, err)
 	}
 	client = ent.NewClient(ent.Driver(drv), entOpt)
 	if config.LogLevel != nil && *config.LogLevel >= log.DebugLevel {
