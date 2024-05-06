@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -186,8 +187,7 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	log.Info("Collecting bouncers")
 
 	if db == nil {
-		log.Warnf("could not collect bouncer information: no database connection")
-		return nil
+		return errors.New("no database connection")
 	}
 
 	out := new(bytes.Buffer)
@@ -209,8 +209,7 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 	log.Info("Collecting agents")
 
 	if db == nil {
-		log.Warnf("could not collect agent information: no database connection")
-		return nil
+		return errors.New("no database connection")
 	}
 
 	out := new(bytes.Buffer)
@@ -225,6 +224,28 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 	stripped := stripAnsiString(out.String())
 
 	cli.writeToZip(zw, SUPPORT_AGENTS_PATH, time.Now(), strings.NewReader(stripped))
+	return nil
+}
+
+func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
+	cfg := cli.cfg()
+	log.Info("Collecting LAPI status")
+
+	cred := cfg.API.Client.Credentials
+
+	out := new(bytes.Buffer)
+
+	fmt.Fprintf(out, "LAPI credentials file: %s\n", cfg.API.Client.CredentialsFilePath)
+	fmt.Fprintf(out, "LAPI URL: %s\n", cred.URL)
+	fmt.Fprintf(out, "LAPI username: %s\n", cred.Login)
+
+	if err := QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
+		return fmt.Errorf("could not authenticate to Local API (LAPI): %w", err)
+	}
+
+	fmt.Fprintln(out, "You can successfully interact with Local API (LAPI)")
+
+	cli.writeToZip(zw, SUPPORT_AGENTS_PATH, time.Now(), out)
 	return nil
 }
 
@@ -393,8 +414,7 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	if err = cfg.LoadAPIServer(true); err != nil {
 		log.Warnf("could not load LAPI, skipping CAPI check")
-		skipLAPI = true
-		infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())
+		skipCAPI = true
 	}
 
 	if err = cfg.LoadCrowdsec(); err != nil {
@@ -405,13 +425,11 @@ func (cli *cliSupport) dump(outFile string) error {
 	hub, err := require.Hub(cfg, nil, nil)
 	if err != nil {
 		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
+		// XXX: lapi status check requires scenarios, will return an error
 	}
 
 	if cfg.API.Client == nil || cfg.API.Client.Credentials == nil {
 		log.Warn("no agent credentials found, skipping LAPI connectivity check")
-		if _, ok := infos[SUPPORT_LAPI_STATUS_PATH]; ok {
-			infos[SUPPORT_LAPI_STATUS_PATH] = append(infos[SUPPORT_LAPI_STATUS_PATH], []byte("\nNo LAPI credentials found")...)
-		}
 		skipLAPI = true
 	}
 
@@ -459,18 +477,13 @@ func (cli *cliSupport) dump(outFile string) error {
 			hub)
 	}
 
-	//	XXX: cli.dumpLapiStatus(zipWriter)
-
 	if !skipLAPI {
-		log.Info("Collection LAPI status")
-		infos[SUPPORT_LAPI_STATUS_PATH] = cli.collectAPIStatus(cfg.API.Client.Credentials.Login,
-			cfg.API.Client.Credentials.Password,
-			cfg.API.Client.Credentials.URL,
-			LAPIURLPrefix,
-			hub)
-		infos[SUPPORT_CROWDSEC_PROFILE_PATH] = cli.collectCrowdsecProfile()
-	}
+		if err = cli.dumpLAPIStatus(zipWriter, hub); err != nil {
+			log.Warnf("could not collect LAPI status: %s", err)
+		}
 
+		// TODO: XXX: 	infos[SUPPORT_CROWDSEC_PROFILE_PATH] = cli.collectCrowdsecProfile()
+	}
 
 	if !skipAgent {
 		err = cli.dumpAcquisitionConfig(zipWriter)
