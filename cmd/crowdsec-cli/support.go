@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -76,48 +75,48 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-func (cli *cliSupport) collectMetrics() ([]byte, []byte, error) {
+func (cli *cliSupport) dumpMetrics(zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
 	cfg := cli.cfg()
 
 	if cfg.Cscli.PrometheusUrl == "" {
-		log.Warn("No Prometheus URL configured, metrics will not be collected")
-		return nil, nil, errors.New("prometheus_uri is not set")
+		log.Warn("can't collect metrics: prometheus_uri is not set")
 	}
 
-	humanMetrics := bytes.NewBuffer(nil)
+	humanMetrics := new(bytes.Buffer)
 
 	ms := NewMetricStore()
 
 	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
-		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %w", err)
+		return err
 	}
 
 	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
-		return nil, nil, err
+		return fmt.Errorf("could not format prometheus metrics: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodGet, cfg.Cscli.PrometheusUrl, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %w", err)
+		return fmt.Errorf("could not create request to prometheus endpoint: %w", err)
 	}
 
 	client := &http.Client{}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get metrics from prometheus endpoint: %w", err)
+		return fmt.Errorf("could not get metrics from prometheus endpoint: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %w", err)
-	}
+	cli.writeToZip(zw, SUPPORT_METRICS_PROMETHEUS_PATH, time.Now(), resp.Body)
 
-	return humanMetrics.Bytes(), body, nil
+	stripped := stripAnsiString(humanMetrics.String())
+
+	cli.writeToZip(zw, SUPPORT_METRICS_HUMAN_PATH, time.Now(), strings.NewReader(stripped))
+
+	return nil
 }
 
 func (cli *cliSupport) dumpVersion(zw *zip.Writer) {
@@ -421,13 +420,8 @@ func (cli *cliSupport) dump(outFile string) error {
 		skipCAPI = true
 	}
 
-	//	XXX: cli.dumpMetrics(zipWriter)
-
-	infos[SUPPORT_METRICS_HUMAN_PATH], infos[SUPPORT_METRICS_PROMETHEUS_PATH], err = cli.collectMetrics()
-	if err != nil {
-		log.Warnf("could not collect prometheus metrics information: %s", err)
-		infos[SUPPORT_METRICS_HUMAN_PATH] = []byte(err.Error())
-		infos[SUPPORT_METRICS_PROMETHEUS_PATH] = []byte(err.Error())
+	if err = cli.dumpMetrics(zipWriter); err != nil {
+		log.Warn(err)
 	}
 
 	if err = cli.dumpOSInfo(zipWriter); err != nil {
