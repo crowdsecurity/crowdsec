@@ -132,6 +132,8 @@ func (cli *cliRoot) initialize() {
 		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
 
+	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
+
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetLevel(log.ErrorLevel)
