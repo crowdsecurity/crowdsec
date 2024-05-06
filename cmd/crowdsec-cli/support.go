@@ -27,20 +27,19 @@ import (
 )
 
 const (
-	SUPPORT_METRICS_HUMAN_PATH      = "metrics/metrics.human"
-	SUPPORT_METRICS_PROMETHEUS_PATH = "metrics/metrics.prometheus"
-	SUPPORT_VERSION_PATH            = "version.txt"
-	SUPPORT_FEATURES_PATH           = "features.txt"
-	SUPPORT_OS_INFO_PATH            = "osinfo.txt"
-	SUPPORT_HUB_DIR                 = "hub/"
-	SUPPORT_BOUNCERS_PATH           = "lapi/bouncers.txt"
-	SUPPORT_AGENTS_PATH             = "lapi/agents.txt"
-	SUPPORT_CROWDSEC_CONFIG_PATH    = "config/crowdsec.yaml"
-	SUPPORT_LAPI_STATUS_PATH        = "lapi_status.txt"
-	SUPPORT_CAPI_STATUS_PATH        = "capi_status.txt"
-	SUPPORT_ACQUISITION_CONFIG_DIR  = "config/acquis/"
-	SUPPORT_CROWDSEC_PROFILE_PATH   = "config/profiles.yaml"
-	SUPPORT_CRASH_PATH              = "crash/"
+	SUPPORT_METRICS_DIR           = "metrics/"
+	SUPPORT_VERSION_PATH          = "version.txt"
+	SUPPORT_FEATURES_PATH         = "features.txt"
+	SUPPORT_OS_INFO_PATH          = "osinfo.txt"
+	SUPPORT_HUB_DIR               = "hub/"
+	SUPPORT_BOUNCERS_PATH         = "lapi/bouncers.txt"
+	SUPPORT_AGENTS_PATH           = "lapi/agents.txt"
+	SUPPORT_CROWDSEC_CONFIG_PATH  = "config/crowdsec.yaml"
+	SUPPORT_LAPI_STATUS_PATH      = "lapi_status.txt"
+	SUPPORT_CAPI_STATUS_PATH      = "capi_status.txt"
+	SUPPORT_ACQUISITION_DIR       = "config/acquis/"
+	SUPPORT_CROWDSEC_PROFILE_PATH = "config/profiles.yaml"
+	SUPPORT_CRASH_DIR             = "crash/"
 )
 
 // StringHook collects log entries in a string
@@ -105,11 +104,11 @@ func (cli *cliSupport) dumpMetrics(zw *zip.Writer) error {
 
 	defer resp.Body.Close()
 
-	cli.writeToZip(zw, SUPPORT_METRICS_PROMETHEUS_PATH, time.Now(), resp.Body)
+	cli.writeToZip(zw, SUPPORT_METRICS_DIR+"metrics.prometheus", time.Now(), resp.Body)
 
 	stripped := stripAnsiString(humanMetrics.String())
 
-	cli.writeToZip(zw, SUPPORT_METRICS_HUMAN_PATH, time.Now(), strings.NewReader(stripped))
+	cli.writeToZip(zw, SUPPORT_METRICS_DIR+"metrics.human", time.Now(), strings.NewReader(stripped))
 
 	return nil
 }
@@ -290,13 +289,7 @@ func (cli *cliSupport) dumpProfiles(zw *zip.Writer) error {
 	cfg := cli.cfg()
 	log.Info("Collecting crowdsec profile")
 
-	profiles, err := os.Open(cfg.API.Server.ProfilesPath)
-	if err != nil {
-		return fmt.Errorf("could not read profile file: %s", err)
-	}
-	defer profiles.Close()
-
-	cli.writeToZip(zw, SUPPORT_CROWDSEC_PROFILE_PATH, time.Now(), profiles)
+	cli.writeFileToZip(zw, SUPPORT_CROWDSEC_PROFILE_PATH, cfg.API.Server.ProfilesPath)
 
 	return nil
 }
@@ -307,12 +300,7 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
 
 	for _, filename := range cfg.Crowdsec.AcquisitionFiles {
 		fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
-		reader, err := os.Open(filename)
-		if err != nil {
-			log.Warnf("could not open file %s: %s", filename, err)
-		}
-		defer reader.Close()
-		if err = cli.writeToZip(zw, SUPPORT_ACQUISITION_CONFIG_DIR+fname, time.Now(), reader); err != nil {
+		if err := cli.writeFileToZip(zw, SUPPORT_ACQUISITION_DIR+fname, filename); err != nil {
 			log.Warnf("could not add file %s to zip: %s", filename, err)
 		}
 	}
@@ -320,9 +308,21 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
 	return nil
 }
 
-func collectCrash() ([]string, error) {
+func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	log.Info("Collecting crash dumps")
-	return trace.List()
+
+	traceFiles, err := trace.List()
+	if err != nil {
+		return fmt.Errorf("could not list crash dumps: %w", err)
+	}
+
+	for _, filename := range traceFiles {
+		if err := cli.writeFileToZip(zw, SUPPORT_CRASH_DIR+filepath.Base(filename), filename); err != nil {
+			log.Warnf("could not add file %s to zip: %s", filename, err)
+		}
+	}
+
+	return nil
 }
 
 type cliSupport struct{
@@ -351,6 +351,7 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 	return cmd
 }
 
+// writeToZip adds a file to the zip archive, from a reader
 func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) error {
 	header := &zip.FileHeader{
 		Name:   filename,
@@ -368,6 +369,25 @@ func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime 
 	return nil
 }
 
+// writeToZip adds a file to the zip archive, from a file, and retains the mtime
+func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile string) error {
+	mtime := time.Now()
+	fi, err := os.Stat(fromFile)
+	if err == nil {
+		mtime = fi.ModTime()
+	}
+
+	fin, err := os.Open(fromFile)
+	if err != nil {
+		return fmt.Errorf("could not open file %s: %s", fromFile, err)
+	}
+	defer fin.Close()
+
+	cli.writeToZip(zw, filename, mtime, fin)
+
+	return nil
+}
+
 func (cli *cliSupport) dump(outFile string) error {
 	var skipCAPI, skipLAPI, skipAgent bool
 
@@ -377,8 +397,6 @@ func (cli *cliSupport) dump(outFile string) error {
 	log.AddHook(collector)
 
 	cfg := cli.cfg()
-
-	infos := map[string][]byte{}
 
 	if outFile == "" {
 		outFile = "/tmp/crowdsec-support.zip"
@@ -469,20 +487,8 @@ func (cli *cliSupport) dump(outFile string) error {
 		}
 	}
 
-	//	XXX: cli.dumpCrash(zipWriter)
-
-	crash, err := collectCrash()
-	if err != nil {
+	if err = cli.dumpCrash(zipWriter); err != nil {
 		log.Errorf("could not collect crash dumps: %s", err)
-	}
-
-	for _, filename := range crash {
-		content, err := os.ReadFile(filename)
-		if err != nil {
-			log.Errorf("could not read crash dump %s: %s", filename, err)
-		}
-
-		infos[SUPPORT_CRASH_PATH+filepath.Base(filename)] = content
 	}
 
 	cli.dumpVersion(zipWriter)
@@ -490,16 +496,6 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	//	XXX: cli.dumpPProf(zipWriter)
 	//	XXX: cli.dumpLogs(zipWriter)
-
-	for filename, data := range infos {
-		// TODO: retain mtime where possible (esp. trace)
-		// TODO: avoid stripping here
-		reader := strings.NewReader(stripAnsiString(string(data)))
-		if err = cli.writeToZip(zipWriter, filename, time.Now(), reader); err != nil {
-			log.Error(err)
-			continue
-		}
-	}
 
 	// log of the dump process, without color codes
 	collectedOutput := stripAnsiString(collector.LogBuilder.String())
