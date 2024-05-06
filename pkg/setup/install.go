@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -173,7 +174,7 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 
 		if toDir != "" {
 			if ad.AcquisFilename == "" {
-				return "", fmt.Errorf("empty acquis filename")
+				return "", errors.New("empty acquis filename")
 			}
 
 			fname := filepath.Join(toDir, ad.AcquisFilename)

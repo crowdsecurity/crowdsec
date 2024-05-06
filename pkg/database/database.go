@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 
@@ -47,7 +48,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	var client *ent.Client
 	var err error
 	if config == nil {
-		return &Client{}, fmt.Errorf("DB config is empty")
+		return &Client{}, errors.New("DB config is empty")
 	}
 	/*The logger that will be used by db operations*/
 	clog := log.New()
