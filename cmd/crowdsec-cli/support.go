@@ -40,6 +40,7 @@ const (
 	SUPPORT_ACQUISITION_DIR       = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH = "config/profiles.yaml"
 	SUPPORT_CRASH_DIR             = "crash/"
+	SUPPORT_LOG_DIR               = "log/"
 )
 
 // StringHook collects log entries in a string
@@ -308,6 +309,27 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
 	return nil
 }
 
+func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
+	log.Info("Collecting CrowdSec logs")
+
+	cfg := cli.cfg()
+
+	logDir := cfg.Common.LogDir
+
+	logFiles, err := filepath.Glob(filepath.Join(logDir, "crowdsec*.log"))
+	if err != nil {
+		return fmt.Errorf("could not list log files: %w", err)
+	}
+
+	for _, filename := range logFiles {
+		if err := cli.writeFileToZip(zw, SUPPORT_LOG_DIR+filepath.Base(filename), filename); err != nil {
+			log.Warnf("could not add file %s to zip: %s", filename, err)
+		}
+	}
+
+	return nil
+}
+
 func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	log.Info("Collecting crash dumps")
 
@@ -491,11 +513,14 @@ func (cli *cliSupport) dump(outFile string) error {
 		log.Errorf("could not collect crash dumps: %s", err)
 	}
 
+	if err = cli.dumpLogs(zipWriter); err != nil {
+		log.Errorf("could not collect log files: %s", err)
+	}
+
 	cli.dumpVersion(zipWriter)
 	cli.dumpFeatures(zipWriter)
 
 	//	XXX: cli.dumpPProf(zipWriter)
-	//	XXX: cli.dumpLogs(zipWriter)
 
 	// log of the dump process, without color codes
 	collectedOutput := stripAnsiString(collector.LogBuilder.String())
@@ -529,6 +554,7 @@ func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 - Crowdsec version
 - OS version
 - Enabled feature flags
+- Latest Crowdsec logs (log processor, LAPI, remediation components)
 - Installed collections, parsers, scenarios...
 - Bouncers and machines list
 - CAPI/LAPI status
