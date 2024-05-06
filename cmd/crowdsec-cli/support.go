@@ -46,21 +46,23 @@ const (
 
 // StringHook collects log entries in a string
 type StringHook struct {
-    LogLevels []log.Level
-    LogBuilder strings.Builder
+	LogBuilder strings.Builder
+	LogLevels  []log.Level
 }
 
 func (hook *StringHook) Levels() []log.Level {
-    return hook.LogLevels
+	return hook.LogLevels
 }
 
 func (hook *StringHook) Fire(entry *log.Entry) error {
-    logEntry, err := entry.String()
-    if err != nil {
-        return err
-    }
-    hook.LogBuilder.WriteString(logEntry)
-    return nil
+	logEntry, err := entry.String()
+	if err != nil {
+		return err
+	}
+
+	hook.LogBuilder.WriteString(logEntry)
+
+	return nil
 }
 
 // from https://github.com/acarl005/stripansi
@@ -173,7 +175,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType str
 
 	stripped := stripAnsiString(out.String())
 
-	cli.writeToZip(zw, SUPPORT_HUB_DIR + itemType + ".txt", time.Now(), strings.NewReader(stripped))
+	cli.writeToZip(zw, SUPPORT_HUB_DIR+itemType+".txt", time.Now(), strings.NewReader(stripped))
 
 	return nil
 }
@@ -197,6 +199,7 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	stripped := stripAnsiString(out.String())
 
 	cli.writeToZip(zw, SUPPORT_BOUNCERS_PATH, time.Now(), strings.NewReader(stripped))
+
 	return nil
 }
 
@@ -219,13 +222,14 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 	stripped := stripAnsiString(out.String())
 
 	cli.writeToZip(zw, SUPPORT_AGENTS_PATH, time.Now(), strings.NewReader(stripped))
+
 	return nil
 }
 
 func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
-	cfg := cli.cfg()
 	log.Info("Collecting LAPI status")
 
+	cfg := cli.cfg()
 	cred := cfg.API.Client.Credentials
 
 	out := new(bytes.Buffer)
@@ -241,13 +245,14 @@ func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintln(out, "You can successfully interact with Local API (LAPI)")
 
 	cli.writeToZip(zw, SUPPORT_LAPI_STATUS_PATH, time.Now(), out)
+
 	return nil
 }
 
 func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
-	cfg := cli.cfg()
 	log.Info("Collecting CAPI status")
 
+	cfg := cli.cfg()
 	cred := cfg.API.Server.OnlineClient.Credentials
 
 	out := new(bytes.Buffer)
@@ -263,12 +268,13 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
 
 	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), out)
+
 	return nil
 }
 
-
 func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	log.Info("Collecting crowdsec config")
+
 	cfg := cli.cfg()
 
 	config, err := os.ReadFile(*cfg.FilePath)
@@ -279,8 +285,6 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	r := regexp.MustCompile(`(\s+password:|\s+user:|\s+host:)\s+.*`)
 
 	redacted := r.ReplaceAll(config, []byte("$1 ****REDACTED****"))
-
-	// XXX: retain mtime of config file??
 
 	cli.writeToZip(zw, SUPPORT_CROWDSEC_CONFIG_PATH, time.Now(), bytes.NewReader(redacted))
 
@@ -307,6 +311,7 @@ func (cli *cliSupport) dumpPProf(zw *zip.Writer) error {
 	log.Info("Collecting pprof data, could be slow")
 
 	client := &http.Client{}
+
 	cpu, err := collectPprof(client, "profile")
 	if err != nil {
 		return fmt.Errorf("could not read cpu profile: %w", err)
@@ -323,7 +328,7 @@ func (cli *cliSupport) dumpPProf(zw *zip.Writer) error {
 
 	routines, err := collectPprof(client, "goroutine")
 	if err != nil {
-		return fmt.Errorf("could not read goroutine profile: %s", err)
+		return fmt.Errorf("could not read goroutine profile: %w", err)
 	}
 
 	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"goroutine.pprof", time.Now(), bytes.NewReader(routines))
@@ -331,27 +336,22 @@ func (cli *cliSupport) dumpPProf(zw *zip.Writer) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpProfiles(zw *zip.Writer) error {
-	cfg := cli.cfg()
+func (cli *cliSupport) dumpProfiles(zw *zip.Writer) {
 	log.Info("Collecting crowdsec profile")
 
+	cfg := cli.cfg()
 	cli.writeFileToZip(zw, SUPPORT_CROWDSEC_PROFILE_PATH, cfg.API.Server.ProfilesPath)
-
-	return nil
 }
 
-func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
-	cfg := cli.cfg()
+func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) {
 	log.Info("Collecting acquisition config")
+
+	cfg := cli.cfg()
 
 	for _, filename := range cfg.Crowdsec.AcquisitionFiles {
 		fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
-		if err := cli.writeFileToZip(zw, SUPPORT_ACQUISITION_DIR+fname, filename); err != nil {
-			log.Warnf("could not add file %s to zip: %s", filename, err)
-		}
+		cli.writeFileToZip(zw, SUPPORT_ACQUISITION_DIR+fname, filename)
 	}
-
-	return nil
 }
 
 func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
@@ -367,9 +367,7 @@ func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
 	}
 
 	for _, filename := range logFiles {
-		if err := cli.writeFileToZip(zw, SUPPORT_LOG_DIR+filepath.Base(filename), filename); err != nil {
-			log.Warnf("could not add file %s to zip: %s", filename, err)
-		}
+		cli.writeFileToZip(zw, SUPPORT_LOG_DIR+filepath.Base(filename), filename)
 	}
 
 	return nil
@@ -384,15 +382,13 @@ func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	}
 
 	for _, filename := range traceFiles {
-		if err := cli.writeFileToZip(zw, SUPPORT_CRASH_DIR+filepath.Base(filename), filename); err != nil {
-			log.Warnf("could not add file %s to zip: %s", filename, err)
-		}
+		cli.writeFileToZip(zw, SUPPORT_CRASH_DIR+filepath.Base(filename), filename)
 	}
 
 	return nil
 }
 
-type cliSupport struct{
+type cliSupport struct {
 	cfg configGetter
 }
 
@@ -419,26 +415,29 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 }
 
 // writeToZip adds a file to the zip archive, from a reader
-func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) error {
+func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) {
 	header := &zip.FileHeader{
-		Name:   filename,
-		Method: zip.Deflate,
+		Name:     filename,
+		Method:   zip.Deflate,
 		Modified: mtime,
 	}
+
 	fw, err := zipWriter.CreateHeader(header)
 	if err != nil {
-		return fmt.Errorf("could not add zip entry for %s: %s", filename, err)
+		log.Errorf("could not add zip entry for %s: %s", filename, err)
+		return
 	}
+
 	_, err = io.Copy(fw, reader)
 	if err != nil {
-		return fmt.Errorf("could not write zip entry for %s: %s", filename, err)
+		log.Errorf("could not write zip entry for %s: %s", filename, err)
 	}
-	return nil
 }
 
 // writeToZip adds a file to the zip archive, from a file, and retains the mtime
-func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile string) error {
+func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile string) {
 	mtime := time.Now()
+
 	fi, err := os.Stat(fromFile)
 	if err == nil {
 		mtime = fi.ModTime()
@@ -446,13 +445,12 @@ func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile 
 
 	fin, err := os.Open(fromFile)
 	if err != nil {
-		return fmt.Errorf("could not open file %s: %s", fromFile, err)
+		log.Errorf("could not open file %s: %s", fromFile, err)
+		return
 	}
 	defer fin.Close()
 
 	cli.writeToZip(zw, filename, mtime, fin)
-
-	return nil
 }
 
 func (cli *cliSupport) dump(outFile string) error {
@@ -479,11 +477,13 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	if err = cfg.LoadAPIServer(true); err != nil {
 		log.Warnf("could not load LAPI, skipping CAPI check")
+
 		skipCAPI = true
 	}
 
 	if err = cfg.LoadCrowdsec(); err != nil {
 		log.Warnf("could not load agent config, skipping crowdsec config check")
+
 		skipAgent = true
 	}
 
@@ -495,11 +495,13 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	if cfg.API.Client == nil || cfg.API.Client.Credentials == nil {
 		log.Warn("no agent credentials found, skipping LAPI connectivity check")
+
 		skipLAPI = true
 	}
 
 	if cfg.API.Server == nil || cfg.API.Server.OnlineClient == nil || cfg.API.Server.OnlineClient.Credentials == nil {
 		log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
+
 		skipCAPI = true
 	}
 
@@ -546,16 +548,11 @@ func (cli *cliSupport) dump(outFile string) error {
 			log.Warnf("could not collect pprof data: %s", err)
 		}
 
-		if err = cli.dumpProfiles(zipWriter); err != nil {
-			log.Warnf("could not collect profiles: %s", err)
-		}
+		cli.dumpProfiles(zipWriter)
 	}
 
 	if !skipAgent {
-		err = cli.dumpAcquisitionConfig(zipWriter)
-		if err != nil {
-			log.Warnf("could not collect acquisition config: %s", err)
-		}
+		cli.dumpAcquisitionConfig(zipWriter)
 	}
 
 	if err = cli.dumpCrash(zipWriter); err != nil {
@@ -576,18 +573,21 @@ func (cli *cliSupport) dump(outFile string) error {
 
 	err = zipWriter.Close()
 	if err != nil {
-		return fmt.Errorf("could not finalize zip file: %s", err)
+		return fmt.Errorf("could not finalize zip file: %w", err)
 	}
 
 	if outFile == "-" {
 		_, err = os.Stdout.Write(w.Bytes())
 		return err
 	}
+
 	err = os.WriteFile(outFile, w.Bytes(), 0o600)
 	if err != nil {
-		return fmt.Errorf("could not write zip file to %s: %s", outFile, err)
+		return fmt.Errorf("could not write zip file to %s: %w", outFile, err)
 	}
+
 	log.Infof("Written zip file to %s", outFile)
+
 	return nil
 }
 
