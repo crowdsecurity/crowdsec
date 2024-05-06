@@ -263,7 +263,7 @@ teardown() {
 
     rune -1 cscli lapi status -o json
     rune -0 jq -r '.msg' <(stderr)
-    assert_output 'parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
+    assert_output 'failed to authenticate to Local API (LAPI): parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
 }
 
 @test "cscli - bad LAPI password" {
