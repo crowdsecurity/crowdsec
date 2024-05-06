@@ -302,22 +302,22 @@ func (cli *cliSupport) collectCrowdsecProfile() []byte {
 	return config
 }
 
-func (cli *cliSupport) collectAcquisitionConfig() map[string][]byte {
+func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) error {
 	cfg := cli.cfg()
 	log.Info("Collecting acquisition config")
 
-	ret := make(map[string][]byte)
-
 	for _, filename := range cfg.Crowdsec.AcquisitionFiles {
-		fileContent, err := os.ReadFile(filename)
+		fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
+		reader, err := os.Open(filename)
 		if err != nil {
-			ret[filename] = []byte(fmt.Sprintf("could not read file: %s", err))
-		} else {
-			ret[filename] = fileContent
+			log.Warnf("could not open file %s: %s", filename, err)
+		}
+		if err = cli.writeToZip(zw, SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname, time.Now(), reader); err != nil {
+			log.Warnf("could not add file %s to zip: %s", filename, err)
 		}
 	}
 
-	return ret
+	return nil
 }
 
 func collectCrash() ([]string, error) {
@@ -486,14 +486,11 @@ func (cli *cliSupport) dump(outFile string) error {
 		infos[SUPPORT_CROWDSEC_PROFILE_PATH] = cli.collectCrowdsecProfile()
 	}
 
-	//	XXX: cli.dumpAcquisitionConfig(zipWriter)
 
 	if !skipAgent {
-		acquis := cli.collectAcquisitionConfig()
-
-		for filename, content := range acquis {
-			fname := strings.ReplaceAll(filename, string(filepath.Separator), "___")
-			infos[SUPPORT_ACQUISITION_CONFIG_BASE_PATH+fname] = content
+		err = cli.dumpAcquisitionConfig(zipWriter)
+		if err != nil {
+			log.Warnf("could not collect acquisition config: %s", err)
 		}
 	}
 
@@ -529,7 +526,10 @@ func (cli *cliSupport) dump(outFile string) error {
 		}
 	}
 
-	cli.writeToZip(zipWriter, "dump.log", time.Now(), strings.NewReader(collector.LogBuilder.String()))
+	// log of the dump process, without color codes
+	collected_output := stripAnsiString(collector.LogBuilder.String())
+
+	cli.writeToZip(zipWriter, "dump.log", time.Now(), strings.NewReader(collected_output))
 
 	err = zipWriter.Close()
 	if err != nil {
