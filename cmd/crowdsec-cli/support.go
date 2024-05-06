@@ -41,6 +41,7 @@ const (
 	SUPPORT_CROWDSEC_PROFILE_PATH = "config/profiles.yaml"
 	SUPPORT_CRASH_DIR             = "crash/"
 	SUPPORT_LOG_DIR               = "log/"
+	SUPPORT_PPROF_DIR             = "pprof/"
 )
 
 // StringHook collects log entries in a string
@@ -286,6 +287,50 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	return nil
 }
 
+func collectPprof(h *http.Client, endpoint string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/debug/pprof/%s?debug=1", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort, endpoint), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := h.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
+}
+
+func (cli *cliSupport) dumpPProf(zw *zip.Writer) error {
+	log.Info("Collecting pprof data, could be slow")
+
+	client := &http.Client{}
+	cpu, err := collectPprof(client, "profile")
+	if err != nil {
+		return fmt.Errorf("could not read cpu profile: %w", err)
+	}
+
+	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"cpu.pprof", time.Now(), bytes.NewReader(cpu))
+
+	mem, err := collectPprof(client, "heap")
+	if err != nil {
+		return fmt.Errorf("could not read mem profile: %w", err)
+	}
+
+	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"mem.pprof", time.Now(), bytes.NewReader(mem))
+
+	routines, err := collectPprof(client, "goroutine")
+	if err != nil {
+		return fmt.Errorf("could not read goroutine profile: %s", err)
+	}
+
+	cli.writeToZip(zw, SUPPORT_PPROF_DIR+"goroutine.pprof", time.Now(), bytes.NewReader(routines))
+
+	return nil
+}
+
 func (cli *cliSupport) dumpProfiles(zw *zip.Writer) error {
 	cfg := cli.cfg()
 	log.Info("Collecting crowdsec profile")
@@ -497,6 +542,10 @@ func (cli *cliSupport) dump(outFile string) error {
 			log.Warnf("could not collect LAPI status: %s", err)
 		}
 
+		if err = cli.dumpPProf(zipWriter); err != nil {
+			log.Warnf("could not collect pprof data: %s", err)
+		}
+
 		if err = cli.dumpProfiles(zipWriter); err != nil {
 			log.Warnf("could not collect profiles: %s", err)
 		}
@@ -510,17 +559,15 @@ func (cli *cliSupport) dump(outFile string) error {
 	}
 
 	if err = cli.dumpCrash(zipWriter); err != nil {
-		log.Errorf("could not collect crash dumps: %s", err)
+		log.Warnf("could not collect crash dumps: %s", err)
 	}
 
 	if err = cli.dumpLogs(zipWriter); err != nil {
-		log.Errorf("could not collect log files: %s", err)
+		log.Warnf("could not collect log files: %s", err)
 	}
 
 	cli.dumpVersion(zipWriter)
 	cli.dumpFeatures(zipWriter)
-
-	//	XXX: cli.dumpPProf(zipWriter)
 
 	// log of the dump process, without color codes
 	collectedOutput := stripAnsiString(collector.LogBuilder.String())
