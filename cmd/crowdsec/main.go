@@ -262,10 +262,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	if cConfig.Common.LogMedia != "stdout" {
-		log.AddHook(&FatalHook{
-			Writer:    os.Stderr,
-			LogLevels: []log.Level{log.FatalLevel, log.PanicLevel},
-		})
+		log.AddHook(newFatalHook())
 	}
 
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
