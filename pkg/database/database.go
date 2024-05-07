@@ -68,7 +68,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 
 	typ, dia, err := config.ConnectionDialect()
 	if err != nil {
-		return nil, err // unsupported database caught here
+		return nil, err //unsupported database caught here
 	}
 
 	if config.Type == "sqlite" {

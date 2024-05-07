@@ -155,23 +155,11 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliCapi) status() error {
-	cfg := cli.cfg()
-
-	if err := require.CAPIRegistered(cfg); err != nil {
-		return err
-	}
-
-	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
-
-	apiurl, err := url.Parse(cfg.API.Server.OnlineClient.Credentials.URL)
+// QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct
+func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) error {
+	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return fmt.Errorf("parsing api url ('%s'): %w", cfg.API.Server.OnlineClient.Credentials.URL, err)
-	}
-
-	hub, err := require.Hub(cfg, nil, nil)
-	if err != nil {
-		return err
+		return fmt.Errorf("parsing api url: %w", err)
 	}
 
 	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
@@ -183,22 +171,48 @@ func (cli *cliCapi) status() error {
 		return errors.New("no scenarios installed, abort")
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
+	Client, err = apiclient.NewDefaultClient(apiURL,
+		CAPIURLPrefix,
+		fmt.Sprintf("crowdsec/%s", version.String()),
+		nil)
 	if err != nil {
 		return fmt.Errorf("init default client: %w", err)
 	}
 
+	pw := strfmt.Password(password)
+
 	t := models.WatcherAuthRequest{
-		MachineID: &cfg.API.Server.OnlineClient.Credentials.Login,
-		Password:  &password,
+		MachineID: &login,
+		Password:  &pw,
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cfg.API.Server.OnlineClient.Credentials.Login, apiurl)
-
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cli *cliCapi) status() error {
+	cfg := cli.cfg()
+
+	if err := require.CAPIRegistered(cfg); err != nil {
+		return err
+	}
+
+	cred := cfg.API.Server.OnlineClient.Credentials
+
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
+	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
+
+	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 
