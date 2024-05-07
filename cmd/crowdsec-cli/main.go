@@ -15,14 +15,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 var (
 	ConfigFilePath string
 	csConfig       *csconfig.Config
-	dbClient       *database.Client
 )
 
 type configGetter func() *csconfig.Config
@@ -131,6 +129,8 @@ func (cli *cliRoot) initialize() {
 	if csConfig.Cscli.Output != "human" && csConfig.Cscli.Output != "json" && csConfig.Cscli.Output != "raw" {
 		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
+
+	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
 
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
