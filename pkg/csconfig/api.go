@@ -257,7 +257,7 @@ type LocalApiServerCfg struct {
 	LogMaxSize                    int                 `yaml:"-"`
 	LogMaxAge                     int                 `yaml:"-"`
 	LogMaxFiles                   int                 `yaml:"-"`
-	LogFormat					  string			  `yaml:"-"`
+	LogFormat                     string              `yaml:"-"`
 	TrustedIPs                    []string            `yaml:"trusted_ips,omitempty"`
 	PapiLogLevel                  *log.Level          `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
