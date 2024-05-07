@@ -51,7 +51,7 @@ teardown() {
     assert_stderr --partial "Constraint_acquis:"
 
     # should work without configuration file
-    rm "${CONFIG_YAML}"
+    rm "$CONFIG_YAML"
     rune -0 cscli version
     assert_stderr --partial "version:"
 }
@@ -62,7 +62,7 @@ teardown() {
     assert_line --regexp ".* help .* Help about any command"
 
     # should work without configuration file
-    rm "${CONFIG_YAML}"
+    rm "$CONFIG_YAML"
     rune -0 cscli help
     assert_line "Available Commands:"
 }
@@ -132,7 +132,7 @@ teardown() {
 
 
 @test "cscli - required configuration paths" {
-    config=$(cat "${CONFIG_YAML}")
+    config=$(cat "$CONFIG_YAML")
     configdir=$(config_get '.config_paths.config_dir')
 
     # required configuration paths with no defaults
@@ -140,12 +140,12 @@ teardown() {
     config_set 'del(.config_paths)'
     rune -1 cscli hub list
     assert_stderr --partial 'no configuration paths provided'
-    echo "$config" > "${CONFIG_YAML}"
+    echo "$config" > "$CONFIG_YAML"
 
     config_set 'del(.config_paths.data_dir)'
     rune -1 cscli hub list
     assert_stderr --partial "please provide a data directory with the 'data_dir' directive in the 'config_paths' section"
-    echo "$config" > "${CONFIG_YAML}"
+    echo "$config" > "$CONFIG_YAML"
 
     # defaults
 
@@ -153,13 +153,13 @@ teardown() {
     rune -0 cscli hub list
     rune -0 cscli config show --key Config.ConfigPaths.HubDir
     assert_output "$configdir/hub"
-    echo "$config" > "${CONFIG_YAML}"
+    echo "$config" > "$CONFIG_YAML"
 
     config_set 'del(.config_paths.index_path)'
     rune -0 cscli hub list
     rune -0 cscli config show --key Config.ConfigPaths.HubIndexFile
     assert_output "$configdir/hub/.index.json"
-    echo "$config" > "${CONFIG_YAML}"
+    echo "$config" > "$CONFIG_YAML"
 }
 
 @test "cscli config show-yaml" {
@@ -182,30 +182,30 @@ teardown() {
     assert_stderr --partial "failed to backup config: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
 
     # pick a dirpath
-    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
 
     # succeed the first time
-    rune -0 cscli config backup "${backupdir}"
+    rune -0 cscli config backup "$backupdir"
     assert_stderr --partial "Starting configuration backup"
 
     # don't overwrite an existing backup
-    rune -1 cscli config backup "${backupdir}"
+    rune -1 cscli config backup "$backupdir"
     assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
 
     SIMULATION_YAML="$(config_get '.config_paths.simulation_path')"
 
     # restore
-    rm "${SIMULATION_YAML}"
-    rune -0 cscli config restore "${backupdir}"
-    assert_file_exists "${SIMULATION_YAML}"
+    rm "$SIMULATION_YAML"
+    rune -0 cscli config restore "$backupdir"
+    assert_file_exists "$SIMULATION_YAML"
 
     # cleanup
     rm -rf -- "${backupdir:?}"
 
     # backup: detect missing files
-    rm "${SIMULATION_YAML}"
-    rune -1 cscli config backup "${backupdir}"
+    rm "$SIMULATION_YAML"
+    rune -1 cscli config backup "$backupdir"
     assert_stderr --regexp "failed to backup config: failed copy .* to .*: stat .*: no such file or directory"
     rm -rf -- "${backupdir:?}"
 }
@@ -221,7 +221,7 @@ teardown() {
 
 @test "cscli - missing LAPI credentials file" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    rm -f "${LOCAL_API_CREDENTIALS}"
+    rm -f "$LOCAL_API_CREDENTIALS"
     rune -1 cscli lapi status
     assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 
@@ -234,7 +234,7 @@ teardown() {
 
 @test "cscli - empty LAPI credentials file" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    : > "${LOCAL_API_CREDENTIALS}"
+    : > "$LOCAL_API_CREDENTIALS"
     rune -1 cscli lapi status
     assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 
@@ -259,7 +259,7 @@ teardown() {
 
 @test "cscli - malformed LAPI url" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    config_set "${LOCAL_API_CREDENTIALS}" '.url="http://127.0.0.1:-80"'
+    config_set "$LOCAL_API_CREDENTIALS" '.url="http://127.0.0.1:-80"'
 
     rune -1 cscli lapi status -o json
     rune -0 jq -r '.msg' <(stderr)
@@ -269,7 +269,7 @@ teardown() {
 @test "cscli - bad LAPI password" {
     rune -0 ./instance-crowdsec start
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    config_set "${LOCAL_API_CREDENTIALS}" '.password="meh"'
+    config_set "$LOCAL_API_CREDENTIALS" '.password="meh"'
 
     rune -1 cscli lapi status -o json
     rune -0 jq -r '.msg' <(stderr)
@@ -286,7 +286,7 @@ teardown() {
     rune -0 cscli completion fish
     assert_output --partial "# fish completion for cscli"
 
-    rm "${CONFIG_YAML}"
+    rm "$CONFIG_YAML"
     rune -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
 }

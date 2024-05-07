@@ -35,20 +35,20 @@ teardown() {
 #----------
 
 @test "1.1.1.172 has been banned" {
-    tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
-    touch "${tmpfile}"
+    tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    touch "$tmpfile"
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
-    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"$ACQUIS_YAML"
 
     ./instance-crowdsec start
 
     sleep 0.2
 
-    fake_log >>"${tmpfile}"
+    fake_log >>"$tmpfile"
 
     sleep 0.2
 
-    rm -f -- "${tmpfile}"
+    rm -f -- "$tmpfile"
 
     found=0
     # this may take some time in CI
@@ -59,5 +59,5 @@ teardown() {
         fi
         sleep 0.2
     done
-    assert_equal 1 "${found}"
+    assert_equal 1 "$found"
 }
