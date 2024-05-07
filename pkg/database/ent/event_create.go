@@ -101,50 +101,8 @@ func (ec *EventCreate) Mutation() *EventMutation {
 
 // Save creates the Event in the database.
 func (ec *EventCreate) Save(ctx context.Context) (*Event, error) {
-	var (
-		err  error
-		node *Event
-	)
 	ec.defaults()
-	if len(ec.hooks) == 0 {
-		if err = ec.check(); err != nil {
-			return nil, err
-		}
-		node, err = ec.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*EventMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = ec.check(); err != nil {
-				return nil, err
-			}
-			ec.mutation = mutation
-			if node, err = ec.sqlSave(ctx); err != nil {
-				return nil, err
-			}
-			mutation.id = &node.ID
-			mutation.done = true
-			return node, err
-		})
-		for i := len(ec.hooks) - 1; i >= 0; i-- {
-			if ec.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = ec.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, ec.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Event)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from EventMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, ec.sqlSave, ec.mutation, ec.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -183,6 +141,12 @@ func (ec *EventCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (ec *EventCreate) check() error {
+	if _, ok := ec.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Event.created_at"`)}
+	}
+	if _, ok := ec.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Event.updated_at"`)}
+	}
 	if _, ok := ec.mutation.Time(); !ok {
 		return &ValidationError{Name: "time", err: errors.New(`ent: missing required field "Event.time"`)}
 	}
@@ -198,6 +162,9 @@ func (ec *EventCreate) check() error {
 }
 
 func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
+	if err := ec.check(); err != nil {
+		return nil, err
+	}
 	_node, _spec := ec.createSpec()
 	if err := sqlgraph.CreateNode(ctx, ec.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
@@ -207,50 +174,30 @@ func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
+	ec.mutation.id = &_node.ID
+	ec.mutation.done = true
 	return _node, nil
 }
 
 func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Event{config: ec.config}
-		_spec = &sqlgraph.CreateSpec{
-			Table: event.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: event.FieldID,
-			},
-		}
+		_spec = sqlgraph.NewCreateSpec(event.Table, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
 	)
 	if value, ok := ec.mutation.CreatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldCreatedAt,
-		})
-		_node.CreatedAt = &value
+		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
 	}
 	if value, ok := ec.mutation.UpdatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldUpdatedAt,
-		})
-		_node.UpdatedAt = &value
+		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if value, ok := ec.mutation.Time(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldTime,
-		})
+		_spec.SetField(event.FieldTime, field.TypeTime, value)
 		_node.Time = value
 	}
 	if value, ok := ec.mutation.Serialized(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: event.FieldSerialized,
-		})
+		_spec.SetField(event.FieldSerialized, field.TypeString, value)
 		_node.Serialized = value
 	}
 	if nodes := ec.mutation.OwnerIDs(); len(nodes) > 0 {
@@ -261,10 +208,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Columns: []string{event.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -279,11 +223,15 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 // EventCreateBulk is the builder for creating many Event entities in bulk.
 type EventCreateBulk struct {
 	config
+	err      error
 	builders []*EventCreate
 }
 
 // Save creates the Event entities in the database.
 func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
+	if ecb.err != nil {
+		return nil, ecb.err
+	}
 	specs := make([]*sqlgraph.CreateSpec, len(ecb.builders))
 	nodes := make([]*Event, len(ecb.builders))
 	mutators := make([]Mutator, len(ecb.builders))
@@ -300,8 +248,8 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, ecb.builders[i+1].mutation)
 				} else {

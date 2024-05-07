@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 )
@@ -17,13 +18,14 @@ type ConfigItem struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// Value holds the value of the "value" field.
-	Value string `json:"value"`
+	Value        string `json:"value"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -38,7 +40,7 @@ func (*ConfigItem) scanValues(columns []string) ([]any, error) {
 		case configitem.FieldCreatedAt, configitem.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type ConfigItem", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -62,15 +64,13 @@ func (ci *ConfigItem) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ci.CreatedAt = new(time.Time)
-				*ci.CreatedAt = value.Time
+				ci.CreatedAt = value.Time
 			}
 		case configitem.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ci.UpdatedAt = new(time.Time)
-				*ci.UpdatedAt = value.Time
+				ci.UpdatedAt = value.Time
 			}
 		case configitem.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -84,16 +84,24 @@ func (ci *ConfigItem) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				ci.Value = value.String
 			}
+		default:
+			ci.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// GetValue returns the ent.Value that was dynamically selected and assigned to the ConfigItem.
+// This includes values selected through modifiers, order, etc.
+func (ci *ConfigItem) GetValue(name string) (ent.Value, error) {
+	return ci.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this ConfigItem.
 // Note that you need to call ConfigItem.Unwrap() before calling this method if this ConfigItem
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (ci *ConfigItem) Update() *ConfigItemUpdateOne {
-	return (&ConfigItemClient{config: ci.config}).UpdateOne(ci)
+	return NewConfigItemClient(ci.config).UpdateOne(ci)
 }
 
 // Unwrap unwraps the ConfigItem entity that was returned from a transaction after it was closed,
@@ -112,15 +120,11 @@ func (ci *ConfigItem) String() string {
 	var builder strings.Builder
 	builder.WriteString("ConfigItem(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", ci.ID))
-	if v := ci.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(ci.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := ci.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(ci.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(ci.Name)
@@ -133,9 +137,3 @@ func (ci *ConfigItem) String() string {
 
 // ConfigItems is a parsable slice of ConfigItem.
 type ConfigItems []*ConfigItem
-
-func (ci ConfigItems) config(cfg config) {
-	for _i := range ci {
-		ci[_i].config = cfg
-	}
-}

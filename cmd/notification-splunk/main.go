@@ -10,11 +10,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
+	"gopkg.in/yaml.v3"
 
-	"gopkg.in/yaml.v2"
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
@@ -44,6 +44,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", notification.Name)
 	}
+
 	cfg := s.PluginConfigByName[notification.Name]
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
@@ -53,6 +54,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.Name))
 
 	p := Payload{Event: notification.Text}
+
 	data, err := json.Marshal(p)
 	if err != nil {
 		return &protobufs.Empty{}, err
@@ -65,6 +67,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 
 	req.Header.Add("Authorization", fmt.Sprintf("Splunk %s", cfg.Token))
 	logger.Debug(fmt.Sprintf("posting event %s to %s", string(data), req.URL))
+
 	resp, err := s.Client.Do(req.WithContext(ctx))
 	if err != nil {
 		return &protobufs.Empty{}, err
@@ -73,15 +76,19 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	if resp.StatusCode != http.StatusOK {
 		content, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", err)
+			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %w", err)
 		}
+
 		return &protobufs.Empty{}, fmt.Errorf("got non 200 response %s", string(content))
 	}
+
 	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", err)
+		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %w", err)
 	}
+
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
+
 	return &protobufs.Empty{}, nil
 }
 
@@ -90,11 +97,12 @@ func (s *Splunk) Configure(ctx context.Context, config *protobufs.Config) (*prot
 	err := yaml.Unmarshal(config.Config, &d)
 	s.PluginConfigByName[d.Name] = d
 	logger.Debug(fmt.Sprintf("Splunk plugin '%s' use URL '%s'", d.Name, d.URL))
+
 	return &protobufs.Empty{}, err
 }
 
 func main() {
-	var handshake = plugin.HandshakeConfig{
+	handshake := plugin.HandshakeConfig{
 		ProtocolVersion:  1,
 		MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
 		MagicCookieValue: os.Getenv("CROWDSEC_PLUGIN_KEY"),

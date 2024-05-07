@@ -9,12 +9,15 @@ type CscliCfg struct {
 	Output             string            `yaml:"output,omitempty"`
 	Color              string            `yaml:"color,omitempty"`
 	HubBranch          string            `yaml:"hub_branch"`
+	HubURLTemplate     string            `yaml:"__hub_url_template__,omitempty"`
 	SimulationConfig   *SimulationConfig `yaml:"-"`
 	DbConfig           *DatabaseCfg      `yaml:"-"`
 
 	SimulationFilePath string            `yaml:"-"`
 	PrometheusUrl      string            `yaml:"prometheus_uri"`
 }
+
+const defaultHubURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
 
 func (c *Config) loadCSCLI() error {
 	if c.Cscli == nil {
@@ -23,6 +26,10 @@ func (c *Config) loadCSCLI() error {
 
 	if c.Prometheus.ListenAddr != "" && c.Prometheus.ListenPort != 0 {
 		c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d/metrics", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
+	}
+
+	if c.Cscli.HubURLTemplate == "" {
+		c.Cscli.HubURLTemplate = defaultHubURLTemplate
 	}
 
 	return nil

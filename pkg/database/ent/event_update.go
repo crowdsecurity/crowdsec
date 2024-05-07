@@ -29,27 +29,9 @@ func (eu *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
 	return eu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
-	eu.mutation.SetCreatedAt(t)
-	return eu
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (eu *EventUpdate) ClearCreatedAt() *EventUpdate {
-	eu.mutation.ClearCreatedAt()
-	return eu
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (eu *EventUpdate) SetUpdatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetUpdatedAt(t)
-	return eu
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (eu *EventUpdate) ClearUpdatedAt() *EventUpdate {
-	eu.mutation.ClearUpdatedAt()
 	return eu
 }
 
@@ -59,9 +41,25 @@ func (eu *EventUpdate) SetTime(t time.Time) *EventUpdate {
 	return eu
 }
 
+// SetNillableTime sets the "time" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableTime(t *time.Time) *EventUpdate {
+	if t != nil {
+		eu.SetTime(*t)
+	}
+	return eu
+}
+
 // SetSerialized sets the "serialized" field.
 func (eu *EventUpdate) SetSerialized(s string) *EventUpdate {
 	eu.mutation.SetSerialized(s)
+	return eu
+}
+
+// SetNillableSerialized sets the "serialized" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableSerialized(s *string) *EventUpdate {
+	if s != nil {
+		eu.SetSerialized(*s)
+	}
 	return eu
 }
 
@@ -117,41 +115,8 @@ func (eu *EventUpdate) ClearOwner() *EventUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
 	eu.defaults()
-	if len(eu.hooks) == 0 {
-		if err = eu.check(); err != nil {
-			return 0, err
-		}
-		affected, err = eu.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*EventMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = eu.check(); err != nil {
-				return 0, err
-			}
-			eu.mutation = mutation
-			affected, err = eu.sqlSave(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(eu.hooks) - 1; i >= 0; i-- {
-			if eu.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = eu.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, eu.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, eu.sqlSave, eu.mutation, eu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -178,11 +143,7 @@ func (eu *EventUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (eu *EventUpdate) defaults() {
-	if _, ok := eu.mutation.CreatedAt(); !ok && !eu.mutation.CreatedAtCleared() {
-		v := event.UpdateDefaultCreatedAt()
-		eu.mutation.SetCreatedAt(v)
-	}
-	if _, ok := eu.mutation.UpdatedAt(); !ok && !eu.mutation.UpdatedAtCleared() {
+	if _, ok := eu.mutation.UpdatedAt(); !ok {
 		v := event.UpdateDefaultUpdatedAt()
 		eu.mutation.SetUpdatedAt(v)
 	}
@@ -199,16 +160,10 @@ func (eu *EventUpdate) check() error {
 }
 
 func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   event.Table,
-			Columns: event.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: event.FieldID,
-			},
-		},
+	if err := eu.check(); err != nil {
+		return n, err
 	}
+	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
 	if ps := eu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -216,45 +171,14 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := eu.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldCreatedAt,
-		})
-	}
-	if eu.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: event.FieldCreatedAt,
-		})
-	}
 	if value, ok := eu.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldUpdatedAt,
-		})
-	}
-	if eu.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: event.FieldUpdatedAt,
-		})
+		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := eu.mutation.Time(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldTime,
-		})
+		_spec.SetField(event.FieldTime, field.TypeTime, value)
 	}
 	if value, ok := eu.mutation.Serialized(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: event.FieldSerialized,
-		})
+		_spec.SetField(event.FieldSerialized, field.TypeString, value)
 	}
 	if eu.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -264,10 +188,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{event.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -280,10 +201,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{event.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -299,6 +217,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
+	eu.mutation.done = true
 	return n, nil
 }
 
@@ -310,27 +229,9 @@ type EventUpdateOne struct {
 	mutation *EventMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (euo *EventUpdateOne) SetCreatedAt(t time.Time) *EventUpdateOne {
-	euo.mutation.SetCreatedAt(t)
-	return euo
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (euo *EventUpdateOne) ClearCreatedAt() *EventUpdateOne {
-	euo.mutation.ClearCreatedAt()
-	return euo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (euo *EventUpdateOne) SetUpdatedAt(t time.Time) *EventUpdateOne {
 	euo.mutation.SetUpdatedAt(t)
-	return euo
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (euo *EventUpdateOne) ClearUpdatedAt() *EventUpdateOne {
-	euo.mutation.ClearUpdatedAt()
 	return euo
 }
 
@@ -340,9 +241,25 @@ func (euo *EventUpdateOne) SetTime(t time.Time) *EventUpdateOne {
 	return euo
 }
 
+// SetNillableTime sets the "time" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableTime(t *time.Time) *EventUpdateOne {
+	if t != nil {
+		euo.SetTime(*t)
+	}
+	return euo
+}
+
 // SetSerialized sets the "serialized" field.
 func (euo *EventUpdateOne) SetSerialized(s string) *EventUpdateOne {
 	euo.mutation.SetSerialized(s)
+	return euo
+}
+
+// SetNillableSerialized sets the "serialized" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableSerialized(s *string) *EventUpdateOne {
+	if s != nil {
+		euo.SetSerialized(*s)
+	}
 	return euo
 }
 
@@ -396,6 +313,12 @@ func (euo *EventUpdateOne) ClearOwner() *EventUpdateOne {
 	return euo
 }
 
+// Where appends a list predicates to the EventUpdate builder.
+func (euo *EventUpdateOne) Where(ps ...predicate.Event) *EventUpdateOne {
+	euo.mutation.Where(ps...)
+	return euo
+}
+
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (euo *EventUpdateOne) Select(field string, fields ...string) *EventUpdateOne {
@@ -405,47 +328,8 @@ func (euo *EventUpdateOne) Select(field string, fields ...string) *EventUpdateOn
 
 // Save executes the query and returns the updated Event entity.
 func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
-	var (
-		err  error
-		node *Event
-	)
 	euo.defaults()
-	if len(euo.hooks) == 0 {
-		if err = euo.check(); err != nil {
-			return nil, err
-		}
-		node, err = euo.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*EventMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = euo.check(); err != nil {
-				return nil, err
-			}
-			euo.mutation = mutation
-			node, err = euo.sqlSave(ctx)
-			mutation.done = true
-			return node, err
-		})
-		for i := len(euo.hooks) - 1; i >= 0; i-- {
-			if euo.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = euo.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, euo.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Event)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from EventMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, euo.sqlSave, euo.mutation, euo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -472,11 +356,7 @@ func (euo *EventUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (euo *EventUpdateOne) defaults() {
-	if _, ok := euo.mutation.CreatedAt(); !ok && !euo.mutation.CreatedAtCleared() {
-		v := event.UpdateDefaultCreatedAt()
-		euo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := euo.mutation.UpdatedAt(); !ok && !euo.mutation.UpdatedAtCleared() {
+	if _, ok := euo.mutation.UpdatedAt(); !ok {
 		v := event.UpdateDefaultUpdatedAt()
 		euo.mutation.SetUpdatedAt(v)
 	}
@@ -493,16 +373,10 @@ func (euo *EventUpdateOne) check() error {
 }
 
 func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   event.Table,
-			Columns: event.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: event.FieldID,
-			},
-		},
+	if err := euo.check(); err != nil {
+		return _node, err
 	}
+	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
 	id, ok := euo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Event.id" for update`)}
@@ -527,45 +401,14 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			}
 		}
 	}
-	if value, ok := euo.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldCreatedAt,
-		})
-	}
-	if euo.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: event.FieldCreatedAt,
-		})
-	}
 	if value, ok := euo.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldUpdatedAt,
-		})
-	}
-	if euo.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: event.FieldUpdatedAt,
-		})
+		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := euo.mutation.Time(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: event.FieldTime,
-		})
+		_spec.SetField(event.FieldTime, field.TypeTime, value)
 	}
 	if value, ok := euo.mutation.Serialized(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: event.FieldSerialized,
-		})
+		_spec.SetField(event.FieldSerialized, field.TypeString, value)
 	}
 	if euo.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -575,10 +418,7 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			Columns: []string{event.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -591,10 +431,7 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			Columns: []string{event.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -613,5 +450,6 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		}
 		return nil, err
 	}
+	euo.mutation.done = true
 	return _node, nil
 }

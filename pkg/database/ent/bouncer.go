@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 )
@@ -17,13 +18,13 @@ type Bouncer struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// APIKey holds the value of the "api_key" field.
-	APIKey string `json:"api_key"`
+	APIKey string `json:"-"`
 	// Revoked holds the value of the "revoked" field.
 	Revoked bool `json:"revoked"`
 	// IPAddress holds the value of the "ip_address" field.
@@ -37,7 +38,8 @@ type Bouncer struct {
 	// LastPull holds the value of the "last_pull" field.
 	LastPull time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
-	AuthType string `json:"auth_type"`
+	AuthType     string `json:"auth_type"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -54,7 +56,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Bouncer", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -78,15 +80,13 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				b.CreatedAt = new(time.Time)
-				*b.CreatedAt = value.Time
+				b.CreatedAt = value.Time
 			}
 		case bouncer.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				b.UpdatedAt = new(time.Time)
-				*b.UpdatedAt = value.Time
+				b.UpdatedAt = value.Time
 			}
 		case bouncer.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -142,16 +142,24 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.AuthType = value.String
 			}
+		default:
+			b.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the Bouncer.
+// This includes values selected through modifiers, order, etc.
+func (b *Bouncer) Value(name string) (ent.Value, error) {
+	return b.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Bouncer.
 // Note that you need to call Bouncer.Unwrap() before calling this method if this Bouncer
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (b *Bouncer) Update() *BouncerUpdateOne {
-	return (&BouncerClient{config: b.config}).UpdateOne(b)
+	return NewBouncerClient(b.config).UpdateOne(b)
 }
 
 // Unwrap unwraps the Bouncer entity that was returned from a transaction after it was closed,
@@ -170,21 +178,16 @@ func (b *Bouncer) String() string {
 	var builder strings.Builder
 	builder.WriteString("Bouncer(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", b.ID))
-	if v := b.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(b.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := b.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(b.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(b.Name)
 	builder.WriteString(", ")
-	builder.WriteString("api_key=")
-	builder.WriteString(b.APIKey)
+	builder.WriteString("api_key=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("revoked=")
 	builder.WriteString(fmt.Sprintf("%v", b.Revoked))
@@ -212,9 +215,3 @@ func (b *Bouncer) String() string {
 
 // Bouncers is a parsable slice of Bouncer.
 type Bouncers []*Bouncer
-
-func (b Bouncers) config(cfg config) {
-	for _i := range b {
-		b[_i].config = cfg
-	}
-}

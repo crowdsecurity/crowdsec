@@ -20,8 +20,8 @@ func StartRunSvc() error {
 
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
-	//Always try to stop CPU profiling to avoid passing flags around
-	//It's a noop if profiling is not enabled
+	// Always try to stop CPU profiling to avoid passing flags around
+	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
 
 	isRunninginService, err := svc.IsWindowsService()
@@ -73,7 +73,6 @@ func WindowsRun() error {
 
 	log.Infof("Crowdsec %s", version.String())
 
-	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
 
 	// Enable profiling early
@@ -85,11 +84,11 @@ func WindowsRun() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				return fmt.Errorf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %w", err)
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)
-		go servePrometheus(cConfig.Prometheus, dbClient, apiReady, agentReady)
+		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
 	}
-	return Serve(cConfig, apiReady, agentReady)
+	return Serve(cConfig, agentReady)
 }

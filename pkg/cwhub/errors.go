@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	// ErrNilRemoteHub is returned when the remote hub configuration is not provided to the NewHub constructor.
+	// ErrNilRemoteHub is returned when trying to download with a local-only configuration.
 	ErrNilRemoteHub = errors.New("remote hub configuration is not provided. Please report this issue to the developers")
 )
 

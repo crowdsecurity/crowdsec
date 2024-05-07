@@ -100,10 +100,6 @@ func CheckPerms(path string) error {
 		return fmt.Errorf("no DACL found on plugin, meaning fully permissive access on plugin %s", path)
 	}
 
-	if err != nil {
-		return fmt.Errorf("while looking up current user sid: %w", err)
-	}
-
 	rs := reflect.ValueOf(dacl).Elem()
 
 	/*

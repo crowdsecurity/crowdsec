@@ -1,15 +1,18 @@
 // Package csconfig contains the configuration structures for crowdsec and cscli.
-
 package csconfig
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
@@ -25,7 +28,7 @@ var globalConfig = Config{}
 
 // Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
-	//just a path to ourselves :p
+	// just a path to ourselves :p
 	FilePath     *string             `yaml:"-"`
 	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
@@ -41,13 +44,15 @@ type Config struct {
 	Hub          *LocalHubCfg        `yaml:"-"`
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
-	patcher.SetQuiet(quiet)
+	patcher.SetQuiet(inCli)
+
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, "", err
 	}
+
 	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
 		FilePath:     &configFile,
@@ -55,10 +60,15 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		DisableAPI:   disableAPI,
 	}
 
-	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
+	dec := yaml.NewDecoder(strings.NewReader(configData))
+	dec.KnownFields(true)
+
+	err = dec.Decode(&cfg)
 	if err != nil {
-		// this is actually the "merged" yaml
-		return nil, "", fmt.Errorf("%s: %w", configFile, err)
+		if !errors.Is(err, io.EOF) {
+			// this is actually the "merged" yaml
+			return nil, "", fmt.Errorf("%s: %w", configFile, err)
+		}
 	}
 
 	if cfg.Prometheus == nil {
@@ -109,7 +119,7 @@ func NewDefaultConfig() *Config {
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
-		Level:   "full",
+		Level:   configuration.CFG_METRICS_FULL,
 	}
 	configPaths := ConfigurationPaths{
 		ConfigDir:          DefaultConfigPath("."),

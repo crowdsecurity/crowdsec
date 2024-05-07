@@ -1,6 +1,7 @@
 package csconfig
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 )
@@ -13,16 +14,17 @@ type ConfigurationPaths struct {
 	HubDir             string `yaml:"hub_dir,omitempty"`
 	PluginDir          string `yaml:"plugin_dir,omitempty"`
 	NotificationDir    string `yaml:"notification_dir,omitempty"`
+	PatternDir         string `yaml:"pattern_dir,omitempty"`
 }
 
 func (c *Config) loadConfigurationPaths() error {
 	var err error
 	if c.ConfigPaths == nil {
-		return fmt.Errorf("no configuration paths provided")
+		return errors.New("no configuration paths provided")
 	}
 
 	if c.ConfigPaths.DataDir == "" {
-		return fmt.Errorf("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
+		return errors.New("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
 	}
 
 	if c.ConfigPaths.HubDir == "" {
@@ -33,6 +35,10 @@ func (c *Config) loadConfigurationPaths() error {
 		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
 	}
 
+	if c.ConfigPaths.PatternDir == "" {
+		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns/")
+	}
+
 	var configPathsCleanup = []*string{
 		&c.ConfigPaths.HubDir,
 		&c.ConfigPaths.HubIndexFile,
@@ -41,6 +47,7 @@ func (c *Config) loadConfigurationPaths() error {
 		&c.ConfigPaths.SimulationFilePath,
 		&c.ConfigPaths.PluginDir,
 		&c.ConfigPaths.NotificationDir,
+		&c.ConfigPaths.PatternDir,
 	}
 	for _, k := range configPathsCleanup {
 		if *k == "" {

@@ -1,6 +1,7 @@
 package cloudwatchacquisition
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -42,7 +44,7 @@ func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
 func checkForLocalStackAvailability() error {
 	v := os.Getenv("AWS_ENDPOINT_FORCE")
 	if v == "" {
-		return fmt.Errorf("missing aws endpoint for tests : AWS_ENDPOINT_FORCE")
+		return errors.New("missing aws endpoint for tests : AWS_ENDPOINT_FORCE")
 	}
 
 	v = strings.TrimPrefix(v, "http://")
@@ -427,7 +429,7 @@ stream_name: test_stream`),
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			dbgLogger.Infof("starting test")
 			cw := CloudwatchSource{}
-			err := cw.Configure(tc.config, dbgLogger)
+			err := cw.Configure(tc.config, dbgLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
@@ -559,7 +561,7 @@ stream_name: test_stream`),
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			cw := CloudwatchSource{}
-			err := cw.Configure(tc.config, dbgLogger)
+			err := cw.Configure(tc.config, dbgLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
 			if tc.expectedCfgErr != "" {
 				return

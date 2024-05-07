@@ -17,7 +17,7 @@ import (
 
 // selectItems returns a slice of items of a given type, selected by name and sorted by case-insensitive name
 func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]*cwhub.Item, error) {
-	itemNames := hub.GetItemNames(itemType)
+	itemNames := hub.GetNamesByType(itemType)
 
 	notExist := []string{}
 
@@ -54,8 +54,8 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool) error {
-	switch csConfig.Cscli.Output {
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
+	switch output {
 	case "human":
 		nothingToDisplay := true
 
@@ -116,7 +116,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 		}
 
 		if err := csvwriter.Write(header); err != nil {
-			return fmt.Errorf("failed to write header: %s", err)
+			return fmt.Errorf("failed to write header: %w", err)
 		}
 
 		for _, itemType := range itemTypes {
@@ -132,38 +132,36 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				}
 
 				if err := csvwriter.Write(row); err != nil {
-					return fmt.Errorf("failed to write raw output: %s", err)
+					return fmt.Errorf("failed to write raw output: %w", err)
 				}
 			}
 		}
 
 		csvwriter.Flush()
-	default:
-		return fmt.Errorf("unknown output format '%s'", csConfig.Cscli.Output)
 	}
 
 	return nil
 }
 
-func InspectItem(item *cwhub.Item, showMetrics bool) error {
-	switch csConfig.Cscli.Output {
+func inspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string) error {
+	switch output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
 		enc.SetIndent(2)
 
 		if err := enc.Encode(item); err != nil {
-			return fmt.Errorf("unable to encode item: %s", err)
+			return fmt.Errorf("unable to encode item: %w", err)
 		}
 	case "json":
 		b, err := json.MarshalIndent(*item, "", "  ")
 		if err != nil {
-			return fmt.Errorf("unable to marshal item: %s", err)
+			return fmt.Errorf("unable to marshal item: %w", err)
 		}
 
 		fmt.Print(string(b))
 	}
 
-	if csConfig.Cscli.Output != "human" {
+	if output != "human" {
 		return nil
 	}
 
@@ -176,7 +174,7 @@ func InspectItem(item *cwhub.Item, showMetrics bool) error {
 	if showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
 
-		if err := ShowMetrics(item); err != nil {
+		if err := ShowMetrics(prometheusURL, item); err != nil {
 			return err
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -18,9 +19,9 @@ type Alert struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Scenario holds the value of the "scenario" field.
 	Scenario string `json:"scenario,omitempty"`
 	// BucketId holds the value of the "bucketId" field.
@@ -67,6 +68,7 @@ type Alert struct {
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
 	machine_alerts *int
+	selectValues   sql.SelectValues
 }
 
 // AlertEdges holds the relations/edges for other nodes in the graph.
@@ -142,7 +144,7 @@ func (*Alert) scanValues(columns []string) ([]any, error) {
 		case alert.ForeignKeys[0]: // machine_alerts
 			values[i] = new(sql.NullInt64)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Alert", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -166,15 +168,13 @@ func (a *Alert) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				a.CreatedAt = new(time.Time)
-				*a.CreatedAt = value.Time
+				a.CreatedAt = value.Time
 			}
 		case alert.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				a.UpdatedAt = new(time.Time)
-				*a.UpdatedAt = value.Time
+				a.UpdatedAt = value.Time
 			}
 		case alert.FieldScenario:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -309,36 +309,44 @@ func (a *Alert) assignValues(columns []string, values []any) error {
 				a.machine_alerts = new(int)
 				*a.machine_alerts = int(value.Int64)
 			}
+		default:
+			a.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
+// Value returns the ent.Value that was dynamically selected and assigned to the Alert.
+// This includes values selected through modifiers, order, etc.
+func (a *Alert) Value(name string) (ent.Value, error) {
+	return a.selectValues.Get(name)
+}
+
 // QueryOwner queries the "owner" edge of the Alert entity.
 func (a *Alert) QueryOwner() *MachineQuery {
-	return (&AlertClient{config: a.config}).QueryOwner(a)
+	return NewAlertClient(a.config).QueryOwner(a)
 }
 
 // QueryDecisions queries the "decisions" edge of the Alert entity.
 func (a *Alert) QueryDecisions() *DecisionQuery {
-	return (&AlertClient{config: a.config}).QueryDecisions(a)
+	return NewAlertClient(a.config).QueryDecisions(a)
 }
 
 // QueryEvents queries the "events" edge of the Alert entity.
 func (a *Alert) QueryEvents() *EventQuery {
-	return (&AlertClient{config: a.config}).QueryEvents(a)
+	return NewAlertClient(a.config).QueryEvents(a)
 }
 
 // QueryMetas queries the "metas" edge of the Alert entity.
 func (a *Alert) QueryMetas() *MetaQuery {
-	return (&AlertClient{config: a.config}).QueryMetas(a)
+	return NewAlertClient(a.config).QueryMetas(a)
 }
 
 // Update returns a builder for updating this Alert.
 // Note that you need to call Alert.Unwrap() before calling this method if this Alert
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (a *Alert) Update() *AlertUpdateOne {
-	return (&AlertClient{config: a.config}).UpdateOne(a)
+	return NewAlertClient(a.config).UpdateOne(a)
 }
 
 // Unwrap unwraps the Alert entity that was returned from a transaction after it was closed,
@@ -357,15 +365,11 @@ func (a *Alert) String() string {
 	var builder strings.Builder
 	builder.WriteString("Alert(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", a.ID))
-	if v := a.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(a.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := a.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(a.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("scenario=")
 	builder.WriteString(a.Scenario)
@@ -435,9 +439,3 @@ func (a *Alert) String() string {
 
 // Alerts is a parsable slice of Alert.
 type Alerts []*Alert
-
-func (a Alerts) config(cfg config) {
-	for _i := range a {
-		a[_i].config = cfg
-	}
-}

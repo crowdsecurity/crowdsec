@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-
 /*help to copy the file, ioutil doesn't offer the feature*/
 
 func copyFileContents(src, dst string) (err error) {
@@ -41,7 +40,7 @@ func copyFileContents(src, dst string) (err error) {
 }
 
 /*copy the file, ioutile doesn't offer the feature*/
-func CopyFile(sourceSymLink, destinationFile string) (err error) {
+func CopyFile(sourceSymLink, destinationFile string) error {
 	sourceFile, err := filepath.EvalSymlinks(sourceSymLink)
 	if err != nil {
 		log.Infof("Not a symlink : %s", err)
@@ -51,7 +50,7 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 
 	sourceFileStat, err := os.Stat(sourceFile)
 	if err != nil {
-		return
+		return err
 	}
 
 	if !sourceFileStat.Mode().IsRegular() {
@@ -63,14 +62,15 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	destinationFileStat, err := os.Stat(destinationFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return
+			return err
 		}
 	} else {
 		if !(destinationFileStat.Mode().IsRegular()) {
 			return fmt.Errorf("copyFile: non-regular destination file %s (%q)", destinationFileStat.Name(), destinationFileStat.Mode().String())
 		}
+
 		if os.SameFile(sourceFileStat, destinationFileStat) {
-			return
+			return err
 		}
 	}
 
@@ -78,6 +78,5 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 		err = copyFileContents(sourceFile, destinationFile)
 	}
 
-	return
+	return err
 }
-

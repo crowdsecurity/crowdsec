@@ -8,8 +8,7 @@ License:        MIT
 URL:            https://crowdsec.net
 Source0:        https://github.com/crowdsecurity/%{name}/archive/v%(echo $VERSION).tar.gz
 Source1:        80-%{name}.preset
-Patch0:         crowdsec.unit.patch
-Patch1:         user.patch
+Patch0:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  systemd
@@ -32,7 +31,6 @@ Requires: crontabs
 %setup -q -T -b 0
 
 %patch0
-%patch1
 
 %build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
@@ -53,7 +51,7 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
 install -m 755 -D wizard.sh %{buildroot}/usr/share/crowdsec/wizard.sh
-install -m 644 -D config/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
+install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
 install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec

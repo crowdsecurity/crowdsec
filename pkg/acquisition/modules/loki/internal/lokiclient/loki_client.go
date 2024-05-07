@@ -25,6 +25,7 @@ type LokiClient struct {
 	t                     *tomb.Tomb
 	fail_start            time.Time
 	currentTickerInterval time.Duration
+	requestHeaders        map[string]string
 }
 
 type Config struct {
@@ -116,7 +117,7 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 		case <-lc.t.Dying():
 			return lc.t.Err()
 		case <-ticker.C:
-			resp, err := http.Get(uri)
+			resp, err := lc.Get(uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
 					return errors.Wrapf(err, "error querying range")
@@ -127,6 +128,7 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 			}
 
 			if resp.StatusCode != http.StatusOK {
+				lc.Logger.Warnf("bad HTTP response code for query range: %d", resp.StatusCode)
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
@@ -215,7 +217,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 			return lc.t.Err()
 		case <-tick.C:
 			lc.Logger.Debug("Checking if Loki is ready")
-			resp, err := http.Get(url)
+			resp, err := lc.Get(url)
 			if err != nil {
 				lc.Logger.Warnf("Error checking if Loki is ready: %s", err)
 				continue
@@ -251,10 +253,9 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	}
 
 	requestHeader := http.Header{}
-	for k, v := range lc.config.Headers {
+	for k, v := range lc.requestHeaders {
 		requestHeader.Add(k, v)
 	}
-	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
 	lc.Logger.Infof("Connecting to %s", u)
 	conn, _, err := dialer.Dial(u, requestHeader)
 
@@ -293,16 +294,6 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 
 	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, time.Now().Add(-lc.config.Since))
 
-	requestHeader := http.Header{}
-	for k, v := range lc.config.Headers {
-		requestHeader.Add(k, v)
-	}
-
-	if lc.config.Username != "" || lc.config.Password != "" {
-		requestHeader.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(lc.config.Username+":"+lc.config.Password)))
-	}
-
-	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
 	lc.Logger.Infof("Connecting to %s", url)
 	lc.t.Go(func() error {
 		return lc.queryRange(url, ctx, c, infinite)
@@ -310,6 +301,26 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 	return c
 }
 
+// Create a wrapper for http.Get to be able to set headers and auth
+func (lc *LokiClient) Get(url string) (*http.Response, error) {
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range lc.requestHeaders {
+		request.Header.Add(k, v)
+	}
+	return http.DefaultClient.Do(request)
+}
+
 func NewLokiClient(config Config) *LokiClient {
-	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config}
+	headers := make(map[string]string)
+	for k, v := range config.Headers {
+		headers[k] = v
+	}
+	if config.Username != "" || config.Password != "" {
+		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(config.Username+":"+config.Password))
+	}
+	headers["User-Agent"] = "Crowdsec " + cwversion.VersionStr()
+	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config, requestHeaders: headers}
 }

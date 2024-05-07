@@ -7,7 +7,7 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
 
-    tmpdir="${BATS_FILE_TMPDIR}"
+    tmpdir="$BATS_FILE_TMPDIR"
     export tmpdir
 
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
@@ -90,7 +90,10 @@ teardown() {
 }
 
 @test "simulate one bouncer request with a revoked certificate" {
+    truncate_log
     rune -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    assert_log --partial "client certificate is revoked by CRL"
+    assert_log --partial "client certificate for CN=localhost OU=[bouncer-ou] is revoked"
     assert_output --partial "access forbidden"
     rune -0 cscli bouncers list -o json
     assert_output "[]"

@@ -7,20 +7,22 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/migrate"
 
+	"entgo.io/ent"
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
-
-	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -38,6 +40,8 @@ type Client struct {
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
+	// Lock is the client for interacting with the Lock builders.
+	Lock *LockClient
 	// Machine is the client for interacting with the Machine builders.
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
@@ -46,9 +50,7 @@ type Client struct {
 
 // NewClient creates a new client configured with the given options.
 func NewClient(opts ...Option) *Client {
-	cfg := config{log: log.Println, hooks: &hooks{}}
-	cfg.options(opts...)
-	client := &Client{config: cfg}
+	client := &Client{config: newConfig(opts...)}
 	client.init()
 	return client
 }
@@ -60,8 +62,65 @@ func (c *Client) init() {
 	c.ConfigItem = NewConfigItemClient(c.config)
 	c.Decision = NewDecisionClient(c.config)
 	c.Event = NewEventClient(c.config)
+	c.Lock = NewLockClient(c.config)
 	c.Machine = NewMachineClient(c.config)
 	c.Meta = NewMetaClient(c.config)
+}
+
+type (
+	// config is the configuration for the client and its builder.
+	config struct {
+		// driver used for executing database requests.
+		driver dialect.Driver
+		// debug enable a debug logging.
+		debug bool
+		// log used for logging on debug mode.
+		log func(...any)
+		// hooks to execute on mutations.
+		hooks *hooks
+		// interceptors to execute on queries.
+		inters *inters
+	}
+	// Option function to configure the client.
+	Option func(*config)
+)
+
+// newConfig creates a new config for the client.
+func newConfig(opts ...Option) config {
+	cfg := config{log: log.Println, hooks: &hooks{}, inters: &inters{}}
+	cfg.options(opts...)
+	return cfg
+}
+
+// options applies the options on the config object.
+func (c *config) options(opts ...Option) {
+	for _, opt := range opts {
+		opt(c)
+	}
+	if c.debug {
+		c.driver = dialect.Debug(c.driver, c.log)
+	}
+}
+
+// Debug enables debug logging on the ent.Driver.
+func Debug() Option {
+	return func(c *config) {
+		c.debug = true
+	}
+}
+
+// Log sets the logging function for debug mode.
+func Log(fn func(...any)) Option {
+	return func(c *config) {
+		c.log = fn
+	}
+}
+
+// Driver configures the client driver.
+func Driver(driver dialect.Driver) Option {
+	return func(c *config) {
+		c.driver = driver
+	}
 }
 
 // Open opens a database/sql.DB specified by the driver name and
@@ -80,11 +139,14 @@ func Open(driverName, dataSourceName string, options ...Option) (*Client, error)
 	}
 }
 
+// ErrTxStarted is returned when trying to start a new transaction from a transactional client.
+var ErrTxStarted = errors.New("ent: cannot start a transaction within a transaction")
+
 // Tx returns a new transactional client. The provided context
 // is used until the transaction is committed or rolled back.
 func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	if _, ok := c.driver.(*txDriver); ok {
-		return nil, errors.New("ent: cannot start a transaction within a transaction")
+		return nil, ErrTxStarted
 	}
 	tx, err := newTx(ctx, c.driver)
 	if err != nil {
@@ -100,6 +162,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ConfigItem: NewConfigItemClient(cfg),
 		Decision:   NewDecisionClient(cfg),
 		Event:      NewEventClient(cfg),
+		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
 	}, nil
@@ -126,6 +189,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ConfigItem: NewConfigItemClient(cfg),
 		Decision:   NewDecisionClient(cfg),
 		Event:      NewEventClient(cfg),
+		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
 	}, nil
@@ -156,13 +220,47 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.Alert.Use(hooks...)
-	c.Bouncer.Use(hooks...)
-	c.ConfigItem.Use(hooks...)
-	c.Decision.Use(hooks...)
-	c.Event.Use(hooks...)
-	c.Machine.Use(hooks...)
-	c.Meta.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
+		c.Meta,
+	} {
+		n.Use(hooks...)
+	}
+}
+
+// Intercept adds the query interceptors to all the entity clients.
+// In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
+func (c *Client) Intercept(interceptors ...Interceptor) {
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
+		c.Meta,
+	} {
+		n.Intercept(interceptors...)
+	}
+}
+
+// Mutate implements the ent.Mutator interface.
+func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
+	switch m := m.(type) {
+	case *AlertMutation:
+		return c.Alert.mutate(ctx, m)
+	case *BouncerMutation:
+		return c.Bouncer.mutate(ctx, m)
+	case *ConfigItemMutation:
+		return c.ConfigItem.mutate(ctx, m)
+	case *DecisionMutation:
+		return c.Decision.mutate(ctx, m)
+	case *EventMutation:
+		return c.Event.mutate(ctx, m)
+	case *LockMutation:
+		return c.Lock.mutate(ctx, m)
+	case *MachineMutation:
+		return c.Machine.mutate(ctx, m)
+	case *MetaMutation:
+		return c.Meta.mutate(ctx, m)
+	default:
+		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
 }
 
 // AlertClient is a client for the Alert schema.
@@ -181,6 +279,12 @@ func (c *AlertClient) Use(hooks ...Hook) {
 	c.hooks.Alert = append(c.hooks.Alert, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `alert.Intercept(f(g(h())))`.
+func (c *AlertClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Alert = append(c.inters.Alert, interceptors...)
+}
+
 // Create returns a builder for creating a Alert entity.
 func (c *AlertClient) Create() *AlertCreate {
 	mutation := newAlertMutation(c.config, OpCreate)
@@ -189,6 +293,21 @@ func (c *AlertClient) Create() *AlertCreate {
 
 // CreateBulk returns a builder for creating a bulk of Alert entities.
 func (c *AlertClient) CreateBulk(builders ...*AlertCreate) *AlertCreateBulk {
+	return &AlertCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AlertClient) MapCreateBulk(slice any, setFunc func(*AlertCreate, int)) *AlertCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AlertCreateBulk{err: fmt.Errorf("calling to AlertClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AlertCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &AlertCreateBulk{config: c.config, builders: builders}
 }
 
@@ -221,7 +340,7 @@ func (c *AlertClient) DeleteOne(a *Alert) *AlertDeleteOne {
 	return c.DeleteOneID(a.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *AlertClient) DeleteOneID(id int) *AlertDeleteOne {
 	builder := c.Delete().Where(alert.ID(id))
 	builder.mutation.id = &id
@@ -233,6 +352,8 @@ func (c *AlertClient) DeleteOneID(id int) *AlertDeleteOne {
 func (c *AlertClient) Query() *AlertQuery {
 	return &AlertQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeAlert},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -252,8 +373,8 @@ func (c *AlertClient) GetX(ctx context.Context, id int) *Alert {
 
 // QueryOwner queries the owner edge of a Alert.
 func (c *AlertClient) QueryOwner(a *Alert) *MachineQuery {
-	query := &MachineQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&MachineClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := a.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(alert.Table, alert.FieldID, id),
@@ -268,8 +389,8 @@ func (c *AlertClient) QueryOwner(a *Alert) *MachineQuery {
 
 // QueryDecisions queries the decisions edge of a Alert.
 func (c *AlertClient) QueryDecisions(a *Alert) *DecisionQuery {
-	query := &DecisionQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&DecisionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := a.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(alert.Table, alert.FieldID, id),
@@ -284,8 +405,8 @@ func (c *AlertClient) QueryDecisions(a *Alert) *DecisionQuery {
 
 // QueryEvents queries the events edge of a Alert.
 func (c *AlertClient) QueryEvents(a *Alert) *EventQuery {
-	query := &EventQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&EventClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := a.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(alert.Table, alert.FieldID, id),
@@ -300,8 +421,8 @@ func (c *AlertClient) QueryEvents(a *Alert) *EventQuery {
 
 // QueryMetas queries the metas edge of a Alert.
 func (c *AlertClient) QueryMetas(a *Alert) *MetaQuery {
-	query := &MetaQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&MetaClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := a.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(alert.Table, alert.FieldID, id),
@@ -317,6 +438,26 @@ func (c *AlertClient) QueryMetas(a *Alert) *MetaQuery {
 // Hooks returns the client hooks.
 func (c *AlertClient) Hooks() []Hook {
 	return c.hooks.Alert
+}
+
+// Interceptors returns the client interceptors.
+func (c *AlertClient) Interceptors() []Interceptor {
+	return c.inters.Alert
+}
+
+func (c *AlertClient) mutate(ctx context.Context, m *AlertMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AlertCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AlertUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AlertUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AlertDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Alert mutation op: %q", m.Op())
+	}
 }
 
 // BouncerClient is a client for the Bouncer schema.
@@ -335,6 +476,12 @@ func (c *BouncerClient) Use(hooks ...Hook) {
 	c.hooks.Bouncer = append(c.hooks.Bouncer, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `bouncer.Intercept(f(g(h())))`.
+func (c *BouncerClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Bouncer = append(c.inters.Bouncer, interceptors...)
+}
+
 // Create returns a builder for creating a Bouncer entity.
 func (c *BouncerClient) Create() *BouncerCreate {
 	mutation := newBouncerMutation(c.config, OpCreate)
@@ -343,6 +490,21 @@ func (c *BouncerClient) Create() *BouncerCreate {
 
 // CreateBulk returns a builder for creating a bulk of Bouncer entities.
 func (c *BouncerClient) CreateBulk(builders ...*BouncerCreate) *BouncerCreateBulk {
+	return &BouncerCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BouncerClient) MapCreateBulk(slice any, setFunc func(*BouncerCreate, int)) *BouncerCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BouncerCreateBulk{err: fmt.Errorf("calling to BouncerClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BouncerCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &BouncerCreateBulk{config: c.config, builders: builders}
 }
 
@@ -375,7 +537,7 @@ func (c *BouncerClient) DeleteOne(b *Bouncer) *BouncerDeleteOne {
 	return c.DeleteOneID(b.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *BouncerClient) DeleteOneID(id int) *BouncerDeleteOne {
 	builder := c.Delete().Where(bouncer.ID(id))
 	builder.mutation.id = &id
@@ -387,6 +549,8 @@ func (c *BouncerClient) DeleteOneID(id int) *BouncerDeleteOne {
 func (c *BouncerClient) Query() *BouncerQuery {
 	return &BouncerQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeBouncer},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -409,6 +573,26 @@ func (c *BouncerClient) Hooks() []Hook {
 	return c.hooks.Bouncer
 }
 
+// Interceptors returns the client interceptors.
+func (c *BouncerClient) Interceptors() []Interceptor {
+	return c.inters.Bouncer
+}
+
+func (c *BouncerClient) mutate(ctx context.Context, m *BouncerMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BouncerCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BouncerUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BouncerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BouncerDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Bouncer mutation op: %q", m.Op())
+	}
+}
+
 // ConfigItemClient is a client for the ConfigItem schema.
 type ConfigItemClient struct {
 	config
@@ -425,6 +609,12 @@ func (c *ConfigItemClient) Use(hooks ...Hook) {
 	c.hooks.ConfigItem = append(c.hooks.ConfigItem, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `configitem.Intercept(f(g(h())))`.
+func (c *ConfigItemClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ConfigItem = append(c.inters.ConfigItem, interceptors...)
+}
+
 // Create returns a builder for creating a ConfigItem entity.
 func (c *ConfigItemClient) Create() *ConfigItemCreate {
 	mutation := newConfigItemMutation(c.config, OpCreate)
@@ -433,6 +623,21 @@ func (c *ConfigItemClient) Create() *ConfigItemCreate {
 
 // CreateBulk returns a builder for creating a bulk of ConfigItem entities.
 func (c *ConfigItemClient) CreateBulk(builders ...*ConfigItemCreate) *ConfigItemCreateBulk {
+	return &ConfigItemCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ConfigItemClient) MapCreateBulk(slice any, setFunc func(*ConfigItemCreate, int)) *ConfigItemCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ConfigItemCreateBulk{err: fmt.Errorf("calling to ConfigItemClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ConfigItemCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &ConfigItemCreateBulk{config: c.config, builders: builders}
 }
 
@@ -465,7 +670,7 @@ func (c *ConfigItemClient) DeleteOne(ci *ConfigItem) *ConfigItemDeleteOne {
 	return c.DeleteOneID(ci.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *ConfigItemClient) DeleteOneID(id int) *ConfigItemDeleteOne {
 	builder := c.Delete().Where(configitem.ID(id))
 	builder.mutation.id = &id
@@ -477,6 +682,8 @@ func (c *ConfigItemClient) DeleteOneID(id int) *ConfigItemDeleteOne {
 func (c *ConfigItemClient) Query() *ConfigItemQuery {
 	return &ConfigItemQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeConfigItem},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -499,6 +706,26 @@ func (c *ConfigItemClient) Hooks() []Hook {
 	return c.hooks.ConfigItem
 }
 
+// Interceptors returns the client interceptors.
+func (c *ConfigItemClient) Interceptors() []Interceptor {
+	return c.inters.ConfigItem
+}
+
+func (c *ConfigItemClient) mutate(ctx context.Context, m *ConfigItemMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ConfigItemCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ConfigItemUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ConfigItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ConfigItemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ConfigItem mutation op: %q", m.Op())
+	}
+}
+
 // DecisionClient is a client for the Decision schema.
 type DecisionClient struct {
 	config
@@ -515,6 +742,12 @@ func (c *DecisionClient) Use(hooks ...Hook) {
 	c.hooks.Decision = append(c.hooks.Decision, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `decision.Intercept(f(g(h())))`.
+func (c *DecisionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Decision = append(c.inters.Decision, interceptors...)
+}
+
 // Create returns a builder for creating a Decision entity.
 func (c *DecisionClient) Create() *DecisionCreate {
 	mutation := newDecisionMutation(c.config, OpCreate)
@@ -523,6 +756,21 @@ func (c *DecisionClient) Create() *DecisionCreate {
 
 // CreateBulk returns a builder for creating a bulk of Decision entities.
 func (c *DecisionClient) CreateBulk(builders ...*DecisionCreate) *DecisionCreateBulk {
+	return &DecisionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DecisionClient) MapCreateBulk(slice any, setFunc func(*DecisionCreate, int)) *DecisionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DecisionCreateBulk{err: fmt.Errorf("calling to DecisionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DecisionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &DecisionCreateBulk{config: c.config, builders: builders}
 }
 
@@ -555,7 +803,7 @@ func (c *DecisionClient) DeleteOne(d *Decision) *DecisionDeleteOne {
 	return c.DeleteOneID(d.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *DecisionClient) DeleteOneID(id int) *DecisionDeleteOne {
 	builder := c.Delete().Where(decision.ID(id))
 	builder.mutation.id = &id
@@ -567,6 +815,8 @@ func (c *DecisionClient) DeleteOneID(id int) *DecisionDeleteOne {
 func (c *DecisionClient) Query() *DecisionQuery {
 	return &DecisionQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeDecision},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -586,8 +836,8 @@ func (c *DecisionClient) GetX(ctx context.Context, id int) *Decision {
 
 // QueryOwner queries the owner edge of a Decision.
 func (c *DecisionClient) QueryOwner(d *Decision) *AlertQuery {
-	query := &AlertQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&AlertClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := d.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(decision.Table, decision.FieldID, id),
@@ -603,6 +853,26 @@ func (c *DecisionClient) QueryOwner(d *Decision) *AlertQuery {
 // Hooks returns the client hooks.
 func (c *DecisionClient) Hooks() []Hook {
 	return c.hooks.Decision
+}
+
+// Interceptors returns the client interceptors.
+func (c *DecisionClient) Interceptors() []Interceptor {
+	return c.inters.Decision
+}
+
+func (c *DecisionClient) mutate(ctx context.Context, m *DecisionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DecisionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DecisionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DecisionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DecisionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Decision mutation op: %q", m.Op())
+	}
 }
 
 // EventClient is a client for the Event schema.
@@ -621,6 +891,12 @@ func (c *EventClient) Use(hooks ...Hook) {
 	c.hooks.Event = append(c.hooks.Event, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `event.Intercept(f(g(h())))`.
+func (c *EventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Event = append(c.inters.Event, interceptors...)
+}
+
 // Create returns a builder for creating a Event entity.
 func (c *EventClient) Create() *EventCreate {
 	mutation := newEventMutation(c.config, OpCreate)
@@ -629,6 +905,21 @@ func (c *EventClient) Create() *EventCreate {
 
 // CreateBulk returns a builder for creating a bulk of Event entities.
 func (c *EventClient) CreateBulk(builders ...*EventCreate) *EventCreateBulk {
+	return &EventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EventClient) MapCreateBulk(slice any, setFunc func(*EventCreate, int)) *EventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EventCreateBulk{err: fmt.Errorf("calling to EventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &EventCreateBulk{config: c.config, builders: builders}
 }
 
@@ -661,7 +952,7 @@ func (c *EventClient) DeleteOne(e *Event) *EventDeleteOne {
 	return c.DeleteOneID(e.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *EventClient) DeleteOneID(id int) *EventDeleteOne {
 	builder := c.Delete().Where(event.ID(id))
 	builder.mutation.id = &id
@@ -673,6 +964,8 @@ func (c *EventClient) DeleteOneID(id int) *EventDeleteOne {
 func (c *EventClient) Query() *EventQuery {
 	return &EventQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeEvent},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -692,8 +985,8 @@ func (c *EventClient) GetX(ctx context.Context, id int) *Event {
 
 // QueryOwner queries the owner edge of a Event.
 func (c *EventClient) QueryOwner(e *Event) *AlertQuery {
-	query := &AlertQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&AlertClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := e.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(event.Table, event.FieldID, id),
@@ -709,6 +1002,159 @@ func (c *EventClient) QueryOwner(e *Event) *AlertQuery {
 // Hooks returns the client hooks.
 func (c *EventClient) Hooks() []Hook {
 	return c.hooks.Event
+}
+
+// Interceptors returns the client interceptors.
+func (c *EventClient) Interceptors() []Interceptor {
+	return c.inters.Event
+}
+
+func (c *EventClient) mutate(ctx context.Context, m *EventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Event mutation op: %q", m.Op())
+	}
+}
+
+// LockClient is a client for the Lock schema.
+type LockClient struct {
+	config
+}
+
+// NewLockClient returns a client for the Lock from the given config.
+func NewLockClient(c config) *LockClient {
+	return &LockClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `lock.Hooks(f(g(h())))`.
+func (c *LockClient) Use(hooks ...Hook) {
+	c.hooks.Lock = append(c.hooks.Lock, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `lock.Intercept(f(g(h())))`.
+func (c *LockClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Lock = append(c.inters.Lock, interceptors...)
+}
+
+// Create returns a builder for creating a Lock entity.
+func (c *LockClient) Create() *LockCreate {
+	mutation := newLockMutation(c.config, OpCreate)
+	return &LockCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Lock entities.
+func (c *LockClient) CreateBulk(builders ...*LockCreate) *LockCreateBulk {
+	return &LockCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LockClient) MapCreateBulk(slice any, setFunc func(*LockCreate, int)) *LockCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LockCreateBulk{err: fmt.Errorf("calling to LockClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LockCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LockCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Lock.
+func (c *LockClient) Update() *LockUpdate {
+	mutation := newLockMutation(c.config, OpUpdate)
+	return &LockUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LockClient) UpdateOne(l *Lock) *LockUpdateOne {
+	mutation := newLockMutation(c.config, OpUpdateOne, withLock(l))
+	return &LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LockClient) UpdateOneID(id int) *LockUpdateOne {
+	mutation := newLockMutation(c.config, OpUpdateOne, withLockID(id))
+	return &LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Lock.
+func (c *LockClient) Delete() *LockDelete {
+	mutation := newLockMutation(c.config, OpDelete)
+	return &LockDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LockClient) DeleteOne(l *Lock) *LockDeleteOne {
+	return c.DeleteOneID(l.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LockClient) DeleteOneID(id int) *LockDeleteOne {
+	builder := c.Delete().Where(lock.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LockDeleteOne{builder}
+}
+
+// Query returns a query builder for Lock.
+func (c *LockClient) Query() *LockQuery {
+	return &LockQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLock},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Lock entity by its id.
+func (c *LockClient) Get(ctx context.Context, id int) (*Lock, error) {
+	return c.Query().Where(lock.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LockClient) GetX(ctx context.Context, id int) *Lock {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LockClient) Hooks() []Hook {
+	return c.hooks.Lock
+}
+
+// Interceptors returns the client interceptors.
+func (c *LockClient) Interceptors() []Interceptor {
+	return c.inters.Lock
+}
+
+func (c *LockClient) mutate(ctx context.Context, m *LockMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LockCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LockUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LockDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Lock mutation op: %q", m.Op())
+	}
 }
 
 // MachineClient is a client for the Machine schema.
@@ -727,6 +1173,12 @@ func (c *MachineClient) Use(hooks ...Hook) {
 	c.hooks.Machine = append(c.hooks.Machine, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `machine.Intercept(f(g(h())))`.
+func (c *MachineClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Machine = append(c.inters.Machine, interceptors...)
+}
+
 // Create returns a builder for creating a Machine entity.
 func (c *MachineClient) Create() *MachineCreate {
 	mutation := newMachineMutation(c.config, OpCreate)
@@ -735,6 +1187,21 @@ func (c *MachineClient) Create() *MachineCreate {
 
 // CreateBulk returns a builder for creating a bulk of Machine entities.
 func (c *MachineClient) CreateBulk(builders ...*MachineCreate) *MachineCreateBulk {
+	return &MachineCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MachineClient) MapCreateBulk(slice any, setFunc func(*MachineCreate, int)) *MachineCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MachineCreateBulk{err: fmt.Errorf("calling to MachineClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MachineCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &MachineCreateBulk{config: c.config, builders: builders}
 }
 
@@ -767,7 +1234,7 @@ func (c *MachineClient) DeleteOne(m *Machine) *MachineDeleteOne {
 	return c.DeleteOneID(m.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *MachineClient) DeleteOneID(id int) *MachineDeleteOne {
 	builder := c.Delete().Where(machine.ID(id))
 	builder.mutation.id = &id
@@ -779,6 +1246,8 @@ func (c *MachineClient) DeleteOneID(id int) *MachineDeleteOne {
 func (c *MachineClient) Query() *MachineQuery {
 	return &MachineQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeMachine},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -798,8 +1267,8 @@ func (c *MachineClient) GetX(ctx context.Context, id int) *Machine {
 
 // QueryAlerts queries the alerts edge of a Machine.
 func (c *MachineClient) QueryAlerts(m *Machine) *AlertQuery {
-	query := &AlertQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&AlertClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(machine.Table, machine.FieldID, id),
@@ -815,6 +1284,26 @@ func (c *MachineClient) QueryAlerts(m *Machine) *AlertQuery {
 // Hooks returns the client hooks.
 func (c *MachineClient) Hooks() []Hook {
 	return c.hooks.Machine
+}
+
+// Interceptors returns the client interceptors.
+func (c *MachineClient) Interceptors() []Interceptor {
+	return c.inters.Machine
+}
+
+func (c *MachineClient) mutate(ctx context.Context, m *MachineMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MachineCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MachineUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MachineUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MachineDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Machine mutation op: %q", m.Op())
+	}
 }
 
 // MetaClient is a client for the Meta schema.
@@ -833,6 +1322,12 @@ func (c *MetaClient) Use(hooks ...Hook) {
 	c.hooks.Meta = append(c.hooks.Meta, hooks...)
 }
 
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `meta.Intercept(f(g(h())))`.
+func (c *MetaClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Meta = append(c.inters.Meta, interceptors...)
+}
+
 // Create returns a builder for creating a Meta entity.
 func (c *MetaClient) Create() *MetaCreate {
 	mutation := newMetaMutation(c.config, OpCreate)
@@ -841,6 +1336,21 @@ func (c *MetaClient) Create() *MetaCreate {
 
 // CreateBulk returns a builder for creating a bulk of Meta entities.
 func (c *MetaClient) CreateBulk(builders ...*MetaCreate) *MetaCreateBulk {
+	return &MetaCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MetaClient) MapCreateBulk(slice any, setFunc func(*MetaCreate, int)) *MetaCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MetaCreateBulk{err: fmt.Errorf("calling to MetaClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MetaCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
 	return &MetaCreateBulk{config: c.config, builders: builders}
 }
 
@@ -873,7 +1383,7 @@ func (c *MetaClient) DeleteOne(m *Meta) *MetaDeleteOne {
 	return c.DeleteOneID(m.ID)
 }
 
-// DeleteOne returns a builder for deleting the given entity by its id.
+// DeleteOneID returns a builder for deleting the given entity by its id.
 func (c *MetaClient) DeleteOneID(id int) *MetaDeleteOne {
 	builder := c.Delete().Where(meta.ID(id))
 	builder.mutation.id = &id
@@ -885,6 +1395,8 @@ func (c *MetaClient) DeleteOneID(id int) *MetaDeleteOne {
 func (c *MetaClient) Query() *MetaQuery {
 	return &MetaQuery{
 		config: c.config,
+		ctx:    &QueryContext{Type: TypeMeta},
+		inters: c.Interceptors(),
 	}
 }
 
@@ -904,8 +1416,8 @@ func (c *MetaClient) GetX(ctx context.Context, id int) *Meta {
 
 // QueryOwner queries the owner edge of a Meta.
 func (c *MetaClient) QueryOwner(m *Meta) *AlertQuery {
-	query := &AlertQuery{config: c.config}
-	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+	query := (&AlertClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(meta.Table, meta.FieldID, id),
@@ -922,3 +1434,34 @@ func (c *MetaClient) QueryOwner(m *Meta) *AlertQuery {
 func (c *MetaClient) Hooks() []Hook {
 	return c.hooks.Meta
 }
+
+// Interceptors returns the client interceptors.
+func (c *MetaClient) Interceptors() []Interceptor {
+	return c.inters.Meta
+}
+
+func (c *MetaClient) mutate(ctx context.Context, m *MetaMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MetaCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MetaUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MetaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MetaDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Meta mutation op: %q", m.Op())
+	}
+}
+
+// hooks and interceptors per client, for fast access.
+type (
+	hooks struct {
+		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta []ent.Hook
+	}
+	inters struct {
+		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine,
+		Meta []ent.Interceptor
+	}
+)

@@ -7,7 +7,8 @@ import (
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/enescakir/emoji"
+
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 const (
@@ -28,10 +29,8 @@ const (
 	versionFuture                 // local version is higher latest, but is included in the index: should not happen
 )
 
-var (
-	// The order is important, as it is used to range over sub-items in collections.
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
-)
+// The order is important, as it is used to range over sub-items in collections.
+var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
 
 type HubItems map[string]map[string]*Item
 
@@ -84,7 +83,7 @@ func (s *ItemState) Text() string {
 }
 
 // Emoji returns the status of the item as an emoji (eg. emoji.Warning).
-func (s *ItemState) Emoji() emoji.Emoji {
+func (s *ItemState) Emoji() string {
 	switch {
 	case s.IsLocal():
 		return emoji.House

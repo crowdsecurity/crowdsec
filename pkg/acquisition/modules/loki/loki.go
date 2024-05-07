@@ -6,13 +6,13 @@ https://grafana.com/docs/loki/latest/api/#get-lokiapiv1tail
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
@@ -57,7 +57,8 @@ type LokiConfiguration struct {
 }
 
 type LokiSource struct {
-	Config LokiConfiguration
+	metricsLevel int
+	Config       LokiConfiguration
 
 	Client *lokiclient.LokiClient
 
@@ -118,9 +119,10 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
+func (l *LokiSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
 	l.Config = LokiConfiguration{}
 	l.logger = logger
+	l.metricsLevel = MetricsLevel
 	err := l.UnmarshalConfig(config)
 	if err != nil {
 		return err
@@ -302,7 +304,9 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	ll.Process = true
 	ll.Module = l.GetName()
 
-	linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+	if l.metricsLevel != configuration.METRICS_NONE {
+		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+	}
 	expectMode := types.LIVE
 	if l.Config.UseTimeMachine {
 		expectMode = types.TIMEMACHINE

@@ -121,6 +121,6 @@ teardown() {
 
     rune -1 cscli hub list
     assert_stderr --partial "circular dependency detected"
-    rune -1 wait-for "${CROWDSEC}"
+    rune -1 wait-for "$CROWDSEC"
     assert_stderr --partial "circular dependency detected"
 }

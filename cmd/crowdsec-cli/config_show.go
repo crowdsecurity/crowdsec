@@ -10,13 +10,15 @@ import (
 	"github.com/sanity-io/litter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-func showConfigKey(key string) error {
+func (cli *cliConfig) showKey(key string) error {
+	cfg := cli.cfg()
+
 	type Env struct {
 		Config *csconfig.Config
 	}
@@ -30,15 +32,15 @@ func showConfigKey(key string) error {
 		return err
 	}
 
-	output, err := expr.Run(program, Env{Config: csConfig})
+	output, err := expr.Run(program, Env{Config: cfg})
 	if err != nil {
 		return err
 	}
 
-	switch csConfig.Cscli.Output {
+	switch cfg.Cscli.Output {
 	case "human", "raw":
 		// Don't use litter for strings, it adds quotes
-		// that we didn't have before
+		// that would break compatibility with previous versions
 		switch output.(type) {
 		case string:
 			fmt.Println(output)
@@ -51,13 +53,14 @@ func showConfigKey(key string) error {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
-		fmt.Printf("%s\n", string(data))
+		fmt.Println(string(data))
 	}
 
 	return nil
 }
 
-var configShowTemplate = `Global:
+func (cli *cliConfig) template() string {
+	return `Global:
 
 {{- if .ConfigPaths }}
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
@@ -100,6 +103,7 @@ API Client:
 {{- if .API.Server }}
 Local API Server{{if and .API.Server.Enable (not (ValueBool .API.Server.Enable))}} (disabled){{end}}:
   - Listen URL              : {{.API.Server.ListenURI}}
+  - Listen Socket           : {{.API.Server.ListenSocket}}
   - Profile File            : {{.API.Server.ProfilesPath}}
 
 {{- if .API.Server.TLS }}
@@ -181,74 +185,74 @@ Central API:
 {{- end }}
 {{- end }}
 `
+}
 
-func runConfigShow(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliConfig) show() error {
+	cfg := cli.cfg()
 
-	if err := csConfig.LoadAPIClient(); err != nil {
-		log.Errorf("failed to load API client configuration: %s", err)
-		// don't return, we can still show the configuration
-	}
-
-	key, err := flags.GetString("key")
-	if err != nil {
-		return err
-	}
-
-	if key != "" {
-		return showConfigKey(key)
-	}
-
-	switch csConfig.Cscli.Output {
+	switch cfg.Cscli.Output {
 	case "human":
 		// The tests on .Enable look funny because the option has a true default which has
 		// not been set yet (we don't really load the LAPI) and go templates don't dereference
 		// pointers in boolean tests. Prefix notation is the cherry on top.
 		funcs := template.FuncMap{
 			// can't use generics here
-			"ValueBool": func(b *bool) bool { return b!=nil && *b },
+			"ValueBool": func(b *bool) bool { return b != nil && *b },
 		}
 
-		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)
+		tmp, err := template.New("config").Funcs(funcs).Parse(cli.template())
 		if err != nil {
 			return err
 		}
 
-		err = tmp.Execute(os.Stdout, csConfig)
+		err = tmp.Execute(os.Stdout, cfg)
 		if err != nil {
 			return err
 		}
 	case "json":
-		data, err := json.MarshalIndent(csConfig, "", "  ")
+		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
-		fmt.Printf("%s\n", string(data))
+		fmt.Println(string(data))
 	case "raw":
-		data, err := yaml.Marshal(csConfig)
+		data, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
-		fmt.Printf("%s\n", string(data))
+		fmt.Println(string(data))
 	}
 
 	return nil
 }
 
-func NewConfigShowCmd() *cobra.Command {
-	cmdConfigShow := &cobra.Command{
+func (cli *cliConfig) newShowCmd() *cobra.Command {
+	var key string
+
+	cmd := &cobra.Command{
 		Use:               "show",
 		Short:             "Displays current config",
 		Long:              `Displays the current cli configuration.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runConfigShow,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if err := cli.cfg().LoadAPIClient(); err != nil {
+				log.Errorf("failed to load API client configuration: %s", err)
+				// don't return, we can still show the configuration
+			}
+
+			if key != "" {
+				return cli.showKey(key)
+			}
+
+			return cli.show()
+		},
 	}
 
-	flags := cmdConfigShow.Flags()
-	flags.StringP("key", "", "", "Display only this value (Config.API.Server.ListenURI)")
+	flags := cmd.Flags()
+	flags.StringVarP(&key, "key", "", "", "Display only this value (Config.API.Server.ListenURI)")
 
-	return cmdConfigShow
+	return cmd
 }

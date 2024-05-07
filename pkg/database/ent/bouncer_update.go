@@ -34,9 +34,11 @@ func (bu *BouncerUpdate) SetCreatedAt(t time.Time) *BouncerUpdate {
 	return bu
 }
 
-// ClearCreatedAt clears the value of the "created_at" field.
-func (bu *BouncerUpdate) ClearCreatedAt() *BouncerUpdate {
-	bu.mutation.ClearCreatedAt()
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
+	if t != nil {
+		bu.SetCreatedAt(*t)
+	}
 	return bu
 }
 
@@ -46,15 +48,17 @@ func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
 	return bu
 }
 
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (bu *BouncerUpdate) ClearUpdatedAt() *BouncerUpdate {
-	bu.mutation.ClearUpdatedAt()
-	return bu
-}
-
 // SetName sets the "name" field.
 func (bu *BouncerUpdate) SetName(s string) *BouncerUpdate {
 	bu.mutation.SetName(s)
+	return bu
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableName(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetName(*s)
+	}
 	return bu
 }
 
@@ -64,9 +68,25 @@ func (bu *BouncerUpdate) SetAPIKey(s string) *BouncerUpdate {
 	return bu
 }
 
+// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableAPIKey(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetAPIKey(*s)
+	}
+	return bu
+}
+
 // SetRevoked sets the "revoked" field.
 func (bu *BouncerUpdate) SetRevoked(b bool) *BouncerUpdate {
 	bu.mutation.SetRevoked(b)
+	return bu
+}
+
+// SetNillableRevoked sets the "revoked" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableRevoked(b *bool) *BouncerUpdate {
+	if b != nil {
+		bu.SetRevoked(*b)
+	}
 	return bu
 }
 
@@ -185,35 +205,8 @@ func (bu *BouncerUpdate) Mutation() *BouncerMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
 	bu.defaults()
-	if len(bu.hooks) == 0 {
-		affected, err = bu.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BouncerMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			bu.mutation = mutation
-			affected, err = bu.sqlSave(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(bu.hooks) - 1; i >= 0; i-- {
-			if bu.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = bu.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, bu.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, bu.sqlSave, bu.mutation, bu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -240,27 +233,14 @@ func (bu *BouncerUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (bu *BouncerUpdate) defaults() {
-	if _, ok := bu.mutation.CreatedAt(); !ok && !bu.mutation.CreatedAtCleared() {
-		v := bouncer.UpdateDefaultCreatedAt()
-		bu.mutation.SetCreatedAt(v)
-	}
-	if _, ok := bu.mutation.UpdatedAt(); !ok && !bu.mutation.UpdatedAtCleared() {
+	if _, ok := bu.mutation.UpdatedAt(); !ok {
 		v := bouncer.UpdateDefaultUpdatedAt()
 		bu.mutation.SetUpdatedAt(v)
 	}
 }
 
 func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   bouncer.Table,
-			Columns: bouncer.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: bouncer.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(bouncer.Table, bouncer.Columns, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
 	if ps := bu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -269,117 +249,49 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := bu.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldCreatedAt,
-		})
-	}
-	if bu.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: bouncer.FieldCreatedAt,
-		})
+		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
 	}
 	if value, ok := bu.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldUpdatedAt,
-		})
-	}
-	if bu.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: bouncer.FieldUpdatedAt,
-		})
+		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := bu.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldName,
-		})
+		_spec.SetField(bouncer.FieldName, field.TypeString, value)
 	}
 	if value, ok := bu.mutation.APIKey(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldAPIKey,
-		})
+		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
 	}
 	if value, ok := bu.mutation.Revoked(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: bouncer.FieldRevoked,
-		})
+		_spec.SetField(bouncer.FieldRevoked, field.TypeBool, value)
 	}
 	if value, ok := bu.mutation.IPAddress(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldIPAddress,
-		})
+		_spec.SetField(bouncer.FieldIPAddress, field.TypeString, value)
 	}
 	if bu.mutation.IPAddressCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: bouncer.FieldIPAddress,
-		})
+		_spec.ClearField(bouncer.FieldIPAddress, field.TypeString)
 	}
 	if value, ok := bu.mutation.GetType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldType,
-		})
+		_spec.SetField(bouncer.FieldType, field.TypeString, value)
 	}
 	if bu.mutation.TypeCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: bouncer.FieldType,
-		})
+		_spec.ClearField(bouncer.FieldType, field.TypeString)
 	}
 	if value, ok := bu.mutation.Version(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldVersion,
-		})
+		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 	}
 	if bu.mutation.VersionCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: bouncer.FieldVersion,
-		})
+		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
 	}
 	if value, ok := bu.mutation.Until(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldUntil,
-		})
+		_spec.SetField(bouncer.FieldUntil, field.TypeTime, value)
 	}
 	if bu.mutation.UntilCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: bouncer.FieldUntil,
-		})
+		_spec.ClearField(bouncer.FieldUntil, field.TypeTime)
 	}
 	if value, ok := bu.mutation.LastPull(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldLastPull,
-		})
+		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 	}
 	if value, ok := bu.mutation.AuthType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldAuthType,
-		})
+		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -389,6 +301,7 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
+	bu.mutation.done = true
 	return n, nil
 }
 
@@ -406,9 +319,11 @@ func (buo *BouncerUpdateOne) SetCreatedAt(t time.Time) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearCreatedAt clears the value of the "created_at" field.
-func (buo *BouncerUpdateOne) ClearCreatedAt() *BouncerUpdateOne {
-	buo.mutation.ClearCreatedAt()
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOne {
+	if t != nil {
+		buo.SetCreatedAt(*t)
+	}
 	return buo
 }
 
@@ -418,15 +333,17 @@ func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (buo *BouncerUpdateOne) ClearUpdatedAt() *BouncerUpdateOne {
-	buo.mutation.ClearUpdatedAt()
-	return buo
-}
-
 // SetName sets the "name" field.
 func (buo *BouncerUpdateOne) SetName(s string) *BouncerUpdateOne {
 	buo.mutation.SetName(s)
+	return buo
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableName(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetName(*s)
+	}
 	return buo
 }
 
@@ -436,9 +353,25 @@ func (buo *BouncerUpdateOne) SetAPIKey(s string) *BouncerUpdateOne {
 	return buo
 }
 
+// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableAPIKey(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetAPIKey(*s)
+	}
+	return buo
+}
+
 // SetRevoked sets the "revoked" field.
 func (buo *BouncerUpdateOne) SetRevoked(b bool) *BouncerUpdateOne {
 	buo.mutation.SetRevoked(b)
+	return buo
+}
+
+// SetNillableRevoked sets the "revoked" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableRevoked(b *bool) *BouncerUpdateOne {
+	if b != nil {
+		buo.SetRevoked(*b)
+	}
 	return buo
 }
 
@@ -555,6 +488,12 @@ func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
 	return buo.mutation
 }
 
+// Where appends a list predicates to the BouncerUpdate builder.
+func (buo *BouncerUpdateOne) Where(ps ...predicate.Bouncer) *BouncerUpdateOne {
+	buo.mutation.Where(ps...)
+	return buo
+}
+
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (buo *BouncerUpdateOne) Select(field string, fields ...string) *BouncerUpdateOne {
@@ -564,41 +503,8 @@ func (buo *BouncerUpdateOne) Select(field string, fields ...string) *BouncerUpda
 
 // Save executes the query and returns the updated Bouncer entity.
 func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
-	var (
-		err  error
-		node *Bouncer
-	)
 	buo.defaults()
-	if len(buo.hooks) == 0 {
-		node, err = buo.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BouncerMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			buo.mutation = mutation
-			node, err = buo.sqlSave(ctx)
-			mutation.done = true
-			return node, err
-		})
-		for i := len(buo.hooks) - 1; i >= 0; i-- {
-			if buo.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = buo.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, buo.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Bouncer)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from BouncerMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, buo.sqlSave, buo.mutation, buo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -625,27 +531,14 @@ func (buo *BouncerUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (buo *BouncerUpdateOne) defaults() {
-	if _, ok := buo.mutation.CreatedAt(); !ok && !buo.mutation.CreatedAtCleared() {
-		v := bouncer.UpdateDefaultCreatedAt()
-		buo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := buo.mutation.UpdatedAt(); !ok && !buo.mutation.UpdatedAtCleared() {
+	if _, ok := buo.mutation.UpdatedAt(); !ok {
 		v := bouncer.UpdateDefaultUpdatedAt()
 		buo.mutation.SetUpdatedAt(v)
 	}
 }
 
 func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   bouncer.Table,
-			Columns: bouncer.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: bouncer.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(bouncer.Table, bouncer.Columns, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
 	id, ok := buo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Bouncer.id" for update`)}
@@ -671,117 +564,49 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 		}
 	}
 	if value, ok := buo.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldCreatedAt,
-		})
-	}
-	if buo.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: bouncer.FieldCreatedAt,
-		})
+		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
 	}
 	if value, ok := buo.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldUpdatedAt,
-		})
-	}
-	if buo.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: bouncer.FieldUpdatedAt,
-		})
+		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := buo.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldName,
-		})
+		_spec.SetField(bouncer.FieldName, field.TypeString, value)
 	}
 	if value, ok := buo.mutation.APIKey(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldAPIKey,
-		})
+		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
 	}
 	if value, ok := buo.mutation.Revoked(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: bouncer.FieldRevoked,
-		})
+		_spec.SetField(bouncer.FieldRevoked, field.TypeBool, value)
 	}
 	if value, ok := buo.mutation.IPAddress(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldIPAddress,
-		})
+		_spec.SetField(bouncer.FieldIPAddress, field.TypeString, value)
 	}
 	if buo.mutation.IPAddressCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: bouncer.FieldIPAddress,
-		})
+		_spec.ClearField(bouncer.FieldIPAddress, field.TypeString)
 	}
 	if value, ok := buo.mutation.GetType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldType,
-		})
+		_spec.SetField(bouncer.FieldType, field.TypeString, value)
 	}
 	if buo.mutation.TypeCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: bouncer.FieldType,
-		})
+		_spec.ClearField(bouncer.FieldType, field.TypeString)
 	}
 	if value, ok := buo.mutation.Version(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldVersion,
-		})
+		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 	}
 	if buo.mutation.VersionCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: bouncer.FieldVersion,
-		})
+		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
 	}
 	if value, ok := buo.mutation.Until(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldUntil,
-		})
+		_spec.SetField(bouncer.FieldUntil, field.TypeTime, value)
 	}
 	if buo.mutation.UntilCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: bouncer.FieldUntil,
-		})
+		_spec.ClearField(bouncer.FieldUntil, field.TypeTime)
 	}
 	if value, ok := buo.mutation.LastPull(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: bouncer.FieldLastPull,
-		})
+		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 	}
 	if value, ok := buo.mutation.AuthType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: bouncer.FieldAuthType,
-		})
+		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 	}
 	_node = &Bouncer{config: buo.config}
 	_spec.Assign = _node.assignValues
@@ -794,5 +619,6 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 		}
 		return nil, err
 	}
+	buo.mutation.done = true
 	return _node, nil
 }

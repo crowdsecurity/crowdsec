@@ -20,25 +20,21 @@ env:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.6"]
-
     name: "Build + tests"
     runs-on: windows-2022
 
     steps:
 
     - name: Check out CrowdSec repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: false
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.22.2"
 
     - name: Build
       run: |
@@ -52,15 +48,16 @@ jobs:
         cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: coverage.out
         flags: unit-windows
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.55
+        version: v1.57
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
         # the cache is already managed above, enabling it here

@@ -4,6 +4,9 @@ package alert
 
 import (
 	"time"
+
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -149,8 +152,6 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
-	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
@@ -168,3 +169,203 @@ var (
 	// DefaultSimulated holds the default value on creation for the "simulated" field.
 	DefaultSimulated bool
 )
+
+// OrderOption defines the ordering options for the Alert queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByScenario orders the results by the scenario field.
+func ByScenario(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldScenario, opts...).ToFunc()
+}
+
+// ByBucketId orders the results by the bucketId field.
+func ByBucketId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBucketId, opts...).ToFunc()
+}
+
+// ByMessage orders the results by the message field.
+func ByMessage(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMessage, opts...).ToFunc()
+}
+
+// ByEventsCountField orders the results by the eventsCount field.
+func ByEventsCountField(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEventsCount, opts...).ToFunc()
+}
+
+// ByStartedAt orders the results by the startedAt field.
+func ByStartedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStartedAt, opts...).ToFunc()
+}
+
+// ByStoppedAt orders the results by the stoppedAt field.
+func ByStoppedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStoppedAt, opts...).ToFunc()
+}
+
+// BySourceIp orders the results by the sourceIp field.
+func BySourceIp(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceIp, opts...).ToFunc()
+}
+
+// BySourceRange orders the results by the sourceRange field.
+func BySourceRange(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceRange, opts...).ToFunc()
+}
+
+// BySourceAsNumber orders the results by the sourceAsNumber field.
+func BySourceAsNumber(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceAsNumber, opts...).ToFunc()
+}
+
+// BySourceAsName orders the results by the sourceAsName field.
+func BySourceAsName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceAsName, opts...).ToFunc()
+}
+
+// BySourceCountry orders the results by the sourceCountry field.
+func BySourceCountry(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceCountry, opts...).ToFunc()
+}
+
+// BySourceLatitude orders the results by the sourceLatitude field.
+func BySourceLatitude(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceLatitude, opts...).ToFunc()
+}
+
+// BySourceLongitude orders the results by the sourceLongitude field.
+func BySourceLongitude(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceLongitude, opts...).ToFunc()
+}
+
+// BySourceScope orders the results by the sourceScope field.
+func BySourceScope(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceScope, opts...).ToFunc()
+}
+
+// BySourceValue orders the results by the sourceValue field.
+func BySourceValue(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceValue, opts...).ToFunc()
+}
+
+// ByCapacity orders the results by the capacity field.
+func ByCapacity(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCapacity, opts...).ToFunc()
+}
+
+// ByLeakSpeed orders the results by the leakSpeed field.
+func ByLeakSpeed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLeakSpeed, opts...).ToFunc()
+}
+
+// ByScenarioVersion orders the results by the scenarioVersion field.
+func ByScenarioVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldScenarioVersion, opts...).ToFunc()
+}
+
+// ByScenarioHash orders the results by the scenarioHash field.
+func ByScenarioHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldScenarioHash, opts...).ToFunc()
+}
+
+// BySimulated orders the results by the simulated field.
+func BySimulated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSimulated, opts...).ToFunc()
+}
+
+// ByUUID orders the results by the uuid field.
+func ByUUID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUUID, opts...).ToFunc()
+}
+
+// ByOwnerField orders the results by owner field.
+func ByOwnerField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOwnerStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByDecisionsCount orders the results by decisions count.
+func ByDecisionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDecisionsStep(), opts...)
+	}
+}
+
+// ByDecisions orders the results by decisions terms.
+func ByDecisions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDecisionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByEventsCount orders the results by events count.
+func ByEventsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEventsStep(), opts...)
+	}
+}
+
+// ByEvents orders the results by events terms.
+func ByEvents(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEventsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByMetasCount orders the results by metas count.
+func ByMetasCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMetasStep(), opts...)
+	}
+}
+
+// ByMetas orders the results by metas terms.
+func ByMetas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMetasStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newOwnerStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OwnerInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, OwnerTable, OwnerColumn),
+	)
+}
+func newDecisionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DecisionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DecisionsTable, DecisionsColumn),
+	)
+}
+func newEventsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EventsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EventsTable, EventsColumn),
+	)
+}
+func newMetasStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MetasInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MetasTable, MetasColumn),
+	)
+}

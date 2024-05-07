@@ -1,8 +1,8 @@
 package cwhub
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,8 +20,8 @@ type Hub struct {
 	items    HubItems // Items read from HubDir and InstallDir
 	local    *csconfig.LocalHubCfg
 	remote   *RemoteHubCfg
-	Warnings []string // Warnings encountered during sync
 	logger   *logrus.Logger
+	Warnings []string // Warnings encountered during sync
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
@@ -34,7 +34,7 @@ func (h *Hub) GetDataDir() string {
 // All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
 func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
-		return nil, fmt.Errorf("no hub configuration found")
+		return nil, errors.New("no hub configuration found")
 	}
 
 	if logger == nil {
@@ -149,26 +149,16 @@ func (h *Hub) ItemStats() []string {
 
 // updateIndex downloads the latest version of the index and writes it to disk if it changed.
 func (h *Hub) updateIndex() error {
-	body, err := h.remote.fetchIndex()
+	downloaded, err := h.remote.fetchIndex(h.local.HubIndexFile)
 	if err != nil {
 		return err
 	}
 
-	oldContent, err := os.ReadFile(h.local.HubIndexFile)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			h.logger.Warningf("failed to read hub index: %s", err)
-		}
-	} else if bytes.Equal(body, oldContent) {
+	if downloaded {
+		h.logger.Infof("Wrote index to %s", h.local.HubIndexFile)
+	} else {
 		h.logger.Info("hub index is up to date")
-		return nil
 	}
-
-	if err = os.WriteFile(h.local.HubIndexFile, body, 0o644); err != nil {
-		return fmt.Errorf("failed to write hub index: %w", err)
-	}
-
-	h.logger.Infof("Wrote index to %s, %d bytes", h.local.HubIndexFile, len(body))
 
 	return nil
 }
@@ -213,9 +203,9 @@ func (h *Hub) GetItemFQ(itemFQName string) (*Item, error) {
 	return i, nil
 }
 
-// GetItemNames returns a slice of (full) item names for a given type
+// GetNamesByType returns a slice of (full) item names for a given type
 // (eg. for collections: crowdsecurity/apache2 crowdsecurity/nginx).
-func (h *Hub) GetItemNames(itemType string) []string {
+func (h *Hub) GetNamesByType(itemType string) []string {
 	m := h.GetItemMap(itemType)
 	if m == nil {
 		return nil
@@ -229,8 +219,8 @@ func (h *Hub) GetItemNames(itemType string) []string {
 	return names
 }
 
-// GetAllItems returns a slice of all the items of a given type, installed or not.
-func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
+// GetItemsByType returns a slice of all the items of a given type, installed or not.
+func (h *Hub) GetItemsByType(itemType string) ([]*Item, error) {
 	if !slices.Contains(ItemTypes, itemType) {
 		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
@@ -249,8 +239,8 @@ func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
 	return ret, nil
 }
 
-// GetInstalledItems returns a slice of the installed items of a given type.
-func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
+// GetInstalledItemsByType returns a slice of the installed items of a given type.
+func (h *Hub) GetInstalledItemsByType(itemType string) ([]*Item, error) {
 	if !slices.Contains(ItemTypes, itemType) {
 		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
@@ -268,9 +258,9 @@ func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	return retItems, nil
 }
 
-// GetInstalledItemNames returns the names of the installed items of a given type.
-func (h *Hub) GetInstalledItemNames(itemType string) ([]string, error) {
-	items, err := h.GetInstalledItems(itemType)
+// GetInstalledNamesByType returns the names of the installed items of a given type.
+func (h *Hub) GetInstalledNamesByType(itemType string) ([]string, error) {
+	items, err := h.GetInstalledItemsByType(itemType)
 	if err != nil {
 		return nil, err
 	}

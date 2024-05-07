@@ -226,7 +226,8 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 	if in := request.Tx.Interruption(); in != nil {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
 		r.AppsecRuntime.Response.InBandInterrupt = true
-		r.AppsecRuntime.Response.HTTPResponseCode = r.AppsecRuntime.Config.BlockedHTTPCode
+		r.AppsecRuntime.Response.BouncerHTTPResponseCode = r.AppsecRuntime.Config.BouncerBlockedHTTPCode
+		r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.UserBlockedHTTPCode
 		r.AppsecRuntime.Response.Action = r.AppsecRuntime.DefaultRemediation
 
 		if _, ok := r.AppsecRuntime.RemediationById[in.RuleID]; ok {
@@ -252,7 +253,9 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
 			}
-			r.outChan <- *appsecOvlfw
+			if appsecOvlfw != nil {
+				r.outChan <- *appsecOvlfw
+			}
 		}
 
 		// Should the in band match trigger an event ?

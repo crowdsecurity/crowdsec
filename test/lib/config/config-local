@@ -57,7 +57,6 @@ config_generate() {
 
     cp ../config/profiles.yaml \
        ../config/simulation.yaml \
-       ../config/local_api_credentials.yaml \
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
@@ -81,7 +80,6 @@ config_generate() {
     .common.daemonize=true |
     del(.common.pid_dir) |
     .common.log_level="info" |
-    .common.force_color_logs=true |
     .common.log_dir=strenv(LOG_DIR) |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
@@ -95,6 +93,7 @@ config_generate() {
     .db_config.db_path=strenv(DATA_DIR)+"/crowdsec.db" |
     .db_config.use_wal=true |
     .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
+    .api.server.listen_socket=strenv(DATA_DIR)+"/crowdsec.sock" |
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
     del(.api.server.online_client)
@@ -119,7 +118,8 @@ make_init_data() {
 
     ./bin/preload-hub-items
 
-    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto --force
+    # force TCP, the default would be unix socket
+    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --url http://127.0.0.1:8080 --auto --force
 
     mkdir -p "$LOCAL_INIT_DIR"
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -18,9 +19,9 @@ type Decision struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Until holds the value of the "until" field.
 	Until *time.Time `json:"until,omitempty"`
 	// Scenario holds the value of the "scenario" field.
@@ -51,7 +52,8 @@ type Decision struct {
 	AlertDecisions int `json:"alert_decisions,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionQuery when eager-loading is set.
-	Edges DecisionEdges `json:"edges"`
+	Edges        DecisionEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // DecisionEdges holds the relations/edges for other nodes in the graph.
@@ -90,7 +92,7 @@ func (*Decision) scanValues(columns []string) ([]any, error) {
 		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Decision", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -114,15 +116,13 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				d.CreatedAt = new(time.Time)
-				*d.CreatedAt = value.Time
+				d.CreatedAt = value.Time
 			}
 		case decision.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				d.UpdatedAt = new(time.Time)
-				*d.UpdatedAt = value.Time
+				d.UpdatedAt = value.Time
 			}
 		case decision.FieldUntil:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -209,21 +209,29 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				d.AlertDecisions = int(value.Int64)
 			}
+		default:
+			d.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
+// GetValue returns the ent.Value that was dynamically selected and assigned to the Decision.
+// This includes values selected through modifiers, order, etc.
+func (d *Decision) GetValue(name string) (ent.Value, error) {
+	return d.selectValues.Get(name)
+}
+
 // QueryOwner queries the "owner" edge of the Decision entity.
 func (d *Decision) QueryOwner() *AlertQuery {
-	return (&DecisionClient{config: d.config}).QueryOwner(d)
+	return NewDecisionClient(d.config).QueryOwner(d)
 }
 
 // Update returns a builder for updating this Decision.
 // Note that you need to call Decision.Unwrap() before calling this method if this Decision
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (d *Decision) Update() *DecisionUpdateOne {
-	return (&DecisionClient{config: d.config}).UpdateOne(d)
+	return NewDecisionClient(d.config).UpdateOne(d)
 }
 
 // Unwrap unwraps the Decision entity that was returned from a transaction after it was closed,
@@ -242,15 +250,11 @@ func (d *Decision) String() string {
 	var builder strings.Builder
 	builder.WriteString("Decision(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", d.ID))
-	if v := d.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(d.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := d.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(d.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	if v := d.Until; v != nil {
 		builder.WriteString("until=")
@@ -301,9 +305,3 @@ func (d *Decision) String() string {
 
 // Decisions is a parsable slice of Decision.
 type Decisions []*Decision
-
-func (d Decisions) config(cfg config) {
-	for _i := range d {
-		d[_i].config = cfg
-	}
-}

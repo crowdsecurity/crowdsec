@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	URIHeaderName    = "X-Crowdsec-Appsec-Uri"
-	VerbHeaderName   = "X-Crowdsec-Appsec-Verb"
-	HostHeaderName   = "X-Crowdsec-Appsec-Host"
-	IPHeaderName     = "X-Crowdsec-Appsec-Ip"
-	APIKeyHeaderName = "X-Crowdsec-Appsec-Api-Key"
+	URIHeaderName       = "X-Crowdsec-Appsec-Uri"
+	VerbHeaderName      = "X-Crowdsec-Appsec-Verb"
+	HostHeaderName      = "X-Crowdsec-Appsec-Host"
+	IPHeaderName        = "X-Crowdsec-Appsec-Ip"
+	APIKeyHeaderName    = "X-Crowdsec-Appsec-Api-Key"
+	UserAgentHeaderName = "X-Crowdsec-Appsec-User-Agent"
 )
 
 type ParsedRequest struct {
@@ -38,7 +39,7 @@ type ParsedRequest struct {
 	Body                 []byte                  `json:"body,omitempty"`
 	TransferEncoding     []string                `json:"transfer_encoding,omitempty"`
 	UUID                 string                  `json:"uuid,omitempty"`
-	Tx                   ExtendedTransaction     `json:"transaction,omitempty"`
+	Tx                   ExtendedTransaction     `json:"-"`
 	ResponseChannel      chan AppsecTempResponse `json:"-"`
 	IsInBand             bool                    `json:"-"`
 	IsOutBand            bool                    `json:"-"`
@@ -260,12 +261,17 @@ func (r *ReqDumpFilter) ToJSON() error {
 
 	req := r.GetFilteredRequest()
 
-	log.Warningf("dumping : %+v", req)
+	log.Tracef("dumping : %+v", req)
 
 	if err := enc.Encode(req); err != nil {
+		//Don't clobber the temp directory with empty files
+		err2 := os.Remove(fd.Name())
+		if err2 != nil {
+			log.Errorf("while removing temp file %s: %s", fd.Name(), err)
+		}
 		return fmt.Errorf("while encoding request: %w", err)
 	}
-	log.Warningf("request dumped to %s", fd.Name())
+	log.Infof("request dumped to %s", fd.Name())
 	return nil
 }
 
@@ -306,11 +312,15 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		logger.Debugf("missing '%s' header", HostHeaderName)
 	}
 
+	userAgent := r.Header.Get(UserAgentHeaderName) //This one is optional
+
 	// delete those headers before coraza process the request
 	delete(r.Header, IPHeaderName)
 	delete(r.Header, HostHeaderName)
 	delete(r.Header, URIHeaderName)
 	delete(r.Header, VerbHeaderName)
+	delete(r.Header, UserAgentHeaderName)
+	delete(r.Header, APIKeyHeaderName)
 
 	originalHTTPRequest := r.Clone(r.Context())
 	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -318,13 +328,24 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	originalHTTPRequest.RequestURI = clientURI
 	originalHTTPRequest.Method = clientMethod
 	originalHTTPRequest.Host = clientHost
+	if userAgent != "" {
+		originalHTTPRequest.Header.Set("User-Agent", userAgent)
+		r.Header.Set("User-Agent", userAgent) //Override the UA in the original request, as this is what will be used by the waf engine
+	} else {
+		//If we don't have a forwarded UA, delete the one that was set by the bouncer
+		originalHTTPRequest.Header.Del("User-Agent")
+	}
 
 	parsedURL, err := url.Parse(clientURI)
 	if err != nil {
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
-	remoteAddrNormalized := ""
+	var remoteAddrNormalized string
+	if r.RemoteAddr == "@" {
+		r.RemoteAddr = "127.0.0.1:65535"
+	}
+	// TODO we need to implement forwrded headers
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		log.Errorf("Invalid appsec remote IP source %v: %s", r.RemoteAddr, err.Error())
@@ -332,7 +353,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	} else {
 		ip := net.ParseIP(host)
 		if ip == nil {
-			log.Errorf("Invalid appsec remote IP address source %v: %s", r.RemoteAddr, err.Error())
+			log.Errorf("Invalid appsec remote IP address source %v", r.RemoteAddr)
 			remoteAddrNormalized = r.RemoteAddr
 		} else {
 			remoteAddrNormalized = ip.String()
@@ -344,14 +365,14 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		UUID:                 uuid.New().String(),
 		ClientHost:           clientHost,
 		ClientIP:             clientIP,
-		URI:                  parsedURL.Path,
+		URI:                  clientURI,
 		Method:               clientMethod,
-		Host:                 r.Host,
+		Host:                 clientHost,
 		Headers:              r.Header,
-		URL:                  r.URL,
+		URL:                  parsedURL,
 		Proto:                r.Proto,
 		Body:                 body,
-		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
+		Args:                 ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,

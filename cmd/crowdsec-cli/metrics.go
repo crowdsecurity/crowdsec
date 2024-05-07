@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,11 +17,63 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 )
 
-// FormatPrometheusMetrics is a complete rip from prom2json
-func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error {
+type (
+	statAcquis       map[string]map[string]int
+	statParser       map[string]map[string]int
+	statBucket       map[string]map[string]int
+	statWhitelist    map[string]map[string]map[string]int
+	statLapi         map[string]map[string]int
+	statLapiMachine  map[string]map[string]map[string]int
+	statLapiBouncer  map[string]map[string]map[string]int
+	statLapiDecision map[string]struct {
+		NonEmpty int
+		Empty    int
+	}
+	statDecision     map[string]map[string]map[string]int
+	statAppsecEngine map[string]map[string]int
+	statAppsecRule   map[string]map[string]map[string]int
+	statAlert        map[string]int
+	statStash        map[string]struct {
+		Type  string
+		Count int
+	}
+)
+
+var (
+	ErrMissingConfig   = errors.New("prometheus section missing, can't show metrics")
+	ErrMetricsDisabled = errors.New("prometheus is not enabled, can't show metrics")
+)
+
+type metricSection interface {
+	Table(out io.Writer, noUnit bool, showEmpty bool)
+	Description() (string, string)
+}
+
+type metricStore map[string]metricSection
+
+func NewMetricStore() metricStore {
+	return metricStore{
+		"acquisition":    statAcquis{},
+		"scenarios":      statBucket{},
+		"parsers":        statParser{},
+		"lapi":           statLapi{},
+		"lapi-machine":   statLapiMachine{},
+		"lapi-bouncer":   statLapiBouncer{},
+		"lapi-decisions": statLapiDecision{},
+		"decisions":      statDecision{},
+		"alerts":         statAlert{},
+		"stash":          statStash{},
+		"appsec-engine":  statAppsecEngine{},
+		"appsec-rule":    statAppsecRule{},
+		"whitelists":     statWhitelist{},
+	}
+}
+
+func (ms metricStore) Fetch(url string) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -33,9 +86,10 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	transport.ResponseHeaderTimeout = time.Minute
 	go func() {
 		defer trace.CatchPanic("crowdsec/ShowPrometheus")
+
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
-			errChan <- fmt.Errorf("failed to fetch prometheus metrics: %w", err)
+			errChan <- fmt.Errorf("failed to fetch metrics: %w", err)
 			return
 		}
 		errChan <- nil
@@ -50,42 +104,42 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		return err
 	}
 
-	log.Debugf("Finished reading prometheus output, %d entries", len(result))
+	log.Debugf("Finished reading metrics output, %d entries", len(result))
 	/*walk*/
-	lapi_decisions_stats := map[string]struct {
-		NonEmpty int
-		Empty    int
-	}{}
-	acquis_stats := map[string]map[string]int{}
-	parsers_stats := map[string]map[string]int{}
-	buckets_stats := map[string]map[string]int{}
-	lapi_stats := map[string]map[string]int{}
-	lapi_machine_stats := map[string]map[string]map[string]int{}
-	lapi_bouncer_stats := map[string]map[string]map[string]int{}
-	decisions_stats := map[string]map[string]map[string]int{}
-	appsec_engine_stats := map[string]map[string]int{}
-	appsec_rule_stats := map[string]map[string]map[string]int{}
-	alerts_stats := map[string]int{}
-	stash_stats := map[string]struct {
-		Type  string
-		Count int
-	}{}
+
+	mAcquis := ms["acquisition"].(statAcquis)
+	mParser := ms["parsers"].(statParser)
+	mBucket := ms["scenarios"].(statBucket)
+	mLapi := ms["lapi"].(statLapi)
+	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
+	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
+	mLapiDecision := ms["lapi-decisions"].(statLapiDecision)
+	mDecision := ms["decisions"].(statDecision)
+	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
+	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
+	mAlert := ms["alerts"].(statAlert)
+	mStash := ms["stash"].(statStash)
+	mWhitelist := ms["whitelists"].(statWhitelist)
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
+
 		log.Tracef("round %d", idx)
+
 		for _, m := range fam.Metrics {
 			metric, ok := m.(prom2json.Metric)
 			if !ok {
 				log.Debugf("failed to convert metric to prom2json.Metric")
 				continue
 			}
+
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
 			}
+
 			source, ok := metric.Labels["source"]
 			if !ok {
 				log.Debugf("no source in Metric %v for %s", metric.Labels, fam.Name)
@@ -106,148 +160,89 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 			origin := metric.Labels["origin"]
 			action := metric.Labels["action"]
 
+			appsecEngine := metric.Labels["appsec_engine"]
+			appsecRule := metric.Labels["rule_name"]
+
 			mtype := metric.Labels["type"]
 
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
 			}
+
 			ival := int(fval)
+
 			switch fam.Name {
-			/*buckets*/
+			//
+			// buckets
+			//
 			case "cs_bucket_created_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
-				}
-				buckets_stats[name]["instantiation"] += ival
+				mBucket.Process(name, "instantiation", ival)
 			case "cs_buckets":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
-				}
-				buckets_stats[name]["curr_count"] += ival
+				mBucket.Process(name, "curr_count", ival)
 			case "cs_bucket_overflowed_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
-				}
-				buckets_stats[name]["overflow"] += ival
+				mBucket.Process(name, "overflow", ival)
 			case "cs_bucket_poured_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
-				}
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
-				}
-				buckets_stats[name]["pour"] += ival
-				acquis_stats[source]["pour"] += ival
+				mBucket.Process(name, "pour", ival)
+				mAcquis.Process(source, "pour", ival)
 			case "cs_bucket_underflowed_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
-				}
-				buckets_stats[name]["underflow"] += ival
-				/*acquis*/
+				mBucket.Process(name, "underflow", ival)
+			//
+			// parsers
+			//
 			case "cs_parser_hits_total":
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
-				}
-				acquis_stats[source]["reads"] += ival
+				mAcquis.Process(source, "reads", ival)
 			case "cs_parser_hits_ok_total":
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
-				}
-				acquis_stats[source]["parsed"] += ival
+				mAcquis.Process(source, "parsed", ival)
 			case "cs_parser_hits_ko_total":
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
-				}
-				acquis_stats[source]["unparsed"] += ival
+				mAcquis.Process(source, "unparsed", ival)
 			case "cs_node_hits_total":
-				if _, ok := parsers_stats[name]; !ok {
-					parsers_stats[name] = make(map[string]int)
-				}
-				parsers_stats[name]["hits"] += ival
+				mParser.Process(name, "hits", ival)
 			case "cs_node_hits_ok_total":
-				if _, ok := parsers_stats[name]; !ok {
-					parsers_stats[name] = make(map[string]int)
-				}
-				parsers_stats[name]["parsed"] += ival
+				mParser.Process(name, "parsed", ival)
 			case "cs_node_hits_ko_total":
-				if _, ok := parsers_stats[name]; !ok {
-					parsers_stats[name] = make(map[string]int)
-				}
-				parsers_stats[name]["unparsed"] += ival
+				mParser.Process(name, "unparsed", ival)
+			//
+			// whitelists
+			//
+			case "cs_node_wl_hits_total":
+				mWhitelist.Process(name, reason, "hits", ival)
+			case "cs_node_wl_hits_ok_total":
+				mWhitelist.Process(name, reason, "whitelisted", ival)
+				// track as well whitelisted lines at acquis level
+				mAcquis.Process(source, "whitelisted", ival)
+			//
+			// lapi
+			//
 			case "cs_lapi_route_requests_total":
-				if _, ok := lapi_stats[route]; !ok {
-					lapi_stats[route] = make(map[string]int)
-				}
-				lapi_stats[route][method] += ival
+				mLapi.Process(route, method, ival)
 			case "cs_lapi_machine_requests_total":
-				if _, ok := lapi_machine_stats[machine]; !ok {
-					lapi_machine_stats[machine] = make(map[string]map[string]int)
-				}
-				if _, ok := lapi_machine_stats[machine][route]; !ok {
-					lapi_machine_stats[machine][route] = make(map[string]int)
-				}
-				lapi_machine_stats[machine][route][method] += ival
+				mLapiMachine.Process(machine, route, method, ival)
 			case "cs_lapi_bouncer_requests_total":
-				if _, ok := lapi_bouncer_stats[bouncer]; !ok {
-					lapi_bouncer_stats[bouncer] = make(map[string]map[string]int)
-				}
-				if _, ok := lapi_bouncer_stats[bouncer][route]; !ok {
-					lapi_bouncer_stats[bouncer][route] = make(map[string]int)
-				}
-				lapi_bouncer_stats[bouncer][route][method] += ival
+				mLapiBouncer.Process(bouncer, route, method, ival)
 			case "cs_lapi_decisions_ko_total", "cs_lapi_decisions_ok_total":
-				if _, ok := lapi_decisions_stats[bouncer]; !ok {
-					lapi_decisions_stats[bouncer] = struct {
-						NonEmpty int
-						Empty    int
-					}{}
-				}
-				x := lapi_decisions_stats[bouncer]
-				if fam.Name == "cs_lapi_decisions_ko_total" {
-					x.Empty += ival
-				} else if fam.Name == "cs_lapi_decisions_ok_total" {
-					x.NonEmpty += ival
-				}
-				lapi_decisions_stats[bouncer] = x
+				mLapiDecision.Process(bouncer, fam.Name, ival)
+			//
+			// decisions
+			//
 			case "cs_active_decisions":
-				if _, ok := decisions_stats[reason]; !ok {
-					decisions_stats[reason] = make(map[string]map[string]int)
-				}
-				if _, ok := decisions_stats[reason][origin]; !ok {
-					decisions_stats[reason][origin] = make(map[string]int)
-				}
-				decisions_stats[reason][origin][action] += ival
+				mDecision.Process(reason, origin, action, ival)
 			case "cs_alerts":
-				/*if _, ok := alerts_stats[scenario]; !ok {
-					alerts_stats[scenario] = make(map[string]int)
-				}*/
-				alerts_stats[reason] += ival
+				mAlert.Process(reason, ival)
+			//
+			// stash
+			//
 			case "cs_cache_size":
-				stash_stats[name] = struct {
-					Type  string
-					Count int
-				}{Type: mtype, Count: ival}
+				mStash.Process(name, mtype, ival)
+			//
+			// appsec
+			//
 			case "cs_appsec_reqs_total":
-				if _, ok := appsec_engine_stats[metric.Labels["appsec_engine"]]; !ok {
-					appsec_engine_stats[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
-				}
-				appsec_engine_stats[metric.Labels["appsec_engine"]]["processed"] = ival
+				mAppsecEngine.Process(appsecEngine, "processed", ival)
 			case "cs_appsec_block_total":
-				if _, ok := appsec_engine_stats[metric.Labels["appsec_engine"]]; !ok {
-					appsec_engine_stats[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
-				}
-				appsec_engine_stats[metric.Labels["appsec_engine"]]["blocked"] = ival
+				mAppsecEngine.Process(appsecEngine, "blocked", ival)
 			case "cs_appsec_rule_hits":
-				appsecEngine := metric.Labels["appsec_engine"]
-				ruleID := metric.Labels["rule_name"]
-				if _, ok := appsec_rule_stats[appsecEngine]; !ok {
-					appsec_rule_stats[appsecEngine] = make(map[string]map[string]int, 0)
-				}
-				if _, ok := appsec_rule_stats[appsecEngine][ruleID]; !ok {
-					appsec_rule_stats[appsecEngine][ruleID] = make(map[string]int, 0)
-				}
-				appsec_rule_stats[appsecEngine][ruleID]["triggered"] = ival
+				mAppsecRule.Process(appsecEngine, appsecRule, "triggered", ival)
 			default:
 				log.Debugf("unknown: %+v", fam.Name)
 				continue
@@ -255,46 +250,50 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		}
 	}
 
-	if formatType == "human" {
-		acquisStatsTable(out, acquis_stats)
-		bucketStatsTable(out, buckets_stats)
-		parserStatsTable(out, parsers_stats)
-		lapiStatsTable(out, lapi_stats)
-		lapiMachineStatsTable(out, lapi_machine_stats)
-		lapiBouncerStatsTable(out, lapi_bouncer_stats)
-		lapiDecisionStatsTable(out, lapi_decisions_stats)
-		decisionStatsTable(out, decisions_stats)
-		alertStatsTable(out, alerts_stats)
-		stashStatsTable(out, stash_stats)
-		appsecMetricsToTable(out, appsec_engine_stats)
-		appsecRulesToTable(out, appsec_rule_stats)
-		return nil
+	return nil
+}
+
+type cliMetrics struct {
+	cfg configGetter
+}
+
+func NewCLIMetrics(cfg configGetter) *cliMetrics {
+	return &cliMetrics{
+		cfg: cfg,
+	}
+}
+
+func (ms metricStore) Format(out io.Writer, sections []string, formatType string, noUnit bool) error {
+	// copy only the sections we want
+	want := map[string]metricSection{}
+
+	// if explicitly asking for sections, we want to show empty tables
+	showEmpty := len(sections) > 0
+
+	// if no sections are specified, we want all of them
+	if len(sections) == 0 {
+		sections = maptools.SortedKeys(ms)
 	}
 
-	stats := make(map[string]any)
-
-	stats["acquisition"] = acquis_stats
-	stats["buckets"] = buckets_stats
-	stats["parsers"] = parsers_stats
-	stats["lapi"] = lapi_stats
-	stats["lapi_machine"] = lapi_machine_stats
-	stats["lapi_bouncer"] = lapi_bouncer_stats
-	stats["lapi_decisions"] = lapi_decisions_stats
-	stats["decisions"] = decisions_stats
-	stats["alerts"] = alerts_stats
-	stats["stash"] = stash_stats
+	for _, section := range sections {
+		want[section] = ms[section]
+	}
 
 	switch formatType {
+	case "human":
+		for _, section := range maptools.SortedKeys(want) {
+			want[section].Table(out, noUnit, showEmpty)
+		}
 	case "json":
-		x, err := json.MarshalIndent(stats, "", " ")
+		x, err := json.MarshalIndent(want, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal metrics : %v", err)
+			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 		out.Write(x)
 	case "raw":
-		x, err := yaml.Marshal(stats)
+		x, err := yaml.Marshal(want)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal metrics : %v", err)
+			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 		out.Write(x)
 	default:
@@ -304,52 +303,195 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	return nil
 }
 
-var noUnit bool
-
-func runMetrics(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	url, err := flags.GetString("url")
-	if err != nil {
-		return err
-	}
+func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
+	cfg := cli.cfg()
 
 	if url != "" {
-		csConfig.Cscli.PrometheusUrl = url
+		cfg.Cscli.PrometheusUrl = url
 	}
 
-	noUnit, err = flags.GetBool("no-unit")
-	if err != nil {
+	if cfg.Prometheus == nil {
+		return ErrMissingConfig
+	}
+
+	if !cfg.Prometheus.Enabled {
+		return ErrMetricsDisabled
+	}
+
+	ms := NewMetricStore()
+
+	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
 		return err
 	}
 
-	if csConfig.Prometheus == nil {
-		return fmt.Errorf("prometheus section missing, can't show metrics")
+	// any section that we don't have in the store is an error
+	for _, section := range sections {
+		if _, ok := ms[section]; !ok {
+			return fmt.Errorf("unknown metrics type: %s", section)
+		}
 	}
 
-	if !csConfig.Prometheus.Enabled {
-		return fmt.Errorf("prometheus is not enabled, can't show metrics")
-	}
-
-	if err = FormatPrometheusMetrics(color.Output, csConfig.Cscli.PrometheusUrl, csConfig.Cscli.Output); err != nil {
+	if err := ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func NewMetricsCmd() *cobra.Command {
-	cmdMetrics := &cobra.Command{
-		Use:               "metrics",
-		Short:             "Display crowdsec prometheus metrics.",
-		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
+func (cli *cliMetrics) NewCommand() *cobra.Command {
+	var (
+		url    string
+		noUnit bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "metrics",
+		Short: "Display crowdsec prometheus metrics.",
+		Long:  `Fetch metrics from a Local API server and display them`,
+		Example: `# Show all Metrics, skip empty tables (same as "cecli metrics show")
+cscli metrics
+
+# Show only some metrics, connect to a different url
+cscli metrics --url http://lapi.local:6060/metrics show acquisition parsers
+
+# List available metric types
+cscli metrics list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runMetrics,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.show(nil, url, noUnit)
+		},
 	}
 
-	flags := cmdMetrics.PersistentFlags()
-	flags.StringP("url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
-	flags.Bool("no-unit", false, "Show the real number instead of formatted with units")
+	flags := cmd.Flags()
+	flags.StringVarP(&url, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	flags.BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
 
-	return cmdMetrics
+	cmd.AddCommand(cli.newShowCmd())
+	cmd.AddCommand(cli.newListCmd())
+
+	return cmd
+}
+
+// expandAlias returns a list of sections. The input can be a list of sections or alias.
+func (cli *cliMetrics) expandAlias(args []string) []string {
+	ret := []string{}
+
+	for _, section := range args {
+		switch section {
+		case "engine":
+			ret = append(ret, "acquisition", "parsers", "scenarios", "stash", "whitelists")
+		case "lapi":
+			ret = append(ret, "alerts", "decisions", "lapi", "lapi-bouncer", "lapi-decisions", "lapi-machine")
+		case "appsec":
+			ret = append(ret, "appsec-engine", "appsec-rule")
+		default:
+			ret = append(ret, section)
+		}
+	}
+
+	return ret
+}
+
+func (cli *cliMetrics) newShowCmd() *cobra.Command {
+	var (
+		url    string
+		noUnit bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "show [type]...",
+		Short: "Display all or part of the available metrics.",
+		Long:  `Fetch metrics from a Local API server and display them, optionally filtering on specific types.`,
+		Example: `# Show all Metrics, skip empty tables
+cscli metrics show
+
+# Use an alias: "engine", "lapi" or "appsec" to show a group of metrics
+cscli metrics show engine
+
+# Show some specific metrics, show empty tables, connect to a different url
+cscli metrics show acquisition parsers scenarios stash --url http://lapi.local:6060/metrics
+
+# To list available metric types, use "cscli metrics list"
+cscli metrics list; cscli metrics list -o json
+
+# Show metrics in json format
+cscli metrics show acquisition parsers scenarios stash -o json`,
+		// Positional args are optional
+		DisableAutoGenTag: true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			args = cli.expandAlias(args)
+			return cli.show(args, url, noUnit)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVarP(&url, "url", "u", "", "Metrics url (http://<ip>:<port>/metrics)")
+	flags.BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
+
+	return cmd
+}
+
+func (cli *cliMetrics) list() error {
+	type metricType struct {
+		Type        string `json:"type"        yaml:"type"`
+		Title       string `json:"title"       yaml:"title"`
+		Description string `json:"description" yaml:"description"`
+	}
+
+	var allMetrics []metricType
+
+	ms := NewMetricStore()
+	for _, section := range maptools.SortedKeys(ms) {
+		title, description := ms[section].Description()
+		allMetrics = append(allMetrics, metricType{
+			Type:        section,
+			Title:       title,
+			Description: description,
+		})
+	}
+
+	switch cli.cfg().Cscli.Output {
+	case "human":
+		t := newTable(color.Output)
+		t.SetRowLines(true)
+		t.SetHeaders("Type", "Title", "Description")
+
+		for _, metric := range allMetrics {
+			t.AddRow(metric.Type, metric.Title, metric.Description)
+		}
+
+		t.Render()
+	case "json":
+		x, err := json.MarshalIndent(allMetrics, "", " ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal metric types: %w", err)
+		}
+
+		fmt.Println(string(x))
+	case "raw":
+		x, err := yaml.Marshal(allMetrics)
+		if err != nil {
+			return fmt.Errorf("failed to marshal metric types: %w", err)
+		}
+
+		fmt.Println(string(x))
+	}
+
+	return nil
+}
+
+func (cli *cliMetrics) newListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "list",
+		Short:             "List available types of metrics.",
+		Long:              `List available types of metrics.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.list()
+		},
+	}
+
+	return cmd
 }

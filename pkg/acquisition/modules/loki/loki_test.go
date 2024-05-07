@@ -2,6 +2,7 @@ package loki_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,19 +14,18 @@ import (
 	"testing"
 	"time"
 
-	"context"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	tomb "gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	tomb "gopkg.in/tomb.v2"
-	"gotest.tools/v3/assert"
 )
 
 func TestConfiguration(t *testing.T) {
-
 	log.Infof("Test 'TestConfigure'")
 
 	tests := []struct {
@@ -127,22 +127,26 @@ query: >
 	subLogger := log.WithFields(log.Fields{
 		"type": "loki",
 	})
+
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			lokiSource := loki.LokiSource{}
-			err := lokiSource.Configure([]byte(test.config), subLogger)
+			err := lokiSource.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
+
 			if test.password != "" {
 				p := lokiSource.Config.Auth.Password
 				if test.password != p {
 					t.Fatalf("Password mismatch : %s != %s", test.password, p)
 				}
 			}
+
 			if test.waitForReady != 0 {
 				if lokiSource.Config.WaitForReady != test.waitForReady {
 					t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
 				}
 			}
+
 			if test.delayFor != 0 {
 				if lokiSource.Config.DelayFor != test.delayFor {
 					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
@@ -154,6 +158,7 @@ query: >
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
 	tests := []struct {
 		name         string
 		dsn          string
@@ -218,7 +223,9 @@ func TestConfigureDSN(t *testing.T) {
 			"type": "loki",
 			"name": test.name,
 		})
+
 		t.Logf("Test : %s", test.name)
+
 		lokiSource := &loki.LokiSource{}
 		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
@@ -234,17 +241,20 @@ func TestConfigureDSN(t *testing.T) {
 				t.Fatalf("Password mismatch : %s != %s", test.password, p)
 			}
 		}
+
 		if test.scheme != "" {
 			url, _ := url.Parse(lokiSource.Config.URL)
 			if test.scheme != url.Scheme {
 				t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
 			}
 		}
+
 		if test.waitForReady != 0 {
 			if lokiSource.Config.WaitForReady != test.waitForReady {
 				t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
 			}
 		}
+
 		if test.delayFor != 0 {
 			if lokiSource.Config.DelayFor != test.delayFor {
 				t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
@@ -272,20 +282,36 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 			Line: fmt.Sprintf("Log line #%d %v", i, title),
 		}
 	}
+
 	buff, err := json.Marshal(streams)
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post("http://127.0.0.1:3100/loki/api/v1/push", "application/json", bytes.NewBuffer(buff))
+
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
 	if err != nil {
 		return err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Scope-OrgID", "1234")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusNoContent {
 		b, _ := io.ReadAll(resp.Body)
 		logger.Error(string(b))
+
 		return fmt.Errorf("Bad post status %d", resp.StatusCode)
 	}
+
 	logger.Info(n, " Events sent")
+
 	return nil
 }
 
@@ -293,9 +319,11 @@ func TestOneShotAcquisition(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
+
 	title := time.Now().String() // Loki will be messy, with a lot of stuff, lets use a unique key
 	tests := []struct {
 		config string
@@ -306,6 +334,8 @@ mode: cat
 source: loki
 url: http://127.0.0.1:3100
 query: '{server="demo",key="%s"}'
+headers:
+ x-scope-orgid: "1234"
 since: 1h
 `, title),
 		},
@@ -317,7 +347,8 @@ since: 1h
 			"type": "loki",
 		})
 		lokiSource := loki.LokiSource{}
-		err := lokiSource.Configure([]byte(ts.config), subLogger)
+		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -329,19 +360,23 @@ since: 1h
 
 		out := make(chan types.Event)
 		read := 0
+
 		go func() {
 			for {
 				<-out
+
 				read++
 			}
 		}()
+
 		lokiTomb := tomb.Tomb{}
+
 		err = lokiSource.OneShotAcquisition(out, &lokiTomb)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
-		assert.Equal(t, 20, read)
 
+		assert.Equal(t, 20, read)
 	}
 }
 
@@ -349,9 +384,11 @@ func TestStreamingAcquisition(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
+
 	title := time.Now().String()
 	tests := []struct {
 		name          string
@@ -362,31 +399,32 @@ func TestStreamingAcquisition(t *testing.T) {
 	}{
 		{
 			name: "Bad port",
-			config: `
-mode: tail
+			config: `mode: tail
 source: loki
-url: http://127.0.0.1:3101
+url: "http://127.0.0.1:3101"
+headers:
+  x-scope-orgid: "1234"
 query: >
-  {server="demo"}
-`, // No Loki server here
+  {server="demo"}`, // No Loki server here
 			expectedErr:   "",
 			streamErr:     `loki is not ready: context deadline exceeded`,
 			expectedLines: 0,
 		},
 		{
 			name: "ok",
-			config: `
-mode: tail
+			config: `mode: tail
 source: loki
-url: http://127.0.0.1:3100
+url: "http://127.0.0.1:3100"
+headers:
+  x-scope-orgid: "1234"
 query: >
-  {server="demo"}
-`,
+  {server="demo"}`,
 			expectedErr:   "",
 			streamErr:     "",
 			expectedLines: 20,
 		},
 	}
+
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
@@ -398,10 +436,12 @@ query: >
 			out := make(chan types.Event)
 			lokiTomb := tomb.Tomb{}
 			lokiSource := loki.LokiSource{}
-			err := lokiSource.Configure([]byte(ts.config), subLogger)
+
+			err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
+
 			err = lokiSource.StreamingAcquisition(out, &lokiTomb)
 			cstest.AssertErrorContains(t, err, ts.streamErr)
 
@@ -409,22 +449,26 @@ query: >
 				return
 			}
 
-			time.Sleep(time.Second * 2) //We need to give time to start reading from the WS
+			time.Sleep(time.Second * 2) // We need to give time to start reading from the WS
+
 			readTomb := tomb.Tomb{}
 			readCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			count := 0
 
 			readTomb.Go(func() error {
 				defer cancel()
+
 				for {
 					select {
 					case <-readCtx.Done():
 						return readCtx.Err()
 					case evt := <-out:
 						count++
+
 						if !strings.HasSuffix(evt.Line.Raw, title) {
 							return fmt.Errorf("Incorrect suffix : %s", evt.Line.Raw)
 						}
+
 						if count == ts.expectedLines {
 							return nil
 						}
@@ -438,24 +482,29 @@ query: >
 			}
 
 			err = readTomb.Wait()
+
 			cancel()
+
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
-			assert.Equal(t, count, ts.expectedLines)
+
+			assert.Equal(t, ts.expectedLines, count)
 		})
 	}
-
 }
 
 func TestStopStreaming(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	config := `
 mode: tail
 source: loki
 url: http://127.0.0.1:3100
+headers:
+  x-scope-orgid: "1234"
 query: >
   {server="demo"}
 `
@@ -465,24 +514,30 @@ query: >
 	})
 	title := time.Now().String()
 	lokiSource := loki.LokiSource{}
-	err := lokiSource.Configure([]byte(config), subLogger)
+
+	err := lokiSource.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
+
 	out := make(chan types.Event)
 
 	lokiTomb := &tomb.Tomb{}
+
 	err = lokiSource.StreamingAcquisition(out, lokiTomb)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
+
 	time.Sleep(time.Second * 2)
+
 	err = feedLoki(subLogger, 1, title)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
 	lokiTomb.Kill(nil)
+
 	err = lokiTomb.Wait()
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
@@ -508,5 +563,6 @@ func (l *LogValue) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return []byte(fmt.Sprintf(`["%d",%s]`, l.Time.UnixNano(), string(line))), nil
 }

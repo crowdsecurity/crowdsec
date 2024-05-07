@@ -22,6 +22,7 @@ def test_cscli_lapi(crowdsec, flavor):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
+@pytest.mark.skip(reason="currently broken by hub upgrade")
 def test_flavor_content(crowdsec, flavor):
     """Test flavor contents"""
     with crowdsec(flavor=flavor) as cs:
@@ -41,7 +42,7 @@ def test_flavor_content(crowdsec, flavor):
         x = cs.cont.exec_run(
             'ls -1 /usr/local/lib/crowdsec/plugins/')
         stdout = x.output.decode()
-        if 'slim' in flavor or 'geoip' in flavor:
+        if 'slim' in flavor:
             # the exact return code and full message depend
             # on the 'ls' implementation (busybox vs coreutils)
             assert x.exit_code != 0

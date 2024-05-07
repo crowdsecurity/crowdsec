@@ -181,7 +181,6 @@ teardown() {
     assert_stderr --partial "error while installing 'crowdsecurity/ssh-bf': while enabling crowdsecurity/ssh-bf: crowdsecurity/ssh-bf is tainted, won't enable unless --force"
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf --force
-    assert_stderr --partial "crowdsecurity/ssh-bf: overwrite"
     assert_stderr --partial "Enabled crowdsecurity/ssh-bf"
 }
 

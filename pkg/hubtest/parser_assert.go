@@ -2,17 +2,19 @@ package hubtest
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/antonmedv/expr"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/go-cs-lib/maptools"
 )
 
 type AssertFail struct {
@@ -69,13 +71,12 @@ func (p *ParserAssert) LoadTest(filename string) error {
 
 func (p *ParserAssert) AssertFile(testFile string) error {
 	file, err := os.Open(p.File)
-
 	if err != nil {
-		return fmt.Errorf("failed to open")
+		return errors.New("failed to open")
 	}
 
 	if err := p.LoadTest(testFile); err != nil {
-		return fmt.Errorf("unable to load parser dump file '%s': %s", testFile, err)
+		return fmt.Errorf("unable to load parser dump file '%s': %w", testFile, err)
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -107,7 +108,8 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 			}
 
 			match := variableRE.FindStringSubmatch(scanner.Text())
-			variable := ""
+
+			var variable string
 
 			if len(match) == 0 {
 				log.Infof("Couldn't get variable of line '%s'", scanner.Text())
@@ -127,7 +129,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 
 			continue
 		}
-		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
+		// fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
 	}
 
 	file.Close()
@@ -135,7 +137,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 	if p.NbAssert == 0 {
 		assertData, err := p.AutoGenFromFile(testFile)
 		if err != nil {
-			return fmt.Errorf("couldn't generate assertion: %s", err)
+			return fmt.Errorf("couldn't generate assertion: %w", err)
 		}
 
 		p.AutoGenAssertData = assertData
@@ -150,8 +152,8 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 }
 
 func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
-	//debug doesn't make much sense with the ability to evaluate "on the fly"
-	//var debugFilter *exprhelpers.ExprDebugger
+	// debug doesn't make much sense with the ability to evaluate "on the fly"
+	// var debugFilter *exprhelpers.ExprDebugger
 	var output interface{}
 
 	env := map[string]interface{}{"results": *p.TestData}
@@ -162,7 +164,7 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 		return output, err
 	}
 
-	//dump opcode in trace level
+	// dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
 	output, err = expr.Run(runtimeFilter, env)
@@ -183,7 +185,6 @@ func (p *ParserAssert) EvalExpression(expression string) (string, error) {
 	}
 
 	ret, err := yaml.Marshal(output)
-
 	if err != nil {
 		return "", err
 	}
@@ -213,16 +214,16 @@ func Escape(val string) string {
 }
 
 func (p *ParserAssert) AutoGenParserAssert() string {
-	//attempt to autogen parser asserts
+	// attempt to autogen parser asserts
 	ret := fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
 
-	//sort map keys for consistent order
+	// sort map keys for consistent order
 	stages := maptools.SortedKeys(*p.TestData)
 
 	for _, stage := range stages {
 		parsers := (*p.TestData)[stage]
 
-		//sort map keys for consistent order
+		// sort map keys for consistent order
 		pnames := maptools.SortedKeys(parsers)
 
 		for _, parser := range pnames {

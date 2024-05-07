@@ -34,13 +34,18 @@ teardown() {
     rune -0 jq -r '.msg' <(stderr)
     assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
     rune -0 cscli machines add local -a --force
-    assert_output --partial "Machine 'local' successfully added to the local API."
+    assert_stderr --partial "Machine 'local' successfully added to the local API."
+}
+
+@test "passwords have a size limit" {
+    rune -1 cscli machines add local --password "$(printf '%73s' '' | tr ' ' x)"
+    assert_stderr --partial "password too long (max 72 characters)"
 }
 
 @test "add a new machine and delete it" {
     rune -0 cscli machines add -a -f /dev/null CiTestMachine -o human
-    assert_output --partial "Machine 'CiTestMachine' successfully added to the local API"
-    assert_output --partial "API credentials written to '/dev/null'"
+    assert_stderr --partial "Machine 'CiTestMachine' successfully added to the local API"
+    assert_stderr --partial "API credentials written to '/dev/null'"
 
     # we now have two machines
     rune -0 cscli machines list -o json
@@ -84,4 +89,18 @@ teardown() {
     rune -0 cscli machines list -o json
     rune -0 jq '. | length' <(output)
     assert_output 1
+}
+
+@test "cscli machines prune" {
+    rune -0 cscli metrics
+
+    rune -0 cscli machines prune
+    assert_output 'No machines to prune.'
+
+    rune -0 cscli machines list -o json
+    rune -0 jq -r '.[-1].machineId' <(output)
+    rune -0 cscli machines delete "$output"
+
+    rune -0 cscli machines prune
+    assert_output 'No machines to prune.'
 }

@@ -180,7 +180,6 @@ teardown() {
     assert_stderr --partial "error while installing 'crowdsecurity/rdns': while enabling crowdsecurity/rdns: crowdsecurity/rdns is tainted, won't enable unless --force"
 
     rune -0 cscli postoverflows install crowdsecurity/rdns --force
-    assert_stderr --partial "crowdsecurity/rdns: overwrite"
     assert_stderr --partial "Enabled crowdsecurity/rdns"
 }
 

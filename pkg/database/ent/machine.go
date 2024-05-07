@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 )
@@ -17,9 +18,9 @@ type Machine struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// LastPush holds the value of the "last_push" field.
 	LastPush *time.Time `json:"last_push,omitempty"`
 	// LastHeartbeat holds the value of the "last_heartbeat" field.
@@ -42,7 +43,8 @@ type Machine struct {
 	AuthType string `json:"auth_type"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MachineQuery when eager-loading is set.
-	Edges MachineEdges `json:"edges"`
+	Edges        MachineEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // MachineEdges holds the relations/edges for other nodes in the graph.
@@ -77,7 +79,7 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Machine", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -101,15 +103,13 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				m.CreatedAt = new(time.Time)
-				*m.CreatedAt = value.Time
+				m.CreatedAt = value.Time
 			}
 		case machine.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				m.UpdatedAt = new(time.Time)
-				*m.UpdatedAt = value.Time
+				m.UpdatedAt = value.Time
 			}
 		case machine.FieldLastPush:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -173,21 +173,29 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.AuthType = value.String
 			}
+		default:
+			m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
+// Value returns the ent.Value that was dynamically selected and assigned to the Machine.
+// This includes values selected through modifiers, order, etc.
+func (m *Machine) Value(name string) (ent.Value, error) {
+	return m.selectValues.Get(name)
+}
+
 // QueryAlerts queries the "alerts" edge of the Machine entity.
 func (m *Machine) QueryAlerts() *AlertQuery {
-	return (&MachineClient{config: m.config}).QueryAlerts(m)
+	return NewMachineClient(m.config).QueryAlerts(m)
 }
 
 // Update returns a builder for updating this Machine.
 // Note that you need to call Machine.Unwrap() before calling this method if this Machine
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (m *Machine) Update() *MachineUpdateOne {
-	return (&MachineClient{config: m.config}).UpdateOne(m)
+	return NewMachineClient(m.config).UpdateOne(m)
 }
 
 // Unwrap unwraps the Machine entity that was returned from a transaction after it was closed,
@@ -206,15 +214,11 @@ func (m *Machine) String() string {
 	var builder strings.Builder
 	builder.WriteString("Machine(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
-	if v := m.CreatedAt; v != nil {
-		builder.WriteString("created_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("created_at=")
+	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := m.UpdatedAt; v != nil {
-		builder.WriteString("updated_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("updated_at=")
+	builder.WriteString(m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	if v := m.LastPush; v != nil {
 		builder.WriteString("last_push=")
@@ -254,9 +258,3 @@ func (m *Machine) String() string {
 
 // Machines is a parsable slice of Machine.
 type Machines []*Machine
-
-func (m Machines) config(cfg config) {
-	for _i := range m {
-		m[_i].config = cfg
-	}
-}

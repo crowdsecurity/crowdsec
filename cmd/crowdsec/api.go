@@ -1,11 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -56,7 +56,8 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	return apiServer, nil
 }
 
-func serveAPIServer(apiServer *apiserver.APIServer, apiReady chan bool) {
+func serveAPIServer(apiServer *apiserver.APIServer) {
+	apiReady := make(chan bool, 1)
 	apiTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveAPIServer")
 		go func() {
@@ -80,6 +81,7 @@ func serveAPIServer(apiServer *apiserver.APIServer, apiReady chan bool) {
 		}
 		return nil
 	})
+	<-apiReady
 }
 
 func hasPlugins(profiles []*csconfig.ProfileCfg) bool {
