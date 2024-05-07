@@ -34,21 +34,17 @@ func (bu *BouncerUpdate) SetCreatedAt(t time.Time) *BouncerUpdate {
 	return bu
 }
 
-// ClearCreatedAt clears the value of the "created_at" field.
-func (bu *BouncerUpdate) ClearCreatedAt() *BouncerUpdate {
-	bu.mutation.ClearCreatedAt()
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
+	if t != nil {
+		bu.SetCreatedAt(*t)
+	}
 	return bu
 }
 
 // SetUpdatedAt sets the "updated_at" field.
 func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
 	bu.mutation.SetUpdatedAt(t)
-	return bu
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (bu *BouncerUpdate) ClearUpdatedAt() *BouncerUpdate {
-	bu.mutation.ClearUpdatedAt()
 	return bu
 }
 
@@ -237,11 +233,7 @@ func (bu *BouncerUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (bu *BouncerUpdate) defaults() {
-	if _, ok := bu.mutation.CreatedAt(); !ok && !bu.mutation.CreatedAtCleared() {
-		v := bouncer.UpdateDefaultCreatedAt()
-		bu.mutation.SetCreatedAt(v)
-	}
-	if _, ok := bu.mutation.UpdatedAt(); !ok && !bu.mutation.UpdatedAtCleared() {
+	if _, ok := bu.mutation.UpdatedAt(); !ok {
 		v := bouncer.UpdateDefaultUpdatedAt()
 		bu.mutation.SetUpdatedAt(v)
 	}
@@ -259,14 +251,8 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := bu.mutation.CreatedAt(); ok {
 		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
 	}
-	if bu.mutation.CreatedAtCleared() {
-		_spec.ClearField(bouncer.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := bu.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if bu.mutation.UpdatedAtCleared() {
-		_spec.ClearField(bouncer.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := bu.mutation.Name(); ok {
 		_spec.SetField(bouncer.FieldName, field.TypeString, value)
@@ -333,21 +319,17 @@ func (buo *BouncerUpdateOne) SetCreatedAt(t time.Time) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearCreatedAt clears the value of the "created_at" field.
-func (buo *BouncerUpdateOne) ClearCreatedAt() *BouncerUpdateOne {
-	buo.mutation.ClearCreatedAt()
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOne {
+	if t != nil {
+		buo.SetCreatedAt(*t)
+	}
 	return buo
 }
 
 // SetUpdatedAt sets the "updated_at" field.
 func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetUpdatedAt(t)
-	return buo
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (buo *BouncerUpdateOne) ClearUpdatedAt() *BouncerUpdateOne {
-	buo.mutation.ClearUpdatedAt()
 	return buo
 }
 
@@ -549,11 +531,7 @@ func (buo *BouncerUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (buo *BouncerUpdateOne) defaults() {
-	if _, ok := buo.mutation.CreatedAt(); !ok && !buo.mutation.CreatedAtCleared() {
-		v := bouncer.UpdateDefaultCreatedAt()
-		buo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := buo.mutation.UpdatedAt(); !ok && !buo.mutation.UpdatedAtCleared() {
+	if _, ok := buo.mutation.UpdatedAt(); !ok {
 		v := bouncer.UpdateDefaultUpdatedAt()
 		buo.mutation.SetUpdatedAt(v)
 	}
@@ -588,14 +566,8 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	if value, ok := buo.mutation.CreatedAt(); ok {
 		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
 	}
-	if buo.mutation.CreatedAtCleared() {
-		_spec.ClearField(bouncer.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := buo.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if buo.mutation.UpdatedAtCleared() {
-		_spec.ClearField(bouncer.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := buo.mutation.Name(); ok {
 		_spec.SetField(bouncer.FieldName, field.TypeString, value)

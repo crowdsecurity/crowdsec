@@ -13,7 +13,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -39,24 +39,14 @@ func NewCLILapi(cfg configGetter) *cliLapi {
 	}
 }
 
-func (cli *cliLapi) status() error {
-	cfg := cli.cfg()
-	password := strfmt.Password(cfg.API.Client.Credentials.Password)
-	login := cfg.API.Client.Credentials.Login
-
-	origURL := cfg.API.Client.Credentials.URL
-
-	apiURL, err := url.Parse(origURL)
+// QueryLAPIStatus checks if the Local API is reachable, and if the credentials are correct
+func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) error {
+	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	hub, err := require.Hub(cfg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
@@ -69,18 +59,36 @@ func (cli *cliLapi) status() error {
 		return fmt.Errorf("init default client: %w", err)
 	}
 
+	pw := strfmt.Password(password)
+
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
-		Password:  &password,
+		Password:  &pw,
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
-	// use the original string because apiURL would print 'http://unix/'
-	log.Infof("Trying to authenticate with username %s on %s", login, origURL)
-
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cli *cliLapi) status() error {
+	cfg := cli.cfg()
+
+	cred := cfg.API.Client.Credentials
+
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
+	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
+
+	if err := QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
@@ -116,7 +124,6 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 		URL:           apiurl,
 		VersionPrefix: LAPIURLPrefix,
 	}, nil)
-
 	if err != nil {
 		return fmt.Errorf("api client register: %w", err)
 	}
@@ -585,7 +592,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 }
 
 func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
-	var ret = make([]string, 0)
+	ret := make([]string, 0)
 
 	for _, subnode := range node.LeavesNodes {
 		if subnode.Grok.RunTimeRegexp != nil {

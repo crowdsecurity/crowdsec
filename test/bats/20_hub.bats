@@ -125,13 +125,19 @@ teardown() {
     assert_stderr --partial "Upgraded 0 contexts"
     assert_stderr --partial "Upgrading collections"
     assert_stderr --partial "Upgraded 0 collections"
+    assert_stderr --partial "Upgrading appsec-configs"
+    assert_stderr --partial "Upgraded 0 appsec-configs"
+    assert_stderr --partial "Upgrading appsec-rules"
+    assert_stderr --partial "Upgraded 0 appsec-rules"
+    assert_stderr --partial "Upgrading collections"
+    assert_stderr --partial "Upgraded 0 collections"
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs
     rune -0 cscli hub upgrade
     assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
 
     rune -0 cscli hub upgrade --force
-    assert_stderr --partial "crowdsecurity/syslog-logs: overwrite"
+    assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
     assert_stderr --partial "crowdsecurity/syslog-logs: updated"
     assert_stderr --partial "Upgraded 1 parsers"
     # this is used by the cron script to know if the hub was updated

@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -41,7 +42,7 @@ func systemdUnitList() ([]string, error) {
 		if !header {
 			spaceIdx := strings.IndexRune(line, ' ')
 			if spaceIdx == -1 {
-				return ret, fmt.Errorf("can't parse systemctl output")
+				return ret, errors.New("can't parse systemctl output")
 			}
 
 			line = line[:spaceIdx]

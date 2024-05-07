@@ -29,33 +29,23 @@ func (mu *MachineUpdate) Where(ps ...predicate.Machine) *MachineUpdate {
 	return mu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (mu *MachineUpdate) SetCreatedAt(t time.Time) *MachineUpdate {
-	mu.mutation.SetCreatedAt(t)
-	return mu
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (mu *MachineUpdate) ClearCreatedAt() *MachineUpdate {
-	mu.mutation.ClearCreatedAt()
-	return mu
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (mu *MachineUpdate) SetUpdatedAt(t time.Time) *MachineUpdate {
 	mu.mutation.SetUpdatedAt(t)
 	return mu
 }
 
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (mu *MachineUpdate) ClearUpdatedAt() *MachineUpdate {
-	mu.mutation.ClearUpdatedAt()
-	return mu
-}
-
 // SetLastPush sets the "last_push" field.
 func (mu *MachineUpdate) SetLastPush(t time.Time) *MachineUpdate {
 	mu.mutation.SetLastPush(t)
+	return mu
+}
+
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableLastPush(t *time.Time) *MachineUpdate {
+	if t != nil {
+		mu.SetLastPush(*t)
+	}
 	return mu
 }
 
@@ -71,23 +61,17 @@ func (mu *MachineUpdate) SetLastHeartbeat(t time.Time) *MachineUpdate {
 	return mu
 }
 
+// SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableLastHeartbeat(t *time.Time) *MachineUpdate {
+	if t != nil {
+		mu.SetLastHeartbeat(*t)
+	}
+	return mu
+}
+
 // ClearLastHeartbeat clears the value of the "last_heartbeat" field.
 func (mu *MachineUpdate) ClearLastHeartbeat() *MachineUpdate {
 	mu.mutation.ClearLastHeartbeat()
-	return mu
-}
-
-// SetMachineId sets the "machineId" field.
-func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
-	mu.mutation.SetMachineId(s)
-	return mu
-}
-
-// SetNillableMachineId sets the "machineId" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableMachineId(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetMachineId(*s)
-	}
 	return mu
 }
 
@@ -278,21 +262,9 @@ func (mu *MachineUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (mu *MachineUpdate) defaults() {
-	if _, ok := mu.mutation.CreatedAt(); !ok && !mu.mutation.CreatedAtCleared() {
-		v := machine.UpdateDefaultCreatedAt()
-		mu.mutation.SetCreatedAt(v)
-	}
-	if _, ok := mu.mutation.UpdatedAt(); !ok && !mu.mutation.UpdatedAtCleared() {
+	if _, ok := mu.mutation.UpdatedAt(); !ok {
 		v := machine.UpdateDefaultUpdatedAt()
 		mu.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := mu.mutation.LastPush(); !ok && !mu.mutation.LastPushCleared() {
-		v := machine.UpdateDefaultLastPush()
-		mu.mutation.SetLastPush(v)
-	}
-	if _, ok := mu.mutation.LastHeartbeat(); !ok && !mu.mutation.LastHeartbeatCleared() {
-		v := machine.UpdateDefaultLastHeartbeat()
-		mu.mutation.SetLastHeartbeat(v)
 	}
 }
 
@@ -318,17 +290,8 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := mu.mutation.CreatedAt(); ok {
-		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
-	}
-	if mu.mutation.CreatedAtCleared() {
-		_spec.ClearField(machine.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
 		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if mu.mutation.UpdatedAtCleared() {
-		_spec.ClearField(machine.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := mu.mutation.LastPush(); ok {
 		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
@@ -341,9 +304,6 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.LastHeartbeatCleared() {
 		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
-	}
-	if value, ok := mu.mutation.MachineId(); ok {
-		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 	}
 	if value, ok := mu.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)
@@ -440,33 +400,23 @@ type MachineUpdateOne struct {
 	mutation *MachineMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (muo *MachineUpdateOne) SetCreatedAt(t time.Time) *MachineUpdateOne {
-	muo.mutation.SetCreatedAt(t)
-	return muo
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (muo *MachineUpdateOne) ClearCreatedAt() *MachineUpdateOne {
-	muo.mutation.ClearCreatedAt()
-	return muo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (muo *MachineUpdateOne) SetUpdatedAt(t time.Time) *MachineUpdateOne {
 	muo.mutation.SetUpdatedAt(t)
 	return muo
 }
 
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (muo *MachineUpdateOne) ClearUpdatedAt() *MachineUpdateOne {
-	muo.mutation.ClearUpdatedAt()
-	return muo
-}
-
 // SetLastPush sets the "last_push" field.
 func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
 	muo.mutation.SetLastPush(t)
+	return muo
+}
+
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableLastPush(t *time.Time) *MachineUpdateOne {
+	if t != nil {
+		muo.SetLastPush(*t)
+	}
 	return muo
 }
 
@@ -482,23 +432,17 @@ func (muo *MachineUpdateOne) SetLastHeartbeat(t time.Time) *MachineUpdateOne {
 	return muo
 }
 
+// SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableLastHeartbeat(t *time.Time) *MachineUpdateOne {
+	if t != nil {
+		muo.SetLastHeartbeat(*t)
+	}
+	return muo
+}
+
 // ClearLastHeartbeat clears the value of the "last_heartbeat" field.
 func (muo *MachineUpdateOne) ClearLastHeartbeat() *MachineUpdateOne {
 	muo.mutation.ClearLastHeartbeat()
-	return muo
-}
-
-// SetMachineId sets the "machineId" field.
-func (muo *MachineUpdateOne) SetMachineId(s string) *MachineUpdateOne {
-	muo.mutation.SetMachineId(s)
-	return muo
-}
-
-// SetNillableMachineId sets the "machineId" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableMachineId(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetMachineId(*s)
-	}
 	return muo
 }
 
@@ -702,21 +646,9 @@ func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (muo *MachineUpdateOne) defaults() {
-	if _, ok := muo.mutation.CreatedAt(); !ok && !muo.mutation.CreatedAtCleared() {
-		v := machine.UpdateDefaultCreatedAt()
-		muo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := muo.mutation.UpdatedAt(); !ok && !muo.mutation.UpdatedAtCleared() {
+	if _, ok := muo.mutation.UpdatedAt(); !ok {
 		v := machine.UpdateDefaultUpdatedAt()
 		muo.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := muo.mutation.LastPush(); !ok && !muo.mutation.LastPushCleared() {
-		v := machine.UpdateDefaultLastPush()
-		muo.mutation.SetLastPush(v)
-	}
-	if _, ok := muo.mutation.LastHeartbeat(); !ok && !muo.mutation.LastHeartbeatCleared() {
-		v := machine.UpdateDefaultLastHeartbeat()
-		muo.mutation.SetLastHeartbeat(v)
 	}
 }
 
@@ -759,17 +691,8 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			}
 		}
 	}
-	if value, ok := muo.mutation.CreatedAt(); ok {
-		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
-	}
-	if muo.mutation.CreatedAtCleared() {
-		_spec.ClearField(machine.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
 		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if muo.mutation.UpdatedAtCleared() {
-		_spec.ClearField(machine.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := muo.mutation.LastPush(); ok {
 		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
@@ -782,9 +705,6 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	if muo.mutation.LastHeartbeatCleared() {
 		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
-	}
-	if value, ok := muo.mutation.MachineId(); ok {
-		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 	}
 	if value, ok := muo.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)

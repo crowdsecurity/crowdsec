@@ -7,10 +7,10 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
 
-    CONFIG_DIR=$(dirname "${CONFIG_YAML}")
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
     export CONFIG_DIR
 
-    tmpdir="${BATS_FILE_TMPDIR}"
+    tmpdir="$BATS_FILE_TMPDIR"
     export tmpdir
 
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
@@ -80,7 +80,7 @@ teardown() {
 
     rune -0 wait-for \
         --err "missing TLS key file" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "missing cert_file" {
@@ -88,7 +88,7 @@ teardown() {
 
     rune -0 wait-for \
         --err "missing TLS cert file" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "invalid OU for agent" {

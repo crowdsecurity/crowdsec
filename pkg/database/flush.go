@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,7 +22,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	maxItems := 0
 	maxAge := ""
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
-		return nil, fmt.Errorf("max_items can't be zero or negative number")
+		return nil, errors.New("max_items can't be zero or negative number")
 	}
 	if config.MaxItems != nil {
 		maxItems = *config.MaxItems

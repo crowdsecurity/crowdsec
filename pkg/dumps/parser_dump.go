@@ -12,7 +12,7 @@ import (
 	"github.com/fatih/color"
 	diff "github.com/r3labs/diff/v2"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 

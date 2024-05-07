@@ -31,7 +31,7 @@ teardown() {
 @test "capi_whitelists: file missing" {
     rune -0 wait-for \
         --err "while opening capi whitelist file: open $CAPI_WHITELISTS_YAML: no such file or directory" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "capi_whitelists: error on open" {
@@ -40,11 +40,11 @@ teardown() {
     if is_package_testing; then
         rune -0 wait-for \
             --err "while parsing capi whitelist file .*: empty file" \
-            "${CROWDSEC}"
+            "$CROWDSEC"
     else
         rune -0 wait-for \
             --err "while opening capi whitelist file: open $CAPI_WHITELISTS_YAML: permission denied" \
-            "${CROWDSEC}"
+            "$CROWDSEC"
     fi
 }
 
@@ -52,28 +52,28 @@ teardown() {
     echo > "$CAPI_WHITELISTS_YAML"
     rune -0 wait-for \
         --err "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': empty file" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "capi_whitelists: empty lists" {
     echo '{"ips": [], "cidrs": []}' > "$CAPI_WHITELISTS_YAML"
     rune -0 wait-for \
         --err "Starting processing data" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "capi_whitelists: bad ip" {
     echo '{"ips": ["blahblah"], "cidrs": []}' > "$CAPI_WHITELISTS_YAML"
     rune -0 wait-for \
         --err "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': invalid IP address: blahblah" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "capi_whitelists: bad cidr" {
     echo '{"ips": [], "cidrs": ["blahblah"]}' > "$CAPI_WHITELISTS_YAML"
     rune -0 wait-for \
         --err "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': invalid CIDR address: blahblah" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "capi_whitelists: file with ip and cidr values" {

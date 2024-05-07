@@ -18,25 +18,26 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func ShowMetrics(hubItem *cwhub.Item) error {
+func ShowMetrics(prometheusURL string, hubItem *cwhub.Item) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
-		metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		metrics := GetParserMetric(prometheusURL, hubItem.Name)
 		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
-		metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
 		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, sub := range hubItem.SubItems() {
-			if err := ShowMetrics(sub); err != nil {
+			if err := ShowMetrics(prometheusURL, sub); err != nil {
 				return err
 			}
 		}
 	case cwhub.APPSEC_RULES:
-		metrics := GetAppsecRuleMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		metrics := GetAppsecRuleMetric(prometheusURL, hubItem.Name)
 		appsecMetricsTable(color.Output, hubItem.Name, metrics)
 	default: // no metrics for this item type
 	}
+
 	return nil
 }
 
@@ -49,21 +50,27 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
+
 		log.Tracef("round %d", idx)
+
 		for _, m := range fam.Metrics {
 			metric, ok := m.(prom2json.Metric)
 			if !ok {
 				log.Debugf("failed to convert metric to prom2json.Metric")
 				continue
 			}
+
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
 			}
+
 			if name != itemName {
 				continue
 			}
+
 			source, ok := metric.Labels["source"]
+
 			if !ok {
 				log.Debugf("no source in Metric %v", metric.Labels)
 			} else {
@@ -71,12 +78,15 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 					source = srctype + ":" + source
 				}
 			}
+
 			value := m.(prom2json.Metric).Value
+
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
 				continue
 			}
+
 			ival := int(fval)
 
 			switch fam.Name {
@@ -119,6 +129,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 			}
 		}
 	}
+
 	return stats
 }
 
@@ -136,26 +147,34 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
+
 		log.Tracef("round %d", idx)
+
 		for _, m := range fam.Metrics {
 			metric, ok := m.(prom2json.Metric)
 			if !ok {
 				log.Debugf("failed to convert metric to prom2json.Metric")
 				continue
 			}
+
 			name, ok := metric.Labels["name"]
+
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
 			}
+
 			if name != itemName {
 				continue
 			}
+
 			value := m.(prom2json.Metric).Value
+
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
 				continue
 			}
+
 			ival := int(fval)
 
 			switch fam.Name {
@@ -174,6 +193,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 			}
 		}
 	}
+
 	return stats
 }
 
@@ -188,17 +208,22 @@ func GetAppsecRuleMetric(url string, itemName string) map[string]int {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
+
 		log.Tracef("round %d", idx)
+
 		for _, m := range fam.Metrics {
 			metric, ok := m.(prom2json.Metric)
 			if !ok {
 				log.Debugf("failed to convert metric to prom2json.Metric")
 				continue
 			}
+
 			name, ok := metric.Labels["rule_name"]
+
 			if !ok {
 				log.Debugf("no rule_name in Metric %v", metric.Labels)
 			}
+
 			if name != itemName {
 				continue
 			}
@@ -209,11 +234,13 @@ func GetAppsecRuleMetric(url string, itemName string) map[string]int {
 			}
 
 			value := m.(prom2json.Metric).Value
+
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
 				continue
 			}
+
 			ival := int(fval)
 
 			switch fam.Name {
@@ -231,6 +258,7 @@ func GetAppsecRuleMetric(url string, itemName string) map[string]int {
 			}
 		}
 	}
+
 	return stats
 }
 
@@ -247,6 +275,7 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/GetPrometheusMetric")
+
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)
@@ -257,6 +286,7 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	for mf := range mfChan {
 		result = append(result, prom2json.NewFamily(mf))
 	}
+
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 
 	return result
