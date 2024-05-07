@@ -210,7 +210,7 @@ func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: NotificationConfigFilter,
+		ValidArgsFunction: cli.notificationConfigFilter,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
@@ -245,9 +245,8 @@ func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-
-func NotificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	ncfgs, err := getProfilesConfigs()
+func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	ncfgs, err := cli.getProfilesConfigs()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -274,7 +273,7 @@ func (cli cliNotifications) NewTestCmd() *cobra.Command {
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		ValidArgsFunction: NotificationConfigFilter,
+		ValidArgsFunction: cli.notificationConfigFilter,
 		PreRunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
 			pconfigs, err := cli.getPluginConfigs()
