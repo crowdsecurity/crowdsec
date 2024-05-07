@@ -1,6 +1,7 @@
 package hubtest
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -56,7 +57,7 @@ func checkPathNotContained(path string, subpath string) error {
 
 	for {
 		if current == absPath {
-			return fmt.Errorf("cannot copy a folder onto itself")
+			return errors.New("cannot copy a folder onto itself")
 		}
 
 		up := filepath.Dir(current)
@@ -87,7 +88,7 @@ func CopyDir(src string, dest string) error {
 	}
 
 	if !file.IsDir() {
-		return fmt.Errorf("Source " + file.Name() + " is not a directory!")
+		return errors.New("Source " + file.Name() + " is not a directory!")
 	}
 
 	err = os.MkdirAll(dest, 0755)

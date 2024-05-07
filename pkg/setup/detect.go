@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -53,6 +54,7 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 	// formally validate YAML
 
 	commonDS := configuration.DataSourceCommonCfg{}
+
 	body, err := yaml.Marshal(opaqueDS)
 	if err != nil {
 		return err
@@ -66,7 +68,7 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 	// source is mandatory // XXX unless it's not?
 
 	if commonDS.Source == "" {
-		return fmt.Errorf("source is empty")
+		return errors.New("source is empty")
 	}
 
 	// source must be known
@@ -104,7 +106,7 @@ func readDetectConfig(fin io.Reader) (DetectConfig, error) {
 
 	switch dc.Version {
 	case "":
-		return DetectConfig{}, fmt.Errorf("missing version tag (must be 1.0)")
+		return DetectConfig{}, errors.New("missing version tag (must be 1.0)")
 	case "1.0":
 		// all is well
 	default:

@@ -62,17 +62,17 @@ func (cli *cliPapi) NewStatusCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
-			dbClient, err = database.NewClient(cfg.DbConfig)
+			db, err := database.NewClient(cfg.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to initialize database client: %w", err)
 			}
 
-			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, dbClient, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 			if err != nil {
 				return fmt.Errorf("unable to initialize API client: %w", err)
 			}
 
-			papi, err := apiserver.NewPAPI(apic, dbClient, cfg.API.Server.ConsoleConfig, log.GetLevel())
+			papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
 			if err != nil {
 				return fmt.Errorf("unable to initialize PAPI client: %w", err)
 			}
@@ -82,7 +82,7 @@ func (cli *cliPapi) NewStatusCmd() *cobra.Command {
 				return fmt.Errorf("unable to get PAPI permissions: %w", err)
 			}
 			var lastTimestampStr *string
-			lastTimestampStr, err = dbClient.GetConfigItem(apiserver.PapiPullKey)
+			lastTimestampStr, err = db.GetConfigItem(apiserver.PapiPullKey)
 			if err != nil {
 				lastTimestampStr = ptr.Of("never")
 			}
@@ -113,19 +113,19 @@ func (cli *cliPapi) NewSyncCmd() *cobra.Command {
 			cfg := cli.cfg()
 			t := tomb.Tomb{}
 
-			dbClient, err = database.NewClient(cfg.DbConfig)
+			db, err := database.NewClient(cfg.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to initialize database client: %w", err)
 			}
 
-			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, dbClient, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 			if err != nil {
 				return fmt.Errorf("unable to initialize API client: %w", err)
 			}
 
 			t.Go(apic.Push)
 
-			papi, err := apiserver.NewPAPI(apic, dbClient, cfg.API.Server.ConsoleConfig, log.GetLevel())
+			papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
 			if err != nil {
 				return fmt.Errorf("unable to initialize PAPI client: %w", err)
 			}
