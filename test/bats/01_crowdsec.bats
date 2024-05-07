@@ -217,7 +217,7 @@ teardown() {
 
     #shellcheck disable=SC2016
     rune -0 wait-for \
-        --err 'datasource '\''journalctl'\'' is not available: exec: "journalctl": executable file not found in ' \
+        --err 'datasource '\''journalctl'\'' is not available: exec: \\"journalctl\\": executable file not found in ' \
         env PATH='' "${CROWDSEC}"
 
     # if all datasources are disabled, crowdsec should exit
