@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,8 +20,8 @@ type Hub struct {
 	items    HubItems // Items read from HubDir and InstallDir
 	local    *csconfig.LocalHubCfg
 	remote   *RemoteHubCfg
-	Warnings []string // Warnings encountered during sync
 	logger   *logrus.Logger
+	Warnings []string // Warnings encountered during sync
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
@@ -150,26 +149,16 @@ func (h *Hub) ItemStats() []string {
 
 // updateIndex downloads the latest version of the index and writes it to disk if it changed.
 func (h *Hub) updateIndex() error {
-	body, err := h.remote.fetchIndex()
+	downloaded, err := h.remote.fetchIndex(h.local.HubIndexFile)
 	if err != nil {
 		return err
 	}
 
-	oldContent, err := os.ReadFile(h.local.HubIndexFile)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			h.logger.Warningf("failed to read hub index: %s", err)
-		}
-	} else if bytes.Equal(body, oldContent) {
+	if downloaded {
+		h.logger.Infof("Wrote index to %s", h.local.HubIndexFile)
+	} else {
 		h.logger.Info("hub index is up to date")
-		return nil
 	}
-
-	if err = os.WriteFile(h.local.HubIndexFile, body, 0o644); err != nil {
-		return fmt.Errorf("failed to write hub index: %w", err)
-	}
-
-	h.logger.Infof("Wrote index to %s, %d bytes", h.local.HubIndexFile, len(body))
 
 	return nil
 }

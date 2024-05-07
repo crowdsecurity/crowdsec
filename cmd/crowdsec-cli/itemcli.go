@@ -475,9 +475,20 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
 
-	latestContent, remoteURL, err := item.FetchLatest()
+	dest, err := os.CreateTemp("", "cscli-diff-*")
+	if err != nil {
+		return "", fmt.Errorf("while creating temporary file: %w", err)
+	}
+	defer os.Remove(dest.Name())
+
+	_, remoteURL, err := item.FetchContentTo(dest.Name())
 	if err != nil {
 		return "", err
+	}
+
+	latestContent, err := os.ReadFile(dest.Name())
+	if err != nil {
+		return "", fmt.Errorf("while reading %s: %w", dest.Name(), err)
 	}
 
 	localContent, err := os.ReadFile(item.State.LocalPath)

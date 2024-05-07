@@ -29,6 +29,10 @@ func TestUpdateIndex(t *testing.T) {
 	tmpIndex, err := os.CreateTemp("", "index.json")
 	require.NoError(t, err)
 
+	// close the file to avoid preventing the rename on windows
+	err = tmpIndex.Close()
+	require.NoError(t, err)
+
 	t.Cleanup(func() {
 		os.Remove(tmpIndex.Name())
 	})
@@ -72,5 +76,5 @@ func TestUpdateIndex(t *testing.T) {
 	hub.local.HubIndexFile = "/does/not/exist/index.json"
 
 	err = hub.updateIndex()
-	cstest.RequireErrorContains(t, err, "failed to write hub index: open /does/not/exist/index.json:")
+	cstest.RequireErrorContains(t, err, "failed to create temporary download file for /does/not/exist/index.json:")
 }
