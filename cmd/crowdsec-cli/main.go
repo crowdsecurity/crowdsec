@@ -15,14 +15,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 var (
 	ConfigFilePath string
 	csConfig       *csconfig.Config
-	dbClient       *database.Client
 )
 
 type configGetter func() *csconfig.Config
@@ -131,6 +129,8 @@ func (cli *cliRoot) initialize() {
 	if csConfig.Cscli.Output != "human" && csConfig.Cscli.Output != "json" && csConfig.Cscli.Output != "raw" {
 		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
+
+	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
 
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
@@ -258,7 +258,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIExplain(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIHubTest(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLINotifications(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLISupport().NewCommand())
+	cmd.AddCommand(NewCLISupport(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIPapi(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLICollection(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIParser(cli.cfg).NewCommand())

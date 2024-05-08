@@ -99,6 +99,7 @@ func TestPathExists(t *testing.T) {
 
 		t.Run(tc.path, func(t *testing.T) {
 			t.Parallel()
+
 			actual := env.PathExists(tc.path)
 			require.Equal(t, tc.expected, actual)
 		})
@@ -152,6 +153,7 @@ func TestVersionCheck(t *testing.T) {
 
 		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
 			t.Parallel()
+
 			actual, err := e.VersionCheck(tc.constraint)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(t, tc.expected, actual)
@@ -249,8 +251,10 @@ func TestListSupported(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			f := tempYAML(t, tc.yml)
 			defer os.Remove(f.Name())
+
 			supported, err := setup.ListSupported(&f)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.ElementsMatch(t, tc.expected, supported)
@@ -332,6 +336,7 @@ func TestApplyRules(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			svc := setup.Service{When: tc.rules}
 			_, actualOk, err := setup.ApplyRules(svc, env) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -840,7 +845,6 @@ func TestDetectForcedOS(t *testing.T) {
 func TestDetectDatasourceValidation(t *testing.T) {
 	// It could be a good idea to test UnmarshalConfig() separately in addition
 	// to Configure(), in each datasource. For now, we test these here.
-
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 

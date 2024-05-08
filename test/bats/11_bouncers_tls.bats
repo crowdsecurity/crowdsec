@@ -7,7 +7,7 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
 
-    tmpdir="${BATS_FILE_TMPDIR}"
+    tmpdir="$BATS_FILE_TMPDIR"
     export tmpdir
 
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
