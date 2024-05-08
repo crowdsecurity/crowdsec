@@ -415,10 +415,3 @@ different syntax.
 Check the heredocs (the <<EOT blocks). Each line must start with a hard TAB
 followed by spaces. You are probably missing some tabs.
 
-## gotchas
-
- - Testing with Postgres or MySQL/MariaDB leads to (unpredictably) failing
-   tests in the GitHub workflows, so we had to disable them by default. We do
-   run these in a separate environment before doing releases. They should always
-   pass if you run them in a development machine.
-
