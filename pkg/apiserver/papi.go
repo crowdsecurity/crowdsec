@@ -130,7 +130,7 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 	message := &Message{}
 	if err := json.Unmarshal([]byte(event.Data), message); err != nil {
-		return fmt.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
+		return fmt.Errorf("polling papi message format is not compatible: %+v: %w", event.Data, err)
 	}
 
 	if message.Header == nil {
@@ -161,12 +161,12 @@ func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 
 	req, err := http.NewRequest(http.MethodGet, papiCheckUrl, nil)
 	if err != nil {
-		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Fatalf("failed to get response : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to get response: %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -176,7 +176,7 @@ func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 
 		err = json.NewDecoder(resp.Body).Decode(&errResp)
 		if err != nil {
-			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response: %w", err)
 		}
 
 		return PapiPermCheckSuccess{}, fmt.Errorf("unable to query PAPI : %s (%d)", errResp.Error, resp.StatusCode)
@@ -186,7 +186,7 @@ func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
-		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	return respBody, nil

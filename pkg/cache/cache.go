@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -55,7 +56,7 @@ func CacheInit(cfg CacheCfg) error {
 	}
 	var clog = log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		log.Fatalf("While creating cache logger : %s", err)
+		return fmt.Errorf("while creating cache logger: %w", err)
 	}
 	clog.SetLevel(*cfg.LogLevel)
 	cfg.Logger = clog.WithFields(log.Fields{

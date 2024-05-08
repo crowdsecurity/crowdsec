@@ -253,7 +253,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to check version : %s", err)
+				return nil, nil, fmt.Errorf("failed to check version: %w", err)
 			}
 
 			if !ok {
@@ -312,7 +312,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Debug {
 		clog := log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
+			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
 		clog.SetLevel(log.DebugLevel)
@@ -466,7 +466,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 
 		val, ok := buckets.Bucket_map.Load(k)
 		if ok {
-			log.Fatalf("key %s already exists : %+v", k, val)
+			return fmt.Errorf("key %s already exists: %+v", k, val)
 		}
 		// find back our holder
 		found := false
@@ -506,7 +506,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		}
 
 		if !found {
-			log.Fatalf("Unable to find holder for bucket %s : %s", k, spew.Sdump(v))
+			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(v))
 		}
 	}
 
