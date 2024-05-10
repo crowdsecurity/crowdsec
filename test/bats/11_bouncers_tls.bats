@@ -13,20 +13,26 @@ setup_file() {
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
     export CFDIR
 
-    #gen the CA
+    # Generate the CA
     cfssl gencert --initca "${CFDIR}/ca.json" 2>/dev/null | cfssljson --bare "${tmpdir}/ca"
-    #gen an intermediate
+
+    # Generate an intermediate
     cfssl gencert --initca "${CFDIR}/intermediate.json" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
     cfssl sign -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/inter.csr" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
-    #gen server cert for crowdsec with the intermediate
+
+    # Generate server cert for crowdsec with the intermediate
     cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" 2>/dev/null | cfssljson --bare "${tmpdir}/server"
-    #gen client cert for the bouncer
+
+    # Generate client cert for the bouncer
     cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer"
-    #gen client cert for the bouncer with an invalid OU
+
+    # Genearte client cert for the bouncer with an invalid OU
     cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer_invalid.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_bad_ou"
-    #gen client cert for the bouncer directly signed by the CA, it should be refused by crowdsec as uses the intermediate
+
+    # Generate client cert for the bouncer directly signed by the CA, it should be refused by crowdsec as uses the intermediate
     cfssl gencert -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_invalid"
 
+    # Generate revoked client cert
     cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_revoked"
     serial="$(openssl x509 -noout -serial -in "${tmpdir}/bouncer_revoked.pem" | cut -d '=' -f2)"
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
