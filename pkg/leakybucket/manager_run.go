@@ -85,7 +85,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	defer buckets.wgDumpState.Done()
 
 	if outputdir == "" {
-		return "", fmt.Errorf("empty output dir for dump bucket state")
+		return "", errors.New("empty output dir for dump bucket state")
 	}
 	tmpFd, err := os.CreateTemp(os.TempDir(), "crowdsec-buckets-dump-")
 	if err != nil {
@@ -132,11 +132,11 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	})
 	bbuckets, err := json.MarshalIndent(serialized, "", " ")
 	if err != nil {
-		return "", fmt.Errorf("Failed to unmarshal buckets : %s", err)
+		return "", fmt.Errorf("failed to unmarshal buckets: %s", err)
 	}
 	size, err := tmpFd.Write(bbuckets)
 	if err != nil {
-		return "", fmt.Errorf("failed to write temp file : %s", err)
+		return "", fmt.Errorf("failed to write temp file: %s", err)
 	}
 	log.Infof("Serialized %d live buckets (+%d expired) in %d bytes to %s", len(serialized), discard, size, tmpFd.Name())
 	serialized = nil

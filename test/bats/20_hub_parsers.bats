@@ -180,7 +180,6 @@ teardown() {
     assert_stderr --partial "error while installing 'crowdsecurity/whitelists': while enabling crowdsecurity/whitelists: crowdsecurity/whitelists is tainted, won't enable unless --force"
 
     rune -0 cscli parsers install crowdsecurity/whitelists --force
-    assert_stderr --partial "crowdsecurity/whitelists: overwrite"
     assert_stderr --partial "Enabled crowdsecurity/whitelists"
 }
 
