@@ -67,6 +67,93 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []string, opts []string) error {
+	cfg := cli.cfg()
+	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
+
+	apiURL, err := url.Parse(cfg.API.Server.OnlineClient.Credentials.URL)
+	if err != nil {
+		return fmt.Errorf("could not parse CAPI URL: %w", err)
+	}
+
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
+	if err != nil {
+		return fmt.Errorf("failed to get installed scenarios: %w", err)
+	}
+
+	if len(scenarios) == 0 {
+		scenarios = make([]string, 0)
+	}
+
+	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
+	if len(opts) != 0 {
+		for _, opt := range opts {
+			valid := false
+			if opt == "all" {
+				enableOpts = csconfig.CONSOLE_CONFIGS
+				break
+			}
+			for _, availableOpt := range csconfig.CONSOLE_CONFIGS {
+				if opt == availableOpt {
+					valid = true
+					enable := true
+					for _, enabledOpt := range enableOpts {
+						if opt == enabledOpt {
+							enable = false
+							continue
+						}
+					}
+					if enable {
+						enableOpts = append(enableOpts, opt)
+					}
+
+					break
+				}
+			}
+			if !valid {
+				return fmt.Errorf("option %s doesn't exist", opt)
+			}
+		}
+	}
+
+	c, _ := apiclient.NewClient(&apiclient.Config{
+		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
+		Password:      password,
+		Scenarios:     scenarios,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiURL,
+		VersionPrefix: "v3",
+	})
+
+	resp, err := c.Auth.EnrollWatcher(context.Background(), key, name, tags, overwrite)
+	if err != nil {
+		return fmt.Errorf("could not enroll instance: %w", err)
+	}
+
+	if resp.Response.StatusCode == 200 && !overwrite {
+		log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
+		return nil
+	}
+
+	if err := cli.setConsoleOpts(enableOpts, true); err != nil {
+		return err
+	}
+
+	for _, opt := range enableOpts {
+		log.Infof("Enabled %s : %s", opt, csconfig.CONSOLE_CONFIGS_HELP[opt])
+	}
+
+	log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
+	log.Info("Please restart crowdsec after accepting the enrollment.")
+
+	return nil
+}
+
 func (cli *cliConsole) newEnrollCmd() *cobra.Command {
 	name := ""
 	overwrite := false
@@ -90,90 +177,7 @@ After running this command your will need to validate the enrollment in the weba
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
-			cfg := cli.cfg()
-			password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
-
-			apiURL, err := url.Parse(cfg.API.Server.OnlineClient.Credentials.URL)
-			if err != nil {
-				return fmt.Errorf("could not parse CAPI URL: %w", err)
-			}
-
-			hub, err := require.Hub(cfg, nil, nil)
-			if err != nil {
-				return err
-			}
-
-			scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-			if err != nil {
-				return fmt.Errorf("failed to get installed scenarios: %w", err)
-			}
-
-			if len(scenarios) == 0 {
-				scenarios = make([]string, 0)
-			}
-
-			enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
-			if len(opts) != 0 {
-				for _, opt := range opts {
-					valid := false
-					if opt == "all" {
-						enableOpts = csconfig.CONSOLE_CONFIGS
-						break
-					}
-					for _, availableOpt := range csconfig.CONSOLE_CONFIGS {
-						if opt == availableOpt {
-							valid = true
-							enable := true
-							for _, enabledOpt := range enableOpts {
-								if opt == enabledOpt {
-									enable = false
-									continue
-								}
-							}
-							if enable {
-								enableOpts = append(enableOpts, opt)
-							}
-
-							break
-						}
-					}
-					if !valid {
-						return fmt.Errorf("option %s doesn't exist", opt)
-					}
-				}
-			}
-
-			c, _ := apiclient.NewClient(&apiclient.Config{
-				MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
-				Password:      password,
-				Scenarios:     scenarios,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
-				URL:           apiURL,
-				VersionPrefix: "v3",
-			})
-
-			resp, err := c.Auth.EnrollWatcher(context.Background(), args[0], name, tags, overwrite)
-			if err != nil {
-				return fmt.Errorf("could not enroll instance: %w", err)
-			}
-
-			if resp.Response.StatusCode == 200 && !overwrite {
-				log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
-				return nil
-			}
-
-			if err := cli.setConsoleOpts(enableOpts, true); err != nil {
-				return err
-			}
-
-			for _, opt := range enableOpts {
-				log.Infof("Enabled %s : %s", opt, csconfig.CONSOLE_CONFIGS_HELP[opt])
-			}
-
-			log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
-			log.Info("Please restart crowdsec after accepting the enrollment.")
-
-			return nil
+			return cli.enroll(args[0], name, overwrite, tags, opts)
 		},
 	}
 
