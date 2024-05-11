@@ -170,8 +170,86 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
+	var err error
+	/*take care of shorthand options*/
+	if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
+		return err
+	}
+	filter.ActiveDecisionEquals = new(bool)
+	*filter.ActiveDecisionEquals = true
+	if NoSimu != nil && *NoSimu {
+		filter.IncludeSimulated = new(bool)
+	}
+	/* nullify the empty entries to avoid bad filter */
+	if *filter.Until == "" {
+		filter.Until = nil
+	} else if strings.HasSuffix(*filter.Until, "d") {
+		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+		realDuration := strings.TrimSuffix(*filter.Until, "d")
+		days, err := strconv.Atoi(realDuration)
+		if err != nil {
+			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+		}
+		*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
+	}
+
+	if *filter.Since == "" {
+		filter.Since = nil
+	} else if strings.HasSuffix(*filter.Since, "d") {
+		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+		realDuration := strings.TrimSuffix(*filter.Since, "d")
+		days, err := strconv.Atoi(realDuration)
+		if err != nil {
+			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
+		}
+		*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
+	}
+	if *filter.IncludeCAPI {
+		*filter.Limit = 0
+	}
+	if *filter.TypeEquals == "" {
+		filter.TypeEquals = nil
+	}
+	if *filter.ValueEquals == "" {
+		filter.ValueEquals = nil
+	}
+	if *filter.ScopeEquals == "" {
+		filter.ScopeEquals = nil
+	}
+	if *filter.ScenarioEquals == "" {
+		filter.ScenarioEquals = nil
+	}
+	if *filter.IPEquals == "" {
+		filter.IPEquals = nil
+	}
+	if *filter.RangeEquals == "" {
+		filter.RangeEquals = nil
+	}
+
+	if *filter.OriginEquals == "" {
+		filter.OriginEquals = nil
+	}
+
+	if contained != nil && *contained {
+		filter.Contains = new(bool)
+	}
+
+	alerts, _, err := Client.Alerts.List(context.Background(), filter)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve decisions: %w", err)
+	}
+
+	err = cli.decisionsToTable(alerts, printMachine)
+	if err != nil {
+		return fmt.Errorf("unable to print decisions: %w", err)
+	}
+
+	return nil
+}
+
 func (cli *cliDecisions) newListCmd() *cobra.Command {
-	var filter = apiclient.AlertsListOpts{
+	filter := apiclient.AlertsListOpts{
 		ValueEquals:    new(string),
 		ScopeEquals:    new(string),
 		ScenarioEquals: new(string),
@@ -201,83 +279,7 @@ cscli decisions list --origin lists --scenario list_name
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var err error
-			/*take care of shorthand options*/
-			if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
-				return err
-			}
-			filter.ActiveDecisionEquals = new(bool)
-			*filter.ActiveDecisionEquals = true
-			if NoSimu != nil && *NoSimu {
-				filter.IncludeSimulated = new(bool)
-			}
-			/* nullify the empty entries to avoid bad filter */
-			if *filter.Until == "" {
-				filter.Until = nil
-			} else if strings.HasSuffix(*filter.Until, "d") {
-				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				realDuration := strings.TrimSuffix(*filter.Until, "d")
-				days, err := strconv.Atoi(realDuration)
-				if err != nil {
-					printHelp(cmd)
-					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-				}
-				*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
-			}
-
-			if *filter.Since == "" {
-				filter.Since = nil
-			} else if strings.HasSuffix(*filter.Since, "d") {
-				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				realDuration := strings.TrimSuffix(*filter.Since, "d")
-				days, err := strconv.Atoi(realDuration)
-				if err != nil {
-					printHelp(cmd)
-					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
-				}
-				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
-			}
-			if *filter.IncludeCAPI {
-				*filter.Limit = 0
-			}
-			if *filter.TypeEquals == "" {
-				filter.TypeEquals = nil
-			}
-			if *filter.ValueEquals == "" {
-				filter.ValueEquals = nil
-			}
-			if *filter.ScopeEquals == "" {
-				filter.ScopeEquals = nil
-			}
-			if *filter.ScenarioEquals == "" {
-				filter.ScenarioEquals = nil
-			}
-			if *filter.IPEquals == "" {
-				filter.IPEquals = nil
-			}
-			if *filter.RangeEquals == "" {
-				filter.RangeEquals = nil
-			}
-
-			if *filter.OriginEquals == "" {
-				filter.OriginEquals = nil
-			}
-
-			if contained != nil && *contained {
-				filter.Contains = new(bool)
-			}
-
-			alerts, _, err := Client.Alerts.List(context.Background(), filter)
-			if err != nil {
-				return fmt.Errorf("unable to retrieve decisions: %w", err)
-			}
-
-			err = cli.decisionsToTable(alerts, printMachine)
-			if err != nil {
-				return fmt.Errorf("unable to print decisions: %w", err)
-			}
-
-			return nil
+			return cli.list(filter, NoSimu, contained, printMachine)
 		},
 	}
 	cmd.Flags().SortFlags = false
