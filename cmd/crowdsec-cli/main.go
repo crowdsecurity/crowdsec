@@ -269,7 +269,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIAppsecRule(cli.cfg).NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
-		cmd.AddCommand(NewSetupCmd())
+		cmd.AddCommand(NewCLISetup(cli.cfg).NewCommand())
 	}
 
 	return cmd
