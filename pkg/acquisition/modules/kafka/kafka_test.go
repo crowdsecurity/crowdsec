@@ -159,7 +159,7 @@ func TestStreamingAcquisition(t *testing.T) {
 		Topic:   "crowdsecplaintext",
 	})
 	if w == nil {
-		log.Fatalf("Unable to setup a kafka producer")
+		t.Fatal("Unable to setup a kafka producer")
 	}
 
 	for _, ts := range tests {
@@ -229,7 +229,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		Topic:   "crowdsecssl",
 	})
 	if w2 == nil {
-		log.Fatalf("Unable to setup a kafka producer")
+		t.Fatal("Unable to setup a kafka producer")
 	}
 
 	for _, ts := range tests {

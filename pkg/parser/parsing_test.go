@@ -147,7 +147,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 
 	err = exprhelpers.Init(nil)
 	if err != nil {
-		log.Fatalf("exprhelpers init failed: %s", err)
+		return nil, ectx, fmt.Errorf("exprhelpers init failed: %w", err)
 	}
 
 	//Load enrichment
@@ -158,7 +158,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	}
 	ectx, err = Loadplugin()
 	if err != nil {
-		log.Fatalf("failed to load plugin geoip : %v", err)
+		return nil, ectx, fmt.Errorf("failed to load plugin geoip: %v", err)
 	}
 	log.Printf("Loaded -> %+v", ectx)
 
@@ -299,7 +299,6 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 		only the keys of the expected part are checked against result
 	*/
 	if len(testSet.Results) == 0 && len(results) == 0 {
-		log.Fatal("No results, no tests, abort.")
 		return false, errors.New("no tests, no results")
 	}
 

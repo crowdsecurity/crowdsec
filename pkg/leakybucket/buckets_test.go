@@ -52,7 +52,7 @@ func TestBucket(t *testing.T) {
 
 	err = exprhelpers.Init(nil)
 	if err != nil {
-		log.Fatalf("exprhelpers init failed: %s", err)
+		t.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	if envSetting != "" {
@@ -125,7 +125,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 		panic(err)
 	}
 	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		log.Fatalf("failed unmarshaling %s : %s", stagecfg, err)
+		t.Fatalf("failed unmarshaling %s : %s", stagecfg, err)
 	}
 	files := []string{}
 	for _, x := range stages {
