@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.22.2-alpine3.18 AS build
+FROM golang:1.22.3-alpine3.18 AS build
 
 ARG BUILD_VERSION
 
