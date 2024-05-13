@@ -409,12 +409,14 @@ check_cs_version () {
 install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
     (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
+    mkdir -p "${CROWDSEC_CONFIG_PATH}/acquis.d" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/appsec-configs" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/appsec-rules" || exit
+    mkdir -p "${CROWDSEC_CONFIG_PATH}/contexts" || exit
     mkdir -p "${CROWDSEC_CONSOLE_DIR}" || exit
 
     # tmp
