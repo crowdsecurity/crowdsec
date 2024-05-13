@@ -135,31 +135,34 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 		return false, false
 	}
 
-	crlBinary, rest := pem.Decode(crlContent)
-	if len(rest) > 0 {
-		ta.logger.Warn("CRL file contains more than one PEM block, ignoring the rest")
-	}
+	var crlBlock *pem.Block
+	for {
+		crlBlock, crlContent = pem.Decode(crlContent)
+		if crlBlock == nil {
+			break // no more PEM blocks
+		}
 
-	crl, err := x509.ParseRevocationList(crlBinary.Bytes)
-	if err != nil {
-		ta.logger.Errorf("could not parse CRL file, skipping check: %s", err)
-		return false, false
-	}
+		crl, err := x509.ParseRevocationList(crlBlock.Bytes)
+		if err != nil {
+			ta.logger.Errorf("could not parse a PEM block in CRL file, skipping: %s", err)
+			continue
+		}
 
-	now := time.Now().UTC()
+		now := time.Now().UTC()
 
-	if now.After(crl.NextUpdate) {
-		ta.logger.Warn("CRL has expired, will still validate the cert against it.")
-	}
+		if now.After(crl.NextUpdate) {
+			ta.logger.Warn("CRL has expired, will still validate the cert against it.")
+		}
 
-	if now.Before(crl.ThisUpdate) {
-		ta.logger.Warn("CRL is not yet valid, will still validate the cert against it.")
-	}
+		if now.Before(crl.ThisUpdate) {
+			ta.logger.Warn("CRL is not yet valid, will still validate the cert against it.")
+		}
 
-	for _, revoked := range crl.RevokedCertificateEntries {
-		if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
-			ta.logger.Warn("client certificate is revoked by CRL")
-			return true, true
+		for _, revoked := range crl.RevokedCertificateEntries {
+			if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+				ta.logger.Warn("client certificate is revoked by CRL")
+				return true, true
+			}
 		}
 	}
 

@@ -32,11 +32,18 @@ setup_file() {
     # Generate client cert for the bouncer directly signed by the CA, it should be refused by crowdsec as uses the intermediate
     cfssl gencert -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_invalid"
 
-    # Generate revoked client cert
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_revoked"
-    serial="$(openssl x509 -noout -serial -in "${tmpdir}/bouncer_revoked.pem" | cut -d '=' -f2)"
-    echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
-    cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
+    # Generate revoked client certs
+    for cert_name in "revoked_1" "revoked_2"; do
+        cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/${cert_name}"
+        serial="$(openssl x509 -noout -serial -in "${tmpdir}/${cert_name}.pem" | cut -d '=' -f2)"
+        echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials_${cert_name}.txt"
+    done
+
+    # Generate separate CRL blocks and concatenate them
+    for cert_name in "revoked_1" "revoked_2"; do
+        cfssl gencrl "${tmpdir}/serials_${cert_name}.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl_${cert_name}.pem"
+    done
+    cat "${tmpdir}/crl_revoked_1.pem" "${tmpdir}/crl_revoked_2.pem" >"${tmpdir}/crl.pem"
 
     cat "${tmpdir}/ca.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
 
@@ -96,11 +103,14 @@ teardown() {
 }
 
 @test "simulate one bouncer request with a revoked certificate" {
-    truncate_log
-    rune -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
-    assert_log --partial "client certificate is revoked by CRL"
-    assert_log --partial "client certificate for CN=localhost OU=[bouncer-ou] is revoked"
-    assert_output --partial "access forbidden"
-    rune -0 cscli bouncers list -o json
-    assert_output "[]"
+    # we have two certificates revoked by different CRL blocks
+    for cert_name in "revoked_1" "revoked_2"; do
+        truncate_log
+        rune -0 curl -i -s --cert "${tmpdir}/${cert_name}.pem" --key "${tmpdir}/${cert_name}-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+        assert_log --partial "client certificate is revoked by CRL"
+        assert_log --partial "client certificate for CN=localhost OU=[bouncer-ou] is revoked"
+        assert_output --partial "access forbidden"
+        rune -0 cscli bouncers list -o json
+        assert_output "[]"
+    done
 }
