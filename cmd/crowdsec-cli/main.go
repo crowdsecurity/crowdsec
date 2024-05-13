@@ -98,14 +98,14 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 }
 
 // initialize is called before the subcommand is executed.
-func (cli *cliRoot) initialize() {
+func (cli *cliRoot) initialize() error {
 	var err error
 
 	log.SetLevel(cli.wantedLogLevel())
 
 	csConfig, mergedConfig, err = loadConfigFor(os.Args[1])
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// recap of the enabled feature flags, because logging
@@ -127,7 +127,7 @@ func (cli *cliRoot) initialize() {
 	}
 
 	if csConfig.Cscli.Output != "human" && csConfig.Cscli.Output != "json" && csConfig.Cscli.Output != "raw" {
-		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
+		return fmt.Errorf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
 
 	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
@@ -143,9 +143,11 @@ func (cli *cliRoot) initialize() {
 		csConfig.Cscli.Color = cli.outputColor
 
 		if cli.outputColor != "yes" && cli.outputColor != "no" && cli.outputColor != "auto" {
-			log.Fatalf("output color %s unknown", cli.outputColor)
+			return fmt.Errorf("output color '%s' not supported: must be one of yes, no, auto", cli.outputColor)
 		}
 	}
+
+	return nil
 }
 
 // list of valid subcommands for the shell completion
@@ -174,17 +176,17 @@ func (cli *cliRoot) colorize(cmd *cobra.Command) {
 	cmd.SetOut(color.Output)
 }
 
-func (cli *cliRoot) NewCommand() *cobra.Command {
+func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 	// set the formatter asap and worry about level later
 	logFormatter := &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
-		log.Fatalf("failed to register features: %s", err)
+		return nil, fmt.Errorf("failed to register features: %s", err)
 	}
 
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
-		log.Fatalf("failed to set feature flags from env: %s", err)
+		return nil, fmt.Errorf("failed to set feature flags from env: %s", err)
 	}
 
 	cmd := &cobra.Command{
@@ -217,9 +219,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	pflags.BoolVar(&cli.logTrace, "trace", false, "Set logging to trace")
 	pflags.StringVar(&cli.flagBranch, "branch", "", "Override hub branch on github")
 
-	if err := pflags.MarkHidden("branch"); err != nil {
-		log.Fatalf("failed to hide flag: %s", err)
-	}
+	_ = pflags.MarkHidden("branch")
 
 	// Look for "-c /path/to/config.yaml"
 	// This duplicates the logic in cobra, but we need to do it before
@@ -233,11 +233,17 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	if err := csconfig.LoadFeatureFlagsFile(ConfigFilePath, log.StandardLogger()); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	if len(os.Args) > 1 {
-		cobra.OnInitialize(cli.initialize)
+		cobra.OnInitialize(
+			func() {
+				if err := cli.initialize(); err != nil {
+					log.Fatal(err)
+				}
+			},
+		)
 	}
 
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
@@ -272,11 +278,14 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		cmd.AddCommand(NewCLISetup(cli.cfg).NewCommand())
 	}
 
-	return cmd
+	return cmd, nil
 }
 
 func main() {
-	cmd := newCliRoot().NewCommand()
+	cmd, err := newCliRoot().NewCommand()
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := cmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
