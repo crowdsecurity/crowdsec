@@ -18,7 +18,6 @@ NC='\033[0m'
 SILENT="false"
 DOCKER_MODE="false"
 
-CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
 CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
