@@ -111,6 +111,16 @@ linters-settings:
           - pkg: "gopkg.in/yaml.v2"
             desc: "yaml.v2 is deprecated for new code in favor of yaml.v3"
 
+  stylecheck:
+    checks:
+    - all
+    - -ST1003   # should not use underscores in Go names; ...
+    - -ST1005   # error strings should not be capitalized
+    - -ST1012   # error var ... should have name of the form ErrFoo
+    - -ST1016   # methods on the same type should have the same receiver name
+    - -ST1022   # comment on exported var ... should be of the form ...
+    - -ST1023   # should omit type ... from declaration; it will be inferred from the right-hand side
+
   revive:
     ignore-generated-header: true
     severity: error
@@ -289,6 +299,7 @@ linters:
     # - spancheck           # Checks for mistakes with OpenTelemetry/Census spans.
     # - sqlclosecheck       # Checks that sql.Rows, sql.Stmt, sqlx.NamedStmt, pgx.Query are closed.
     # - staticcheck         # (megacheck): It's a set of rules from staticcheck. It's not the same thing as the staticcheck binary. The author of staticcheck doesn't support or approve the use of staticcheck as a library inside golangci-lint.
+    # - stylecheck          # Stylecheck is a replacement for golint
     # - tenv                # tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     # - testableexamples    # linter checks if examples are testable (have an expected output)
     # - testifylint         # Checks usage of github.com/stretchr/testify.
@@ -358,7 +369,6 @@ linters:
     - forbidigo             # Forbids identifiers
     - gochecknoglobals      # Check that no global variables exist.
     - goconst               # Finds repeated strings that could be replaced by a constant
-    - stylecheck            # Stylecheck is a replacement for golint
     - tagliatelle           # Checks the struct tags.
     - varnamelen            # checks that the length of a variable's name matches its scope
 
