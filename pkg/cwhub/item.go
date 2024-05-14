@@ -29,10 +29,8 @@ const (
 	versionFuture                 // local version is higher latest, but is included in the index: should not happen
 )
 
-var (
-	// The order is important, as it is used to range over sub-items in collections.
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
-)
+// The order is important, as it is used to range over sub-items in collections.
+var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
 
 type HubItems map[string]map[string]*Item
 

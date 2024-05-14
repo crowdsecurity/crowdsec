@@ -126,7 +126,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.21.9"
+        go-version: "1.22.3"
 
     - name: Create localstack streams
       run: |
@@ -153,6 +153,7 @@ jobs:
       with:
         files: coverage.out
         flags: unit-linux
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v4

@@ -180,7 +180,6 @@ teardown() {
     assert_stderr --partial "error while installing 'crowdsecurity/sshd': while enabling crowdsecurity/sshd: crowdsecurity/sshd is tainted, won't enable unless --force"
 
     rune -0 cscli collections install crowdsecurity/sshd --force
-    assert_stderr --partial "crowdsecurity/sshd: overwrite"
     assert_stderr --partial "Enabled crowdsecurity/sshd"
 }
 

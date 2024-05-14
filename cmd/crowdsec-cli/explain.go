@@ -83,7 +83,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			fileInfo, _ := os.Stdin.Stat()
 			if cli.flags.logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
-				return fmt.Errorf("the option -f - is intended to work with pipes")
+				return errors.New("the option -f - is intended to work with pipes")
 			}
 
 			return nil
@@ -160,18 +160,22 @@ func (cli *cliExplain) run() error {
 		} else if logFile == "-" {
 			reader := bufio.NewReader(os.Stdin)
 			errCount := 0
+
 			for {
 				input, err := reader.ReadBytes('\n')
 				if err != nil && errors.Is(err, io.EOF) {
 					break
 				}
+
 				if len(input) > 1 {
 					_, err = f.Write(input)
 				}
+
 				if err != nil || len(input) <= 1 {
 					errCount++
 				}
 			}
+
 			if errCount > 0 {
 				log.Warnf("Failed to write %d lines to %s", errCount, tmpFile)
 			}
@@ -207,7 +211,7 @@ func (cli *cliExplain) run() error {
 	}
 
 	if dsn == "" {
-		return fmt.Errorf("no acquisition (--file or --dsn) provided, can't run cscli test")
+		return errors.New("no acquisition (--file or --dsn) provided, can't run cscli test")
 	}
 
 	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}

@@ -27,7 +27,7 @@ teardown() {
 
     rune -0 wait-for \
         --err "Communication with CrowdSec Central API disabled from args" \
-        "${CROWDSEC}" -no-capi
+        "$CROWDSEC" -no-capi
 }
 
 @test "without capi: crowdsec LAPI should still work" {
@@ -35,7 +35,7 @@ teardown() {
     config_set '.common.log_media="stdout"'
     rune -0 wait-for \
         --err "push and pull to Central API disabled" \
-        "${CROWDSEC}"
+        "$CROWDSEC"
 }
 
 @test "without capi: cscli capi status -> fail" {
@@ -53,10 +53,10 @@ teardown() {
 
 @test "no agent: cscli config backup" {
     config_disable_capi
-    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
-    rune -0 cscli config backup "${backupdir}"
+    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
+    rune -0 cscli config backup "$backupdir"
     assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "${backupdir}"
+    rune -1 cscli config backup "$backupdir"
     assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
     rm -rf -- "${backupdir:?}"

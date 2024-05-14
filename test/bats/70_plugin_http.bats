@@ -15,7 +15,7 @@ setup_file() {
     export MOCK_URL
     PLUGIN_DIR=$(config_get '.config_paths.plugin_dir')
     # could have a trailing slash
-    PLUGIN_DIR=$(realpath "${PLUGIN_DIR}")
+    PLUGIN_DIR=$(realpath "$PLUGIN_DIR")
     export PLUGIN_DIR
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
@@ -35,10 +35,10 @@ setup_file() {
         .plugin_config.group=""
     '
 
-    rm -f -- "${MOCK_OUT}"
+    rm -f -- "$MOCK_OUT"
 
     ./instance-crowdsec start
-    ./instance-mock-http start "${MOCK_PORT}"
+    ./instance-mock-http start "$MOCK_PORT"
 }
 
 teardown_file() {
@@ -63,24 +63,24 @@ setup() {
 }
 
 @test "expected 1 log line from http server" {
-    rune -0 wc -l <"${MOCK_OUT}"
+    rune -0 wc -l <"$MOCK_OUT"
     # wc can pad with spaces on some platforms
     rune -0 tr -d ' ' < <(output)
     assert_output 1
 }
 
 @test "expected to receive 2 alerts in the request body from plugin" {
-    rune -0 jq -r '.request_body' <"${MOCK_OUT}"
+    rune -0 jq -r '.request_body' <"$MOCK_OUT"
     rune -0 jq -r 'length' <(output)
     assert_output 2
 }
 
 @test "expected to receive IP 1.2.3.4 as value of first decision" {
-    rune -0 jq -r '.request_body[0].decisions[0].value' <"${MOCK_OUT}"
+    rune -0 jq -r '.request_body[0].decisions[0].value' <"$MOCK_OUT"
     assert_output 1.2.3.4
 }
 
 @test "expected to receive IP 1.2.3.5 as value of second decision" {
-    rune -0 jq -r '.request_body[1].decisions[0].value' <"${MOCK_OUT}"
+    rune -0 jq -r '.request_body[1].decisions[0].value' <"$MOCK_OUT"
     assert_output 1.2.3.5
 }

@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -88,7 +90,7 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 			return fmt.Errorf("error while traversing directory %s: %w", path, err)
 		}
 
-		name := filepath.Join(cfg.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
+		name := filepath.Join(cfg.ConfigPaths.NotificationDir, info.Name()) // Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
 			if err != nil {
@@ -155,8 +157,8 @@ func (cli *cliNotifications) getProfilesConfigs() (map[string]NotificationsCfg, 
 func (cli *cliNotifications) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
-		Short:             "list active notifications plugins",
-		Long:              `list active notifications plugins`,
+		Short:             "list notifications plugins",
+		Long:              `list notifications plugins and their status (active or not)`,
 		Example:           `cscli notifications list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -204,10 +206,11 @@ func (cli *cliNotifications) NewListCmd() *cobra.Command {
 func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect",
-		Short:             "Inspect active notifications plugin configuration",
-		Long:              `Inspect active notifications plugin and show configuration`,
+		Short:             "Inspect notifications plugin",
+		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cli.notificationConfigFilter,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
@@ -242,7 +245,21 @@ func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliNotifications) NewTestCmd() *cobra.Command {
+func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	ncfgs, err := cli.getProfilesConfigs()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var ret []string
+	for k := range ncfgs {
+		if strings.Contains(k, toComplete) && !slices.Contains(args, k) {
+			ret = append(ret, k)
+		}
+	}
+	return ret, cobra.ShellCompDirectiveNoFileComp
+}
+
+func (cli cliNotifications) NewTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
 		pluginTomb    tomb.Tomb
@@ -252,10 +269,11 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "test [plugin name]",
 		Short:             "send a generic test alert to notification plugin",
-		Long:              `send a generic test alert to a notification plugin to test configuration even if is not active`,
+		Long:              `send a generic test alert to a notification plugin even if it is not active in profiles`,
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
+		ValidArgsFunction: cli.notificationConfigFilter,
 		PreRunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
 			pconfigs, err := cli.getPluginConfigs()
@@ -266,7 +284,7 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
-			//Create a single profile with plugin name as notification name
+			// Create a single profile with plugin name as notification name
 			return pluginBroker.Init(cfg.PluginConfig, []*csconfig.ProfileCfg{
 				{
 					Notifications: []string{
@@ -320,8 +338,8 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 				Alert:     alert,
 			}
 
-			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(fmt.Errorf("terminating"))
+			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
+			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
 
 			return nil
@@ -416,8 +434,8 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					break
 				}
 			}
-			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(fmt.Errorf("terminating"))
+			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
+			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
 
 			return nil

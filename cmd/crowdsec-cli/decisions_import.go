@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -81,7 +82,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	if defaultDuration == "" {
-		return fmt.Errorf("--duration cannot be empty")
+		return errors.New("--duration cannot be empty")
 	}
 
 	defaultScope, err := flags.GetString("scope")
@@ -90,7 +91,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	if defaultScope == "" {
-		return fmt.Errorf("--scope cannot be empty")
+		return errors.New("--scope cannot be empty")
 	}
 
 	defaultReason, err := flags.GetString("reason")
@@ -99,7 +100,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	if defaultReason == "" {
-		return fmt.Errorf("--reason cannot be empty")
+		return errors.New("--reason cannot be empty")
 	}
 
 	defaultType, err := flags.GetString("type")
@@ -108,7 +109,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	if defaultType == "" {
-		return fmt.Errorf("--type cannot be empty")
+		return errors.New("--type cannot be empty")
 	}
 
 	batchSize, err := flags.GetInt("batch")
@@ -136,7 +137,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	if format == "" {
-		return fmt.Errorf("unable to guess format from file extension, please provide a format with --format flag")
+		return errors.New("unable to guess format from file extension, please provide a format with --format flag")
 	}
 
 	if input == "-" {
@@ -234,7 +235,6 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 
 	return nil
 }
-
 
 func (cli *cliDecisions) newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{

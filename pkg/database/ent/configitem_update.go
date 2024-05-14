@@ -28,27 +28,9 @@ func (ciu *ConfigItemUpdate) Where(ps ...predicate.ConfigItem) *ConfigItemUpdate
 	return ciu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (ciu *ConfigItemUpdate) SetCreatedAt(t time.Time) *ConfigItemUpdate {
-	ciu.mutation.SetCreatedAt(t)
-	return ciu
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (ciu *ConfigItemUpdate) ClearCreatedAt() *ConfigItemUpdate {
-	ciu.mutation.ClearCreatedAt()
-	return ciu
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (ciu *ConfigItemUpdate) SetUpdatedAt(t time.Time) *ConfigItemUpdate {
 	ciu.mutation.SetUpdatedAt(t)
-	return ciu
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (ciu *ConfigItemUpdate) ClearUpdatedAt() *ConfigItemUpdate {
-	ciu.mutation.ClearUpdatedAt()
 	return ciu
 }
 
@@ -115,11 +97,7 @@ func (ciu *ConfigItemUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (ciu *ConfigItemUpdate) defaults() {
-	if _, ok := ciu.mutation.CreatedAt(); !ok && !ciu.mutation.CreatedAtCleared() {
-		v := configitem.UpdateDefaultCreatedAt()
-		ciu.mutation.SetCreatedAt(v)
-	}
-	if _, ok := ciu.mutation.UpdatedAt(); !ok && !ciu.mutation.UpdatedAtCleared() {
+	if _, ok := ciu.mutation.UpdatedAt(); !ok {
 		v := configitem.UpdateDefaultUpdatedAt()
 		ciu.mutation.SetUpdatedAt(v)
 	}
@@ -134,17 +112,8 @@ func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := ciu.mutation.CreatedAt(); ok {
-		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
-	}
-	if ciu.mutation.CreatedAtCleared() {
-		_spec.ClearField(configitem.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := ciu.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if ciu.mutation.UpdatedAtCleared() {
-		_spec.ClearField(configitem.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := ciu.mutation.Name(); ok {
 		_spec.SetField(configitem.FieldName, field.TypeString, value)
@@ -172,27 +141,9 @@ type ConfigItemUpdateOne struct {
 	mutation *ConfigItemMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (ciuo *ConfigItemUpdateOne) SetCreatedAt(t time.Time) *ConfigItemUpdateOne {
-	ciuo.mutation.SetCreatedAt(t)
-	return ciuo
-}
-
-// ClearCreatedAt clears the value of the "created_at" field.
-func (ciuo *ConfigItemUpdateOne) ClearCreatedAt() *ConfigItemUpdateOne {
-	ciuo.mutation.ClearCreatedAt()
-	return ciuo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (ciuo *ConfigItemUpdateOne) SetUpdatedAt(t time.Time) *ConfigItemUpdateOne {
 	ciuo.mutation.SetUpdatedAt(t)
-	return ciuo
-}
-
-// ClearUpdatedAt clears the value of the "updated_at" field.
-func (ciuo *ConfigItemUpdateOne) ClearUpdatedAt() *ConfigItemUpdateOne {
-	ciuo.mutation.ClearUpdatedAt()
 	return ciuo
 }
 
@@ -272,11 +223,7 @@ func (ciuo *ConfigItemUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (ciuo *ConfigItemUpdateOne) defaults() {
-	if _, ok := ciuo.mutation.CreatedAt(); !ok && !ciuo.mutation.CreatedAtCleared() {
-		v := configitem.UpdateDefaultCreatedAt()
-		ciuo.mutation.SetCreatedAt(v)
-	}
-	if _, ok := ciuo.mutation.UpdatedAt(); !ok && !ciuo.mutation.UpdatedAtCleared() {
+	if _, ok := ciuo.mutation.UpdatedAt(); !ok {
 		v := configitem.UpdateDefaultUpdatedAt()
 		ciuo.mutation.SetUpdatedAt(v)
 	}
@@ -308,17 +255,8 @@ func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem
 			}
 		}
 	}
-	if value, ok := ciuo.mutation.CreatedAt(); ok {
-		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
-	}
-	if ciuo.mutation.CreatedAtCleared() {
-		_spec.ClearField(configitem.FieldCreatedAt, field.TypeTime)
-	}
 	if value, ok := ciuo.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if ciuo.mutation.UpdatedAtCleared() {
-		_spec.ClearField(configitem.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := ciuo.mutation.Name(); ok {
 		_spec.SetField(configitem.FieldName, field.TypeString, value)

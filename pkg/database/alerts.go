@@ -9,9 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattn/go-sqlite3"
-
 	"github.com/davecgh/go-spew/spew"
+	"github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -134,7 +133,7 @@ func formatAlertAsString(machineID string, alert *models.Alert) []string {
 // if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
 func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) (string, error) {
 	if alertItem.UUID == "" {
-		return "", fmt.Errorf("alert UUID is empty")
+		return "", errors.New("alert UUID is empty")
 	}
 
 	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(c.CTX)
@@ -143,7 +142,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		return "", fmt.Errorf("unable to query alerts for uuid %s: %w", alertItem.UUID, err)
 	}
 
-	//alert wasn't found, insert it (expected hotpath)
+	// alert wasn't found, insert it (expected hotpath)
 	if ent.IsNotFound(err) || len(alerts) == 0 {
 		alertIDs, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
 		if err != nil {
@@ -153,14 +152,14 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		return alertIDs[0], nil
 	}
 
-	//this should never happen
+	// this should never happen
 	if len(alerts) > 1 {
 		return "", fmt.Errorf("multiple alerts found for uuid %s", alertItem.UUID)
 	}
 
 	log.Infof("Alert %s already exists, checking associated decisions", alertItem.UUID)
 
-	//alert is found, check for any missing decisions
+	// alert is found, check for any missing decisions
 
 	newUuids := make([]string, len(alertItem.Decisions))
 	for i, decItem := range alertItem.Decisions {
@@ -203,14 +202,16 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		}
 	}
 
-	//add missing decisions
+	// add missing decisions
 	log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
 
 	decisionBuilders := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range missingDecisions {
-		var start_ip, start_sfx, end_ip, end_sfx int64
-		var sz int
+		var (
+			start_ip, start_sfx, end_ip, end_sfx int64
+			sz                                   int
+		)
 
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
@@ -227,7 +228,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 			continue
 		}
 
-		//use the created_at from the alert instead
+		// use the created_at from the alert instead
 		alertTime, err := time.Parse(time.RFC3339, alertItem.CreatedAt)
 		if err != nil {
 			log.Errorf("unable to parse alert time %s : %s", alertItem.CreatedAt, err)
@@ -268,7 +269,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		decisions = append(decisions, decisionsCreateRet...)
 	}
 
-	//now that we bulk created missing decisions, let's update the alert
+	// now that we bulk created missing decisions, let's update the alert
 
 	decisionChunks := slicetools.Chunks(decisions, c.decisionBulkSize)
 
@@ -288,11 +289,11 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 // 2nd pull, you get decisions [1,2,3,4]. it inserts [1,2,3,4] and will try to delete [1,2,3,4] with a different alert ID and same origin
 func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
 	if alertItem == nil {
-		return 0, 0, 0, fmt.Errorf("nil alert")
+		return 0, 0, 0, errors.New("nil alert")
 	}
 
 	if alertItem.StartAt == nil {
-		return 0, 0, 0, fmt.Errorf("nil start_at")
+		return 0, 0, 0, errors.New("nil start_at")
 	}
 
 	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
@@ -301,7 +302,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	}
 
 	if alertItem.StopAt == nil {
-		return 0, 0, 0, fmt.Errorf("nil stop_at")
+		return 0, 0, 0, errors.New("nil stop_at")
 	}
 
 	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
@@ -367,8 +368,10 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	valueList := make([]string, 0, len(alertItem.Decisions))
 
 	for _, decisionItem := range alertItem.Decisions {
-		var start_ip, start_sfx, end_ip, end_sfx int64
-		var sz int
+		var (
+			start_ip, start_sfx, end_ip, end_sfx int64
+			sz                                   int
+		)
 
 		if decisionItem.Duration == nil {
 			log.Warning("nil duration in community decision")
@@ -487,8 +490,10 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
-		var start_ip, start_sfx, end_ip, end_sfx int64
-		var sz int
+		var (
+			start_ip, start_sfx, end_ip, end_sfx int64
+			sz                                   int
+		)
 
 		duration, err := time.ParseDuration(*decisionItem.Duration)
 		if err != nil {
@@ -539,8 +544,10 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 	alertDecisions := [][]*ent.Decision{}
 
 	for _, alertItem := range alerts {
-		var metas []*ent.Meta
-		var events []*ent.Event
+		var (
+			metas  []*ent.Meta
+			events []*ent.Event
+		)
 
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
@@ -560,7 +567,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			c.Log.Info(disp)
 		}
 
-		//let's track when we strip or drop data, notify outside of loop to avoid spam
+		// let's track when we strip or drop data, notify outside of loop to avoid spam
 		stripped := false
 		dropped := false
 
@@ -580,7 +587,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 					return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 				}
 
-				//the serialized field is too big, let's try to progressively strip it
+				// the serialized field is too big, let's try to progressively strip it
 				if event.SerializedValidator(string(marshallMetas)) != nil {
 					stripped = true
 
@@ -606,7 +613,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 						stripSize /= 2
 					}
 
-					//nothing worked, drop it
+					// nothing worked, drop it
 					if !valid {
 						dropped = true
 						stripped = false
@@ -635,15 +642,29 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 		if len(alertItem.Meta) > 0 {
 			metaBulk := make([]*ent.MetaCreate, len(alertItem.Meta))
+
 			for i, metaItem := range alertItem.Meta {
+				key := metaItem.Key
+				value := metaItem.Value
+
+				if len(metaItem.Value) > 4095 {
+					c.Log.Warningf("truncated meta %s : value too long", metaItem.Key)
+					value = value[:4095]
+				}
+
+				if len(metaItem.Key) > 255 {
+					c.Log.Warningf("truncated meta %s : key too long", metaItem.Key)
+					key = key[:255]
+				}
+
 				metaBulk[i] = c.Ent.Meta.Create().
-					SetKey(metaItem.Key).
-					SetValue(metaItem.Value)
+					SetKey(key).
+					SetValue(value)
 			}
 
 			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(c.CTX)
 			if err != nil {
-				return nil, errors.Wrapf(BulkError, "creating alert meta: %s", err)
+				c.Log.Warningf("error creating alert meta: %s", err)
 			}
 		}
 
@@ -755,8 +776,10 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 }
 
 func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
-	var owner *ent.Machine
-	var err error
+	var (
+		owner *ent.Machine
+		err   error
+	)
 
 	if machineID != "" {
 		owner, err = c.QueryMachineByID(machineID)
@@ -785,17 +808,27 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 		alertIDs = append(alertIDs, ids...)
 	}
 
+	if owner != nil {
+		err = owner.Update().SetLastPush(time.Now().UTC()).Exec(c.CTX)
+		if err != nil {
+			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
+		}
+	}
+
 	return alertIDs, nil
 }
 
 func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, error) {
 	predicates := make([]predicate.Alert, 0)
 
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var hasActiveDecision bool
-	var ip_sz int
-	var contains = true
+	var (
+		err                                  error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		hasActiveDecision                    bool
+		ip_sz                                int
+	)
+
+	contains := true
 
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
@@ -819,7 +852,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
 		case "scope":
-			var scope = value[0]
+			scope := value[0]
 			if strings.ToLower(scope) == "ip" {
 				scope = types.Ip
 			} else if strings.ToLower(scope) == "range" {
@@ -876,17 +909,17 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "origin":
 			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
-		case "include_capi": //allows to exclude one or more specific origins
+		case "include_capi": // allows to exclude one or more specific origins
 			if value[0] == "false" {
 				predicates = append(predicates, alert.And(
-					//do not show alerts with active decisions having origin CAPI or lists
+					// do not show alerts with active decisions having origin CAPI or lists
 					alert.And(
 						alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin))),
 						alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.ListOrigin))),
 					),
 					alert.Not(
 						alert.And(
-							//do not show neither alerts with no decisions if the Source Scope is lists: or CAPI
+							// do not show neither alerts with no decisions if the Source Scope is lists: or CAPI
 							alert.Not(alert.HasDecisions()),
 							alert.Or(
 								alert.SourceScopeHasPrefix(types.ListOrigin+":"),
@@ -896,7 +929,6 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 					),
 				),
 				)
-
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
@@ -940,48 +972,48 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	} else if ip_sz == 16 {
 		if contains { /*decision contains {start_ip,end_ip}*/
 			predicates = append(predicates, alert.And(
-				//matching addr size
+				// matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 				alert.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					alert.HasDecisionsWith(decision.StartIPLT(start_ip)),
 					alert.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						alert.HasDecisionsWith(decision.StartSuffixLTE(start_sfx)),
 					)),
 				alert.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					alert.HasDecisionsWith(decision.EndIPGT(end_ip)),
 					alert.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						alert.HasDecisionsWith(decision.EndSuffixGTE(end_sfx)),
 					),
 				),
 			))
 		} else { /*decision is contained within {start_ip,end_ip}*/
 			predicates = append(predicates, alert.And(
-				//matching addr size
+				// matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 				alert.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					alert.HasDecisionsWith(decision.StartIPGT(start_ip)),
 					alert.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						alert.HasDecisionsWith(decision.StartSuffixGTE(start_sfx)),
 					)),
 				alert.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					alert.HasDecisionsWith(decision.EndIPLT(end_ip)),
 					alert.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						alert.HasDecisionsWith(decision.EndSuffixLTE(end_sfx)),
 					),
 				),
@@ -1014,13 +1046,11 @@ func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string
 	query := c.Ent.Alert.Query()
 
 	query, err := BuildAlertRequestFromFilter(query, filters)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to build alert request: %w", err)
 	}
 
 	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to count alerts per scenario: %w", err)
 	}
@@ -1071,7 +1101,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			return nil, err
 		}
 
-		//only if with_decisions is present and set to false, we exclude this
+		// only if with_decisions is present and set to false, we exclude this
 		if val, ok := filter["with_decisions"]; ok && val[0] == "false" {
 			c.Log.Debugf("skipping decisions")
 		} else {

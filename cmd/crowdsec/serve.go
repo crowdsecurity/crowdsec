@@ -394,7 +394,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		csdaemon.NotifySystemd(log.StandardLogger())
+		csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)
 	}

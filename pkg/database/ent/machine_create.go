@@ -243,6 +243,12 @@ func (mc *MachineCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MachineCreate) check() error {
+	if _, ok := mc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Machine.created_at"`)}
+	}
+	if _, ok := mc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Machine.updated_at"`)}
+	}
 	if _, ok := mc.mutation.MachineId(); !ok {
 		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "Machine.machineId"`)}
 	}
@@ -291,11 +297,11 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := mc.mutation.CreatedAt(); ok {
 		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = &value
+		_node.CreatedAt = value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
 		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = &value
+		_node.UpdatedAt = value
 	}
 	if value, ok := mc.mutation.LastPush(); ok {
 		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)

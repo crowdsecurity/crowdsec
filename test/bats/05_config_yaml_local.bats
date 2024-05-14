@@ -21,7 +21,7 @@ setup() {
     load "../lib/setup.sh"
     ./instance-data load
     rune -0 config_get '.api.client.credentials_path'
-    LOCAL_API_CREDENTIALS="${output}"
+    LOCAL_API_CREDENTIALS="$output"
     export LOCAL_API_CREDENTIALS
 }
 
@@ -88,13 +88,13 @@ teardown() {
 @test "simulation.yaml.local" {
     rune -0 config_get '.config_paths.simulation_path'
     refute_output null
-    SIMULATION="${output}"
+    SIMULATION="$output"
 
-    echo "simulation: off" >"${SIMULATION}"
+    echo "simulation: off" >"$SIMULATION"
     rune -0 cscli simulation status -o human
     assert_stderr --partial "global simulation: disabled"
 
-    echo "simulation: on" >"${SIMULATION}"
+    echo "simulation: on" >"$SIMULATION"
     rune -0 cscli simulation status -o human
     assert_stderr --partial "global simulation: enabled"
 
@@ -110,7 +110,7 @@ teardown() {
 @test "profiles.yaml.local" {
     rune -0 config_get '.api.server.profiles_path'
     refute_output null
-    PROFILES="${output}"
+    PROFILES="$output"
 
     cat <<-EOT >"${PROFILES}.local"
 	name: default_ip_remediation
@@ -122,17 +122,17 @@ teardown() {
 	on_success: break
 	EOT
 
-    tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
-    touch "${tmpfile}"
+    tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    touch "$tmpfile"
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
-    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"$ACQUIS_YAML"
 
     rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli parsers install crowdsecurity/syslog-logs
 
     ./instance-crowdsec start
     sleep .5
-    fake_log >>"${tmpfile}"
+    fake_log >>"$tmpfile"
 
     # this could be simplified, but some systems are slow and we don't want to
     # wait more than required
@@ -141,6 +141,6 @@ teardown() {
         rune -0 cscli decisions list -o json
         rune -0 jq --exit-status '.[].decisions[0] | [.value,.type] == ["1.1.1.172","captcha"]' <(output) && break
     done
-    rm -f -- "${tmpfile}"
-    [[ "${status}" -eq 0 ]] || fail "captcha not triggered"
+    rm -f -- "$tmpfile"
+    [[ "$status" -eq 0 ]] || fail "captcha not triggered"
 }

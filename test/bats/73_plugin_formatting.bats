@@ -9,7 +9,7 @@ setup_file() {
 
     ./instance-data load
 
-    tempfile=$(TMPDIR="${BATS_FILE_TMPDIR}" mktemp)
+    tempfile=$(TMPDIR="$BATS_FILE_TMPDIR" mktemp)
     export tempfile
 
     DUMMY_YAML="$(config_get '.config_paths.notification_dir')/dummy.yaml"
@@ -17,7 +17,7 @@ setup_file() {
     # we test the template that is suggested in the email notification
     # the $alert is not a shell variable
     # shellcheck disable=SC2016
-    config_set "${DUMMY_YAML}" '
+    config_set "$DUMMY_YAML" '
        .group_wait="5s" |
        .group_threshold=2 |
        .output_file=strenv(tempfile) |
@@ -58,7 +58,7 @@ setup() {
 }
 
 @test "expected 1 notification" {
-    rune -0 cat "${tempfile}"
+    rune -0 cat "$tempfile"
     assert_output - <<-EOT
 	<html><body> <p><a href="https://www.whois.com/whois/1.2.3.4">1.2.3.4</a> will get <b>ban</b> for next <b>30s</b> for triggering <b>manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'</b> on machine <b>githubciXXXXXXXXXXXXXXXXXXXXXXXX</b>.</p> <p><a href="https://app.crowdsec.net/cti/1.2.3.4">CrowdSec CTI</a></p> <p><a href="https://www.whois.com/whois/1.2.3.5">1.2.3.5</a> will get <b>ban</b> for next <b>30s</b> for triggering <b>manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'</b> on machine <b>githubciXXXXXXXXXXXXXXXXXXXXXXXX</b>.</p> <p><a href="https://app.crowdsec.net/cti/1.2.3.5">CrowdSec CTI</a></p> </body></html>
 	EOT
