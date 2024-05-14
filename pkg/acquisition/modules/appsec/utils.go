@@ -37,25 +37,26 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	evt := types.Event{}
 	evt.Type = types.APPSEC
 	evt.Process = true
+	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
-		Value: ptr.Of(inEvt.Parsed["source_ip"]),
-		IP:    inEvt.Parsed["source_ip"],
+		Value: &sourceIP,
+		IP:    sourceIP,
 		Scope: ptr.Of(types.Ip),
 	}
 
-	asndata, err := exprhelpers.GeoIPASNEnrich(inEvt.Parsed["source_ip"])
+	asndata, err := exprhelpers.GeoIPASNEnrich(sourceIP)
 
 	if err != nil {
-		log.Errorf("Unable to enrich ip '%s'", inEvt.Parsed["source_ip"])
+		log.Errorf("Unable to enrich ip '%s'", sourceIP)
 	} else if asndata != nil {
 		record := asndata.(*geoip2.ASN)
 		source.AsName = record.AutonomousSystemOrganization
 		source.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
 	}
 
-	cityData, err := exprhelpers.GeoIPEnrich(inEvt.Parsed["source_ip"])
+	cityData, err := exprhelpers.GeoIPEnrich(sourceIP)
 	if err != nil {
-		log.Errorf("Unable to enrich ip '%s'", inEvt.Parsed["source_ip"])
+		log.Errorf("Unable to enrich ip '%s'", sourceIP)
 	} else if cityData != nil {
 		record := cityData.(*geoip2.City)
 		source.Cn = record.Country.IsoCode
@@ -63,16 +64,16 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		source.Longitude = float32(record.Location.Longitude)
 	}
 
-	rangeData, err := exprhelpers.GeoIPRangeEnrich(inEvt.Parsed["source_ip"])
+	rangeData, err := exprhelpers.GeoIPRangeEnrich(sourceIP)
 	if err != nil {
-		log.Errorf("Unable to enrich ip '%s'", inEvt.Parsed["source_ip"])
+		log.Errorf("Unable to enrich ip '%s'", sourceIP)
 	} else if rangeData != nil {
 		record := rangeData.(*net.IPNet)
 		source.Range = record.String()
 	}
 
 	evt.Overflow.Sources = make(map[string]models.Source)
-	evt.Overflow.Sources["ip"] = source
+	evt.Overflow.Sources[sourceIP] = source
 
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
