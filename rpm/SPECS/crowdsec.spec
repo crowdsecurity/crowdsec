@@ -67,13 +67,14 @@ install -m 551 cmd/notification-http/notification-http %{buildroot}%{_libdir}/%{
 install -m 551 cmd/notification-splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 cmd/notification-email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 cmd/notification-sentinel/notification-sentinel %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-file/notification-file %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 600 cmd/notification-slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 cmd/notification-http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 cmd/notification-splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 cmd/notification-email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 cmd/notification-sentinel/sentinel.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-
+install -m 600 cmd/notification-file/file.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
 %clean
 rm -rf %{buildroot}
@@ -88,6 +89,7 @@ rm -rf %{buildroot}
 %{_libdir}/%{name}/plugins/notification-splunk
 %{_libdir}/%{name}/plugins/notification-email
 %{_libdir}/%{name}/plugins/notification-sentinel
+%{_libdir}/%{name}/plugins/notification-file
 %{_sysconfdir}/%{name}/patterns/linux-syslog
 %{_sysconfdir}/%{name}/patterns/ruby
 %{_sysconfdir}/%{name}/patterns/nginx
@@ -123,6 +125,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/sentinel.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/file.yaml
 %config(noreplace) %{_sysconfdir}/cron.daily/%{name}
 
 %{_unitdir}/%{name}.service
