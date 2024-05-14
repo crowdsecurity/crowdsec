@@ -26,11 +26,12 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 			continue
 		}
 
-		for k, src := range alert.Sources {
+		for k := range alert.Sources {
 			refsrc := *alert.Alert // copy
 
 			log.Tracef("source[%s]", k)
 
+			src := alert.Sources[k]
 			refsrc.Source = &src
 			dedupCache = append(dedupCache, &refsrc)
 		}
@@ -45,8 +46,8 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 
 func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error {
 	ctx := context.Background()
-	alertsToPush, err := dedupAlerts(alerts)
 
+	alertsToPush, err := dedupAlerts(alerts)
 	if err != nil {
 		return fmt.Errorf("failed to transform alerts for api: %w", err)
 	}

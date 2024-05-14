@@ -9,15 +9,15 @@ setup_file() {
 
     ./instance-data load
 
-    tempfile=$(TMPDIR="${BATS_FILE_TMPDIR}" mktemp)
+    tempfile=$(TMPDIR="$BATS_FILE_TMPDIR" mktemp)
     export tempfile
 
-    tempfile2=$(TMPDIR="${BATS_FILE_TMPDIR}" mktemp)
+    tempfile2=$(TMPDIR="$BATS_FILE_TMPDIR" mktemp)
     export tempfile2
 
     DUMMY_YAML="$(config_get '.config_paths.notification_dir')/dummy.yaml"
 
-    config_set "${DUMMY_YAML}" '
+    config_set "$DUMMY_YAML" '
        .group_wait="5s" |
        .group_threshold=2 |
        .output_file=strenv(tempfile) |
@@ -67,12 +67,12 @@ setup() {
 }
 
 @test "expected 1 notification" {
-    rune -0 cat "${tempfile}"
+    rune -0 cat "$tempfile"
     assert_output --partial 1.2.3.4
     assert_output --partial 1.2.3.5
 }
 
 @test "second notification works too" {
-    rune -0 cat "${tempfile2}"
+    rune -0 cat "$tempfile2"
     assert_output --partial secondfile
 }

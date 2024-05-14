@@ -73,9 +73,9 @@ teardown() {
     rune -0 cscli alerts list -o raw <(output)
     rune -0 grep 10.20.30.40 <(output)
     rune -0 cut -d, -f1 <(output)
-    ALERT_ID="${output}"
+    ALERT_ID="$output"
 
-    rune -0 cscli alerts inspect "${ALERT_ID}" -o human
+    rune -0 cscli alerts inspect "$ALERT_ID" -o human
     rune -0 plaintext < <(output)
     assert_line --regexp '^#+$'
     assert_line --regexp "^ - ID *: ${ALERT_ID}$"
@@ -93,10 +93,10 @@ teardown() {
     assert_line --regexp "^.* ID .* scope:value .* action .* expiration .* created_at .*$"
     assert_line --regexp "^.* Ip:10.20.30.40 .* ban .*$"
 
-    rune -0 cscli alerts inspect "${ALERT_ID}" -o human --details
+    rune -0 cscli alerts inspect "$ALERT_ID" -o human --details
     # XXX can we have something here?
 
-    rune -0 cscli alerts inspect "${ALERT_ID}" -o raw
+    rune -0 cscli alerts inspect "$ALERT_ID" -o raw
     assert_line --regexp "^ *capacity: 0$"
     assert_line --regexp "^ *id: ${ALERT_ID}$"
     assert_line --regexp "^ *origin: cscli$"
@@ -106,11 +106,11 @@ teardown() {
     assert_line --regexp "^ *type: ban$"
     assert_line --regexp "^ *value: 10.20.30.40$"
 
-    rune -0 cscli alerts inspect "${ALERT_ID}" -o json
+    rune -0 cscli alerts inspect "$ALERT_ID" -o json
     alert=${output}
-    rune jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<<"${alert}"
+    rune jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<<"$alert"
     assert_output --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
-    rune jq -c '.source' <<<"${alert}"
+    rune jq -c '.source' <<<"$alert"
     assert_json '{ip:"10.20.30.40",scope:"Ip",value:"10.20.30.40"}'
 }
 
@@ -188,7 +188,7 @@ teardown() {
     rune -0 cscli decisions add -i 10.20.30.40 -t ban
     rune -9 cscli decisions list --ip 10.20.30.40 -o json
     rune -9 jq -r '.[].decisions[].id' <(output)
-    DECISION_ID="${output}"
+    DECISION_ID="$output"
 
     ./instance-crowdsec stop
     rune -0 ./instance-db exec_sql "UPDATE decisions SET ... WHERE id=${DECISION_ID}"

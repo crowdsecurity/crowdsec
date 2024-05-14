@@ -46,7 +46,7 @@ type pollResponse struct {
 	ErrorMessage string `json:"error"`
 }
 
-var errUnauthorized = fmt.Errorf("user is not authorized to use PAPI")
+var errUnauthorized = errors.New("user is not authorized to use PAPI")
 
 const timeoutMessage = "no events before timeout"
 
@@ -225,7 +225,7 @@ func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
 func NewLongPollClient(config LongPollClientConfig) (*LongPollClient, error) {
 	var logger *log.Entry
 	if config.Url == (url.URL{}) {
-		return nil, fmt.Errorf("url is required")
+		return nil, errors.New("url is required")
 	}
 	if config.Logger == nil {
 		logger = log.WithField("component", "longpollclient")

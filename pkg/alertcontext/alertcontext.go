@@ -19,9 +19,7 @@ const (
 	maxContextValueLen = 4000
 )
 
-var (
-	alertContext = Context{}
-)
+var alertContext = Context{}
 
 type Context struct {
 	ContextToSend         map[string][]string
@@ -37,19 +35,21 @@ func ValidateContextExpr(key string, expressions []string) error {
 			return fmt.Errorf("compilation of '%s' failed: %v", expression, err)
 		}
 	}
+
 	return nil
 }
 
 func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
-	var clog = log.New()
+	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		return fmt.Errorf("couldn't create logger for alert context: %s", err)
+		return fmt.Errorf("couldn't create logger for alert context: %w", err)
 	}
 
 	if valueLength == 0 {
 		clog.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
 		valueLength = maxContextValueLen
 	}
+
 	if valueLength > maxContextValueLen {
 		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, maxContextValueLen)
 		valueLength = maxContextValueLen
@@ -76,6 +76,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 			if err != nil {
 				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
 			}
+
 			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
 			alertContext.ContextToSend[key] = append(alertContext.ContextToSend[key], value)
 		}
@@ -85,16 +86,13 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 }
 
 func truncate(values []string, contextValueLen int) (string, error) {
-	var ret string
 	valueByte, err := json.Marshal(values)
 	if err != nil {
-		return "", fmt.Errorf("unable to dump metas: %s", err)
+		return "", fmt.Errorf("unable to dump metas: %w", err)
 	}
-	ret = string(valueByte)
-	for {
-		if len(ret) <= contextValueLen {
-			break
-		}
+
+	ret := string(valueByte)
+	for len(ret) > contextValueLen {
 		// if there is only 1 value left and that the size is too big, truncate it
 		if len(values) == 1 {
 			valueToTruncate := values[0]
@@ -106,12 +104,15 @@ func truncate(values []string, contextValueLen int) (string, error) {
 			// if there is multiple value inside, just remove the last one
 			values = values[:len(values)-1]
 		}
+
 		valueByte, err = json.Marshal(values)
 		if err != nil {
-			return "", fmt.Errorf("unable to dump metas: %s", err)
+			return "", fmt.Errorf("unable to dump metas: %w", err)
 		}
+
 		ret = string(valueByte)
 	}
+
 	return ret, nil
 }
 
@@ -120,18 +121,22 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 
 	metas := make([]*models.MetaItems0, 0)
 	tmpContext := make(map[string][]string)
+
 	for _, evt := range events {
 		for key, values := range alertContext.ContextToSendCompiled {
 			if _, ok := tmpContext[key]; !ok {
 				tmpContext[key] = make([]string, 0)
 			}
+
 			for _, value := range values {
 				var val string
+
 				output, err := expr.Run(value, map[string]interface{}{"evt": evt})
 				if err != nil {
 					errors = append(errors, fmt.Errorf("failed to get value for %s : %v", key, err))
 					continue
 				}
+
 				switch out := output.(type) {
 				case string:
 					val = out
@@ -141,20 +146,24 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 					errors = append(errors, fmt.Errorf("unexpected return type for %s : %T", key, output))
 					continue
 				}
+
 				if val != "" && !slices.Contains(tmpContext[key], val) {
 					tmpContext[key] = append(tmpContext[key], val)
 				}
 			}
 		}
 	}
+
 	for key, values := range tmpContext {
 		if len(values) == 0 {
 			continue
 		}
+
 		valueStr, err := truncate(values, alertContext.ContextValueLen)
 		if err != nil {
 			log.Warningf(err.Error())
 		}
+
 		meta := models.MetaItems0{
 			Key:   key,
 			Value: valueStr,
@@ -163,5 +172,6 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 	}
 
 	ret := models.Meta(metas)
+
 	return ret, errors
 }
