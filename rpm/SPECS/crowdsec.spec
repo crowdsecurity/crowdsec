@@ -37,6 +37,7 @@ sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config
 
 %install
 rm -rf %{buildroot}
+mkdir -p %{buildroot}/etc/crowdsec/acquis.d
 mkdir -p %{buildroot}/etc/crowdsec/hub
 mkdir -p %{buildroot}/etc/crowdsec/patterns
 mkdir -p %{buildroot}/etc/crowdsec/console/
