@@ -17,6 +17,7 @@ override_dh_auto_install:
 
 	mkdir -p debian/crowdsec/usr/bin
 	mkdir -p debian/crowdsec/etc/crowdsec
+	mkdir -p debian/crowdsec/etc/crowdsec/acquis.d
 	mkdir -p debian/crowdsec/usr/share/crowdsec
 	mkdir -p debian/crowdsec/etc/crowdsec/hub/
 	mkdir -p debian/crowdsec/usr/share/crowdsec/config
