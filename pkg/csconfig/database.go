@@ -48,7 +48,7 @@ type AuthGCCfg struct {
 }
 
 type FlushDBCfg struct {
-	MaxItems   *int       `yaml:"max_items,omitempty"`
+	MaxItems *int `yaml:"max_items,omitempty"`
 	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
 	MaxAge     *string    `yaml:"max_age,omitempty"`
 	BouncersGC *AuthGCCfg `yaml:"bouncers_autodelete,omitempty"`
@@ -130,6 +130,9 @@ func (d *DatabaseCfg) ConnectionString() string {
 			connString = fmt.Sprintf("%s:%s@unix(%s)/%s?parseTime=True", d.User, d.Password, d.DbPath, d.DbName)
 		} else {
 			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
+		}
+		if d.Sslmode != "" {
+			connString = fmt.Sprintf("%s&tls=%s", connString, d.Sslmode)
 		}
 	case "postgres", "postgresql", "pgx":
 		if d.isSocketConfig() {
