@@ -1328,8 +1328,8 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
-		require.LessOrEqual(t, output, test.max)
-		require.GreaterOrEqual(t, output, test.min)
+		require.LessOrEqual(t, int(output.(time.Duration).Seconds()), test.max)
+		require.GreaterOrEqual(t, int(output.(time.Duration)), test.min)
 		log.Printf("test '%s' : OK", test.name)
 	}
 

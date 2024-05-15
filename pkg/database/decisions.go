@@ -668,7 +668,7 @@ func (c *Client) CountActiveDecisionsByValue(decisionValue string) (int, error) 
 	return count, nil
 }
 
-func (c *Client) GetActiveDecisionsTimeLeftByValue(decisionValue string) (int, error) {
+func (c *Client) GetActiveDecisionsTimeLeftByValue(decisionValue string) (time.Duration, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
@@ -699,7 +699,7 @@ func (c *Client) GetActiveDecisionsTimeLeftByValue(decisionValue string) (int, e
 		return 0, nil
 	}
 
-	return int(decision.Until.Sub(time.Now().UTC()).Seconds()), nil
+	return decision.Until.Sub(time.Now().UTC()), nil
 }
 
 func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Time) (int, error) {
