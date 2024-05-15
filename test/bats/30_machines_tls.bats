@@ -38,8 +38,7 @@ setup_file() {
     # Generate revoked client cert
     for cert_name in "revoked_1" "revoked_2"; do
         cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" 2>/dev/null | cfssljson --bare "${tmpdir}/${cert_name}"
-        serial="$(openssl x509 -noout -serial -in "${tmpdir}/${cert_name}.pem" | cut -d '=' -f2)"
-        echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials_${cert_name}.txt"
+        cfssl certinfo -cert "${tmpdir}/${cert_name}.pem" | jq -r '.serial_number' > "${tmpdir}/serials_${cert_name}.txt"
     done
 
     # Generate separate CRL blocks and concatenate them

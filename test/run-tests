@@ -22,6 +22,8 @@ else
     echo "Coverage report: yes"
 fi
 
+[[ -f "$LOCAL_INIT_DIR/.lock" ]] && die "init data is locked: are you doing some manual test? if so, please finish what you are doing, run 'instance-data unlock' and retry"
+
 dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
 if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
     die "Can't run with backend '${DB_BACKEND}' because the test data was build with '${dump_backend}'"
