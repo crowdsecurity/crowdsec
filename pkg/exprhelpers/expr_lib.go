@@ -232,6 +232,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "GetActiveDecisionsCount",
+		function: GetActiveDecisionsCount,
+		signature: []interface{}{
+			new(func(string) int),
+		},
+	},
+	{
 		name:     "GetDecisionsSinceCount",
 		function: GetDecisionsSinceCount,
 		signature: []interface{}{

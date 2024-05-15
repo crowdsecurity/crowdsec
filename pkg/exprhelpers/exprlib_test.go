@@ -1118,6 +1118,113 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 }
 
+func TestGetActiveDecisionsCount(t *testing.T) {
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
+	if err != nil {
+		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
+	}
+
+	// Add sample data to DB
+	dbClient = getDBClient(t)
+
+	decision := dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().UTC().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+
+	if decision == nil {
+		require.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+
+	expiredDecision := dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().UTC().Add(-time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+
+	if expiredDecision == nil {
+		require.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "GetActiveDecisionsCount() test: existing IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+			},
+			code:   "Sprintf('%d', GetActiveDecisionsCount(Alert.GetValue()))",
+			result: "1",
+			err:    "",
+		},
+		{
+			name: "GetActiveDecisionsCount() test: unknown IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &unknownIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &unknownIP,
+						},
+					},
+				},
+			},
+			code:   "Sprintf('%d', GetActiveDecisionsCount(Alert.GetValue()))",
+			result: "0",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+
+}
+
 func TestParseUnixTime(t *testing.T) {
 	tests := []struct {
 		name        string
