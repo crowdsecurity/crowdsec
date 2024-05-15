@@ -40,20 +40,20 @@ teardown() {
 
 @test "cscli version" {
     rune -0 cscli version
-    assert_stderr --partial "version:"
-    assert_stderr --partial "Codename:"
-    assert_stderr --partial "BuildDate:"
-    assert_stderr --partial "GoVersion:"
-    assert_stderr --partial "Platform:"
-    assert_stderr --partial "Constraint_parser:"
-    assert_stderr --partial "Constraint_scenario:"
-    assert_stderr --partial "Constraint_api:"
-    assert_stderr --partial "Constraint_acquis:"
+    assert_output --partial "version:"
+    assert_output --partial "Codename:"
+    assert_output --partial "BuildDate:"
+    assert_output --partial "GoVersion:"
+    assert_output --partial "Platform:"
+    assert_output --partial "Constraint_parser:"
+    assert_output --partial "Constraint_scenario:"
+    assert_output --partial "Constraint_api:"
+    assert_output --partial "Constraint_acquis:"
 
     # should work without configuration file
     rm "$CONFIG_YAML"
     rune -0 cscli version
-    assert_stderr --partial "version:"
+    assert_output --partial "version:"
 }
 
 @test "cscli help" {
