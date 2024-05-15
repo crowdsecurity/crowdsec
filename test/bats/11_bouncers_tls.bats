@@ -40,7 +40,9 @@ setup_file() {
 
     # Generate separate CRL blocks and concatenate them
     for cert_name in "revoked_1" "revoked_2"; do
-        cfssl gencrl "${tmpdir}/serials_${cert_name}.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl_${cert_name}.pem"
+        echo '-----BEGIN X509 CRL-----' > "${tmpdir}/crl_${cert_name}.pem"
+        cfssl gencrl "${tmpdir}/serials_${cert_name}.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" >> "${tmpdir}/crl_${cert_name}.pem"
+        echo '-----END X509 CRL-----' >> "${tmpdir}/crl_${cert_name}.pem"
     done
     cat "${tmpdir}/crl_revoked_1.pem" "${tmpdir}/crl_revoked_2.pem" >"${tmpdir}/crl.pem"
 

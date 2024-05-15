@@ -61,7 +61,6 @@ architectures.
  - `curl`
  - `daemonize`
  - `jq`
- - `openssl`
  - `python3`
 
 ## Running all tests
