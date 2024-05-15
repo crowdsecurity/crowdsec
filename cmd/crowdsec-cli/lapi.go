@@ -159,7 +159,8 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 
 		log.Printf("Local API credentials written to '%s'", dumpFile)
 	} else {
-		fmt.Printf("%s\n", string(apiConfigDump))
+		// codeql [go/clear-text-logging]: false positive
+		fmt.Println(string(apiConfigDump))
 	}
 
 	log.Warning(ReloadMessage())
