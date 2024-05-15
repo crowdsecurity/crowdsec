@@ -647,7 +647,7 @@ func (c *Client) CountActiveDecisionsByValue(decisionValue string) (int, error) 
 	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 
 	if err != nil {
-		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
+		return 0, fmt.Errorf("unable to convert '%s' to int: %s", decisionValue, err)
 	}
 
 	contains := true
@@ -655,14 +655,14 @@ func (c *Client) CountActiveDecisionsByValue(decisionValue string) (int, error) 
 
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
+		return 0, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
 	}
 
 	decisions = decisions.Where(decision.UntilGT(time.Now().UTC()))
 
 	count, err = decisions.Count(c.CTX)
 	if err != nil {
-		return 0, errors.Wrapf(err, "fail to count decisions")
+		return 0, fmt.Errorf("fail to count decisions: %w", err)
 	}
 
 	return count, nil
@@ -675,7 +675,7 @@ func (c *Client) GetActiveDecisionsTimeLeftByValue(decisionValue string) (int, e
 	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 
 	if err != nil {
-		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
+		return 0, fmt.Errorf("unable to convert '%s' to int: %s", decisionValue, err)
 	}
 
 	contains := true
@@ -685,14 +685,14 @@ func (c *Client) GetActiveDecisionsTimeLeftByValue(decisionValue string) (int, e
 
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
+		return 0, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
 	}
 
 	decisions = decisions.Order(ent.Desc(decision.FieldUntil))
 
 	decision, err := decisions.First(c.CTX)
 	if err != nil && !ent.IsNotFound(err) {
-		return 0, errors.Wrapf(err, "fail to get decision")
+		return 0, fmt.Errorf("fail to get decision: %w", err)
 	}
 
 	if decision == nil {
