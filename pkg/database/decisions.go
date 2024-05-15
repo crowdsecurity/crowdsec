@@ -668,6 +668,40 @@ func (c *Client) CountActiveDecisionsByValue(decisionValue string) (int, error) 
 	return count, nil
 }
 
+func (c *Client) GetActiveDecisionsTimeLeftByValue(decisionValue string) (int, error) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz int
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
+
+	if err != nil {
+		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
+	}
+
+	contains := true
+	decisions := c.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now().UTC()),
+	)
+
+	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
+	if err != nil {
+		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
+	}
+
+	decisions = decisions.Order(ent.Desc(decision.FieldUntil))
+
+	decision, err := decisions.First(c.CTX)
+	if err != nil && !ent.IsNotFound(err) {
+		return 0, errors.Wrapf(err, "fail to get decision")
+	}
+
+	if decision == nil {
+		return 0, nil
+	}
+
+	return int(decision.Until.Sub(time.Now().UTC()).Seconds()), nil
+}
+
 func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Time) (int, error) {
 	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(decisionValue)
 

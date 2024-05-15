@@ -239,6 +239,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "GetActiveDecisionsTimeLeft",
+		function: GetActiveDecisionsTimeLeft,
+		signature: []interface{}{
+			new(func(string) time.Duration),
+		},
+	},
+	{
 		name:     "GetDecisionsSinceCount",
 		function: GetDecisionsSinceCount,
 		signature: []interface{}{
