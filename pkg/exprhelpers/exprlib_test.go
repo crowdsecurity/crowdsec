@@ -1279,8 +1279,8 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		name string
 		env  map[string]interface{}
 		code string
-		min  int
-		max  int
+		min  float64
+		max  float64
 		err  string
 	}{
 		{
@@ -1321,16 +1321,61 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 			max:  0,
 			err:  "",
 		},
+		{
+			name: "GetActiveDecisionsTimeLeft() test: existing IP and call time.Duration method",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+			},
+			code: "GetActiveDecisionsTimeLeft(Alert.GetValue()).Hours()",
+			min:  2,
+			max:  2,
+		},
+		{
+			name: "GetActiveDecisionsTimeLeft() test: unknown IP and call time.Duration method",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &unknownIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &unknownIP,
+						},
+					},
+				},
+			},
+			code: "GetActiveDecisionsTimeLeft(Alert.GetValue()).Hours()",
+			min:  0,
+			max:  0,
+		},
 	}
+
+	delta := 0.00001
 
 	for _, test := range tests {
 		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
-		require.LessOrEqual(t, int(output.(time.Duration).Seconds()), test.max)
-		require.GreaterOrEqual(t, int(output.(time.Duration)), test.min)
-		log.Printf("test '%s' : OK", test.name)
+		switch o := output.(type) {
+		case time.Duration:
+			require.LessOrEqual(t, int(o.Seconds()), int(test.max))
+			require.GreaterOrEqual(t, int(o.Seconds()), int(test.min))
+		case float64:
+			require.LessOrEqual(t, o, test.max+delta)
+			require.GreaterOrEqual(t, o, test.min-delta)
+		default:
+			t.Fatalf("GetActiveDecisionsTimeLeft() should return a time.Duration or a float64")
+		}
 	}
 
 }
