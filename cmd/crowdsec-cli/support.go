@@ -123,7 +123,7 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
 func (cli *cliSupport) dumpVersion(zw *zip.Writer) {
 	log.Info("Collecting version")
 
-	cli.writeToZip(zw, SUPPORT_VERSION_PATH, time.Now(), strings.NewReader(cwversion.ShowStr()))
+	cli.writeToZip(zw, SUPPORT_VERSION_PATH, time.Now(), strings.NewReader(cwversion.FullString()))
 }
 
 func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
