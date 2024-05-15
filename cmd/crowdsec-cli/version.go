@@ -14,14 +14,14 @@ func NewCLIVersion() *cliVersion {
 	return &cliVersion{}
 }
 
-func (cli cliVersion) NewCommand() *cobra.Command {
+func (cliVersion) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "version",
 		Short:             "Display version",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Run: func(_ *cobra.Command, _ []string) {
-			os.Stdout.WriteString(cwversion.FullString())
+			_, _ = os.Stdout.WriteString(cwversion.FullString())
 		},
 	}
 

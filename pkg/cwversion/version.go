@@ -29,7 +29,7 @@ func versionWithTag() string {
 	ret := version.Version
 
 	if !strings.HasSuffix(ret, version.Tag) {
-		ret += fmt.Sprintf("-%s", version.Tag)
+		ret += "-" + version.Tag
 	}
 
 	return ret
@@ -55,10 +55,10 @@ func VersionStr() string {
 }
 
 func VersionStrip() string {
-	version := strings.Split(version.Version, "~")
-	version = strings.Split(version[0], "-")
+	ret := strings.Split(version.Version, "~")
+	ret = strings.Split(ret[0], "-")
 
-	return version[0]
+	return ret[0]
 }
 
 func Satisfies(strvers string, constraint string) (bool, error) {
@@ -81,7 +81,7 @@ func Satisfies(strvers string, constraint string) (bool, error) {
 
 // Latest return latest crowdsec version based on github
 func Latest() (string, error) {
-	latest := make(map[string]interface{})
+	latest := make(map[string]any)
 
 	resp, err := http.Get("https://version.crowdsec.net/latest")
 	if err != nil {
