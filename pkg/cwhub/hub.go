@@ -17,11 +17,12 @@ import (
 
 // Hub is the main structure for the package.
 type Hub struct {
-	items    HubItems // Items read from HubDir and InstallDir
-	local    *csconfig.LocalHubCfg
-	remote   *RemoteHubCfg
-	logger   *logrus.Logger
-	Warnings []string // Warnings encountered during sync
+	items     HubItems // Items read from HubDir and InstallDir
+	pathIndex map[string]*Item
+	local     *csconfig.LocalHubCfg
+	remote    *RemoteHubCfg
+	logger    *logrus.Logger
+	Warnings  []string // Warnings encountered during sync
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
@@ -43,9 +44,10 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool,
 	}
 
 	hub := &Hub{
-		local:  local,
-		remote: remote,
-		logger: logger,
+		local:     local,
+		remote:    remote,
+		logger:    logger,
+		pathIndex: make(map[string]*Item, 0),
 	}
 
 	if updateIndex {
@@ -137,7 +139,7 @@ func (h *Hub) ItemStats() []string {
 	}
 
 	ret := []string{
-		fmt.Sprintf("Loaded: %s", loaded),
+		"Loaded: " + loaded,
 	}
 
 	if local > 0 || tainted > 0 {
@@ -169,6 +171,7 @@ func (h *Hub) addItem(item *Item) {
 	}
 
 	h.items[item.Type][item.Name] = item
+	h.pathIndex[item.State.LocalPath] = item
 }
 
 // GetItemMap returns the map of items for a given type.
@@ -179,6 +182,11 @@ func (h *Hub) GetItemMap(itemType string) map[string]*Item {
 // GetItem returns an item from hub based on its type and full name (author/name).
 func (h *Hub) GetItem(itemType string, itemName string) *Item {
 	return h.GetItemMap(itemType)[itemName]
+}
+
+// GetItemByPath returns an item from hub based on its (absolute) local path.
+func (h *Hub) GetItemByPath(itemPath string) *Item {
+	return h.pathIndex[itemPath]
 }
 
 // GetItemFQ returns an item from hub based on its type and name (type:author/name).

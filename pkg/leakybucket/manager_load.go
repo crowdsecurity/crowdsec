@@ -253,7 +253,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to check version : %s", err)
+				return nil, nil, fmt.Errorf("failed to check version: %w", err)
 			}
 
 			if !ok {
@@ -265,20 +265,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 
-			hubItem, err := hub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
-			if err != nil {
-				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+			hubItem := hub.GetItemByPath(bucketFactory.Filename)
+			if hubItem == nil {
+				log.Errorf("scenario %s (%s) could not be found in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {
 				if cscfg.SimulationConfig != nil {
 					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
 				}
 
-				if hubItem != nil {
-					bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
-					bucketFactory.hash = hubItem.State.LocalHash
-				} else {
-					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
-				}
+				bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
+				bucketFactory.hash = hubItem.State.LocalHash
 			}
 
 			bucketFactory.wgDumpState = buckets.wgDumpState

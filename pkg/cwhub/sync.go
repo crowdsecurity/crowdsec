@@ -9,9 +9,10 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/crowdsecurity/go-cs-lib/downloader"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/go-cs-lib/downloader"
 )
 
 func isYAMLFileName(path string) bool {
@@ -270,6 +271,8 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+
+		h.pathIndex[path] = item
 
 		return nil
 	}
