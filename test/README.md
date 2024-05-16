@@ -61,8 +61,6 @@ architectures.
  - `curl`
  - `daemonize`
  - `jq`
- - `nc`
- - `openssl`
  - `python3`
 
 ## Running all tests
@@ -240,6 +238,11 @@ according to the specific needs of the group of tests in the file.
    Extracts the files created by `instance-data make` for use by the local
    crowdsec instance. Crowdsec must not be running while this operation is
    performed.
+
+ - instance-data lock/unlock
+
+When playing around with a local crowdsec installation, you can run "instance-data lock"
+to prevent the bats suite from running, so it won't overwrite your configuration or data.
 
  - `instance-crowdsec [ start | stop ]`
 

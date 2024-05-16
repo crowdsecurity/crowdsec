@@ -5,7 +5,7 @@ THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck disable=SC1091
 . "${THIS_DIR}/.environment.sh"
 
-online_api_credentials="$(dirname "${CONFIG_YAML}")/online_api_credentials.yaml"
+online_api_credentials="$(dirname "$CONFIG_YAML")/online_api_credentials.yaml"
 export online_api_credentials
 
-yq e '.api.server.online_client.credentials_path=strenv(online_api_credentials)' -i "${CONFIG_YAML}"
+yq e '.api.server.online_client.credentials_path=strenv(online_api_credentials)' -i "$CONFIG_YAML"
