@@ -20,7 +20,7 @@ func (ConfigItem) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).StructTag(`json:"updated_at"`),
-		field.String("name").Unique().StructTag(`json:"name"`),
+		field.String("name").Unique().StructTag(`json:"name"`).Immutable(),
 		field.String("value").StructTag(`json:"value"`), // a json object
 	}
 }

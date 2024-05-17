@@ -13,7 +13,7 @@ type Lock struct {
 func (Lock) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").Unique().Immutable().StructTag(`json:"name"`),
-		field.Time("created_at").Default(types.UtcNow).StructTag(`json:"created_at"`),
+		field.Time("created_at").Default(types.UtcNow).StructTag(`json:"created_at"`).Immutable(),
 	}
 }
 

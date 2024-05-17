@@ -28,37 +28,9 @@ func (bu *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
 	return bu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (bu *BouncerUpdate) SetCreatedAt(t time.Time) *BouncerUpdate {
-	bu.mutation.SetCreatedAt(t)
-	return bu
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
-	if t != nil {
-		bu.SetCreatedAt(*t)
-	}
-	return bu
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
 	bu.mutation.SetUpdatedAt(t)
-	return bu
-}
-
-// SetName sets the "name" field.
-func (bu *BouncerUpdate) SetName(s string) *BouncerUpdate {
-	bu.mutation.SetName(s)
-	return bu
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableName(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetName(*s)
-	}
 	return bu
 }
 
@@ -150,26 +122,6 @@ func (bu *BouncerUpdate) ClearVersion() *BouncerUpdate {
 	return bu
 }
 
-// SetUntil sets the "until" field.
-func (bu *BouncerUpdate) SetUntil(t time.Time) *BouncerUpdate {
-	bu.mutation.SetUntil(t)
-	return bu
-}
-
-// SetNillableUntil sets the "until" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableUntil(t *time.Time) *BouncerUpdate {
-	if t != nil {
-		bu.SetUntil(*t)
-	}
-	return bu
-}
-
-// ClearUntil clears the value of the "until" field.
-func (bu *BouncerUpdate) ClearUntil() *BouncerUpdate {
-	bu.mutation.ClearUntil()
-	return bu
-}
-
 // SetLastPull sets the "last_pull" field.
 func (bu *BouncerUpdate) SetLastPull(t time.Time) *BouncerUpdate {
 	bu.mutation.SetLastPull(t)
@@ -248,14 +200,8 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := bu.mutation.CreatedAt(); ok {
-		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
-	}
 	if value, ok := bu.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := bu.mutation.Name(); ok {
-		_spec.SetField(bouncer.FieldName, field.TypeString, value)
 	}
 	if value, ok := bu.mutation.APIKey(); ok {
 		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
@@ -280,9 +226,6 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if bu.mutation.VersionCleared() {
 		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
-	}
-	if value, ok := bu.mutation.Until(); ok {
-		_spec.SetField(bouncer.FieldUntil, field.TypeTime, value)
 	}
 	if bu.mutation.UntilCleared() {
 		_spec.ClearField(bouncer.FieldUntil, field.TypeTime)
@@ -313,37 +256,9 @@ type BouncerUpdateOne struct {
 	mutation *BouncerMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (buo *BouncerUpdateOne) SetCreatedAt(t time.Time) *BouncerUpdateOne {
-	buo.mutation.SetCreatedAt(t)
-	return buo
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOne {
-	if t != nil {
-		buo.SetCreatedAt(*t)
-	}
-	return buo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetUpdatedAt(t)
-	return buo
-}
-
-// SetName sets the "name" field.
-func (buo *BouncerUpdateOne) SetName(s string) *BouncerUpdateOne {
-	buo.mutation.SetName(s)
-	return buo
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableName(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetName(*s)
-	}
 	return buo
 }
 
@@ -432,26 +347,6 @@ func (buo *BouncerUpdateOne) SetNillableVersion(s *string) *BouncerUpdateOne {
 // ClearVersion clears the value of the "version" field.
 func (buo *BouncerUpdateOne) ClearVersion() *BouncerUpdateOne {
 	buo.mutation.ClearVersion()
-	return buo
-}
-
-// SetUntil sets the "until" field.
-func (buo *BouncerUpdateOne) SetUntil(t time.Time) *BouncerUpdateOne {
-	buo.mutation.SetUntil(t)
-	return buo
-}
-
-// SetNillableUntil sets the "until" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableUntil(t *time.Time) *BouncerUpdateOne {
-	if t != nil {
-		buo.SetUntil(*t)
-	}
-	return buo
-}
-
-// ClearUntil clears the value of the "until" field.
-func (buo *BouncerUpdateOne) ClearUntil() *BouncerUpdateOne {
-	buo.mutation.ClearUntil()
 	return buo
 }
 
@@ -563,14 +458,8 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 			}
 		}
 	}
-	if value, ok := buo.mutation.CreatedAt(); ok {
-		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
-	}
 	if value, ok := buo.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := buo.mutation.Name(); ok {
-		_spec.SetField(bouncer.FieldName, field.TypeString, value)
 	}
 	if value, ok := buo.mutation.APIKey(); ok {
 		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
@@ -595,9 +484,6 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	if buo.mutation.VersionCleared() {
 		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
-	}
-	if value, ok := buo.mutation.Until(); ok {
-		_spec.SetField(bouncer.FieldUntil, field.TypeTime, value)
 	}
 	if buo.mutation.UntilCleared() {
 		_spec.ClearField(bouncer.FieldUntil, field.TypeTime)

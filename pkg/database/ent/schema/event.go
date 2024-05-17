@@ -22,8 +22,8 @@ func (Event) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow),
-		field.Time("time"),
-		field.String("serialized").MaxLen(8191),
+		field.Time("time").Immutable(),
+		field.String("serialized").MaxLen(8191).Immutable(),
 		field.Int("alert_events").Optional(),
 	}
 }
