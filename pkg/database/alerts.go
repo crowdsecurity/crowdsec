@@ -33,48 +33,8 @@ const (
 	maxLockRetries      = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
 )
 
-func formatAlertCN(source models.Source) string {
-	cn := source.Cn
-
-	if source.AsNumber != "" {
-		cn += "/" + source.AsNumber
-	}
-
-	return cn
-}
-
-func formatAlertSource(alert *models.Alert) string {
-	if alert.Source == nil || alert.Source.Scope == nil || *alert.Source.Scope == "" {
-		return "empty source"
-	}
-
-	if *alert.Source.Scope == types.Ip {
-		ret := "ip " + *alert.Source.Value
-
-		cn := formatAlertCN(*alert.Source)
-		if cn != "" {
-			ret += " (" + cn + ")"
-		}
-
-		return ret
-	}
-
-	if *alert.Source.Scope == types.Range {
-		ret := "range " + *alert.Source.Value
-
-		cn := formatAlertCN(*alert.Source)
-		if cn != "" {
-			ret += " (" + cn + ")"
-		}
-
-		return ret
-	}
-
-	return *alert.Source.Scope + " " + *alert.Source.Value
-}
-
 func formatAlertAsString(machineID string, alert *models.Alert) []string {
-	src := formatAlertSource(alert)
+	src := alert.Source.String()
 
 	msg := "empty scenario"
 	if alert.Scenario != nil && *alert.Scenario != "" {

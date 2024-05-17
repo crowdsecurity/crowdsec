@@ -74,3 +74,28 @@ func (s Source) GetAsNumberName() string {
 	}
 	return ret
 }
+
+func (s *Source) String() string {
+	if s == nil || s.Scope == nil || *s.Scope == "" {
+		return "empty source"
+	}
+
+	cn := s.Cn
+
+	if s.AsNumber != "" {
+		cn += "/" + s.AsNumber
+	}
+
+	if cn != "" {
+		cn = " (" + cn + ")"
+	}
+
+	switch *s.Scope {
+	case "Ip":	// XXX: import from where it is defined
+		return "ip " + *s.Value + cn
+	case "Range":	// XXX: import from where it is defined
+		return "range " + *s.Value + cn
+	default:
+		return *s.Scope + " " + *s.Value
+	}
+}
