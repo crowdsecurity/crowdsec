@@ -13,9 +13,9 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
 
-    cscli collections install crowdsecurity/sshd --error
-    cscli parsers install crowdsecurity/syslog-logs --error
-    cscli parsers install crowdsecurity/dateparse-enrich --error
+    cscli collections install crowdsecurity/sshd --error >/dev/null
+    cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+    cscli parsers install crowdsecurity/dateparse-enrich --error >/dev/null
 
     ./instance-crowdsec start
 }
