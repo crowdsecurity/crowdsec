@@ -15,22 +15,12 @@ const (
 	CscliImportOrigin = "cscli-import"
 )
 
-func (a *Alert) HasRemediation() bool {
-	return true
-}
-
 func (a *Alert) GetScope() string {
-	if a.Source.Scope == nil {
-		return ""
-	}
-	return *a.Source.Scope
+	return a.Source.GetScope()
 }
 
 func (a *Alert) GetValue() string {
-	if a.Source.Value == nil {
-		return ""
-	}
-	return *a.Source.Value
+	return a.Source.GetValue()
 }
 
 func (a *Alert) GetScenario() string {
@@ -154,17 +144,15 @@ func (a *Alert) FormatAsStrings(machineID string, logger *log.Logger) []string {
 			reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(a.Decisions))
 		}
 
-		var machineIDOrigin string
-		if machineID == "" {
-			machineIDOrigin = *decisionItem.Origin
-		} else {
-			machineIDOrigin = fmt.Sprintf("%s/%s", machineID, *decisionItem.Origin)
+		origin := *decisionItem.Origin
+		if machineID != "" {
+			origin = machineID + "/" + origin
 		}
 
 		decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
 			*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 		retStr = append(retStr,
-			fmt.Sprintf("(%s) %s : %s", machineIDOrigin, reason, decision))
+			fmt.Sprintf("(%s) %s : %s", origin, reason, decision))
 	}
 
 	return retStr
