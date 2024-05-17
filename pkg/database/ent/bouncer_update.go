@@ -227,9 +227,6 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if bu.mutation.VersionCleared() {
 		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
 	}
-	if bu.mutation.UntilCleared() {
-		_spec.ClearField(bouncer.FieldUntil, field.TypeTime)
-	}
 	if value, ok := bu.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 	}
@@ -484,9 +481,6 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	if buo.mutation.VersionCleared() {
 		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
-	}
-	if buo.mutation.UntilCleared() {
-		_spec.ClearField(bouncer.FieldUntil, field.TypeTime)
 	}
 	if value, ok := buo.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)

@@ -27,7 +27,6 @@ func (Bouncer) Fields() []ent.Field {
 		field.String("ip_address").Default("").Optional().StructTag(`json:"ip_address"`),
 		field.String("type").Optional().StructTag(`json:"type"`),
 		field.String("version").Optional().StructTag(`json:"version"`),
-		field.Time("until").Default(types.UtcNow).Optional().StructTag(`json:"until"`).Immutable(),
 		field.Time("last_pull").
 			Default(types.UtcNow).StructTag(`json:"last_pull"`),
 		field.String("auth_type").StructTag(`json:"auth_type"`).Default(types.ApiKeyAuthType),
