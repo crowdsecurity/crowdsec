@@ -1,5 +1,20 @@
 package models
 
+import (
+	"fmt"
+
+	"github.com/davecgh/go-spew/spew"
+	log "github.com/sirupsen/logrus"
+)
+
+const (
+	// these are duplicated from pkg/types
+	// TODO XXX: de-duplicate
+	Ip  = "Ip"
+	Range = "Range"
+	CscliImportOrigin = "cscli-import"
+)
+
 func (a *Alert) HasRemediation() bool {
 	return true
 }
@@ -91,11 +106,66 @@ func (s *Source) String() string {
 	}
 
 	switch *s.Scope {
-	case "Ip":	// XXX: import from where it is defined
+	case Ip:
 		return "ip " + *s.Value + cn
-	case "Range":	// XXX: import from where it is defined
+	case Range:
 		return "range " + *s.Value + cn
 	default:
 		return *s.Scope + " " + *s.Value
 	}
+}
+
+func (a *Alert) FormatAsStrings(machineID string, logger *log.Logger) []string {
+	src := a.Source.String()
+
+	msg := "empty scenario"
+	if a.Scenario != nil && *a.Scenario != "" {
+		msg = *a.Scenario
+	} else if a.Message != nil && *a.Message != "" {
+		msg = *a.Message
+	}
+
+	reason := fmt.Sprintf("%s by %s", msg, src)
+
+	if len(a.Decisions) == 0 {
+		return []string{fmt.Sprintf("(%s) alert : %s", machineID, reason)}
+	}
+
+	var retStr []string
+
+	if a.Decisions[0].Origin != nil && *a.Decisions[0].Origin == CscliImportOrigin {
+		return []string{fmt.Sprintf("(%s) alert : %s", machineID, reason)}
+	}
+
+	for i, decisionItem := range a.Decisions {
+		decision := ""
+		if a.Simulated != nil && *a.Simulated {
+			decision = "(simulated alert)"
+		} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
+			decision = "(simulated decision)"
+		}
+
+		if logger.GetLevel() >= log.DebugLevel {
+			/*spew is expensive*/
+			logger.Debug(spew.Sdump(decisionItem))
+		}
+
+		if len(a.Decisions) > 1 {
+			reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(a.Decisions))
+		}
+
+		var machineIDOrigin string
+		if machineID == "" {
+			machineIDOrigin = *decisionItem.Origin
+		} else {
+			machineIDOrigin = fmt.Sprintf("%s/%s", machineID, *decisionItem.Origin)
+		}
+
+		decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
+			*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
+		retStr = append(retStr,
+			fmt.Sprintf("(%s) %s : %s", machineIDOrigin, reason, decision))
+	}
+
+	return retStr
 }
