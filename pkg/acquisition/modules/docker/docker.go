@@ -425,29 +425,29 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		parsedLabels := d.getContainerLabels(container.ID)
 		if len(parsedLabels) == 0 {
 			d.logger.Tracef("container has no 'crowdsec' labels set, ignoring container: %s", container.ID)
-			return &ContainerConfig{}, false
+			return nil, false
 		}
 		if _, ok := parsedLabels["enable"]; !ok {
 			d.logger.Errorf("container has 'crowdsec' labels set but no 'crowdsec.enable' key found")
-			return &ContainerConfig{}, false
+			return nil, false
 		}
 		enable, ok := parsedLabels["enable"].(string)
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set but it's not a string")
-			return &ContainerConfig{}, false
+			return nil, false
 		}
 		if strings.ToLower(enable) != "true" {
 			d.logger.Debugf("container has 'crowdsec.enable' label not set to true ignoring container: %s", container.ID)
-			return &ContainerConfig{}, false
+			return nil, false
 		}
 		if _, ok = parsedLabels["labels"]; !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but no 'labels' keys found")
-			return &ContainerConfig{}, false
+			return nil, false
 		}
 		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
-			return &ContainerConfig{}, false
+			return nil, false
 		}
 		d.logger.Debugf("container labels %+v", labelsTypeCast)
 		labels := make(map[string]string)
@@ -462,7 +462,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(container.ID)}, true
 	}
 
-	return &ContainerConfig{}, false
+	return nil, false
 }
 
 func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
