@@ -25,7 +25,6 @@ func (Machine) Fields() []ent.Field {
 			Default(types.UtcNow).
 			Nillable().Optional(),
 		field.Time("last_heartbeat").
-			Default(types.UtcNow).
 			Nillable().Optional(),
 		field.String("machineId").
 			Unique().
