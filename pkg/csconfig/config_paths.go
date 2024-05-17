@@ -28,11 +28,11 @@ func (c *Config) loadConfigurationPaths() error {
 	}
 
 	if c.ConfigPaths.HubDir == "" {
-		c.ConfigPaths.HubDir = filepath.Clean(c.ConfigPaths.ConfigDir + "/hub")
+		c.ConfigPaths.HubDir = filepath.Join(c.ConfigPaths.ConfigDir, "hub")
 	}
 
 	if c.ConfigPaths.HubIndexFile == "" {
-		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
+		c.ConfigPaths.HubIndexFile = filepath.Join(c.ConfigPaths.HubDir, ".index.json")
 	}
 
 	if c.ConfigPaths.PatternDir == "" {
