@@ -220,7 +220,7 @@ export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 
 testenv:
-	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
+	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it'
 
 .PHONY: test
 test: testenv goversion  ## Run unit tests with localstack
@@ -230,14 +230,19 @@ test: testenv goversion  ## Run unit tests with localstack
 go-acc: testenv goversion  ## Run unit tests with localstack + coverage
 	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS)
 
+check_docker:
+	@if ! docker info > /dev/null 2>&1; then \
+		echo "Could not run 'docker info': check that docker is running, and if you need to run this command with sudo."; \
+	fi
+
 # mock AWS services
 .PHONY: localstack
-localstack:  ## Run localstack containers (required for unit testing)
-	docker-compose -f test/localstack/docker-compose.yml up
+localstack: check_docker  ## Run localstack containers (required for unit testing)
+	docker compose -f test/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
-localstack-stop:  ## Stop localstack containers
-	docker-compose -f test/localstack/docker-compose.yml down
+localstack-stop: check_docker  ## Stop localstack containers
+	docker compose -f test/localstack/docker-compose.yml down
 
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor

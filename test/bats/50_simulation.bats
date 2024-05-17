@@ -13,9 +13,9 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
 
-    cscli collections install crowdsecurity/sshd --error
-    cscli parsers install crowdsecurity/syslog-logs --error
-    cscli parsers install crowdsecurity/dateparse-enrich --error
+    cscli collections install crowdsecurity/sshd --error >/dev/null
+    cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+    cscli parsers install crowdsecurity/dateparse-enrich --error >/dev/null
 
     ./instance-crowdsec start
 }
@@ -56,6 +56,19 @@ setup() {
 }
 
 @test "simulated scenario, listing non-simulated: expect no decision" {
+    rune -0 cscli simulation enable crowdsecurity/ssh-bf
+    fake_log | "$CROWDSEC" -dsn file:///dev/fd/0 -type syslog -no-api
+    rune -0 cscli decisions list --no-simu -o json
+    assert_json '[]'
+}
+
+@test "simulated local scenario: expect no decision" {
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    HUB_DIR=$(config_get '.config_paths.hub_dir')
+    rune -0 mkdir -p "$CONFIG_DIR"/scenarios
+    # replace an installed scenario with a local version
+    rune -0 cp -r "$HUB_DIR"/scenarios/crowdsecurity/ssh-bf.yaml "$CONFIG_DIR"/scenarios/ssh-bf2.yaml
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --force --purge
     rune -0 cscli simulation enable crowdsecurity/ssh-bf
     fake_log | "$CROWDSEC" -dsn file:///dev/fd/0 -type syslog -no-api
     rune -0 cscli decisions list --no-simu -o json
