@@ -42,8 +42,8 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 
 	iter := reflect.ValueOf(evt).Elem()
 	if (iter == reflect.Value{}) || iter.IsZero() {
-		log.Tracef("event is nill")
-		//event is nill
+		log.Tracef("event is nil")
+		//event is nil
 		return false
 	}
 	for _, f := range strings.Split(target, ".") {

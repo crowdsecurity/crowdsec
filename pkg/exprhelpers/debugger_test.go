@@ -59,7 +59,7 @@ func TestBaseDbg(t *testing.T) {
 		"base_string":  "hello world",
 		"base_int":     42,
 		"base_float":   42.42,
-		"nillvar":      &teststruct{},
+		"nilvar":       &teststruct{},
 		"base_struct": struct {
 			Foo   string
 			Bar   int
@@ -79,8 +79,8 @@ func TestBaseDbg(t *testing.T) {
 	//Missing multi parametes function
 	tests := []ExprDbgTest{
 		{
-			Name:                "nill deref",
-			Expr:                "Upper('1') == '1' && nillvar.Foo == '42'",
+			Name:                "nil deref",
+			Expr:                "Upper('1') == '1' && nilvar.Foo == '42'",
 			Env:                 defaultEnv,
 			ExpectedFailRuntime: true,
 			ExpectedOutputs: []OpOutput{
@@ -307,8 +307,8 @@ func TestBaseDbg(t *testing.T) {
 				t.Fatalf("test %s : unexpected compile error : %s", test.Name, err)
 			}
 		}
-		if test.Name == "nill deref" {
-			test.Env["nillvar"] = nil
+		if test.Name == "nil deref" {
+			test.Env["nilvar"] = nil
 		}
 		outdbg, ret, err := RunWithDebug(prog, test.Env, logger)
 		if test.ExpectedFailRuntime {
