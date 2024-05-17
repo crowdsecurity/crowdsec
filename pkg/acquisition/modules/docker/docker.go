@@ -384,29 +384,7 @@ func (d *DockerSource) getContainerLabels(containerId string) map[string]interfa
 	if err != nil {
 		return map[string]interface{}{}
 	}
-	return d.parseLabels(containerDetails.Config.Labels)
-}
-
-func (d *DockerSource) parseLabels(labels map[string]string) map[string]interface{} {
-	result := make(map[string]interface{})
-	for key, value := range labels {
-		parseKeyToMap(result, key, value)
-	}
-	return result
-}
-
-func parseKeyToMap(m map[string]interface{}, key string, value string) {
-	if !strings.HasPrefix(key, "crowdsec") {
-		return
-	}
-	parts := strings.Split(key, ".")
-	for i := 1; i < len(parts)-1; i++ {
-		if _, ok := m[parts[i]]; !ok {
-			m[parts[i]] = make(map[string]interface{})
-		}
-		m = m[parts[i]].(map[string]interface{})
-	}
-	m[parts[len(parts)-1]] = value
+	return parseLabels(containerDetails.Config.Labels)
 }
 
 func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*ContainerConfig, bool) {
