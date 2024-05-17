@@ -230,6 +230,74 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 			},
 		},
+		{
+			name:             "Basic matching in cookies",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"COOKIES"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Cookie": []string{"foo=toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "Basic matching in multipart file name",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"FILES"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "\\.php$"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
+				Body: []byte(`
+--boundary
+Content-Disposition: form-data; name="foo"; filename="bar.php"
+Content-Type: application/octet-stream
+
+toto
+--boundary--`),
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
 	}
 
 	for _, test := range tests {
