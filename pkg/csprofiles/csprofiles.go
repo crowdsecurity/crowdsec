@@ -196,6 +196,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 				decisions = append(decisions, subdecisions...)
 			} else {
 				Profile.Logger.Debugf("Profile %s filter is unsuccessful", Profile.Cfg.Name)
+
 				if Profile.Cfg.OnFailure == "break" {
 					break
 				}
