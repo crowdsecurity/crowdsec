@@ -26,8 +26,7 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 
 	for _, excluded := range s.Exclusions {
 		if excluded == scenario {
-			simulated = !simulated
-			break
+			return !simulated
 		}
 	}
 
