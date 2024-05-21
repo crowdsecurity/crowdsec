@@ -91,7 +91,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		return
 	}
 
-	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
