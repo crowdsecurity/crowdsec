@@ -295,19 +295,20 @@ func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) 
 }
 
 func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
-	if s.Config.SQSFormat == SQSFormatEventBridge {
+	switch s.Config.SQSFormat {
+	case SQSFormatEventBridge:
 		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
 		if err != nil {
 			return "", "", err
 		}
 		return bucket, key, nil
-	} else if s.Config.SQSFormat == SQSFormatS3Notification {
+	case SQSFormatS3Notification:
 		bucket, key, err := extractBucketAndPrefixFromS3Notif(message)
 		if err != nil {
 			return "", "", err
 		}
 		return bucket, key, nil
-	} else {
+	default:
 		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
 		if err == nil {
 			s.Config.SQSFormat = SQSFormatEventBridge

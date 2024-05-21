@@ -39,11 +39,9 @@ func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Lea
 			leaky.logger.Debugf("Uniq(%s) : ok", element)
 			u.KeyCache[element] = true
 			return &msg
-
-		} else {
-			leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
-			return nil
 		}
+		leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
+		return nil
 	}
 }
 

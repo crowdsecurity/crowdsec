@@ -147,8 +147,6 @@ linters-settings:
         disabled: true
       - name: increment-decrement
         disabled: true
-      - name: indent-error-flow
-        disabled: true
       - name: import-alias-naming
         disabled: true
       - name: import-shadowing

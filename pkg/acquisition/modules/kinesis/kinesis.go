@@ -524,9 +524,8 @@ func (k *KinesisSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb)
 		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
 		if k.Config.UseEnhancedFanOut {
 			return k.EnhancedRead(out, t)
-		} else {
-			return k.ReadFromStream(out, t)
 		}
+		return k.ReadFromStream(out, t)
 	})
 	return nil
 }

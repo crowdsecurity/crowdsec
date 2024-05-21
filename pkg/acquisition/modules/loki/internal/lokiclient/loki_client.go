@@ -121,10 +121,9 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
 					return errors.Wrapf(err, "error querying range")
-				} else {
-					lc.increaseTicker(ticker)
-					continue
 				}
+				lc.increaseTicker(ticker)
+				continue
 			}
 
 			if resp.StatusCode != http.StatusOK {
@@ -133,10 +132,9 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
 					return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
-				} else {
-					lc.increaseTicker(ticker)
-					continue
 				}
+				lc.increaseTicker(ticker)
+				continue
 			}
 
 			var lq LokiQueryRangeResponse
@@ -144,10 +142,9 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
 					return errors.Wrapf(err, "error decoding Loki response")
-				} else {
-					lc.increaseTicker(ticker)
-					continue
 				}
+				lc.increaseTicker(ticker)
+				continue
 			}
 			resp.Body.Close()
 			lc.Logger.Tracef("Got response: %+v", lq)

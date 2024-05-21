@@ -111,7 +111,8 @@ func SetKey(cacheName string, key string, value string, expiration *time.Duratio
 func GetKey(cacheName string, key string) (string, error) {
 	for i, name := range CacheNames {
 		if name == cacheName {
-			if value, err := Caches[i].Get(key); err != nil {
+			value, err := Caches[i].Get(key)
+			if err != nil {
 				// do not warn or log if key not found
 				if errors.Is(err, gcache.KeyNotFoundError) {
 					return "", nil
@@ -119,9 +120,9 @@ func GetKey(cacheName string, key string) (string, error) {
 				CacheConfig[i].Logger.Warningf("While getting key %s in cache %s: %s", key, cacheName, err)
 
 				return "", err
-			} else {
-				return value.(string), nil
 			}
+
+			return value.(string), nil
 		}
 	}
 
