@@ -63,10 +63,10 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 
 		filter := make(map[string][]string)
 		filter["uuid"] = UUIDs
-		_, deletedDecisions, err := p.DBClient.SoftDeleteDecisionsWithFilter(filter)
+		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(filter)
 
 		if err != nil {
-			return fmt.Errorf("unable to delete decisions %+v: %w", UUIDs, err)
+			return fmt.Errorf("unable to expire decisions %+v: %w", UUIDs, err)
 		}
 
 		decisions := make([]*models.Decision, 0)
@@ -191,9 +191,9 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		filter["origin"] = []string{types.ListOrigin}
 		filter["scenario"] = []string{unsubscribeMsg.Name}
 
-		_, deletedDecisions, err := p.DBClient.SoftDeleteDecisionsWithFilter(filter)
+		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(filter)
 		if err != nil {
-			return fmt.Errorf("unable to delete decisions for list %s : %w", unsubscribeMsg.Name, err)
+			return fmt.Errorf("unable to expire decisions for list %s : %w", unsubscribeMsg.Name, err)
 		}
 		p.Logger.Infof("deleted %d decisions for list %s", len(deletedDecisions), unsubscribeMsg.Name)
 

@@ -435,8 +435,8 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	return strconv.Itoa(count), toDelete, nil
 }
 
-// SoftDeleteDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
-func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, []*ent.Decision, error) {
+// ExpireDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
+func (c *Client) ExpireDecisionsWithFilter(filter map[string][]string) (string, []*ent.Decision, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
@@ -547,13 +547,13 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 
 	DecisionsToDelete, err := decisions.All(c.CTX)
 	if err != nil {
-		c.Log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
-		return "0", nil, errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
+		c.Log.Warningf("ExpireDecisionsWithFilter : %s", err)
+		return "0", nil, errors.Wrap(DeleteFail, "expire decisions with provided filter")
 	}
 
 	count, err := c.ExpireDecisions(DecisionsToDelete)
 	if err != nil {
-		return "0", nil, errors.Wrapf(DeleteFail, "soft delete decisions with provided filter : %s", err)
+		return "0", nil, errors.Wrapf(DeleteFail, "expire decisions with provided filter : %s", err)
 	}
 
 	return strconv.Itoa(count), DecisionsToDelete, err
@@ -568,7 +568,7 @@ func decisionIDs(decisions []*ent.Decision) []int {
 }
 
 // ExpireDecisions sets the expiration of a list of decisions to now()
-// It returns the number of impacted decision for the CAPI/PAPI
+// It returns the number of impacted decisions for the CAPI/PAPI
 func (c *Client) ExpireDecisions(decisions []*ent.Decision) (int, error) {
 	if len(decisions) <= decisionDeleteBulkSize {
 		ids := decisionIDs(decisions)
@@ -576,7 +576,7 @@ func (c *Client) ExpireDecisions(decisions []*ent.Decision) (int, error) {
 			decision.IDIn(ids...),
 		).SetUntil(time.Now().UTC()).Save(c.CTX)
 		if err != nil {
-			return 0, fmt.Errorf("soft delete decisions with provided filter: %w", err)
+			return 0, fmt.Errorf("expire decisions with provided filter: %w", err)
 		}
 
 		return rows, nil
@@ -599,7 +599,7 @@ func (c *Client) ExpireDecisions(decisions []*ent.Decision) (int, error) {
 }
 
 // DeleteDecisions removes a list of decisions from the database
-// It returns the number of impacted decision for the CAPI/PAPI
+// It returns the number of impacted decisions for the CAPI/PAPI
 func (c *Client) DeleteDecisions(decisions []*ent.Decision) (int, error) {
 	if len(decisions) < decisionDeleteBulkSize {
 		ids := decisionIDs(decisions)
@@ -634,7 +634,7 @@ func (c *Client) ExpireDecisionByID(decisionID int) (int, []*ent.Decision, error
 
 	// XXX: do we want 500 or 404 here?
 	if err != nil || len(toUpdate) == 0 {
-		c.Log.Warningf("ExpireDecisionByID : %v (nb soft deleted: %d)", err, len(toUpdate))
+		c.Log.Warningf("ExpireDecisionByID : %v (nb expired: %d)", err, len(toUpdate))
 		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 
