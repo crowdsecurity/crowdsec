@@ -17,6 +17,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+const decisionDeleteBulkSize = 256 // scientifically proven to be the best value for bulk delete
+
 type DecisionsByScenario struct {
 	Scenario string
 	Count    int
@@ -565,64 +567,65 @@ func decisionIDs(decisions []*ent.Decision) []int {
 	return ids
 }
 
-func (c *Client) expireDecisionChunk(chunk... int) (int, error) {
-	updated, err := c.Ent.Decision.Update().Where(
-		decision.IDIn(chunk...),
-	).SetUntil(time.Now().UTC()).Save(c.CTX)
-	if err != nil {
-		return 0, fmt.Errorf("soft delete decisions with provided filter: %w", err)
+// ExpireDecisions sets the expiration of a list of decisions to now()
+// It returns the number of impacted decision for the CAPI/PAPI
+func (c *Client) ExpireDecisions(decisions []*ent.Decision) (int, error) {
+	if len(decisions) <= decisionDeleteBulkSize {
+		ids := decisionIDs(decisions)
+		rows, err := c.Ent.Decision.Update().Where(
+			decision.IDIn(ids...),
+		).SetUntil(time.Now().UTC()).Save(c.CTX)
+		if err != nil {
+			return 0, fmt.Errorf("soft delete decisions with provided filter: %w", err)
+		}
+
+		return rows, nil
 	}
 
-	return updated, nil
-}
-
-// ExpireDecisions sets the expiration of a list of decisions to now()
-// We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
-func (c *Client) ExpireDecisions(decisions []*ent.Decision) (int, error) {
-	const bulkSize = 256 // scientifically proven to be the best value for bulk delete
+	// big batch, let's split it and recurse
 
 	total := 0
 
-	for _, chunk := range slicetools.Chunks(decisionIDs(decisions), bulkSize) {
-		updates, err := c.expireDecisionChunk(chunk...)
+	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
+		rows, err := c.ExpireDecisions(chunk)
 		if err != nil {
 			return total, err
 		}
 
-		total += updates
+		total += rows
 	}
 
 	return total, nil
-}
-
-func (c *Client) deleteDecisionChunk(chunk... int) (int, error) {
-	deleted, err := c.Ent.Decision.Delete().Where(
-		decision.IDIn(chunk...),
-	).Exec(c.CTX)
-	if err != nil {
-		return 0, fmt.Errorf("hard delete decisions with provided filter: %w", err)
-	}
-
-	return deleted, nil
 }
 
 // DeleteDecisions removes a list of decisions from the database
-// We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
+// It returns the number of impacted decision for the CAPI/PAPI
 func (c *Client) DeleteDecisions(decisions []*ent.Decision) (int, error) {
-	const bulkSize = 256 // scientifically proven to be the best value for bulk delete
-
-	total := 0
-
-	for _, chunk := range slicetools.Chunks(decisionIDs(decisions), bulkSize) {
-		deletes, err := c.deleteDecisionChunk(chunk...)
+	if len(decisions) < decisionDeleteBulkSize {
+		ids := decisionIDs(decisions)
+		rows, err := c.Ent.Decision.Delete().Where(
+			decision.IDIn(ids...),
+		).Exec(c.CTX)
 		if err != nil {
-			return total, err
+			return 0, fmt.Errorf("hard delete decisions with provided filter: %w", err)
 		}
-
-		total += deletes
+		return rows, nil
 	}
 
-	return total, nil
+	// big batch, let's split it and recurse
+
+	tot := 0
+
+	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
+		rows, err := c.DeleteDecisions(chunk)
+		if err != nil {
+			return tot, err
+		}
+
+		tot += rows
+	}
+
+	return tot, nil
 }
 
 // ExpireDecision set the expiration of a decision to now()
