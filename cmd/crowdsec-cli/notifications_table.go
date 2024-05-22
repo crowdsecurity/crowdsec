@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aquasecurity/table"
-
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 )
 
 func notificationListTable(out io.Writer, ncfgs map[string]NotificationsCfg) {

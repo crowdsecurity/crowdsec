@@ -4,10 +4,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/aquasecurity/table"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 )
 
 func getBouncersTable(out io.Writer, bouncers []*ent.Bouncer) {
