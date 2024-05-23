@@ -8,3 +8,7 @@ coverage:
     project:
       default:
         target: 0%
+ignore:
+  - "pkg/modelscapi"
+  - "pkg/models"
+  - "pkg/database/ent"
