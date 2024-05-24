@@ -214,27 +214,23 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 	return revoked, nil
 }
 
-func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
+func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
+	uniqueOUs := make(map[string]struct{})
+
 	for _, ou := range allowedOus {
 		// disallow empty ou
 		if ou == "" {
 			return errors.New("empty ou isn't allowed")
 		}
 
-		// drop & warn on duplicate ou
-		ok := true
-
-		for _, validOu := range ta.AllowedOUs {
-			if validOu == ou {
-				ta.logger.Warningf("dropping duplicate ou %s", ou)
-
-				ok = false
-			}
+		if _, exists := uniqueOUs[ou]; exists {
+			ta.logger.Warningf("dropping duplicate ou %s", ou)
+			continue
 		}
 
-		if ok {
-			ta.AllowedOUs = append(ta.AllowedOUs, ou)
-		}
+		uniqueOUs[ou] = struct{}{}
+
+		ta.AllowedOUs = append(ta.AllowedOUs, ou)
 	}
 
 	return nil
@@ -293,7 +289,7 @@ func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Durati
 		logger:          logger,
 	}
 
-	err := ta.SetAllowedOu(allowedOus)
+	err := ta.setAllowedOu(allowedOus)
 	if err != nil {
 		return nil, err
 	}
