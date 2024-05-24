@@ -5,8 +5,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/aquasecurity/table"
-
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
