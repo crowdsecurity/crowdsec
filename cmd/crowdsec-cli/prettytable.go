@@ -12,9 +12,9 @@ import (
 )
 
 type Table struct {
-	Writer table.Writer
-	output io.Writer
-	align []text.Align
+	Writer      table.Writer
+	output      io.Writer
+	align       []text.Align
 	alignHeader []text.Align
 }
 
@@ -22,6 +22,7 @@ func newTable(out io.Writer) *Table {
 	if out == nil {
 		panic("newTable: out is nil")
 	}
+
 	t := table.NewWriter()
 
 	// colorize output, use unicode box characters
@@ -55,9 +56,9 @@ func newTable(out io.Writer) *Table {
 	t.SetStyle(style)
 
 	return &Table{
-		Writer: t,
-		output: out,
-		align: make([]text.Align, 0),
+		Writer:      t,
+		output:      out,
+		align:       make([]text.Align, 0),
 		alignHeader: make([]text.Align, 0),
 	}
 }
@@ -77,6 +78,7 @@ func newLightTable(output io.Writer) *Table {
 	s.Options.SeparateFooter = false
 	s.Options.SeparateHeader = true
 	s.Options.SeparateColumns = false
+
 	return t
 }
 
@@ -84,28 +86,26 @@ func newLightTable(output io.Writer) *Table {
 // wrapper methods for backwards compatibility
 //
 
+// setColumnConfigs must be called right before rendering,
+// to allow for setting the alignment like the old API
 func (t *Table) setColumnConfigs() {
-	// this must be called right before rendering,
-	// to allow for setting the alignment like the old API
-
 	configs := []table.ColumnConfig{}
 	// the go-pretty table does not expose the names or number of columns
-	for i:= 0; i < len(t.align); i++ {
+	for i := 0; i < len(t.align); i++ {
 		configs = append(configs, table.ColumnConfig{
-			Number: i+1,
-			AlignHeader: t.alignHeader[i],
-			Align: t.align[i],
-			WidthMax: 60,
+			Number:           i + 1,
+			AlignHeader:      t.alignHeader[i],
+			Align:            t.align[i],
+			WidthMax:         60,
 			WidthMaxEnforcer: text.WrapSoft,
-			})
+		})
 	}
 	t.Writer.SetColumnConfigs(configs)
 }
 
 func (t *Table) Render() {
 	// change default options for backwards compatibility.
-	// we do this late to allow chaning the alignment like the old API
-
+	// we do this late to allow changing the alignment like the old API
 	t.setColumnConfigs()
 	fmt.Fprintln(t.output, t.Writer.Render())
 }
@@ -114,11 +114,13 @@ func (t *Table) SetHeaders(str ...string) {
 	row := table.Row{}
 	t.align = make([]text.Align, len(str))
 	t.alignHeader = make([]text.Align, len(str))
+
 	for i, v := range str {
 		row = append(row, v)
 		t.align[i] = text.AlignLeft
 		t.alignHeader[i] = text.AlignCenter
 	}
+
 	t.Writer.AppendHeader(row)
 }
 
@@ -127,6 +129,7 @@ func (t *Table) AddRow(str ...string) {
 	for _, v := range str {
 		row = append(row, v)
 	}
+
 	t.Writer.AppendRow(row)
 }
 

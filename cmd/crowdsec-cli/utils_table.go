@@ -5,10 +5,9 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 )
 
 func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {

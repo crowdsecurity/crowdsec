@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 )
 
 func hubTestResultTable(out io.Writer, testResult map[string]bool) {

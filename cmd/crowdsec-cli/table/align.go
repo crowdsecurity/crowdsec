@@ -7,6 +7,6 @@ import (
 // temporary, backward compatibility only
 
 const (
-	AlignLeft = text.AlignLeft
+	AlignLeft  = text.AlignLeft
 	AlignRight = text.AlignRight
 )

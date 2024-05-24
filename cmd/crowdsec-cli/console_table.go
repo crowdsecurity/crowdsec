@@ -3,10 +3,9 @@ package main
 import (
 	"io"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 )
 
 func cmdConsoleStatusTable(out io.Writer, consoleCfg csconfig.ConsoleConfig) {
