@@ -7,13 +7,11 @@ endif
 GO = go
 GOBUILD = $(GO) build
 
-BINARY_NAME = cscli$(EXT)
-
-.PHONY: all
-all: clean build
+BINARY_NAME = notification-file$(EXT)
 
 build: clean
 	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
 
+.PHONY: clean
 clean:
 	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)

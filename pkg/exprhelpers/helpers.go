@@ -550,7 +550,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	value := params[0].(string)
 	since := params[1].(string)
 	if dbClient == nil {
-		log.Error("No database config to call GetDecisionsCount()")
+		log.Error("No database config to call GetDecisionsSinceCount()")
 		return 0, nil
 	}
 	sinceDuration, err := time.ParseDuration(since)
@@ -565,6 +565,34 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 	return count, nil
+}
+
+func GetActiveDecisionsCount(params ...any) (any, error) {
+	value := params[0].(string)
+	if dbClient == nil {
+		log.Error("No database config to call GetActiveDecisionsCount()")
+		return 0, nil
+	}
+	count, err := dbClient.CountActiveDecisionsByValue(value)
+	if err != nil {
+		log.Errorf("Failed to get active decisions count from value '%s'", value)
+		return 0, err
+	}
+	return count, nil
+}
+
+func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
+	value := params[0].(string)
+	if dbClient == nil {
+		log.Error("No database config to call GetActiveDecisionsTimeLeft()")
+		return 0, nil
+	}
+	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(value)
+	if err != nil {
+		log.Errorf("Failed to get active decisions time left from value '%s'", value)
+		return 0, err
+	}
+	return timeLeft, nil
 }
 
 // func LookupHost(value string) []string {

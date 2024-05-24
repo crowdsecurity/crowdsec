@@ -369,7 +369,7 @@ func main() {
 	}
 
 	if flags.PrintVersion {
-		cwversion.Show()
+		os.Stdout.WriteString(cwversion.FullString())
 		os.Exit(0)
 	}
 

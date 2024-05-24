@@ -39,7 +39,7 @@ async def monitor(cmd, args, want_out, want_err, timeout):
 
     status = None
 
-    async def read_stream(p, stream, outstream, pattern):
+    async def read_stream(stream, outstream, pattern):
         nonlocal status
         if stream is None:
             return
@@ -84,8 +84,8 @@ async def monitor(cmd, args, want_out, want_err, timeout):
         await asyncio.wait_for(
             asyncio.wait([
                 asyncio.create_task(process.wait()),
-                asyncio.create_task(read_stream(process, process.stdout, sys.stdout, out_regex)),
-                asyncio.create_task(read_stream(process, process.stderr, sys.stderr, err_regex))
+                asyncio.create_task(read_stream(process.stdout, sys.stdout, out_regex)),
+                asyncio.create_task(read_stream(process.stderr, sys.stderr, err_regex))
             ]), timeout)
         if status is None:
             status = process.returncode

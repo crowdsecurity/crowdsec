@@ -6,6 +6,7 @@ import sys
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         request_path = self.path
@@ -18,7 +19,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         }
         print(json.dumps(log))
         self.send_response(200)
-        self.send_header('Content-type','application/json')
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({}).encode())
         self.wfile.flush()
@@ -26,6 +27,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         return
+
 
 def main(argv):
     try:
@@ -42,6 +44,6 @@ def main(argv):
     return 0
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     sys.exit(main(sys.argv))

@@ -18,7 +18,6 @@ NC='\033[0m'
 SILENT="false"
 DOCKER_MODE="false"
 
-CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
 CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
@@ -82,12 +81,14 @@ SLACK_PLUGIN_BINARY="./cmd/notification-slack/notification-slack"
 SPLUNK_PLUGIN_BINARY="./cmd/notification-splunk/notification-splunk"
 EMAIL_PLUGIN_BINARY="./cmd/notification-email/notification-email"
 SENTINEL_PLUGIN_BINARY="./cmd/notification-sentinel/notification-sentinel"
+FILE_PLUGIN_BINARY="./cmd/notification-file/notification-file"
 
 HTTP_PLUGIN_CONFIG="./cmd/notification-http/http.yaml"
 SLACK_PLUGIN_CONFIG="./cmd/notification-slack/slack.yaml"
 SPLUNK_PLUGIN_CONFIG="./cmd/notification-splunk/splunk.yaml"
 EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
 SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
+FILE_PLUGIN_CONFIG="./cmd/notification-file/file.yaml"
 
 
 BACKUP_DIR=$(mktemp -d)
@@ -525,6 +526,7 @@ install_plugins(){
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${SENTINEL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${FILE_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
         cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
@@ -532,6 +534,7 @@ install_plugins(){
         cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${SENTINEL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${FILE_PLUGIN_CONFIG} /etc/crowdsec/notifications/
     fi
 }
 

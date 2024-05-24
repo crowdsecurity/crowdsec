@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -135,31 +136,35 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 		return false, false
 	}
 
-	crlBinary, rest := pem.Decode(crlContent)
-	if len(rest) > 0 {
-		ta.logger.Warn("CRL file contains more than one PEM block, ignoring the rest")
-	}
+	var crlBlock *pem.Block
 
-	crl, err := x509.ParseRevocationList(crlBinary.Bytes)
-	if err != nil {
-		ta.logger.Errorf("could not parse CRL file, skipping check: %s", err)
-		return false, false
-	}
+	for {
+		crlBlock, crlContent = pem.Decode(crlContent)
+		if crlBlock == nil {
+			break // no more PEM blocks
+		}
 
-	now := time.Now().UTC()
+		crl, err := x509.ParseRevocationList(crlBlock.Bytes)
+		if err != nil {
+			ta.logger.Errorf("could not parse a PEM block in CRL file, skipping: %s", err)
+			continue
+		}
 
-	if now.After(crl.NextUpdate) {
-		ta.logger.Warn("CRL has expired, will still validate the cert against it.")
-	}
+		now := time.Now().UTC()
 
-	if now.Before(crl.ThisUpdate) {
-		ta.logger.Warn("CRL is not yet valid, will still validate the cert against it.")
-	}
+		if now.After(crl.NextUpdate) {
+			ta.logger.Warn("CRL has expired, will still validate the cert against it.")
+		}
 
-	for _, revoked := range crl.RevokedCertificateEntries {
-		if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
-			ta.logger.Warn("client certificate is revoked by CRL")
-			return true, true
+		if now.Before(crl.ThisUpdate) {
+			ta.logger.Warn("CRL is not yet valid, will still validate the cert against it.")
+		}
+
+		for _, revoked := range crl.RevokedCertificateEntries {
+			if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+				ta.logger.Warn("client certificate is revoked by CRL")
+				return true, true
+			}
 		}
 	}
 
@@ -181,9 +186,7 @@ func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (
 	}
 
 	revokedByOCSP, cacheOCSP := ta.isOCSPRevoked(cert, issuer)
-
 	revokedByCRL, cacheCRL := ta.isCRLRevoked(cert)
-
 	revoked := revokedByOCSP || revokedByCRL
 
 	if cacheOCSP && cacheCRL {
@@ -203,8 +206,8 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 
 	revoked, err := ta.isRevoked(cert, issuer)
 	if err != nil {
-		//Fail securely, if we can't check the revocation status, let's consider the cert invalid
-		//We may change this in the future based on users feedback, but this seems the most sensible thing to do
+		// Fail securely, if we can't check the revocation status, let's consider the cert invalid
+		// We may change this in the future based on users feedback, but this seems the most sensible thing to do
 		return true, fmt.Errorf("could not check for client certification revocation status: %w", err)
 	}
 
@@ -213,12 +216,12 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 
 func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
 	for _, ou := range allowedOus {
-		//disallow empty ou
+		// disallow empty ou
 		if ou == "" {
-			return fmt.Errorf("empty ou isn't allowed")
+			return errors.New("empty ou isn't allowed")
 		}
 
-		//drop & warn on duplicate ou
+		// drop & warn on duplicate ou
 		ok := true
 
 		for _, validOu := range ta.AllowedOUs {
@@ -238,11 +241,11 @@ func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
 }
 
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
-	//Checks cert validity, Returns true + CN if client cert matches requested OU
+	// Checks cert validity, Returns true + CN if client cert matches requested OU
 	var clientCert *x509.Certificate
 
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
-		//do not error if it's not TLS or there are no peer certs
+		// do not error if it's not TLS or there are no peer certs
 		return false, "", nil
 	}
 
@@ -279,7 +282,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return true, clientCert.Subject.CommonName, nil
 	}
 
-	return false, "", fmt.Errorf("no verified cert in request")
+	return false, "", errors.New("no verified cert in request")
 }
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {

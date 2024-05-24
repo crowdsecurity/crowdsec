@@ -54,10 +54,6 @@ def main(argv):
         if not args.quiet:
             write_error(ex)
         sys.exit(1)
-    else:
-        sys.exit(0)
-
-    sys.exit(1)
 
 
 if __name__ == "__main__":
