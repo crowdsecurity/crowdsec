@@ -5,12 +5,12 @@
     "size": 2048
   },
   "names": [
-  {
-    "C": "FR",
-    "L": "Paris",
-    "O": "Crowdsec",
-    "OU": "Crowdsec",
-    "ST": "France"
-  }
- ]
+    {
+      "C": "FR",
+      "L": "Paris",
+      "O": "Crowdsec",
+      "OU": "Crowdsec",
+      "ST": "France"
+    }
+  ]
 }
