@@ -14,10 +14,12 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
-func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{
+func CheckCredential(uid int, gid int) *unix.SysProcAttr {
+	return &unix.SysProcAttr{
 		Credential: &syscall.Credential{
 			Uid: uint32(uid),
 			Gid: uint32(gid),
@@ -80,7 +82,7 @@ func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
 }
 
-func getProcessAttr(username string, groupname string) (*syscall.SysProcAttr, error) {
+func getProcessAttr(username string, groupname string) (*unix.SysProcAttr, error) {
 	uid, err := getUID(username)
 	if err != nil {
 		return nil, err
@@ -90,7 +92,7 @@ func getProcessAttr(username string, groupname string) (*syscall.SysProcAttr, er
 		return nil, err
 	}
 
-	return &syscall.SysProcAttr{
+	return &unix.SysProcAttr{
 		Credential: &syscall.Credential{
 			Uid: uid,
 			Gid: gid,
@@ -116,7 +118,7 @@ func pluginIsValid(path string) error {
 	if err != nil {
 		return fmt.Errorf("while looking up the current uid: %w", err)
 	}
-	stat := details.Sys().(*syscall.Stat_t)
+	stat := details.Sys().(*unix.Stat_t)
 	if stat.Uid != currentUID {
 		return fmt.Errorf("plugin at %s is not owned by user '%s'", path, currentUser.Username)
 	}
