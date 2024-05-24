@@ -2,6 +2,9 @@ name: (sub) Bats / sqlite + coverage
 
 on:
   workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: true
 
 env:
   TEST_COVERAGE: true
@@ -76,7 +79,7 @@ jobs:
       run: for file in $(find ./test/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
-    - name: Upload crowdsec coverage to codecov
+    - name: Upload bats coverage to codecov
       uses: codecov/codecov-action@v4
       with:
         files: ./coverage-bats.out
