@@ -297,7 +297,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 			d.logger.Debugf("container with id %s is already being read from", container.ID)
 			continue
 		}
-		if containerConfig, ok := d.EvalContainer(container); ok {
+		if containerConfig := d.EvalContainer(container); containerConfig != nil {
 			d.logger.Infof("reading logs from container %s", containerConfig.Name)
 			d.logger.Debugf("logs options: %+v", *d.containerLogsOptions)
 			dockerReader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, *d.containerLogsOptions)
@@ -387,10 +387,10 @@ func (d *DockerSource) getContainerLabels(containerId string) map[string]interfa
 	return parseLabels(containerDetails.Config.Labels)
 }
 
-func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*ContainerConfig, bool) {
+func (d *DockerSource) EvalContainer(container dockerTypes.Container) *ContainerConfig {
 	for _, containerID := range d.Config.ContainerID {
 		if containerID == container.ID {
-			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}, true
+			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 		}
 	}
 
@@ -400,7 +400,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 				name = name[1:]
 			}
 			if name == containerName {
-				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}, true
+				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 			}
 		}
 
@@ -408,14 +408,14 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 
 	for _, cont := range d.compiledContainerID {
 		if matched := cont.MatchString(container.ID); matched {
-			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}, true
+			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 		}
 	}
 
 	for _, cont := range d.compiledContainerName {
 		for _, name := range container.Names {
 			if matched := cont.MatchString(name); matched {
-				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}, true
+				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 			}
 		}
 
@@ -425,29 +425,29 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		parsedLabels := d.getContainerLabels(container.ID)
 		if len(parsedLabels) == 0 {
 			d.logger.Tracef("container has no 'crowdsec' labels set, ignoring container: %s", container.ID)
-			return nil, false
+			return nil
 		}
 		if _, ok := parsedLabels["enable"]; !ok {
 			d.logger.Errorf("container has 'crowdsec' labels set but no 'crowdsec.enable' key found")
-			return nil, false
+			return nil
 		}
 		enable, ok := parsedLabels["enable"].(string)
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set but it's not a string")
-			return nil, false
+			return nil
 		}
 		if strings.ToLower(enable) != "true" {
 			d.logger.Debugf("container has 'crowdsec.enable' label not set to true ignoring container: %s", container.ID)
-			return nil, false
+			return nil
 		}
 		if _, ok = parsedLabels["labels"]; !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but no 'labels' keys found")
-			return nil, false
+			return nil
 		}
 		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
-			return nil, false
+			return nil
 		}
 		d.logger.Debugf("container labels %+v", labelsTypeCast)
 		labels := make(map[string]string)
@@ -459,10 +459,10 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 			}
 			d.logger.Errorf("label %s is not a string", k)
 		}
-		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(container.ID)}, true
+		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(container.ID)}
 	}
 
-	return nil, false
+	return nil
 }
 
 func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
@@ -502,7 +502,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 				if _, ok := d.runningContainerState[container.ID]; ok {
 					continue
 				}
-				if containerConfig, ok := d.EvalContainer(container); ok {
+				if containerConfig := d.EvalContainer(container); containerConfig != nil {
 					monitChan <- containerConfig
 				}
 			}
