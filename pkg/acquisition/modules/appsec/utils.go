@@ -1,13 +1,15 @@
 package appsecacquisition
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/types/variables"
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -18,10 +20,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var appsecMetaKeys = []string{
+	"id",
+	"name",
+	"method",
+	"uri",
+	"matched_zones",
+	"msg",
+}
+
 func appendMeta(meta models.Meta, key string, value string) models.Meta {
 	if value == "" {
 		return meta
 	}
+
+	alertcontext.TruncateContext([]string{value}, alertcontext.MaxContextValueLen)
+
 	meta = append(meta, &models.MetaItems0{
 		Key:   key,
 		Value: value,
@@ -47,7 +61,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	asndata, err := exprhelpers.GeoIPASNEnrich(sourceIP)
 
 	if err != nil {
-		log.Errorf("Unable to enrich ip '%s'", sourceIP)
+		log.Errorf("Unable to enrich ip '%s' for ASN: %s", sourceIP, err)
 	} else if asndata != nil {
 		record := asndata.(*geoip2.ASN)
 		source.AsName = record.AutonomousSystemOrganization
@@ -56,7 +70,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 	cityData, err := exprhelpers.GeoIPEnrich(sourceIP)
 	if err != nil {
-		log.Errorf("Unable to enrich ip '%s'", sourceIP)
+		log.Errorf("Unable to enrich ip '%s' for geo data: %s", sourceIP, err)
 	} else if cityData != nil {
 		record := cityData.(*geoip2.City)
 		source.Cn = record.Country.IsoCode
@@ -66,7 +80,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 	rangeData, err := exprhelpers.GeoIPRangeEnrich(sourceIP)
 	if err != nil {
-		log.Errorf("Unable to enrich ip '%s'", sourceIP)
+		log.Errorf("Unable to enrich ip '%s' for range: %s", sourceIP, err)
 	} else if rangeData != nil {
 		record := rangeData.(*net.IPNet)
 		source.Range = record.String()
@@ -78,36 +92,10 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
 	alert.Events = make([]*models.Event, len(evt.Appsec.GetRuleIDs()))
-	alert.Meta = make(models.Meta, 0)
-	for _, key := range []string{"target_uri", "method"} {
-
-		valueByte, err := json.Marshal([]string{inEvt.Parsed[key]})
-		if err != nil {
-			log.Debugf("unable to serialize key %s", key)
-			continue
-		}
-
-		meta := models.MetaItems0{
-			Key:   key,
-			Value: string(valueByte),
-		}
-		alert.Meta = append(alert.Meta, &meta)
-	}
-	matchedZones := inEvt.Appsec.GetMatchedZones()
-	if matchedZones != nil {
-		valueByte, err := json.Marshal(matchedZones)
-		if err != nil {
-			log.Debugf("unable to serialize key matched_zones")
-		} else {
-			meta := models.MetaItems0{
-				Key:   "matched_zones",
-				Value: string(valueByte),
-			}
-			alert.Meta = append(alert.Meta, &meta)
-		}
-	}
 
 	now := ptr.Of(time.Now().UTC().Format(time.RFC3339))
+
+	tmpAppsecContext := make(map[string][]string)
 
 	for _, matched_rule := range inEvt.Appsec.MatchedRules {
 		evtRule := models.Event{}
@@ -116,29 +104,74 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 		evtRule.Meta = make(models.Meta, 0)
 
-		for _, key := range []string{"id", "name", "method", "uri", "matched_zones", "msg"} {
+		for _, key := range appsecMetaKeys {
+
+			if tmpAppsecContext[key] == nil {
+				tmpAppsecContext[key] = make([]string, 0)
+			}
 
 			switch value := matched_rule[key].(type) {
 			case string:
 				evtRule.Meta = appendMeta(evtRule.Meta, key, value)
+				if value != "" && !slices.Contains(tmpAppsecContext[key], value) {
+					tmpAppsecContext[key] = append(tmpAppsecContext[key], value)
+				}
 			case int:
-				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", value))
+				val := strconv.Itoa(value)
+				evtRule.Meta = appendMeta(evtRule.Meta, key, val)
+				if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
+					tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
+				}
 			case []string:
 				for _, v := range value {
 					evtRule.Meta = appendMeta(evtRule.Meta, key, v)
+					if v != "" && !slices.Contains(tmpAppsecContext[key], v) {
+						tmpAppsecContext[key] = append(tmpAppsecContext[key], v)
+					}
 				}
 			case []int:
 				for _, v := range value {
-					evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%d", v))
+					val := strconv.Itoa(v)
+					evtRule.Meta = appendMeta(evtRule.Meta, key, val)
+					if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
+						tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
+					}
+
 				}
 			default:
-				evtRule.Meta = appendMeta(evtRule.Meta, key, fmt.Sprintf("%v", value))
+				val := fmt.Sprintf("%v", value)
+				evtRule.Meta = appendMeta(evtRule.Meta, key, val)
+				if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
+					tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
+				}
+
 			}
 		}
 		alert.Events = append(alert.Events, &evtRule)
 	}
 
-	alert.EventsCount = ptr.Of(int32(len(evt.Appsec.MatchedRules)))
+	metas := make([]*models.MetaItems0, 0)
+
+	for key, values := range tmpAppsecContext {
+		if len(values) == 0 {
+			continue
+		}
+
+		valueStr, err := alertcontext.TruncateContext(values, alertcontext.MaxContextValueLen)
+		if err != nil {
+			log.Warningf(err.Error())
+		}
+
+		meta := models.MetaItems0{
+			Key:   key,
+			Value: valueStr,
+		}
+		metas = append(metas, &meta)
+	}
+
+	alert.Meta = metas
+
+	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
 	alert.Leakspeed = ptr.Of("")
 	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
@@ -316,7 +349,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 		corazaRule := map[string]interface{}{
 			"id":            rule.Rule().ID(),
-			"uri":           evt.Parsed["uri"],
+			"uri":           evt.Parsed["target_uri"],
 			"rule_type":     kind,
 			"method":        evt.Parsed["method"],
 			"disruptive":    rule.Disruptive(),
