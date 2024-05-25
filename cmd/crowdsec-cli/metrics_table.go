@@ -7,16 +7,17 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/aquasecurity/table"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 )
 
 // ErrNilTable means a nil pointer was passed instead of a table instance. This is a programming error.
 var ErrNilTable = errors.New("nil table")
 
-func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int) int {
+func lapiMetricsToTable(t *Table, stats map[string]map[string]map[string]int) int {
 	// stats: machine -> route -> method -> count
 	// sort keys to keep consistent order when printing
 	machineKeys := []string{}
@@ -54,7 +55,7 @@ func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]i
 	return numRows
 }
 
-func wlMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
+func wlMetricsToTable(t *Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, ErrNilTable
 	}
@@ -92,7 +93,7 @@ func wlMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int
 	return numRows, nil
 }
 
-func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
+func metricsToTable(t *Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, ErrNilTable
 	}

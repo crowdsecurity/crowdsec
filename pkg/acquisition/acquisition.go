@@ -235,7 +235,10 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 					log.Debugf("skipping empty item in %s", acquisFile)
 					continue
 				}
-				return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
+				if sub.Source != "docker" {
+					//docker is the only source that can be empty
+					return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
+				}
 			}
 			if sub.Source == "" {
 				return nil, fmt.Errorf("data source type is empty ('source') in %s (position: %d)", acquisFile, idx)

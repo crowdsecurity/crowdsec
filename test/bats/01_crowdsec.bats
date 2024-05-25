@@ -36,6 +36,11 @@ teardown() {
     rune -0 wait-for --err "argument provided but not defined: trololo" "$CROWDSEC" trololo
 }
 
+@test "crowdsec -version" {
+    rune -0 "$CROWDSEC" -version
+    assert_output --partial "version:"
+}
+
 @test "crowdsec (no api and no agent)" {
     rune -0 wait-for \
         --err "you must run at least the API Server or crowdsec" \

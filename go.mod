@@ -15,7 +15,6 @@ require (
 	github.com/alexliesenfeld/health v0.8.0
 	github.com/antonmedv/expr v1.15.3
 	github.com/appleboy/gin-jwt/v2 v2.9.2
-	github.com/aquasecurity/table v1.8.0
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.52.0
 	github.com/beevik/etree v1.3.0
@@ -58,6 +57,7 @@ require (
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/jarcoal/httpmock v1.1.0
+	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/jszwec/csvutil v1.5.1
 	github.com/lithammer/dedent v1.1.0
 	github.com/mattn/go-isatty v0.0.20
@@ -155,7 +155,7 @@ require (
 	github.com/magefile/mage v1.15.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect

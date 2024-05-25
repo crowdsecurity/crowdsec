@@ -448,7 +448,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	if n.Debug {
 		clog := log.New()
 		if err = types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
+			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
 		clog.SetLevel(log.DebugLevel)

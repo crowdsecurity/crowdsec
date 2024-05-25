@@ -14,9 +14,9 @@ setup_file() {
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
 
-    cscli collections install crowdsecurity/sshd --error
-    cscli parsers install crowdsecurity/syslog-logs --error
-    cscli parsers install crowdsecurity/dateparse-enrich --error
+    cscli collections install crowdsecurity/sshd --error >/dev/null
+    cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+    cscli parsers install crowdsecurity/dateparse-enrich --error >/dev/null
 
     ./instance-crowdsec start
 }
