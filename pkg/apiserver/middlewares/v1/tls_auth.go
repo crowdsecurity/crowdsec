@@ -155,6 +155,7 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 		return false, true
 	}
 
+	// the encoding/pem package wants bytes, not io.Reader
 	crlContent, err := os.ReadFile(ta.CrlPath)
 	if err != nil {
 		ta.logger.Errorf("could not read CRL file, skipping check: %s", err)
@@ -212,28 +213,13 @@ func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (
 	return revoked, nil
 }
 
-func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
-	if ta.isExpired(cert) {
-		return true, nil
-	}
-
-	revoked, err := ta.isRevoked(cert, issuer)
-	if err != nil {
-		// Fail securely, if we can't check the revocation status, let's consider the cert invalid
-		// We may change this in the future based on users feedback, but this seems the most sensible thing to do
-		return true, err
-	}
-
-	return revoked, nil
-}
-
 func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
 	uniqueOUs := make(map[string]struct{})
 
 	for _, ou := range allowedOus {
 		// disallow empty ou
 		if ou == "" {
-			return errors.New("empty ou isn't allowed")
+			return errors.New("allowed_ou configuration contains invalid empty string")
 		}
 
 		if _, exists := uniqueOUs[ou]; exists {
@@ -262,7 +248,7 @@ func (ta *TLSAuth) checkAllowedOU(cert *x509.Certificate) bool {
 
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	// Checks cert validity, Returns true + CN if client cert matches requested OU
-	var clientCert *x509.Certificate
+	var leaf *x509.Certificate
 
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
 		// do not error if it's not TLS or there are no peer certs
@@ -273,26 +259,33 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", errors.New("no verified cert in request")
 	}
 
-	clientCert = c.Request.TLS.VerifiedChains[0][0]
+	leaf = c.Request.TLS.VerifiedChains[0][0]
 
-	if !ta.checkAllowedOU(clientCert) {
+	if !ta.checkAllowedOU(leaf) {
 		return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
-			clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
+			leaf.Subject.OrganizationalUnit, ta.AllowedOUs)
 	}
 
-	revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
+	if ta.isExpired(leaf) {
+		// XXX: do we need an error here? we did return revoked, I suppose by mistake
+		return false, "", nil
+	}
+
+	revoked, err := ta.isRevoked(leaf, c.Request.TLS.VerifiedChains[0][1])
 	if err != nil {
+		// Fail securely, if we can't check the revocation status, let's consider the cert invalid
+		// We may change this in the future based on users feedback, but this seems the most sensible thing to do
 		ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
 		return false, "", fmt.Errorf("could not check for client certification revocation status: %w", err)
 	}
 
 	if revoked {
-		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", clientCert.Subject.CommonName, clientCert.Subject.OrganizationalUnit)
+		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)
 	}
 
-	ta.logger.Debugf("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
+	ta.logger.Debugf("client OU %v is allowed vs required OU %v", leaf.Subject.OrganizationalUnit, ta.AllowedOUs)
 
-	return true, clientCert.Subject.CommonName, nil
+	return true, leaf.Subject.CommonName, nil
 }
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
