@@ -221,7 +221,7 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 	if err != nil {
 		// Fail securely, if we can't check the revocation status, let's consider the cert invalid
 		// We may change this in the future based on users feedback, but this seems the most sensible thing to do
-		return true, fmt.Errorf("could not check for client certification revocation status: %w", err)
+		return true, err
 	}
 
 	return revoked, nil
