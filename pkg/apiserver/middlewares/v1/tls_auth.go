@@ -91,7 +91,8 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // isOCSPRevoked checks if the client certificate is revoked by any of the OCSP servers present in the certificate.
-// It returns a boolean indicating if the certificate is revoked and a boolean indicating if the OCSP check was successful and could be cached.
+// It returns a boolean indicating if the certificate is revoked and a boolean indicating
+// if the OCSP check was successful and could be cached.
 func (ta *TLSAuth) isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
 	if cert.OCSPServer == nil || len(cert.OCSPServer) == 0 {
 		ta.logger.Infof("TLSAuth: no OCSP Server present in client certificate, skipping OCSP verification")
@@ -248,6 +249,17 @@ func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
 	return nil
 }
 
+func (ta *TLSAuth) checkAllowedOU(cert *x509.Certificate) bool {
+	for _, ou := range cert.Subject.OrganizationalUnit {
+		for _, allowedOu := range ta.AllowedOUs {
+			if allowedOu == ou {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	// Checks cert validity, Returns true + CN if client cert matches requested OU
 	var clientCert *x509.Certificate
@@ -261,19 +273,9 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", errors.New("no verified cert in request")
 	}
 
-	validOU := false
 	clientCert = c.Request.TLS.VerifiedChains[0][0]
 
-	for _, ou := range clientCert.Subject.OrganizationalUnit {
-		for _, allowedOu := range ta.AllowedOUs {
-			if allowedOu == ou {
-				validOU = true
-				break
-			}
-		}
-	}
-
-	if !validOU {
+	if !ta.checkAllowedOU(clientCert) {
 		return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
 			clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
 	}
