@@ -122,8 +122,32 @@ func (ta *TLSAuth) isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificat
 	return true, false
 }
 
+func decodeCRLs(content []byte, logger *log.Entry) []*x509.RevocationList {
+	var crls []*x509.RevocationList
+
+	for {
+		block, rest := pem.Decode(content)
+		if block == nil {
+			break // no more PEM blocks
+		}
+
+		content = rest
+
+		crl, err := x509.ParseRevocationList(block.Bytes)
+		if err != nil {
+			logger.Errorf("could not parse a PEM block in CRL file, skipping: %s", err)
+			continue
+		}
+
+		crls = append(crls, crl)
+	}
+
+	return crls
+}
+
 // isCRLRevoked checks if the client certificate is revoked by the CRL present in the CrlPath.
-// It returns a boolean indicating if the certificate is revoked and a boolean indicating if the CRL check was successful and could be cached.
+// It returns a boolean indicating if the certificate is revoked and a boolean indicating
+// if the CRL check was successful and could be cached.
 func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 	if ta.CrlPath == "" {
 		ta.logger.Info("no crl_path, skipping CRL check")
@@ -136,22 +160,10 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 		return false, false
 	}
 
-	var crlBlock *pem.Block
+	crls := decodeCRLs(crlContent, ta.logger)
+	now := time.Now().UTC()
 
-	for {
-		crlBlock, crlContent = pem.Decode(crlContent)
-		if crlBlock == nil {
-			break // no more PEM blocks
-		}
-
-		crl, err := x509.ParseRevocationList(crlBlock.Bytes)
-		if err != nil {
-			ta.logger.Errorf("could not parse a PEM block in CRL file, skipping: %s", err)
-			continue
-		}
-
-		now := time.Now().UTC()
-
+	for _, crl := range crls {
 		if now.After(crl.NextUpdate) {
 			ta.logger.Warn("CRL has expired, will still validate the cert against it.")
 		}
