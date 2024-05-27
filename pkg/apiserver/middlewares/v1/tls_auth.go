@@ -257,40 +257,40 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", nil
 	}
 
-	if len(c.Request.TLS.VerifiedChains) > 0 {
-		validOU := false
-		clientCert = c.Request.TLS.VerifiedChains[0][0]
-
-		for _, ou := range clientCert.Subject.OrganizationalUnit {
-			for _, allowedOu := range ta.AllowedOUs {
-				if allowedOu == ou {
-					validOU = true
-					break
-				}
-			}
-		}
-
-		if !validOU {
-			return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
-				clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
-		}
-
-		revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
-		if err != nil {
-			ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
-			return false, "", fmt.Errorf("could not check for client certification revocation status: %w", err)
-		}
-
-		if revoked {
-			return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", clientCert.Subject.CommonName, clientCert.Subject.OrganizationalUnit)
-		}
-
-		ta.logger.Debugf("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
-
-		return true, clientCert.Subject.CommonName, nil
+	if len(c.Request.TLS.VerifiedChains) == 0 {
+		return false, "", errors.New("no verified cert in request")
 	}
 
-	return false, "", errors.New("no verified cert in request")
+	validOU := false
+	clientCert = c.Request.TLS.VerifiedChains[0][0]
+
+	for _, ou := range clientCert.Subject.OrganizationalUnit {
+		for _, allowedOu := range ta.AllowedOUs {
+			if allowedOu == ou {
+				validOU = true
+				break
+			}
+		}
+	}
+
+	if !validOU {
+		return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
+			clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
+	}
+
+	revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
+	if err != nil {
+		ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
+		return false, "", fmt.Errorf("could not check for client certification revocation status: %w", err)
+	}
+
+	if revoked {
+		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", clientCert.Subject.CommonName, clientCert.Subject.OrganizationalUnit)
+	}
+
+	ta.logger.Debugf("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
+
+	return true, clientCert.Subject.CommonName, nil
 }
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
