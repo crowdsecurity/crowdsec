@@ -493,6 +493,7 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 				switch cfg.Cscli.Output {
 				case "human":
 					if err := cli.displayOneAlert(alert, details); err != nil {
+						log.Warnf("unable to display alert with id %s: %s", alertID, err)
 						continue
 					}
 				case "json":
