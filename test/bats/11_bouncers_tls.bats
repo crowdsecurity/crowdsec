@@ -124,7 +124,7 @@ teardown() {
 }
 
 @test "simulate one bouncer request with an invalid cert" {
-    rune -0 curl -f -s \
+    rune -77 curl -f -s \
         --cert "${tmpdir}/bouncer_invalid.pem" \
         --key "${tmpdir}/bouncer_invalid-key.pem" \
         --cacert "${tmpdir}/ca-key.pem" \
@@ -134,7 +134,7 @@ teardown() {
 }
 
 @test "simulate one bouncer request with an invalid OU" {
-    rune -0 curl -f -s \
+    rune -22 curl -f -s \
         --cert "${tmpdir}/bouncer_bad_ou.pem" \
         --key "${tmpdir}/bouncer_bad_ou-key.pem" \
         --cacert "${tmpdir}/bundle.pem" \
@@ -147,7 +147,7 @@ teardown() {
     # we have two certificates revoked by different CRL blocks
     for cert_name in "revoked_1" "revoked_2"; do
         truncate_log
-        rune -0 curl -f -s \
+        rune -0 curl -s \
             --cert "${tmpdir}/${cert_name}.pem" \
             --key "${tmpdir}/${cert_name}-key.pem" \
             --cacert "${tmpdir}/bundle.pem" \
