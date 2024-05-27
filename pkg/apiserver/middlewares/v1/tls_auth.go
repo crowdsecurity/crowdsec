@@ -21,14 +21,8 @@ import (
 type TLSAuth struct {
 	AllowedOUs      []string
 	CrlPath         string
-	revocationCache map[string]cacheEntry
-	cacheExpiration time.Duration
+	revocationCache *RevocationCache
 	logger          *log.Entry
-}
-
-type cacheEntry struct {
-	revoked   bool
-	timestamp time.Time
 }
 
 func (ta *TLSAuth) ocspQuery(server string, cert *x509.Certificate, issuer *x509.Certificate) (*ocsp.Response, error) {
@@ -187,16 +181,8 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 
 func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	sn := cert.SerialNumber.String()
-	if cacheValue, ok := ta.revocationCache[sn]; ok {
-		if time.Now().UTC().Sub(cacheValue.timestamp) < ta.cacheExpiration {
-			ta.logger.Debugf("TLSAuth: using cached value for cert %s: %t", sn, cacheValue.revoked)
-			return cacheValue.revoked, nil
-		}
-
-		ta.logger.Debugf("TLSAuth: cached value expired, removing from cache")
-		delete(ta.revocationCache, sn)
-	} else {
-		ta.logger.Tracef("TLSAuth: no cached value for cert %s", sn)
+	if revoked, ok := ta.revocationCache.Get(sn, ta.logger); ok {
+		return revoked, nil
 	}
 
 	revokedByOCSP, cacheOCSP := ta.isOCSPRevoked(cert, issuer)
@@ -204,10 +190,7 @@ func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (
 	revoked := revokedByOCSP || revokedByCRL
 
 	if cacheOCSP && cacheCRL {
-		ta.revocationCache[sn] = cacheEntry{
-			revoked:   revoked,
-			timestamp: time.Now().UTC(),
-		}
+		ta.revocationCache.Set(sn, revoked)
 	}
 
 	return revoked, nil
@@ -290,8 +273,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
 	ta := &TLSAuth{
-		revocationCache: map[string]cacheEntry{},
-		cacheExpiration: cacheExpiration,
+		revocationCache: NewRevocationCache(cacheExpiration),
 		CrlPath:         crlPath,
 		logger:          logger,
 	}
