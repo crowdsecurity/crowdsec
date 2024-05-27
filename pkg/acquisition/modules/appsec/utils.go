@@ -34,8 +34,6 @@ func appendMeta(meta models.Meta, key string, value string) models.Meta {
 		return meta
 	}
 
-	alertcontext.TruncateContext([]string{value}, alertcontext.MaxContextValueLen)
-
 	meta = append(meta, &models.MetaItems0{
 		Key:   key,
 		Value: value,
