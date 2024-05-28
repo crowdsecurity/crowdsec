@@ -95,7 +95,7 @@ func (cc *CRLChecker) refresh() error {
 // isRevoked checks if the client certificate is revoked by any of the CRL blocks
 // It returns a boolean indicating if the certificate is revoked and a boolean indicating
 // if the CRL check was successful and could be cached.
-func (cc *CRLChecker) isRevoked(cert *x509.Certificate) (bool, bool) {
+func (cc *CRLChecker) isRevokedBy(cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
 	if cc == nil {
 		return false, true
 	}
@@ -114,6 +114,10 @@ func (cc *CRLChecker) isRevoked(cert *x509.Certificate) (bool, bool) {
 	defer cc.mu.RUnlock()
 
 	for _, crl := range cc.crls {
+		if err := crl.CheckSignatureFrom(issuer); err != nil {
+			continue
+		}
+
 		if now.After(crl.NextUpdate) {
 			cc.logger.Warn("CRL has expired, will still validate the cert against it.")
 		}

@@ -34,25 +34,30 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 	return false
 }
 
-// checkRevocation checks all verified chains certificate against OCSP and CRL
-func (ta *TLSAuth) checkRevocation(chains [][]*x509.Certificate) bool {
-	leaf := chains[0][0]
-	issuer := chains[0][1]
+// checkRevocationPath checks a single chain against OCSP and CRL
+func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) bool {
+	for i := len(chain) - 1; i > 0; i-- {
+		cert := chain[i-1]
+		issuer := chain[i]
 
-	sn := leaf.SerialNumber.String()
-	if revoked, cached := ta.revocationCache.Get(sn, ta.logger); cached {
-		return revoked
+		if revoked, cached := ta.revocationCache.Get(cert, issuer, ta.logger); cached {
+			return revoked
+		}
+
+		revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(cert, issuer)
+		revokedByCRL, checkedByCRL := ta.crlChecker.isRevokedBy(cert, issuer)
+		revoked := revokedByOCSP || revokedByCRL
+
+		if checkedByOCSP && checkedByCRL {
+			ta.revocationCache.Set(cert, issuer, revoked)
+		}
+
+		if revoked {
+			return true
+		}
 	}
 
-	revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(leaf, issuer)
-	revokedByCRL, checkedByCRL := ta.crlChecker.isRevoked(leaf)
-	revoked := revokedByOCSP || revokedByCRL
-
-	if checkedByOCSP && checkedByCRL {
-		ta.revocationCache.Set(sn, revoked)
-	}
-
-	return revoked
+	return false
 }
 
 func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
@@ -115,13 +120,13 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", nil
 	}
 
-	revoked := ta.checkRevocation(c.Request.TLS.VerifiedChains)
-
-	if revoked {
-		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)
+	for _, chain := range c.Request.TLS.VerifiedChains {
+		if ta.checkRevocationPath(chain) {
+			// TODO: we might bubble up the issuer information here? store in cache too?
+			return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked",
+				leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)
+		}
 	}
-
-	ta.logger.Debugf("client OU %v is allowed vs required OU %v", leaf.Subject.OrganizationalUnit, ta.AllowedOUs)
 
 	return true, leaf.Subject.CommonName, nil
 }
