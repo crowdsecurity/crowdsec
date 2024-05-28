@@ -37,15 +37,15 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 // isRevoked checks a certificate against OCSP and CRL
 func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	sn := cert.SerialNumber.String()
-	if revoked, ok := ta.revocationCache.Get(sn, ta.logger); ok {
+	if revoked, cached := ta.revocationCache.Get(sn, ta.logger); cached {
 		return revoked, nil
 	}
 
-	revokedByOCSP, cacheOCSP := ta.ocspChecker.isRevoked(cert, issuer)
-	revokedByCRL, cacheCRL := ta.crlChecker.isRevoked(cert)
+	revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevoked(cert, issuer)
+	revokedByCRL, checkedByCRL := ta.crlChecker.isRevoked(cert)
 	revoked := revokedByOCSP || revokedByCRL
 
-	if cacheOCSP && cacheCRL {
+	if checkedByOCSP && checkedByCRL {
 		ta.revocationCache.Set(sn, revoked)
 	}
 

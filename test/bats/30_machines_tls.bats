@@ -243,3 +243,16 @@ teardown() {
         ./instance-crowdsec stop
     done
 }
+
+# vvv this test must be last, or it can break the ones that follow
+
+@test "allowed_ou can't contain an empty string" {
+    config_set '
+        .common.log_media="stdout" |
+        .api.server.tls.agents_allowed_ou=["agent-ou", ""]
+    '
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "allowed_ou configuration contains invalid empty string"
+}
+
+# ^^^ this test must be last, or it can break the ones that follow

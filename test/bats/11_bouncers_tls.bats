@@ -107,7 +107,7 @@ teardown() {
     assert_output "[]"
 }
 
-@test "simulate one bouncer request with a valid cert" {
+@test "simulate a bouncer request with a valid cert" {
     rune -0 curl -f -s \
         --cert "${tmpdir}/bouncer.pem" \
         --key "${tmpdir}/bouncer-key.pem" \
@@ -123,7 +123,7 @@ teardown() {
     rune cscli bouncers delete localhost@127.0.0.1
 }
 
-@test "simulate one bouncer request with an invalid cert" {
+@test "simulate a bouncer request with an invalid cert" {
     rune -77 curl -f -s \
         --cert "${tmpdir}/bouncer_invalid.pem" \
         --key "${tmpdir}/bouncer_invalid-key.pem" \
@@ -133,7 +133,7 @@ teardown() {
     assert_output "[]"
 }
 
-@test "simulate one bouncer request with an invalid OU" {
+@test "simulate a bouncer request with an invalid OU" {
     rune -22 curl -f -s \
         --cert "${tmpdir}/bouncer_bad_ou.pem" \
         --key "${tmpdir}/bouncer_bad_ou-key.pem" \
@@ -143,7 +143,7 @@ teardown() {
     assert_output "[]"
 }
 
-@test "simulate one bouncer request with a revoked certificate" {
+@test "simulate a bouncer request with a revoked certificate" {
     # we have two certificates revoked by different CRL blocks
     for cert_name in "revoked_1" "revoked_2"; do
         truncate_log
@@ -159,3 +159,17 @@ teardown() {
         assert_output "[]"
     done
 }
+
+# vvv this test must be last, or it can break the ones that follow
+
+@test "allowed_ou can't contain an empty string" {
+    ./instance-crowdsec stop
+    config_set '
+        .common.log_media="stdout" |
+        .api.server.tls.bouncers_allowed_ou=["bouncer-ou", ""]
+    '
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "allowed_ou configuration contains invalid empty string"
+}
+
+# ^^^ this test must be last, or it can break the ones that follow
