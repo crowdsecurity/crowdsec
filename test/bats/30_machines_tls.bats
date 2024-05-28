@@ -21,15 +21,17 @@ setup_file() {
         --initca "${CFDIR}/ca_root.json" \
         | cfssljson --bare "${tmpdir}/root"
 
-    # Intermediate CA
-    cfssl gencert -loglevel 2 \
-        --initca "${CFDIR}/ca_intermediate.json" \
-        | cfssljson --bare "${tmpdir}/inter"
+    # Intermediate CAs (valid or revoked)
+    for cert_name in "inter" "inter_rev"; do
+        cfssl gencert -loglevel 2 \
+            --initca "${CFDIR}/ca_intermediate.json" \
+            | cfssljson --bare "${tmpdir}/${cert_name}"
 
-    cfssl sign -loglevel 2 \
-        -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/inter.csr" \
-        | cfssljson --bare "${tmpdir}/inter"
+        cfssl sign -loglevel 2 \
+            -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
+            -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/${cert_name}.csr" \
+            | cfssljson --bare "${tmpdir}/${cert_name}"
+    done
 
     # Server cert for crowdsec with the intermediate
     cfssl gencert -loglevel 2 \
@@ -37,49 +39,63 @@ setup_file() {
         -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" \
         | cfssljson --bare "${tmpdir}/server"
 
-    # Client cert (valid)
+    # Client certs (valid or revoked)
+    for cert_name in "leaf" "leaf_rev1" "leaf_rev2"; do
+        cfssl gencert -loglevel 3 \
+            -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
+            -config "${CFDIR}/profiles.json" -profile=client \
+            "${CFDIR}/agent.json" \
+            | cfssljson --bare "${tmpdir}/${cert_name}"
+    done
+
+    # Client cert (by revoked inter)
     cfssl gencert -loglevel 3 \
-        -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" \
-        | cfssljson --bare "${tmpdir}/leaf"
+        -ca "${tmpdir}/inter_rev.pem" -ca-key "${tmpdir}/inter_rev-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile=client \
+        "${CFDIR}/agent.json" \
+        | cfssljson --bare "${tmpdir}/leaf_rev3"
 
     # Bad client cert (invalid OU)
     cfssl gencert -loglevel 3 \
         -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent_invalid.json" \
+        -config "${CFDIR}/profiles.json" -profile=client \
+        "${CFDIR}/agent_invalid.json" \
         | cfssljson --bare "${tmpdir}/leaf_bad_ou"
 
     # Bad client cert (directly signed by the CA, it should be refused by crowdsec as it uses the intermediate)
     cfssl gencert -loglevel 3 \
         -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" \
+        -config "${CFDIR}/profiles.json" -profile=client \
+        "${CFDIR}/agent.json" \
         | cfssljson --bare "${tmpdir}/leaf_invalid"
-
-    # Bad client certs (revoked)
-    for cert_name in "leaf_rev1" "leaf_rev2"; do
-        cfssl gencert -loglevel 3 \
-            -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-            -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" \
-            | cfssljson --bare "${tmpdir}/${cert_name}"
-
-        cfssl certinfo \
-            -cert "${tmpdir}/${cert_name}.pem" \
-            | jq -r '.serial_number' > "${tmpdir}/serials_${cert_name}.txt"
-    done
 
     truncate -s 0 "${tmpdir}/crl.pem"
 
-    # Generate separate CRL blocks and concatenate them
-    for cert_name in "leaf_rev1" "leaf_rev2"; do
-        {
-            echo '-----BEGIN X509 CRL-----'
-            cfssl gencrl \
-                "${tmpdir}/serials_${cert_name}.txt" \
-                "${tmpdir}/root.pem" \
-                "${tmpdir}/root-key.pem"
-            echo '-----END X509 CRL-----'
-        } >> "${tmpdir}/crl.pem"
-    done
+    # Revoke certs
+    {
+        # TODO: revoke by intermediate, not root
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cfssl certinfo -cert "${tmpdir}/leaf_rev1.pem" | jq -r '.serial_number') \
+            "${tmpdir}/root.pem" \
+            "${tmpdir}/root-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cfssl certinfo -cert "${tmpdir}/leaf_rev2.pem" | jq -r '.serial_number') \
+            "${tmpdir}/root.pem" \
+            "${tmpdir}/root-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cfssl certinfo -cert "${tmpdir}/inter_rev.pem" | jq -r '.serial_number') \
+            "${tmpdir}/root.pem" \
+            "${tmpdir}/root-key.pem"
+        echo '-----END X509 CRL-----'
+    } >> "${tmpdir}/crl.pem"
+
 
     cat "${tmpdir}/root.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
 
