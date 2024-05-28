@@ -14,49 +14,49 @@ setup_file() {
     export CFDIR
 
     # Root CA
-    cfssl gencert \
-        --initca "${CFDIR}/ca_root.json" 2>/dev/null \
-        | cfssljson --bare "${tmpdir}/ca"
+    cfssl gencert -loglevel 2 \
+        --initca "${CFDIR}/ca_root.json" \
+        | cfssljson --bare "${tmpdir}/root"
 
     # Intermediate CA
-    cfssl gencert \
-        --initca "${CFDIR}/ca_intermediate.json" 2>/dev/null \
+    cfssl gencert -loglevel 2 \
+        --initca "${CFDIR}/ca_intermediate.json" \
         | cfssljson --bare "${tmpdir}/inter"
 
-    cfssl sign \
-        -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/inter.csr" 2>/dev/null \
+    cfssl sign -loglevel 2 \
+        -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/inter.csr" \
         | cfssljson --bare "${tmpdir}/inter"
 
     # Server cert for crowdsec with the intermediate
-    cfssl gencert \
+    cfssl gencert -loglevel 2 \
         -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" 2>/dev/null \
+        -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" \
         | cfssljson --bare "${tmpdir}/server"
 
     # Client cert (valid)
-    cfssl gencert \
+    cfssl gencert -loglevel 3 \
         -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null \
-        | cfssljson --bare "${tmpdir}/bouncer"
+        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" \
+        | cfssljson --bare "${tmpdir}/leaf"
 
     # Bad client cert (invalid OU)
-    cfssl gencert \
+    cfssl gencert -loglevel 3 \
         -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer_invalid.json" 2>/dev/null \
-        | cfssljson --bare "${tmpdir}/bouncer_bad_ou"
+        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer_invalid.json" \
+        | cfssljson --bare "${tmpdir}/leaf_bad_ou"
 
     # Bad client cert (directly signed by the CA, it should be refused by crowdsec as it uses the intermediate)
-    cfssl gencert \
-        -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" \
-        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null \
-        | cfssljson --bare "${tmpdir}/bouncer_invalid"
+    cfssl gencert -loglevel 3 \
+        -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" \
+        | cfssljson --bare "${tmpdir}/leaf_invalid"
 
     # Bad client certs (revoked)
-    for cert_name in "revoked_1" "revoked_2"; do
-        cfssl gencert \
+    for cert_name in "leaf_rev1" "leaf_rev2"; do
+        cfssl gencert -loglevel 3 \
             -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
-            -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null \
+            -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" \
             | cfssljson --bare "${tmpdir}/${cert_name}"
 
         cfssl certinfo \
@@ -64,17 +64,21 @@ setup_file() {
             | jq -r '.serial_number' > "${tmpdir}/serials_${cert_name}.txt"
     done
 
-    # Generate separate CRL blocks and concatenate them
-    for cert_name in "revoked_1" "revoked_2"; do
-        echo '-----BEGIN X509 CRL-----' > "${tmpdir}/crl_${cert_name}.pem"
-        cfssl gencrl \
-            "${tmpdir}/serials_${cert_name}.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" \
-            >> "${tmpdir}/crl_${cert_name}.pem"
-        echo '-----END X509 CRL-----' >> "${tmpdir}/crl_${cert_name}.pem"
-    done
-    cat "${tmpdir}/crl_revoked_1.pem" "${tmpdir}/crl_revoked_2.pem" >"${tmpdir}/crl.pem"
+    truncate -s 0 "${tmpdir}/crl.pem"
 
-    cat "${tmpdir}/ca.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
+    # Generate separate CRL blocks and concatenate them
+    for cert_name in "leaf_rev1" "leaf_rev2"; do
+        {
+            echo '-----BEGIN X509 CRL-----'
+            cfssl gencrl \
+                "${tmpdir}/serials_${cert_name}.txt" \
+                "${tmpdir}/root.pem" \
+                "${tmpdir}/root-key.pem"
+            echo '-----END X509 CRL-----'
+        } >> "${tmpdir}/crl.pem"
+    done
+
+    cat "${tmpdir}/root.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
 
     config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
@@ -109,8 +113,8 @@ teardown() {
 
 @test "simulate a bouncer request with a valid cert" {
     rune -0 curl -f -s \
-        --cert "${tmpdir}/bouncer.pem" \
-        --key "${tmpdir}/bouncer-key.pem" \
+        --cert "${tmpdir}/leaf.pem" \
+        --key "${tmpdir}/leaf-key.pem" \
         --cacert "${tmpdir}/bundle.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
@@ -125,9 +129,9 @@ teardown() {
 
 @test "simulate a bouncer request with an invalid cert" {
     rune -77 curl -f -s \
-        --cert "${tmpdir}/bouncer_invalid.pem" \
-        --key "${tmpdir}/bouncer_invalid-key.pem" \
-        --cacert "${tmpdir}/ca-key.pem" \
+        --cert "${tmpdir}/leaf_invalid.pem" \
+        --key "${tmpdir}/leaf_invalid-key.pem" \
+        --cacert "${tmpdir}/root-key.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
     rune -0 cscli bouncers list -o json
     assert_output "[]"
@@ -135,8 +139,8 @@ teardown() {
 
 @test "simulate a bouncer request with an invalid OU" {
     rune -22 curl -f -s \
-        --cert "${tmpdir}/bouncer_bad_ou.pem" \
-        --key "${tmpdir}/bouncer_bad_ou-key.pem" \
+        --cert "${tmpdir}/leaf_bad_ou.pem" \
+        --key "${tmpdir}/leaf_bad_ou-key.pem" \
         --cacert "${tmpdir}/bundle.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
     rune -0 cscli bouncers list -o json
@@ -145,7 +149,7 @@ teardown() {
 
 @test "simulate a bouncer request with a revoked certificate" {
     # we have two certificates revoked by different CRL blocks
-    for cert_name in "revoked_1" "revoked_2"; do
+    for cert_name in "leaf_rev1" "leaf_rev2"; do
         truncate_log
         rune -0 curl -s \
             --cert "${tmpdir}/${cert_name}.pem" \
