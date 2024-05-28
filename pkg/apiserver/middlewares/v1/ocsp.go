@@ -66,10 +66,10 @@ func (oc *OCSPChecker) query(server string, cert *x509.Certificate, issuer *x509
 	return ocspResponse, err
 }
 
-// isRevoked checks if the client certificate is revoked by any of the OCSP servers present in the certificate.
+// isRevokedBy checks if the client certificate is revoked by the issuer via any of the OCSP servers present in the certificate.
 // It returns a boolean indicating if the certificate is revoked and a boolean indicating
 // if the OCSP check was successful and could be cached.
-func (oc *OCSPChecker) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
+func (oc *OCSPChecker) isRevokedBy(cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
 	if cert.OCSPServer == nil || len(cert.OCSPServer) == 0 {
 		oc.logger.Infof("TLSAuth: no OCSP Server present in client certificate, skipping OCSP verification")
 		return false, true

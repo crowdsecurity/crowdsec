@@ -34,15 +34,18 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 	return false
 }
 
-// isRevoked checks a certificate against OCSP and CRL
-func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
-	sn := cert.SerialNumber.String()
+// checkRevocation checks all verified chains certificate against OCSP and CRL
+func (ta *TLSAuth) checkRevocation(chains [][]*x509.Certificate) (bool, error) {
+	leaf := chains[0][0]
+	issuer := chains[0][1]
+
+	sn := leaf.SerialNumber.String()
 	if revoked, cached := ta.revocationCache.Get(sn, ta.logger); cached {
 		return revoked, nil
 	}
 
-	revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevoked(cert, issuer)
-	revokedByCRL, checkedByCRL := ta.crlChecker.isRevoked(cert)
+	revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(leaf, issuer)
+	revokedByCRL, checkedByCRL := ta.crlChecker.isRevoked(leaf)
 	revoked := revokedByOCSP || revokedByCRL
 
 	if checkedByOCSP && checkedByCRL {
@@ -99,6 +102,8 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", errors.New("no verified cert in request")
 	}
 
+	// although there can be multiple chains, the leaf certificate is the same
+	// we take the first one
 	leaf = c.Request.TLS.VerifiedChains[0][0]
 
 	if !ta.checkAllowedOU(leaf) {
@@ -111,7 +116,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", nil
 	}
 
-	revoked, err := ta.isRevoked(leaf, c.Request.TLS.VerifiedChains[0][1])
+	revoked, err := ta.checkRevocation(c.Request.TLS.VerifiedChains)
 	if err != nil {
 		// XXX: never happens
 		// Fail securely, if we can't check the revocation status, let's consider the cert invalid
