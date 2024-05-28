@@ -35,13 +35,13 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // checkRevocation checks all verified chains certificate against OCSP and CRL
-func (ta *TLSAuth) checkRevocation(chains [][]*x509.Certificate) (bool, error) {
+func (ta *TLSAuth) checkRevocation(chains [][]*x509.Certificate) bool {
 	leaf := chains[0][0]
 	issuer := chains[0][1]
 
 	sn := leaf.SerialNumber.String()
 	if revoked, cached := ta.revocationCache.Get(sn, ta.logger); cached {
-		return revoked, nil
+		return revoked
 	}
 
 	revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(leaf, issuer)
@@ -52,7 +52,7 @@ func (ta *TLSAuth) checkRevocation(chains [][]*x509.Certificate) (bool, error) {
 		ta.revocationCache.Set(sn, revoked)
 	}
 
-	return revoked, nil
+	return revoked
 }
 
 func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
@@ -112,18 +112,10 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	}
 
 	if ta.isExpired(leaf) {
-		// XXX: do we need an error here? we did return revoked, I suppose by mistake
 		return false, "", nil
 	}
 
-	revoked, err := ta.checkRevocation(c.Request.TLS.VerifiedChains)
-	if err != nil {
-		// XXX: never happens
-		// Fail securely, if we can't check the revocation status, let's consider the cert invalid
-		// We may change this in the future based on users feedback, but this seems the most sensible thing to do
-		ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
-		return false, "", fmt.Errorf("could not check for client certification revocation status: %w", err)
-	}
+	revoked := ta.checkRevocation(c.Request.TLS.VerifiedChains)
 
 	if revoked {
 		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)

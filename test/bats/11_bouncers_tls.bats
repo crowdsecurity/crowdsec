@@ -18,6 +18,7 @@ set -u
 # CRL1: inter revokes leaf_rev1
 # CRL2: inter revokes leaf_rev2
 # CRL3: root revokes inter_rev
+# CRL4: root revokes leaf
 
 setup_file() {
     load "../lib/setup_file.sh"
