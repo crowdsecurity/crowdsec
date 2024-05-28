@@ -73,19 +73,18 @@ setup_file() {
 
     # Revoke certs
     {
-        # TODO: revoke by intermediate, not root
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
             <(cfssl certinfo -cert "${tmpdir}/leaf_rev1.pem" | jq -r '.serial_number') \
-            "${tmpdir}/root.pem" \
-            "${tmpdir}/root-key.pem"
+            "${tmpdir}/inter.pem" \
+            "${tmpdir}/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
             <(cfssl certinfo -cert "${tmpdir}/leaf_rev2.pem" | jq -r '.serial_number') \
-            "${tmpdir}/root.pem" \
-            "${tmpdir}/root-key.pem"
+            "${tmpdir}/inter.pem" \
+            "${tmpdir}/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
@@ -95,7 +94,6 @@ setup_file() {
             "${tmpdir}/root-key.pem"
         echo '-----END X509 CRL-----'
     } >> "${tmpdir}/crl.pem"
-
 
     cat "${tmpdir}/root.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
 

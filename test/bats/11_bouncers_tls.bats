@@ -4,7 +4,6 @@
 set -u
 
 # TODO:
-# revoke by intermediate, not root
 # revoke by root should be considered invalid (and test it)
 # test indirectly revoked leaf
 
@@ -87,19 +86,18 @@ setup_file() {
 
     # Revoke certs
     {
-        # TODO: revoke by intermediate, not root
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
             <(cfssl certinfo -cert "${tmpdir}/leaf_rev1.pem" | jq -r '.serial_number') \
-            "${tmpdir}/root.pem" \
-            "${tmpdir}/root-key.pem"
+            "${tmpdir}/inter.pem" \
+            "${tmpdir}/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
             <(cfssl certinfo -cert "${tmpdir}/leaf_rev2.pem" | jq -r '.serial_number') \
-            "${tmpdir}/root.pem" \
-            "${tmpdir}/root-key.pem"
+            "${tmpdir}/inter.pem" \
+            "${tmpdir}/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
