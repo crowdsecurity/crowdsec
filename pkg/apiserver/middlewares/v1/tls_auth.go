@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -83,16 +84,14 @@ func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
 	return nil
 }
 
-func (ta *TLSAuth) checkAllowedOU(cert *x509.Certificate) bool {
-	for _, ou := range cert.Subject.OrganizationalUnit {
-		for _, allowedOu := range ta.AllowedOUs {
-			if allowedOu == ou {
-				return true
-			}
+func (ta *TLSAuth) checkAllowedOU(ous []string) error {
+	for _, ou := range ous {
+		if slices.Contains(ta.AllowedOUs, ou) {
+			return nil
 		}
 	}
 
-	return false
+	return fmt.Errorf("client certificate OU %v doesn't match expected OU %v", ous, ta.AllowedOUs)
 }
 
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
@@ -112,9 +111,9 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	// we take the first one
 	leaf = c.Request.TLS.VerifiedChains[0][0]
 
-	if !ta.checkAllowedOU(leaf) {
-		return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
-			leaf.Subject.OrganizationalUnit, ta.AllowedOUs)
+	if err := ta.checkAllowedOU(leaf.Subject.OrganizationalUnit); err != nil {
+		ta.logger.Errorf("TLSAuth: %s", err)
+		return false, "", err
 	}
 
 	if ta.isExpired(leaf) {
