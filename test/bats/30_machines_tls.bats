@@ -3,6 +3,20 @@
 
 set -u
 
+
+# root: root CA
+# inter: intermediate CA
+# inter_rev: intermediate CA revoked by root (CRL3)
+# leaf: valid client cert
+# leaf_rev1: client cert revoked by inter (CRL1)
+# leaf_rev2: client cert revoked by inter (CRL2)
+# leaf_rev3: client cert (indirectly) revoked by root
+#
+# CRL1: inter revokes leaf_rev1
+# CRL2: inter revokes leaf_rev2
+# CRL3: root revokes inter_rev
+# CRL4: root revokes leaf, but is ignored
+
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
@@ -75,21 +89,28 @@ setup_file() {
     {
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
-            <(cfssl certinfo -cert "$tmpdir/leaf_rev1.pem" | jq -r '.serial_number') \
+            <(cert_serial_number "$tmpdir/leaf_rev1.pem") \
             "$tmpdir/inter.pem" \
             "$tmpdir/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
-            <(cfssl certinfo -cert "$tmpdir/leaf_rev2.pem" | jq -r '.serial_number') \
+            <(cert_serial_number "$tmpdir/leaf_rev2.pem") \
             "$tmpdir/inter.pem" \
             "$tmpdir/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
-            <(cfssl certinfo -cert "$tmpdir/inter_rev.pem" | jq -r '.serial_number') \
+            <(cert_serial_number "$tmpdir/inter_rev.pem") \
+            "$tmpdir/root.pem" \
+            "$tmpdir/root-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cert_serial_number "$tmpdir/leaf.pem") \
             "$tmpdir/root.pem" \
             "$tmpdir/root-key.pem"
         echo '-----END X509 CRL-----'

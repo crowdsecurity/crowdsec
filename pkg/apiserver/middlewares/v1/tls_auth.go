@@ -35,29 +35,30 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // checkRevocationPath checks a single chain against OCSP and CRL
-func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) bool {
+func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (bool, bool) {
+	couldCheck := true
+	revoked := false
+
+	// starting from the root CA and moving towards the leaf certificate,
+	// check for revocation of intermediates too
 	for i := len(chain) - 1; i > 0; i-- {
 		cert := chain[i-1]
 		issuer := chain[i]
 
-		if revoked, cached := ta.revocationCache.Get(cert, issuer, ta.logger); cached {
-			return revoked
-		}
-
 		revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(cert, issuer)
 		revokedByCRL, checkedByCRL := ta.crlChecker.isRevokedBy(cert, issuer)
-		revoked := revokedByOCSP || revokedByCRL
 
-		if checkedByOCSP && checkedByCRL {
-			ta.revocationCache.Set(cert, issuer, revoked)
-		}
+		// if we ever fail to check OCSP or CRL, we should not cache the result
+		couldCheck = couldCheck && checkedByOCSP && checkedByCRL
 
+		// if we confirmed a revocation (or a failure to check) return immediately
+		revoked = revoked || revokedByOCSP || revokedByCRL
 		if revoked {
-			return true
+			break
 		}
 	}
 
-	return false
+	return revoked, couldCheck
 }
 
 func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
@@ -120,12 +121,32 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", nil
 	}
 
+	if revoked, cached := ta.revocationCache.Get(leaf, ta.logger); cached {
+		return revoked, leaf.Subject.CommonName, nil
+	}
+
+	okToCache := true
+
+	revoked := false
+
+	var couldCheck bool
+
 	for _, chain := range c.Request.TLS.VerifiedChains {
-		if ta.checkRevocationPath(chain) {
-			// TODO: we might bubble up the issuer information here? store in cache too?
-			return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked",
-				leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)
+		revoked, couldCheck = ta.checkRevocationPath(chain)
+		okToCache = okToCache && couldCheck
+		if revoked {
+			break
 		}
+	}
+
+	if okToCache {
+		ta.revocationCache.Set(leaf, revoked)
+	}
+
+	if revoked {
+		// XXX: could we bubble up the reason?
+		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked",
+			leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)
 	}
 
 	return true, leaf.Subject.CommonName, nil

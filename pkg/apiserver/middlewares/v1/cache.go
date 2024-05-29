@@ -18,6 +18,7 @@ type RevocationCache struct {
 	mu         sync.RWMutex
 	cache      map[string]cacheEntry
 	expiration time.Duration
+	// TODO: purge old entries that are not looked up anymore
 }
 
 func NewRevocationCache(expiration time.Duration) *RevocationCache {
@@ -27,12 +28,12 @@ func NewRevocationCache(expiration time.Duration) *RevocationCache {
 	}
 }
 
-func (*RevocationCache) generateKey(cert *x509.Certificate, issuer *x509.Certificate) string {
-	return cert.SerialNumber.String() + "-" + issuer.Subject.String()
+func (*RevocationCache) generateKey(cert *x509.Certificate) string {
+	return cert.SerialNumber.String() + "-" + cert.Issuer.String()
 }
 
-func (rc *RevocationCache) Get(cert *x509.Certificate, issuer *x509.Certificate, logger *log.Entry) (bool, bool) {
-	key := rc.generateKey(cert, issuer)
+func (rc *RevocationCache) Get(cert *x509.Certificate, logger *log.Entry) (bool, bool) {
+	key := rc.generateKey(cert)
 	rc.mu.RLock()
 	entry, exists := rc.cache[key]
 	rc.mu.RUnlock()
@@ -42,6 +43,7 @@ func (rc *RevocationCache) Get(cert *x509.Certificate, issuer *x509.Certificate,
 		return false, false
 	}
 
+	// Upgrade to write lock to potentially modify the cache
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 
@@ -57,8 +59,8 @@ func (rc *RevocationCache) Get(cert *x509.Certificate, issuer *x509.Certificate,
 	return entry.revoked, true
 }
 
-func (rc *RevocationCache) Set(cert *x509.Certificate, issuer *x509.Certificate, revoked bool) {
-	key := rc.generateKey(cert, issuer)
+func (rc *RevocationCache) Set(cert *x509.Certificate, revoked bool) {
+	key := rc.generateKey(cert)
 
 	rc.mu.Lock()
 	defer rc.mu.Unlock()

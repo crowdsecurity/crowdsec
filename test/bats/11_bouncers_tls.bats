@@ -3,10 +3,6 @@
 
 set -u
 
-# TODO:
-# revoke by root should be considered invalid (and test it)
-# test indirectly revoked leaf
-
 # root: root CA
 # inter: intermediate CA
 # inter_rev: intermediate CA revoked by root (CRL3)
@@ -18,7 +14,7 @@ set -u
 # CRL1: inter revokes leaf_rev1
 # CRL2: inter revokes leaf_rev2
 # CRL3: root revokes inter_rev
-# CRL4: root revokes leaf
+# CRL4: root revokes leaf, but is ignored
 
 setup_file() {
     load "../lib/setup_file.sh"
@@ -89,21 +85,28 @@ setup_file() {
     {
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
-            <(cfssl certinfo -cert "$tmpdir/leaf_rev1.pem" | jq -r '.serial_number') \
+            <(cert_serial_number "$tmpdir/leaf_rev1.pem") \
             "$tmpdir/inter.pem" \
             "$tmpdir/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
-            <(cfssl certinfo -cert "$tmpdir/leaf_rev2.pem" | jq -r '.serial_number') \
+            <(cert_serial_number "$tmpdir/leaf_rev2.pem") \
             "$tmpdir/inter.pem" \
             "$tmpdir/inter-key.pem"
         echo '-----END X509 CRL-----'
 
         echo '-----BEGIN X509 CRL-----'
         cfssl gencrl \
-            <(cfssl certinfo -cert "$tmpdir/inter_rev.pem" | jq -r '.serial_number') \
+            <(cert_serial_number "$tmpdir/inter_rev.pem") \
+            "$tmpdir/root.pem" \
+            "$tmpdir/root-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cert_serial_number "$tmpdir/leaf.pem") \
             "$tmpdir/root.pem" \
             "$tmpdir/root-key.pem"
         echo '-----END X509 CRL-----'
