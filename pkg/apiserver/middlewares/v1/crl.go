@@ -100,6 +100,7 @@ func (cc *CRLChecker) isRevokedBy(cert *x509.Certificate, issuer *x509.Certifica
 		return false, true
 	}
 
+	// XXX: we can pass a callback to empty the revocation cache when a new CRL is loaded
 	err := cc.refresh()
 	if err != nil {
 		// we can't quit obviously, so we just log the error and continue

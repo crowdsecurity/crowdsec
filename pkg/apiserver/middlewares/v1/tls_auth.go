@@ -121,7 +121,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		return false, "", nil
 	}
 
-	if revoked, cached := ta.revocationCache.Get(leaf, ta.logger); cached {
+	if revoked, cached := ta.revocationCache.Get(leaf); cached {
 		return revoked, leaf.Subject.CommonName, nil
 	}
 
@@ -156,7 +156,7 @@ func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Durati
 	var err error
 
 	ta := &TLSAuth{
-		revocationCache: NewRevocationCache(cacheExpiration),
+		revocationCache: NewRevocationCache(cacheExpiration, logger),
 		ocspChecker:     NewOCSPChecker(logger),
 		logger:          logger,
 	}
