@@ -27,7 +27,7 @@ func versionWithTag() string {
 	// if the version number already contains the tag, don't duplicate it
 	ret := version.Version
 
-	if !strings.HasSuffix(ret, version.Tag) {
+	if !strings.HasSuffix(ret, version.Tag) && !strings.HasSuffix(ret, "g" + version.Tag + "-dirty") {
 		ret += "-" + version.Tag
 	}
 
@@ -41,6 +41,7 @@ func FullString() string {
 	ret += fmt.Sprintf("GoVersion: %s\n", version.GoVersion)
 	ret += fmt.Sprintf("Platform: %s\n", version.System)
 	ret += fmt.Sprintf("libre2: %s\n", Libre2)
+	ret += fmt.Sprintf("User-Agent: %s\n", UserAgent())
 	ret += fmt.Sprintf("Constraint_parser: %s\n", Constraint_parser)
 	ret += fmt.Sprintf("Constraint_scenario: %s\n", Constraint_scenario)
 	ret += fmt.Sprintf("Constraint_api: %s\n", Constraint_api)
