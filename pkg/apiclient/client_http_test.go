@@ -2,7 +2,6 @@ package apiclient
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
