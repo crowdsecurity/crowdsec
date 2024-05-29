@@ -12,18 +12,20 @@ import (
 )
 
 type CRLChecker struct {
-	path        string
-	fileInfo    os.FileInfo
-	crls        []*x509.RevocationList
-	logger      *log.Entry
-	mu          sync.RWMutex
-	lastChecked time.Time
+	path     string			// path to the CRL file
+	fileInfo os.FileInfo		// last stat of the CRL file
+	crls     []*x509.RevocationList	// parsed CRLs
+	logger   *log.Entry
+	mu       sync.RWMutex
+	lastLoad time.Time		// time when the CRL file was last read successfully
+	onLoad	 func()			// called when the CRL file changes (and is read successfully)
 }
 
-func NewCRLChecker(crlPath string, logger *log.Entry) (*CRLChecker, error) {
+func NewCRLChecker(crlPath string, onLoad func(), logger *log.Entry) (*CRLChecker, error) {
 	cc := &CRLChecker{
 		path:   crlPath,
 		logger: logger,
+		onLoad: onLoad,
 	}
 
 	err := cc.refresh()
@@ -47,6 +49,7 @@ func (*CRLChecker) decodeCRLs(content []byte, logger *log.Entry) []*x509.Revocat
 
 		crl, err := x509.ParseRevocationList(block.Bytes)
 		if err != nil {
+			// XXX: shouldn't this invalidate the whole CRL file so we can still use the previous version?
 			logger.Errorf("could not parse a PEM block in CRL file, skipping: %s", err)
 			continue
 		}
@@ -59,8 +62,8 @@ func (*CRLChecker) decodeCRLs(content []byte, logger *log.Entry) []*x509.Revocat
 
 // refresh() reads the CRL file if new or changed since the last time
 func (cc *CRLChecker) refresh() error {
-	// noop if lastChecked is less than 5 seconds ago
-	if time.Since(cc.lastChecked) < 5*time.Second {
+	// noop if lastLoad is less than 5 seconds ago
+	if time.Since(cc.lastLoad) < 5*time.Second {
 		return nil
 	}
 
@@ -87,7 +90,10 @@ func (cc *CRLChecker) refresh() error {
 
 	cc.crls = cc.decodeCRLs(crlContent, cc.logger)
 	cc.fileInfo = fileInfo
-	cc.lastChecked = time.Now()
+	cc.lastLoad = time.Now()
+
+	cc.logger.Debugf("loaded %d CRLs", len(cc.crls))
+	cc.onLoad()
 
 	return nil
 }
@@ -100,13 +106,12 @@ func (cc *CRLChecker) isRevokedBy(cert *x509.Certificate, issuer *x509.Certifica
 		return false, true
 	}
 
-	// XXX: we can pass a callback to empty the revocation cache when a new CRL is loaded
 	err := cc.refresh()
 	if err != nil {
 		// we can't quit obviously, so we just log the error and continue
 		// but we can assume we have loaded a CRL, or it would have quit the first time
 		cc.logger.Errorf("while refreshing CRL: %s - will keep using CRL file read at %s", err,
-			cc.lastChecked.Format(time.RFC3339))
+			cc.lastLoad.Format(time.RFC3339))
 	}
 
 	now := time.Now().UTC()

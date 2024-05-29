@@ -92,3 +92,9 @@ func (rc *RevocationCache) Set(cert *x509.Certificate, revoked bool) {
 		timestamp: time.Now(),
 	}
 }
+
+func (rc *RevocationCache) Empty() {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+	rc.cache = make(map[string]cacheEntry)
+}

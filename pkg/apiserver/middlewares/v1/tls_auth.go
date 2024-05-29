@@ -155,8 +155,10 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
 	var err error
 
+	cache := NewRevocationCache(cacheExpiration, logger)
+
 	ta := &TLSAuth{
-		revocationCache: NewRevocationCache(cacheExpiration, logger),
+		revocationCache: cache,
 		ocspChecker:     NewOCSPChecker(logger),
 		logger:          logger,
 	}
@@ -165,7 +167,7 @@ func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Durati
 	case "":
 		logger.Info("no crl_path, skipping CRL checks")
 	default:
-		ta.crlChecker, err = NewCRLChecker(crlPath, logger)
+		ta.crlChecker, err = NewCRLChecker(crlPath, cache.Empty, logger)
 		if err != nil {
 			return nil, err
 		}
