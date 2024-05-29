@@ -60,20 +60,19 @@ func HashSHA512(str string) string {
 
 func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	if a.TlsAuth == nil {
-		// XXX: or warn?
+		// XXX: maybe Warn?
 		logger.Error("TLS Auth is not configured but client presented a certificate")
 		return nil
 	}
 
 	validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
 	if err != nil {
-		// XXX: or warn?
 		logger.Error(err)
 		return nil
 	}
 
 	if !validCert {
-		// XXX: or warn?
+		// XXX:maybe Warn? Info?
 		logger.Errorf("invalid certificate presented by bouncer")
 		return nil
 	}
@@ -151,6 +150,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		if bouncer == nil {
+			// XXX: StatusUnauthorized?
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 
