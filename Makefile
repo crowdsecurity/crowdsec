@@ -78,7 +78,7 @@ LD_OPTS_VARS= \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
 ifneq (,$(DOCKER_BUILD))
-LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
+LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
