@@ -184,15 +184,15 @@ teardown() {
 
 @test "simulate a bouncer request with a revoked certificate" {
     # we have two certificates revoked by different CRL blocks
-    for cert in "leaf_rev1" "leaf_rev2"; do
+    # we connect twice to test the cache too
+    for cert in "leaf_rev1" "leaf_rev2" "leaf_rev1" "leaf_rev2"; do
         truncate_log
         rune -0 curl -s \
             --cert "$tmpdir/$cert.pem" \
             --key "$tmpdir/$cert-key.pem" \
             --cacert "$tmpdir/bundle.pem" \
             https://localhost:8080/v1/decisions\?ip=42.42.42.42
-        assert_log --partial "client certificate is revoked by CRL"
-        assert_log --partial "client certificate for CN=localhost OU=[bouncer-ou] is revoked"
+        assert_log --partial "certificate revoked by CRL"
         assert_output --partial "access forbidden"
         rune -0 cscli bouncers list -o json
         assert_output "[]"

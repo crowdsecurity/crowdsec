@@ -197,6 +197,8 @@ teardown() {
     config_set "$CONFIG_DIR/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     rune -0 cscli lapi status
+    # second connection, test the tls cache
+    rune -0 cscli lapi status
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
 
@@ -263,7 +265,8 @@ teardown() {
 
 @test "revoked cert for agent" {
     # we have two certificates revoked by different CRL blocks
-    for cert in "leaf_rev1" "leaf_rev2"; do
+    # we connect twice to test the cache too
+    for cert in "leaf_rev1" "leaf_rev2" "leaf_rev1" "leaf_rev2"; do
         truncate_log
         cert="$cert" config_set "$CONFIG_DIR/local_api_credentials.yaml" '
             .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
@@ -275,8 +278,7 @@ teardown() {
         config_set "$CONFIG_DIR/local_api_credentials.yaml" 'del(.login,.password)'
         ./instance-crowdsec start
         rune -1 cscli lapi status
-        assert_log --partial "client certificate is revoked by CRL"
-        assert_log --partial "client certificate for CN=localhost OU=[agent-ou] is revoked"
+        assert_log --partial "certificate revoked by CRL"
         rune -0 cscli machines list -o json
         assert_output '[]'
         ./instance-crowdsec stop

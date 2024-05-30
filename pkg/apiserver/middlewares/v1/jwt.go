@@ -59,23 +59,17 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 
 	if j.TlsAuth == nil {
 		err := errors.New("tls authentication required")
-		log.Error(err)
+		log.Warn(err)
 		return nil, err
 	}
 
-	validCert, extractedCN, err := j.TlsAuth.ValidateCert(c)
+	extractedCN, err := j.TlsAuth.ValidateCert(c)
 	if err != nil {
-		log.Error(err)
+		log.Warn(err)
 		return nil, err
 	}
 
 	logger := log.WithField("ip", c.ClientIP())
-
-	if !validCert {
-		err = errors.New("invalid client certificate")
-		logger.Error(err)
-		return nil, err
-	}
 
 	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 

@@ -10,10 +10,11 @@ import (
 )
 
 type cacheEntry struct {
-	revoked   bool
+	err       error		// if not nil, it's the validation or revocation error
 	timestamp time.Time
 }
 
+// XXX: rename to ValidationCache
 type RevocationCache struct {
 	mu         sync.RWMutex
 	cache      map[string]cacheEntry
@@ -47,13 +48,13 @@ func (rc *RevocationCache) purgeExpired() {
 
 	for key, entry := range rc.cache {
 		if time.Since(entry.timestamp) > rc.expiration {
-			rc.logger.Debugf("TLSAuth: purging expired entry for cert %s", key)
+			rc.logger.Debugf("purging expired entry for cert %s", key)
 			delete(rc.cache, key)
 		}
 	}
 }
 
-func (rc *RevocationCache) Get(cert *x509.Certificate) (bool, bool) {
+func (rc *RevocationCache) Get(cert *x509.Certificate) (error, bool) { //nolint:revive
 	rc.purgeExpired()
 	key := rc.generateKey(cert)
 	rc.mu.RLock()
@@ -61,8 +62,8 @@ func (rc *RevocationCache) Get(cert *x509.Certificate) (bool, bool) {
 	rc.mu.RUnlock()
 
 	if !exists {
-		rc.logger.Tracef("TLSAuth: no cached value for cert %s", key)
-		return false, false
+		rc.logger.Tracef("no cached value for cert %s", key)
+		return nil, false
 	}
 
 	// Upgrade to write lock to potentially modify the cache
@@ -70,25 +71,25 @@ func (rc *RevocationCache) Get(cert *x509.Certificate) (bool, bool) {
 	defer rc.mu.Unlock()
 
 	if entry.timestamp.Add(rc.expiration).Before(time.Now()) {
-		rc.logger.Debugf("TLSAuth: cached value for %s expired, removing from cache", key)
+		rc.logger.Debugf("cached value for %s expired, removing from cache", key)
 		delete(rc.cache, key)
 
-		return false, false
+		return nil, false
 	}
 
-	rc.logger.Debugf("TLSAuth: using cached value for cert %s: %t", key, entry.revoked)
+	rc.logger.Debugf("using cached value for cert %s: %v", key, entry.err)
 
-	return entry.revoked, true
+	return entry.err, true
 }
 
-func (rc *RevocationCache) Set(cert *x509.Certificate, revoked bool) {
+func (rc *RevocationCache) Set(cert *x509.Certificate, err error) {
 	key := rc.generateKey(cert)
 
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 
 	rc.cache[key] = cacheEntry{
-		revoked:   revoked,
+		err:   err,
 		timestamp: time.Now(),
 	}
 }

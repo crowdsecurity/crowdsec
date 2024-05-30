@@ -36,9 +36,9 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // checkRevocationPath checks a single chain against OCSP and CRL
-func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (bool, bool) {
+func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (error, bool) { //nolint:revive
+	// if we ever fail to check OCSP or CRL, we should not cache the result
 	couldCheck := true
-	revoked := false
 
 	// starting from the root CA and moving towards the leaf certificate,
 	// check for revocation of intermediates too
@@ -47,19 +47,19 @@ func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (bool, bool) {
 		issuer := chain[i]
 
 		revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(cert, issuer)
+		couldCheck = couldCheck && checkedByOCSP
+		if revokedByOCSP && checkedByOCSP {
+			return fmt.Errorf("certificate revoked by OCSP"), couldCheck
+		}
+
 		revokedByCRL, checkedByCRL := ta.crlChecker.isRevokedBy(cert, issuer)
-
-		// if we ever fail to check OCSP or CRL, we should not cache the result
-		couldCheck = couldCheck && checkedByOCSP && checkedByCRL
-
-		// if we confirmed a revocation (or a failure to check) return immediately
-		revoked = revoked || revokedByOCSP || revokedByCRL
-		if revoked {
-			break
+		couldCheck = couldCheck && checkedByCRL
+		if revokedByCRL && checkedByCRL {
+			return fmt.Errorf("certificate revoked by CRL"), couldCheck
 		}
 	}
 
-	return revoked, couldCheck
+	return nil, couldCheck
 }
 
 func (ta *TLSAuth) setAllowedOu(allowedOus []string) error {
@@ -94,17 +94,16 @@ func (ta *TLSAuth) checkAllowedOU(ous []string) error {
 	return fmt.Errorf("client certificate OU %v doesn't match expected OU %v", ous, ta.AllowedOUs)
 }
 
-func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
+func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 	// Checks cert validity, Returns true + CN if client cert matches requested OU
 	var leaf *x509.Certificate
 
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
-		// do not error if it's not TLS or there are no peer certs
-		return false, "", nil
+		return "", errors.New("no certificate in request")
 	}
 
 	if len(c.Request.TLS.VerifiedChains) == 0 {
-		return false, "", errors.New("no verified cert in request")
+		return "", errors.New("no verified cert in request")
 	}
 
 	// although there can be multiple chains, the leaf certificate is the same
@@ -112,43 +111,43 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	leaf = c.Request.TLS.VerifiedChains[0][0]
 
 	if err := ta.checkAllowedOU(leaf.Subject.OrganizationalUnit); err != nil {
-		ta.logger.Errorf("TLSAuth: %s", err)
-		return false, "", err
+		return "", err
 	}
 
 	if ta.isExpired(leaf) {
-		return false, "", nil
+		return "", fmt.Errorf("client certificate is expired")
 	}
 
-	if revoked, cached := ta.revocationCache.Get(leaf); cached {
-		return revoked, leaf.Subject.CommonName, nil
+	if validErr, cached := ta.revocationCache.Get(leaf); cached {
+		if validErr != nil {
+			return "", fmt.Errorf("(cache) %w", validErr)
+		}
+		return leaf.Subject.CommonName, nil
 	}
 
 	okToCache := true
 
-	revoked := false
+	var validErr error
 
 	var couldCheck bool
 
 	for _, chain := range c.Request.TLS.VerifiedChains {
-		revoked, couldCheck = ta.checkRevocationPath(chain)
+		validErr, couldCheck = ta.checkRevocationPath(chain)
 		okToCache = okToCache && couldCheck
-		if revoked {
+		if validErr != nil {
 			break
 		}
 	}
 
 	if okToCache {
-		ta.revocationCache.Set(leaf, revoked)
+		ta.revocationCache.Set(leaf, validErr)
 	}
 
-	if revoked {
-		// XXX: could we bubble up the reason?
-		return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked",
-			leaf.Subject.CommonName, leaf.Subject.OrganizationalUnit)
+	if validErr != nil {
+		return "", validErr
 	}
 
-	return true, leaf.Subject.CommonName, nil
+	return leaf.Subject.CommonName, nil
 }
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
