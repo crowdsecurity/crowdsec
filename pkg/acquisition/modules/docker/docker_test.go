@@ -341,3 +341,55 @@ func TestOneShot(t *testing.T) {
 		}
 	}
 }
+
+func TestParseLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   map[string]string
+		expected map[string]interface{}
+	}{
+		{
+			name:     "bad label",
+			labels:   map[string]string{"crowdsecfoo": "bar"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name:     "simple label",
+			labels:   map[string]string{"crowdsec.bar": "baz"},
+			expected: map[string]interface{}{"bar": "baz"},
+		},
+		{
+			name:     "multiple simple labels",
+			labels:   map[string]string{"crowdsec.bar": "baz", "crowdsec.foo": "bar"},
+			expected: map[string]interface{}{"bar": "baz", "foo": "bar"},
+		},
+		{
+			name:     "multiple simple labels 2",
+			labels:   map[string]string{"crowdsec.bar": "baz", "bla": "foo"},
+			expected: map[string]interface{}{"bar": "baz"},
+		},
+		{
+			name:     "end with dot",
+			labels:   map[string]string{"crowdsec.bar.": "baz"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name:     "consecutive dots",
+			labels:   map[string]string{"crowdsec......bar": "baz"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name:     "crowdsec labels",
+			labels:   map[string]string{"crowdsec.labels.type": "nginx"},
+			expected: map[string]interface{}{"labels": map[string]interface{}{"type": "nginx"}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			labels := parseLabels(test.labels)
+			assert.Equal(t, test.expected, labels)
+		})
+	}
+
+}

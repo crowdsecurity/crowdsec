@@ -23,13 +23,13 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -462,7 +462,7 @@ func (cli *cliNotifications) fetchAlertFromArgString(toParse string) (*models.Al
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})

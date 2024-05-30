@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/dghubble/sling"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 type MBClient struct {
@@ -38,7 +38,7 @@ var (
 func NewMBClient(url string) (*MBClient, error) {
 	httpClient := &http.Client{Timeout: 20 * time.Second}
 	return &MBClient{
-		CTX:    sling.New().Client(httpClient).Base(url).Set("User-Agent", fmt.Sprintf("crowdsec/%s", version.String())),
+		CTX:    sling.New().Client(httpClient).Base(url).Set("User-Agent", cwversion.UserAgent()),
 		Client: httpClient,
 	}, nil
 }

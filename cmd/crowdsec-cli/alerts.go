@@ -19,10 +19,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -209,7 +208,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 			cli.client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
-				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+				UserAgent:     cwversion.UserAgent(),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
@@ -482,6 +481,7 @@ func (cli *cliAlerts) inspect(details bool, alertIDs ...string) error {
 		switch cfg.Cscli.Output {
 		case "human":
 			if err := cli.displayOneAlert(alert, details); err != nil {
+				log.Warnf("unable to display alert with id %s: %s", alertID, err)
 				continue
 			}
 		case "json":

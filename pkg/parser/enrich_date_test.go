@@ -48,7 +48,7 @@ func TestDateParse(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, nil, logger)
+			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, logger)
 			cstest.RequireErrorContains(t, err, tt.expectedErr)
 			if tt.expectedErr != "" {
 				return

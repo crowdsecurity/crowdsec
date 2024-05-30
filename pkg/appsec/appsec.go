@@ -259,6 +259,9 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 
 	//load hooks
 	for _, hook := range wc.OnLoad {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
+		}
 		err := hook.Build(hookOnLoad)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
@@ -267,6 +270,9 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	}
 
 	for _, hook := range wc.PreEval {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return nil, fmt.Errorf("invalid 'on_success' for pre_eval hook : %s", hook.OnSuccess)
+		}
 		err := hook.Build(hookPreEval)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
@@ -275,6 +281,9 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	}
 
 	for _, hook := range wc.PostEval {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return nil, fmt.Errorf("invalid 'on_success' for post_eval hook : %s", hook.OnSuccess)
+		}
 		err := hook.Build(hookPostEval)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
@@ -283,6 +292,9 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	}
 
 	for _, hook := range wc.OnMatch {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return nil, fmt.Errorf("invalid 'on_success' for on_match hook : %s", hook.OnSuccess)
+		}
 		err := hook.Build(hookOnMatch)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
@@ -302,6 +314,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
+	has_match := false
 	for _, rule := range w.CompiledOnLoad {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -318,6 +331,7 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+			has_match = true
 		}
 		for _, applyExpr := range rule.ApplyExpr {
 			o, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -332,12 +346,15 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 			default:
 			}
 		}
+		if has_match && rule.OnSuccess == "break" {
+			break
+		}
 	}
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
-
+	has_match := false
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -354,6 +371,7 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+			has_match = true
 		}
 		for _, applyExpr := range rule.ApplyExpr {
 			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -368,12 +386,15 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 			default:
 			}
 		}
+		if has_match && rule.OnSuccess == "break" {
+			break
+		}
 	}
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
-	w.Logger.Debugf("processing %d pre_eval rules", len(w.CompiledPreEval))
+	has_match := false
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -390,6 +411,7 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+			has_match = true
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
@@ -405,12 +427,16 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 			default:
 			}
 		}
+		if has_match && rule.OnSuccess == "break" {
+			break
+		}
 	}
 
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
+	has_match := false
 	for _, rule := range w.CompiledPostEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -427,6 +453,7 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+			has_match = true
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
@@ -443,6 +470,9 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 				continue
 			default:
 			}
+		}
+		if has_match && rule.OnSuccess == "break" {
+			break
 		}
 	}
 

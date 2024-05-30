@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -11,9 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 func TestAPICSendMetrics(t *testing.T) {
@@ -73,7 +71,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			apiClient, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", version.String()),
+				cwversion.UserAgent(),
 				nil,
 			)
 			require.NoError(t, err)

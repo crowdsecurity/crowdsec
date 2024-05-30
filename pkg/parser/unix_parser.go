@@ -117,7 +117,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	*/
 	log.Infof("Loading enrich plugins")
 
-	parsers.EnricherCtx, err = Loadplugin(cConfig.ConfigPaths.DataDir)
+	parsers.EnricherCtx, err = Loadplugin()
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load enrich plugin : %v", err)
 	}

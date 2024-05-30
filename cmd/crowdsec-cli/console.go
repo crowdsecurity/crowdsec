@@ -18,12 +18,12 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -125,7 +125,7 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
 		Scenarios:     scenarios,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v3",
 	})

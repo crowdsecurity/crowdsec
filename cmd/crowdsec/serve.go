@@ -177,6 +177,9 @@ func ShutdownCrowdsecRoutines() error {
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
 
+	// close the potential geoips reader we have to avoid leaking ressources on reload
+	exprhelpers.GeoIPClose()
+
 	return reterr
 }
 
@@ -334,7 +337,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		log.Warningln("Exprhelpers loaded without database client.")
 	}
 
-	if cConfig.API.CTI != nil && *cConfig.API.CTI.Enabled {
+	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 
 		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {

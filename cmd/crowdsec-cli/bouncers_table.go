@@ -4,8 +4,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/aquasecurity/table"
-
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )

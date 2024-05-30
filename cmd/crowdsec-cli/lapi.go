@@ -15,13 +15,12 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -53,7 +52,7 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 
 	Client, err = apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil)
 	if err != nil {
 		return fmt.Errorf("init default client: %w", err)
@@ -120,7 +119,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     lapiUser,
 		Password:      password,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiurl,
 		VersionPrefix: LAPIURLPrefix,
 	}, nil)

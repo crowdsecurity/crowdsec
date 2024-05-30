@@ -17,9 +17,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -150,7 +149,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+				UserAgent:     cwversion.UserAgent(),
 				URL:           apiurl,
 				VersionPrefix: "v1",
 			})
