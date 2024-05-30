@@ -8,10 +8,9 @@ import (
 
 	"github.com/go-openapi/strfmt"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -47,7 +46,7 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 		MachineID:     credentials.Login,
 		Password:      password,
 		Scenarios:     installedScenariosAndAppsecRules,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		PapiURL:       papiURL,
 		VersionPrefix: "v1",

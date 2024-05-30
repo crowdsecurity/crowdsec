@@ -321,6 +321,6 @@ func NewLokiClient(config Config) *LokiClient {
 	if config.Username != "" || config.Password != "" {
 		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(config.Username+":"+config.Password))
 	}
-	headers["User-Agent"] = "Crowdsec " + cwversion.VersionStr()
+	headers["User-Agent"] = cwversion.UserAgent()
 	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config, requestHeaders: headers}
 }
