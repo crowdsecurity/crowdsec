@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/maptools"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -41,12 +43,12 @@ func DecisionsFromAlert(alert *models.Alert) string {
 		decMap[k] = v + 1
 	}
 
-	for k, v := range decMap {
+	for _, key := range maptools.SortedKeys(decMap) {
 		if len(ret) > 0 {
 			ret += " "
 		}
 
-		ret += fmt.Sprintf("%s:%d", k, v)
+		ret += fmt.Sprintf("%s:%d", key, decMap[key])
 	}
 
 	return ret
