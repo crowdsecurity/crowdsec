@@ -10,11 +10,10 @@ import (
 )
 
 type cacheEntry struct {
-	err       error		// if not nil, it's the validation or revocation error
+	err       error		// if nil, the certificate is not revocated
 	timestamp time.Time
 }
 
-// XXX: rename to ValidationCache
 type RevocationCache struct {
 	mu         sync.RWMutex
 	cache      map[string]cacheEntry

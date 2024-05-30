@@ -36,7 +36,7 @@ func NewCRLChecker(crlPath string, onLoad func(), logger *log.Entry) (*CRLChecke
 	return cc, nil
 }
 
-func (*CRLChecker) decodeCRLs(content []byte, logger *log.Entry) []*x509.RevocationList {
+func (*CRLChecker) decodeCRLs(content []byte, logger *log.Entry) ([]*x509.RevocationList, error) {
 	var crls []*x509.RevocationList
 
 	for {
@@ -49,15 +49,14 @@ func (*CRLChecker) decodeCRLs(content []byte, logger *log.Entry) []*x509.Revocat
 
 		crl, err := x509.ParseRevocationList(block.Bytes)
 		if err != nil {
-			// XXX: shouldn't this invalidate the whole CRL file so we can still use the previous version?
-			logger.Errorf("could not parse a PEM block in CRL file, skipping: %s", err)
-			continue
+			// invalidate the whole CRL file so we can still use the previous version
+			return nil, fmt.Errorf("could not parse file: %w", err)
 		}
 
 		crls = append(crls, crl)
 	}
 
-	return crls
+	return crls, nil
 }
 
 // refresh() reads the CRL file if new or changed since the last time
@@ -88,7 +87,10 @@ func (cc *CRLChecker) refresh() error {
 		return fmt.Errorf("could not read CRL file: %w", err)
 	}
 
-	cc.crls = cc.decodeCRLs(crlContent, cc.logger)
+	cc.crls, err = cc.decodeCRLs(crlContent, cc.logger)
+	if err != nil {
+		return err
+	}
 	cc.fileInfo = fileInfo
 	cc.lastLoad = time.Now()
 
