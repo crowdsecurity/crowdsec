@@ -43,7 +43,7 @@ func (oc *OCSPChecker) query(server string, cert *x509.Certificate, issuer *x509
 
 	httpRequest.Header.Add("Content-Type", "application/ocsp-request")
 	httpRequest.Header.Add("Accept", "application/ocsp-response")
-	httpRequest.Header.Add("host", ocspURL.Host)
+	httpRequest.Header.Add("Host", ocspURL.Host)
 
 	httpClient := &http.Client{}
 

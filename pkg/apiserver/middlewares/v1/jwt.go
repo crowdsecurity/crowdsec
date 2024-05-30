@@ -60,6 +60,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	if j.TlsAuth == nil {
 		err := errors.New("tls authentication required")
 		log.Warn(err)
+
 		return nil, err
 	}
 

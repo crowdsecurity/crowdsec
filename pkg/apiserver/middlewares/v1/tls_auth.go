@@ -48,14 +48,16 @@ func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (error, bool) 
 
 		revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(cert, issuer)
 		couldCheck = couldCheck && checkedByOCSP
+
 		if revokedByOCSP && checkedByOCSP {
-			return fmt.Errorf("certificate revoked by OCSP"), couldCheck
+			return errors.New("certificate revoked by OCSP"), couldCheck
 		}
 
 		revokedByCRL, checkedByCRL := ta.crlChecker.isRevokedBy(cert, issuer)
 		couldCheck = couldCheck && checkedByCRL
+
 		if revokedByCRL && checkedByCRL {
-			return fmt.Errorf("certificate revoked by CRL"), couldCheck
+			return errors.New("certificate revoked by CRL"), couldCheck
 		}
 	}
 
@@ -115,13 +117,14 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 	}
 
 	if ta.isExpired(leaf) {
-		return "", fmt.Errorf("client certificate is expired")
+		return "", errors.New("client certificate is expired")
 	}
 
 	if validErr, cached := ta.revocationCache.Get(leaf); cached {
 		if validErr != nil {
 			return "", fmt.Errorf("(cache) %w", validErr)
 		}
+
 		return leaf.Subject.CommonName, nil
 	}
 
@@ -134,6 +137,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 	for _, chain := range c.Request.TLS.VerifiedChains {
 		validErr, couldCheck = ta.checkRevocationPath(chain)
 		okToCache = okToCache && couldCheck
+
 		if validErr != nil {
 			break
 		}

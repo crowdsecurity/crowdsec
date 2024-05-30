@@ -1,10 +1,9 @@
 package v1
 
 import (
+	"crypto/x509"
 	"sync"
 	"time"
-
-	"crypto/x509"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -88,7 +87,7 @@ func (rc *RevocationCache) Set(cert *x509.Certificate, err error) {
 	defer rc.mu.Unlock()
 
 	rc.cache[key] = cacheEntry{
-		err:   err,
+		err:       err,
 		timestamp: time.Now(),
 	}
 }

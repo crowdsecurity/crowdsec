@@ -36,7 +36,7 @@ func NewCRLChecker(crlPath string, onLoad func(), logger *log.Entry) (*CRLChecke
 	return cc, nil
 }
 
-func (*CRLChecker) decodeCRLs(content []byte, logger *log.Entry) ([]*x509.RevocationList, error) {
+func (*CRLChecker) decodeCRLs(content []byte) ([]*x509.RevocationList, error) {
 	var crls []*x509.RevocationList
 
 	for {
@@ -87,14 +87,13 @@ func (cc *CRLChecker) refresh() error {
 		return fmt.Errorf("could not read CRL file: %w", err)
 	}
 
-	cc.crls, err = cc.decodeCRLs(crlContent, cc.logger)
+	cc.crls, err = cc.decodeCRLs(crlContent)
 	if err != nil {
 		return err
 	}
+
 	cc.fileInfo = fileInfo
 	cc.lastLoad = time.Now()
-
-	cc.logger.Debugf("loaded %d CRLs", len(cc.crls))
 	cc.onLoad()
 
 	return nil
