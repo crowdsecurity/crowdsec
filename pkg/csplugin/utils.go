@@ -118,7 +118,7 @@ func pluginIsValid(path string) error {
 	if err != nil {
 		return fmt.Errorf("while looking up the current uid: %w", err)
 	}
-	stat := details.Sys().(*unix.Stat_t)
+	stat := details.Sys().(*syscall.Stat_t)
 	if stat.Uid != currentUID {
 		return fmt.Errorf("plugin at %s is not owned by user '%s'", path, currentUser.Username)
 	}
