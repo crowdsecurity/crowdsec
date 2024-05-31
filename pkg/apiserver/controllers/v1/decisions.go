@@ -20,7 +20,7 @@ func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 	var results []*models.Decision
 
 	for _, dbDecision := range decisions {
-		duration := dbDecision.Until.Sub(time.Now().UTC()).String()
+		duration := dbDecision.Until.Sub(time.Now().UTC()).Round(time.Second).String()
 		decision := models.Decision{
 			ID:       int64(dbDecision.ID),
 			Duration: &duration,
