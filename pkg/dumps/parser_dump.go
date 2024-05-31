@@ -94,24 +94,24 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 
 type tree struct {
 	// note : we can use line -> time as the unique identifier (of acquisition)
-	state map[time.Time]map[string]map[string]ParserResult
-	assoc map[time.Time]string
+	state       map[time.Time]map[string]map[string]ParserResult
+	assoc       map[time.Time]string
 	parserOrder map[string][]string
 }
 
 func newTree() *tree {
-    return &tree{
-        state:  make(map[time.Time]map[string]map[string]ParserResult),
-        assoc: make(map[time.Time]string),
-	parserOrder: make(map[string][]string),
-    }
+	return &tree{
+		state:       make(map[time.Time]map[string]map[string]ParserResult),
+		assoc:       make(map[time.Time]string),
+		parserOrder: make(map[string][]string),
+	}
 }
 
 func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpOpts) {
-    t := newTree()
-    t.processEvents(parserResults)
-    t.processBuckets(bucketPour)
-    t.displayResults(opts)
+	t := newTree()
+	t.processEvents(parserResults)
+	t.processBuckets(bucketPour)
+	t.displayResults(opts)
 }
 
 func (t *tree) processEvents(parserResults ParserResults) {
