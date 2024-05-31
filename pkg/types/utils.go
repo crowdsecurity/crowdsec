@@ -66,7 +66,7 @@ func ConfigureLogger(clog *log.Logger) error {
 }
 
 func UtcNow() time.Time {
-	return time.Now().UTC()
+	return time.Now().UTC().Round(time.Second)
 }
 
 func IsNetworkFS(path string) (bool, string, error) {

@@ -34,20 +34,6 @@ func (ciu *ConfigItemUpdate) SetUpdatedAt(t time.Time) *ConfigItemUpdate {
 	return ciu
 }
 
-// SetName sets the "name" field.
-func (ciu *ConfigItemUpdate) SetName(s string) *ConfigItemUpdate {
-	ciu.mutation.SetName(s)
-	return ciu
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (ciu *ConfigItemUpdate) SetNillableName(s *string) *ConfigItemUpdate {
-	if s != nil {
-		ciu.SetName(*s)
-	}
-	return ciu
-}
-
 // SetValue sets the "value" field.
 func (ciu *ConfigItemUpdate) SetValue(s string) *ConfigItemUpdate {
 	ciu.mutation.SetValue(s)
@@ -115,9 +101,6 @@ func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ciu.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := ciu.mutation.Name(); ok {
-		_spec.SetField(configitem.FieldName, field.TypeString, value)
-	}
 	if value, ok := ciu.mutation.Value(); ok {
 		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 	}
@@ -144,20 +127,6 @@ type ConfigItemUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (ciuo *ConfigItemUpdateOne) SetUpdatedAt(t time.Time) *ConfigItemUpdateOne {
 	ciuo.mutation.SetUpdatedAt(t)
-	return ciuo
-}
-
-// SetName sets the "name" field.
-func (ciuo *ConfigItemUpdateOne) SetName(s string) *ConfigItemUpdateOne {
-	ciuo.mutation.SetName(s)
-	return ciuo
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (ciuo *ConfigItemUpdateOne) SetNillableName(s *string) *ConfigItemUpdateOne {
-	if s != nil {
-		ciuo.SetName(*s)
-	}
 	return ciuo
 }
 
@@ -257,9 +226,6 @@ func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem
 	}
 	if value, ok := ciuo.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := ciuo.mutation.Name(); ok {
-		_spec.SetField(configitem.FieldName, field.TypeString, value)
 	}
 	if value, ok := ciuo.mutation.Value(); ok {
 		_spec.SetField(configitem.FieldValue, field.TypeString, value)

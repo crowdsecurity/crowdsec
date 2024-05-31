@@ -7,7 +7,7 @@ go 1.22
 // toolchain go1.21.3
 
 require (
-	entgo.io/ent v0.12.5
+	entgo.io/ent v0.13.1
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3
@@ -83,7 +83,7 @@ require (
 	github.com/wasilibs/go-re2 v1.3.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.22.0
-	golang.org/x/mod v0.11.0
+	golang.org/x/mod v0.15.0
 	golang.org/x/sys v0.19.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.56.3
@@ -96,7 +96,7 @@ require (
 )
 
 require (
-	ariga.io/atlas v0.14.1-0.20230918065911-83ad451a4935 // indirect
+	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ahmetalpbalkan/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
@@ -130,7 +130,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
@@ -204,7 +204,7 @@ require (
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
+	golang.org/x/tools v0.18.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect

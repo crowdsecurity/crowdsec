@@ -416,8 +416,8 @@ force_inotify: true`, testPattern),
 				for i := 0; i < 5; i++ {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
-						t.Fatalf("could not write test file : %s", err)
 						os.Remove("test_files/stream.log")
+						t.Fatalf("could not write test file : %s", err)
 					}
 				}
 

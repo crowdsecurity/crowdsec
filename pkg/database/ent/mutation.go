@@ -2390,7 +2390,6 @@ type BouncerMutation struct {
 	ip_address    *string
 	_type         *string
 	version       *string
-	until         *time.Time
 	last_pull     *time.Time
 	auth_type     *string
 	clearedFields map[string]struct{}
@@ -2824,55 +2823,6 @@ func (m *BouncerMutation) ResetVersion() {
 	delete(m.clearedFields, bouncer.FieldVersion)
 }
 
-// SetUntil sets the "until" field.
-func (m *BouncerMutation) SetUntil(t time.Time) {
-	m.until = &t
-}
-
-// Until returns the value of the "until" field in the mutation.
-func (m *BouncerMutation) Until() (r time.Time, exists bool) {
-	v := m.until
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUntil returns the old "until" field's value of the Bouncer entity.
-// If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BouncerMutation) OldUntil(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUntil is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUntil requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUntil: %w", err)
-	}
-	return oldValue.Until, nil
-}
-
-// ClearUntil clears the value of the "until" field.
-func (m *BouncerMutation) ClearUntil() {
-	m.until = nil
-	m.clearedFields[bouncer.FieldUntil] = struct{}{}
-}
-
-// UntilCleared returns if the "until" field was cleared in this mutation.
-func (m *BouncerMutation) UntilCleared() bool {
-	_, ok := m.clearedFields[bouncer.FieldUntil]
-	return ok
-}
-
-// ResetUntil resets all changes to the "until" field.
-func (m *BouncerMutation) ResetUntil() {
-	m.until = nil
-	delete(m.clearedFields, bouncer.FieldUntil)
-}
-
 // SetLastPull sets the "last_pull" field.
 func (m *BouncerMutation) SetLastPull(t time.Time) {
 	m.last_pull = &t
@@ -2979,7 +2929,7 @@ func (m *BouncerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BouncerMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, bouncer.FieldCreatedAt)
 	}
@@ -3003,9 +2953,6 @@ func (m *BouncerMutation) Fields() []string {
 	}
 	if m.version != nil {
 		fields = append(fields, bouncer.FieldVersion)
-	}
-	if m.until != nil {
-		fields = append(fields, bouncer.FieldUntil)
 	}
 	if m.last_pull != nil {
 		fields = append(fields, bouncer.FieldLastPull)
@@ -3037,8 +2984,6 @@ func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 		return m.GetType()
 	case bouncer.FieldVersion:
 		return m.Version()
-	case bouncer.FieldUntil:
-		return m.Until()
 	case bouncer.FieldLastPull:
 		return m.LastPull()
 	case bouncer.FieldAuthType:
@@ -3068,8 +3013,6 @@ func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldType(ctx)
 	case bouncer.FieldVersion:
 		return m.OldVersion(ctx)
-	case bouncer.FieldUntil:
-		return m.OldUntil(ctx)
 	case bouncer.FieldLastPull:
 		return m.OldLastPull(ctx)
 	case bouncer.FieldAuthType:
@@ -3139,13 +3082,6 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetVersion(v)
 		return nil
-	case bouncer.FieldUntil:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUntil(v)
-		return nil
 	case bouncer.FieldLastPull:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -3199,9 +3135,6 @@ func (m *BouncerMutation) ClearedFields() []string {
 	if m.FieldCleared(bouncer.FieldVersion) {
 		fields = append(fields, bouncer.FieldVersion)
 	}
-	if m.FieldCleared(bouncer.FieldUntil) {
-		fields = append(fields, bouncer.FieldUntil)
-	}
 	return fields
 }
 
@@ -3224,9 +3157,6 @@ func (m *BouncerMutation) ClearField(name string) error {
 		return nil
 	case bouncer.FieldVersion:
 		m.ClearVersion()
-		return nil
-	case bouncer.FieldUntil:
-		m.ClearUntil()
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer nullable field %s", name)
@@ -3259,9 +3189,6 @@ func (m *BouncerMutation) ResetField(name string) error {
 		return nil
 	case bouncer.FieldVersion:
 		m.ResetVersion()
-		return nil
-	case bouncer.FieldUntil:
-		m.ResetUntil()
 		return nil
 	case bouncer.FieldLastPull:
 		m.ResetLastPull()

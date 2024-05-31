@@ -3,7 +3,7 @@
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 48
+    max-complexity: 45
 
   gci:
     sections:
@@ -18,11 +18,11 @@ linters-settings:
 
   gocognit:
     # lower this after refactoring
-    min-complexity: 145
+    min-complexity: 128
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 48
+    min-complexity: 45
 
   funlen:
     # Checks the number of lines in a function.
@@ -55,7 +55,7 @@ linters-settings:
 
   nestif:
     # lower this after refactoring
-    min-complexity: 28
+    min-complexity: 24
 
   nlreturn:
     block-size: 5
@@ -118,10 +118,6 @@ linters-settings:
     rules:
       - name: add-constant
         disabled: true
-      - name: argument-limit
-        disabled: true
-      - name: bare-return
-        disabled: true
       - name: blank-imports
         disabled: true
       - name: bool-literal-in-expr
@@ -132,15 +128,11 @@ linters-settings:
         disabled: true
       - name: confusing-results
         disabled: true
-      - name: context-as-argument
-        disabled: true
       - name: cyclomatic
         disabled: true
       - name: deep-exit
         disabled: true
       - name: defer
-        disabled: true
-      - name: duplicated-imports
         disabled: true
       - name: early-return
         disabled: true
@@ -176,15 +168,11 @@ linters-settings:
         disabled: true
       - name: max-public-structs
         disabled: true
-      - name: modifies-parameter
-        disabled: true
       - name: optimize-operands-order
         disabled: true
       - name: nested-structs
         disabled: true
       - name: package-comments
-        disabled: true
-      - name: redundant-import-alias
         disabled: true
       - name: struct-tag
         disabled: true
@@ -211,8 +199,6 @@ linters-settings:
           - "fmt.Printf"
           - "fmt.Println"
       - name: unnecessary-stmt
-        disabled: true
-      - name: unreachable-code
         disabled: true
       - name: unused-parameter
         disabled: true
@@ -505,4 +491,12 @@ issues:
         - revive
       path: pkg/acquisition/modules/loki/internal/lokiclient/loki_client.go
       text: "confusing-naming: Method 'QueryRange' differs only by capitalization to method 'queryRange' in the same source file"
+
+    - linters:
+        - revive
+      path: pkg/metabase/metabase.go
+
+    - linters:
+        - revive
+      path: cmd/crowdsec-cli/copyfile.go
 

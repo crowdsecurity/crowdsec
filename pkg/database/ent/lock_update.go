@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -25,20 +24,6 @@ type LockUpdate struct {
 // Where appends a list predicates to the LockUpdate builder.
 func (lu *LockUpdate) Where(ps ...predicate.Lock) *LockUpdate {
 	lu.mutation.Where(ps...)
-	return lu
-}
-
-// SetCreatedAt sets the "created_at" field.
-func (lu *LockUpdate) SetCreatedAt(t time.Time) *LockUpdate {
-	lu.mutation.SetCreatedAt(t)
-	return lu
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (lu *LockUpdate) SetNillableCreatedAt(t *time.Time) *LockUpdate {
-	if t != nil {
-		lu.SetCreatedAt(*t)
-	}
 	return lu
 }
 
@@ -83,9 +68,6 @@ func (lu *LockUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := lu.mutation.CreatedAt(); ok {
-		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
-	}
 	if n, err = sqlgraph.UpdateNodes(ctx, lu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{lock.Label}
@@ -104,20 +86,6 @@ type LockUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *LockMutation
-}
-
-// SetCreatedAt sets the "created_at" field.
-func (luo *LockUpdateOne) SetCreatedAt(t time.Time) *LockUpdateOne {
-	luo.mutation.SetCreatedAt(t)
-	return luo
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (luo *LockUpdateOne) SetNillableCreatedAt(t *time.Time) *LockUpdateOne {
-	if t != nil {
-		luo.SetCreatedAt(*t)
-	}
-	return luo
 }
 
 // Mutation returns the LockMutation object of the builder.
@@ -190,9 +158,6 @@ func (luo *LockUpdateOne) sqlSave(ctx context.Context) (_node *Lock, err error) 
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := luo.mutation.CreatedAt(); ok {
-		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
 	}
 	_node = &Lock{config: luo.config}
 	_spec.Assign = _node.assignValues
