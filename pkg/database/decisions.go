@@ -254,11 +254,15 @@ func longestDecisionForScopeTypeValue(s *sql.Selector) {
 	)
 }
 
-func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryExpiredDecisionsSinceWithFilters(since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
-		decision.UntilGT(since),
 	)
+
+	if since != nil {
+		query = query.Where(decision.UntilGT(*since))
+	}
+
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
@@ -281,11 +285,14 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	return data, nil
 }
 
-func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryNewDecisionsSinceWithFilters(since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
-		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
 	)
+
+	if since != nil {
+		query = query.Where(decision.CreatedAtGT(*since))
+	}
 
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {

@@ -34,7 +34,7 @@ type Bouncer struct {
 	// Version holds the value of the "version" field.
 	Version string `json:"version"`
 	// LastPull holds the value of the "last_pull" field.
-	LastPull time.Time `json:"last_pull"`
+	LastPull *time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
 	AuthType     string `json:"auth_type"`
 	selectValues sql.SelectValues
@@ -126,7 +126,8 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_pull", values[i])
 			} else if value.Valid {
-				b.LastPull = value.Time
+				b.LastPull = new(time.Time)
+				*b.LastPull = value.Time
 			}
 		case bouncer.FieldAuthType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -193,8 +194,10 @@ func (b *Bouncer) String() string {
 	builder.WriteString("version=")
 	builder.WriteString(b.Version)
 	builder.WriteString(", ")
-	builder.WriteString("last_pull=")
-	builder.WriteString(b.LastPull.Format(time.ANSIC))
+	if v := b.LastPull; v != nil {
+		builder.WriteString("last_pull=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(b.AuthType)

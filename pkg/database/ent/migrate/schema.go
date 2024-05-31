@@ -68,7 +68,7 @@ var (
 		{Name: "ip_address", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "type", Type: field.TypeString, Nullable: true},
 		{Name: "version", Type: field.TypeString, Nullable: true},
-		{Name: "last_pull", Type: field.TypeTime},
+		{Name: "last_pull", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
