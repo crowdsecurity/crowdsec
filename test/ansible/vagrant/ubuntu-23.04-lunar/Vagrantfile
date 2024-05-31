@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Vagrant.configure('2') do |config|
-  config.vm.box = 'bento/ubuntu-23.04'
+  config.vm.box = 'bento/ubuntu-24.04'
   config.vm.provision "shell", inline: <<-SHELL
     sudo apt install -y kitty-terminfo
   SHELL
