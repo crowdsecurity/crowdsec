@@ -91,23 +91,28 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 	}
 
 	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
+
 	if len(opts) != 0 {
 		for _, opt := range opts {
 			valid := false
+
 			if opt == "all" {
 				enableOpts = csconfig.CONSOLE_CONFIGS
 				break
 			}
+
 			for _, availableOpt := range csconfig.CONSOLE_CONFIGS {
 				if opt == availableOpt {
 					valid = true
 					enable := true
+
 					for _, enabledOpt := range enableOpts {
 						if opt == enabledOpt {
 							enable = false
 							continue
 						}
 					}
+
 					if enable {
 						enableOpts = append(enableOpts, opt)
 					}
@@ -115,6 +120,7 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 					break
 				}
 			}
+
 			if !valid {
 				return fmt.Errorf("option %s doesn't exist", opt)
 			}

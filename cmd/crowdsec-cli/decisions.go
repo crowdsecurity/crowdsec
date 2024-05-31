@@ -175,8 +175,10 @@ func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, con
 	if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
 		return err
 	}
+
 	filter.ActiveDecisionEquals = new(bool)
 	*filter.ActiveDecisionEquals = true
+
 	if NoSimu != nil && *NoSimu {
 		filter.IncludeSimulated = new(bool)
 	}
@@ -186,10 +188,12 @@ func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, con
 	} else if strings.HasSuffix(*filter.Until, "d") {
 		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
 		realDuration := strings.TrimSuffix(*filter.Until, "d")
+
 		days, err := strconv.Atoi(realDuration)
 		if err != nil {
 			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 		}
+
 		*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
 	}
 
@@ -198,30 +202,39 @@ func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, con
 	} else if strings.HasSuffix(*filter.Since, "d") {
 		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
 		realDuration := strings.TrimSuffix(*filter.Since, "d")
+
 		days, err := strconv.Atoi(realDuration)
 		if err != nil {
 			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
 		}
+
 		*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 	}
+
 	if *filter.IncludeCAPI {
 		*filter.Limit = 0
 	}
+
 	if *filter.TypeEquals == "" {
 		filter.TypeEquals = nil
 	}
+
 	if *filter.ValueEquals == "" {
 		filter.ValueEquals = nil
 	}
+
 	if *filter.ScopeEquals == "" {
 		filter.ScopeEquals = nil
 	}
+
 	if *filter.ScenarioEquals == "" {
 		filter.ScenarioEquals = nil
 	}
+
 	if *filter.IPEquals == "" {
 		filter.IPEquals = nil
 	}
+
 	if *filter.RangeEquals == "" {
 		filter.RangeEquals = nil
 	}
@@ -491,15 +504,15 @@ cscli decisions delete --origin lists  --scenario list_name
 			if delDecisionID == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					return fmt.Errorf("unable to delete decisions: %v", err)
+					return fmt.Errorf("unable to delete decisions: %w", err)
 				}
 			} else {
 				if _, err = strconv.Atoi(delDecisionID); err != nil {
-					return fmt.Errorf("id '%s' is not an integer: %v", delDecisionID, err)
+					return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
 				}
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionID)
 				if err != nil {
-					return fmt.Errorf("unable to delete decision: %v", err)
+					return fmt.Errorf("unable to delete decision: %w", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
