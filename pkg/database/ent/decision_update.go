@@ -49,12 +49,6 @@ func (du *DecisionUpdate) SetNillableUntil(t *time.Time) *DecisionUpdate {
 	return du
 }
 
-// ClearUntil clears the value of the "until" field.
-func (du *DecisionUpdate) ClearUntil() *DecisionUpdate {
-	du.mutation.ClearUntil()
-	return du
-}
-
 // SetAlertDecisions sets the "alert_decisions" field.
 func (du *DecisionUpdate) SetAlertDecisions(i int) *DecisionUpdate {
 	du.mutation.SetAlertDecisions(i)
@@ -156,9 +150,6 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := du.mutation.Until(); ok {
 		_spec.SetField(decision.FieldUntil, field.TypeTime, value)
 	}
-	if du.mutation.UntilCleared() {
-		_spec.ClearField(decision.FieldUntil, field.TypeTime)
-	}
 	if du.mutation.StartIPCleared() {
 		_spec.ClearField(decision.FieldStartIP, field.TypeInt64)
 	}
@@ -243,12 +234,6 @@ func (duo *DecisionUpdateOne) SetNillableUntil(t *time.Time) *DecisionUpdateOne 
 	if t != nil {
 		duo.SetUntil(*t)
 	}
-	return duo
-}
-
-// ClearUntil clears the value of the "until" field.
-func (duo *DecisionUpdateOne) ClearUntil() *DecisionUpdateOne {
-	duo.mutation.ClearUntil()
 	return duo
 }
 
@@ -382,9 +367,6 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 	}
 	if value, ok := duo.mutation.Until(); ok {
 		_spec.SetField(decision.FieldUntil, field.TypeTime, value)
-	}
-	if duo.mutation.UntilCleared() {
-		_spec.ClearField(decision.FieldUntil, field.TypeTime)
 	}
 	if duo.mutation.StartIPCleared() {
 		_spec.ClearField(decision.FieldStartIP, field.TypeInt64)
