@@ -106,7 +106,7 @@ func (lc *LokiClient) decreaseTicker(ticker *time.Ticker) {
 	}
 }
 
-func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQueryRangeResponse, infinite bool) error {
+func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQueryRangeResponse, infinite bool) error {
 	lc.currentTickerInterval = 100 * time.Millisecond
 	ticker := time.NewTicker(lc.currentTickerInterval)
 	defer ticker.Stop()
@@ -296,7 +296,7 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 
 	lc.Logger.Infof("Connecting to %s", url)
 	lc.t.Go(func() error {
-		return lc.queryRange(url, ctx, c, infinite)
+		return lc.queryRange(ctx, url, c, infinite)
 	})
 	return c
 }

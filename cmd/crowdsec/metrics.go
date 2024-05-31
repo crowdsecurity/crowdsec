@@ -12,7 +12,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"

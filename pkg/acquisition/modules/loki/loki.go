@@ -19,7 +19,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	lokiclient "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 

@@ -12,7 +12,6 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -276,7 +275,7 @@ func (r *ReqDumpFilter) ToJSON() error {
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
-func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedRequest, error) {
+func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
 	var err error
 	contentLength := r.ContentLength
 	if contentLength < 0 {
