@@ -3,7 +3,7 @@
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 48
+    max-complexity: 45
 
   gci:
     sections:
@@ -18,11 +18,11 @@ linters-settings:
 
   gocognit:
     # lower this after refactoring
-    min-complexity: 145
+    min-complexity: 128
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 48
+    min-complexity: 45
 
   funlen:
     # Checks the number of lines in a function.
@@ -55,7 +55,7 @@ linters-settings:
 
   nestif:
     # lower this after refactoring
-    min-complexity: 28
+    min-complexity: 24
 
   nlreturn:
     block-size: 5
