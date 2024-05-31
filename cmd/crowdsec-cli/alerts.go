@@ -109,7 +109,8 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 	return nil
 }
 
-var alertTemplate = `
+func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) error {
+	alertTemplate := `
 ################################################################################################
 
  - ID           : {{.ID}}
@@ -127,7 +128,6 @@ var alertTemplate = `
 
 `
 
-func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) error {
 	tmpl, err := template.New("alert").Parse(alertTemplate)
 	if err != nil {
 		return err
@@ -228,6 +228,92 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliAlerts) list(alertListFilter apiclient.AlertsListOpts, limit *int, contained *bool, printMachine bool) error {
+	if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
+		alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
+		return err
+	}
+
+	if limit != nil {
+		alertListFilter.Limit = limit
+	}
+
+	if *alertListFilter.Until == "" {
+		alertListFilter.Until = nil
+	} else if strings.HasSuffix(*alertListFilter.Until, "d") {
+		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+		realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
+
+		days, err := strconv.Atoi(realDuration)
+		if err != nil {
+			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
+		}
+
+		*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
+	}
+
+	if *alertListFilter.Since == "" {
+		alertListFilter.Since = nil
+	} else if strings.HasSuffix(*alertListFilter.Since, "d") {
+		// time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier
+		realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
+
+		days, err := strconv.Atoi(realDuration)
+		if err != nil {
+			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
+		}
+
+		*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
+	}
+
+	if *alertListFilter.IncludeCAPI {
+		*alertListFilter.Limit = 0
+	}
+
+	if *alertListFilter.TypeEquals == "" {
+		alertListFilter.TypeEquals = nil
+	}
+
+	if *alertListFilter.ScopeEquals == "" {
+		alertListFilter.ScopeEquals = nil
+	}
+
+	if *alertListFilter.ValueEquals == "" {
+		alertListFilter.ValueEquals = nil
+	}
+
+	if *alertListFilter.ScenarioEquals == "" {
+		alertListFilter.ScenarioEquals = nil
+	}
+
+	if *alertListFilter.IPEquals == "" {
+		alertListFilter.IPEquals = nil
+	}
+
+	if *alertListFilter.RangeEquals == "" {
+		alertListFilter.RangeEquals = nil
+	}
+
+	if *alertListFilter.OriginEquals == "" {
+		alertListFilter.OriginEquals = nil
+	}
+
+	if contained != nil && *contained {
+		alertListFilter.Contains = new(bool)
+	}
+
+	alerts, _, err := cli.client.Alerts.List(context.Background(), alertListFilter)
+	if err != nil {
+		return fmt.Errorf("unable to list alerts: %w", err)
+	}
+
+	if err = cli.alertsToTable(alerts, printMachine); err != nil {
+		return fmt.Errorf("unable to list alerts: %w", err)
+	}
+
+	return nil
+}
+
 func (cli *cliAlerts) NewListCmd() *cobra.Command {
 	alertListFilter := apiclient.AlertsListOpts{
 		ScopeEquals:    new(string),
@@ -259,81 +345,7 @@ cscli alerts list --type ban`,
 		Long:              `List alerts with optional filters`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
-				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
-				printHelp(cmd)
-				return err
-			}
-			if limit != nil {
-				alertListFilter.Limit = limit
-			}
-
-			if *alertListFilter.Until == "" {
-				alertListFilter.Until = nil
-			} else if strings.HasSuffix(*alertListFilter.Until, "d") {
-				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
-				days, err := strconv.Atoi(realDuration)
-				if err != nil {
-					printHelp(cmd)
-					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
-				}
-				*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
-			}
-			if *alertListFilter.Since == "" {
-				alertListFilter.Since = nil
-			} else if strings.HasSuffix(*alertListFilter.Since, "d") {
-				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
-				days, err := strconv.Atoi(realDuration)
-				if err != nil {
-					printHelp(cmd)
-					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
-				}
-				*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
-			}
-
-			if *alertListFilter.IncludeCAPI {
-				*alertListFilter.Limit = 0
-			}
-
-			if *alertListFilter.TypeEquals == "" {
-				alertListFilter.TypeEquals = nil
-			}
-			if *alertListFilter.ScopeEquals == "" {
-				alertListFilter.ScopeEquals = nil
-			}
-			if *alertListFilter.ValueEquals == "" {
-				alertListFilter.ValueEquals = nil
-			}
-			if *alertListFilter.ScenarioEquals == "" {
-				alertListFilter.ScenarioEquals = nil
-			}
-			if *alertListFilter.IPEquals == "" {
-				alertListFilter.IPEquals = nil
-			}
-			if *alertListFilter.RangeEquals == "" {
-				alertListFilter.RangeEquals = nil
-			}
-
-			if *alertListFilter.OriginEquals == "" {
-				alertListFilter.OriginEquals = nil
-			}
-
-			if contained != nil && *contained {
-				alertListFilter.Contains = new(bool)
-			}
-
-			alerts, _, err := cli.client.Alerts.List(context.Background(), alertListFilter)
-			if err != nil {
-				return fmt.Errorf("unable to list alerts: %w", err)
-			}
-
-			if err = cli.alertsToTable(alerts, printMachine); err != nil {
-				return fmt.Errorf("unable to list alerts: %w", err)
-			}
-
-			return nil
+			return cli.list(alertListFilter, limit, contained, printMachine)
 		},
 	}
 
@@ -466,6 +478,46 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	return cmd
 }
 
+func (cli *cliAlerts) inspect(details bool, alertIDs ...string) error {
+	cfg := cli.cfg()
+
+	for _, alertID := range alertIDs {
+		id, err := strconv.Atoi(alertID)
+		if err != nil {
+			return fmt.Errorf("bad alert id %s", alertID)
+		}
+
+		alert, _, err := cli.client.Alerts.GetByID(context.Background(), id)
+		if err != nil {
+			return fmt.Errorf("can't find alert with id %s: %w", alertID, err)
+		}
+
+		switch cfg.Cscli.Output {
+		case "human":
+			if err := cli.displayOneAlert(alert, details); err != nil {
+				log.Warnf("unable to display alert with id %s: %s", alertID, err)
+				continue
+			}
+		case "json":
+			data, err := json.MarshalIndent(alert, "", "  ")
+			if err != nil {
+				return fmt.Errorf("unable to marshal alert with id %s: %w", alertID, err)
+			}
+
+			fmt.Printf("%s\n", string(data))
+		case "raw":
+			data, err := yaml.Marshal(alert)
+			if err != nil {
+				return fmt.Errorf("unable to marshal alert with id %s: %w", alertID, err)
+			}
+
+			fmt.Println(string(data))
+		}
+	}
+
+	return nil
+}
+
 func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 	var details bool
 
@@ -475,42 +527,11 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 		Example:           `cscli alerts inspect 123`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := cli.cfg()
 			if len(args) == 0 {
 				printHelp(cmd)
 				return errors.New("missing alert_id")
 			}
-			for _, alertID := range args {
-				id, err := strconv.Atoi(alertID)
-				if err != nil {
-					return fmt.Errorf("bad alert id %s", alertID)
-				}
-				alert, _, err := cli.client.Alerts.GetByID(context.Background(), id)
-				if err != nil {
-					return fmt.Errorf("can't find alert with id %s: %w", alertID, err)
-				}
-				switch cfg.Cscli.Output {
-				case "human":
-					if err := cli.displayOneAlert(alert, details); err != nil {
-						log.Warnf("unable to display alert with id %s: %s", alertID, err)
-						continue
-					}
-				case "json":
-					data, err := json.MarshalIndent(alert, "", "  ")
-					if err != nil {
-						return fmt.Errorf("unable to marshal alert with id %s: %w", alertID, err)
-					}
-					fmt.Printf("%s\n", string(data))
-				case "raw":
-					data, err := yaml.Marshal(alert)
-					if err != nil {
-						return fmt.Errorf("unable to marshal alert with id %s: %w", alertID, err)
-					}
-					fmt.Println(string(data))
-				}
-			}
-
-			return nil
+			return cli.inspect(details, args...)
 		},
 	}
 

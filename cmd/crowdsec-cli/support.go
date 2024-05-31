@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -294,7 +295,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, endpoint string) error {
+func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheusCfg csconfig.PrometheusCfg, endpoint string) error {
 	log.Infof("Collecting pprof/%s data", endpoint)
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -306,8 +307,8 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, endpoint s
 		fmt.Sprintf(
 			"http://%s/debug/pprof/%s?debug=1",
 			net.JoinHostPort(
-				csConfig.Prometheus.ListenAddr,
-				strconv.Itoa(csConfig.Prometheus.ListenPort),
+				prometheusCfg.ListenAddr,
+				strconv.Itoa(prometheusCfg.ListenPort),
 			),
 			endpoint,
 		),
@@ -538,15 +539,15 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 
 		// call pprof separately, one might fail for timeout
 
-		if err = cli.dumpPprof(ctx, zipWriter, "goroutine"); err != nil {
+		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "goroutine"); err != nil {
 			log.Warnf("could not collect pprof goroutine data: %s", err)
 		}
 
-		if err = cli.dumpPprof(ctx, zipWriter, "heap"); err != nil {
+		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "heap"); err != nil {
 			log.Warnf("could not collect pprof heap data: %s", err)
 		}
 
-		if err = cli.dumpPprof(ctx, zipWriter, "profile"); err != nil {
+		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
 			log.Warnf("could not collect pprof cpu data: %s", err)
 		}
 
