@@ -5,6 +5,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -17,12 +18,12 @@ type Meta struct {
 func (Meta) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow),
-		field.String("key"),
-		field.String("value").MaxLen(4095),
+		field.String("key").Immutable(),
+		field.String("value").MaxLen(4095).Immutable(),
 		field.Int("alert_metas").Optional(),
 	}
 }

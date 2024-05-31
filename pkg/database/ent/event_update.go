@@ -35,34 +35,6 @@ func (eu *EventUpdate) SetUpdatedAt(t time.Time) *EventUpdate {
 	return eu
 }
 
-// SetTime sets the "time" field.
-func (eu *EventUpdate) SetTime(t time.Time) *EventUpdate {
-	eu.mutation.SetTime(t)
-	return eu
-}
-
-// SetNillableTime sets the "time" field if the given value is not nil.
-func (eu *EventUpdate) SetNillableTime(t *time.Time) *EventUpdate {
-	if t != nil {
-		eu.SetTime(*t)
-	}
-	return eu
-}
-
-// SetSerialized sets the "serialized" field.
-func (eu *EventUpdate) SetSerialized(s string) *EventUpdate {
-	eu.mutation.SetSerialized(s)
-	return eu
-}
-
-// SetNillableSerialized sets the "serialized" field if the given value is not nil.
-func (eu *EventUpdate) SetNillableSerialized(s *string) *EventUpdate {
-	if s != nil {
-		eu.SetSerialized(*s)
-	}
-	return eu
-}
-
 // SetAlertEvents sets the "alert_events" field.
 func (eu *EventUpdate) SetAlertEvents(i int) *EventUpdate {
 	eu.mutation.SetAlertEvents(i)
@@ -149,20 +121,7 @@ func (eu *EventUpdate) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (eu *EventUpdate) check() error {
-	if v, ok := eu.mutation.Serialized(); ok {
-		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := eu.check(); err != nil {
-		return n, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
 	if ps := eu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -173,12 +132,6 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := eu.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := eu.mutation.Time(); ok {
-		_spec.SetField(event.FieldTime, field.TypeTime, value)
-	}
-	if value, ok := eu.mutation.Serialized(); ok {
-		_spec.SetField(event.FieldSerialized, field.TypeString, value)
 	}
 	if eu.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -232,34 +185,6 @@ type EventUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (euo *EventUpdateOne) SetUpdatedAt(t time.Time) *EventUpdateOne {
 	euo.mutation.SetUpdatedAt(t)
-	return euo
-}
-
-// SetTime sets the "time" field.
-func (euo *EventUpdateOne) SetTime(t time.Time) *EventUpdateOne {
-	euo.mutation.SetTime(t)
-	return euo
-}
-
-// SetNillableTime sets the "time" field if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableTime(t *time.Time) *EventUpdateOne {
-	if t != nil {
-		euo.SetTime(*t)
-	}
-	return euo
-}
-
-// SetSerialized sets the "serialized" field.
-func (euo *EventUpdateOne) SetSerialized(s string) *EventUpdateOne {
-	euo.mutation.SetSerialized(s)
-	return euo
-}
-
-// SetNillableSerialized sets the "serialized" field if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableSerialized(s *string) *EventUpdateOne {
-	if s != nil {
-		euo.SetSerialized(*s)
-	}
 	return euo
 }
 
@@ -362,20 +287,7 @@ func (euo *EventUpdateOne) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (euo *EventUpdateOne) check() error {
-	if v, ok := euo.mutation.Serialized(); ok {
-		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error) {
-	if err := euo.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
 	id, ok := euo.mutation.ID()
 	if !ok {
@@ -403,12 +315,6 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	}
 	if value, ok := euo.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := euo.mutation.Time(); ok {
-		_spec.SetField(event.FieldTime, field.TypeTime, value)
-	}
-	if value, ok := euo.mutation.Serialized(); ok {
-		_spec.SetField(event.FieldSerialized, field.TypeString, value)
 	}
 	if euo.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{

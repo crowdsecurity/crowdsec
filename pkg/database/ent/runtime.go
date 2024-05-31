@@ -72,16 +72,12 @@ func init() {
 	bouncerDescIPAddress := bouncerFields[5].Descriptor()
 	// bouncer.DefaultIPAddress holds the default value on creation for the ip_address field.
 	bouncer.DefaultIPAddress = bouncerDescIPAddress.Default.(string)
-	// bouncerDescUntil is the schema descriptor for until field.
-	bouncerDescUntil := bouncerFields[8].Descriptor()
-	// bouncer.DefaultUntil holds the default value on creation for the until field.
-	bouncer.DefaultUntil = bouncerDescUntil.Default.(func() time.Time)
 	// bouncerDescLastPull is the schema descriptor for last_pull field.
-	bouncerDescLastPull := bouncerFields[9].Descriptor()
+	bouncerDescLastPull := bouncerFields[8].Descriptor()
 	// bouncer.DefaultLastPull holds the default value on creation for the last_pull field.
 	bouncer.DefaultLastPull = bouncerDescLastPull.Default.(func() time.Time)
 	// bouncerDescAuthType is the schema descriptor for auth_type field.
-	bouncerDescAuthType := bouncerFields[10].Descriptor()
+	bouncerDescAuthType := bouncerFields[9].Descriptor()
 	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.
 	bouncer.DefaultAuthType = bouncerDescAuthType.Default.(string)
 	configitemFields := schema.ConfigItem{}.Fields()

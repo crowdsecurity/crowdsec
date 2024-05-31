@@ -94,11 +94,6 @@ func Version(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldVersion, v))
 }
 
-// Until applies equality check predicate on the "until" field. It's identical to UntilEQ.
-func Until(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldEQ(FieldUntil, v))
-}
-
 // LastPull applies equality check predicate on the "last_pull" field. It's identical to LastPullEQ.
 func LastPull(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldLastPull, v))
@@ -552,56 +547,6 @@ func VersionEqualFold(v string) predicate.Bouncer {
 // VersionContainsFold applies the ContainsFold predicate on the "version" field.
 func VersionContainsFold(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldContainsFold(FieldVersion, v))
-}
-
-// UntilEQ applies the EQ predicate on the "until" field.
-func UntilEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldEQ(FieldUntil, v))
-}
-
-// UntilNEQ applies the NEQ predicate on the "until" field.
-func UntilNEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldNEQ(FieldUntil, v))
-}
-
-// UntilIn applies the In predicate on the "until" field.
-func UntilIn(vs ...time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldIn(FieldUntil, vs...))
-}
-
-// UntilNotIn applies the NotIn predicate on the "until" field.
-func UntilNotIn(vs ...time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldNotIn(FieldUntil, vs...))
-}
-
-// UntilGT applies the GT predicate on the "until" field.
-func UntilGT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldGT(FieldUntil, v))
-}
-
-// UntilGTE applies the GTE predicate on the "until" field.
-func UntilGTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldGTE(FieldUntil, v))
-}
-
-// UntilLT applies the LT predicate on the "until" field.
-func UntilLT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldLT(FieldUntil, v))
-}
-
-// UntilLTE applies the LTE predicate on the "until" field.
-func UntilLTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldLTE(FieldUntil, v))
-}
-
-// UntilIsNil applies the IsNil predicate on the "until" field.
-func UntilIsNil() predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldIsNull(FieldUntil))
-}
-
-// UntilNotNil applies the NotNil predicate on the "until" field.
-func UntilNotNil() predicate.Bouncer {
-	return predicate.Bouncer(sql.FieldNotNull(FieldUntil))
 }
 
 // LastPullEQ applies the EQ predicate on the "last_pull" field.
