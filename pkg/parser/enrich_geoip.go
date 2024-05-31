@@ -29,7 +29,11 @@ func IpToRange(field string, p *types.Event, plog *log.Entry) (map[string]string
 		return nil, nil
 	}
 
-	record := r.(*net.IPNet)
+	record, ok := r.(*net.IPNet)
+
+	if !ok {
+		return nil, nil
+	}
 
 	ret := make(map[string]string)
 	ret["SourceRange"] = record.String()
@@ -49,7 +53,11 @@ func GeoIpASN(field string, p *types.Event, plog *log.Entry) (map[string]string,
 		return nil, nil //nolint:nilerr
 	}
 
-	record := r.(*geoip2.ASN)
+	record, ok := r.(*geoip2.ASN)
+
+	if !ok {
+		return nil, nil
+	}
 
 	ret := make(map[string]string)
 
@@ -74,7 +82,12 @@ func GeoIpCity(field string, p *types.Event, plog *log.Entry) (map[string]string
 		return nil, nil //nolint:nilerr
 	}
 
-	record := r.(*geoip2.City)
+	record, ok := r.(*geoip2.City)
+
+	if !ok {
+		return nil, nil
+	}
+
 	ret := make(map[string]string)
 
 	if record.Country.IsoCode != "" {
