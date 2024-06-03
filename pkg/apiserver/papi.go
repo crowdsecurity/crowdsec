@@ -141,15 +141,16 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 		return errors.New("no source user in header message, skipping")
 	}
 
-	if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
-		logger.Debugf("Calling operation '%s'", message.Header.OperationType)
-
-		err := operationFunc(message, p, sync)
-		if err != nil {
-			return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
-		}
-	} else {
+	operationFunc, ok := operationMap[message.Header.OperationType]
+	if !ok {
 		return fmt.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
+	}
+
+	logger.Debugf("Calling operation '%s'", message.Header.OperationType)
+
+	err := operationFunc(message, p, sync)
+	if err != nil {
+		return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
 	}
 
 	return nil

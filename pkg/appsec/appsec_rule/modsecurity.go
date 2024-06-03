@@ -166,15 +166,15 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	r.WriteByte(' ')
 
 	if rule.Match.Type != "" {
-		if match, ok := matchMap[rule.Match.Type]; ok {
-			prefix := ""
-			if rule.Match.Not {
-				prefix = "!"
-			}
-			r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
-		} else {
+		match, ok := matchMap[rule.Match.Type]
+		if !ok {
 			return nil, fmt.Errorf("unknown match type '%s'", rule.Match.Type)
 		}
+		prefix := ""
+		if rule.Match.Not {
+			prefix = "!"
+		}
+		r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
 	}
 
 	//Should phase:2 be configurable?
@@ -186,20 +186,20 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 				continue
 			}
 			r.WriteByte(',')
-			if mappedTransform, ok := transformMap[transform]; ok {
-				r.WriteString(mappedTransform)
-			} else {
+			mappedTransform, ok := transformMap[transform]
+			if !ok {
 				return nil, fmt.Errorf("unknown transform '%s'", transform)
 			}
+			r.WriteString(mappedTransform)
 		}
 	}
 
 	if rule.BodyType != "" {
-		if mappedBodyType, ok := bodyTypeMatch[rule.BodyType]; ok {
-			r.WriteString(fmt.Sprintf(",ctl:requestBodyProcessor=%s", mappedBodyType))
-		} else {
+		mappedBodyType, ok := bodyTypeMatch[rule.BodyType]
+		if !ok {
 			return nil, fmt.Errorf("unknown body type '%s'", rule.BodyType)
 		}
+		r.WriteString(fmt.Sprintf(",ctl:requestBodyProcessor=%s", mappedBodyType))
 	}
 
 	if and {

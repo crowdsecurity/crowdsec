@@ -102,7 +102,6 @@ linters-settings:
           - "!**/pkg/csplugin/broker.go"
           - "!**/pkg/leakybucket/buckets_test.go"
           - "!**/pkg/leakybucket/manager_load.go"
-          - "!**/pkg/metabase/metabase.go"
           - "!**/pkg/parser/node.go"
           - "!**/pkg/parser/node_test.go"
           - "!**/pkg/parser/parsing_test.go"
@@ -138,8 +137,6 @@ linters-settings:
       - name: deep-exit
         disabled: true
       - name: defer
-        disabled: true
-      - name: early-return
         disabled: true
       - name: empty-block
         disabled: true
@@ -382,6 +379,7 @@ issues:
 
   exclude-dirs:
     - pkg/time/rate
+    - pkg/metabase
 
   exclude-files:
     - pkg/yamlpatch/merge.go

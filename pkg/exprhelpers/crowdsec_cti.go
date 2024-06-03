@@ -86,12 +86,11 @@ func CrowdsecCTI(params ...any) (any, error) {
 	if val, err := CTICache.Get(ip); err == nil && val != nil {
 		ctiClient.Logger.Debugf("cti cache fetch for %s", ip)
 		ret, ok := val.(*cticlient.SmokeItem)
-		if !ok {
-			ctiClient.Logger.Warningf("CrowdsecCTI: invalid type in cache, removing")
-			CTICache.Remove(ip)
-		} else {
+		if ok {
 			return ret, nil
 		}
+		ctiClient.Logger.Warningf("CrowdsecCTI: invalid type in cache, removing")
+		CTICache.Remove(ip)
 	}
 
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {

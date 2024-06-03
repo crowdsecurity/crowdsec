@@ -251,15 +251,14 @@ func (s *S3Source) listPoll() error {
 				continue
 			}
 			for i := len(bucketObjects) - 1; i >= 0; i-- {
-				if bucketObjects[i].LastModified.After(lastObjectDate) {
-					newObject = true
-					logger.Debugf("Found new object %s", *bucketObjects[i].Key)
-					s.readerChan <- S3Object{
-						Bucket: s.Config.BucketName,
-						Key:    *bucketObjects[i].Key,
-					}
-				} else {
+				if !bucketObjects[i].LastModified.After(lastObjectDate) {
 					break
+				}
+				newObject = true
+				logger.Debugf("Found new object %s", *bucketObjects[i].Key)
+				s.readerChan <- S3Object{
+					Bucket: s.Config.BucketName,
+					Key:    *bucketObjects[i].Key,
 				}
 			}
 			if newObject {
