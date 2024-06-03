@@ -48,11 +48,7 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 				return err
 			}
 
-			if err := require.CAPI(cfg); err != nil {
-				return err
-			}
-
-			return nil
+			return require.CAPI(cfg)
 		},
 	}
 

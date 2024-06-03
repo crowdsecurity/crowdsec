@@ -24,7 +24,7 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", cli.filePrepender, cli.linkHandler); err != nil {
-				return fmt.Errorf("failed to generate cobra doc: %s", err)
+				return fmt.Errorf("failed to generate cobra doc: %w", err)
 			}
 			return nil
 		},

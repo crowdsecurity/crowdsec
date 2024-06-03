@@ -15,10 +15,12 @@ import (
 func alertsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
+
 	header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
 	if printMachine {
 		header = append(header, "machine")
 	}
+
 	t.SetHeaders(header...)
 
 	for _, alertItem := range *alerts {
@@ -54,20 +56,25 @@ func alertDecisionsTable(out io.Writer, alert *models.Alert) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("ID", "scope:value", "action", "expiration", "created_at")
+
 	for _, decision := range alert.Decisions {
 		parsedDuration, err := time.ParseDuration(*decision.Duration)
 		if err != nil {
 			log.Error(err)
 		}
+
 		expire := time.Now().UTC().Add(parsedDuration)
 		if time.Now().UTC().After(expire) {
 			continue
 		}
+
 		foundActive = true
 		scopeAndValue := *decision.Scope
+
 		if *decision.Value != "" {
 			scopeAndValue += ":" + *decision.Value
 		}
+
 		t.AddRow(
 			strconv.Itoa(int(decision.ID)),
 			scopeAndValue,
@@ -76,6 +83,7 @@ func alertDecisionsTable(out io.Writer, alert *models.Alert) {
 			alert.CreatedAt,
 		)
 	}
+
 	if foundActive {
 		fmt.Printf(" - Active Decisions  :\n")
 		t.Render() // Send output

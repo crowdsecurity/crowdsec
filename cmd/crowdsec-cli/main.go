@@ -182,11 +182,11 @@ func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 	log.SetFormatter(logFormatter)
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
-		return nil, fmt.Errorf("failed to register features: %s", err)
+		return nil, fmt.Errorf("failed to register features: %w", err)
 	}
 
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
-		return nil, fmt.Errorf("failed to set feature flags from env: %s", err)
+		return nil, fmt.Errorf("failed to set feature flags from env: %w", err)
 	}
 
 	cmd := &cobra.Command{
@@ -286,6 +286,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	if err := cmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
