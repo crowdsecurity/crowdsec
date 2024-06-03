@@ -48,11 +48,7 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 				return err
 			}
 
-			if err := require.CAPI(cfg); err != nil {
-				return err
-			}
-
-			return nil
+			return require.CAPI(cfg)
 		},
 	}
 
@@ -147,9 +143,7 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmd.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
 
-	if err := cmd.Flags().MarkHidden("schmilblick"); err != nil {
-		log.Fatalf("failed to hide flag: %s", err)
-	}
+	_ = cmd.Flags().MarkHidden("schmilblick")
 
 	return cmd
 }

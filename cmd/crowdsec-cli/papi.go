@@ -142,7 +142,7 @@ func (cli *cliPapi) NewSyncCmd() *cobra.Command {
 			apic.Shutdown()
 			papi.Shutdown()
 			t.Wait()
-			time.Sleep(5 * time.Second) //FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
+			time.Sleep(5 * time.Second) // FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
 
 			return nil
 		},

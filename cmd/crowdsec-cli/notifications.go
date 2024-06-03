@@ -250,12 +250,15 @@ func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args [
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
+
 	var ret []string
+
 	for k := range ncfgs {
 		if strings.Contains(k, toComplete) && !slices.Contains(args, k) {
 			ret = append(ret, k)
 		}
 	}
+
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
