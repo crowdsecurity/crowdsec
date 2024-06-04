@@ -276,3 +276,17 @@ rune() {
     run --separate-stderr "$@"
 }
 export -f rune
+
+# call the lapi through unix socket with an API_KEY (authenticates as a bouncer)
+lapi-get() {
+    [[ -z "$1" ]] && { fail "lapi-get: missing path"; }
+    [[ -z "$API_KEY" ]] && { fail "lapi-get: missing API_KEY"; }
+    local socket
+    socket=$(config_get '.api.server.listen_socket')
+    [[ -z "$socket" ]] && { fail "lapi-get: missing .api.server.listen_socket"; }
+
+    # curl needs a fake hostname when using a unix socket
+    curl -s -f -H "X-Api-Key: $API_KEY" --unix-socket "$socket" "http://lapi$1"
+}
+export -f lapi-get
+

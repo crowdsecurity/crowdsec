@@ -88,7 +88,7 @@ func TestBucket(t *testing.T) {
 // we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
-		if tomb.Alive() == false {
+		if !tomb.Alive() {
 			log.Warning("Tomb is dead")
 			break
 		}

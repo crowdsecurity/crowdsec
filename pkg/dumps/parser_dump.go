@@ -235,7 +235,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 						case "update":
 							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
 
-							if change.Path[0] == "Whitelisted" && change.To == true {
+							if change.Path[0] == "Whitelisted" && change.To == true { //nolint:revive
 								whitelisted = true
 
 								if whitelistReason == "" {
