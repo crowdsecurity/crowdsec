@@ -189,6 +189,11 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 
 }
 
-func (c *Client) QueryLastValidatedHeartbeatLT(t time.Time) ([]*ent.Machine, error) {
-	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)).All(c.CTX)
+func (c *Client) QueryMachinesInactiveSince(t time.Time) ([]*ent.Machine, error) {
+	return c.Ent.Machine.Query().Where(
+		machine.Or(
+			machine.And(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)),
+			machine.And(machine.LastHeartbeatIsNil(), machine.CreatedAtLT(t)),
+		),
+	).All(c.CTX)
 }
