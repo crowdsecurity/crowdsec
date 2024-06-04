@@ -1,6 +1,40 @@
 # vim: set ft=yaml.ansible:
 ---
 
+- name: "Fix EOL'd centos Stream 8"
+  hosts: all
+  tasks:
+    - name: "update repositories file"
+      ansible.builtin.find:
+        paths: /etc/yum.repos.d
+        patterns: "*.repo"
+      register: "repo_files"
+      when:
+        - ansible_facts.distribution == "CentOS"
+        - ansible_facts.distribution_major_version == '8'
+    - name: Replace old text with new text
+      become: true
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: 'mirrorlist'
+        replace: '#mirrorlist'
+      loop: "{{ repo_files.files }}"
+      when:
+        - ansible_facts.distribution == "CentOS"
+        - ansible_facts.distribution_major_version == '8'
+        - repo_files.matched > 0
+    - name: Replace old text with new text
+      become: true
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: '#baseurl=http://mirror.centos.org'
+        replace: 'baseurl=https://vault.centos.org'
+      loop: "{{ repo_files.files }}"
+      when:
+        - ansible_facts.distribution == "CentOS"
+        - ansible_facts.distribution_major_version == '8'
+        - repo_files.matched > 0
+
 - name: "Install required packages"
   hosts: all
   vars_files:
@@ -16,6 +50,19 @@
     - crowdsecurity.testing.pkg_config
     - crowdsecurity.testing.re2
     - crowdsecurity.testing.bats_requirements
+
+- name: "Install recent python"
+  hosts: all
+  vars_files:
+    - vars/python.yml
+  tasks:
+    - name: role "crowdsecurity.testing.python3"
+      ansible.builtin.include_role:
+        name: crowdsecurity.testing.python3
+      when:
+        - ansible_facts.distribution in ['CentOS', 'OracleLinux']
+        - ansible_facts.distribution_major_version == '8' or ansible_facts.distribution_major_version == '7'
+
 
 - name: "Install Postgres"
   hosts: all
