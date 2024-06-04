@@ -228,7 +228,7 @@ container_name_regexp:
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
-	if readLogs == true {
+	if readLogs {
 		return []dockerTypes.Container{}, nil
 	}
 
@@ -243,7 +243,7 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
-	if readLogs == true {
+	if readLogs {
 		return io.NopCloser(strings.NewReader("")), nil
 	}
 
