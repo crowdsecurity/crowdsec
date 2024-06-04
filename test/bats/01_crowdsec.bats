@@ -152,7 +152,7 @@ teardown() {
     config_set '.crowdsec_service.acquisition_path=""'
 
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
-    rm -f "$ACQUIS_DIR"
+    rm -rf "$ACQUIS_DIR"
 
     config_set '.common.log_media="stdout"'
     rune -1 wait-for "$CROWDSEC"
@@ -167,7 +167,7 @@ teardown() {
     config_set '.crowdsec_service.acquisition_path=""'
 
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
-    rm -f "$ACQUIS_DIR"
+    rm -rf "$ACQUIS_DIR"
     config_set '.crowdsec_service.acquisition_dir=""'
 
     config_set '.common.log_media="stdout"'
