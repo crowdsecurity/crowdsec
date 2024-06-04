@@ -115,6 +115,15 @@ func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, id in
 	return nil
 }
 
-func (c *Client) QueryBouncersLastPulltimeLT(t time.Time) ([]*ent.Bouncer, error) {
-	return c.Ent.Bouncer.Query().Where(bouncer.LastPullLT(t)).All(c.CTX)
+func (c *Client) QueryBouncersInactiveSince(t time.Time) ([]*ent.Bouncer, error) {
+	return c.Ent.Bouncer.Query().Where(
+		// poor man's coalesce
+		bouncer.Or(
+			bouncer.LastPullLT(t),
+			bouncer.And(
+				bouncer.LastPullIsNil(),
+				bouncer.CreatedAtLT(t),
+			),
+		),
+	).All(c.CTX)
 }

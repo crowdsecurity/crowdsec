@@ -264,7 +264,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		}
 	}
 
-	bouncers, err := cli.db.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(-duration))
+	bouncers, err := cli.db.QueryBouncersInactiveSince(time.Now().UTC().Add(-duration))
 	if err != nil {
 		return fmt.Errorf("unable to query bouncers: %w", err)
 	}
