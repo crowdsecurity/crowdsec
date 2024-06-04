@@ -27,10 +27,10 @@ import (
 )
 
 const (
-	paginationSize = 100 // used to queryAlert to avoid 'too many SQL variable'
-	defaultLimit   = 100 // default limit of element to returns when query alerts
-	bulkSize       = 50  // bulk size when create alerts
-	maxLockRetries = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
+	paginationSize      = 100 // used to queryAlert to avoid 'too many SQL variable'
+	defaultLimit        = 100 // default limit of element to returns when query alerts
+	alertCreateBulkSize = 50  // bulk size when create alerts
+	maxLockRetries      = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
 )
 
 func formatAlertCN(source models.Source) string {
@@ -796,7 +796,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 
 	c.Log.Debugf("writing %d items", len(alertList))
 
-	alertChunks := slicetools.Chunks(alertList, bulkSize)
+	alertChunks := slicetools.Chunks(alertList, alertCreateBulkSize)
 	alertIDs := []string{}
 
 	for _, alertChunk := range alertChunks {
@@ -1117,7 +1117,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if limit == 0 {
 			limit, err = alerts.Count(c.CTX)
 			if err != nil {
-				return nil, fmt.Errorf("unable to count nb alerts: %s", err)
+				return nil, fmt.Errorf("unable to count nb alerts: %w", err)
 			}
 		}
 

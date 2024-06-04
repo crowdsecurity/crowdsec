@@ -341,7 +341,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
 
-		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true {
+		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true { //nolint:revive
 			newApiAlert.Remediation = true
 		}
 

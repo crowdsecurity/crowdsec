@@ -120,8 +120,6 @@ linters-settings:
         disabled: true
       - name: blank-imports
         disabled: true
-      - name: bool-literal-in-expr
-        disabled: true
       - name: cognitive-complexity
         disabled: true
       - name: comment-spacings

@@ -432,9 +432,9 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 			filter["scopes"] = []string{*decision.Scope}
 		}
 
-		dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
 		if err != nil {
-			return 0, fmt.Errorf("deleting decisions error: %w", err)
+			return 0, fmt.Errorf("expiring decisions error: %w", err)
 		}
 
 		dbCliDel, err := strconv.Atoi(dbCliRet)
@@ -464,9 +464,9 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
 			if err != nil {
-				return 0, fmt.Errorf("deleting decisions error: %w", err)
+				return 0, fmt.Errorf("expiring decisions error: %w", err)
 			}
 
 			dbCliDel, err := strconv.Atoi(dbCliRet)
