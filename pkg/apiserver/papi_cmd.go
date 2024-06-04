@@ -63,8 +63,8 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 
 		filter := make(map[string][]string)
 		filter["uuid"] = UUIDs
-		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(filter)
 
+		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(filter)
 		if err != nil {
 			return fmt.Errorf("unable to expire decisions %+v: %w", UUIDs, err)
 		}
@@ -130,12 +130,13 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		alert.Scenario = ptr.Of("")
 		alert.Source = &models.Source{}
 
-		//if we're setting Source.Scope to types.ConsoleOrigin, it messes up the alert's value
+		// if we're setting Source.Scope to types.ConsoleOrigin, it messes up the alert's value
 		if len(alert.Decisions) >= 1 {
 			alert.Source.Scope = alert.Decisions[0].Scope
 			alert.Source.Value = alert.Decisions[0].Value
 		} else {
 			log.Warningf("No decision found in alert for Polling API (%s : %s)", message.Header.Source.User, message.Header.Message)
+
 			alert.Source.Scope = ptr.Of(types.ConsoleOrigin)
 			alert.Source.Value = &message.Header.Source.User
 		}
@@ -150,7 +151,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 			log.Infof("Adding decision for '%s' with UUID: %s", *decision.Value, decision.UUID)
 		}
 
-		//use a different method : alert and/or decision might already be partially present in the database
+		// use a different method: alert and/or decision might already be partially present in the database
 		_, err = p.DBClient.CreateOrUpdateAlert("", alert)
 		if err != nil {
 			log.Errorf("Failed to create alerts in DB: %s", err)
@@ -172,19 +173,21 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 	}
 
 	switch message.Header.OperationCmd {
-
 	case "blocklist_unsubscribe":
 		data, err := json.Marshal(message.Data)
 		if err != nil {
 			return err
 		}
+
 		unsubscribeMsg := listUnsubscribe{}
 		if err := json.Unmarshal(data, &unsubscribeMsg); err != nil {
-			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
+			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
+
 		if unsubscribeMsg.Name == "" {
 			return fmt.Errorf("message for '%s' contains bad data format: missing blocklist name", message.Header.OperationType)
 		}
+
 		p.Logger.Infof("Received blocklist_unsubscribe command from PAPI, unsubscribing from blocklist %s", unsubscribeMsg.Name)
 
 		filter := make(map[string][]string)
@@ -195,8 +198,8 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		if err != nil {
 			return fmt.Errorf("unable to expire decisions for list %s : %w", unsubscribeMsg.Name, err)
 		}
-		p.Logger.Infof("deleted %d decisions for list %s", len(deletedDecisions), unsubscribeMsg.Name)
 
+		p.Logger.Infof("deleted %d decisions for list %s", len(deletedDecisions), unsubscribeMsg.Name)
 	case "reauth":
 		p.Logger.Infof("Received reauth command from PAPI, resetting token")
 		p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
@@ -205,19 +208,23 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		if err != nil {
 			return err
 		}
+
 		forcePullMsg := forcePull{}
+
 		if err := json.Unmarshal(data, &forcePullMsg); err != nil {
-			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
+			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
 
 		if forcePullMsg.Blocklist == nil {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+
 			err = p.apic.PullTop(true)
 			if err != nil {
-				return fmt.Errorf("failed to force pull operation: %s", err)
+				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
 		} else {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
+
 			err = p.apic.PullBlocklist(&modelscapi.BlocklistLink{
 				Name:        &forcePullMsg.Blocklist.Name,
 				URL:         &forcePullMsg.Blocklist.Url,

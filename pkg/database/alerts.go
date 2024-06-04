@@ -1117,7 +1117,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if limit == 0 {
 			limit, err = alerts.Count(c.CTX)
 			if err != nil {
-				return nil, fmt.Errorf("unable to count nb alerts: %s", err)
+				return nil, fmt.Errorf("unable to count nb alerts: %w", err)
 			}
 		}
 
