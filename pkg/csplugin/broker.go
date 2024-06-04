@@ -103,7 +103,6 @@ func (pb *PluginBroker) Kill() {
 func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
 	pb.watcher.Start(&tomb.Tomb{})
-loop:
 	for {
 		select {
 		case profileAlert := <-pb.PluginChannel:
@@ -137,7 +136,7 @@ loop:
 				case <-pb.watcher.tomb.Dead():
 					log.Info("killing all plugins")
 					pb.Kill()
-					break loop
+					return
 				case pluginName := <-pb.watcher.PluginEvents:
 					// this can be run in goroutine, but then locks will be needed
 					pluginMutex.Lock()
