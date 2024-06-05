@@ -23,8 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var Client *apiclient.ApiClient
-
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	spamLimit := make(map[string]bool)
@@ -117,6 +115,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 }
 
 type cliDecisions struct {
+	client *apiclient.ApiClient
 	cfg configGetter
 }
 
@@ -141,16 +140,16 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
-			password := strfmt.Password(cfg.API.Client.Credentials.Password)
-			apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
+			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
-				return fmt.Errorf("parsing api url %s: %w", cfg.API.Client.Credentials.URL, err)
+				return fmt.Errorf("parsing api url: %w", err)
 			}
-			Client, err = apiclient.NewClient(&apiclient.Config{
+
+			cli.client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
-				Password:      password,
+				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				UserAgent:     cwversion.UserAgent(),
-				URL:           apiurl,
+				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
 			if err != nil {
@@ -247,7 +246,7 @@ func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, con
 		filter.Contains = new(bool)
 	}
 
-	alerts, _, err := Client.Alerts.List(context.Background(), filter)
+	alerts, _, err := cli.client.Alerts.List(context.Background(), filter)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve decisions: %w", err)
 	}
@@ -367,9 +366,9 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 		Simulated:       &simulated,
 		// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
 		Source: &models.Source{
-			AsName:   empty,
-			AsNumber: empty,
-			Cn:       empty,
+			AsName:   "",
+			AsNumber: "",
+			Cn:       "",
 			IP:       addValue,
 			Range:    "",
 			Scope:    &addScope,
@@ -381,7 +380,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	}
 	alerts = append(alerts, &alert)
 
-	_, _, err = Client.Alerts.Add(context.Background(), alerts)
+	_, _, err = cli.client.Alerts.Add(context.Background(), alerts)
 	if err != nil {
 		return err
 	}
@@ -465,7 +464,7 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 	}
 
 	if delDecisionID == "" {
-		decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
+		decisions, _, err = cli.client.Decisions.Delete(context.Background(), delFilter)
 		if err != nil {
 			return fmt.Errorf("unable to delete decisions: %w", err)
 		}
@@ -473,7 +472,7 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 		if _, err = strconv.Atoi(delDecisionID); err != nil {
 			return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
 		}
-		decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionID)
+		decisions, _, err = cli.client.Decisions.DeleteOne(context.Background(), delDecisionID)
 		if err != nil {
 			return fmt.Errorf("unable to delete decision: %w", err)
 		}

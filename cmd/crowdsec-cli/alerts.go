@@ -204,7 +204,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 			}
 			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
-				return fmt.Errorf("parsing api url %s: %w", apiURL, err)
+				return fmt.Errorf("parsing api url: %w", err)
 			}
 
 			cli.client, err = apiclient.NewClient(&apiclient.Config{
@@ -215,7 +215,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 				VersionPrefix: "v1",
 			})
 			if err != nil {
-				return fmt.Errorf("new api client: %w", err)
+				return fmt.Errorf("creating api client: %w", err)
 			}
 
 			return nil

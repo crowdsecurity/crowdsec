@@ -224,7 +224,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 			Decisions:       chunk,
 		}
 
-		_, _, err = Client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
+		_, _, err = cli.client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
 		if err != nil {
 			return err
 		}
