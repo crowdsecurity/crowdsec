@@ -300,12 +300,9 @@ teardown() {
     rune -0 ./instance-crowdsec start
     line="Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4"
 
+    rune -0 cscli collections remove crowdsecurity/linux
     rune -0 cscli parsers install crowdsecurity/syslog-logs
     rune -0 cscli collections install crowdsecurity/sshd
-
-    rune -0 cscli parsers remove crowdsecurity/dateparse-enrich
-    rune -0 cscli parsers remove crowdsecurity/geoip-enrich
-    rune -0 cscli parsers remove crowdsecurity/whitelists
 
     rune -0 cscli explain --log "$line" --type syslog --only-successful-parsers --crowdsec "$CROWDSEC"
     assert_output - <"$BATS_TEST_DIRNAME"/testdata/explain/explain-log.txt
