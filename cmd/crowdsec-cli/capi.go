@@ -164,7 +164,7 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return errors.New("no scenarios installed, abort")
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiURL,
+	client, err := apiclient.NewDefaultClient(apiURL,
 		CAPIURLPrefix,
 		cwversion.UserAgent(),
 		nil)
@@ -180,7 +180,7 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		Scenarios: scenarios,
 	}
 
-	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return err
 	}
