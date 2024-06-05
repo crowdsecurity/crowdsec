@@ -119,7 +119,6 @@ linters-settings:
     - -ST1012   # error var ... should have name of the form ErrFoo
     - -ST1016   # methods on the same type should have the same receiver name
     - -ST1022   # comment on exported var ... should be of the form ...
-    - -ST1023   # should omit type ... from declaration; it will be inferred from the right-hand side
 
   revive:
     ignore-generated-header: true

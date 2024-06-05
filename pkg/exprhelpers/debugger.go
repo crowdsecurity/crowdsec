@@ -379,13 +379,12 @@ func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry
 
 // TBD: Based on the level of the logger (ie. trace vs debug) we could decide to add more low level instructions (pop, push, etc.)
 func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]OpOutput, any, error) {
-
-	var outputs []OpOutput = []OpOutput{}
-	var buf strings.Builder
-	var erp ExprRuntimeDebug = ExprRuntimeDebug{
+	outputs := []OpOutput{}
+	erp := ExprRuntimeDebug{
 		Logger: logger,
 	}
-	var debugErr chan error = make(chan error)
+	debugErr := make(chan error)
+	var buf strings.Builder
 	vm := vm.Debug()
 	done := false
 	program.Opcodes(&buf)

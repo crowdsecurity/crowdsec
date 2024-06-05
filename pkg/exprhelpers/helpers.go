@@ -243,8 +243,8 @@ func Distinct(params ...any) (any, error) {
 		return []interface{}{}, nil
 	}
 
-	var exists map[any]bool = make(map[any]bool)
-	var ret []interface{} = make([]interface{}, 0)
+	exists := make(map[any]bool)
+	ret := make([]interface{}, 0)
 
 	for _, val := range array {
 		if _, ok := exists[val]; !ok {
