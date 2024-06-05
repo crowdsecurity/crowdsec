@@ -320,11 +320,7 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = setup.InstallHubItems(hub, input, dryRun); err != nil {
-		return err
-	}
-
-	return nil
+	return setup.InstallHubItems(hub, input, dryRun)
 }
 
 func runSetupValidate(cmd *cobra.Command, args []string) error {

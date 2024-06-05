@@ -140,8 +140,6 @@ linters-settings:
         disabled: true
       - name: error-naming
         disabled: true
-      - name: error-strings
-        disabled: true
       - name: flag-parameter
         disabled: true
       - name: function-result-limit
@@ -149,8 +147,6 @@ linters-settings:
       - name: function-length
         disabled: true
       - name: get-return
-        disabled: true
-      - name: if-return
         disabled: true
       - name: increment-decrement
         disabled: true
