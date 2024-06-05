@@ -2,7 +2,6 @@ package exprhelpers
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -22,9 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var (
-	TestFolder = "tests"
-)
+const TestFolder = "tests"
 
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
@@ -78,21 +75,21 @@ func TestVisitor(t *testing.T) {
 			name:   "debug : can't compile",
 			filter: "static_one.foo.toto == 'lol'",
 			result: false,
-			err:    fmt.Errorf("bad syntax"),
+			err:    errors.New("bad syntax"),
 			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
 		},
 		{
 			name:   "debug : can't compile #2",
 			filter: "static_one.f!oo.to/to == 'lol'",
 			result: false,
-			err:    fmt.Errorf("bad syntax"),
+			err:    errors.New("bad syntax"),
 			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
 		},
 		{
 			name:   "debug : can't compile #3",
 			filter: "",
 			result: false,
-			err:    fmt.Errorf("bad syntax"),
+			err:    errors.New("bad syntax"),
 			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
 		},
 	}
@@ -193,10 +190,12 @@ func TestDistanceHelper(t *testing.T) {
 				"lat2": test.lat2,
 				"lon2": test.lon2,
 			}
+
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
 			if err != nil {
 				t.Fatalf("pattern:%s val:%s NOK %s", test.lat1, test.lon1, err)
 			}
+
 			ret, err := expr.Run(vm, env)
 			if test.valid {
 				require.NoError(t, err)
