@@ -50,7 +50,7 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiURL,
+	client, err := apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
 		cwversion.UserAgent(),
 		nil)
@@ -66,7 +66,7 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		Scenarios: scenarios,
 	}
 
-	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return err
 	}
