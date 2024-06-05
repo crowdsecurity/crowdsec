@@ -213,10 +213,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return nil
+	return scanner.Err()
 }
 
 // Expr helpers

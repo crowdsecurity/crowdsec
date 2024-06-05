@@ -66,11 +66,8 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
-			if err := require.Notifications(cfg); err != nil {
-				return err
-			}
 
-			return nil
+			return require.Notifications(cfg)
 		},
 	}
 

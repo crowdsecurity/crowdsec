@@ -442,11 +442,7 @@ func (cli cliItem) list(args []string, all bool) error {
 		return err
 	}
 
-	if err = listItems(color.Output, []string{cli.name}, items, false, cfg.Cscli.Output); err != nil {
-		return err
-	}
-
-	return nil
+	return listItems(color.Output, []string{cli.name}, items, false, cfg.Cscli.Output)
 }
 
 func (cli cliItem) newListCmd() *cobra.Command {

@@ -636,9 +636,5 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		return errors.New("Node is empty")
 	}
 
-	if err := n.validate(ectx); err != nil {
-		return err
-	}
-
-	return nil
+	return n.validate(ectx)
 }

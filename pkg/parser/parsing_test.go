@@ -131,7 +131,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	}
 	for n := 0; n < count; n++ {
 		if !testFile(tests, *pctx, pnodes) {
-			return errors.New("test failed !")
+			return errors.New("test failed")
 		}
 	}
 	return nil
