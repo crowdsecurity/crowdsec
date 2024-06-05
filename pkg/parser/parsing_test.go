@@ -28,13 +28,16 @@ var debug bool = false
 
 func TestParser(t *testing.T) {
 	debug = true
+
 	log.SetLevel(log.InfoLevel)
-	var envSetting = os.Getenv("TEST_ONLY")
+	envSetting := os.Getenv("TEST_ONLY")
+
 	pctx, ectx, err := prepTests()
 	if err != nil {
 		t.Fatalf("failed to load env : %s", err)
 	}
-	//Init the enricher
+
+	// Init the enricher
 	if envSetting != "" {
 		if err := testOneParser(pctx, ectx, envSetting, nil); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
@@ -44,12 +47,15 @@ func TestParser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
+
 		for _, fd := range fds {
 			if !fd.IsDir() {
 				continue
 			}
+
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
+
 			if err := testOneParser(pctx, ectx, fname, nil); err != nil {
 				t.Fatalf("Test '%s' failed : %s", fname, err)
 			}
@@ -59,13 +65,17 @@ func TestParser(t *testing.T) {
 
 func BenchmarkParser(t *testing.B) {
 	log.Printf("start bench !!!!")
+
 	debug = false
+
 	log.SetLevel(log.ErrorLevel)
+
 	pctx, ectx, err := prepTests()
 	if err != nil {
 		t.Fatalf("failed to load env : %s", err)
 	}
-	var envSetting = os.Getenv("TEST_ONLY")
+
+	envSetting := os.Getenv("TEST_ONLY")
 
 	if envSetting != "" {
 		if err := testOneParser(pctx, ectx, envSetting, t); err != nil {
@@ -76,12 +86,15 @@ func BenchmarkParser(t *testing.B) {
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
+
 		for _, fd := range fds {
 			if !fd.IsDir() {
 				continue
 			}
+
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
+
 			if err := testOneParser(pctx, ectx, fname, t); err != nil {
 				t.Fatalf("Test '%s' failed : %s", fname, err)
 			}
@@ -91,26 +104,32 @@ func BenchmarkParser(t *testing.B) {
 
 func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
 	var (
-		err    error
-		pnodes []Node
-
+		err            error
+		pnodes         []Node
 		parser_configs []Stagefile
 	)
+
 	log.Warningf("testing %s", dir)
+
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
+
 	cfg, err := os.ReadFile(parser_cfg_file)
 	if err != nil {
 		return fmt.Errorf("failed opening %s: %w", parser_cfg_file, err)
 	}
+
 	tmpl, err := template.New("test").Parse(string(cfg))
 	if err != nil {
 		return fmt.Errorf("failed to parse template %s: %w", cfg, err)
 	}
+
 	var out bytes.Buffer
+
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
 	if err != nil {
 		panic(err)
 	}
+
 	if err = yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
 		return fmt.Errorf("failed unmarshaling %s: %w", parser_cfg_file, err)
 	}
@@ -120,20 +139,23 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 		return fmt.Errorf("unable to load parser config: %w", err)
 	}
 
-	//TBD: Load post overflows
-	//func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
+	// TBD: Load post overflows
+	// func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
 	parser_test_file := fmt.Sprintf("%s/test.yaml", dir)
 	tests := loadTestFile(parser_test_file)
 	count := 1
+
 	if b != nil {
 		count = b.N
 		b.ResetTimer()
 	}
+
 	for n := 0; n < count; n++ {
 		if !testFile(tests, *pctx, pnodes) {
-			return errors.New("test failed !")
+			return errors.New("test failed")
 		}
 	}
+
 	return nil
 }
 
@@ -150,27 +172,31 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 		return nil, ectx, fmt.Errorf("exprhelpers init failed: %w", err)
 	}
 
-	//Load enrichment
+	// Load enrichment
 	datadir := "./test_data/"
+
 	err = exprhelpers.GeoIPInit(datadir)
 	if err != nil {
 		log.Fatalf("unable to initialize GeoIP: %s", err)
 	}
+
 	ectx, err = Loadplugin()
 	if err != nil {
 		return nil, ectx, fmt.Errorf("failed to load plugin geoip: %v", err)
 	}
+
 	log.Printf("Loaded -> %+v", ectx)
 
-	//Load the parser patterns
+	// Load the parser patterns
 	cfgdir := "../../config/"
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
 	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
 	if err != nil {
-		return nil, ectx, fmt.Errorf("failed to initialize parser : %v", err)
+		return nil, ectx, fmt.Errorf("failed to initialize parser: %v", err)
 	}
+
 	return pctx, ectx, nil
 }
 
@@ -179,21 +205,28 @@ func loadTestFile(file string) []TestFile {
 	if err != nil {
 		log.Fatalf("yamlFile.Get err   #%v ", err)
 	}
+
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
 	var testSet []TestFile
+
 	for {
 		tf := TestFile{}
+
 		err := dec.Decode(&tf)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
+
 			log.Fatalf("Failed to load testfile '%s' yaml error : %v", file, err)
+
 			return nil
 		}
+
 		testSet = append(testSet, tf)
 	}
+
 	return testSet
 }
 

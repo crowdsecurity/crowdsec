@@ -275,11 +275,7 @@ func (cli *cliLapi) addContext(key string, values []string) error {
 		cfg.Crowdsec.ContextToSend[key] = data
 	}
 
-	if err := cfg.Crowdsec.DumpContextConfigFile(); err != nil {
-		return err
-	}
-
-	return nil
+	return cfg.Crowdsec.DumpContextConfigFile()
 }
 
 func (cli *cliLapi) newContextAddCmd() *cobra.Command {
@@ -307,10 +303,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 			}
 
 			if keyToAdd != "" {
-				if err := cli.addContext(keyToAdd, valuesToAdd); err != nil {
-					return err
-				}
-				return nil
+				return cli.addContext(keyToAdd, valuesToAdd)
 			}
 
 			for _, v := range valuesToAdd {

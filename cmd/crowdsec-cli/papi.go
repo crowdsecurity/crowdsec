@@ -39,11 +39,8 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 			if err := require.CAPI(cfg); err != nil {
 				return err
 			}
-			if err := require.PAPI(cfg); err != nil {
-				return err
-			}
 
-			return nil
+			return require.PAPI(cfg)
 		},
 	}
 
