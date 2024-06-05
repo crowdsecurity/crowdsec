@@ -10,8 +10,8 @@ import (
 const (
 	// these are duplicated from pkg/types
 	// TODO XXX: de-duplicate
-	Ip  = "Ip"
-	Range = "Range"
+	Ip                = "Ip"
+	Range             = "Range"
 	CscliImportOrigin = "cscli-import"
 )
 
@@ -27,6 +27,7 @@ func (a *Alert) GetScenario() string {
 	if a.Scenario == nil {
 		return ""
 	}
+
 	return *a.Scenario
 }
 
@@ -34,6 +35,7 @@ func (a *Alert) GetEventsCount() int32 {
 	if a.EventsCount == nil {
 		return 0
 	}
+
 	return *a.EventsCount
 }
 
@@ -43,6 +45,7 @@ func (e *Event) GetMeta(key string) string {
 			return meta.Value
 		}
 	}
+
 	return ""
 }
 
@@ -52,6 +55,7 @@ func (a *Alert) GetMeta(key string) string {
 			return meta.Value
 		}
 	}
+
 	return ""
 }
 
@@ -59,6 +63,7 @@ func (s Source) GetValue() string {
 	if s.Value == nil {
 		return ""
 	}
+
 	return *s.Value
 }
 
@@ -66,6 +71,7 @@ func (s Source) GetScope() string {
 	if s.Scope == nil {
 		return ""
 	}
+
 	return *s.Scope
 }
 
@@ -74,9 +80,11 @@ func (s Source) GetAsNumberName() string {
 	if s.AsNumber != "0" {
 		ret += s.AsNumber
 	}
+
 	if s.AsName != "" {
 		ret += " " + s.AsName
 	}
+
 	return ret
 }
 
