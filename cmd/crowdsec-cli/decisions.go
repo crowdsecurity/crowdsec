@@ -431,6 +431,58 @@ cscli decisions add --scope username --value foobar
 	return cmd
 }
 
+func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDecisionID string, contained *bool) error {
+	var err error
+	var decisions *models.DeleteDecisionResponse
+
+	/*take care of shorthand options*/
+	if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
+		return err
+	}
+	if *delFilter.ScopeEquals == "" {
+		delFilter.ScopeEquals = nil
+	}
+	if *delFilter.OriginEquals == "" {
+		delFilter.OriginEquals = nil
+	}
+	if *delFilter.ValueEquals == "" {
+		delFilter.ValueEquals = nil
+	}
+	if *delFilter.ScenarioEquals == "" {
+		delFilter.ScenarioEquals = nil
+	}
+	if *delFilter.TypeEquals == "" {
+		delFilter.TypeEquals = nil
+	}
+	if *delFilter.IPEquals == "" {
+		delFilter.IPEquals = nil
+	}
+	if *delFilter.RangeEquals == "" {
+		delFilter.RangeEquals = nil
+	}
+	if contained != nil && *contained {
+		delFilter.Contains = new(bool)
+	}
+
+	if delDecisionID == "" {
+		decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
+		if err != nil {
+			return fmt.Errorf("unable to delete decisions: %w", err)
+		}
+	} else {
+		if _, err = strconv.Atoi(delDecisionID); err != nil {
+			return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
+		}
+		decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionID)
+		if err != nil {
+			return fmt.Errorf("unable to delete decision: %w", err)
+		}
+	}
+	log.Infof("%s decision(s) deleted", decisions.NbDeleted)
+
+	return nil
+}
+
 func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
 	delFilter := apiclient.DecisionsDeleteOpts{
 		ScopeEquals:    new(string),
@@ -475,69 +527,22 @@ cscli decisions delete --origin lists  --scenario list_name
 			return nil
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
-			var err error
-			var decisions *models.DeleteDecisionResponse
-
-			/*take care of shorthand options*/
-			if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
-				return err
-			}
-			if *delFilter.ScopeEquals == "" {
-				delFilter.ScopeEquals = nil
-			}
-			if *delFilter.OriginEquals == "" {
-				delFilter.OriginEquals = nil
-			}
-			if *delFilter.ValueEquals == "" {
-				delFilter.ValueEquals = nil
-			}
-			if *delFilter.ScenarioEquals == "" {
-				delFilter.ScenarioEquals = nil
-			}
-			if *delFilter.TypeEquals == "" {
-				delFilter.TypeEquals = nil
-			}
-			if *delFilter.IPEquals == "" {
-				delFilter.IPEquals = nil
-			}
-			if *delFilter.RangeEquals == "" {
-				delFilter.RangeEquals = nil
-			}
-			if contained != nil && *contained {
-				delFilter.Contains = new(bool)
-			}
-
-			if delDecisionID == "" {
-				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
-				if err != nil {
-					return fmt.Errorf("unable to delete decisions: %w", err)
-				}
-			} else {
-				if _, err = strconv.Atoi(delDecisionID); err != nil {
-					return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
-				}
-				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionID)
-				if err != nil {
-					return fmt.Errorf("unable to delete decision: %w", err)
-				}
-			}
-			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
-
-			return nil
+			return cli.delete(delFilter, delDecisionID, contained)
 		},
 	}
 
-	cmd.Flags().SortFlags = false
-	cmd.Flags().StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmd.Flags().StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmd.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
-	cmd.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	cmd.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
-	cmd.Flags().StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	flags.StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
+	flags.StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	flags.StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
+	flags.StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 
-	cmd.Flags().StringVar(&delDecisionID, "id", "", "decision id")
-	cmd.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
-	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+	flags.StringVar(&delDecisionID, "id", "", "decision id")
+	flags.BoolVar(&delDecisionAll, "all", false, "delete all decisions")
+	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	return cmd
 }
