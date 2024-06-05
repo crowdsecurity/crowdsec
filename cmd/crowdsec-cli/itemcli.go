@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -12,8 +13,6 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	"github.com/crowdsecurity/go-cs-lib/coalesce"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -44,8 +43,8 @@ type cliItem struct {
 
 func (cli cliItem) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.help.use, cli.name+" <action> [item]..."),
-		Short:             coalesce.String(cli.help.short, "Manage hub "+cli.name),
+		Use:               cmp.Or(cli.help.use, cli.name+" <action> [item]..."),
+		Short:             cmp.Or(cli.help.short, "Manage hub "+cli.name),
 		Long:              cli.help.long,
 		Example:           cli.help.example,
 		Args:              cobra.MinimumNArgs(1),
@@ -105,9 +104,9 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.installHelp.use, "install [item]..."),
-		Short:             coalesce.String(cli.installHelp.short, "Install given "+cli.oneOrMore),
-		Long:              coalesce.String(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
+		Use:               cmp.Or(cli.installHelp.use, "install [item]..."),
+		Short:             cmp.Or(cli.installHelp.short, "Install given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
 		Example:           cli.installHelp.example,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
@@ -231,9 +230,9 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.removeHelp.use, "remove [item]..."),
-		Short:             coalesce.String(cli.removeHelp.short, "Remove given "+cli.oneOrMore),
-		Long:              coalesce.String(cli.removeHelp.long, "Remove one or more "+cli.name),
+		Use:               cmp.Or(cli.removeHelp.use, "remove [item]..."),
+		Short:             cmp.Or(cli.removeHelp.short, "Remove given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.removeHelp.long, "Remove one or more "+cli.name),
 		Example:           cli.removeHelp.example,
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
@@ -327,9 +326,9 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.upgradeHelp.use, "upgrade [item]..."),
-		Short:             coalesce.String(cli.upgradeHelp.short, "Upgrade given "+cli.oneOrMore),
-		Long:              coalesce.String(cli.upgradeHelp.long, fmt.Sprintf("Fetch and upgrade one or more %s from the hub", cli.name)),
+		Use:               cmp.Or(cli.upgradeHelp.use, "upgrade [item]..."),
+		Short:             cmp.Or(cli.upgradeHelp.short, "Upgrade given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.upgradeHelp.long, fmt.Sprintf("Fetch and upgrade one or more %s from the hub", cli.name)),
 		Example:           cli.upgradeHelp.example,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -404,9 +403,9 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.inspectHelp.use, "inspect [item]..."),
-		Short:             coalesce.String(cli.inspectHelp.short, "Inspect given "+cli.oneOrMore),
-		Long:              coalesce.String(cli.inspectHelp.long, "Inspect the state of one or more "+cli.name),
+		Use:               cmp.Or(cli.inspectHelp.use, "inspect [item]..."),
+		Short:             cmp.Or(cli.inspectHelp.short, "Inspect given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.inspectHelp.long, "Inspect the state of one or more "+cli.name),
 		Example:           cli.inspectHelp.example,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
@@ -453,9 +452,9 @@ func (cli cliItem) newListCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.listHelp.use, "list [item... | -a]"),
-		Short:             coalesce.String(cli.listHelp.short, "List "+cli.oneOrMore),
-		Long:              coalesce.String(cli.listHelp.long, "List of installed/available/specified "+cli.name),
+		Use:               cmp.Or(cli.listHelp.use, "list [item... | -a]"),
+		Short:             cmp.Or(cli.listHelp.short, "List "+cli.oneOrMore),
+		Long:              cmp.Or(cli.listHelp.long, "List of installed/available/specified "+cli.name),
 		Example:           cli.listHelp.example,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
