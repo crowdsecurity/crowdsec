@@ -303,6 +303,10 @@ teardown() {
     rune -0 cscli parsers install crowdsecurity/syslog-logs
     rune -0 cscli collections install crowdsecurity/sshd
 
+    rune -0 cscli parsers remove crowdsecurity/dateparse-enrich
+    rune -0 cscli parsers remove crowdsecurity/geoip-enrich
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+
     rune -0 cscli explain --log "$line" --type syslog --only-successful-parsers --crowdsec "$CROWDSEC"
     assert_output - <"$BATS_TEST_DIRNAME"/testdata/explain/explain-log.txt
 
