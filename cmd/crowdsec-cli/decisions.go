@@ -294,23 +294,101 @@ cscli decisions list --origin lists --scenario list_name
 			return cli.list(filter, NoSimu, contained, printMachine)
 		},
 	}
-	cmd.Flags().SortFlags = false
-	cmd.Flags().BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
-	cmd.Flags().StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
-	cmd.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
-	cmd.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
-	cmd.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmd.Flags().StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
-	cmd.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
-	cmd.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
-	cmd.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
-	cmd.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
-	cmd.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
-	cmd.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
-	cmd.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
-	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
+	flags.StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	flags.StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
+	flags.StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
+	flags.StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
+	flags.StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
+	flags.StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
+	flags.StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
+	flags.IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
+	flags.BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
+	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	return cmd
+}
+
+func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
+	var err error
+	alerts := models.AddAlertsRequest{}
+	origin := types.CscliOrigin
+	capacity := int32(0)
+	leakSpeed := "0"
+	eventsCount := int32(1)
+	empty := ""
+	simulated := false
+	startAt := time.Now().UTC().Format(time.RFC3339)
+	stopAt := time.Now().UTC().Format(time.RFC3339)
+	createdAt := time.Now().UTC().Format(time.RFC3339)
+
+	/*take care of shorthand options*/
+	if err = manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
+		return err
+	}
+
+	if addIP != "" {
+		addValue = addIP
+		addScope = types.Ip
+	} else if addRange != "" {
+		addValue = addRange
+		addScope = types.Range
+	} else if addValue == "" {
+		return errors.New("missing arguments, a value is required (--ip, --range or --scope and --value)")
+	}
+
+	if addReason == "" {
+		addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
+	}
+	decision := models.Decision{
+		Duration: &addDuration,
+		Scope:    &addScope,
+		Value:    &addValue,
+		Type:     &addType,
+		Scenario: &addReason,
+		Origin:   &origin,
+	}
+	alert := models.Alert{
+		Capacity:        &capacity,
+		Decisions:       []*models.Decision{&decision},
+		Events:          []*models.Event{},
+		EventsCount:     &eventsCount,
+		Leakspeed:       &leakSpeed,
+		Message:         &addReason,
+		ScenarioHash:    &empty,
+		Scenario:        &addReason,
+		ScenarioVersion: &empty,
+		Simulated:       &simulated,
+		// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
+		Source: &models.Source{
+			AsName:   empty,
+			AsNumber: empty,
+			Cn:       empty,
+			IP:       addValue,
+			Range:    "",
+			Scope:    &addScope,
+			Value:    &addValue,
+		},
+		StartAt:   &startAt,
+		StopAt:    &stopAt,
+		CreatedAt: createdAt,
+	}
+	alerts = append(alerts, &alert)
+
+	_, _, err = Client.Alerts.Add(context.Background(), alerts)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Decision successfully added")
+
+	return nil
 }
 
 func (cli *cliDecisions) newAddCmd() *cobra.Command {
@@ -336,91 +414,19 @@ cscli decisions add --scope username --value foobar
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var err error
-			alerts := models.AddAlertsRequest{}
-			origin := types.CscliOrigin
-			capacity := int32(0)
-			leakSpeed := "0"
-			eventsCount := int32(1)
-			empty := ""
-			simulated := false
-			startAt := time.Now().UTC().Format(time.RFC3339)
-			stopAt := time.Now().UTC().Format(time.RFC3339)
-			createdAt := time.Now().UTC().Format(time.RFC3339)
-
-			/*take care of shorthand options*/
-			if err = manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
-				return err
-			}
-
-			if addIP != "" {
-				addValue = addIP
-				addScope = types.Ip
-			} else if addRange != "" {
-				addValue = addRange
-				addScope = types.Range
-			} else if addValue == "" {
-				printHelp(cmd)
-				return errors.New("missing arguments, a value is required (--ip, --range or --scope and --value)")
-			}
-
-			if addReason == "" {
-				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
-			}
-			decision := models.Decision{
-				Duration: &addDuration,
-				Scope:    &addScope,
-				Value:    &addValue,
-				Type:     &addType,
-				Scenario: &addReason,
-				Origin:   &origin,
-			}
-			alert := models.Alert{
-				Capacity:        &capacity,
-				Decisions:       []*models.Decision{&decision},
-				Events:          []*models.Event{},
-				EventsCount:     &eventsCount,
-				Leakspeed:       &leakSpeed,
-				Message:         &addReason,
-				ScenarioHash:    &empty,
-				Scenario:        &addReason,
-				ScenarioVersion: &empty,
-				Simulated:       &simulated,
-				// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
-				Source: &models.Source{
-					AsName:   empty,
-					AsNumber: empty,
-					Cn:       empty,
-					IP:       addValue,
-					Range:    "",
-					Scope:    &addScope,
-					Value:    &addValue,
-				},
-				StartAt:   &startAt,
-				StopAt:    &stopAt,
-				CreatedAt: createdAt,
-			}
-			alerts = append(alerts, &alert)
-
-			_, _, err = Client.Alerts.Add(context.Background(), alerts)
-			if err != nil {
-				return err
-			}
-
-			log.Info("Decision successfully added")
-
-			return nil
+			return cli.add(addIP, addRange, addDuration, addValue, addScope, addReason, addType)
 		},
 	}
 
-	cmd.Flags().SortFlags = false
-	cmd.Flags().StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmd.Flags().StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmd.Flags().StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
-	cmd.Flags().StringVarP(&addValue, "value", "v", "", "The value (ie. --scope username --value foobar)")
-	cmd.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	cmd.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmd.Flags().StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	flags.StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
+	flags.StringVarP(&addValue, "value", "v", "", "The value (ie. --scope username --value foobar)")
+	flags.StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
+	flags.StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
+	flags.StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
 
 	return cmd
 }
