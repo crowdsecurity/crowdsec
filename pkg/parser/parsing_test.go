@@ -100,11 +100,11 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
 	cfg, err := os.ReadFile(parser_cfg_file)
 	if err != nil {
-		return fmt.Errorf("failed opening %s : %s", parser_cfg_file, err)
+		return fmt.Errorf("failed opening %s: %w", parser_cfg_file, err)
 	}
 	tmpl, err := template.New("test").Parse(string(cfg))
 	if err != nil {
-		return fmt.Errorf("failed to parse template %s : %s", cfg, err)
+		return fmt.Errorf("failed to parse template %s: %w", cfg, err)
 	}
 	var out bytes.Buffer
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
@@ -112,12 +112,12 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 		panic(err)
 	}
 	if err = yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
-		return fmt.Errorf("failed unmarshaling %s : %s", parser_cfg_file, err)
+		return fmt.Errorf("failed unmarshaling %s: %w", parser_cfg_file, err)
 	}
 
 	pnodes, err = LoadStages(parser_configs, pctx, ectx)
 	if err != nil {
-		return fmt.Errorf("unable to load parser config : %s", err)
+		return fmt.Errorf("unable to load parser config: %w", err)
 	}
 
 	//TBD: Load post overflows
@@ -147,7 +147,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 
 	err = exprhelpers.Init(nil)
 	if err != nil {
-		log.Fatalf("exprhelpers init failed: %s", err)
+		return nil, ectx, fmt.Errorf("exprhelpers init failed: %w", err)
 	}
 
 	//Load enrichment
@@ -158,7 +158,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	}
 	ectx, err = Loadplugin()
 	if err != nil {
-		log.Fatalf("failed to load plugin geoip : %v", err)
+		return nil, ectx, fmt.Errorf("failed to load plugin geoip: %v", err)
 	}
 	log.Printf("Loaded -> %+v", ectx)
 
@@ -299,7 +299,6 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 		only the keys of the expected part are checked against result
 	*/
 	if len(testSet.Results) == 0 && len(results) == 0 {
-		log.Fatal("No results, no tests, abort.")
 		return false, errors.New("no tests, no results")
 	}
 
