@@ -370,6 +370,60 @@ cscli alerts list --type ban`,
 	return cmd
 }
 
+func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, ActiveDecision *bool, AlertDeleteAll bool, delAlertByID string, contained *bool) error {
+	var err error
+
+	if !AlertDeleteAll {
+		if err = manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
+			alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
+			return err
+		}
+		if ActiveDecision != nil {
+			alertDeleteFilter.ActiveDecisionEquals = ActiveDecision
+		}
+
+		if *alertDeleteFilter.ScopeEquals == "" {
+			alertDeleteFilter.ScopeEquals = nil
+		}
+		if *alertDeleteFilter.ValueEquals == "" {
+			alertDeleteFilter.ValueEquals = nil
+		}
+		if *alertDeleteFilter.ScenarioEquals == "" {
+			alertDeleteFilter.ScenarioEquals = nil
+		}
+		if *alertDeleteFilter.IPEquals == "" {
+			alertDeleteFilter.IPEquals = nil
+		}
+		if *alertDeleteFilter.RangeEquals == "" {
+			alertDeleteFilter.RangeEquals = nil
+		}
+		if contained != nil && *contained {
+			alertDeleteFilter.Contains = new(bool)
+		}
+		limit := 0
+		alertDeleteFilter.Limit = &limit
+	} else {
+		limit := 0
+		alertDeleteFilter = apiclient.AlertsDeleteOpts{Limit: &limit}
+	}
+
+	var alerts *models.DeleteAlertsResponse
+	if delAlertByID == "" {
+		alerts, _, err = cli.client.Alerts.Delete(context.Background(), alertDeleteFilter)
+		if err != nil {
+			return fmt.Errorf("unable to delete alerts: %w", err)
+		}
+	} else {
+		alerts, _, err = cli.client.Alerts.DeleteOne(context.Background(), delAlertByID)
+		if err != nil {
+			return fmt.Errorf("unable to delete alert: %w", err)
+		}
+	}
+	log.Infof("%s alert(s) deleted", alerts.NbDeleted)
+
+	return nil
+}
+
 func (cli *cliAlerts) NewDeleteCmd() *cobra.Command {
 	var (
 		ActiveDecision *bool
@@ -411,58 +465,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var err error
-
-			if !AlertDeleteAll {
-				if err = manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
-					alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
-					printHelp(cmd)
-					return err
-				}
-				if ActiveDecision != nil {
-					alertDeleteFilter.ActiveDecisionEquals = ActiveDecision
-				}
-
-				if *alertDeleteFilter.ScopeEquals == "" {
-					alertDeleteFilter.ScopeEquals = nil
-				}
-				if *alertDeleteFilter.ValueEquals == "" {
-					alertDeleteFilter.ValueEquals = nil
-				}
-				if *alertDeleteFilter.ScenarioEquals == "" {
-					alertDeleteFilter.ScenarioEquals = nil
-				}
-				if *alertDeleteFilter.IPEquals == "" {
-					alertDeleteFilter.IPEquals = nil
-				}
-				if *alertDeleteFilter.RangeEquals == "" {
-					alertDeleteFilter.RangeEquals = nil
-				}
-				if contained != nil && *contained {
-					alertDeleteFilter.Contains = new(bool)
-				}
-				limit := 0
-				alertDeleteFilter.Limit = &limit
-			} else {
-				limit := 0
-				alertDeleteFilter = apiclient.AlertsDeleteOpts{Limit: &limit}
-			}
-
-			var alerts *models.DeleteAlertsResponse
-			if delAlertByID == "" {
-				alerts, _, err = cli.client.Alerts.Delete(context.Background(), alertDeleteFilter)
-				if err != nil {
-					return fmt.Errorf("unable to delete alerts: %w", err)
-				}
-			} else {
-				alerts, _, err = cli.client.Alerts.DeleteOne(context.Background(), delAlertByID)
-				if err != nil {
-					return fmt.Errorf("unable to delete alert: %w", err)
-				}
-			}
-			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
-
-			return nil
+			return cli.delete(alertDeleteFilter, ActiveDecision, AlertDeleteAll, delAlertByID, contained)
 		},
 	}
 
