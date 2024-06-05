@@ -377,6 +377,16 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	return nil
 }
 
+func createDirs(dirs []string) error {
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return fmt.Errorf("unable to create directory '%s': %w", dir, err)
+		}
+	}
+
+	return nil
+}
+
 func (t *HubTestItem) RunWithLogFile() error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
@@ -388,28 +398,13 @@ func (t *HubTestItem) RunWithLogFile() error {
 		return fmt.Errorf("can't get current directory: %+v", err)
 	}
 
-	// create runtime folder
-	if err = os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
-	}
-
-	// create runtime data folder
-	if err = os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
-	}
-
-	// create runtime hub folder
-	if err = os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
+	// create runtime, data, hub folders
+	if err = createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
+		return err
 	}
 
 	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
 		return fmt.Errorf("unable to copy .index.json file in '%s': %w", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
-	}
-
-	// create results folder
-	if err = os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
 	}
 
 	// copy template config file to runtime folder
@@ -582,28 +577,13 @@ func (t *HubTestItem) Run() error {
 	t.Success = false
 	t.ErrorsList = make([]string, 0)
 
-	// create runtime folder
-	if err = os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
-	}
-
-	// create runtime data folder
-	if err = os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
-	}
-
-	// create runtime hub folder
-	if err = os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
+	// create runtime, data, hub, result folders
+	if err = createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
+		return err
 	}
 
 	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
 		return fmt.Errorf("unable to copy .index.json file in '%s': %w", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
-	}
-
-	// create results folder
-	if err = os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
 	}
 
 	// copy template config file to runtime folder
