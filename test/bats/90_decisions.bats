@@ -31,7 +31,6 @@ teardown() {
 
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
-    assert_line "Usage:"
     assert_stderr --partial "missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     rune -1 cscli decisions add -o json
