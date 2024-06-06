@@ -81,9 +81,13 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
 		if err != nil {
-			return nil, fmt.Errorf("while loading hub index: %w", err)
+			return nil, err
+		}
+
+		if err := hub.Load(); err != nil {
+			return nil, err
 		}
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub)
@@ -367,9 +371,13 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
 		if err != nil {
-			return fmt.Errorf("while loading hub index: %w", err)
+			return err
+		}
+
+		if err := hub.Load(); err != nil {
+			return err
 		}
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub)

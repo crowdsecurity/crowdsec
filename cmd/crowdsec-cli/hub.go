@@ -104,9 +104,17 @@ func (cli *cliHub) update(ctx context.Context) error {
 	remote := require.RemoteHub(ctx, cli.cfg())
 
 	// don't use require.Hub because if there is no index file, it would fail
-	hub, err := cwhub.NewHub(local, remote, true, log.StandardLogger())
+	hub, err := cwhub.NewHub(local, remote, log.StandardLogger())
 	if err != nil {
+		return err
+	}
+
+	if err := hub.Update(); err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
+	}
+
+	if err := hub.Load(); err != nil {
+		return fmt.Errorf("failed to load hub: %w", err)
 	}
 
 	for _, v := range hub.Warnings {

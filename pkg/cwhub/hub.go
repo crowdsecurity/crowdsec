@@ -30,10 +30,11 @@ func (h *Hub) GetDataDir() string {
 	return h.local.InstallDataDir
 }
 
-// NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state.
-// If updateIndex is true, the local index file is updated from the remote before reading the state of the items.
+// NewHub returns a new Hub instance with local and (optionally) remote configuration.
+// The hub is not synced automatically. Load() must be called to read the index, sync the local state,
+// and check for unmanaged items.
 // All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
-func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool, logger *logrus.Logger) (*Hub, error) {
+func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
 		return nil, errors.New("no hub configuration found")
 	}
@@ -50,23 +51,22 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool,
 		pathIndex: make(map[string]*Item, 0),
 	}
 
-	if updateIndex {
-		if err := hub.updateIndex(); err != nil {
-			return nil, err
-		}
-	}
-
-	logger.Debugf("loading hub idx %s", local.HubIndexFile)
-
-	if err := hub.parseIndex(); err != nil {
-		return nil, fmt.Errorf("failed to load index: %w", err)
-	}
-
-	if err := hub.localSync(); err != nil {
-		return nil, fmt.Errorf("failed to sync items: %w", err)
-	}
-
 	return hub, nil
+}
+
+// Load reads the state of the items on disk.
+func (h *Hub) Load() error {
+	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
+
+	if err := h.parseIndex(); err != nil {
+		return fmt.Errorf("failed to load hub index: %w", err)
+	}
+
+	if err := h.localSync(); err != nil {
+		return fmt.Errorf("failed to sync hub items: %w", err)
+	}
+
+	return nil
 }
 
 // parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections.
@@ -149,8 +149,14 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
-// updateIndex downloads the latest version of the index and writes it to disk if it changed.
-func (h *Hub) updateIndex() error {
+// Update downloads the latest version of the index and writes it to disk if it changed. It cannot be called after Load()
+// unless the hub is completely empty.
+func (h *Hub) Update() error {
+	if h.pathIndex != nil && len(h.pathIndex) > 0 {
+		// if this happens, it's a bug.
+		return errors.New("cannot update hub after items have been loaded")
+	}
+
 	downloaded, err := h.remote.fetchIndex(h.local.HubIndexFile)
 	if err != nil {
 		return err
