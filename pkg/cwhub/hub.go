@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -151,13 +152,13 @@ func (h *Hub) ItemStats() []string {
 
 // Update downloads the latest version of the index and writes it to disk if it changed. It cannot be called after Load()
 // unless the hub is completely empty.
-func (h *Hub) Update() error {
+func (h *Hub) Update(ctx context.Context) error {
 	if h.pathIndex != nil && len(h.pathIndex) > 0 {
 		// if this happens, it's a bug.
 		return errors.New("cannot update hub after items have been loaded")
 	}
 
-	downloaded, err := h.remote.fetchIndex(h.local.HubIndexFile)
+	downloaded, err := h.remote.fetchIndex(ctx, h.local.HubIndexFile)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -42,7 +43,7 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	hub, err := NewHub(hub.local, remote, nil)
 	require.NoError(t, err)
 
-	err = hub.Update()
+	err = hub.Update(context.TODO())
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -109,7 +110,7 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub, err = NewHub(hub.local, remote, nil)
 	require.NoError(t, err)
 
-	err = hub.Update()
+	err = hub.Update(context.TODO())
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -184,7 +185,7 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	hub, err = NewHub(hub.local, remote, nil)
 	require.NoError(t, err)
 
-	err = hub.Update()
+	err = hub.Update(context.TODO())
 	require.NoError(t, err)
 
 	err = hub.Load()

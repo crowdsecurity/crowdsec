@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,7 +67,7 @@ func testHub(t *testing.T, update bool) *Hub {
 	require.NoError(t, err)
 
 	if update {
-		err := hub.Update()
+		err := hub.Update(context.TODO())
 		require.NoError(t, err)
 	}
 

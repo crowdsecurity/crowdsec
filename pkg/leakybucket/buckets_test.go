@@ -17,6 +17,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -45,10 +46,11 @@ func TestBucket(t *testing.T) {
 		InstallDataDir: testdata,
 	}
 
-	hub, err := cwhub.NewHub(hubCfg, nil, false, nil)
-	if err != nil {
-		t.Fatalf("failed to init hub: %s", err)
-	}
+	hub, err := cwhub.NewHub(hubCfg, nil, nil)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	err = exprhelpers.Init(nil)
 	if err != nil {

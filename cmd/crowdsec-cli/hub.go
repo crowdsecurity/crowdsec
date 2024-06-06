@@ -109,7 +109,7 @@ func (cli *cliHub) update(ctx context.Context) error {
 		return err
 	}
 
-	if err := hub.Update(); err != nil {
+	if err := hub.Update(ctx); err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
