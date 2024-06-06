@@ -2,6 +2,7 @@ package main
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -61,10 +62,10 @@ func (cli cliItem) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) install(args []string, downloadOnly bool, force bool, ignoreError bool) error {
+func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool, force bool, ignoreError bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -113,8 +114,8 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.install(args, downloadOnly, force, ignoreError)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.install(cmd.Context(), args, downloadOnly, force, ignoreError)
 		},
 	}
 
@@ -252,10 +253,10 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) upgrade(args []string, force bool, all bool) error {
+func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -334,8 +335,8 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.upgrade(args, force, all)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.upgrade(cmd.Context(), args, force, all)
 		},
 	}
 
@@ -346,7 +347,7 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMetrics bool) error {
+func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff bool, rev bool, noMetrics bool) error {
 	cfg := cli.cfg()
 
 	if rev && !diff {
@@ -360,7 +361,7 @@ func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMet
 	remote := (*cwhub.RemoteHubCfg)(nil)
 
 	if diff {
-		remote = require.RemoteHub(cfg)
+		remote = require.RemoteHub(ctx, cfg)
 	}
 
 	hub, err := require.Hub(cfg, remote, log.StandardLogger())
@@ -412,8 +413,8 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.inspect(args, url, diff, rev, noMetrics)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.inspect(cmd.Context(), args, url, diff, rev, noMetrics)
 		},
 	}
 

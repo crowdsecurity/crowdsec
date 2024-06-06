@@ -1,6 +1,7 @@
 package require
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -64,9 +65,9 @@ func Notifications(c *csconfig.Config) error {
 }
 
 // RemoteHub returns the configuration required to download hub index and items: url, branch, etc.
-func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
+func RemoteHub(ctx context.Context, c *csconfig.Config) *cwhub.RemoteHubCfg {
 	// set branch in config, and log if necessary
-	branch := HubBranch(c)
+	branch := HubBranch(ctx, c)
 	urlTemplate := HubURLTemplate(c)
 	remote := &cwhub.RemoteHubCfg{
 		Branch:      branch,

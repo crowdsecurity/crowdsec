@@ -1,9 +1,7 @@
 package cwversion
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 
 	goversion "github.com/hashicorp/go-version"
@@ -78,26 +76,4 @@ func Satisfies(strvers string, constraint string) (bool, error) {
 	}
 
 	return true, nil
-}
-
-// Latest return latest crowdsec version based on github
-func Latest() (string, error) {
-	latest := make(map[string]any)
-
-	resp, err := http.Get("https://version.crowdsec.net/latest")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&latest)
-	if err != nil {
-		return "", err
-	}
-
-	if _, ok := latest["name"]; !ok {
-		return "", fmt.Errorf("unable to find latest release name from github api: %+v", latest)
-	}
-
-	return latest["name"].(string), nil
 }

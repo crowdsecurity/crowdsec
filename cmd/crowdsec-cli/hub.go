@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -98,9 +99,9 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliHub) update() error {
+func (cli *cliHub) update(ctx context.Context) error {
 	local := cli.cfg().Hub
-	remote := require.RemoteHub(cli.cfg())
+	remote := require.RemoteHub(ctx, cli.cfg())
 
 	// don't use require.Hub because if there is no index file, it would fail
 	hub, err := cwhub.NewHub(local, remote, true, log.StandardLogger())
@@ -124,16 +125,16 @@ Fetches the .index.json file from the hub, containing the list of available conf
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.update()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.update(cmd.Context())
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliHub) upgrade(force bool) error {
-	hub, err := require.Hub(cli.cfg(), require.RemoteHub(cli.cfg()), log.StandardLogger())
+func (cli *cliHub) upgrade(ctx context.Context, force bool) error {
+	hub, err := require.Hub(cli.cfg(), require.RemoteHub(ctx, cli.cfg()), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -176,8 +177,8 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.upgrade(force)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.upgrade(cmd.Context(), force)
 		},
 	}
 
