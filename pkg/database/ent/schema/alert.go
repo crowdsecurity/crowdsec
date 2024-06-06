@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -23,34 +24,34 @@ func (Alert) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow),
-		field.String("scenario"),
-		field.String("bucketId").Default("").Optional(),
-		field.String("message").Default("").Optional(),
-		field.Int32("eventsCount").Default(0).Optional(),
-		field.Time("startedAt").Default(types.UtcNow).Optional(),
-		field.Time("stoppedAt").Default(types.UtcNow).Optional(),
+		field.String("scenario").Immutable(),
+		field.String("bucketId").Default("").Optional().Immutable(),
+		field.String("message").Default("").Optional().Immutable(),
+		field.Int32("eventsCount").Default(0).Optional().Immutable(),
+		field.Time("startedAt").Default(types.UtcNow).Optional().Immutable(),
+		field.Time("stoppedAt").Default(types.UtcNow).Optional().Immutable(),
 		field.String("sourceIp").
-			Optional(),
+			Optional().Immutable(),
 		field.String("sourceRange").
-			Optional(),
+			Optional().Immutable(),
 		field.String("sourceAsNumber").
-			Optional(),
+			Optional().Immutable(),
 		field.String("sourceAsName").
-			Optional(),
+			Optional().Immutable(),
 		field.String("sourceCountry").
-			Optional(),
+			Optional().Immutable(),
 		field.Float32("sourceLatitude").
-			Optional(),
+			Optional().Immutable(),
 		field.Float32("sourceLongitude").
-			Optional(),
-		field.String("sourceScope").Optional(),
-		field.String("sourceValue").Optional(),
-		field.Int32("capacity").Optional(),
-		field.String("leakSpeed").Optional(),
-		field.String("scenarioVersion").Optional(),
-		field.String("scenarioHash").Optional(),
-		field.Bool("simulated").Default(false),
-		field.String("uuid").Optional(), //this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each alert
+			Optional().Immutable(),
+		field.String("sourceScope").Optional().Immutable(),
+		field.String("sourceValue").Optional().Immutable(),
+		field.Int32("capacity").Optional().Immutable(),
+		field.String("leakSpeed").Optional().Immutable(),
+		field.String("scenarioVersion").Optional().Immutable(),
+		field.String("scenarioHash").Optional().Immutable(),
+		field.Bool("simulated").Default(false).Immutable(),
+		field.String("uuid").Optional().Immutable(), // this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each alert
 	}
 }
 

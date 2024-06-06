@@ -20,10 +20,10 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
-	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -215,7 +215,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       password,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:      cwversion.UserAgent(),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
@@ -432,9 +432,9 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 			filter["scopes"] = []string{*decision.Scope}
 		}
 
-		dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
 		if err != nil {
-			return 0, fmt.Errorf("deleting decisions error: %w", err)
+			return 0, fmt.Errorf("expiring decisions error: %w", err)
 		}
 
 		dbCliDel, err := strconv.Atoi(dbCliRet)
@@ -464,9 +464,9 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
 			if err != nil {
-				return 0, fmt.Errorf("deleting decisions error: %w", err)
+				return 0, fmt.Errorf("expiring decisions error: %w", err)
 			}
 
 			dbCliDel, err := strconv.Atoi(dbCliRet)

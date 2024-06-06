@@ -28,6 +28,8 @@ on:
 jobs:
   sqlite:
     uses: ./.github/workflows/bats-sqlite-coverage.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # Jobs for Postgres (and sometimes MySQL) can have failing tests on GitHub
   # CI, but they pass when run on devs' machines or in the release checks. We

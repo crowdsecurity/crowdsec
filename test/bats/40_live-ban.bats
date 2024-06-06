@@ -14,10 +14,9 @@ setup_file() {
     # we reset config and data, but run the daemon only in the tests that need it
     ./instance-data load
 
-    cscli collections install crowdsecurity/sshd --error
-    cscli parsers install crowdsecurity/syslog-logs --error
-    cscli parsers install crowdsecurity/dateparse-enrich --error
-
+    cscli collections install crowdsecurity/sshd --error >/dev/null
+    cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+    cscli parsers install crowdsecurity/dateparse-enrich --error >/dev/null
 }
 
 teardown_file() {
@@ -35,20 +34,20 @@ teardown() {
 #----------
 
 @test "1.1.1.172 has been banned" {
-    tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
-    touch "${tmpfile}"
+    tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    touch "$tmpfile"
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
-    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"$ACQUIS_YAML"
 
     ./instance-crowdsec start
 
     sleep 0.2
 
-    fake_log >>"${tmpfile}"
+    fake_log >>"$tmpfile"
 
     sleep 0.2
 
-    rm -f -- "${tmpfile}"
+    rm -f -- "$tmpfile"
 
     found=0
     # this may take some time in CI
@@ -59,5 +58,5 @@ teardown() {
         fi
         sleep 0.2
     done
-    assert_equal 1 "${found}"
+    assert_equal 1 "$found"
 }

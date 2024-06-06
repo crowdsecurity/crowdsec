@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	maxContextValueLen = 4000
+	MaxContextValueLen = 4000
 )
 
 var alertContext = Context{}
@@ -46,13 +46,13 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	}
 
 	if valueLength == 0 {
-		clog.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
-		valueLength = maxContextValueLen
+		clog.Debugf("No console context value length provided, using default: %d", MaxContextValueLen)
+		valueLength = MaxContextValueLen
 	}
 
-	if valueLength > maxContextValueLen {
-		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, maxContextValueLen)
-		valueLength = maxContextValueLen
+	if valueLength > MaxContextValueLen {
+		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, MaxContextValueLen)
+		valueLength = MaxContextValueLen
 	}
 
 	alertContext = Context{
@@ -85,7 +85,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	return nil
 }
 
-func truncate(values []string, contextValueLen int) (string, error) {
+func TruncateContext(values []string, contextValueLen int) (string, error) {
 	valueByte, err := json.Marshal(values)
 	if err != nil {
 		return "", fmt.Errorf("unable to dump metas: %w", err)
@@ -159,7 +159,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 			continue
 		}
 
-		valueStr, err := truncate(values, alertContext.ContextValueLen)
+		valueStr, err := TruncateContext(values, alertContext.ContextValueLen)
 		if err != nil {
 			log.Warningf(err.Error())
 		}

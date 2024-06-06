@@ -64,7 +64,7 @@ type Node struct {
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
-func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
+func (n *Node) validate(ectx EnricherCtx) error {
 	// stage is being set automagically
 	if n.Stage == "" {
 		return errors.New("stage needs to be an existing stage")
@@ -243,12 +243,14 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				gstr = val
 			} else {
 				clog.Debugf("(%s) target field '%s' doesn't exist in %v", n.rn, n.Grok.TargetField, p.Parsed)
+
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
 			output, err := exprhelpers.Run(n.Grok.RunTimeValue, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
+
 				NodeState = false
 			}
 
@@ -351,6 +353,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		if err != nil {
 			clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
 			clog.Debugf("Event leaving node : ko")
+
 			return false, err
 		}
 
@@ -447,7 +450,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	if n.Debug {
 		clog := log.New()
 		if err = types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
+			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
 		clog.SetLevel(log.DebugLevel)
@@ -497,7 +500,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Get(n.Grok.RegexpName)
 		if err != nil {
-			return fmt.Errorf("unable to find grok '%s' : %v", n.Grok.RegexpName, err)
+			return fmt.Errorf("unable to find grok '%s': %v", n.Grok.RegexpName, err)
 		}
 
 		if n.Grok.RunTimeRegexp == nil {
@@ -635,9 +638,5 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		return errors.New("Node is empty")
 	}
 
-	if err := n.validate(pctx, ectx); err != nil {
-		return err
-	}
-
-	return nil
+	return n.validate(ectx)
 }

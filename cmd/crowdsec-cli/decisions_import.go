@@ -46,7 +46,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 		}
 
 		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("unable to parse values: '%s'", err)
+			return nil, fmt.Errorf("unable to parse values: '%w'", err)
 		}
 	case "json":
 		log.Infof("Parsing json")
@@ -58,7 +58,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 		log.Infof("Parsing csv")
 
 		if err := csvutil.Unmarshal(content, &ret); err != nil {
-			return nil, fmt.Errorf("unable to parse csv: '%s'", err)
+			return nil, fmt.Errorf("unable to parse csv: '%w'", err)
 		}
 	default:
 		return nil, fmt.Errorf("invalid format '%s', expected one of 'json', 'csv', 'values'", format)
@@ -67,8 +67,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	return ret, nil
 }
 
-
-func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
+func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	input, err := flags.GetString("input")
@@ -123,7 +122,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	var (
-		content []byte
+		content	[]byte
 		fin	*os.File
 	)
 
@@ -146,13 +145,13 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	} else {
 		fin, err = os.Open(input)
 		if err != nil {
-			return fmt.Errorf("unable to open %s: %s", input, err)
+			return fmt.Errorf("unable to open %s: %w", input, err)
 		}
 	}
 
 	content, err = io.ReadAll(fin)
 	if err != nil {
-		return fmt.Errorf("unable to read from %s: %s", input, err)
+		return fmt.Errorf("unable to read from %s: %w", input, err)
 	}
 
 	decisionsListRaw, err := parseDecisionList(content, format)
@@ -225,7 +224,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 			Decisions:       chunk,
 		}
 
-		_, _, err = Client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
+		_, _, err = cli.client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
 		if err != nil {
 			return err
 		}
@@ -243,7 +242,7 @@ func (cli *cliDecisions) newImportCmd() *cobra.Command {
 		Long: "expected format:\n" +
 			"csv  : any of duration,reason,scope,type,value, with a header line\n" +
 			"json :" + "`{" + `"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"` + "}`",
-		Args:	 cobra.NoArgs,
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `decisions.csv:
 duration,scope,value
@@ -274,7 +273,7 @@ $ echo "1.2.3.4" | cscli decisions import -i - --format values
 	flags.Int("batch", 0, "Split import in batches of N decisions")
 	flags.String("format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
-	cmd.MarkFlagRequired("input")
+	_ = cmd.MarkFlagRequired("input")
 
 	return cmd
 }

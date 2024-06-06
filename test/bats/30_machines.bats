@@ -94,7 +94,10 @@ teardown() {
 @test "cscli machines prune" {
     rune -0 cscli metrics
 
-    rune -0 cscli machines prune
+    # if the fixture has been created some time ago,
+    # the machines may be old enough to trigger a user prompt.
+    # make sure the prune duration is high enough.
+    rune -0 cscli machines prune --duration 1000000h
     assert_output 'No machines to prune.'
 
     rune -0 cscli machines list -o json

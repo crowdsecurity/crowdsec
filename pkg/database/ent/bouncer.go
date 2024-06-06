@@ -33,8 +33,6 @@ type Bouncer struct {
 	Type string `json:"type"`
 	// Version holds the value of the "version" field.
 	Version string `json:"version"`
-	// Until holds the value of the "until" field.
-	Until time.Time `json:"until"`
 	// LastPull holds the value of the "last_pull" field.
 	LastPull time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
@@ -59,7 +57,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
 			values[i] = new(sql.NullString)
-		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
+		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -129,12 +127,6 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field version", values[i])
 			} else if value.Valid {
 				b.Version = value.String
-			}
-		case bouncer.FieldUntil:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field until", values[i])
-			} else if value.Valid {
-				b.Until = value.Time
 			}
 		case bouncer.FieldLastPull:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -224,9 +216,6 @@ func (b *Bouncer) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("version=")
 	builder.WriteString(b.Version)
-	builder.WriteString(", ")
-	builder.WriteString("until=")
-	builder.WriteString(b.Until.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("last_pull=")
 	builder.WriteString(b.LastPull.Format(time.ANSIC))

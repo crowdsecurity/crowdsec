@@ -56,7 +56,7 @@ func GenDateParse(date string) (string, time.Time) {
 	return "", time.Time{}
 }
 
-func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[string]string, error) {
+func ParseDate(in string, p *types.Event, plog *log.Entry) (map[string]string, error) {
 
 	var ret = make(map[string]string)
 	var strDate string
@@ -104,8 +104,4 @@ func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[s
 	ret["MarshaledTime"] = string(retstr)
 
 	return ret, nil
-}
-
-func parseDateInit(cfg map[string]string) (interface{}, error) {
-	return nil, nil
 }

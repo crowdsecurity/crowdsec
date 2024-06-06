@@ -15,13 +15,12 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -39,21 +38,11 @@ func NewCLILapi(cfg configGetter) *cliLapi {
 	}
 }
 
-func (cli *cliLapi) status() error {
-	cfg := cli.cfg()
-	password := strfmt.Password(cfg.API.Client.Credentials.Password)
-	login := cfg.API.Client.Credentials.Login
-
-	origURL := cfg.API.Client.Credentials.URL
-
-	apiURL, err := url.Parse(origURL)
+// QueryLAPIStatus checks if the Local API is reachable, and if the credentials are correct
+func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) error {
+	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
-	}
-
-	hub, err := require.Hub(cfg, nil, nil)
-	if err != nil {
-		return err
 	}
 
 	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
@@ -61,26 +50,44 @@ func (cli *cliLapi) status() error {
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiURL,
+	client, err := apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil)
 	if err != nil {
 		return fmt.Errorf("init default client: %w", err)
 	}
 
+	pw := strfmt.Password(password)
+
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
-		Password:  &password,
+		Password:  &pw,
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
-	// use the original string because apiURL would print 'http://unix/'
-	log.Infof("Trying to authenticate with username %s on %s", login, origURL)
-
-	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cli *cliLapi) status() error {
+	cfg := cli.cfg()
+
+	cred := cfg.API.Client.Credentials
+
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
+	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
+
+	if err := QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
@@ -112,7 +119,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     lapiUser,
 		Password:      password,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiurl,
 		VersionPrefix: LAPIURLPrefix,
 	}, nil)
@@ -268,11 +275,7 @@ func (cli *cliLapi) addContext(key string, values []string) error {
 		cfg.Crowdsec.ContextToSend[key] = data
 	}
 
-	if err := cfg.Crowdsec.DumpContextConfigFile(); err != nil {
-		return err
-	}
-
-	return nil
+	return cfg.Crowdsec.DumpContextConfigFile()
 }
 
 func (cli *cliLapi) newContextAddCmd() *cobra.Command {
@@ -300,10 +303,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 			}
 
 			if keyToAdd != "" {
-				if err := cli.addContext(keyToAdd, valuesToAdd); err != nil {
-					return err
-				}
-				return nil
+				return cli.addContext(keyToAdd, valuesToAdd)
 			}
 
 			for _, v := range valuesToAdd {
@@ -322,7 +322,8 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 	flags := cmd.Flags()
 	flags.StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
 	flags.StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmd.MarkFlagRequired("value")
+
+	_ = cmd.MarkFlagRequired("value")
 
 	return cmd
 }

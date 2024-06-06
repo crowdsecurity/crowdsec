@@ -5,10 +5,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/aquasecurity/table"
-
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 var tableHeaders = []string{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Feature Flags", "Last Heartbeat"}
@@ -17,7 +17,7 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 	t := newLightTable(out)
 	t.SetHeaders(tableHeaders...)
 
-	alignment := []table.Alignment{}
+	alignment := []text.Align{}
 
 	for i := 0; i < len(tableHeaders); i++ {
 		alignment = append(alignment, table.AlignLeft)

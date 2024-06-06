@@ -26,6 +26,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -675,7 +676,7 @@ func TestAPICWhitelists(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil,
 	)
 	require.NoError(t, err)
@@ -816,7 +817,7 @@ func TestAPICPullTop(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil,
 	)
 	require.NoError(t, err)
@@ -904,7 +905,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil,
 	)
 	require.NoError(t, err)
@@ -996,7 +997,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil,
 	)
 	require.NoError(t, err)
@@ -1023,7 +1024,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", version.String()),
+		cwversion.UserAgent(),
 		nil,
 	)
 	require.NoError(t, err)
@@ -1105,7 +1106,7 @@ func TestAPICPush(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", version.String()),
+				cwversion.UserAgent(),
 				nil,
 			)
 			require.NoError(t, err)
@@ -1164,7 +1165,7 @@ func TestAPICPull(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", version.String()),
+				cwversion.UserAgent(),
 				nil,
 			)
 			require.NoError(t, err)

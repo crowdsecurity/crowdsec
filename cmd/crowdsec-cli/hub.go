@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliHub struct{
+type cliHub struct {
 	cfg configGetter
 }
 

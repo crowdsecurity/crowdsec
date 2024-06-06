@@ -1,10 +1,7 @@
 package cwhub
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,6 +11,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/go-cs-lib/downloader"
 )
 
 func isYAMLFileName(path string) bool {
@@ -38,29 +37,13 @@ func linkTarget(path string, logger *logrus.Logger) (string, error) {
 	return hubpath, nil
 }
 
-func getSHA256(filepath string) (string, error) {
-	f, err := os.Open(filepath)
-	if err != nil {
-		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
-	}
-
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
-	}
-
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
 // information used to create a new Item, from a file path.
 type itemFileInfo struct {
-	inhub   bool
 	fname   string
 	stage   string
 	ftype   string
 	fauthor string
+	inhub   bool
 }
 
 func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo, error) {
@@ -289,6 +272,8 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			return err
 		}
 
+		h.pathIndex[path] = item
+
 		return nil
 	}
 
@@ -466,7 +451,7 @@ func (h *Hub) localSync() error {
 func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
-	i.State.LocalHash, err = getSHA256(path)
+	i.State.LocalHash, err = downloader.SHA256(path)
 	if err != nil {
 		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
 	}

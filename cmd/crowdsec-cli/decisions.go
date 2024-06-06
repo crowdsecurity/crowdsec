@@ -17,14 +17,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-var Client *apiclient.ApiClient
 
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
@@ -118,7 +115,8 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 }
 
 type cliDecisions struct {
-	cfg configGetter
+	client *apiclient.ApiClient
+	cfg    configGetter
 }
 
 func NewCLIDecisions(cfg configGetter) *cliDecisions {
@@ -142,16 +140,16 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
-			password := strfmt.Password(cfg.API.Client.Credentials.Password)
-			apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
+			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
-				return fmt.Errorf("parsing api url %s: %w", cfg.API.Client.Credentials.URL, err)
+				return fmt.Errorf("parsing api url: %w", err)
 			}
-			Client, err = apiclient.NewClient(&apiclient.Config{
+
+			cli.client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
-				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
-				URL:           apiurl,
+				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
+				UserAgent:     cwversion.UserAgent(),
+				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
 			if err != nil {
@@ -170,8 +168,99 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
+	var err error
+	/*take care of shorthand options*/
+	if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
+		return err
+	}
+
+	filter.ActiveDecisionEquals = new(bool)
+	*filter.ActiveDecisionEquals = true
+
+	if NoSimu != nil && *NoSimu {
+		filter.IncludeSimulated = new(bool)
+	}
+	/* nullify the empty entries to avoid bad filter */
+	if *filter.Until == "" {
+		filter.Until = nil
+	} else if strings.HasSuffix(*filter.Until, "d") {
+		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+		realDuration := strings.TrimSuffix(*filter.Until, "d")
+
+		days, err := strconv.Atoi(realDuration)
+		if err != nil {
+			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+		}
+
+		*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
+	}
+
+	if *filter.Since == "" {
+		filter.Since = nil
+	} else if strings.HasSuffix(*filter.Since, "d") {
+		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+		realDuration := strings.TrimSuffix(*filter.Since, "d")
+
+		days, err := strconv.Atoi(realDuration)
+		if err != nil {
+			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
+		}
+
+		*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
+	}
+
+	if *filter.IncludeCAPI {
+		*filter.Limit = 0
+	}
+
+	if *filter.TypeEquals == "" {
+		filter.TypeEquals = nil
+	}
+
+	if *filter.ValueEquals == "" {
+		filter.ValueEquals = nil
+	}
+
+	if *filter.ScopeEquals == "" {
+		filter.ScopeEquals = nil
+	}
+
+	if *filter.ScenarioEquals == "" {
+		filter.ScenarioEquals = nil
+	}
+
+	if *filter.IPEquals == "" {
+		filter.IPEquals = nil
+	}
+
+	if *filter.RangeEquals == "" {
+		filter.RangeEquals = nil
+	}
+
+	if *filter.OriginEquals == "" {
+		filter.OriginEquals = nil
+	}
+
+	if contained != nil && *contained {
+		filter.Contains = new(bool)
+	}
+
+	alerts, _, err := cli.client.Alerts.List(context.Background(), filter)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve decisions: %w", err)
+	}
+
+	err = cli.decisionsToTable(alerts, printMachine)
+	if err != nil {
+		return fmt.Errorf("unable to print decisions: %w", err)
+	}
+
+	return nil
+}
+
 func (cli *cliDecisions) newListCmd() *cobra.Command {
-	var filter = apiclient.AlertsListOpts{
+	filter := apiclient.AlertsListOpts{
 		ValueEquals:    new(string),
 		ScopeEquals:    new(string),
 		ScenarioEquals: new(string),
@@ -201,102 +290,104 @@ cscli decisions list --origin lists --scenario list_name
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var err error
-			/*take care of shorthand options*/
-			if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
-				return err
-			}
-			filter.ActiveDecisionEquals = new(bool)
-			*filter.ActiveDecisionEquals = true
-			if NoSimu != nil && *NoSimu {
-				filter.IncludeSimulated = new(bool)
-			}
-			/* nullify the empty entries to avoid bad filter */
-			if *filter.Until == "" {
-				filter.Until = nil
-			} else if strings.HasSuffix(*filter.Until, "d") {
-				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				realDuration := strings.TrimSuffix(*filter.Until, "d")
-				days, err := strconv.Atoi(realDuration)
-				if err != nil {
-					printHelp(cmd)
-					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-				}
-				*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
-			}
-
-			if *filter.Since == "" {
-				filter.Since = nil
-			} else if strings.HasSuffix(*filter.Since, "d") {
-				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				realDuration := strings.TrimSuffix(*filter.Since, "d")
-				days, err := strconv.Atoi(realDuration)
-				if err != nil {
-					printHelp(cmd)
-					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
-				}
-				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
-			}
-			if *filter.IncludeCAPI {
-				*filter.Limit = 0
-			}
-			if *filter.TypeEquals == "" {
-				filter.TypeEquals = nil
-			}
-			if *filter.ValueEquals == "" {
-				filter.ValueEquals = nil
-			}
-			if *filter.ScopeEquals == "" {
-				filter.ScopeEquals = nil
-			}
-			if *filter.ScenarioEquals == "" {
-				filter.ScenarioEquals = nil
-			}
-			if *filter.IPEquals == "" {
-				filter.IPEquals = nil
-			}
-			if *filter.RangeEquals == "" {
-				filter.RangeEquals = nil
-			}
-
-			if *filter.OriginEquals == "" {
-				filter.OriginEquals = nil
-			}
-
-			if contained != nil && *contained {
-				filter.Contains = new(bool)
-			}
-
-			alerts, _, err := Client.Alerts.List(context.Background(), filter)
-			if err != nil {
-				return fmt.Errorf("unable to retrieve decisions: %w", err)
-			}
-
-			err = cli.decisionsToTable(alerts, printMachine)
-			if err != nil {
-				return fmt.Errorf("unable to print decisions: %w", err)
-			}
-
-			return nil
+			return cli.list(filter, NoSimu, contained, printMachine)
 		},
 	}
-	cmd.Flags().SortFlags = false
-	cmd.Flags().BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
-	cmd.Flags().StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
-	cmd.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
-	cmd.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
-	cmd.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmd.Flags().StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
-	cmd.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
-	cmd.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
-	cmd.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
-	cmd.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
-	cmd.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
-	cmd.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
-	cmd.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
-	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
+	flags.StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	flags.StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
+	flags.StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
+	flags.StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
+	flags.StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
+	flags.StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
+	flags.StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
+	flags.IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
+	flags.BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
+	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	return cmd
+}
+
+func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
+	alerts := models.AddAlertsRequest{}
+	origin := types.CscliOrigin
+	capacity := int32(0)
+	leakSpeed := "0"
+	eventsCount := int32(1)
+	empty := ""
+	simulated := false
+	startAt := time.Now().UTC().Format(time.RFC3339)
+	stopAt := time.Now().UTC().Format(time.RFC3339)
+	createdAt := time.Now().UTC().Format(time.RFC3339)
+
+	/*take care of shorthand options*/
+	if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
+		return err
+	}
+
+	if addIP != "" {
+		addValue = addIP
+		addScope = types.Ip
+	} else if addRange != "" {
+		addValue = addRange
+		addScope = types.Range
+	} else if addValue == "" {
+		return errors.New("missing arguments, a value is required (--ip, --range or --scope and --value)")
+	}
+
+	if addReason == "" {
+		addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
+	}
+
+	decision := models.Decision{
+		Duration: &addDuration,
+		Scope:    &addScope,
+		Value:    &addValue,
+		Type:     &addType,
+		Scenario: &addReason,
+		Origin:   &origin,
+	}
+	alert := models.Alert{
+		Capacity:        &capacity,
+		Decisions:       []*models.Decision{&decision},
+		Events:          []*models.Event{},
+		EventsCount:     &eventsCount,
+		Leakspeed:       &leakSpeed,
+		Message:         &addReason,
+		ScenarioHash:    &empty,
+		Scenario:        &addReason,
+		ScenarioVersion: &empty,
+		Simulated:       &simulated,
+		// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
+		Source: &models.Source{
+			AsName:   "",
+			AsNumber: "",
+			Cn:       "",
+			IP:       addValue,
+			Range:    "",
+			Scope:    &addScope,
+			Value:    &addValue,
+		},
+		StartAt:   &startAt,
+		StopAt:    &stopAt,
+		CreatedAt: createdAt,
+	}
+	alerts = append(alerts, &alert)
+
+	_, _, err := cli.client.Alerts.Add(context.Background(), alerts)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Decision successfully added")
+
+	return nil
 }
 
 func (cli *cliDecisions) newAddCmd() *cobra.Command {
@@ -322,93 +413,84 @@ cscli decisions add --scope username --value foobar
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var err error
-			alerts := models.AddAlertsRequest{}
-			origin := types.CscliOrigin
-			capacity := int32(0)
-			leakSpeed := "0"
-			eventsCount := int32(1)
-			empty := ""
-			simulated := false
-			startAt := time.Now().UTC().Format(time.RFC3339)
-			stopAt := time.Now().UTC().Format(time.RFC3339)
-			createdAt := time.Now().UTC().Format(time.RFC3339)
-
-			/*take care of shorthand options*/
-			if err = manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
-				return err
-			}
-
-			if addIP != "" {
-				addValue = addIP
-				addScope = types.Ip
-			} else if addRange != "" {
-				addValue = addRange
-				addScope = types.Range
-			} else if addValue == "" {
-				printHelp(cmd)
-				return errors.New("missing arguments, a value is required (--ip, --range or --scope and --value)")
-			}
-
-			if addReason == "" {
-				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
-			}
-			decision := models.Decision{
-				Duration: &addDuration,
-				Scope:    &addScope,
-				Value:    &addValue,
-				Type:     &addType,
-				Scenario: &addReason,
-				Origin:   &origin,
-			}
-			alert := models.Alert{
-				Capacity:        &capacity,
-				Decisions:       []*models.Decision{&decision},
-				Events:          []*models.Event{},
-				EventsCount:     &eventsCount,
-				Leakspeed:       &leakSpeed,
-				Message:         &addReason,
-				ScenarioHash:    &empty,
-				Scenario:        &addReason,
-				ScenarioVersion: &empty,
-				Simulated:       &simulated,
-				// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
-				Source: &models.Source{
-					AsName:   empty,
-					AsNumber: empty,
-					Cn:       empty,
-					IP:       addValue,
-					Range:    "",
-					Scope:    &addScope,
-					Value:    &addValue,
-				},
-				StartAt:   &startAt,
-				StopAt:    &stopAt,
-				CreatedAt: createdAt,
-			}
-			alerts = append(alerts, &alert)
-
-			_, _, err = Client.Alerts.Add(context.Background(), alerts)
-			if err != nil {
-				return err
-			}
-
-			log.Info("Decision successfully added")
-
-			return nil
+			return cli.add(addIP, addRange, addDuration, addValue, addScope, addReason, addType)
 		},
 	}
 
-	cmd.Flags().SortFlags = false
-	cmd.Flags().StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmd.Flags().StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmd.Flags().StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
-	cmd.Flags().StringVarP(&addValue, "value", "v", "", "The value (ie. --scope username --value foobar)")
-	cmd.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	cmd.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmd.Flags().StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	flags.StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
+	flags.StringVarP(&addValue, "value", "v", "", "The value (ie. --scope username --value foobar)")
+	flags.StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
+	flags.StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
+	flags.StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
 
 	return cmd
+}
+
+func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDecisionID string, contained *bool) error {
+	var err error
+
+	/*take care of shorthand options*/
+	if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
+		return err
+	}
+
+	if *delFilter.ScopeEquals == "" {
+		delFilter.ScopeEquals = nil
+	}
+
+	if *delFilter.OriginEquals == "" {
+		delFilter.OriginEquals = nil
+	}
+
+	if *delFilter.ValueEquals == "" {
+		delFilter.ValueEquals = nil
+	}
+
+	if *delFilter.ScenarioEquals == "" {
+		delFilter.ScenarioEquals = nil
+	}
+
+	if *delFilter.TypeEquals == "" {
+		delFilter.TypeEquals = nil
+	}
+
+	if *delFilter.IPEquals == "" {
+		delFilter.IPEquals = nil
+	}
+
+	if *delFilter.RangeEquals == "" {
+		delFilter.RangeEquals = nil
+	}
+
+	if contained != nil && *contained {
+		delFilter.Contains = new(bool)
+	}
+
+	var decisions *models.DeleteDecisionResponse
+
+	if delDecisionID == "" {
+		decisions, _, err = cli.client.Decisions.Delete(context.Background(), delFilter)
+		if err != nil {
+			return fmt.Errorf("unable to delete decisions: %w", err)
+		}
+	} else {
+		if _, err = strconv.Atoi(delDecisionID); err != nil {
+			return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
+		}
+
+		decisions, _, err = cli.client.Decisions.DeleteOne(context.Background(), delDecisionID)
+		if err != nil {
+			return fmt.Errorf("unable to delete decision: %w", err)
+		}
+	}
+
+	log.Infof("%s decision(s) deleted", decisions.NbDeleted)
+
+	return nil
 }
 
 func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
@@ -448,76 +530,29 @@ cscli decisions delete --origin lists  --scenario list_name
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
 				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
 				*delFilter.OriginEquals == "" && delDecisionID == "" {
-				cmd.Usage()
+				_ = cmd.Usage()
 				return errors.New("at least one filter or --all must be specified")
 			}
 
 			return nil
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
-			var err error
-			var decisions *models.DeleteDecisionResponse
-
-			/*take care of shorthand options*/
-			if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
-				return err
-			}
-			if *delFilter.ScopeEquals == "" {
-				delFilter.ScopeEquals = nil
-			}
-			if *delFilter.OriginEquals == "" {
-				delFilter.OriginEquals = nil
-			}
-			if *delFilter.ValueEquals == "" {
-				delFilter.ValueEquals = nil
-			}
-			if *delFilter.ScenarioEquals == "" {
-				delFilter.ScenarioEquals = nil
-			}
-			if *delFilter.TypeEquals == "" {
-				delFilter.TypeEquals = nil
-			}
-			if *delFilter.IPEquals == "" {
-				delFilter.IPEquals = nil
-			}
-			if *delFilter.RangeEquals == "" {
-				delFilter.RangeEquals = nil
-			}
-			if contained != nil && *contained {
-				delFilter.Contains = new(bool)
-			}
-
-			if delDecisionID == "" {
-				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
-				if err != nil {
-					return fmt.Errorf("unable to delete decisions: %v", err)
-				}
-			} else {
-				if _, err = strconv.Atoi(delDecisionID); err != nil {
-					return fmt.Errorf("id '%s' is not an integer: %v", delDecisionID, err)
-				}
-				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionID)
-				if err != nil {
-					return fmt.Errorf("unable to delete decision: %v", err)
-				}
-			}
-			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
-
-			return nil
+			return cli.delete(delFilter, delDecisionID, contained)
 		},
 	}
 
-	cmd.Flags().SortFlags = false
-	cmd.Flags().StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmd.Flags().StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmd.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
-	cmd.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	cmd.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
-	cmd.Flags().StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	flags.StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	flags.StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
+	flags.StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	flags.StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
+	flags.StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 
-	cmd.Flags().StringVar(&delDecisionID, "id", "", "decision id")
-	cmd.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
-	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+	flags.StringVar(&delDecisionID, "id", "", "decision id")
+	flags.BoolVar(&delDecisionAll, "all", false, "delete all decisions")
+	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	return cmd
 }

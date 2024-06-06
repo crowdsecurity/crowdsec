@@ -331,11 +331,7 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 		}
 	}
 
-	if err := ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit); err != nil {
-		return err
-	}
-
-	return nil
+	return ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit)
 }
 
 func (cli *cliMetrics) NewCommand() *cobra.Command {

@@ -14,9 +14,13 @@ import (
 )
 
 type PluginConfig struct {
-	Name     string  `yaml:"name"`
-	Webhook  string  `yaml:"webhook"`
-	LogLevel *string `yaml:"log_level"`
+	Name      string  `yaml:"name"`
+	Webhook   string  `yaml:"webhook"`
+	Channel   string  `yaml:"channel"`
+	Username  string  `yaml:"username"`
+	IconEmoji string  `yaml:"icon_emoji"`
+	IconURL   string  `yaml:"icon_url"`
+	LogLevel  *string `yaml:"log_level"`
 }
 type Notify struct {
 	ConfigByName map[string]PluginConfig
@@ -43,8 +47,12 @@ func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notificatio
 	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.Name))
 	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, notification.Text))
 
-	err := slack.PostWebhookContext(ctx, n.ConfigByName[notification.Name].Webhook, &slack.WebhookMessage{
-		Text: notification.Text,
+	err := slack.PostWebhookContext(ctx, cfg.Webhook, &slack.WebhookMessage{
+		Text:      notification.Text,
+		Channel:   cfg.Channel,
+		Username:  cfg.Username,
+		IconEmoji: cfg.IconEmoji,
+		IconURL:   cfg.IconURL,
 	})
 	if err != nil {
 		logger.Error(err.Error())

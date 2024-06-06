@@ -52,7 +52,7 @@ func TestBucket(t *testing.T) {
 
 	err = exprhelpers.Init(nil)
 	if err != nil {
-		log.Fatalf("exprhelpers init failed: %s", err)
+		t.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	if envSetting != "" {
@@ -61,25 +61,31 @@ func TestBucket(t *testing.T) {
 		}
 	} else {
 		wg := new(sync.WaitGroup)
+
 		fds, err := os.ReadDir(testdata)
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
+
 		for _, fd := range fds {
 			if fd.Name() == "hub" {
 				continue
 			}
+
 			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
 			tomb.Go(func() error {
 				wg.Add(1)
 				defer wg.Done()
+
 				if err := testOneBucket(t, hub, fname, tomb); err != nil {
 					t.Fatalf("Test '%s' failed : %s", fname, err)
 				}
+
 				return nil
 			})
 		}
+
 		wg.Wait()
 	}
 }
@@ -88,16 +94,16 @@ func TestBucket(t *testing.T) {
 // we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
-		if tomb.Alive() == false {
+		if !tomb.Alive() {
 			log.Warning("Tomb is dead")
 			break
 		}
+
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
 func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) error {
-
 	var (
 		holders []BucketFactory
 
@@ -105,9 +111,9 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 		stagecfg   string
 		stages     []parser.Stagefile
 		err        error
-		buckets    *Buckets
 	)
-	buckets = NewBuckets()
+
+	buckets := NewBuckets()
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
@@ -117,51 +123,59 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 
 	tmpl, err := template.New("test").Parse(string(stagefiles))
 	if err != nil {
-		return fmt.Errorf("failed to parse template %s : %s", stagefiles, err)
+		return fmt.Errorf("failed to parse template %s: %w", stagefiles, err)
 	}
+
 	var out bytes.Buffer
+
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
 	if err != nil {
 		panic(err)
 	}
+
 	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		log.Fatalf("failed unmarshaling %s : %s", stagecfg, err)
+		t.Fatalf("failed unmarshaling %s : %s", stagecfg, err)
 	}
+
 	files := []string{}
 	for _, x := range stages {
 		files = append(files, x.Filename)
 	}
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
+
 	holders, response, err := LoadBuckets(cscfg, hub, files, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
+
 	tomb.Go(func() error {
 		watchTomb(tomb)
 		return nil
 	})
+
 	if !testFile(t, filepath.Join(dir, "test.json"), filepath.Join(dir, "in-buckets_state.json"), holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
+
 	return nil
 }
 
 func testFile(t *testing.T, file string, bs string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
-
 	var results []types.Event
 	var dump bool
 
-	//should we restore
+	// should we restore
 	if _, err := os.Stat(bs); err == nil {
 		dump = true
+
 		if err := LoadBucketsState(bs, buckets, holders); err != nil {
 			t.Fatalf("Failed to load bucket state : %s", err)
 		}
 	}
 
 	/* now we can load the test files */
-	//process the yaml
+	// process the yaml
 	yamlFile, err := os.Open(file)
 	if err != nil {
 		t.Errorf("yamlFile.Get err   #%v ", err)

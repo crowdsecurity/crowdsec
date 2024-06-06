@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.22.2-alpine3.18 AS build
+FROM golang:1.22.3-alpine3.18 AS build
 
 ARG BUILD_VERSION
 
@@ -25,6 +25,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
     cscli hub update && \
+    ./docker/preload-hub-items && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists
 

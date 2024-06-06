@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/aquasecurity/table"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"

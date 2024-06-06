@@ -9,21 +9,21 @@ import (
 type MachinePassword string
 
 func (p *MachinePassword) String() string {
-    return string(*p)
+	return string(*p)
 }
 
 func (p *MachinePassword) Set(v string) error {
 	// a password can't be more than 72 characters
 	// due to bcrypt limitations
-        if len(v) > 72 {
-                return errors.New("password too long (max 72 characters)")
-        }
+	if len(v) > 72 {
+		return errors.New("password too long (max 72 characters)")
+	}
 
-        *p = MachinePassword(v)
+	*p = MachinePassword(v)
 
-        return nil
+	return nil
 }
 
 func (p *MachinePassword) Type() string {
-    return "string"
+	return "string"
 }

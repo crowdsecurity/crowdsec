@@ -230,5 +230,5 @@ func safeString(str fmt.Stringer) (s string) {
 	}()
 
 	s = str.String()
-	return
+	return //nolint:revive // bare return for the defer
 }

@@ -17,9 +17,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
@@ -85,13 +85,13 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 }
 
 func detectOS() (string, string) {
-	if cwversion.System == "docker" {
+	if version.System == "docker" {
 		return "docker", ""
 	}
 
 	osInfo, err := osinfo.GetOSInfo()
 	if err != nil {
-		return cwversion.System, "???"
+		return version.System, "???"
 	}
 
 	return osInfo.Name, osInfo.Version
@@ -121,7 +121,7 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	base := models.BaseMetrics{
 		Meta:         meta,
 		Os:           os,
-		Version:      ptr.Of(cwversion.VersionStr()),
+		Version:      ptr.Of(version.String()),
 		FeatureFlags: m.static.featureFlags,
 	}
 

@@ -12,12 +12,11 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -49,11 +48,7 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 				return err
 			}
 
-			if err := require.CAPI(cfg); err != nil {
-				return err
-			}
-
-			return nil
+			return require.CAPI(cfg)
 		},
 	}
 
@@ -81,7 +76,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     capiUser,
 		Password:      password,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiurl,
 		VersionPrefix: CAPIURLPrefix,
 	}, nil)
@@ -148,30 +143,16 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmd.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
 
-	if err := cmd.Flags().MarkHidden("schmilblick"); err != nil {
-		log.Fatalf("failed to hide flag: %s", err)
-	}
+	_ = cmd.Flags().MarkHidden("schmilblick")
 
 	return cmd
 }
 
-func (cli *cliCapi) status() error {
-	cfg := cli.cfg()
-
-	if err := require.CAPIRegistered(cfg); err != nil {
-		return err
-	}
-
-	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
-
-	apiurl, err := url.Parse(cfg.API.Server.OnlineClient.Credentials.URL)
+// QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct
+func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) error {
+	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return fmt.Errorf("parsing api url ('%s'): %w", cfg.API.Server.OnlineClient.Credentials.URL, err)
-	}
-
-	hub, err := require.Hub(cfg, nil, nil)
-	if err != nil {
-		return err
+		return fmt.Errorf("parsing api url: %w", err)
 	}
 
 	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
@@ -183,22 +164,48 @@ func (cli *cliCapi) status() error {
 		return errors.New("no scenarios installed, abort")
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
+	client, err := apiclient.NewDefaultClient(apiURL,
+		CAPIURLPrefix,
+		cwversion.UserAgent(),
+		nil)
 	if err != nil {
 		return fmt.Errorf("init default client: %w", err)
 	}
 
+	pw := strfmt.Password(password)
+
 	t := models.WatcherAuthRequest{
-		MachineID: &cfg.API.Server.OnlineClient.Credentials.Login,
-		Password:  &password,
+		MachineID: &login,
+		Password:  &pw,
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cfg.API.Server.OnlineClient.Credentials.Login, apiurl)
-
-	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cli *cliCapi) status() error {
+	cfg := cli.cfg()
+
+	if err := require.CAPIRegistered(cfg); err != nil {
+		return err
+	}
+
+	cred := cfg.API.Server.OnlineClient.Credentials
+
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
+	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
+
+	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 

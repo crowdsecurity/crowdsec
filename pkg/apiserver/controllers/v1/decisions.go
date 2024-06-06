@@ -20,7 +20,7 @@ func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 	var results []*models.Decision
 
 	for _, dbDecision := range decisions {
-		duration := dbDecision.Until.Sub(time.Now().UTC()).String()
+		duration := dbDecision.Until.Sub(time.Now().UTC()).Round(time.Second).String()
 		decision := models.Decision{
 			ID:       int64(dbDecision.ID),
 			Duration: &duration,
@@ -91,7 +91,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		return
 	}
 
-	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
@@ -113,7 +113,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
-	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 

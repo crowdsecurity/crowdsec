@@ -212,7 +212,7 @@ func (t *HubTestItem) InstallHub() error {
 	// load installed hub
 	hub, err := cwhub.NewHub(t.RuntimeHubConfig, nil, false, nil)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// install data for parsers if needed
@@ -327,7 +327,8 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	nucleiConfig := NucleiConfig{
 		Path:      "nuclei",
 		OutputDir: t.RuntimePath,
-		CmdLineOptions: []string{"-ev", // allow variables from environment
+		CmdLineOptions: []string{
+			"-ev",    // allow variables from environment
 			"-nc",    // no colors in output
 			"-dresp", // dump response
 			"-j",     // json output

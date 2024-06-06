@@ -108,20 +108,6 @@ func (bc *BouncerCreate) SetNillableVersion(s *string) *BouncerCreate {
 	return bc
 }
 
-// SetUntil sets the "until" field.
-func (bc *BouncerCreate) SetUntil(t time.Time) *BouncerCreate {
-	bc.mutation.SetUntil(t)
-	return bc
-}
-
-// SetNillableUntil sets the "until" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableUntil(t *time.Time) *BouncerCreate {
-	if t != nil {
-		bc.SetUntil(*t)
-	}
-	return bc
-}
-
 // SetLastPull sets the "last_pull" field.
 func (bc *BouncerCreate) SetLastPull(t time.Time) *BouncerCreate {
 	bc.mutation.SetLastPull(t)
@@ -239,10 +225,6 @@ func (bc *BouncerCreate) defaults() {
 		v := bouncer.DefaultIPAddress
 		bc.mutation.SetIPAddress(v)
 	}
-	if _, ok := bc.mutation.Until(); !ok {
-		v := bouncer.DefaultUntil()
-		bc.mutation.SetUntil(v)
-	}
 	if _, ok := bc.mutation.LastPull(); !ok {
 		v := bouncer.DefaultLastPull()
 		bc.mutation.SetLastPull(v)
@@ -333,10 +315,6 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	if value, ok := bc.mutation.Version(); ok {
 		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 		_node.Version = value
-	}
-	if value, ok := bc.mutation.Until(); ok {
-		_spec.SetField(bouncer.FieldUntil, field.TypeTime, value)
-		_node.Until = value
 	}
 	if value, ok := bc.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)

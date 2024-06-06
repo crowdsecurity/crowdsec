@@ -73,6 +73,13 @@ func NewClient(config *Config) (*ApiClient, error) {
 		UserAgent:      config.UserAgent,
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
+		RetryConfig: NewRetryConfig(
+			WithStatusCodeConfig(http.StatusUnauthorized, 2, false, true),
+			WithStatusCodeConfig(http.StatusForbidden, 2, false, true),
+			WithStatusCodeConfig(http.StatusTooManyRequests, 5, true, false),
+			WithStatusCodeConfig(http.StatusServiceUnavailable, 5, true, false),
+			WithStatusCodeConfig(http.StatusGatewayTimeout, 5, true, false),
+		),
 	}
 
 	transport, baseURL := createTransport(config.URL)

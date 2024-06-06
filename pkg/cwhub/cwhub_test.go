@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -107,7 +108,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// FAKE PARSER
 	resp, ok := responseByPath[req.URL.Path]
 	if !ok {
-		log.Fatalf("unexpected url :/ %s", req.URL.Path)
+		return nil, fmt.Errorf("unexpected url: %s", req.URL.Path)
 	}
 
 	response.Body = io.NopCloser(strings.NewReader(resp))

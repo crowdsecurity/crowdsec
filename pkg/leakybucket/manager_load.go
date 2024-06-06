@@ -253,7 +253,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to check version : %s", err)
+				return nil, nil, fmt.Errorf("failed to check version: %w", err)
 			}
 
 			if !ok {
@@ -265,20 +265,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 
-			hubItem, err := hub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
-			if err != nil {
-				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+			hubItem := hub.GetItemByPath(bucketFactory.Filename)
+			if hubItem == nil {
+				log.Errorf("scenario %s (%s) could not be found in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {
 				if cscfg.SimulationConfig != nil {
 					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
 				}
 
-				if hubItem != nil {
-					bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
-					bucketFactory.hash = hubItem.State.LocalHash
-				} else {
-					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
-				}
+				bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
+				bucketFactory.hash = hubItem.State.LocalHash
 			}
 
 			bucketFactory.wgDumpState = buckets.wgDumpState
@@ -312,7 +308,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Debug {
 		clog := log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
+			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
 		clog.SetLevel(log.DebugLevel)
@@ -466,7 +462,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 
 		val, ok := buckets.Bucket_map.Load(k)
 		if ok {
-			log.Fatalf("key %s already exists : %+v", k, val)
+			return fmt.Errorf("key %s already exists: %+v", k, val)
 		}
 		// find back our holder
 		found := false
@@ -506,7 +502,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		}
 
 		if !found {
-			log.Fatalf("Unable to find holder for bucket %s : %s", k, spew.Sdump(v))
+			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(v))
 		}
 	}
 

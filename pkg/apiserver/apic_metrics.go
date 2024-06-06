@@ -14,7 +14,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -141,7 +140,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		Name:    "FIXME",
 		Version: "FIXME",
 	}
-	allMetrics.Lapi.Version = ptr.Of(cwversion.VersionStr())
+	allMetrics.Lapi.Version = ptr.Of(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
 	allMetrics.Lapi.Meta = &models.MetricsMeta{

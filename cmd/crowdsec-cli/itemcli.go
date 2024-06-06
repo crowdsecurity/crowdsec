@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -12,8 +13,6 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	"github.com/crowdsecurity/go-cs-lib/coalesce"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -44,8 +43,8 @@ type cliItem struct {
 
 func (cli cliItem) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.help.use, fmt.Sprintf("%s <action> [item]...", cli.name)),
-		Short:             coalesce.String(cli.help.short, fmt.Sprintf("Manage hub %s", cli.name)),
+		Use:               cmp.Or(cli.help.use, cli.name+" <action> [item]..."),
+		Short:             cmp.Or(cli.help.short, "Manage hub "+cli.name),
 		Long:              cli.help.long,
 		Example:           cli.help.example,
 		Args:              cobra.MinimumNArgs(1),
@@ -105,9 +104,9 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.installHelp.use, "install [item]..."),
-		Short:             coalesce.String(cli.installHelp.short, fmt.Sprintf("Install given %s", cli.oneOrMore)),
-		Long:              coalesce.String(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
+		Use:               cmp.Or(cli.installHelp.use, "install [item]..."),
+		Short:             cmp.Or(cli.installHelp.short, "Install given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
 		Example:           cli.installHelp.example,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
@@ -122,7 +121,7 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 	flags := cmd.Flags()
 	flags.BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	flags.BoolVar(&force, "force", false, "Force install: overwrite tainted and outdated files")
-	flags.BoolVar(&ignoreError, "ignore", false, fmt.Sprintf("Ignore errors when installing multiple %s", cli.name))
+	flags.BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple "+cli.name)
 
 	return cmd
 }
@@ -231,9 +230,9 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.removeHelp.use, "remove [item]..."),
-		Short:             coalesce.String(cli.removeHelp.short, fmt.Sprintf("Remove given %s", cli.oneOrMore)),
-		Long:              coalesce.String(cli.removeHelp.long, fmt.Sprintf("Remove one or more %s", cli.name)),
+		Use:               cmp.Or(cli.removeHelp.use, "remove [item]..."),
+		Short:             cmp.Or(cli.removeHelp.short, "Remove given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.removeHelp.long, "Remove one or more "+cli.name),
 		Example:           cli.removeHelp.example,
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
@@ -248,7 +247,7 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 	flags := cmd.Flags()
 	flags.BoolVar(&purge, "purge", false, "Delete source file too")
 	flags.BoolVar(&force, "force", false, "Force remove: remove tainted and outdated files")
-	flags.BoolVar(&all, "all", false, fmt.Sprintf("Remove all the %s", cli.name))
+	flags.BoolVar(&all, "all", false, "Remove all the "+cli.name)
 
 	return cmd
 }
@@ -327,9 +326,9 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.upgradeHelp.use, "upgrade [item]..."),
-		Short:             coalesce.String(cli.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", cli.oneOrMore)),
-		Long:              coalesce.String(cli.upgradeHelp.long, fmt.Sprintf("Fetch and upgrade one or more %s from the hub", cli.name)),
+		Use:               cmp.Or(cli.upgradeHelp.use, "upgrade [item]..."),
+		Short:             cmp.Or(cli.upgradeHelp.short, "Upgrade given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.upgradeHelp.long, fmt.Sprintf("Fetch and upgrade one or more %s from the hub", cli.name)),
 		Example:           cli.upgradeHelp.example,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -341,7 +340,7 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVarP(&all, "all", "a", false, fmt.Sprintf("Upgrade all the %s", cli.name))
+	flags.BoolVarP(&all, "all", "a", false, "Upgrade all the "+cli.name)
 	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmd
@@ -404,9 +403,9 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.inspectHelp.use, "inspect [item]..."),
-		Short:             coalesce.String(cli.inspectHelp.short, fmt.Sprintf("Inspect given %s", cli.oneOrMore)),
-		Long:              coalesce.String(cli.inspectHelp.long, fmt.Sprintf("Inspect the state of one or more %s", cli.name)),
+		Use:               cmp.Or(cli.inspectHelp.use, "inspect [item]..."),
+		Short:             cmp.Or(cli.inspectHelp.short, "Inspect given "+cli.oneOrMore),
+		Long:              cmp.Or(cli.inspectHelp.long, "Inspect the state of one or more "+cli.name),
 		Example:           cli.inspectHelp.example,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
@@ -442,20 +441,16 @@ func (cli cliItem) list(args []string, all bool) error {
 		return err
 	}
 
-	if err = listItems(color.Output, []string{cli.name}, items, false, cfg.Cscli.Output); err != nil {
-		return err
-	}
-
-	return nil
+	return listItems(color.Output, []string{cli.name}, items, false, cfg.Cscli.Output)
 }
 
 func (cli cliItem) newListCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:               coalesce.String(cli.listHelp.use, "list [item... | -a]"),
-		Short:             coalesce.String(cli.listHelp.short, fmt.Sprintf("List %s", cli.oneOrMore)),
-		Long:              coalesce.String(cli.listHelp.long, fmt.Sprintf("List of installed/available/specified %s", cli.name)),
+		Use:               cmp.Or(cli.listHelp.use, "list [item... | -a]"),
+		Short:             cmp.Or(cli.listHelp.short, "List "+cli.oneOrMore),
+		Long:              cmp.Or(cli.listHelp.long, "List of installed/available/specified "+cli.name),
 		Example:           cli.listHelp.example,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -475,9 +470,20 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
 
-	latestContent, remoteURL, err := item.FetchLatest()
+	dest, err := os.CreateTemp("", "cscli-diff-*")
+	if err != nil {
+		return "", fmt.Errorf("while creating temporary file: %w", err)
+	}
+	defer os.Remove(dest.Name())
+
+	_, remoteURL, err := item.FetchContentTo(dest.Name())
 	if err != nil {
 		return "", err
+	}
+
+	latestContent, err := os.ReadFile(dest.Name())
+	if err != nil {
+		return "", fmt.Errorf("while reading %s: %w", dest.Name(), err)
 	}
 
 	localContent, err := os.ReadFile(item.State.LocalPath)

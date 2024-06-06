@@ -71,6 +71,7 @@ make_init_data() {
     ./instance-db setup
 
     ./bin/preload-hub-items
+    ./bin/remove-all-hub-items
 
     # when installed packages are always using sqlite, so no need to regenerate
     # local credz for sqlite

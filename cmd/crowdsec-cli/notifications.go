@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -22,13 +23,13 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -65,11 +66,8 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
-			if err := require.Notifications(cfg); err != nil {
-				return err
-			}
 
-			return nil
+			return require.Notifications(cfg)
 		},
 	}
 
@@ -156,8 +154,8 @@ func (cli *cliNotifications) getProfilesConfigs() (map[string]NotificationsCfg, 
 func (cli *cliNotifications) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
-		Short:             "list active notifications plugins",
-		Long:              `list active notifications plugins`,
+		Short:             "list notifications plugins",
+		Long:              `list notifications plugins and their status (active or not)`,
 		Example:           `cscli notifications list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -205,10 +203,11 @@ func (cli *cliNotifications) NewListCmd() *cobra.Command {
 func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect",
-		Short:             "Inspect active notifications plugin configuration",
-		Long:              `Inspect active notifications plugin and show configuration`,
+		Short:             "Inspect notifications plugin",
+		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cli.notificationConfigFilter,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
@@ -243,7 +242,24 @@ func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliNotifications) NewTestCmd() *cobra.Command {
+func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	ncfgs, err := cli.getProfilesConfigs()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	var ret []string
+
+	for k := range ncfgs {
+		if strings.Contains(k, toComplete) && !slices.Contains(args, k) {
+			ret = append(ret, k)
+		}
+	}
+
+	return ret, cobra.ShellCompDirectiveNoFileComp
+}
+
+func (cli cliNotifications) NewTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
 		pluginTomb    tomb.Tomb
@@ -253,10 +269,11 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "test [plugin name]",
 		Short:             "send a generic test alert to notification plugin",
-		Long:              `send a generic test alert to a notification plugin to test configuration even if is not active`,
+		Long:              `send a generic test alert to a notification plugin even if it is not active in profiles`,
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
+		ValidArgsFunction: cli.notificationConfigFilter,
 		PreRunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
 			pconfigs, err := cli.getPluginConfigs()
@@ -445,7 +462,7 @@ func (cli *cliNotifications) fetchAlertFromArgString(toParse string) (*models.Al
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})

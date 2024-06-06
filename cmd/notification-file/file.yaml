@@ -1,0 +1,23 @@
+# Don't change this
+type: file
+
+name: file_default # this must match with the registered plugin in the profile
+log_level: info # Options include: trace, debug, info, warn, error, off
+
+# This template render all events as ndjson
+format: |
+  {{range . -}}
+   { "time": "{{.StopAt}}", "program": "crowdsec", "alert": {{. | toJson }} }
+  {{ end -}}
+
+# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
+# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
+
+#Use full path EG /tmp/crowdsec_alerts.json or %TEMP%\crowdsec_alerts.json
+log_path: "/tmp/crowdsec_alerts.json"
+rotate:
+  enabled: true # Change to false if you want to handle log rotate on system basis
+  max_size: 500 # in MB
+  max_files: 5
+  max_age: 5
+  compress: true

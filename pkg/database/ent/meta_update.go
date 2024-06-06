@@ -29,51 +29,9 @@ func (mu *MetaUpdate) Where(ps ...predicate.Meta) *MetaUpdate {
 	return mu
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (mu *MetaUpdate) SetCreatedAt(t time.Time) *MetaUpdate {
-	mu.mutation.SetCreatedAt(t)
-	return mu
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableCreatedAt(t *time.Time) *MetaUpdate {
-	if t != nil {
-		mu.SetCreatedAt(*t)
-	}
-	return mu
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (mu *MetaUpdate) SetUpdatedAt(t time.Time) *MetaUpdate {
 	mu.mutation.SetUpdatedAt(t)
-	return mu
-}
-
-// SetKey sets the "key" field.
-func (mu *MetaUpdate) SetKey(s string) *MetaUpdate {
-	mu.mutation.SetKey(s)
-	return mu
-}
-
-// SetNillableKey sets the "key" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableKey(s *string) *MetaUpdate {
-	if s != nil {
-		mu.SetKey(*s)
-	}
-	return mu
-}
-
-// SetValue sets the "value" field.
-func (mu *MetaUpdate) SetValue(s string) *MetaUpdate {
-	mu.mutation.SetValue(s)
-	return mu
-}
-
-// SetNillableValue sets the "value" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableValue(s *string) *MetaUpdate {
-	if s != nil {
-		mu.SetValue(*s)
-	}
 	return mu
 }
 
@@ -163,20 +121,7 @@ func (mu *MetaUpdate) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (mu *MetaUpdate) check() error {
-	if v, ok := mu.mutation.Value(); ok {
-		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := mu.check(); err != nil {
-		return n, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(meta.Table, meta.Columns, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
 	if ps := mu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -185,17 +130,8 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := mu.mutation.CreatedAt(); ok {
-		_spec.SetField(meta.FieldCreatedAt, field.TypeTime, value)
-	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
 		_spec.SetField(meta.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := mu.mutation.Key(); ok {
-		_spec.SetField(meta.FieldKey, field.TypeString, value)
-	}
-	if value, ok := mu.mutation.Value(); ok {
-		_spec.SetField(meta.FieldValue, field.TypeString, value)
 	}
 	if mu.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -246,51 +182,9 @@ type MetaUpdateOne struct {
 	mutation *MetaMutation
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (muo *MetaUpdateOne) SetCreatedAt(t time.Time) *MetaUpdateOne {
-	muo.mutation.SetCreatedAt(t)
-	return muo
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableCreatedAt(t *time.Time) *MetaUpdateOne {
-	if t != nil {
-		muo.SetCreatedAt(*t)
-	}
-	return muo
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (muo *MetaUpdateOne) SetUpdatedAt(t time.Time) *MetaUpdateOne {
 	muo.mutation.SetUpdatedAt(t)
-	return muo
-}
-
-// SetKey sets the "key" field.
-func (muo *MetaUpdateOne) SetKey(s string) *MetaUpdateOne {
-	muo.mutation.SetKey(s)
-	return muo
-}
-
-// SetNillableKey sets the "key" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableKey(s *string) *MetaUpdateOne {
-	if s != nil {
-		muo.SetKey(*s)
-	}
-	return muo
-}
-
-// SetValue sets the "value" field.
-func (muo *MetaUpdateOne) SetValue(s string) *MetaUpdateOne {
-	muo.mutation.SetValue(s)
-	return muo
-}
-
-// SetNillableValue sets the "value" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableValue(s *string) *MetaUpdateOne {
-	if s != nil {
-		muo.SetValue(*s)
-	}
 	return muo
 }
 
@@ -393,20 +287,7 @@ func (muo *MetaUpdateOne) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (muo *MetaUpdateOne) check() error {
-	if v, ok := muo.mutation.Value(); ok {
-		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) {
-	if err := muo.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(meta.Table, meta.Columns, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
 	id, ok := muo.mutation.ID()
 	if !ok {
@@ -432,17 +313,8 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 			}
 		}
 	}
-	if value, ok := muo.mutation.CreatedAt(); ok {
-		_spec.SetField(meta.FieldCreatedAt, field.TypeTime, value)
-	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
 		_spec.SetField(meta.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := muo.mutation.Key(); ok {
-		_spec.SetField(meta.FieldKey, field.TypeString, value)
-	}
-	if value, ok := muo.mutation.Value(); ok {
-		_spec.SetField(meta.FieldValue, field.TypeString, value)
 	}
 	if muo.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{

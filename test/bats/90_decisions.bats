@@ -31,7 +31,6 @@ teardown() {
 
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
-    assert_line "Usage:"
     assert_stderr --partial "missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     rune -1 cscli decisions add -o json
@@ -166,7 +165,7 @@ teardown() {
     # silently discarding (but logging) invalid decisions
 
     rune -0 cscli alerts delete --all
-    truncate -s 0 "${LOGFILE}"
+    truncate -s 0 "$LOGFILE"
 
     rune -0 cscli decisions import -i - --format values <<-EOT
 	whatever
@@ -182,7 +181,7 @@ teardown() {
 
 
     rune -0 cscli alerts delete --all
-    truncate -s 0 "${LOGFILE}"
+    truncate -s 0 "$LOGFILE"
 
     rune -0 cscli decisions import -i - --format values <<-EOT
         1.2.3.4

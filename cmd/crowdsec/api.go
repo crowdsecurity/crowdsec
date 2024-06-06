@@ -76,10 +76,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		<-apiTomb.Dying() // lock until go routine is dying
 		pluginTomb.Kill(nil)
 		log.Infof("serve: shutting down api server")
-		if err := apiServer.Shutdown(); err != nil {
-			return err
-		}
-		return nil
+		return apiServer.Shutdown()
 	})
 	<-apiReady
 }
