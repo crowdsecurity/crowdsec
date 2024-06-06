@@ -19,9 +19,6 @@ import (
 type LogProcessorsMetrics struct {
 	BaseMetrics
 
-	// console options
-	ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
-
 	// Number of datasources per type
 	Datasources map[string]int64 `json:"datasources,omitempty"`
 
@@ -49,8 +46,6 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
-
 		Datasources map[string]int64 `json:"datasources,omitempty"`
 
 		HubItems HubItems `json:"hub_items,omitempty"`
@@ -64,8 +59,6 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
-
-	m.ConsoleOptions = dataAO1.ConsoleOptions
 
 	m.Datasources = dataAO1.Datasources
 
@@ -90,8 +83,6 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
-
 		Datasources map[string]int64 `json:"datasources,omitempty"`
 
 		HubItems HubItems `json:"hub_items,omitempty"`
@@ -102,8 +93,6 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 
 		Name string `json:"name,omitempty"`
 	}
-
-	dataAO1.ConsoleOptions = m.ConsoleOptions
 
 	dataAO1.Datasources = m.Datasources
 
@@ -132,10 +121,6 @@ func (m *LogProcessorsMetrics) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateConsoleOptions(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateHubItems(formats); err != nil {
 		res = append(res, err)
 	}
@@ -143,24 +128,6 @@ func (m *LogProcessorsMetrics) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *LogProcessorsMetrics) validateConsoleOptions(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.ConsoleOptions) { // not required
-		return nil
-	}
-
-	if err := m.ConsoleOptions.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("console_options")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("console_options")
-		}
-		return err
-	}
-
 	return nil
 }
 
@@ -193,10 +160,6 @@ func (m *LogProcessorsMetrics) ContextValidate(ctx context.Context, formats strf
 		res = append(res, err)
 	}
 
-	if err := m.contextValidateConsoleOptions(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.contextValidateHubItems(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -204,20 +167,6 @@ func (m *LogProcessorsMetrics) ContextValidate(ctx context.Context, formats strf
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *LogProcessorsMetrics) contextValidateConsoleOptions(ctx context.Context, formats strfmt.Registry) error {
-
-	if err := m.ConsoleOptions.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("console_options")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("console_options")
-		}
-		return err
-	}
-
 	return nil
 }
 

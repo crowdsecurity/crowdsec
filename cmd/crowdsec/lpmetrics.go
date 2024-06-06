@@ -126,10 +126,9 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	}
 
 	met := &models.LogProcessorsMetrics{
-		BaseMetrics:    base,
-		ConsoleOptions: m.static.consoleOptions,
-		Datasources:    m.static.datasourceMap,
-		HubItems:       m.static.hubState,
+		BaseMetrics: base,
+		Datasources: m.static.datasourceMap,
+		HubItems:    m.static.hubState,
 	}
 
 	// TODO: more metric details... ?

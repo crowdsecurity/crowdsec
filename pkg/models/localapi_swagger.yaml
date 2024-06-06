@@ -1045,8 +1045,6 @@ definitions:
     allOf:
       - $ref: '#/definitions/BaseMetrics'
       - properties:
-          console_options:
-            $ref: '#/definitions/ConsoleOptions'
           hub_items:
             $ref: '#/definitions/HubItems'
           datasources:

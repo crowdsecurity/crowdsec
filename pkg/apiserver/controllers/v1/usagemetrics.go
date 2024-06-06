@@ -85,10 +85,9 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		// guaranteed by the swagger schema
 		item0 := input.LogProcessors[0]
 		payload = map[string]any{
-			"console_options": item0.ConsoleOptions,
-			"datasources":     item0.Datasources,
-			"metrics":         item0.Metrics,
-			"meta":            item0.Meta,
+			"datasources": item0.Datasources,
+			"metrics":     item0.Metrics,
+			"meta":        item0.Meta,
 		}
 		baseMetrics = item0.BaseMetrics
 		hubItems = item0.HubItems
