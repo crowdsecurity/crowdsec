@@ -118,8 +118,6 @@ linters-settings:
     rules:
       - name: add-constant
         disabled: true
-      - name: blank-imports
-        disabled: true
       - name: cognitive-complexity
         disabled: true
       - name: comment-spacings
