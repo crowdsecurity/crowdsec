@@ -67,6 +67,11 @@ func chooseBranch(ctx context.Context, cfg *csconfig.Config) string {
 	}
 
 	csVersion := cwversion.VersionStrip()
+	if csVersion == "" {
+		log.Warning("Crowdsec version is not set, using hub branch 'master'")
+		return "master"
+	}
+
 	if csVersion == latest {
 		log.Debugf("Latest crowdsec version (%s), using hub branch 'master'", csVersion)
 		return "master"
@@ -75,11 +80,6 @@ func chooseBranch(ctx context.Context, cfg *csconfig.Config) string {
 	// if current version is greater than the latest we are in pre-release
 	if semver.Compare(csVersion, latest) == 1 {
 		log.Debugf("Your current crowdsec version seems to be a pre-release (%s), using hub branch 'master'", csVersion)
-		return "master"
-	}
-
-	if csVersion == "" {
-		log.Warning("Crowdsec version is not set, using hub branch 'master'")
 		return "master"
 	}
 
