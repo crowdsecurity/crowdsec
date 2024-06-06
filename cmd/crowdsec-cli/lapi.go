@@ -322,7 +322,8 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 	flags := cmd.Flags()
 	flags.StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
 	flags.StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmd.MarkFlagRequired("value")
+
+	_ = cmd.MarkFlagRequired("value")
 
 	return cmd
 }

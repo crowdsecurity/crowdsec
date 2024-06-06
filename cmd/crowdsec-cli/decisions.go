@@ -116,7 +116,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 
 type cliDecisions struct {
 	client *apiclient.ApiClient
-	cfg configGetter
+	cfg    configGetter
 }
 
 func NewCLIDecisions(cfg configGetter) *cliDecisions {
@@ -315,7 +315,6 @@ cscli decisions list --origin lists --scenario list_name
 }
 
 func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
-	var err error
 	alerts := models.AddAlertsRequest{}
 	origin := types.CscliOrigin
 	capacity := int32(0)
@@ -328,7 +327,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 
 	/*take care of shorthand options*/
-	if err = manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
+	if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
 		return err
 	}
 
@@ -345,6 +344,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	if addReason == "" {
 		addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
 	}
+
 	decision := models.Decision{
 		Duration: &addDuration,
 		Scope:    &addScope,
@@ -380,7 +380,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	}
 	alerts = append(alerts, &alert)
 
-	_, _, err = cli.client.Alerts.Add(context.Background(), alerts)
+	_, _, err := cli.client.Alerts.Add(context.Background(), alerts)
 	if err != nil {
 		return err
 	}
@@ -432,36 +432,45 @@ cscli decisions add --scope username --value foobar
 
 func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDecisionID string, contained *bool) error {
 	var err error
-	var decisions *models.DeleteDecisionResponse
 
 	/*take care of shorthand options*/
 	if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
 		return err
 	}
+
 	if *delFilter.ScopeEquals == "" {
 		delFilter.ScopeEquals = nil
 	}
+
 	if *delFilter.OriginEquals == "" {
 		delFilter.OriginEquals = nil
 	}
+
 	if *delFilter.ValueEquals == "" {
 		delFilter.ValueEquals = nil
 	}
+
 	if *delFilter.ScenarioEquals == "" {
 		delFilter.ScenarioEquals = nil
 	}
+
 	if *delFilter.TypeEquals == "" {
 		delFilter.TypeEquals = nil
 	}
+
 	if *delFilter.IPEquals == "" {
 		delFilter.IPEquals = nil
 	}
+
 	if *delFilter.RangeEquals == "" {
 		delFilter.RangeEquals = nil
 	}
+
 	if contained != nil && *contained {
 		delFilter.Contains = new(bool)
 	}
+
+	var decisions *models.DeleteDecisionResponse
 
 	if delDecisionID == "" {
 		decisions, _, err = cli.client.Decisions.Delete(context.Background(), delFilter)
@@ -472,11 +481,13 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 		if _, err = strconv.Atoi(delDecisionID); err != nil {
 			return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
 		}
+
 		decisions, _, err = cli.client.Decisions.DeleteOne(context.Background(), delDecisionID)
 		if err != nil {
 			return fmt.Errorf("unable to delete decision: %w", err)
 		}
 	}
+
 	log.Infof("%s decision(s) deleted", decisions.NbDeleted)
 
 	return nil
@@ -519,7 +530,7 @@ cscli decisions delete --origin lists  --scenario list_name
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
 				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
 				*delFilter.OriginEquals == "" && delDecisionID == "" {
-				cmd.Usage()
+				_ = cmd.Usage()
 				return errors.New("at least one filter or --all must be specified")
 			}
 
