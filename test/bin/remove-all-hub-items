@@ -14,7 +14,7 @@ echo "Pre-downloading Hub content..."
 types=$("$CSCLI" hub types -o raw)
 
 for itemtype in $types; do
-    "$CSCLI" "$itemtype" remove --all
+    "$CSCLI" "$itemtype" remove --all --force
 done
 
 echo " done."
