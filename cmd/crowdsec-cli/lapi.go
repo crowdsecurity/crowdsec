@@ -50,7 +50,7 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
-	Client, err = apiclient.NewDefaultClient(apiURL,
+	client, err := apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
 		cwversion.UserAgent(),
 		nil)
@@ -66,7 +66,7 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		Scenarios: scenarios,
 	}
 
-	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,8 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 	flags := cmd.Flags()
 	flags.StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
 	flags.StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmd.MarkFlagRequired("value")
+
+	_ = cmd.MarkFlagRequired("value")
 
 	return cmd
 }

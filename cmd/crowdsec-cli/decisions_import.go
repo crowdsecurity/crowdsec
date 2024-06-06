@@ -122,7 +122,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	var (
-		content []byte
+		content	[]byte
 		fin	*os.File
 	)
 
@@ -224,7 +224,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 			Decisions:       chunk,
 		}
 
-		_, _, err = Client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
+		_, _, err = cli.client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
 		if err != nil {
 			return err
 		}
@@ -273,7 +273,7 @@ $ echo "1.2.3.4" | cscli decisions import -i - --format values
 	flags.Int("batch", 0, "Split import in batches of N decisions")
 	flags.String("format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
-	cmd.MarkFlagRequired("input")
+	_ = cmd.MarkFlagRequired("input")
 
 	return cmd
 }
