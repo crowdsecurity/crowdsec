@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -32,101 +31,6 @@ const (
 	alertCreateBulkSize = 50  // bulk size when create alerts
 	maxLockRetries      = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
 )
-
-func formatAlertCN(source models.Source) string {
-	cn := source.Cn
-
-	if source.AsNumber != "" {
-		cn += "/" + source.AsNumber
-	}
-
-	return cn
-}
-
-func formatAlertSource(alert *models.Alert) string {
-	if alert.Source == nil || alert.Source.Scope == nil || *alert.Source.Scope == "" {
-		return "empty source"
-	}
-
-	if *alert.Source.Scope == types.Ip {
-		ret := "ip " + *alert.Source.Value
-
-		cn := formatAlertCN(*alert.Source)
-		if cn != "" {
-			ret += " (" + cn + ")"
-		}
-
-		return ret
-	}
-
-	if *alert.Source.Scope == types.Range {
-		ret := "range " + *alert.Source.Value
-
-		cn := formatAlertCN(*alert.Source)
-		if cn != "" {
-			ret += " (" + cn + ")"
-		}
-
-		return ret
-	}
-
-	return *alert.Source.Scope + " " + *alert.Source.Value
-}
-
-func formatAlertAsString(machineID string, alert *models.Alert) []string {
-	src := formatAlertSource(alert)
-
-	msg := "empty scenario"
-	if alert.Scenario != nil && *alert.Scenario != "" {
-		msg = *alert.Scenario
-	} else if alert.Message != nil && *alert.Message != "" {
-		msg = *alert.Message
-	}
-
-	reason := fmt.Sprintf("%s by %s", msg, src)
-
-	if len(alert.Decisions) == 0 {
-		return []string{fmt.Sprintf("(%s) alert : %s", machineID, reason)}
-	}
-
-	var retStr []string
-
-	if alert.Decisions[0].Origin != nil && *alert.Decisions[0].Origin == types.CscliImportOrigin {
-		return []string{fmt.Sprintf("(%s) alert : %s", machineID, reason)}
-	}
-
-	for i, decisionItem := range alert.Decisions {
-		decision := ""
-		if alert.Simulated != nil && *alert.Simulated {
-			decision = "(simulated alert)"
-		} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
-			decision = "(simulated decision)"
-		}
-
-		if log.GetLevel() >= log.DebugLevel {
-			/*spew is expensive*/
-			log.Debugf("%s", spew.Sdump(decisionItem))
-		}
-
-		if len(alert.Decisions) > 1 {
-			reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(alert.Decisions))
-		}
-
-		var machineIDOrigin string
-		if machineID == "" {
-			machineIDOrigin = *decisionItem.Origin
-		} else {
-			machineIDOrigin = fmt.Sprintf("%s/%s", machineID, *decisionItem.Origin)
-		}
-
-		decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
-			*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
-		retStr = append(retStr,
-			fmt.Sprintf("(%s) %s : %s", machineIDOrigin, reason, decision))
-	}
-
-	return retStr
-}
 
 // CreateOrUpdateAlert is specific to PAPI : It checks if alert already exists, otherwise inserts it
 // if alert already exists, it checks it associated decisions already exists
@@ -562,8 +466,9 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 			stopAtTime = time.Now().UTC()
 		}
+
 		/*display proper alert in logs*/
-		for _, disp := range formatAlertAsString(machineID, alertItem) {
+		for _, disp := range alertItem.FormatAsStrings(machineID, log.StandardLogger()) {
 			c.Log.Info(disp)
 		}
 
@@ -649,6 +554,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 				if len(metaItem.Value) > 4095 {
 					c.Log.Warningf("truncated meta %s : value too long", metaItem.Key)
+
 					value = value[:4095]
 				}
 

@@ -35,9 +35,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var dataFile map[string][]string
-var dataFileRegex map[string][]*regexp.Regexp
-var dataFileRe2 map[string][]*re2.Regexp
+var (
+	dataFile      map[string][]string
+	dataFileRegex map[string][]*regexp.Regexp
+	dataFileRe2   map[string][]*re2.Regexp
+)
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
@@ -57,9 +59,11 @@ var exprFunctionOptions []expr.Option
 
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
-var geoIPCityReader *geoip2.Reader
-var geoIPASNReader *geoip2.Reader
-var geoIPRangeReader *maxminddb.Reader
+var (
+	geoIPCityReader  *geoip2.Reader
+	geoIPASNReader   *geoip2.Reader
+	geoIPRangeReader *maxminddb.Reader
+)
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 	if len(exprFunctionOptions) == 0 {
@@ -72,9 +76,11 @@ func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 				))
 		}
 	}
+
 	ret := []expr.Option{}
 	ret = append(ret, exprFunctionOptions...)
 	ret = append(ret, expr.Env(ctx))
+
 	return ret
 }
 
@@ -106,9 +112,11 @@ func GeoIPClose() {
 	if geoIPCityReader != nil {
 		geoIPCityReader.Close()
 	}
+
 	if geoIPASNReader != nil {
 		geoIPASNReader.Close()
 	}
+
 	if geoIPRangeReader != nil {
 		geoIPRangeReader.Close()
 	}
@@ -124,16 +132,15 @@ func Init(databaseClient *database.Client) error {
 }
 
 func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
-
-	//cache is explicitly disabled
+	// cache is explicitly disabled
 	if CacheCfg.Cache != nil && !*CacheCfg.Cache {
 		return nil
 	}
-	//cache is implicitly disabled if no cache config is provided
+	// cache is implicitly disabled if no cache config is provided
 	if CacheCfg.Strategy == nil && CacheCfg.TTL == nil && CacheCfg.Size == nil {
 		return nil
 	}
-	//cache is enabled
+	// cache is enabled
 
 	if CacheCfg.Size == nil {
 		CacheCfg.Size = ptr.Of(50)
@@ -144,6 +151,7 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	if CacheCfg.Strategy == nil {
 		CacheCfg.Strategy = ptr.Of("LRU")
 	}
+
 	switch *CacheCfg.Strategy {
 	case "LRU":
 		gc = gc.LRU()
@@ -158,14 +166,17 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	if CacheCfg.TTL != nil {
 		gc.Expiration(*CacheCfg.TTL)
 	}
+
 	cache := gc.Build()
 	dataFileRegexCache[filename] = cache
+
 	return nil
 }
 
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateRegexpCacheMetrics() {
 	RegexpCacheMetrics.Reset()
+
 	for name := range dataFileRegexCache {
 		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
 	}
@@ -173,10 +184,12 @@ func UpdateRegexpCacheMetrics() {
 
 func FileInit(fileFolder string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+
 	if fileType == "" {
 		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
 		return nil
 	}
+
 	ok, err := existsInFileMaps(filename, fileType)
 	if ok {
 		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
@@ -187,6 +200,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 
 	filepath := filepath.Join(fileFolder, filename)
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
@@ -201,28 +215,26 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		if len(scanner.Text()) == 0 { //skip empty lines
 			continue
 		}
+
 		switch fileType {
 		case "regex", "regexp":
 			if fflag.Re2RegexpInfileSupport.IsEnabled() {
 				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
 				continue
 			}
+
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return nil
+	return scanner.Err()
 }
 
 // Expr helpers
 
 func Distinct(params ...any) (any, error) {
-
 	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
 		return nil, nil
 	}

@@ -451,9 +451,5 @@ func (c *Config) LoadAPIClient() error {
 		return errors.New("no API client section in configuration")
 	}
 
-	if err := c.API.Client.Load(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.API.Client.Load()
 }
