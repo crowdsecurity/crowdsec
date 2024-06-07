@@ -1,10 +1,6 @@
 # https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
 
 linters-settings:
-  cyclop:
-    # lower this after refactoring
-    max-complexity: 45
-
   gci:
     sections:
      - standard
@@ -19,10 +15,6 @@ linters-settings:
   gocognit:
     # lower this after refactoring
     min-complexity: 128
-
-  gocyclo:
-    # lower this after refactoring
-    min-complexity: 45
 
   funlen:
     # Checks the number of lines in a function.
@@ -133,7 +125,8 @@ linters-settings:
       - name: confusing-results
         disabled: true
       - name: cyclomatic
-        disabled: true
+        # lower this after refactoring
+        arguments: [45]
       - name: deep-exit
         disabled: true
       - name: defer
@@ -229,6 +222,13 @@ linters:
     - varcheck
 
     #
+    # Redundant
+    #
+
+    - gocyclo # revive
+    - cyclop  # revive
+
+    #
     # Disabled until fixed for go 1.22
     #
 
@@ -243,7 +243,6 @@ linters:
     # - asciicheck          # checks that all code identifiers does not have non-ASCII symbols in the name
     # - bidichk             # Checks for dangerous unicode character sequences
     # - bodyclose           # checks whether HTTP response body is closed successfully
-    # - cyclop              # checks function and package cyclomatic complexity
     # - decorder            # check declaration order and count of types, constants, variables and functions
     # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
     # - dupword             # checks for duplicate words in the source code
@@ -259,7 +258,6 @@ linters:
     # - gochecksumtype      # Run exhaustiveness checks on Go "sum types"
     # - gocognit            # Computes and checks the cognitive complexity of functions
     # - gocritic            # Provides diagnostics that check for bugs, performance and style issues.
-    # - gocyclo             # Computes and checks the cyclomatic complexity of functions
     # - goheader            # Checks is file header matches to pattern
     # - gomoddirectives     # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod.
     # - gomodguard          # Allow and block list linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations.
@@ -503,3 +501,7 @@ issues:
         - revive
       path: cmd/crowdsec-cli/copyfile.go
 
+    - linters:
+        - revive
+      path: pkg/hubtest/hubtest_item.go
+      text: "cyclomatic: .*RunWithLogFile"
