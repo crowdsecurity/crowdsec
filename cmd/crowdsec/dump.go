@@ -27,7 +27,6 @@ func dumpAllStates() error {
 		bucketOverflows,
 	); err != nil {
 		return fmt.Errorf("while dumping bucket overflow state: %w", err)
-
 	}
 
 	if err := dumpState(

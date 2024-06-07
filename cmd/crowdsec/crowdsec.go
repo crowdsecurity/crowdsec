@@ -32,9 +32,8 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 	}
 
 	err = exprhelpers.GeoIPInit(hub.GetDataDir())
-
 	if err != nil {
-		//GeoIP databases are not mandatory, do not make crowdsec fail if they are not present
+		// GeoIP databases are not mandatory, do not make crowdsec fail if they are not present
 		log.Warnf("unable to initialize GeoIP: %s", err)
 	}
 
@@ -93,7 +92,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
-		/*restore previous state as well if present*/
+		// restore previous state as well if present
 		if cConfig.Crowdsec.BucketStateFile != "" {
 			log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
 
@@ -177,7 +176,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub
 			}
 		}()
 
-		/*we should stop in two cases :
+		/* we should stop in two cases :
 		- crowdsecTomb has been Killed() : it might be shutdown or reload, so stop
 		- acquisTomb is dead, it means that we were in "cat" mode and files are done reading, quit
 		*/
@@ -205,7 +204,7 @@ func waitOnTomb() {
 	for {
 		select {
 		case <-acquisTomb.Dead():
-			/*if it's acquisition dying it means that we were in "cat" mode.
+			/* if it's acquisition dying it means that we were in "cat" mode.
 			while shutting down, we need to give time for all buckets to process in flight data*/
 			log.Info("Acquisition is finished, shutting down")
 			/*

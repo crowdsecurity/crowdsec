@@ -390,6 +390,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if flags.TestMode {
 		log.Infof("Configuration test done")
 		pluginBroker.Kill()
+
 		return nil
 	}
 
