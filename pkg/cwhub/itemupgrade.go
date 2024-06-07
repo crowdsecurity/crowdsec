@@ -16,7 +16,7 @@ import (
 )
 
 // Upgrade downloads and applies the last version of the item from the hub.
-func (i *Item) Upgrade(force bool) (bool, error) {
+func (i *Item) Upgrade(ctx context.Context, force bool) (bool, error) {
 	if i.State.IsLocal() {
 		i.hub.logger.Infof("not upgrading %s: local item", i.Name)
 		return false, nil
@@ -33,7 +33,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 	if i.State.UpToDate {
 		i.hub.logger.Infof("%s: up-to-date", i.Name)
 
-		if err := i.DownloadDataIfNeeded(force); err != nil {
+		if err := i.DownloadDataIfNeeded(ctx, force); err != nil {
 			return false, fmt.Errorf("%s: download failed: %w", i.Name, err)
 		}
 
@@ -43,7 +43,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		}
 	}
 
-	if _, err := i.downloadLatest(force, true); err != nil {
+	if _, err := i.downloadLatest(ctx, force, true); err != nil {
 		return false, fmt.Errorf("%s: download failed: %w", i.Name, err)
 	}
 
@@ -65,7 +65,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 }
 
 // downloadLatest downloads the latest version of the item to the hub directory.
-func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (bool, error) {
+func (i *Item) downloadLatest(ctx context.Context, overwrite bool, updateOnly bool) (bool, error) {
 	i.hub.logger.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
@@ -80,14 +80,14 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (bool, error) {
 		if sub.HasSubItems() {
 			i.hub.logger.Tracef("collection, recurse")
 
-			if _, err := sub.downloadLatest(overwrite, updateOnly); err != nil {
+			if _, err := sub.downloadLatest(ctx, overwrite, updateOnly); err != nil {
 				return false, err
 			}
 		}
 
 		downloaded := sub.State.Downloaded
 
-		if _, err := sub.download(overwrite); err != nil {
+		if _, err := sub.download(ctx, overwrite); err != nil {
 			return false, err
 		}
 
@@ -105,11 +105,11 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (bool, error) {
 		return false, nil
 	}
 
-	return i.download(overwrite)
+	return i.download(ctx, overwrite)
 }
 
 // FetchContentTo downloads the last version of the item's YAML file to the specified path.
-func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
+func (i *Item) FetchContentTo(ctx context.Context, destPath string) (bool, string, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to build request: %w", err)
@@ -131,8 +131,6 @@ func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
 
 	// TODO: recommend hub update if hash does not match
 
-	ctx := context.TODO()
-
 	downloaded, err := d.Download(ctx, url)
 	if err != nil {
 		return false, "", fmt.Errorf("while downloading %s to %s: %w", i.Name, url, err)
@@ -142,7 +140,7 @@ func (i *Item) FetchContentTo(destPath string) (bool, string, error) {
 }
 
 // download downloads the item from the hub and writes it to the hub directory.
-func (i *Item) download(overwrite bool) (bool, error) {
+func (i *Item) download(ctx context.Context, overwrite bool) (bool, error) {
 	// ensure that target file is within target dir
 	finalPath, err := i.downloadPath()
 	if err != nil {
@@ -167,7 +165,7 @@ func (i *Item) download(overwrite bool) (bool, error) {
 		}
 	}
 
-	downloaded, _, err := i.FetchContentTo(finalPath)
+	downloaded, _, err := i.FetchContentTo(ctx, finalPath)
 	if err != nil {
 		return false, fmt.Errorf("while downloading %s: %w", i.Name, err)
 	}
@@ -188,7 +186,7 @@ func (i *Item) download(overwrite bool) (bool, error) {
 
 	defer reader.Close()
 
-	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, reader, i.hub.logger); err != nil {
+	if err = downloadDataSet(ctx, i.hub.local.InstallDataDir, overwrite, reader, i.hub.logger); err != nil {
 		return false, fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
 	}
 
@@ -196,7 +194,7 @@ func (i *Item) download(overwrite bool) (bool, error) {
 }
 
 // DownloadDataIfNeeded downloads the data set for the item.
-func (i *Item) DownloadDataIfNeeded(force bool) error {
+func (i *Item) DownloadDataIfNeeded(ctx context.Context, force bool) error {
 	itemFilePath, err := i.installPath()
 	if err != nil {
 		return err
@@ -209,7 +207,7 @@ func (i *Item) DownloadDataIfNeeded(force bool) error {
 
 	defer itemFile.Close()
 
-	if err = downloadDataSet(i.hub.local.InstallDataDir, force, itemFile, i.hub.logger); err != nil {
+	if err = downloadDataSet(ctx, i.hub.local.InstallDataDir, force, itemFile, i.hub.logger); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 

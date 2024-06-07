@@ -19,7 +19,9 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, item.State.Downloaded)
 	require.False(t, item.State.Installed)
 
-	require.NoError(t, item.Install(false, false))
+	ctx := context.Background()
+
+	require.NoError(t, item.Install(ctx, false, false))
 
 	require.True(t, item.State.Downloaded)
 	require.True(t, item.State.Installed)
@@ -43,7 +45,7 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	hub, err := NewHub(hub.local, remote, nil)
 	require.NoError(t, err)
 
-	err = hub.Update(context.TODO())
+	err = hub.Update(ctx)
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -58,7 +60,7 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, item.State.UpToDate)
 	require.False(t, item.State.Tainted)
 
-	didUpdate, err := item.Upgrade(false)
+	didUpdate, err := item.Upgrade(ctx, false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
@@ -78,7 +80,9 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.False(t, item.State.Installed)
 	require.False(t, hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario").State.Installed)
 
-	require.NoError(t, item.Install(false, false))
+	ctx := context.Background()
+
+	require.NoError(t, item.Install(ctx, false, false))
 
 	require.True(t, item.State.Downloaded)
 	require.True(t, item.State.Installed)
@@ -110,14 +114,14 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub, err = NewHub(hub.local, remote, nil)
 	require.NoError(t, err)
 
-	err = hub.Update(context.TODO())
+	err = hub.Update(ctx)
 	require.NoError(t, err)
 
 	err = hub.Load()
 	require.NoError(t, err)
 
 	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
-	didUpdate, err := item.Upgrade(false)
+	didUpdate, err := item.Upgrade(ctx, false)
 	require.NoError(t, err)
 	require.False(t, didUpdate)
 
@@ -148,7 +152,9 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.False(t, item.State.Installed)
 	require.False(t, hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario").State.Installed)
 
-	require.NoError(t, item.Install(false, false))
+	ctx := context.Background()
+
+	require.NoError(t, item.Install(ctx, false, false))
 
 	require.True(t, item.State.Downloaded)
 	require.True(t, item.State.Installed)
@@ -185,7 +191,7 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	hub, err = NewHub(hub.local, remote, nil)
 	require.NoError(t, err)
 
-	err = hub.Update(context.TODO())
+	err = hub.Update(ctx)
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -195,7 +201,7 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	hub = getHubOrFail(t, hub.local, remote)
 
 	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
-	didUpdate, err := item.Upgrade(false)
+	didUpdate, err := item.Upgrade(ctx, false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 

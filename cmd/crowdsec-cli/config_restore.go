@@ -50,7 +50,7 @@ func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
 				continue
 			}
 
-			if err = item.Install(false, false); err != nil {
+			if err = item.Install(ctx, false, false); err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
 			}
 		}

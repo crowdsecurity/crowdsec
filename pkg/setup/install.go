@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -46,7 +47,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
+func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, dryRun bool) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
@@ -74,7 +75,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				if err := item.Install(forceAction, downloadOnly); err != nil {
+				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing collection %s: %w", item.Name, err)
 				}
 			}
@@ -93,7 +94,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					return fmt.Errorf("parser %s not found", parser)
 				}
 
-				if err := item.Install(forceAction, downloadOnly); err != nil {
+				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing parser %s: %w", item.Name, err)
 				}
 			}
@@ -112,7 +113,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					return fmt.Errorf("scenario %s not found", scenario)
 				}
 
-				if err := item.Install(forceAction, downloadOnly); err != nil {
+				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing scenario %s: %w", item.Name, err)
 				}
 			}
@@ -131,7 +132,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					return fmt.Errorf("postoverflow %s not found", postoverflow)
 				}
 
-				if err := item.Install(forceAction, downloadOnly); err != nil {
+				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing postoverflow %s: %w", item.Name, err)
 				}
 			}

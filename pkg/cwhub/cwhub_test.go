@@ -67,7 +67,8 @@ func testHub(t *testing.T, update bool) *Hub {
 	require.NoError(t, err)
 
 	if update {
-		err := hub.Update(context.TODO())
+		ctx := context.Background()
+		err := hub.Update(ctx)
 		require.NoError(t, err)
 	}
 
