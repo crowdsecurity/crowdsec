@@ -499,5 +499,9 @@ issues:
 
     - linters:
         - revive
+      path: pkg/metabase/container.go
+
+    - linters:
+        - revive
       path: cmd/crowdsec-cli/copyfile.go
 
