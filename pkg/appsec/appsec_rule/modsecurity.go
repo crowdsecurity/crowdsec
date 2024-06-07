@@ -1,6 +1,7 @@
 package appsec_rule
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"strings"
@@ -67,9 +68,7 @@ var bodyTypeMatch map[string]string = map[string]string{
 }
 
 func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string) (string, []uint32, error) {
-
 	rules, err := m.buildRules(rule, appsecRuleName, false, 0, 0)
-
 	if err != nil {
 		return "", nil, err
 	}
@@ -99,7 +98,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	ret := make([]string, 0)
 
 	if len(rule.And) != 0 && len(rule.Or) != 0 {
-		return nil, fmt.Errorf("cannot have both 'and' and 'or' in the same rule")
+		return nil, errors.New("cannot have both 'and' and 'or' in the same rule")
 	}
 
 	if rule.And != nil {
