@@ -25,12 +25,8 @@ func (t *HubTestItem) installAppsecRuleItem(item *cwhub.Item) error {
 	// runtime/appsec-rules/
 	itemTypeDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
 
-	if err := os.MkdirAll(hubDirAppsecRuleDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", hubDirAppsecRuleDest, err)
-	}
-
-	if err := os.MkdirAll(itemTypeDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", itemTypeDirDest, err)
+	if err := createDirs([]string{hubDirAppsecRuleDest, itemTypeDirDest}); err != nil {
+		return err
 	}
 
 	// runtime/hub/appsec-rules/crowdsecurity/rule.yaml
