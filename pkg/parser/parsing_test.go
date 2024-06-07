@@ -278,26 +278,25 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 
 	for mapIdx := 0; mapIdx < len(expectMaps); mapIdx++ {
 		for expKey, expVal := range expectMaps[mapIdx] {
-			if outVal, ok := outMaps[mapIdx][expKey]; ok {
-				if outVal == expVal { //ok entry
-					if debug {
-						retInfo = append(retInfo, fmt.Sprintf("ok %s[%s] %s == %s", outLabels[mapIdx], expKey, expVal, outVal))
-					}
-					valid = true
-				} else { //mismatch entry
-					if debug {
-						retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
-					}
-					valid = false
-					goto checkFinished
-				}
-			} else { //missing entry
+			outVal, ok := outMaps[mapIdx][expKey]
+			if !ok {
 				if debug {
 					retInfo = append(retInfo, fmt.Sprintf("missing entry %s[%s]", outLabels[mapIdx], expKey))
 				}
 				valid = false
 				goto checkFinished
 			}
+			if outVal != expVal { //ok entry
+				if debug {
+					retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
+				}
+				valid = false
+				goto checkFinished
+			}
+			if debug {
+				retInfo = append(retInfo, fmt.Sprintf("ok %s[%s] %s == %s", outLabels[mapIdx], expKey, expVal, outVal))
+			}
+			valid = true
 		}
 	}
 checkFinished:

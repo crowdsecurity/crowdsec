@@ -221,11 +221,10 @@ func merge(dst map[string]interface{}, k, v interface{}) {
 func safeString(str fmt.Stringer) (s string) {
 	defer func() {
 		if panicVal := recover(); panicVal != nil {
-			if v := reflect.ValueOf(str); v.Kind() == reflect.Ptr && v.IsNil() {
-				s = "NULL"
-			} else {
+			if v := reflect.ValueOf(str); v.Kind() != reflect.Ptr || !v.IsNil() {
 				panic(panicVal)
 			}
+			s = "NULL"
 		}
 	}()
 

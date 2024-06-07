@@ -131,7 +131,6 @@ func (s *S3Source) newS3Client() error {
 	}
 
 	sess, err := session.NewSessionWithOptions(options)
-
 	if err != nil {
 		return fmt.Errorf("failed to create aws session: %w", err)
 	}
@@ -146,7 +145,7 @@ func (s *S3Source) newS3Client() error {
 
 	s.s3Client = s3.New(sess, config)
 	if s.s3Client == nil {
-		return fmt.Errorf("failed to create S3 client")
+		return errors.New("failed to create S3 client")
 	}
 
 	return nil
@@ -167,7 +166,7 @@ func (s *S3Source) newSQSClient() error {
 	}
 
 	if sess == nil {
-		return fmt.Errorf("failed to create aws session")
+		return errors.New("failed to create aws session")
 	}
 	config := aws.NewConfig()
 	if s.Config.AwsRegion != "" {
@@ -178,7 +177,7 @@ func (s *S3Source) newSQSClient() error {
 	}
 	s.sqsClient = sqs.New(sess, config)
 	if s.sqsClient == nil {
-		return fmt.Errorf("failed to create SQS client")
+		return errors.New("failed to create SQS client")
 	}
 	return nil
 }
@@ -251,15 +250,14 @@ func (s *S3Source) listPoll() error {
 				continue
 			}
 			for i := len(bucketObjects) - 1; i >= 0; i-- {
-				if bucketObjects[i].LastModified.After(lastObjectDate) {
-					newObject = true
-					logger.Debugf("Found new object %s", *bucketObjects[i].Key)
-					s.readerChan <- S3Object{
-						Bucket: s.Config.BucketName,
-						Key:    *bucketObjects[i].Key,
-					}
-				} else {
+				if !bucketObjects[i].LastModified.After(lastObjectDate) {
 					break
+				}
+				newObject = true
+				logger.Debugf("Found new object %s", *bucketObjects[i].Key)
+				s.readerChan <- S3Object{
+					Bucket: s.Config.BucketName,
+					Key:    *bucketObjects[i].Key,
 				}
 			}
 			if newObject {
