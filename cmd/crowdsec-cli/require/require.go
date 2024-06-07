@@ -72,7 +72,7 @@ func RemoteHub(ctx context.Context, c *csconfig.Config) *cwhub.RemoteHubCfg {
 	remote := &cwhub.RemoteHubCfg{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
-		IndexPath: ".index.json",
+		IndexPath:   ".index.json",
 	}
 
 	return remote

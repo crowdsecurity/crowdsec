@@ -12,8 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 // lookupLatest returns the latest crowdsec version based on github
@@ -29,6 +29,7 @@ func lookupLatest(ctx context.Context) (string, error) {
 	}
 
 	client := &http.Client{}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("unable to send request to %s: %w", url, err)
@@ -86,9 +87,9 @@ func chooseBranch(ctx context.Context, cfg *csconfig.Config) string {
 	log.Warnf("A new CrowdSec release is available (%s). "+
 		"Your version is '%s'. Please update it to use new parsers/scenarios/collections.",
 		latest, csVersion)
+
 	return csVersion
 }
-
 
 // HubBranch sets the branch (in cscli config) and returns its value
 // It can be "master", or the branch corresponding to the current crowdsec version, or the value overridden in config/flag

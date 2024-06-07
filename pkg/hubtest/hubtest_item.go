@@ -110,7 +110,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)

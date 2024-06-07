@@ -25,7 +25,7 @@ func versionWithTag() string {
 	// if the version number already contains the tag, don't duplicate it
 	ret := version.Version
 
-	if !strings.HasSuffix(ret, version.Tag) && !strings.HasSuffix(ret, "g" + version.Tag + "-dirty") {
+	if !strings.HasSuffix(ret, version.Tag) && !strings.HasSuffix(ret, "g"+version.Tag+"-dirty") {
 		ret += "-" + version.Tag
 	}
 
@@ -63,7 +63,7 @@ func VersionStrip() string {
 func Satisfies(strvers string, constraint string) (bool, error) {
 	vers, err := goversion.NewVersion(strvers)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse '%s' : %v", strvers, err)
+		return false, fmt.Errorf("failed to parse '%s': %w", strvers, err)
 	}
 
 	constraints, err := goversion.NewConstraint(constraint)
