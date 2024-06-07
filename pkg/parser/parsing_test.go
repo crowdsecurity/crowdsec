@@ -24,7 +24,7 @@ type TestFile struct {
 	Results []types.Event `yaml:"results,omitempty"`
 }
 
-var debug bool = false
+var debug = false
 
 func TestParser(t *testing.T) {
 	debug = true
