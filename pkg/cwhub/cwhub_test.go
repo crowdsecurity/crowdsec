@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,7 +63,15 @@ func testHub(t *testing.T, update bool) *Hub {
 		IndexPath:   ".index.json",
 	}
 
-	hub, err := NewHub(local, remote, update, log.StandardLogger())
+	hub, err := NewHub(local, remote, log.StandardLogger())
+	require.NoError(t, err)
+
+	if update {
+		err := hub.Update(context.TODO())
+		require.NoError(t, err)
+	}
+
+	err = hub.Load()
 	require.NoError(t, err)
 
 	return hub

@@ -1,6 +1,7 @@
 package require
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -64,14 +65,14 @@ func Notifications(c *csconfig.Config) error {
 }
 
 // RemoteHub returns the configuration required to download hub index and items: url, branch, etc.
-func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
+func RemoteHub(ctx context.Context, c *csconfig.Config) *cwhub.RemoteHubCfg {
 	// set branch in config, and log if necessary
-	branch := HubBranch(c)
+	branch := HubBranch(ctx, c)
 	urlTemplate := HubURLTemplate(c)
 	remote := &cwhub.RemoteHubCfg{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
-		IndexPath: ".index.json",
+		IndexPath:   ".index.json",
 	}
 
 	return remote
@@ -91,8 +92,12 @@ func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg, logger *logrus.Logger) 
 		logger.SetOutput(io.Discard)
 	}
 
-	hub, err := cwhub.NewHub(local, remote, false, logger)
+	hub, err := cwhub.NewHub(local, remote, logger)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := hub.Load(); err != nil {
 		return nil, fmt.Errorf("failed to read Hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 

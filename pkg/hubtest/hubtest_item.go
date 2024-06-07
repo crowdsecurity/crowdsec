@@ -110,7 +110,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
@@ -210,8 +210,12 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// load installed hub
-	hub, err := cwhub.NewHub(t.RuntimeHubConfig, nil, false, nil)
+	hub, err := cwhub.NewHub(t.RuntimeHubConfig, nil, nil)
 	if err != nil {
+		return err
+	}
+
+	if err := hub.Load(); err != nil {
 		return err
 	}
 

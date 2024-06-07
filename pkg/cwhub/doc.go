@@ -58,12 +58,21 @@
 //		InstallDir:	"/etc/crowdsec",
 //		InstallDataDir: "/var/lib/crowdsec/data",
 //	}
-//	hub, err := cwhub.NewHub(localHub, nil, false)
+//
+//	hub, err := cwhub.NewHub(localHub, nil, logger)
 //	if err != nil {
 //		return fmt.Errorf("unable to initialize hub: %w", err)
 //	}
 //
-// Now you can use the hub to access the existing items:
+// If the logger is nil, the item-by-item messages will be discarded, including warnings.
+// After configuring the hub, you must sync its state with items on disk.
+//
+//	err := hub.Load()
+//	if err != nil {
+//		return fmt.Errorf("unable to load hub: %w", err)
+//	}
+//
+// Now you can use the hub object to access the existing items:
 //
 //	// list all the parsers
 //	for _, parser := range hub.GetItemMap(cwhub.PARSERS) {
@@ -97,8 +106,8 @@
 //		Branch: "master",
 //		IndexPath: ".index.json",
 //	}
-//	updateIndex := false
-//	hub, err := cwhub.NewHub(localHub, remoteHub, updateIndex)
+//
+//	hub, err := cwhub.NewHub(localHub, remoteHub, logger)
 //	if err != nil {
 //		return fmt.Errorf("unable to initialize hub: %w", err)
 //	}
@@ -106,8 +115,14 @@
 // The URLTemplate is a string that will be used to build the URL of the remote hub. It must contain two
 // placeholders: the branch and the file path (it will be an index or an item).
 //
-// Setting the third parameter to true will download the latest version of the index, if available on the
-// specified branch.
-// There is no exported method to update the index once the hub struct is created.
+// Before calling hub.Load(), you can update the index file by calling the Update() method:
+//
+//	err := hub.Update(context.Background())
+//	if err != nil {
+//		return fmt.Errorf("unable to update hub index: %w", err)
+//	}
+//
+// Note that the command will fail if the hub has already been synced. If you want to do it (ex. after a configuration
+// change the application is notified with SIGHUP) you have to instantiate a new hub object and dispose of the old one.
 //
 package cwhub

@@ -16,6 +16,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
@@ -45,10 +46,11 @@ func TestBucket(t *testing.T) {
 		InstallDataDir: testdata,
 	}
 
-	hub, err := cwhub.NewHub(hubCfg, nil, false, nil)
-	if err != nil {
-		t.Fatalf("failed to init hub: %s", err)
-	}
+	hub, err := cwhub.NewHub(hubCfg, nil, nil)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	err = exprhelpers.Init(nil)
 	if err != nil {
@@ -197,9 +199,11 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 		//just to avoid any race during ingestion of funny scenarios
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
+
 		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
 			t.Fatalf("Failed to unmarshal time from input event : %s", err)
 		}
+
 		if latest_ts.IsZero() {
 			latest_ts = ts
 		} else if ts.After(latest_ts) {
@@ -208,10 +212,12 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 
 		in.ExpectMode = types.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
+
 		ok, err := PourItemToHolders(in, holders, buckets)
 		if err != nil {
 			t.Fatalf("Failed to pour : %s", err)
 		}
+
 		if !ok {
 			log.Warning("Event wasn't poured")
 		}

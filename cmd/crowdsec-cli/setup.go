@@ -315,7 +315,7 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
+	hub, err := require.Hub(csConfig, require.RemoteHub(cmd.Context(), csConfig), log.StandardLogger())
 	if err != nil {
 		return err
 	}

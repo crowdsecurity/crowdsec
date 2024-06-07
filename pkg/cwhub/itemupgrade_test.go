@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,8 +40,14 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 		IndexPath:   ".index.json",
 	}
 
-	hub, err := NewHub(hub.local, remote, true, nil)
-	require.NoError(t, err, "failed to download index: %s", err)
+	hub, err := NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Update(context.TODO())
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	hub = getHubOrFail(t, hub.local, remote)
 
@@ -100,8 +107,14 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection").State.Installed)
 	require.True(t, hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection").State.UpToDate)
 
-	hub, err = NewHub(hub.local, remote, true, nil)
-	require.NoError(t, err, "failed to download index: %s", err)
+	hub, err = NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Update(context.TODO())
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
 	didUpdate, err := item.Upgrade(false)
@@ -114,8 +127,11 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 
 // getHubOrFail refreshes the hub state (load index, sync) and returns the singleton, or fails the test.
 func getHubOrFail(t *testing.T, local *csconfig.LocalHubCfg, remote *RemoteHubCfg) *Hub {
-	hub, err := NewHub(local, remote, false, nil)
-	require.NoError(t, err, "failed to load hub index")
+	hub, err := NewHub(local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	return hub
 }
@@ -166,8 +182,14 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
-	hub, err = NewHub(hub.local, remote, true, nil)
-	require.NoError(t, err, "failed to download index: %s", err)
+	hub, err = NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Update(context.TODO())
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	require.False(t, hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario").State.Installed)
 	hub = getHubOrFail(t, hub.local, remote)
