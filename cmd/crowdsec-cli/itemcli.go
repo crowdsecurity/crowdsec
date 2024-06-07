@@ -83,7 +83,7 @@ func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool
 			continue
 		}
 
-		if err := item.Install(force, downloadOnly); err != nil {
+		if err := item.Install(ctx, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", item.Name, err)
 			}
@@ -270,7 +270,7 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all b
 		updated := 0
 
 		for _, item := range items {
-			didUpdate, err := item.Upgrade(force)
+			didUpdate, err := item.Upgrade(ctx, force)
 			if err != nil {
 				return err
 			}
@@ -301,7 +301,7 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all b
 			return fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
-		didUpdate, err := item.Upgrade(force)
+		didUpdate, err := item.Upgrade(ctx, force)
 		if err != nil {
 			return err
 		}
@@ -376,7 +376,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 		}
 
 		if diff {
-			fmt.Println(cli.whyTainted(hub, item, rev))
+			fmt.Println(cli.whyTainted(ctx, hub, item, rev))
 
 			continue
 		}
@@ -466,7 +466,7 @@ func (cli cliItem) newListCmd() *cobra.Command {
 }
 
 // return the diff between the installed version and the latest version
-func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
+func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, reverse bool) (string, error) {
 	if !item.State.Installed {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -477,7 +477,7 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	}
 	defer os.Remove(dest.Name())
 
-	_, remoteURL, err := item.FetchContentTo(dest.Name())
+	_, remoteURL, err := item.FetchContentTo(ctx, dest.Name())
 	if err != nil {
 		return "", err
 	}
@@ -508,7 +508,7 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	return fmt.Sprintf("%s", diff), nil
 }
 
-func (cli cliItem) whyTainted(hub *cwhub.Hub, item *cwhub.Item, reverse bool) string {
+func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item, reverse bool) string {
 	if !item.State.Installed {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
@@ -533,7 +533,7 @@ func (cli cliItem) whyTainted(hub *cwhub.Hub, item *cwhub.Item, reverse bool) st
 			ret = append(ret, err.Error())
 		}
 
-		diff, err := cli.itemDiff(sub, reverse)
+		diff, err := cli.itemDiff(ctx, sub, reverse)
 		if err != nil {
 			ret = append(ret, err.Error())
 		}

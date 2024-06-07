@@ -158,7 +158,7 @@ func (cli *cliHub) upgrade(ctx context.Context, force bool) error {
 		log.Infof("Upgrading %s", itemType)
 
 		for _, item := range items {
-			didUpdate, err := item.Upgrade(force)
+			didUpdate, err := item.Upgrade(ctx, force)
 			if err != nil {
 				return err
 			}

@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -39,7 +40,7 @@ func (i *Item) enable() error {
 }
 
 // Install installs the item from the hub, downloading it if needed.
-func (i *Item) Install(force bool, downloadOnly bool) error {
+func (i *Item) Install(ctx context.Context, force bool, downloadOnly bool) error {
 	if downloadOnly && i.State.Downloaded && i.State.UpToDate {
 		i.hub.logger.Infof("%s is already downloaded and up-to-date", i.Name)
 
@@ -48,7 +49,7 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		}
 	}
 
-	downloaded, err := i.downloadLatest(force, true)
+	downloaded, err := i.downloadLatest(ctx, force, true)
 	if err != nil {
 		return err
 	}
