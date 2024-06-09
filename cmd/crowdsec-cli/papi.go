@@ -12,7 +12,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 type cliPapi struct {
@@ -59,9 +58,9 @@ func (cli *cliPapi) NewStatusCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
-			db, err := database.NewClient(cfg.DbConfig)
+			db, err := require.DBClient(cfg.DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to initialize database client: %w", err)
+				return err
 			}
 
 			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
@@ -110,9 +109,9 @@ func (cli *cliPapi) NewSyncCmd() *cobra.Command {
 			cfg := cli.cfg()
 			t := tomb.Tomb{}
 
-			db, err := database.NewClient(cfg.DbConfig)
+			db, err := require.DBClient(cfg.DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to initialize database client: %w", err)
+				return err
 			}
 
 			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)

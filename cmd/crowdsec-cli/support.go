@@ -463,9 +463,9 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	w := bytes.NewBuffer(nil)
 	zipWriter := zip.NewWriter(w)
 
-	db, err := database.NewClient(cfg.DbConfig)
+	db, err := require.DBClient(cfg.DbConfig)
 	if err != nil {
-		log.Warnf("Could not connect to database: %s", err)
+		log.Warn(err)
 	}
 
 	if err = cfg.LoadAPIServer(true); err != nil {

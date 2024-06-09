@@ -133,9 +133,9 @@ Note: This command requires database direct access, so is intended to be run on 
 			if err = require.LAPI(cli.cfg()); err != nil {
 				return err
 			}
-			cli.db, err = database.NewClient(cli.cfg().DbConfig)
+			cli.db, err = require.DBClient(cli.cfg().DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to create new database client: %w", err)
+				return err
 			}
 
 			return nil

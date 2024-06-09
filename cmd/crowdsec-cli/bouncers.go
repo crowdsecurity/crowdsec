@@ -66,9 +66,9 @@ Note: This command requires database direct access, so is intended to be run on 
 				return err
 			}
 
-			cli.db, err = database.NewClient(cfg.DbConfig)
+			cli.db, err = require.DBClient(cfg.DbConfig)
 			if err != nil {
-				return fmt.Errorf("can't connect to the database: %w", err)
+				return err
 			}
 
 			return nil

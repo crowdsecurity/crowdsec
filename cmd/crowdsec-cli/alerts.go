@@ -24,7 +24,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -563,9 +562,9 @@ func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-			db, err := database.NewClient(cfg.DbConfig)
+			db, err := require.DBClient(cfg.DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to create new database client: %w", err)
+				return err
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
 			err = db.FlushAlerts(maxAge, maxItems)
