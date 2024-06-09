@@ -463,7 +463,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	w := bytes.NewBuffer(nil)
 	zipWriter := zip.NewWriter(w)
 
-	db, err := require.DBClient(cfg.DbConfig)
+	db, err := require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
 		log.Warn(err)
 	}

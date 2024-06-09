@@ -55,10 +55,10 @@ func (cli *cliPapi) NewStatusCmd() *cobra.Command {
 		Short:             "Get status of the Polling API",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
-			db, err := require.DBClient(cfg.DbConfig)
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
 				return err
 			}
@@ -104,12 +104,12 @@ func (cli *cliPapi) NewSyncCmd() *cobra.Command {
 		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
 			t := tomb.Tomb{}
 
-			db, err := require.DBClient(cfg.DbConfig)
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
 				return err
 			}

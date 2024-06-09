@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"runtime/pprof"
 
@@ -41,8 +42,10 @@ func StartRunSvc() error {
 
 		var err error
 
+		ctx := context.TODO()
+
 		if cConfig.DbConfig != nil {
-			dbClient, err = database.NewClient(cConfig.DbConfig)
+			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
 
 			if err != nil {
 				return fmt.Errorf("unable to create database client: %w", err)

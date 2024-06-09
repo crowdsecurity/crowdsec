@@ -48,7 +48,7 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	return drv, nil
 }
 
-func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
+func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, error) {
 	var client *ent.Client
 
 	if config == nil {
@@ -103,13 +103,13 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		client = client.Debug()
 	}
 
-	if err = client.Schema.Create(context.Background()); err != nil {
+	if err = client.Schema.Create(ctx); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
 
 	return &Client{
 		Ent:              client,
-		CTX:              context.Background(),
+		CTX:              ctx,
 		Log:              clog,
 		CanFlush:         true,
 		Type:             config.Type,

@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -161,7 +162,9 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCfg) {
-	dbClient, err := database.NewClient(config)
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
 	err = dbClient.ValidateMachine(machineID)
@@ -169,7 +172,9 @@ func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCf
 }
 
 func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
-	dbClient, err := database.NewClient(config)
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
 	machines, err := dbClient.ListMachines()
@@ -260,7 +265,9 @@ func CreateTestMachine(t *testing.T, router *gin.Engine) string {
 }
 
 func CreateTestBouncer(t *testing.T, config *csconfig.DatabaseCfg) string {
-	dbClient, err := database.NewClient(config)
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)

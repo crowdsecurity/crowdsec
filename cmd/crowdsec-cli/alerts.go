@@ -557,12 +557,12 @@ func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 /!\ This command can be used only on the same machine than the local API`,
 		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-			db, err := require.DBClient(cfg.DbConfig)
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
 				return err
 			}

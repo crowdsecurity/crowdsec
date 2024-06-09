@@ -128,12 +128,12 @@ Note: This command requires database direct access, so is intended to be run on 
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			if err = require.LAPI(cli.cfg()); err != nil {
 				return err
 			}
-			cli.db, err = require.DBClient(cli.cfg().DbConfig)
+			cli.db, err = require.DBClient(cmd.Context(), cli.cfg().DbConfig)
 			if err != nil {
 				return err
 			}
