@@ -38,7 +38,7 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 func fireHandler(req *http.Request) *http.Response {
 	var err error
 
-	apiKey := req.Header.Get("x-api-key")
+	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		log.Warningf("invalid api key: %s", apiKey)
 
@@ -105,7 +105,7 @@ func fireHandler(req *http.Request) *http.Response {
 }
 
 func smokeHandler(req *http.Request) *http.Response {
-	apiKey := req.Header.Get("x-api-key")
+	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,
@@ -137,7 +137,7 @@ func smokeHandler(req *http.Request) *http.Response {
 }
 
 func rateLimitedHandler(req *http.Request) *http.Response {
-	apiKey := req.Header.Get("x-api-key")
+	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,
@@ -154,7 +154,7 @@ func rateLimitedHandler(req *http.Request) *http.Response {
 }
 
 func searchHandler(req *http.Request) *http.Response {
-	apiKey := req.Header.Get("x-api-key")
+	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,

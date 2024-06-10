@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -138,7 +139,7 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		return fmt.Errorf("could not enroll instance: %w", err)
 	}
 
-	if resp.Response.StatusCode == 200 && !overwrite {
+	if resp.Response.StatusCode == http.StatusOK && !overwrite {
 		log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
 		return nil
 	}

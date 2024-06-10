@@ -294,7 +294,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Scope-OrgID", "1234")
+	req.Header.Set("X-Scope-Orgid", "1234")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
