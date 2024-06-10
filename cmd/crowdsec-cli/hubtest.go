@@ -251,7 +251,7 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 			cfg := cli.cfg()
 
 			if !runAll && len(args) == 0 {
-				printHelp(cmd)
+				_ = cmd.Help()
 				return errors.New("please provide test to run or --all flag")
 			}
 			hubPtr.NucleiTargetHost = NucleiTargetHost
@@ -305,8 +305,7 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
 						}
 					}
-					fmt.Printf("\nPlease fill your assert file(s) for test '%s', exiting\n", test.Name)
-					os.Exit(1)
+					return fmt.Errorf("please fill your assert file(s) for test '%s', exiting", test.Name)
 				}
 				testResult[test.Name] = test.Success
 				if test.Success {
@@ -389,7 +388,7 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 			}
 
 			if !success {
-				os.Exit(1)
+				return errors.New("some tests failed")
 			}
 
 			return nil
@@ -580,7 +579,7 @@ func (cli *cliHubTest) NewCoverageCmd() *cobra.Command {
 				case showAppsecCov:
 					fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
 				}
-				os.Exit(0)
+				return nil
 			}
 
 			switch cfg.Cscli.Output {
