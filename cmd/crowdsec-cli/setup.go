@@ -134,7 +134,9 @@ func (cli *cliSetup) NewValidateCmd() *cobra.Command {
 		Short:             "validate a setup file",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runSetupValidate,
+		RunE:              func(cmd *cobra.Command, args []string) error {
+			return cli.validate(args[0])
+		},
 	}
 
 	return cmd
@@ -287,9 +289,7 @@ func (cli *cliSetup) install(ctx context.Context, dryRun bool, fromFile string) 
 	return setup.InstallHubItems(ctx, hub, input, dryRun)
 }
 
-func runSetupValidate(cmd *cobra.Command, args []string) error {
-	fromFile := args[0]
-
+func (cli *cliSetup) validate(fromFile string) error {
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading stdin: %w", err)
