@@ -37,7 +37,7 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginName string) (string, error) {
-	xHeaders := "x-ms-date:" + now
+	xHeaders := "X-Ms-Date:" + now
 
 	stringToHash := fmt.Sprintf("POST\n%d\napplication/json\n%s\n/api/logs", length, xHeaders)
 	decodedKey, _ := base64.StdEncoding.DecodeString(s.PluginConfigByName[pluginName].SharedKey)
@@ -87,7 +87,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Log-Type", s.PluginConfigByName[notification.Name].LogType)
 	req.Header.Set("Authorization", authorization)
-	req.Header.Set("x-ms-date", now)
+	req.Header.Set("X-Ms-Date", now)
 
 	client := &http.Client{}
 	resp, err := client.Do(req.WithContext(ctx))

@@ -69,7 +69,7 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func smokeHandler(req *http.Request) *http.Response {
-	apiKey := req.Header.Get("x-api-key")
+	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,

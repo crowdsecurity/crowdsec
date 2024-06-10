@@ -43,7 +43,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("x-api-key", c.apiKey)
+	req.Header.Set("X-Api-Key", c.apiKey)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
