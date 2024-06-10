@@ -14,8 +14,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func (a *apic) GetMetrics() (*models.Metrics, error) {
-	machines, err := a.dbClient.ListMachines()
+func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 		}
 	}
 
-	bouncers, err := a.dbClient.ListBouncers()
+	bouncers, err := a.dbClient.ListBouncers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +54,8 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	}, nil
 }
 
-func (a *apic) fetchMachineIDs() ([]string, error) {
-	machines, err := a.dbClient.ListMachines()
+func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (a *apic) fetchMachineIDs() ([]string, error) {
 // Metrics are sent at start, then at the randomized metricsIntervalFirst,
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
-func (a *apic) SendMetrics(stop chan (bool)) {
+func (a *apic) SendMetrics(ctx context.Context, stop chan (bool)) {
 	defer trace.CatchPanic("lapi/metricsToAPIC")
 
 	// verify the list of machines every <checkInt> interval
@@ -99,7 +99,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	machineIDs := []string{}
 
 	reloadMachineIDs := func() {
-		ids, err := a.fetchMachineIDs()
+		ids, err := a.fetchMachineIDs(ctx)
 		if err != nil {
 			log.Debugf("unable to get machines (%s), will retry", err)
 
@@ -135,7 +135,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		case <-metTicker.C:
 			metTicker.Stop()
 
-			metrics, err := a.GetMetrics()
+			metrics, err := a.GetMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get metrics (%s)", err)
 			}

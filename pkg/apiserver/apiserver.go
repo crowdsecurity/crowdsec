@@ -170,7 +170,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	if config.DbConfig.Flush != nil {
-		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
+		flushScheduler, err = dbClient.StartFlushScheduler(ctx, config.DbConfig.Flush)
 		if err != nil {
 			return nil, err
 		}
@@ -300,7 +300,7 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
-func (s *APIServer) Run(apiReady chan bool) error {
+func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
 
 	tlsCfg, err := s.TLS.GetTLSConfig()
@@ -364,7 +364,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		}
 
 		s.apic.metricsTomb.Go(func() error {
-			s.apic.SendMetrics(make(chan bool))
+			s.apic.SendMetrics(ctx, make(chan bool))
 			return nil
 		})
 	}

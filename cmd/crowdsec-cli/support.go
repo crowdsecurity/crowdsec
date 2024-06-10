@@ -184,7 +184,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType str
 	return nil
 }
 
-func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
+func (cli *cliSupport) dumpBouncers(ctx context.Context, zw *zip.Writer, db *database.Client) error {
 	log.Info("Collecting bouncers")
 
 	if db == nil {
@@ -193,7 +193,7 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	bouncers, err := db.ListBouncers()
+	bouncers, err := db.ListBouncers(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
 	}
@@ -207,7 +207,7 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
+func (cli *cliSupport) dumpAgents(ctx context.Context, zw *zip.Writer, db *database.Client) error {
 	log.Info("Collecting agents")
 
 	if db == nil {
@@ -216,7 +216,7 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	machines, err := db.ListMachines()
+	machines, err := db.ListMachines(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %w", err)
 	}
@@ -518,11 +518,11 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		}
 	}
 
-	if err = cli.dumpBouncers(zipWriter, db); err != nil {
+	if err = cli.dumpBouncers(ctx, zipWriter, db); err != nil {
 		log.Warnf("could not collect bouncers information: %s", err)
 	}
 
-	if err = cli.dumpAgents(zipWriter, db); err != nil {
+	if err = cli.dumpAgents(ctx, zipWriter, db); err != nil {
 		log.Warnf("could not collect agents information: %s", err)
 	}
 

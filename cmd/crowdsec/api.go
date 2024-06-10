@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -63,7 +64,8 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		go func() {
 			defer trace.CatchPanic("crowdsec/runAPIServer")
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
-			if err := apiServer.Run(apiReady); err != nil {
+			ctx := context.TODO()
+			if err := apiServer.Run(ctx, apiReady); err != nil {
 				log.Fatal(err)
 			}
 		}()

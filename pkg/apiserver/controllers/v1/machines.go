@@ -23,7 +23,7 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		return
 	}
 
-	if _, err := c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false, false, types.PasswordAuthType); err != nil {
+	if _, err := c.DBClient.CreateMachine(gctx.Request.Context(), input.MachineID, input.Password, gctx.ClientIP(), false, false, types.PasswordAuthType); err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}

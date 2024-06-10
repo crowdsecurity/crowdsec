@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 )
 
-func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
-	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).First(c.CTX)
+func (c *Client) SelectBouncer(ctx context.Context, apiKeyHash string) (*ent.Bouncer, error) {
+	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).First(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -19,8 +20,8 @@ func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
 	return result, nil
 }
 
-func (c *Client) SelectBouncerByName(bouncerName string) (*ent.Bouncer, error) {
-	result, err := c.Ent.Bouncer.Query().Where(bouncer.NameEQ(bouncerName)).First(c.CTX)
+func (c *Client) SelectBouncerByName(ctx context.Context, bouncerName string) (*ent.Bouncer, error) {
+	result, err := c.Ent.Bouncer.Query().Where(bouncer.NameEQ(bouncerName)).First(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -28,8 +29,8 @@ func (c *Client) SelectBouncerByName(bouncerName string) (*ent.Bouncer, error) {
 	return result, nil
 }
 
-func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
-	result, err := c.Ent.Bouncer.Query().All(c.CTX)
+func (c *Client) ListBouncers(ctx context.Context) ([]*ent.Bouncer, error) {
+	result, err := c.Ent.Bouncer.Query().All(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "listing bouncers: %s", err)
 	}
@@ -37,14 +38,14 @@ func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	return result, nil
 }
 
-func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authType string) (*ent.Bouncer, error) {
+func (c *Client) CreateBouncer(ctx context.Context, name string, ipAddr string, apiKey string, authType string) (*ent.Bouncer, error) {
 	bouncer, err := c.Ent.Bouncer.
 		Create().
 		SetName(name).
 		SetAPIKey(apiKey).
 		SetRevoked(false).
 		SetAuthType(authType).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
 			return nil, fmt.Errorf("bouncer %s already exists", name)
@@ -56,11 +57,11 @@ func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authTy
 	return bouncer, nil
 }
 
-func (c *Client) DeleteBouncer(name string) error {
+func (c *Client) DeleteBouncer(ctx context.Context, name string) error {
 	nbDeleted, err := c.Ent.Bouncer.
 		Delete().
 		Where(bouncer.NameEQ(name)).
-		Exec(c.CTX)
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -72,13 +73,13 @@ func (c *Client) DeleteBouncer(name string) error {
 	return nil
 }
 
-func (c *Client) BulkDeleteBouncers(bouncers []*ent.Bouncer) (int, error) {
+func (c *Client) BulkDeleteBouncers(ctx context.Context, bouncers []*ent.Bouncer) (int, error) {
 	ids := make([]int, len(bouncers))
 	for i, b := range bouncers {
 		ids[i] = b.ID
 	}
 
-	nbDeleted, err := c.Ent.Bouncer.Delete().Where(bouncer.IDIn(ids...)).Exec(c.CTX)
+	nbDeleted, err := c.Ent.Bouncer.Delete().Where(bouncer.IDIn(ids...)).Exec(ctx)
 	if err != nil {
 		return nbDeleted, fmt.Errorf("unable to delete bouncers: %w", err)
 	}
@@ -86,10 +87,10 @@ func (c *Client) BulkDeleteBouncers(bouncers []*ent.Bouncer) (int, error) {
 	return nbDeleted, nil
 }
 
-func (c *Client) UpdateBouncerLastPull(lastPull time.Time, id int) error {
+func (c *Client) UpdateBouncerLastPull(ctx context.Context, lastPull time.Time, id int) error {
 	_, err := c.Ent.Bouncer.UpdateOneID(id).
 		SetLastPull(lastPull).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine last pull in database: %w", err)
 	}
@@ -97,8 +98,8 @@ func (c *Client) UpdateBouncerLastPull(lastPull time.Time, id int) error {
 	return nil
 }
 
-func (c *Client) UpdateBouncerIP(ipAddr string, id int) error {
-	_, err := c.Ent.Bouncer.UpdateOneID(id).SetIPAddress(ipAddr).Save(c.CTX)
+func (c *Client) UpdateBouncerIP(ctx context.Context, ipAddr string, id int) error {
+	_, err := c.Ent.Bouncer.UpdateOneID(id).SetIPAddress(ipAddr).Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update bouncer ip address in database: %w", err)
 	}
@@ -106,8 +107,8 @@ func (c *Client) UpdateBouncerIP(ipAddr string, id int) error {
 	return nil
 }
 
-func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, id int) error {
-	_, err := c.Ent.Bouncer.UpdateOneID(id).SetVersion(version).SetType(bType).Save(c.CTX)
+func (c *Client) UpdateBouncerTypeAndVersion(ctx context.Context, bType string, version string, id int) error {
+	_, err := c.Ent.Bouncer.UpdateOneID(id).SetVersion(version).SetType(bType).Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update bouncer type and version in database: %w", err)
 	}
@@ -115,6 +116,6 @@ func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, id in
 	return nil
 }
 
-func (c *Client) QueryBouncersLastPulltimeLT(t time.Time) ([]*ent.Bouncer, error) {
-	return c.Ent.Bouncer.Query().Where(bouncer.LastPullLT(t)).All(c.CTX)
+func (c *Client) QueryBouncersLastPulltimeLT(ctx context.Context, t time.Time) ([]*ent.Bouncer, error) {
+	return c.Ent.Bouncer.Query().Where(bouncer.LastPullLT(t)).All(ctx)
 }
