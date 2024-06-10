@@ -110,16 +110,20 @@ func (cli *cliSetup) NewInstallHubCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) NewDataSourcesCmd() *cobra.Command {
+	var toDir string
+
 	cmd := &cobra.Command{
 		Use:               "datasources [setup_file] [flags]",
 		Short:             "generate datasource (acquisition) configuration from a setup file",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runSetupDataSources,
+		RunE:              func(cmd *cobra.Command, args []string) error {
+			return cli.dataSources(args[0], toDir)
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.String("to-dir", "", "write the configuration to a directory, in multiple files")
+	flags.StringVar(&toDir, "to-dir", "", "write the configuration to a directory, in multiple files")
 
 	return cmd
 }
@@ -249,16 +253,7 @@ func setupAsString(cs setup.Setup, outYaml bool) (string, error) {
 	return string(ret), nil
 }
 
-func runSetupDataSources(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	fromFile := args[0]
-
-	toDir, err := flags.GetString("to-dir")
-	if err != nil {
-		return err
-	}
-
+func (cli *cliSetup) dataSources(fromFile string, toDir string) error {
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading setup file: %w", err)
