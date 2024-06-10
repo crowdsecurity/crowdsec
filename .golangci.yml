@@ -127,8 +127,6 @@ linters-settings:
       - name: cyclomatic
         # lower this after refactoring
         arguments: [45]
-      - name: deep-exit
-        disabled: true
       - name: defer
         disabled: true
       - name: empty-block
@@ -500,3 +498,55 @@ issues:
     - linters:
         - canonicalheader
       path: pkg/apiserver/middlewares/v1/tls_auth.go
+
+    # tolerate deep exit in tests, for now
+    - linters:
+        - revive
+      path: "pkg/(.+)_test.go"
+      text: "deep-exit: .*"
+
+    # tolerate deep exit in cobra's OnInitialize, for now
+    - linters:
+        - revive
+      path: "cmd/crowdsec-cli/main.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec-cli/item_metrics.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec-cli/machines.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec-cli/utils.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec-cli/hubtest.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "pkg/leakybucket/overflows.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec/crowdsec.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec/api.go"
+      text: "deep-exit: .*"
+
+    - linters:
+        - revive
+      path: "cmd/crowdsec/win_service.go"
+      text: "deep-exit: .*"
