@@ -464,9 +464,8 @@ func (cli *cliLapi) newContextDeleteCmd() *cobra.Command {
 			if filePath == "" {
 				filePath = "the context file"
 			}
-			fmt.Printf("Command 'delete' is deprecated, please manually edit %s.", filePath)
 
-			return nil
+			return fmt.Errorf("command 'delete' has been removed, please manually edit %s", filePath)
 		},
 	}
 
