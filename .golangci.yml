@@ -70,7 +70,6 @@ linters-settings:
           - "!**/pkg/database/*.go"
           - "!**/pkg/exprhelpers/*.go"
           - "!**/pkg/acquisition/modules/appsec/appsec.go"
-          - "!**/pkg/acquisition/modules/loki/internal/lokiclient/loki_client.go"
           - "!**/pkg/apiserver/controllers/v1/errors.go"
       yaml:
         files:

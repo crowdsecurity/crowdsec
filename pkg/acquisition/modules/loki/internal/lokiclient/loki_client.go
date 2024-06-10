@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
@@ -120,7 +120,7 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 			resp, err := lc.Get(uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
-					return errors.Wrapf(err, "error querying range")
+					return fmt.Errorf("error querying range: %w", err)
 				}
 				lc.increaseTicker(ticker)
 				continue
@@ -131,7 +131,7 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
-					return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
+					return fmt.Errorf("bad HTTP response code: %d: %s: %w", resp.StatusCode, string(body), err)
 				}
 				lc.increaseTicker(ticker)
 				continue
@@ -141,7 +141,7 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
-					return errors.Wrapf(err, "error decoding Loki response")
+					return fmt.Errorf("error decoding Loki response: %w", err)
 				}
 				lc.increaseTicker(ticker)
 				continue
@@ -258,7 +258,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 
 	if err != nil {
 		lc.Logger.Errorf("Error connecting to websocket, err: %s", err)
-		return responseChan, fmt.Errorf("error connecting to websocket")
+		return responseChan, errors.New("error connecting to websocket")
 	}
 
 	lc.t.Go(func() error {
