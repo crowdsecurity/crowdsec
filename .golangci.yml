@@ -208,16 +208,7 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - deadcode
-    - exhaustivestruct
-    - golint
-    - ifshort
-    - interfacer
-    - maligned
-    - nosnakecase
-    - scopelint
-    - structcheck
-    - varcheck
+    - execinquery
 
     #
     # Redundant
@@ -247,7 +238,6 @@ linters:
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases
     # - errorlint           # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
-    # - execinquery         # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds
     # - exportloopref       # checks for pointers to enclosing loop variables
     # - funlen              # Tool for detection of long functions
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
@@ -329,6 +319,7 @@ linters:
     - errname               # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - gomnd                 # An analyzer to detect magic numbers.
     - ireturn               # Accept Interfaces, Return Concrete Types
+    - mnd                   # An analyzer to detect magic numbers.
     - nilnil                # Checks that there is no simultaneous return of `nil` error and an invalid value.
     - noctx                 # Finds sending http request without context.Context
     - unparam               # Reports unused function parameters
@@ -348,7 +339,7 @@ linters:
     - dupl                  # Tool for code clone detection
     - forcetypeassert       # finds forced type assertions
     - godox                 # Tool for detection of FIXME, TODO and other comment keywords
-    - goerr113              # Go linter to check the errors handling expressions
+    - err113                # Go linter to check the errors handling expressions
     - paralleltest          # Detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
 
@@ -381,7 +372,7 @@ issues:
     - pkg/yamlpatch/merge.go
     - pkg/yamlpatch/merge_test.go
 
-  exclude-generated-strict: true
+  exclude-generated: strict
 
   max-issues-per-linter: 0
   max-same-issues: 0
@@ -503,3 +494,7 @@ issues:
         - revive
       path: pkg/hubtest/hubtest_item.go
       text: "cyclomatic: .*RunWithLogFile"
+
+    - linters:
+        - canonicalheader
+      path: pkg/apiserver/middlewares/v1/tls_auth.go

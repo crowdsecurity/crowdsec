@@ -504,5 +504,17 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
+if istrue "$LEVEL_WARN"; then
+    ARGS="$ARGS -warning"
+fi
+
+if istrue "$LEVEL_ERROR"; then
+    ARGS="$ARGS -error"
+fi
+
+if istrue "$LEVEL_FATAL"; then
+    ARGS="$ARGS -fatal"
+fi
+
 # shellcheck disable=SC2086
 exec crowdsec $ARGS
