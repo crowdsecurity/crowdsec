@@ -86,7 +86,7 @@ func TestAPICSendMetrics(t *testing.T) {
 
 			stop := make(chan bool)
 			httpmock.ZeroCallCounters()
-			go api.SendMetrics(stop)
+			go api.SendMetrics(context.TODO(), stop)
 			time.Sleep(tc.duration)
 			stop <- true
 
