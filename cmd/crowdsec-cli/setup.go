@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -90,16 +91,20 @@ func (cli *cliSetup) NewDetectCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) NewInstallHubCmd() *cobra.Command {
+	var dryRun bool
+
 	cmd := &cobra.Command{
 		Use:               "install-hub [setup_file] [flags]",
 		Short:             "install items from a setup file",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runSetupInstallHub,
+		RunE:              func(cmd *cobra.Command, args []string) error {
+			return cli.install(cmd.Context(), dryRun, args[0])
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.Bool("dry-run", false, "don't install anything; print out what would have been")
+	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
 
 	return cmd
 }
@@ -271,27 +276,20 @@ func runSetupDataSources(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runSetupInstallHub(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	fromFile := args[0]
-
-	dryRun, err := flags.GetBool("dry-run")
-	if err != nil {
-		return err
-	}
-
+func (cli *cliSetup) install(ctx context.Context, dryRun bool, fromFile string) error {
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(cmd.Context(), csConfig), log.StandardLogger())
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
-	return setup.InstallHubItems(cmd.Context(), hub, input, dryRun)
+	return setup.InstallHubItems(ctx, hub, input, dryRun)
 }
 
 func runSetupValidate(cmd *cobra.Command, args []string) error {
