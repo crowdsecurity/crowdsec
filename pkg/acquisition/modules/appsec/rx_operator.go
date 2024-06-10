@@ -50,9 +50,9 @@ func (o *rx) Evaluate(tx plugintypes.TransactionState, value string) bool {
 			tx.CaptureField(i, c)
 		}
 		return true
-	} else {
-		return o.re.MatchString(value)
 	}
+
+	return o.re.MatchString(value)
 }
 
 // RegisterRX registers the rx operator using a WASI implementation instead of Go.

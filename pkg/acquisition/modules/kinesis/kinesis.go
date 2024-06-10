@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -95,7 +96,7 @@ func (k *KinesisSource) newClient() error {
 	}
 
 	if sess == nil {
-		return fmt.Errorf("failed to create aws session")
+		return errors.New("failed to create aws session")
 	}
 	config := aws.NewConfig()
 	if k.Config.AwsRegion != "" {
@@ -106,7 +107,7 @@ func (k *KinesisSource) newClient() error {
 	}
 	k.kClient = kinesis.New(sess, config)
 	if k.kClient == nil {
-		return fmt.Errorf("failed to create kinesis client")
+		return errors.New("failed to create kinesis client")
 	}
 	return nil
 }
@@ -124,7 +125,7 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
 	if err != nil {
-		return fmt.Errorf("Cannot parse kinesis datasource configuration: %w", err)
+		return fmt.Errorf("cannot parse kinesis datasource configuration: %w", err)
 	}
 
 	if k.Config.Mode == "" {
@@ -132,16 +133,16 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if k.Config.StreamName == "" && !k.Config.UseEnhancedFanOut {
-		return fmt.Errorf("stream_name is mandatory when use_enhanced_fanout is false")
+		return errors.New("stream_name is mandatory when use_enhanced_fanout is false")
 	}
 	if k.Config.StreamARN == "" && k.Config.UseEnhancedFanOut {
-		return fmt.Errorf("stream_arn is mandatory when use_enhanced_fanout is true")
+		return errors.New("stream_arn is mandatory when use_enhanced_fanout is true")
 	}
 	if k.Config.ConsumerName == "" && k.Config.UseEnhancedFanOut {
-		return fmt.Errorf("consumer_name is mandatory when use_enhanced_fanout is true")
+		return errors.New("consumer_name is mandatory when use_enhanced_fanout is true")
 	}
 	if k.Config.StreamARN != "" && k.Config.StreamName != "" {
-		return fmt.Errorf("stream_arn and stream_name are mutually exclusive")
+		return errors.New("stream_arn and stream_name are mutually exclusive")
 	}
 	if k.Config.MaxRetries <= 0 {
 		k.Config.MaxRetries = 10
@@ -169,7 +170,7 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsL
 }
 
 func (k *KinesisSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return fmt.Errorf("kinesis datasource does not support command-line acquisition")
+	return errors.New("kinesis datasource does not support command-line acquisition")
 }
 
 func (k *KinesisSource) GetMode() string {
@@ -181,7 +182,7 @@ func (k *KinesisSource) GetName() string {
 }
 
 func (k *KinesisSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("kinesis datasource does not support one-shot acquisition")
+	return errors.New("kinesis datasource does not support one-shot acquisition")
 }
 
 func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubscriptionLogEvent, error) {
@@ -524,9 +525,8 @@ func (k *KinesisSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb)
 		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
 		if k.Config.UseEnhancedFanOut {
 			return k.EnhancedRead(out, t)
-		} else {
-			return k.ReadFromStream(out, t)
 		}
+		return k.ReadFromStream(out, t)
 	})
 	return nil
 }

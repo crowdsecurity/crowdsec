@@ -645,7 +645,6 @@ func (t *HubTestItem) Run() error {
 		return t.RunWithLogFile()
 	} else if t.Config.NucleiTemplate != "" {
 		return t.RunWithNucleiTemplate()
-	} else {
-		return fmt.Errorf("log file or nuclei template must be set in '%s'", t.Name)
 	}
+	return fmt.Errorf("log file or nuclei template must be set in '%s'", t.Name)
 }
