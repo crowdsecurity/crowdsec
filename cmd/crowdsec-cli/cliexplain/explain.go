@@ -44,9 +44,9 @@ func getLineCountForFile(filepath string) (int, error) {
 type configGetter func() *csconfig.Config
 
 type cliExplain struct {
-	cfg   configGetter
+	cfg            configGetter
 	configFilePath string
-	flags struct {
+	flags          struct {
 		logFile               string
 		dsn                   string
 		logLine               string
@@ -62,7 +62,7 @@ type cliExplain struct {
 
 func New(cfg configGetter, configFilePath string) *cliExplain {
 	return &cliExplain{
-		cfg: cfg,
+		cfg:            cfg,
 		configFilePath: configFilePath,
 	}
 }
@@ -108,7 +108,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.StringVar(&cli.flags.crowdsec, "crowdsec", "crowdsec", "Path to crowdsec")
 	flags.BoolVar(&cli.flags.noClean, "no-clean", false, "Don't clean runtime environment after tests")
 
-	cmd.MarkFlagRequired("type")
+	_ = cmd.MarkFlagRequired("type")
 	cmd.MarkFlagsOneRequired("log", "file", "dsn")
 
 	return cmd
