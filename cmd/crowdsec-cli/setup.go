@@ -44,28 +44,48 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 	return cmd
 }
 
+type detectFlags struct {
+	detectConfigFile      string
+	listSupportedServices bool
+	forcedUnits           []string
+	forcedProcesses       []string
+	forcedOSFamily        string
+	forcedOSID            string
+	forcedOSVersion       string
+	skipServices          []string
+	snubSystemd           bool
+	outYaml               bool
+}
+
+func (f *detectFlags) bind(cmd *cobra.Command) {
+	defaultServiceDetect := csconfig.DefaultConfigPath("hub", "detect.yaml")
+
+	flags := cmd.Flags()
+	flags.StringVar(&f.detectConfigFile, "detect-config", defaultServiceDetect, "path to service detection configuration")
+	flags.BoolVar(&f.listSupportedServices, "list-supported-services", false, "do not detect; only print supported services")
+	flags.StringSliceVar(&f.forcedUnits, "force-unit", nil, "force detection of a systemd unit (can be repeated)")
+	flags.StringSliceVar(&f.forcedProcesses, "force-process", nil, "force detection of a running process (can be repeated)")
+	flags.StringSliceVar(&f.skipServices, "skip-service", nil, "ignore a service, don't recommend hub/datasources (can be repeated)")
+	flags.StringVar(&f.forcedOSFamily, "force-os-family", "", "override OS.Family: one of linux, freebsd, windows or darwin")
+	flags.StringVar(&f.forcedOSID, "force-os-id", "", "override OS.ID=[debian | ubuntu | , redhat...]")
+	flags.StringVar(&f.forcedOSVersion, "force-os-version", "", "override OS.RawVersion (of OS or Linux distribution)")
+	flags.BoolVar(&f.snubSystemd, "snub-systemd", false, "don't use systemd, even if available")
+	flags.BoolVar(&f.outYaml, "yaml", false, "output yaml, not json")
+}
+
 func (cli *cliSetup) NewDetectCmd() *cobra.Command {
+	f := detectFlags{}
+
 	cmd := &cobra.Command{
 		Use:               "detect",
 		Short:             "detect running services, generate a setup file",
 		DisableAutoGenTag: true,
-		RunE:              runSetupDetect,
+		RunE:              func(_ *cobra.Command, args []string) error {
+			return cli.detect(f)
+		},
 	}
 
-	defaultServiceDetect := csconfig.DefaultConfigPath("hub", "detect.yaml")
-
-	flags := cmd.Flags()
-	flags.String("detect-config", defaultServiceDetect, "path to service detection configuration")
-	flags.Bool("list-supported-services", false, "do not detect; only print supported services")
-	flags.StringSlice("force-unit", nil, "force detection of a systemd unit (can be repeated)")
-	flags.StringSlice("force-process", nil, "force detection of a running process (can be repeated)")
-	flags.StringSlice("skip-service", nil, "ignore a service, don't recommend hub/datasources (can be repeated)")
-	flags.String("force-os-family", "", "override OS.Family: one of linux, freebsd, windows or darwin")
-	flags.String("force-os-id", "", "override OS.ID=[debian | ubuntu | , redhat...]")
-	flags.String("force-os-version", "", "override OS.RawVersion (of OS or Linux distribution)")
-	flags.Bool("snub-systemd", false, "don't use systemd, even if available")
-	flags.Bool("yaml", false, "output yaml, not json")
-
+	f.bind(cmd)
 	return cmd
 }
 
@@ -111,91 +131,42 @@ func (cli *cliSetup) NewValidateCmd() *cobra.Command {
 	return cmd
 }
 
-func runSetupDetect(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliSetup) detect(f detectFlags) error {
+	var (
+		detectReader *os.File
+		err          error
+	)
 
-	detectConfigFile, err := flags.GetString("detect-config")
-	if err != nil {
-		return err
-	}
-
-	var detectReader *os.File
-
-	switch detectConfigFile {
+	switch f.detectConfigFile {
 	case "-":
 		log.Tracef("Reading detection rules from stdin")
 
 		detectReader = os.Stdin
 	default:
-		log.Tracef("Reading detection rules: %s", detectConfigFile)
+		log.Tracef("Reading detection rules: %s", f.detectConfigFile)
 
-		detectReader, err = os.Open(detectConfigFile)
+		detectReader, err = os.Open(f.detectConfigFile)
 		if err != nil {
 			return err
 		}
 	}
 
-	listSupportedServices, err := flags.GetBool("list-supported-services")
-	if err != nil {
-		return err
-	}
-
-	forcedUnits, err := flags.GetStringSlice("force-unit")
-	if err != nil {
-		return err
-	}
-
-	forcedProcesses, err := flags.GetStringSlice("force-process")
-	if err != nil {
-		return err
-	}
-
-	forcedOSFamily, err := flags.GetString("force-os-family")
-	if err != nil {
-		return err
-	}
-
-	forcedOSID, err := flags.GetString("force-os-id")
-	if err != nil {
-		return err
-	}
-
-	forcedOSVersion, err := flags.GetString("force-os-version")
-	if err != nil {
-		return err
-	}
-
-	skipServices, err := flags.GetStringSlice("skip-service")
-	if err != nil {
-		return err
-	}
-
-	snubSystemd, err := flags.GetBool("snub-systemd")
-	if err != nil {
-		return err
-	}
-
-	if !snubSystemd {
+	if !f.snubSystemd {
 		_, err := exec.LookPath("systemctl")
 		if err != nil {
 			log.Debug("systemctl not available: snubbing systemd")
 
-			snubSystemd = true
+			f.snubSystemd = true
 		}
 	}
 
-	outYaml, err := flags.GetBool("yaml")
-	if err != nil {
-		return err
-	}
-
-	if forcedOSFamily == "" && forcedOSID != "" {
+	if f.forcedOSFamily == "" && f.forcedOSID != "" {
 		log.Debug("force-os-id is set: force-os-family defaults to 'linux'")
 
-		forcedOSFamily = "linux"
+		f.forcedOSFamily = "linux"
 	}
 
-	if listSupportedServices {
+	if f.listSupportedServices {
 		supported, err := setup.ListSupported(detectReader)
 		if err != nil {
 			return err
@@ -209,15 +180,15 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 	}
 
 	opts := setup.DetectOptions{
-		ForcedUnits:     forcedUnits,
-		ForcedProcesses: forcedProcesses,
+		ForcedUnits:     f.forcedUnits,
+		ForcedProcesses: f.forcedProcesses,
 		ForcedOS: setup.ExprOS{
-			Family:     forcedOSFamily,
-			ID:         forcedOSID,
-			RawVersion: forcedOSVersion,
+			Family:     f.forcedOSFamily,
+			ID:         f.forcedOSID,
+			RawVersion: f.forcedOSVersion,
 		},
-		SkipServices: skipServices,
-		SnubSystemd:  snubSystemd,
+		SkipServices: f.skipServices,
+		SnubSystemd:  f.snubSystemd,
 	}
 
 	hubSetup, err := setup.Detect(detectReader, opts)
@@ -225,7 +196,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("detecting services: %w", err)
 	}
 
-	setup, err := setupAsString(hubSetup, outYaml)
+	setup, err := setupAsString(hubSetup, f.outYaml)
 	if err != nil {
 		return err
 	}
