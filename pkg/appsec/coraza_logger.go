@@ -9,7 +9,7 @@ import (
 	dbg "github.com/crowdsecurity/coraza/v3/debuglog"
 )
 
-var DebugRules map[int]bool = map[int]bool{}
+var DebugRules = map[int]bool{}
 
 func SetRuleDebug(id int, debug bool) {
 	DebugRules[id] = debug

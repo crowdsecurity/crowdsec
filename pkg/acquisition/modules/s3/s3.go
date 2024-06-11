@@ -204,7 +204,7 @@ func (s *S3Source) getBucketContent() ([]*s3.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
 	bucketObjects := make([]*s3.Object, 0)
-	var continuationToken *string = nil
+	var continuationToken *string
 	for {
 		out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.Config.BucketName),

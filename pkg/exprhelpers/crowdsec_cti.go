@@ -20,7 +20,7 @@ var CTIApiEnabled = false
 
 // when hitting quotas or auth errors, we temporarily disable the API
 var CTIBackOffUntil time.Time
-var CTIBackOffDuration time.Duration = 5 * time.Minute
+var CTIBackOffDuration = 5 * time.Minute
 
 var ctiClient *cticlient.CrowdsecCTIClient
 

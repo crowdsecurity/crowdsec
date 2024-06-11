@@ -170,8 +170,6 @@ linters-settings:
         disabled: true
       - name: var-naming
         disabled: true
-      - name: var-declaration
-        disabled: true
       - name: unchecked-type-assertion
         disabled: true
       - name: exported

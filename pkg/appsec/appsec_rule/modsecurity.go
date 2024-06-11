@@ -11,7 +11,7 @@ type ModsecurityRule struct {
 	ids []uint32
 }
 
-var zonesMap map[string]string = map[string]string{
+var zonesMap = map[string]string{
 	"ARGS":             "ARGS_GET",
 	"ARGS_NAMES":       "ARGS_GET_NAMES",
 	"BODY_ARGS":        "ARGS_POST",
@@ -31,7 +31,7 @@ var zonesMap map[string]string = map[string]string{
 	"FILENAMES":        "FILES",
 }
 
-var transformMap map[string]string = map[string]string{
+var transformMap = map[string]string{
 	"lowercase": "t:lowercase",
 	"uppercase": "t:uppercase",
 	"b64decode": "t:base64Decode",
@@ -45,7 +45,7 @@ var transformMap map[string]string = map[string]string{
 	"html_entity_decode": "t:htmlEntityDecode",
 }
 
-var matchMap map[string]string = map[string]string{
+var matchMap = map[string]string{
 	"regex":           "@rx",
 	"equals":          "@streq",
 	"startsWith":      "@beginsWith",
@@ -60,7 +60,7 @@ var matchMap map[string]string = map[string]string{
 	"eq":              "@eq",
 }
 
-var bodyTypeMatch map[string]string = map[string]string{
+var bodyTypeMatch = map[string]string{
 	"json":       "JSON",
 	"xml":        "XML",
 	"multipart":  "MULTIPART",
