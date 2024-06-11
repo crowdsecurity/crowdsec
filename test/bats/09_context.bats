@@ -65,6 +65,11 @@ teardown() {
     assert_stderr --partial "while checking console_context_path: stat $CONTEXT_YAML: no such file or directory"
 }
 
+@test "csli lapi context delete" {
+    rune -1 cscli lapi context delete
+    assert_stderr --partial "command 'delete' has been removed, please manually edit the context file"
+}
+
 @test "context file is bad" {
     echo "bad yaml" > "$CONTEXT_YAML"
     rune -1 "$CROWDSEC" -t
