@@ -82,7 +82,8 @@ func randomDuration(d time.Duration, delta time.Duration) time.Duration {
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	scenarios := make([]string, 0)
 
-	machines, err := a.dbClient.ListMachines()
+	ctx := context.TODO()
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("while listing machines: %w", err)
 	}
@@ -406,7 +407,8 @@ func (a *apic) CAPIPullIsOld() (bool, error) {
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
 
-	count, err := alerts.Count(a.dbClient.CTX)
+	ctx := context.TODO()
+	count, err := alerts.Count(ctx)
 	if err != nil {
 		return false, fmt.Errorf("while looking for CAPI alert: %w", err)
 	}
@@ -432,7 +434,8 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 			filter["scopes"] = []string{*decision.Scope}
 		}
 
-		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
+		ctx := context.TODO()
+		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 		if err != nil {
 			return 0, fmt.Errorf("expiring decisions error: %w", err)
 		}
@@ -464,7 +467,8 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
+			ctx := context.TODO()
+			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 			if err != nil {
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
 			}
@@ -634,7 +638,8 @@ func (a *apic) PullTop(forcePull bool) error {
 
 	log.Debug("Acquiring lock for pullCAPI")
 
-	err = a.dbClient.AcquirePullCAPILock()
+	ctx := context.TODO()
+	err = a.dbClient.AcquirePullCAPILock(ctx)
 	if a.dbClient.IsLocked(err) {
 		log.Info("PullCAPI is already running, skipping")
 		return nil
@@ -644,7 +649,8 @@ func (a *apic) PullTop(forcePull bool) error {
 	defer func() {
 		log.Debug("Releasing lock for pullCAPI")
 
-		if err := a.dbClient.ReleasePullCAPILock(); err != nil {
+		ctx := context.TODO()
+		if err := a.dbClient.ReleasePullCAPILock(ctx); err != nil {
 			log.Errorf("while releasing lock: %v", err)
 		}
 	}()
@@ -768,7 +774,8 @@ func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, addCounters map[string
 			log.Warningf("sqlite is not using WAL mode, LAPI might become unresponsive when inserting the community blocklist")
 		}
 
-		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alert)
+		ctx := context.TODO()
+		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(ctx, alert)
 		if err != nil {
 			return fmt.Errorf("while saving alert from %s: %w", *alert.Source.Scope, err)
 		}
@@ -844,7 +851,8 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 	)
 
 	if !forcePull {
-		lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
+		ctx := context.TODO()
+		lastPullTimestamp, err = a.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 		if err != nil {
 			return fmt.Errorf("while getting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
 		}
@@ -865,7 +873,8 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 		return nil
 	}
 
-	err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
+	ctx := context.TODO()
+	err = a.dbClient.SetConfigItem(ctx, blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
 	if err != nil {
 		return fmt.Errorf("while setting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
 	}

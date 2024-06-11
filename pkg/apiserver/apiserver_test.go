@@ -167,7 +167,7 @@ func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCf
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	err = dbClient.ValidateMachine(machineID)
+	err = dbClient.ValidateMachine(context.TODO(), machineID)
 	require.NoError(t, err)
 }
 
@@ -177,7 +177,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	machines, err := dbClient.ListMachines()
+	machines, err := dbClient.ListMachines(context.TODO())
 	require.NoError(t, err)
 
 	for _, machine := range machines {
@@ -273,7 +273,7 @@ func CreateTestBouncer(t *testing.T, config *csconfig.DatabaseCfg) string {
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)
 	require.NoError(t, err)
 
-	_, err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
+	_, err = dbClient.CreateBouncer(context.TODO(), "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	require.NoError(t, err)
 
 	return apiKey

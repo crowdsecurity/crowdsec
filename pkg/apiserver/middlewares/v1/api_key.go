@@ -80,7 +80,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	})
 
 	bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
-	bouncer, err := a.DbClient.SelectBouncerByName(bouncerName)
+	bouncer, err := a.DbClient.SelectBouncerByName(c.Request.Context(), bouncerName)
 
 	// This is likely not the proper way, but isNotFound does not seem to work
 	if err != nil && strings.Contains(err.Error(), "bouncer not found") {
@@ -94,7 +94,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 		logger.Infof("Creating bouncer %s", bouncerName)
 
-		bouncer, err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType)
+		bouncer, err = a.DbClient.CreateBouncer(c.Request.Context(), bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType)
 		if err != nil {
 			logger.Errorf("while creating bouncer db entry: %s", err)
 			return nil
@@ -121,7 +121,7 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	hashStr := HashSHA512(val[0])
 
-	bouncer, err := a.DbClient.SelectBouncer(hashStr)
+	bouncer, err := a.DbClient.SelectBouncer(c.Request.Context(), hashStr)
 	if err != nil {
 		logger.Errorf("while fetching bouncer info: %s", err)
 		return nil
@@ -163,7 +163,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		})
 
 		if bouncer.IPAddress == "" {
-			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {
+			if err := a.DbClient.UpdateBouncerIP(c.Request.Context(), clientIP, bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
@@ -176,7 +176,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		if bouncer.IPAddress != clientIP && bouncer.IPAddress != "" && c.Request.Method != http.MethodHead {
 			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, clientIP, bouncer.IPAddress)
 
-			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {
+			if err := a.DbClient.UpdateBouncerIP(c.Request.Context(), clientIP, bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
@@ -192,7 +192,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		if bouncer.Version != useragent[1] || bouncer.Type != useragent[0] {
-			if err := a.DbClient.UpdateBouncerTypeAndVersion(useragent[0], useragent[1], bouncer.ID); err != nil {
+			if err := a.DbClient.UpdateBouncerTypeAndVersion(c.Request.Context(), useragent[0], useragent[1], bouncer.ID); err != nil {
 				logger.Errorf("failed to update bouncer version and type: %s", err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
 				c.Abort()

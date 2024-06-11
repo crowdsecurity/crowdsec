@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 const CapiMachineID = types.CAPIOrigin
 const CapiListsMachineID = types.ListOrigin
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
+func (c *Client) CreateMachine(ctx context.Context, machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
 		c.Log.Warningf("CreateMachine: %s", err)
@@ -26,18 +27,18 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 	machineExist, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(*machineID)).
-		Select(machine.FieldMachineId).Strings(c.CTX)
+		Select(machine.FieldMachineId).Strings(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
 	}
 	if len(machineExist) > 0 {
 		if force {
-			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(c.CTX)
+			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(ctx)
 			if err != nil {
 				c.Log.Warningf("CreateMachine : %s", err)
 				return nil, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
 			}
-			machine, err := c.QueryMachineByID(*machineID)
+			machine, err := c.QueryMachineByID(ctx, *machineID)
 			if err != nil {
 				return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
 			}
@@ -53,7 +54,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		SetIpAddress(ipAddress).
 		SetIsValidated(isValidated).
 		SetAuthType(authType).
-		Save(c.CTX)
+		Save(ctx)
 
 	if err != nil {
 		c.Log.Warningf("CreateMachine : %s", err)
@@ -63,11 +64,11 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 	return machine, nil
 }
 
-func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
+func (c *Client) QueryMachineByID(ctx context.Context, machineID string) (*ent.Machine, error) {
 	machine, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(machineID)).
-		Only(c.CTX)
+		Only(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryMachineByID : %s", err)
 		return &ent.Machine{}, errors.Wrapf(UserNotExists, "user '%s'", machineID)
@@ -75,16 +76,16 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 	return machine, nil
 }
 
-func (c *Client) ListMachines() ([]*ent.Machine, error) {
-	machines, err := c.Ent.Machine.Query().All(c.CTX)
+func (c *Client) ListMachines(ctx context.Context) ([]*ent.Machine, error) {
+	machines, err := c.Ent.Machine.Query().All(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "listing machines: %s", err)
 	}
 	return machines, nil
 }
 
-func (c *Client) ValidateMachine(machineID string) error {
-	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
+func (c *Client) ValidateMachine(ctx context.Context, machineID string) error {
+	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(ctx)
 	if err != nil {
 		return errors.Wrapf(UpdateFail, "validating machine: %s", err)
 	}
@@ -94,11 +95,11 @@ func (c *Client) ValidateMachine(machineID string) error {
 	return nil
 }
 
-func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
+func (c *Client) QueryPendingMachine(ctx context.Context) ([]*ent.Machine, error) {
 	var machines []*ent.Machine
 	var err error
 
-	machines, err = c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(c.CTX)
+	machines, err = c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryPendingMachine : %s", err)
 		return nil, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
@@ -106,11 +107,11 @@ func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
 	return machines, nil
 }
 
-func (c *Client) DeleteWatcher(name string) error {
+func (c *Client) DeleteWatcher(ctx context.Context, name string) error {
 	nbDeleted, err := c.Ent.Machine.
 		Delete().
 		Where(machine.MachineIdEQ(name)).
-		Exec(c.CTX)
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -122,59 +123,59 @@ func (c *Client) DeleteWatcher(name string) error {
 	return nil
 }
 
-func (c *Client) BulkDeleteWatchers(machines []*ent.Machine) (int, error) {
+func (c *Client) BulkDeleteWatchers(ctx context.Context, machines []*ent.Machine) (int, error) {
 	ids := make([]int, len(machines))
 	for i, b := range machines {
 		ids[i] = b.ID
 	}
-	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(c.CTX)
+	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(ctx)
 	if err != nil {
 		return nbDeleted, err
 	}
 	return nbDeleted, nil
 }
 
-func (c *Client) UpdateMachineLastHeartBeat(machineID string) error {
-	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastHeartbeat(time.Now().UTC()).Save(c.CTX)
+func (c *Client) UpdateMachineLastHeartBeat(ctx context.Context, machineID string) error {
+	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastHeartbeat(time.Now().UTC()).Save(ctx)
 	if err != nil {
 		return errors.Wrapf(UpdateFail, "updating machine last_heartbeat: %s", err)
 	}
 	return nil
 }
 
-func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
+func (c *Client) UpdateMachineScenarios(ctx context.Context, scenarios string, ID int) error {
 	_, err := c.Ent.Machine.UpdateOneID(ID).
 		SetUpdatedAt(time.Now().UTC()).
 		SetScenarios(scenarios).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine in database: %s", err)
 	}
 	return nil
 }
 
-func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
+func (c *Client) UpdateMachineIP(ctx context.Context, ipAddr string, ID int) error {
 	_, err := c.Ent.Machine.UpdateOneID(ID).
 		SetIpAddress(ipAddr).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine IP in database: %s", err)
 	}
 	return nil
 }
 
-func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
+func (c *Client) UpdateMachineVersion(ctx context.Context, ipAddr string, ID int) error {
 	_, err := c.Ent.Machine.UpdateOneID(ID).
 		SetVersion(ipAddr).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine version in database: %s", err)
 	}
 	return nil
 }
 
-func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
-	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(c.CTX)
+func (c *Client) IsMachineRegistered(ctx context.Context, machineID string) (bool, error) {
+	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -189,6 +190,6 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 
 }
 
-func (c *Client) QueryLastValidatedHeartbeatLT(t time.Time) ([]*ent.Machine, error) {
-	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)).All(c.CTX)
+func (c *Client) QueryLastValidatedHeartbeatLT(ctx context.Context, t time.Time) ([]*ent.Machine, error) {
+	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)).All(ctx)
 }

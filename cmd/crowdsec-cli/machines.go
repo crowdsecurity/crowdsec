@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	saferand "crypto/rand"
 	"encoding/csv"
 	"encoding/json"
@@ -151,10 +152,10 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func (cli *cliMachines) list() error {
+func (cli *cliMachines) list(ctx context.Context) error {
 	out := color.Output
 
-	machines, err := cli.db.ListMachines()
+	machines, err := cli.db.ListMachines(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %w", err)
 	}
@@ -206,8 +207,8 @@ func (cli *cliMachines) newListCmd() *cobra.Command {
 		Example:           `cscli machines list`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.list(cmd.Context())
 		},
 	}
 
@@ -233,8 +234,8 @@ func (cli *cliMachines) newAddCmd() *cobra.Command {
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 cscli machines add -f- --auto > /tmp/mycreds.yaml`,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.add(args, string(password), dumpFile, apiURL, interactive, autoAdd, force)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.add(cmd.Context(), args, string(password), dumpFile, apiURL, interactive, autoAdd, force)
 		},
 	}
 
@@ -249,7 +250,7 @@ cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 	return cmd
 }
 
-func (cli *cliMachines) add(args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
+func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
 	var (
 		err       error
 		machineID string
@@ -308,7 +309,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 
 	password := strfmt.Password(machinePassword)
 
-	_, err = cli.db.CreateMachine(&machineID, &password, "", true, force, types.PasswordAuthType)
+	_, err = cli.db.CreateMachine(ctx, &machineID, &password, "", true, force, types.PasswordAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %w", err)
 	}
@@ -349,8 +350,8 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	return nil
 }
 
-func (cli *cliMachines) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	machines, err := cli.db.ListMachines()
+func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	machines, err := cli.db.ListMachines(cmd.Context())
 	if err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
 	}
@@ -366,9 +367,9 @@ func (cli *cliMachines) deleteValid(_ *cobra.Command, args []string, toComplete 
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli *cliMachines) delete(machines []string) error {
+func (cli *cliMachines) delete(ctx context.Context, machines []string) error {
 	for _, machineID := range machines {
-		if err := cli.db.DeleteWatcher(machineID); err != nil {
+		if err := cli.db.DeleteWatcher(ctx, machineID); err != nil {
 			log.Errorf("unable to delete machine '%s': %s", machineID, err)
 			return nil
 		}
@@ -388,15 +389,15 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.deleteValid,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.delete(args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.delete(cmd.Context(), args)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force bool) error {
+func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notValidOnly bool, force bool) error {
 	if duration < 2*time.Minute && !notValidOnly {
 		if yes, err := askYesNo(
 				"The duration you provided is less than 2 minutes. " +
@@ -409,12 +410,12 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	}
 
 	machines := []*ent.Machine{}
-	if pending, err := cli.db.QueryPendingMachine(); err == nil {
+	if pending, err := cli.db.QueryPendingMachine(ctx); err == nil {
 		machines = append(machines, pending...)
 	}
 
 	if !notValidOnly {
-		if pending, err := cli.db.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(-duration)); err == nil {
+		if pending, err := cli.db.QueryLastValidatedHeartbeatLT(ctx, time.Now().UTC().Add(-duration)); err == nil {
 			machines = append(machines, pending...)
 		}
 	}
@@ -437,7 +438,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 		}
 	}
 
-	deleted, err := cli.db.BulkDeleteWatchers(machines)
+	deleted, err := cli.db.BulkDeleteWatchers(ctx, machines)
 	if err != nil {
 		return fmt.Errorf("unable to prune machines: %w", err)
 	}
@@ -465,8 +466,8 @@ cscli machines prune --duration 1h
 cscli machines prune --not-validated-only --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.prune(duration, notValidOnly, force)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.prune(cmd.Context(), duration, notValidOnly, force)
 		},
 	}
 
@@ -478,8 +479,8 @@ cscli machines prune --not-validated-only --force`,
 	return cmd
 }
 
-func (cli *cliMachines) validate(machineID string) error {
-	if err := cli.db.ValidateMachine(machineID); err != nil {
+func (cli *cliMachines) validate(ctx context.Context, machineID string) error {
+	if err := cli.db.ValidateMachine(ctx, machineID); err != nil {
 		return fmt.Errorf("unable to validate machine '%s': %w", machineID, err)
 	}
 
@@ -496,8 +497,8 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.validate(args[0])
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.validate(cmd.Context(), args[0])
 		},
 	}
 

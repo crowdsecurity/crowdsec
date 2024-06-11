@@ -26,7 +26,7 @@ var SyncInterval = time.Second * 10
 
 const PapiPullKey = "papi:last_pull"
 
-var operationMap = map[string]func(*Message, *Papi, bool) error{
+var operationMap = map[string]func(context.Context, *Message, *Papi, bool) error{
 	"decision":   DecisionCmd,
 	"alert":      AlertCmd,
 	"management": ManagementCmd,
@@ -148,7 +148,8 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 	logger.Debugf("Calling operation '%s'", message.Header.OperationType)
 
-	err := operationFunc(message, p, sync)
+	ctx := context.TODO()
+	err := operationFunc(ctx, message, p, sync)
 	if err != nil {
 		return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
 	}
@@ -236,7 +237,8 @@ func (p *Papi) Pull() error {
 
 	lastTimestamp := time.Time{}
 
-	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
+	ctx := context.TODO()
+	lastTimestampStr, err := p.DBClient.GetConfigItem(ctx, PapiPullKey)
 	if err != nil {
 		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
 	}
@@ -248,7 +250,8 @@ func (p *Papi) Pull() error {
 			return fmt.Errorf("failed to marshal last timestamp: %w", err)
 		}
 
-		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+		ctx := context.TODO()
+		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
 			p.Logger.Errorf("error setting papi pull last key: %s", err)
 		} else {
 			p.Logger.Debugf("config item '%s' set in database with value '%s'", PapiPullKey, string(binTime))
@@ -277,7 +280,8 @@ func (p *Papi) Pull() error {
 			continue
 		}
 
-		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+		ctx := context.TODO()
+		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
 			return fmt.Errorf("failed to update last timestamp: %w", err)
 		}
 

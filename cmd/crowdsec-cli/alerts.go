@@ -575,7 +575,7 @@ func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 				return err
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
-			err = db.FlushAlerts(maxAge, maxItems)
+			err = db.FlushAlerts(cmd.Context(), maxAge, maxItems)
 			if err != nil {
 				return fmt.Errorf("unable to flush alerts: %w", err)
 			}

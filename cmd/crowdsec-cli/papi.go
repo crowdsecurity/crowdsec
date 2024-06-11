@@ -78,7 +78,7 @@ func (cli *cliPapi) NewStatusCmd() *cobra.Command {
 				return fmt.Errorf("unable to get PAPI permissions: %w", err)
 			}
 			var lastTimestampStr *string
-			lastTimestampStr, err = db.GetConfigItem(apiserver.PapiPullKey)
+			lastTimestampStr, err = db.GetConfigItem(cmd.Context(), apiserver.PapiPullKey)
 			if err != nil {
 				lastTimestampStr = ptr.Of("never")
 			}

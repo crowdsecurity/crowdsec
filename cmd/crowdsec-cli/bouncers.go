@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -83,10 +84,10 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func (cli *cliBouncers) list() error {
+func (cli *cliBouncers) list(ctx context.Context) error {
 	out := color.Output
 
-	bouncers, err := cli.db.ListBouncers()
+	bouncers, err := cli.db.ListBouncers(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
 	}
@@ -134,15 +135,15 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.list(cmd.Context())
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliBouncers) add(bouncerName string, key string) error {
+func (cli *cliBouncers) add(ctx context.Context, bouncerName string, key string) error {
 	var err error
 
 	keyLength := 32
@@ -154,7 +155,7 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 		}
 	}
 
-	_, err = cli.db.CreateBouncer(bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
+	_, err = cli.db.CreateBouncer(ctx, bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create bouncer: %w", err)
 	}
@@ -188,8 +189,8 @@ func (cli *cliBouncers) newAddCmd() *cobra.Command {
 cscli bouncers add MyBouncerName --key <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.add(args[0], key)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.add(cmd.Context(), args[0], key)
 		},
 	}
 
@@ -201,8 +202,8 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli *cliBouncers) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	bouncers, err := cli.db.ListBouncers()
+func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	bouncers, err := cli.db.ListBouncers(cmd.Context())
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
 	}
@@ -218,9 +219,9 @@ func (cli *cliBouncers) deleteValid(_ *cobra.Command, args []string, toComplete 
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli *cliBouncers) delete(bouncers []string) error {
+func (cli *cliBouncers) delete(ctx context.Context, bouncers []string) error {
 	for _, bouncerID := range bouncers {
-		err := cli.db.DeleteBouncer(bouncerID)
+		err := cli.db.DeleteBouncer(ctx, bouncerID)
 		if err != nil {
 			return fmt.Errorf("unable to delete bouncer '%s': %w", bouncerID, err)
 		}
@@ -239,15 +240,15 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.deleteValid,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.delete(args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.delete(cmd.Context(), args)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
+func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force bool) error {
 	if duration < 2*time.Minute {
 		if yes, err := askYesNo(
 				"The duration you provided is less than 2 minutes. " +
@@ -259,7 +260,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		}
 	}
 
-	bouncers, err := cli.db.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(-duration))
+	bouncers, err := cli.db.QueryBouncersLastPulltimeLT(ctx, time.Now().UTC().Add(-duration))
 	if err != nil {
 		return fmt.Errorf("unable to query bouncers: %w", err)
 	}
@@ -282,7 +283,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		}
 	}
 
-	deleted, err := cli.db.BulkDeleteBouncers(bouncers)
+	deleted, err := cli.db.BulkDeleteBouncers(ctx, bouncers)
 	if err != nil {
 		return fmt.Errorf("unable to prune bouncers: %w", err)
 	}
@@ -307,8 +308,8 @@ func (cli *cliBouncers) newPruneCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Example: `cscli bouncers prune -d 45m
 cscli bouncers prune -d 45m --force`,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.prune(duration, force)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.prune(cmd.Context(), duration, force)
 		},
 	}
 

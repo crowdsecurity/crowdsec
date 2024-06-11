@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -118,7 +119,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		decisions, err := dbClient.QueryDecisionCountByScenario()
+		ctx := context.TODO()
+		decisions, err := dbClient.QueryDecisionCountByScenario(ctx)
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)

@@ -9,7 +9,7 @@ import (
 func (c *Controller) HeartBeat(gctx *gin.Context) {
 	machineID, _ := getMachineIDFromContext(gctx)
 
-	if err := c.DBClient.UpdateMachineLastHeartBeat(machineID); err != nil {
+	if err := c.DBClient.UpdateMachineLastHeartBeat(gctx.Request.Context(), machineID); err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,12 +17,12 @@ const (
 	CapiPullLockName    = "pullCAPI"
 )
 
-func (c *Client) AcquireLock(name string) error {
+func (c *Client) AcquireLock(ctx context.Context, name string) error {
 	log.Debugf("acquiring lock %s", name)
 	_, err := c.Ent.Lock.Create().
 		SetName(name).
 		SetCreatedAt(types.UtcNow()).
-		Save(c.CTX)
+		Save(ctx)
 	if ent.IsConstraintError(err) {
 		return err
 	}
@@ -31,21 +32,21 @@ func (c *Client) AcquireLock(name string) error {
 	return nil
 }
 
-func (c *Client) ReleaseLock(name string) error {
+func (c *Client) ReleaseLock(ctx context.Context, name string) error {
 	log.Debugf("releasing lock %s", name)
-	_, err := c.Ent.Lock.Delete().Where(lock.NameEQ(name)).Exec(c.CTX)
+	_, err := c.Ent.Lock.Delete().Where(lock.NameEQ(name)).Exec(ctx)
 	if err != nil {
 		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
 	}
 	return nil
 }
 
-func (c *Client) ReleaseLockWithTimeout(name string, timeout int) error {
+func (c *Client) ReleaseLockWithTimeout(ctx context.Context, name string, timeout int) error {
 	log.Debugf("releasing lock %s with timeout of %d minutes", name, timeout)
 	_, err := c.Ent.Lock.Delete().Where(
 		lock.NameEQ(name),
 		lock.CreatedAtLT(time.Now().UTC().Add(-time.Duration(timeout)*time.Minute)),
-	).Exec(c.CTX)
+	).Exec(ctx)
 
 	if err != nil {
 		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
@@ -57,21 +58,21 @@ func (c *Client) IsLocked(err error) bool {
 	return ent.IsConstraintError(err)
 }
 
-func (c *Client) AcquirePullCAPILock() error {
+func (c *Client) AcquirePullCAPILock(ctx context.Context) error {
 
 	/*delete orphan "old" lock if present*/
-	err := c.ReleaseLockWithTimeout(CapiPullLockName, CAPIPullLockTimeout)
+	err := c.ReleaseLockWithTimeout(ctx, CapiPullLockName, CAPIPullLockTimeout)
 	if err != nil {
 		log.Errorf("unable to release pullCAPI lock: %s", err)
 	}
-	return c.AcquireLock(CapiPullLockName)
+	return c.AcquireLock(ctx, CapiPullLockName)
 }
 
-func (c *Client) ReleasePullCAPILock() error {
+func (c *Client) ReleasePullCAPILock(ctx context.Context) error {
 	log.Debugf("deleting lock %s", CapiPullLockName)
 	_, err := c.Ent.Lock.Delete().Where(
 		lock.NameEQ(CapiPullLockName),
-	).Exec(c.CTX)
+	).Exec(ctx)
 	if err != nil {
 		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
 	}

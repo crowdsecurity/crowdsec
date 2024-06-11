@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -50,7 +51,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		return
 	}
 
-	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
+	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.Context(), gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
@@ -73,7 +74,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	}
 
 	if time.Now().UTC().Sub(bouncerInfo.LastPull) >= time.Minute {
-		if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
+		if err := c.DBClient.UpdateBouncerLastPull(gctx.Request.Context(), time.Now().UTC(), bouncerInfo.ID); err != nil {
 			log.Errorf("failed to update bouncer last pull: %v", err)
 		}
 	}
@@ -91,7 +92,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		return
 	}
 
-	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(decisionID)
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(gctx.Request.Context(), decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
@@ -113,7 +114,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
-	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(gctx.Request.URL.Query())
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(gctx.Request.Context(), gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
@@ -134,7 +135,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
-func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(map[string][]string) ([]*ent.Decision, error)) error {
+func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
 	// respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
@@ -148,7 +149,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(filters)
+		data, err := dbFunc(gctx.Request.Context(), filters)
 		if err != nil {
 			return err
 		}
@@ -186,7 +187,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 	return nil
 }
 
-func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull time.Time, dbFunc func(time.Time, map[string][]string) ([]*ent.Decision, error)) error {
+func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull time.Time, dbFunc func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	//respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
@@ -200,7 +201,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(lastPull, filters)
+		data, err := dbFunc(gctx.Request.Context(), lastPull, filters)
 		if err != nil {
 			return err
 		}
@@ -310,7 +311,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err = c.DBClient.QueryAllDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryAllDecisionsWithFilters(gctx.Request.Context(), filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -321,7 +322,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 			ret["new"] = FormatDecisions(data)
 
 			// getting expired decisions
-			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(gctx.Request.Context(), filters)
 			if err != nil {
 				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -338,7 +339,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	}
 
 	// getting new decisions
-	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(bouncerInfo.LastPull, filters)
+	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(gctx.Request.Context(), bouncerInfo.LastPull, filters)
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -349,7 +350,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	ret["new"] = FormatDecisions(data)
 
 	// getting expired decisions
-	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(bouncerInfo.LastPull.Add((-2 * time.Second)), filters) // do we want to give exactly lastPull time ?
+	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(gctx.Request.Context(), bouncerInfo.LastPull.Add((-2 * time.Second)), filters) // do we want to give exactly lastPull time ?
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -396,7 +397,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 
 	if err == nil {
 		//Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
-		if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
+		if err := c.DBClient.UpdateBouncerLastPull(gctx.Request.Context(), streamStartTime, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}
 	}

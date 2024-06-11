@@ -379,7 +379,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			foundMetrics, err := apiClient.GetMetrics()
+			foundMetrics, err := apiClient.GetMetrics(context.TODO())
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
@@ -920,7 +920,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	require.NoError(t, err)
 
 	blocklistConfigItemName := "blocklist:blocklist1:last_pull"
-	lastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	lastPullTimestamp, err := api.dbClient.GetConfigItem(context.TODO(), blocklistConfigItemName)
 	require.NoError(t, err)
 	assert.NotEqual(t, "", *lastPullTimestamp)
 
@@ -932,7 +932,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 
 	err = api.PullTop(false)
 	require.NoError(t, err)
-	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(context.TODO(), blocklistConfigItemName)
 	require.NoError(t, err)
 	assert.Equal(t, *lastPullTimestamp, *secondLastPullTimestamp)
 }
