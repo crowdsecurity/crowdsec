@@ -414,12 +414,11 @@ teardown() {
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
     rune -0 cscli config feature-flags
     assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
-
     # there are no retired features
     rune -0 cscli config feature-flags --retired
 }
 
 @test "cscli dashboard" {
     rune -1 cscli dashboard xyz
-    assert_stderr --partial "command 'dashboard' has been removed, please read https://..."
+    assert_stderr --partial "command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/"
 }
