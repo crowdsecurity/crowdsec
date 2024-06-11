@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -161,7 +162,9 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCfg) {
-	dbClient, err := database.NewClient(config)
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
 	err = dbClient.ValidateMachine(machineID)
@@ -169,7 +172,9 @@ func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCf
 }
 
 func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
-	dbClient, err := database.NewClient(config)
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
 	machines, err := dbClient.ListMachines()
@@ -260,7 +265,9 @@ func CreateTestMachine(t *testing.T, router *gin.Engine) string {
 }
 
 func CreateTestBouncer(t *testing.T, config *csconfig.DatabaseCfg) string {
-	dbClient, err := database.NewClient(config)
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)
@@ -356,10 +363,10 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
-	//wait for the request to happen
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	data, err := os.ReadFile(expectedFile)
 	require.NoError(t, err)
 
@@ -406,10 +413,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
-	//wait for the request to happen
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	x, err := os.ReadFile(expectedFile)
 	if err == nil {
 		require.Empty(t, x)

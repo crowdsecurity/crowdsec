@@ -24,7 +24,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -378,6 +377,7 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 			alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
 			return err
 		}
+
 		if ActiveDecision != nil {
 			alertDeleteFilter.ActiveDecisionEquals = ActiveDecision
 		}
@@ -385,21 +385,27 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 		if *alertDeleteFilter.ScopeEquals == "" {
 			alertDeleteFilter.ScopeEquals = nil
 		}
+
 		if *alertDeleteFilter.ValueEquals == "" {
 			alertDeleteFilter.ValueEquals = nil
 		}
+
 		if *alertDeleteFilter.ScenarioEquals == "" {
 			alertDeleteFilter.ScenarioEquals = nil
 		}
+
 		if *alertDeleteFilter.IPEquals == "" {
 			alertDeleteFilter.IPEquals = nil
 		}
+
 		if *alertDeleteFilter.RangeEquals == "" {
 			alertDeleteFilter.RangeEquals = nil
 		}
+
 		if contained != nil && *contained {
 			alertDeleteFilter.Contains = new(bool)
 		}
+
 		limit := 0
 		alertDeleteFilter.Limit = &limit
 	} else {
@@ -419,6 +425,7 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 			return fmt.Errorf("unable to delete alert: %w", err)
 		}
 	}
+
 	log.Infof("%s alert(s) deleted", alerts.NbDeleted)
 
 	return nil
@@ -558,14 +565,14 @@ func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 /!\ This command can be used only on the same machine than the local API`,
 		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-			db, err := database.NewClient(cfg.DbConfig)
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to create new database client: %w", err)
+				return err
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
 			err = db.FlushAlerts(maxAge, maxItems)

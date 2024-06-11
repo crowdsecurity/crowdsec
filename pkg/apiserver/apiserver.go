@@ -162,7 +162,9 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 
-	dbClient, err := database.NewClient(config.DbConfig)
+	ctx := context.TODO()
+
+	dbClient, err := database.NewClient(ctx, config.DbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to init database client: %w", err)
 	}
@@ -227,7 +229,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
-		Ectx:                          context.Background(),
+		Ectx:                          ctx,
 		Router:                        router,
 		Profiles:                      config.Profiles,
 		Log:                           clog,

@@ -10,6 +10,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 func LAPI(c *csconfig.Config) error {
@@ -46,6 +47,15 @@ func CAPIRegistered(c *csconfig.Config) error {
 	}
 
 	return nil
+}
+
+func DBClient(ctx context.Context, dbcfg *csconfig.DatabaseCfg) (*database.Client, error) {
+	db, err := database.NewClient(ctx, dbcfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	return db, nil
 }
 
 func DB(c *csconfig.Config) error {

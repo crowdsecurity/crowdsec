@@ -947,7 +947,7 @@ func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string
 		Count    int
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	query := c.Ent.Alert.Query()
 
