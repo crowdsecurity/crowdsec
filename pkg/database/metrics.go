@@ -54,6 +54,23 @@ func (c *Client) GetLPsUsageMetrics() ([]*ent.Metric, error) {
 	return metrics, nil
 }
 
+func (c *Client) GetLPUsageMetricsByMachineID(machineId string) ([]*ent.Metric, error) {
+	metrics, err := c.Ent.Metric.Query().
+		Where(
+			metric.GeneratedTypeEQ(metric.GeneratedTypeLP),
+			metric.GeneratedByEQ(machineId),
+			metric.PushedAtIsNil(),
+		).
+		Order(ent.Desc(metric.FieldCollectedAt)).
+		All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("GetLPUsageMetricsByOrigin: %s", err)
+		return nil, fmt.Errorf("getting LP usage metrics by origin %s: %w", machineId, err)
+	}
+
+	return metrics, nil
+}
+
 func (c *Client) GetBouncersUsageMetrics() ([]*ent.Metric, error) {
 	metrics, err := c.Ent.Metric.Query().
 		Where(
@@ -65,6 +82,23 @@ func (c *Client) GetBouncersUsageMetrics() ([]*ent.Metric, error) {
 	if err != nil {
 		c.Log.Warningf("GetBouncersUsageMetrics: %s", err)
 		return nil, fmt.Errorf("getting bouncers usage metrics: %w", err)
+	}
+
+	return metrics, nil
+}
+
+func (c *Client) GetBouncerUsageMetricsByName(bouncerName string) ([]*ent.Metric, error) {
+	metrics, err := c.Ent.Metric.Query().
+		Where(
+			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
+			metric.GeneratedByEQ(bouncerName),
+			metric.PushedAtIsNil(),
+		).
+		Order(ent.Desc(metric.FieldCollectedAt)).
+		All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("GetBouncerUsageMetricsByOrigin: %s", err)
+		return nil, fmt.Errorf("getting bouncer usage metrics by origin %s: %w", bouncerName, err)
 	}
 
 	return metrics, nil

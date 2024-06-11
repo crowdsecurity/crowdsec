@@ -8,107 +8,53 @@ import (
 
 	"slices"
 
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
-	lpsMetrics, err := a.dbClient.GetLPsUsageMetrics()
+	allMetrics := &models.AllMetrics{}
 	metricsIds := make([]int, 0)
 
+	lps, err := a.dbClient.ListMachines()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	//spew.Dump(lpsMetrics)
-
-	bouncersMetrics, err := a.dbClient.GetBouncersUsageMetrics()
+	bouncers, err := a.dbClient.ListBouncers()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	//spew.Dump(bouncersMetrics)
-
-	allMetrics := &models.AllMetrics{}
-
-	lpsCache := make(map[string]*ent.Machine)
-	bouncersCache := make(map[string]*ent.Bouncer)
-
-	for _, lpsMetric := range lpsMetrics {
-		lpName := lpsMetric.GeneratedBy
-		metrics := models.LogProcessorsMetrics{}
-
-		err := json.Unmarshal([]byte(lpsMetric.Payload), &metrics)
-		if err != nil {
-			log.Errorf("unable to unmarshal LPs metrics (%s)", err)
-			continue
-		}
-
-		var lp *ent.Machine
-
-		if _, ok := lpsCache[lpName]; !ok {
-			lp, err = a.dbClient.QueryMachineByID(lpName)
-
-			if err != nil {
-				log.Errorf("unable to get LP information for %s: %s", lpName, err)
-				continue
-			}
-		} else {
-			lp = lpsCache[lpName]
-		}
-
-		if lp.Hubstate != nil {
-			metrics.HubItems = *lp.Hubstate
-		}
-
-		metrics.Os = &models.OSversion{
-			Name:    lp.Osname,
-			Version: lp.Osversion,
-		}
-
-		metrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-		metrics.Version = &lp.Version
-
-		metrics.Name = lpName
-		metrics.LastPush = lp.LastPush.UTC().Unix()
-		metrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
-
-		//To prevent marshaling a nil slice to null, which gets rejected by the API
-		if metrics.Metrics == nil {
-			metrics.Metrics = make([]*models.MetricsDetailItem, 0)
-		}
-
-		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &metrics)
-		metricsIds = append(metricsIds, lpsMetric.ID)
-	}
-
-	for _, bouncersMetric := range bouncersMetrics {
-		bouncerName := bouncersMetric.GeneratedBy
+	for _, bouncer := range bouncers {
 		metrics := models.RemediationComponentsMetrics{}
 
-		err := json.Unmarshal([]byte(bouncersMetric.Payload), &metrics)
+		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(bouncer.Name)
 		if err != nil {
-			log.Errorf("unable to unmarshal bouncers metrics (%s)", err)
+			log.Errorf("unable to get bouncer usage metrics: %s", err)
 			continue
 		}
 
-		var bouncer *ent.Bouncer
+		metrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		for _, dbMetric := range dbMetrics {
+			metric := &models.MetricsDetailItem{}
+			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
+			metricsIds = append(metricsIds, dbMetric.ID)
 
-		if _, ok := bouncersCache[bouncerName]; !ok {
-			bouncer, err = a.dbClient.SelectBouncerByName(bouncerName)
+			err := json.Unmarshal([]byte(dbMetric.Payload), metric)
 			if err != nil {
-				log.Errorf("unable to get bouncer information for %s: %s", bouncerName, err)
+				log.Errorf("unable to unmarshal bouncer metric (%s)", err)
 				continue
 			}
-		} else {
-			bouncer = bouncersCache[bouncerName]
+
+			metrics.Metrics = append(metrics.Metrics, metric)
 		}
 
 		metrics.Os = &models.OSversion{
@@ -118,16 +64,50 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		metrics.Type = bouncer.Type
 		metrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
 		metrics.Version = &bouncer.Version
-		metrics.Name = bouncerName
+		metrics.Name = bouncer.Name
 		metrics.LastPull = bouncer.LastPull.UTC().Unix()
 
-		//To prevent marshaling a nil slice to null, which gets rejected by the API
-		if metrics.Metrics == nil {
-			metrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &metrics)
+	}
+
+	for _, lp := range lps {
+		metrics := models.LogProcessorsMetrics{}
+
+		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(lp.MachineId)
+		if err != nil {
+			log.Errorf("unable to get LP usage metrics: %s", err)
+			continue
 		}
 
-		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &metrics)
-		metricsIds = append(metricsIds, bouncersMetric.ID)
+		metrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		for _, dbMetric := range dbMetrics {
+			metric := &models.MetricsDetailItem{}
+			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
+			metricsIds = append(metricsIds, dbMetric.ID)
+
+			err := json.Unmarshal([]byte(dbMetric.Payload), metric)
+			if err != nil {
+				log.Errorf("unable to unmarshal LP metric (%s)", err)
+				continue
+			}
+
+			metrics.Metrics = append(metrics.Metrics, metric)
+		}
+
+		if lp.Hubstate != nil {
+			metrics.HubItems = *lp.Hubstate
+		}
+		metrics.Os = &models.OSversion{
+			Name:    lp.Osname,
+			Version: lp.Osversion,
+		}
+		metrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
+		metrics.Version = &lp.Version
+		metrics.Name = lp.MachineId
+		metrics.LastPush = lp.LastPush.UTC().Unix()
+		metrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
+
+		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &metrics)
 	}
 
 	//FIXME: all of this should only be done once on startup/reload
@@ -144,12 +124,13 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
 	allMetrics.Lapi.Meta = &models.MetricsMeta{
-		UtcStartupTimestamp: time.Now().UTC().Unix(),
+		UtcStartupTimestamp: time.Now().UTC().Unix(), //FIXME: should be the actual startup time
 		UtcNowTimestamp:     time.Now().UTC().Unix(),
 		WindowSizeSeconds:   int64(a.metricsInterval.Seconds()),
 	}
 	allMetrics.Lapi.Metrics = make([]*models.MetricsDetailItem, 0)
 
+	//Force an actual slice to avoid non existing fields in the json
 	if allMetrics.RemediationComponents == nil {
 		allMetrics.RemediationComponents = make([]*models.RemediationComponentsMetrics, 0)
 	}
@@ -329,6 +310,8 @@ func (a *apic) SendUsageMetrics() {
 				log.Errorf("unable to get usage metrics: %s", err)
 				continue
 			}
+
+			spew.Dump(metrics)
 			_, _, err = a.apiClient.UsageMetrics.Add(context.Background(), metrics)
 
 			if err != nil {

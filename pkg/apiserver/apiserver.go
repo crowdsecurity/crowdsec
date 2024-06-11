@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -370,6 +370,8 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		if fflag.CAPIUsageMetrics.IsEnabled() {
 			log.Infof("CAPI_USAGE_METRICS flag is enabled, starting usage metrics routine")
 			s.apic.metricsTomb.Go(func() error {
+				//staticMetrics := NewStaticMetrics(consoleOptions, datasources, hub)
+
 				s.apic.SendUsageMetrics()
 				return nil
 			})
