@@ -25,7 +25,7 @@ func (cli *cliDashboard) NewCommand() *cobra.Command {
 		Short:             "Manage your metabase dashboard container [requires local API]",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return errors.New("command 'dashboard' has been removed, please read https://...")
+			return errors.New("command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
 		},
 	}
 
