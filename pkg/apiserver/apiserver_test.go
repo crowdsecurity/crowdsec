@@ -363,10 +363,10 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
-	//wait for the request to happen
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	data, err := os.ReadFile(expectedFile)
 	require.NoError(t, err)
 
@@ -413,10 +413,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
-	//wait for the request to happen
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	x, err := os.ReadFile(expectedFile)
 	if err == nil {
 		require.Empty(t, x)

@@ -217,7 +217,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	err = FileInit(TestFolder, filename, "regex")
 	require.NoError(t, err)
 
-	//cache with no TTL
+	// cache with no TTL
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(1)})
 	require.NoError(t, err)
 
@@ -229,7 +229,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	assert.True(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
-	//cache with TTL
+	// cache with TTL
 	ttl := 500 * time.Millisecond
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
 	require.NoError(t, err)
@@ -996,6 +996,7 @@ func TestGetDecisionsCount(t *testing.T) {
 		log.Printf("test '%s' : OK", test.name)
 	}
 }
+
 func TestGetDecisionsSinceCount(t *testing.T) {
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
@@ -1367,6 +1368,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
+
 		switch o := output.(type) {
 		case time.Duration:
 			require.LessOrEqual(t, int(o.Seconds()), int(test.max))
@@ -1378,7 +1380,6 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 			t.Fatalf("GetActiveDecisionsTimeLeft() should return a time.Duration or a float64")
 		}
 	}
-
 }
 
 func TestParseUnixTime(t *testing.T) {
@@ -1417,9 +1418,11 @@ func TestParseUnixTime(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ParseUnixTime(tc.value)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
+
 			require.WithinDuration(t, tc.expected, output.(time.Time), time.Second)
 		})
 	}
@@ -1522,6 +1525,7 @@ func TestIsIp(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			require.NoError(t, err)
@@ -1621,12 +1625,15 @@ func TestB64Decode(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
+
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			if tc.expectedRuntimeErr {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})

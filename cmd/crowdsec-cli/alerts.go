@@ -377,6 +377,7 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 			alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
 			return err
 		}
+
 		if ActiveDecision != nil {
 			alertDeleteFilter.ActiveDecisionEquals = ActiveDecision
 		}
@@ -384,21 +385,27 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 		if *alertDeleteFilter.ScopeEquals == "" {
 			alertDeleteFilter.ScopeEquals = nil
 		}
+
 		if *alertDeleteFilter.ValueEquals == "" {
 			alertDeleteFilter.ValueEquals = nil
 		}
+
 		if *alertDeleteFilter.ScenarioEquals == "" {
 			alertDeleteFilter.ScenarioEquals = nil
 		}
+
 		if *alertDeleteFilter.IPEquals == "" {
 			alertDeleteFilter.IPEquals = nil
 		}
+
 		if *alertDeleteFilter.RangeEquals == "" {
 			alertDeleteFilter.RangeEquals = nil
 		}
+
 		if contained != nil && *contained {
 			alertDeleteFilter.Contains = new(bool)
 		}
+
 		limit := 0
 		alertDeleteFilter.Limit = &limit
 	} else {
@@ -418,6 +425,7 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 			return fmt.Errorf("unable to delete alert: %w", err)
 		}
 	}
+
 	log.Infof("%s alert(s) deleted", alerts.NbDeleted)
 
 	return nil

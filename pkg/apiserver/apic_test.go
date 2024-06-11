@@ -58,7 +58,7 @@ func getAPIC(t *testing.T) *apic {
 
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
-		//DecisionDeleteChan: make(chan []*models.Decision),
+		// DecisionDeleteChan: make(chan []*models.Decision),
 		dbClient:     dbClient,
 		mu:           sync.Mutex{},
 		startup:      true,
@@ -178,10 +178,11 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 			}
 
 			scenarios, err := api.FetchScenariosListFromDB()
+			require.NoError(t, err)
+
 			for machineID := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(context.Background())
 			}
-			require.NoError(t, err)
 
 			assert.ElementsMatch(t, tc.expectedScenarios, scenarios)
 		})
@@ -236,6 +237,7 @@ func TestNewAPIC(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
 			httpmock.Activate()
+
 			defer httpmock.DeactivateAndReset()
 			httpmock.RegisterResponder("POST", "http://foobar/v3/watchers/login", httpmock.NewBytesResponder(
 				200, jsonMarshalX(
@@ -355,6 +357,7 @@ func TestAPICGetMetrics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			apiClient := getAPIC(t)
 			cleanUp(apiClient)
+
 			for i, machineID := range tc.machineIDs {
 				apiClient.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
@@ -550,7 +553,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 
 func TestAPICWhitelists(t *testing.T) {
 	api := getAPIC(t)
-	//one whitelist on IP, one on CIDR
+	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
 	api.whitelists.Ips = append(api.whitelists.Ips, net.ParseIP("9.2.3.4"), net.ParseIP("7.2.3.4"))
 
@@ -595,7 +598,7 @@ func TestAPICWhitelists(t *testing.T) {
 						Scope:    ptr.Of("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("13.2.3.4"), //wl by cidr
+								Value:    ptr.Of("13.2.3.4"), // wl by cidr
 								Duration: ptr.Of("24h"),
 							},
 						},
@@ -616,7 +619,7 @@ func TestAPICWhitelists(t *testing.T) {
 						Scope:    ptr.Of("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("13.2.3.5"), //wl by cidr
+								Value:    ptr.Of("13.2.3.5"), // wl by cidr
 								Duration: ptr.Of("24h"),
 							},
 						},
@@ -636,7 +639,7 @@ func TestAPICWhitelists(t *testing.T) {
 						Scope:    ptr.Of("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("9.2.3.4"), //wl by ip
+								Value:    ptr.Of("9.2.3.4"), // wl by ip
 								Duration: ptr.Of("24h"),
 							},
 						},
@@ -687,7 +690,7 @@ func TestAPICWhitelists(t *testing.T) {
 	err = api.PullTop(false)
 	require.NoError(t, err)
 
-	assertTotalDecisionCount(t, api.dbClient, 5) //2 from FIRE + 2 from bl + 1 existing
+	assertTotalDecisionCount(t, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
@@ -1105,6 +1108,7 @@ func TestAPICPush(t *testing.T) {
 
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
+
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
