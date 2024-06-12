@@ -62,79 +62,71 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, dryRun b
 			continue
 		}
 
-		if len(install.Collections) > 0 {
-			for _, collection := range setupItem.Install.Collections {
-				item := hub.GetItem(cwhub.COLLECTIONS, collection)
-				if item == nil {
-					return fmt.Errorf("collection %s not found", collection)
-				}
+		for _, collection := range setupItem.Install.Collections {
+			item := hub.GetItem(cwhub.COLLECTIONS, collection)
+			if item == nil {
+				return fmt.Errorf("collection %s not found", collection)
+			}
 
-				if dryRun {
-					fmt.Println("dry-run: would install collection", collection)
+			if dryRun {
+				fmt.Println("dry-run: would install collection", collection)
 
-					continue
-				}
+				continue
+			}
 
-				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing collection %s: %w", item.Name, err)
-				}
+			if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
+				return fmt.Errorf("while installing collection %s: %w", item.Name, err)
 			}
 		}
 
-		if len(install.Parsers) > 0 {
-			for _, parser := range setupItem.Install.Parsers {
-				if dryRun {
-					fmt.Println("dry-run: would install parser", parser)
+		for _, parser := range setupItem.Install.Parsers {
+			if dryRun {
+				fmt.Println("dry-run: would install parser", parser)
 
-					continue
-				}
+				continue
+			}
 
-				item := hub.GetItem(cwhub.PARSERS, parser)
-				if item == nil {
-					return fmt.Errorf("parser %s not found", parser)
-				}
+			item := hub.GetItem(cwhub.PARSERS, parser)
+			if item == nil {
+				return fmt.Errorf("parser %s not found", parser)
+			}
 
-				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing parser %s: %w", item.Name, err)
-				}
+			if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
+				return fmt.Errorf("while installing parser %s: %w", item.Name, err)
 			}
 		}
 
-		if len(install.Scenarios) > 0 {
-			for _, scenario := range setupItem.Install.Scenarios {
-				if dryRun {
-					fmt.Println("dry-run: would install scenario", scenario)
+		for _, scenario := range setupItem.Install.Scenarios {
+			if dryRun {
+				fmt.Println("dry-run: would install scenario", scenario)
 
-					continue
-				}
+				continue
+			}
 
-				item := hub.GetItem(cwhub.SCENARIOS, scenario)
-				if item == nil {
-					return fmt.Errorf("scenario %s not found", scenario)
-				}
+			item := hub.GetItem(cwhub.SCENARIOS, scenario)
+			if item == nil {
+				return fmt.Errorf("scenario %s not found", scenario)
+			}
 
-				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing scenario %s: %w", item.Name, err)
-				}
+			if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
+				return fmt.Errorf("while installing scenario %s: %w", item.Name, err)
 			}
 		}
 
-		if len(install.PostOverflows) > 0 {
-			for _, postoverflow := range setupItem.Install.PostOverflows {
-				if dryRun {
-					fmt.Println("dry-run: would install postoverflow", postoverflow)
+		for _, postoverflow := range setupItem.Install.PostOverflows {
+			if dryRun {
+				fmt.Println("dry-run: would install postoverflow", postoverflow)
 
-					continue
-				}
+				continue
+			}
 
-				item := hub.GetItem(cwhub.POSTOVERFLOWS, postoverflow)
-				if item == nil {
-					return fmt.Errorf("postoverflow %s not found", postoverflow)
-				}
+			item := hub.GetItem(cwhub.POSTOVERFLOWS, postoverflow)
+			if item == nil {
+				return fmt.Errorf("postoverflow %s not found", postoverflow)
+			}
 
-				if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing postoverflow %s: %w", item.Name, err)
-				}
+			if err := item.Install(ctx, forceAction, downloadOnly); err != nil {
+				return fmt.Errorf("while installing postoverflow %s: %w", item.Name, err)
 			}
 		}
 	}
