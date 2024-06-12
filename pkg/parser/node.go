@@ -202,34 +202,11 @@ func (n *Node) processWhitelist(cachedExprEnv map[string]interface{}, p *types.E
 	return isWhitelisted, nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
-	var NodeHasOKGrok bool
 
-	clog := n.Logger
-
-	cachedExprEnv := expressionEnv
-
-	clog.Tracef("Event entering node")
-
-	NodeState, err := n.processFilter(cachedExprEnv)
-	if err != nil {
-		return false, err
-	}
-
-	if !NodeState {
-		return false, nil
-	}
-
-	if n.Name != "" {
-		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
-	}
-
-	isWhitelisted, err := n.processWhitelist(cachedExprEnv, p)
-	if err != nil {
-		return false, err
-	}
-
+func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, bool, error) {
 	// Process grok if present, should be exclusive with nodes :)
+	clog := n.Logger
+	var NodeHasOKGrok bool
 	gstr := ""
 
 	if n.Grok.RunTimeRegexp != nil {
@@ -243,15 +220,13 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				gstr = val
 			} else {
 				clog.Debugf("(%s) target field '%s' doesn't exist in %v", n.rn, n.Grok.TargetField, p.Parsed)
-
-				NodeState = false
+				return false, false, nil
 			}
 		} else if n.Grok.RunTimeValue != nil {
 			output, err := exprhelpers.Run(n.Grok.RunTimeValue, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
-
-				NodeState = false
+				return false, false, nil
 			}
 
 			switch out := output.(type) {
@@ -288,15 +263,51 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			err := n.ProcessStatics(n.Grok.Statics, p)
 			if err != nil {
 				clog.Errorf("(%s) Failed to process statics : %v", n.rn, err)
-				return false, err
+				return false, false, err
 			}
 		} else {
 			// grok failed, node failed
 			clog.Debugf("+ Grok '%s' didn't return data on '%s'", groklabel, gstr)
-			NodeState = false
+			return false, false, nil
 		}
 	} else {
 		clog.Tracef("! No grok pattern : %p", n.Grok.RunTimeRegexp)
+	}
+
+	return true, NodeHasOKGrok, nil
+}
+
+
+
+
+func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
+	clog := n.Logger
+
+	cachedExprEnv := expressionEnv
+
+	clog.Tracef("Event entering node")
+
+	NodeState, err := n.processFilter(cachedExprEnv)
+	if err != nil {
+		return false, err
+	}
+
+	if !NodeState {
+		return false, nil
+	}
+
+	if n.Name != "" {
+		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
+	}
+
+	isWhitelisted, err := n.processWhitelist(cachedExprEnv, p)
+	if err != nil {
+		return false, err
+	}
+
+	NodeState, NodeHasOKGrok, err := n.processGrok(p, cachedExprEnv)
+	if err != nil {
+		return false, err
 	}
 
 	// Process the stash (data collection) if : a grok was present and succeeded, or if there is no grok
