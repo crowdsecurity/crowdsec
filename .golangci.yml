@@ -16,27 +16,11 @@ linters-settings:
     # lower this after refactoring
     min-complexity: 128
 
-  funlen:
-    # Checks the number of lines in a function.
-    # If lower than 0, disable the check.
-    # Default: 60
-    # lower this after refactoring
-    lines: 437
-    # Checks the number of statements in a function.
-    # If lower than 0, disable the check.
-    # Default: 40
-    # lower this after refactoring
-    statements: 122
-
   govet:
     enable-all: true
     disable:
      - reflectvaluecompare
      - fieldalignment
-
-  lll:
-    # lower this after refactoring
-    line-length: 2607
 
   maintidx:
     # raise this after refactoring
@@ -125,7 +109,7 @@ linters-settings:
         disabled: true
       - name: cyclomatic
         # lower this after refactoring
-        arguments: [45]
+        arguments: [42]
       - name: defer
         disabled: true
       - name: empty-block
@@ -137,9 +121,10 @@ linters-settings:
       - name: flag-parameter
         disabled: true
       - name: function-result-limit
-        disabled: true
+        arguments: [6]
       - name: function-length
-        disabled: true
+        # lower this after refactoring
+        arguments: [110, 235]
       - name: get-return
         disabled: true
       - name: increment-decrement
@@ -149,9 +134,11 @@ linters-settings:
       - name: import-shadowing
         disabled: true
       - name: line-length-limit
-        disabled: true
+        # lower this after refactoring
+        arguments: [221]
       - name: max-control-nesting
-        disabled: true
+        # lower this after refactoring
+        arguments: [7]
       - name: max-public-structs
         disabled: true
       - name: optimize-operands-order
@@ -211,6 +198,8 @@ linters:
 
     - gocyclo # revive
     - cyclop  # revive
+    - lll     # revive
+    - funlen  # revive
 
     #
     # Disabled until fixed for go 1.22
@@ -234,7 +223,6 @@ linters:
     # - errcheck            # errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases
     # - errorlint           # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
     # - exportloopref       # checks for pointers to enclosing loop variables
-    # - funlen              # Tool for detection of long functions
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
     # - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid.
     # - gochecknoinits      # Checks that no init functions are present in Go code
@@ -252,7 +240,6 @@ linters:
     # - importas            # Enforces consistent import aliases
     # - ineffassign         # Detects when assignments to existing variables are not used
     # - interfacebloat      # A linter that checks the number of methods inside an interface.
-    # - lll                 # Reports long lines
     # - loggercheck         # (logrlint): Checks key value pairs for common logger libraries (kitlog,klog,logr,zap).
     # - logrlint            # Check logr arguments.
     # - maintidx            # maintidx measures the maintainability index of each function.
@@ -475,14 +462,6 @@ issues:
 
     - linters:
         - revive
-      path: pkg/metabase/metabase.go
-
-    - linters:
-        - revive
-      path: pkg/metabase/container.go
-
-    - linters:
-        - revive
       path: cmd/crowdsec-cli/copyfile.go
 
     - linters:
@@ -493,6 +472,18 @@ issues:
     - linters:
         - canonicalheader
       path: pkg/apiserver/middlewares/v1/tls_auth.go
+
+    # tolerate long functions in tests
+    - linters:
+        - revive
+      path: "pkg/(.+)_test.go"
+      text: "function-length: .*"
+
+    # tolerate long lines in tests
+    - linters:
+        - revive
+      path: "pkg/(.+)_test.go"
+      text: "line-length-limit: .*"
 
     # tolerate deep exit in tests, for now
     - linters:
