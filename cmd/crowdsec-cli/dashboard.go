@@ -99,8 +99,6 @@ cscli dashboard remove
 				}
 			}
 
-			log.Warn("cscli dashboard will be deprecated in version 1.7.0, read more at https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
-
 			return nil
 		},
 	}
