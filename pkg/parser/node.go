@@ -249,26 +249,27 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		}
 
 		grok := n.Grok.RunTimeRegexp.Parse(gstr)
-		if len(grok) > 0 {
-			/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
-			NodeHasOKGrok = true
 
-			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
-			// We managed to grok stuff, merged into parse
-			for k, v := range grok {
-				clog.Debugf("\t.Parsed['%s'] = '%s'", k, v)
-				p.Parsed[k] = v
-			}
-			// if the grok succeed, process associated statics
-			err := n.ProcessStatics(n.Grok.Statics, p)
-			if err != nil {
-				clog.Errorf("(%s) Failed to process statics : %v", n.rn, err)
-				return false, false, err
-			}
-		} else {
+		if len(grok) == 0 {
 			// grok failed, node failed
 			clog.Debugf("+ Grok '%s' didn't return data on '%s'", groklabel, gstr)
 			return false, false, nil
+		}
+
+		/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
+		NodeHasOKGrok = true
+
+		clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
+		// We managed to grok stuff, merged into parse
+		for k, v := range grok {
+			clog.Debugf("\t.Parsed['%s'] = '%s'", k, v)
+			p.Parsed[k] = v
+		}
+		// if the grok succeed, process associated statics
+		err := n.ProcessStatics(n.Grok.Statics, p)
+		if err != nil {
+			clog.Errorf("(%s) Failed to process statics : %v", n.rn, err)
+			return false, false, err
 		}
 	} else {
 		clog.Tracef("! No grok pattern : %p", n.Grok.RunTimeRegexp)
