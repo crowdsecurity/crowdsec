@@ -540,7 +540,7 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				printHelp(cmd)
+				_ = cmd.Help()
 				return errors.New("missing alert_id")
 			}
 			return cli.inspect(details, args...)

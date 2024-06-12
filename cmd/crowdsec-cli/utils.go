@@ -5,17 +5,8 @@ import (
 	"net"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-func printHelp(cmd *cobra.Command) {
-	if err := cmd.Help(); err != nil {
-		log.Fatalf("unable to print help(): %s", err)
-	}
-}
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
 	/*if a range is provided, change the scope*/
