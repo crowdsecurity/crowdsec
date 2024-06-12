@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
 )
 
 var CTIUrl = "https://cti.api.crowdsec.net"

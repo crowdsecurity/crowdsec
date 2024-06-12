@@ -9,7 +9,7 @@ import (
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 
-        middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
 

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type AppsecCollection struct {

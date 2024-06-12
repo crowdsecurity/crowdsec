@@ -5,10 +5,11 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAppsecDefaultPassRemediation(t *testing.T) {

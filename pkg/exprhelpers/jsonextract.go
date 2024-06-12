@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
-
 	log "github.com/sirupsen/logrus"
 )
 

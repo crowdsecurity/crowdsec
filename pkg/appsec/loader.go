@@ -3,9 +3,10 @@ package appsec
 import (
 	"os"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 var appsecRules = make(map[string]AppsecCollectionConfig) //FIXME: would probably be better to have a struct for this
