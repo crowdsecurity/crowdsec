@@ -149,8 +149,6 @@ linters-settings:
         disabled: true
       - name: struct-tag
         disabled: true
-      - name: superfluous-else
-        disabled: true
       - name: time-equal
         disabled: true
       - name: var-naming

@@ -244,11 +244,11 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 				retInfo = append(retInfo, fmt.Sprintf("mismatch stage %s != %s", expected.Stage, out.Stage))
 			}
 			goto checkFinished
-		} else {
-			valid = true
-			if debug {
-				retInfo = append(retInfo, fmt.Sprintf("ok stage %s == %s", expected.Stage, out.Stage))
-			}
+		}
+
+		valid = true
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("ok stage %s == %s", expected.Stage, out.Stage))
 		}
 	}
 
@@ -257,11 +257,11 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 			retInfo = append(retInfo, fmt.Sprintf("mismatch process %t != %t", expected.Process, out.Process))
 		}
 		goto checkFinished
-	} else {
-		valid = true
-		if debug {
-			retInfo = append(retInfo, fmt.Sprintf("ok process %t == %t", expected.Process, out.Process))
-		}
+	}
+
+	valid = true
+	if debug {
+		retInfo = append(retInfo, fmt.Sprintf("ok process %t == %t", expected.Process, out.Process))
 	}
 
 	if expected.Whitelisted != out.Whitelisted {
@@ -269,12 +269,12 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 			retInfo = append(retInfo, fmt.Sprintf("mismatch whitelist %t != %t", expected.Whitelisted, out.Whitelisted))
 		}
 		goto checkFinished
-	} else {
-		if debug {
-			retInfo = append(retInfo, fmt.Sprintf("ok whitelist %t == %t", expected.Whitelisted, out.Whitelisted))
-		}
-		valid = true
 	}
+
+	if debug {
+		retInfo = append(retInfo, fmt.Sprintf("ok whitelist %t == %t", expected.Whitelisted, out.Whitelisted))
+	}
+	valid = true
 
 	for mapIdx := 0; mapIdx < len(expectMaps); mapIdx++ {
 		for expKey, expVal := range expectMaps[mapIdx] {
@@ -352,9 +352,9 @@ reCheck:
 				testSet.Results = testSet.Results[:len(testSet.Results)-1]
 
 				goto reCheck
-			} else {
-				failinfo = append(failinfo, explain...)
 			}
+
+			failinfo = append(failinfo, explain...)
 		}
 	}
 	if len(results) > 0 {
