@@ -36,7 +36,7 @@ func (c *Config) loadConfigurationPaths() error {
 	}
 
 	if c.ConfigPaths.PatternDir == "" {
-		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns/")
+		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns")
 	}
 
 	var configPathsCleanup = []*string{
