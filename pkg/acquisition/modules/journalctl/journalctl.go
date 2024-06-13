@@ -223,7 +223,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 	}
 
 	qs := strings.TrimPrefix(dsn, "journalctl://")
-	if len(qs) == 0 {
+	if qs == "" {
 		return errors.New("empty journalctl:// DSN")
 	}
 

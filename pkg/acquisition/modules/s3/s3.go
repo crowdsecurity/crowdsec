@@ -567,11 +567,11 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	})
 	dsn = strings.TrimPrefix(dsn, "s3://")
 	args := strings.Split(dsn, "?")
-	if len(args[0]) == 0 {
+	if args[0] == "" {
 		return errors.New("empty s3:// DSN")
 	}
 
-	if len(args) == 2 && len(args[1]) != 0 {
+	if len(args) == 2 && args[1] != "" {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
 			return fmt.Errorf("could not parse s3 args: %w", err)

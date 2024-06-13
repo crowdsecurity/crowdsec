@@ -195,7 +195,6 @@ linters-settings:
       - appendCombine
       - captLocal
       - typeUnparen
-      - emptyStringTest     #
       - commentFormatting
       - deferInLoop             #
       - sprintfQuotedString     #

@@ -74,7 +74,7 @@ func ParseDuration(d string) (time.Duration, error) {
 
 	if strings.HasSuffix(d, "d") {
 		days := strings.Split(d, "d")[0]
-		if len(days) == 0 {
+		if days == "" {
 			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
 		}
 

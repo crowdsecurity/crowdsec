@@ -111,7 +111,7 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 		return fmt.Errorf("cannot parse CloudwatchSource configuration: %w", err)
 	}
 
-	if len(cw.Config.GroupName) == 0 {
+	if cw.Config.GroupName == "" {
 		return errors.New("group_name is mandatory for CloudwatchSource")
 	}
 

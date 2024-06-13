@@ -59,7 +59,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				globalBucketPourKo.Inc()
 			}
 
-			if len(parsed.MarshaledTime) != 0 {
+			if parsed.MarshaledTime != "" {
 				if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
 					log.Warningf("failed to unmarshal time from event : %s", err)
 				}

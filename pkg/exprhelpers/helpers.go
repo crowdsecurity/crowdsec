@@ -213,7 +213,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
 		}
-		if len(scanner.Text()) == 0 { //skip empty lines
+		if scanner.Text() == "" { //skip empty lines
 			continue
 		}
 

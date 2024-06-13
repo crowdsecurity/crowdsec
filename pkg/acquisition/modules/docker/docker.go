@@ -397,7 +397,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) *Container
 
 	for _, containerName := range d.Config.ContainerName {
 		for _, name := range container.Names {
-			if strings.HasPrefix(name, "/") && len(name) > 0 {
+			if strings.HasPrefix(name, "/") && name != "" {
 				name = name[1:]
 			}
 			if name == containerName {
