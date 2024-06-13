@@ -332,14 +332,15 @@ func TestBaseDbg(t *testing.T) {
 
 		}
 		for i, out := range outdbg {
-			if !reflect.DeepEqual(out, test.ExpectedOutputs[i]) {
-				spew.Config.DisableMethods = true
-				t.Errorf("failed test %s", test.Name)
-				t.Errorf("expected : %#v", test.ExpectedOutputs[i])
-				t.Errorf("got      : %#v", out)
-				t.Fatalf("%d/%d    : mismatch", i, len(outdbg))
+			if reflect.DeepEqual(out, test.ExpectedOutputs[i]) {
+				//DisplayExprDebug(prog, outdbg, logger, ret)
+				continue
 			}
-			//DisplayExprDebug(prog, outdbg, logger, ret)
+			spew.Config.DisableMethods = true
+			t.Errorf("failed test %s", test.Name)
+			t.Errorf("expected : %#v", test.ExpectedOutputs[i])
+			t.Errorf("got      : %#v", out)
+			t.Fatalf("%d/%d    : mismatch", i, len(outdbg))
 		}
 	}
 }

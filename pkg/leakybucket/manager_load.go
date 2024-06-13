@@ -509,37 +509,38 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		found := false
 
 		for _, h := range bucketFactories {
-			if h.Name == v.Name {
-				log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
-				// check in which mode the bucket was
-				if v.Mode == types.TIMEMACHINE {
-					tbucket = NewTimeMachine(h)
-				} else if v.Mode == types.LIVE {
-					tbucket = NewLeaky(h)
-				} else {
-					log.Errorf("Unknown bucket type : %d", v.Mode)
-				}
-				/*Trying to restore queue state*/
-				tbucket.Queue = v.Queue
-				/*Trying to set the limiter to the saved values*/
-				tbucket.Limiter.Load(v.SerializedState)
-				tbucket.In = make(chan *types.Event)
-				tbucket.Mapkey = k
-				tbucket.Signal = make(chan bool, 1)
-				tbucket.First_ts = v.First_ts
-				tbucket.Last_ts = v.Last_ts
-				tbucket.Ovflw_ts = v.Ovflw_ts
-				tbucket.Total_count = v.Total_count
-				buckets.Bucket_map.Store(k, tbucket)
-				h.tomb.Go(func() error {
-					return LeakRoutine(tbucket)
-				})
-				<-tbucket.Signal
-
-				found = true
-
-				break
+			if h.Name != v.Name {
+				continue
 			}
+			log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
+			// check in which mode the bucket was
+			if v.Mode == types.TIMEMACHINE {
+				tbucket = NewTimeMachine(h)
+			} else if v.Mode == types.LIVE {
+				tbucket = NewLeaky(h)
+			} else {
+				log.Errorf("Unknown bucket type : %d", v.Mode)
+			}
+			/*Trying to restore queue state*/
+			tbucket.Queue = v.Queue
+			/*Trying to set the limiter to the saved values*/
+			tbucket.Limiter.Load(v.SerializedState)
+			tbucket.In = make(chan *types.Event)
+			tbucket.Mapkey = k
+			tbucket.Signal = make(chan bool, 1)
+			tbucket.First_ts = v.First_ts
+			tbucket.Last_ts = v.Last_ts
+			tbucket.Ovflw_ts = v.Ovflw_ts
+			tbucket.Total_count = v.Total_count
+			buckets.Bucket_map.Store(k, tbucket)
+			h.tomb.Go(func() error {
+				return LeakRoutine(tbucket)
+			})
+			<-tbucket.Signal
+
+			found = true
+
+			break
 		}
 
 		if !found {
