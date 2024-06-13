@@ -203,14 +203,12 @@ linters-settings:
       - equalFold               #
       - unnecessaryBlock        #
       - ptrToRefParam           #
-      - badRegexp               #
       - preferStringWriter      #
       - stringXbytes            #
       - appendAssign            #
       - tooManyResultsChecker
       - unnecessaryDefer
       - docStub
-      - regexpSimplify
       - preferFprint
 
 linters:
