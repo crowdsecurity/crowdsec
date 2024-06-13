@@ -109,7 +109,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	}
 }
 
-func TestNillClient(t *testing.T) {
+func TestNilClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
 	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {

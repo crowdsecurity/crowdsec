@@ -294,7 +294,7 @@ func TestWithWrongFlushConfig(t *testing.T) {
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
 	apiServer, err := NewServer(config.API.Server)
 
-	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative number")
+	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative")
 	assert.Nil(t, apiServer)
 }
 

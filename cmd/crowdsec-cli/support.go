@@ -427,7 +427,7 @@ func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime 
 	}
 }
 
-// writeToZip adds a file to the zip archive, from a file, and retains the mtime
+// writeFileToZip adds a file to the zip archive, from a file, and retains the mtime
 func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile string) {
 	mtime := time.Now()
 
