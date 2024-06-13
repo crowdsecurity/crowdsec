@@ -203,7 +203,6 @@ linters-settings:
       - equalFold               #
       - unnecessaryBlock        #
       - ptrToRefParam           #
-      - preferStringWriter      #
       - stringXbytes            #
       - appendAssign            #
       - tooManyResultsChecker

@@ -160,7 +160,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 
 				if needComma {
 					//respBuffer.Write([]byte(","))
-					gctx.Writer.Write([]byte(","))
+					gctx.Writer.WriteString(",")
 				} else {
 					needComma = true
 				}
@@ -212,7 +212,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 
 				if needComma {
 					//respBuffer.Write([]byte(","))
-					gctx.Writer.Write([]byte(","))
+					gctx.Writer.WriteString(",")
 				} else {
 					needComma = true
 				}
@@ -244,7 +244,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	gctx.Writer.WriteHeader(http.StatusOK)
-	gctx.Writer.Write([]byte(`{"new": [`)) //No need to check for errors, the doc says it always returns nil
+	gctx.Writer.WriteString(`{"new": [`) //No need to check for errors, the doc says it always returns nil
 
 	// if the blocker just started, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
@@ -252,48 +252,48 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 		err := writeStartupDecisions(gctx, filters, c.DBClient.QueryAllDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for startup: %v", err)
-			gctx.Writer.Write([]byte(`], "deleted": []}`))
+			gctx.Writer.WriteString(`], "deleted": []}`)
 			gctx.Writer.Flush()
 
 			return err
 		}
 
-		gctx.Writer.Write([]byte(`], "deleted": [`))
+		gctx.Writer.WriteString(`], "deleted": [`)
 		//Expired decisions
 		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for startup: %v", err)
-			gctx.Writer.Write([]byte(`]}`))
+			gctx.Writer.WriteString(`]}`)
 			gctx.Writer.Flush()
 
 			return err
 		}
 
-		gctx.Writer.Write([]byte(`]}`))
+		gctx.Writer.WriteString(`]}`)
 		gctx.Writer.Flush()
 	} else {
 		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for delta: %v", err)
-			gctx.Writer.Write([]byte(`], "deleted": []}`))
+			gctx.Writer.WriteString(`], "deleted": []}`)
 			gctx.Writer.Flush()
 
 			return err
 		}
 
-		gctx.Writer.Write([]byte(`], "deleted": [`))
+		gctx.Writer.WriteString(`], "deleted": [`)
 
 		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
 
 		if err != nil {
 			log.Errorf("failed sending expired decisions for delta: %v", err)
-			gctx.Writer.Write([]byte(`]}`))
+			gctx.Writer.WriteString("]}")
 			gctx.Writer.Flush()
 
 			return err
 		}
 
-		gctx.Writer.Write([]byte(`]}`))
+		gctx.Writer.WriteString("]}")
 		gctx.Writer.Flush()
 	}
 
