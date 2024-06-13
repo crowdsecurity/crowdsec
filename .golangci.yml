@@ -203,7 +203,6 @@ linters-settings:
       - equalFold               #
       - unnecessaryBlock        #
       - ptrToRefParam           #
-      - octalLiteral            #
       - badRegexp               #
       - filepathJoin            #
       - preferStringWriter      #

@@ -42,11 +42,11 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 
 	err := cmd.Run()
 
-	if err := os.WriteFile(outputPrefix+"_stdout.txt", out.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(outputPrefix+"_stdout.txt", out.Bytes(), 0o644); err != nil {
 		log.Warningf("Error writing stdout: %s", err)
 	}
 
-	if err := os.WriteFile(outputPrefix+"_stderr.txt", outErr.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(outputPrefix+"_stderr.txt", outErr.Bytes(), 0o644); err != nil {
 		log.Warningf("Error writing stderr: %s", err)
 	}
 

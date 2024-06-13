@@ -123,10 +123,10 @@ func pluginIsValid(path string) error {
 
 	mode := details.Mode()
 	perm := uint32(mode)
-	if (perm & 00002) != 0 {
+	if (perm & 0o0002) != 0 {
 		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
 	}
-	if (perm & 00020) != 0 {
+	if (perm & 0o0020) != 0 {
 		return fmt.Errorf("plugin at %s is group writable, group writable plugins are invalid", path)
 	}
 	if (mode & os.ModeSetgid) != 0 {
