@@ -178,6 +178,43 @@ linters-settings:
     # Allow blocks to end with comments
     allow-trailing-comment: true
 
+  gocritic:
+    enable-all: true
+    disabled-checks:
+      - typeDefFirst
+      - paramTypeCombine
+      - httpNoBody
+      - ifElseChain
+      - importShadow
+      - hugeParam
+      - rangeValCopy
+      - commentedOutCode
+      - commentedOutImport
+      - unnamedResult
+      - sloppyReassign
+      - appendCombine
+      - captLocal
+      - typeUnparen
+      - emptyStringTest     #
+      - commentFormatting
+      - deferInLoop             #
+      - sprintfQuotedString     #
+      - whyNoLint
+      - equalFold               #
+      - unnecessaryBlock        #
+      - ptrToRefParam           #
+      - octalLiteral            #
+      - badRegexp               #
+      - filepathJoin            #
+      - preferStringWriter      #
+      - stringXbytes            #
+      - appendAssign            #
+      - tooManyResultsChecker
+      - unnecessaryDefer
+      - docStub
+      - regexpSimplify
+      - preferFprint
+
 linters:
   enable-all: true
   disable:
@@ -364,22 +401,6 @@ issues:
     - linters:
         - errcheck
       text: "Error return value of `.*` is not checked"
-
-    - linters:
-        - gocritic
-      text: "ifElseChain: rewrite if-else to switch statement"
-
-    - linters:
-        - gocritic
-      text: "captLocal: `.*' should not be capitalized"
-
-    - linters:
-        - gocritic
-      text: "appendAssign: append result not assigned to the same slice"
-
-    - linters:
-        - gocritic
-      text: "commentFormatting: put a space between `//` and comment text"
 
     # Will fix, trivial - just beware of merge conflicts
 
