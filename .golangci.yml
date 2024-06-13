@@ -14,7 +14,7 @@ linters-settings:
 
   gocognit:
     # lower this after refactoring
-    min-complexity: 128
+    min-complexity: 118
 
   govet:
     enable-all: true
@@ -24,7 +24,7 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 11
+    under: 16
 
   misspell:
     locale: US
@@ -473,6 +473,11 @@ issues:
         - canonicalheader
       path: pkg/apiserver/middlewares/v1/tls_auth.go
 
+    # tolerate complex functions in tests for now
+    - linters:
+        - maintidx
+      path: "(.+)_test.go"
+
     # tolerate long functions in tests
     - linters:
         - revive
@@ -510,11 +515,6 @@ issues:
     - linters:
         - revive
       path: "cmd/crowdsec-cli/utils.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/hubtest.go"
       text: "deep-exit: .*"
 
     - linters:

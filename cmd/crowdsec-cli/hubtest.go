@@ -234,6 +234,44 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	return cmd
 }
 
+
+func (cli *cliHubTest) run(runAll bool, NucleiTargetHost string, AppSecHost string, args []string) error {
+	cfg := cli.cfg()
+
+	if !runAll && len(args) == 0 {
+		return errors.New("please provide test to run or --all flag")
+	}
+	hubPtr.NucleiTargetHost = NucleiTargetHost
+	hubPtr.AppSecHost = AppSecHost
+	if runAll {
+		if err := hubPtr.LoadAllTests(); err != nil {
+			return fmt.Errorf("unable to load all tests: %+v", err)
+		}
+	} else {
+		for _, testName := range args {
+			_, err := hubPtr.LoadTestItem(testName)
+			if err != nil {
+				return fmt.Errorf("unable to load test '%s': %w", testName, err)
+			}
+		}
+	}
+
+	// set timezone to avoid DST issues
+	os.Setenv("TZ", "UTC")
+	for _, test := range hubPtr.Tests {
+		if cfg.Cscli.Output == "human" {
+			log.Infof("Running test '%s'", test.Name)
+		}
+		err := test.Run()
+		if err != nil {
+			log.Errorf("running test '%s' failed: %+v", test.Name, err)
+		}
+	}
+
+	return nil
+}
+
+
 func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 	var (
 		noClean          bool
@@ -247,41 +285,8 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 		Use:               "run",
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := cli.cfg()
-
-			if !runAll && len(args) == 0 {
-				_ = cmd.Help()
-				return errors.New("please provide test to run or --all flag")
-			}
-			hubPtr.NucleiTargetHost = NucleiTargetHost
-			hubPtr.AppSecHost = AppSecHost
-			if runAll {
-				if err := hubPtr.LoadAllTests(); err != nil {
-					return fmt.Errorf("unable to load all tests: %+v", err)
-				}
-			} else {
-				for _, testName := range args {
-					_, err := hubPtr.LoadTestItem(testName)
-					if err != nil {
-						return fmt.Errorf("unable to load test '%s': %w", testName, err)
-					}
-				}
-			}
-
-			// set timezone to avoid DST issues
-			os.Setenv("TZ", "UTC")
-			for _, test := range hubPtr.Tests {
-				if cfg.Cscli.Output == "human" {
-					log.Infof("Running test '%s'", test.Name)
-				}
-				err := test.Run()
-				if err != nil {
-					log.Errorf("running test '%s' failed: %+v", test.Name, err)
-				}
-			}
-
-			return nil
+		RunE: func(_ *cobra.Command, args []string) error {
+			return cli.run(runAll, NucleiTargetHost, AppSecHost, args)
 		},
 		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -493,6 +498,130 @@ func (cli *cliHubTest) NewListCmd() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAppsecCov bool, showOnlyPercent bool) error {
+	cfg := cli.cfg()
+
+	// for this one we explicitly don't do for appsec
+	if err := HubTest.LoadAllTests(); err != nil {
+		return fmt.Errorf("unable to load all tests: %+v", err)
+	}
+	var err error
+	scenarioCoverage := []hubtest.Coverage{}
+	parserCoverage := []hubtest.Coverage{}
+	appsecRuleCoverage := []hubtest.Coverage{}
+	scenarioCoveragePercent := 0
+	parserCoveragePercent := 0
+	appsecRuleCoveragePercent := 0
+
+	// if both are false (flag by default), show both
+	showAll := !showScenarioCov && !showParserCov && !showAppsecCov
+
+	if showParserCov || showAll {
+		parserCoverage, err = HubTest.GetParsersCoverage()
+		if err != nil {
+			return fmt.Errorf("while getting parser coverage: %w", err)
+		}
+		parserTested := 0
+		for _, test := range parserCoverage {
+			if test.TestsCount > 0 {
+				parserTested++
+			}
+		}
+		parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
+	}
+
+	if showScenarioCov || showAll {
+		scenarioCoverage, err = HubTest.GetScenariosCoverage()
+		if err != nil {
+			return fmt.Errorf("while getting scenario coverage: %w", err)
+		}
+
+		scenarioTested := 0
+		for _, test := range scenarioCoverage {
+			if test.TestsCount > 0 {
+				scenarioTested++
+			}
+		}
+
+		scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
+	}
+
+	if showAppsecCov || showAll {
+		appsecRuleCoverage, err = HubTest.GetAppsecCoverage()
+		if err != nil {
+			return fmt.Errorf("while getting scenario coverage: %w", err)
+		}
+
+		appsecRuleTested := 0
+		for _, test := range appsecRuleCoverage {
+			if test.TestsCount > 0 {
+				appsecRuleTested++
+			}
+		}
+		appsecRuleCoveragePercent = int(math.Round((float64(appsecRuleTested) / float64(len(appsecRuleCoverage)) * 100)))
+	}
+
+	if showOnlyPercent {
+		switch {
+		case showAll:
+			fmt.Printf("parsers=%d%%\nscenarios=%d%%\nappsec_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, appsecRuleCoveragePercent)
+		case showParserCov:
+			fmt.Printf("parsers=%d%%", parserCoveragePercent)
+		case showScenarioCov:
+			fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
+		case showAppsecCov:
+			fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
+		}
+		return nil
+	}
+
+	switch cfg.Cscli.Output {
+	case "human":
+		if showParserCov || showAll {
+			hubTestParserCoverageTable(color.Output, parserCoverage)
+		}
+
+		if showScenarioCov || showAll {
+			hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
+		}
+
+		if showAppsecCov || showAll {
+			hubTestAppsecRuleCoverageTable(color.Output, appsecRuleCoverage)
+		}
+
+		fmt.Println()
+		if showParserCov || showAll {
+			fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
+		}
+		if showScenarioCov || showAll {
+			fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
+		}
+		if showAppsecCov || showAll {
+			fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
+		}
+	case "json":
+		dump, err := json.MarshalIndent(parserCoverage, "", " ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s", dump)
+		dump, err = json.MarshalIndent(scenarioCoverage, "", " ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s", dump)
+		dump, err = json.MarshalIndent(appsecRuleCoverage, "", " ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s", dump)
+	default:
+		return errors.New("only human/json output modes are supported")
+	}
+
+	return nil
+}
+
 func (cli *cliHubTest) NewCoverageCmd() *cobra.Command {
 	var (
 		showParserCov   bool
@@ -506,127 +635,7 @@ func (cli *cliHubTest) NewCoverageCmd() *cobra.Command {
 		Short:             "coverage",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cfg := cli.cfg()
-
-			// for this one we explicitly don't do for appsec
-			if err := HubTest.LoadAllTests(); err != nil {
-				return fmt.Errorf("unable to load all tests: %+v", err)
-			}
-			var err error
-			scenarioCoverage := []hubtest.Coverage{}
-			parserCoverage := []hubtest.Coverage{}
-			appsecRuleCoverage := []hubtest.Coverage{}
-			scenarioCoveragePercent := 0
-			parserCoveragePercent := 0
-			appsecRuleCoveragePercent := 0
-
-			// if both are false (flag by default), show both
-			showAll := !showScenarioCov && !showParserCov && !showAppsecCov
-
-			if showParserCov || showAll {
-				parserCoverage, err = HubTest.GetParsersCoverage()
-				if err != nil {
-					return fmt.Errorf("while getting parser coverage: %w", err)
-				}
-				parserTested := 0
-				for _, test := range parserCoverage {
-					if test.TestsCount > 0 {
-						parserTested++
-					}
-				}
-				parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
-			}
-
-			if showScenarioCov || showAll {
-				scenarioCoverage, err = HubTest.GetScenariosCoverage()
-				if err != nil {
-					return fmt.Errorf("while getting scenario coverage: %w", err)
-				}
-
-				scenarioTested := 0
-				for _, test := range scenarioCoverage {
-					if test.TestsCount > 0 {
-						scenarioTested++
-					}
-				}
-
-				scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
-			}
-
-			if showAppsecCov || showAll {
-				appsecRuleCoverage, err = HubTest.GetAppsecCoverage()
-				if err != nil {
-					return fmt.Errorf("while getting scenario coverage: %w", err)
-				}
-
-				appsecRuleTested := 0
-				for _, test := range appsecRuleCoverage {
-					if test.TestsCount > 0 {
-						appsecRuleTested++
-					}
-				}
-				appsecRuleCoveragePercent = int(math.Round((float64(appsecRuleTested) / float64(len(appsecRuleCoverage)) * 100)))
-			}
-
-			if showOnlyPercent {
-				switch {
-				case showAll:
-					fmt.Printf("parsers=%d%%\nscenarios=%d%%\nappsec_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, appsecRuleCoveragePercent)
-				case showParserCov:
-					fmt.Printf("parsers=%d%%", parserCoveragePercent)
-				case showScenarioCov:
-					fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
-				case showAppsecCov:
-					fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
-				}
-				return nil
-			}
-
-			switch cfg.Cscli.Output {
-			case "human":
-				if showParserCov || showAll {
-					hubTestParserCoverageTable(color.Output, parserCoverage)
-				}
-
-				if showScenarioCov || showAll {
-					hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
-				}
-
-				if showAppsecCov || showAll {
-					hubTestAppsecRuleCoverageTable(color.Output, appsecRuleCoverage)
-				}
-
-				fmt.Println()
-				if showParserCov || showAll {
-					fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
-				}
-				if showScenarioCov || showAll {
-					fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
-				}
-				if showAppsecCov || showAll {
-					fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
-				}
-			case "json":
-				dump, err := json.MarshalIndent(parserCoverage, "", " ")
-				if err != nil {
-					return err
-				}
-				fmt.Printf("%s", dump)
-				dump, err = json.MarshalIndent(scenarioCoverage, "", " ")
-				if err != nil {
-					return err
-				}
-				fmt.Printf("%s", dump)
-				dump, err = json.MarshalIndent(appsecRuleCoverage, "", " ")
-				if err != nil {
-					return err
-				}
-				fmt.Printf("%s", dump)
-			default:
-				return errors.New("only human/json output modes are supported")
-			}
-
-			return nil
+			return cli.coverage(showScenarioCov, showParserCov, showAppsecCov, showOnlyPercent)
 		},
 	}
 
