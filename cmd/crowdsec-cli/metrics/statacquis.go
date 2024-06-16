@@ -15,7 +15,7 @@ func (s statAcquis) Description() (string, string) {
 	return "Acquisition Metrics",
 		`Measures the lines read, parsed, and unparsed per datasource. ` +
 			`Zero read lines indicate a misconfigured or inactive datasource. ` +
-			`Zero parsed lines mean the parser(s) failed. ` +
+			`Zero parsed lines means the parser(s) failed. ` +
 			`Non-zero parsed lines are fine as crowdsec selects relevant lines.`
 }
 
