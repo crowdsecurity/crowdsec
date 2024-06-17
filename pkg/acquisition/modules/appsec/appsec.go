@@ -210,9 +210,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 		runner := AppsecRunner{
 			inChan: w.InChan,
 			UUID:   appsecRunnerUUID,
-			logger: w.logger.WithFields(log.Fields{
-				"runner_uuid": appsecRunnerUUID,
-			}),
+			logger: w.logger.WithField("runner_uuid", appsecRunnerUUID),
 			AppsecRuntime: &wrt,
 			Labels:        w.config.Labels,
 		}

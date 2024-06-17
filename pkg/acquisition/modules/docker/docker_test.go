@@ -55,9 +55,7 @@ container_name:
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "docker",
-	})
+	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
 		f := DockerSource{}
@@ -108,9 +106,7 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "docker",
-	})
+	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
 		f := DockerSource{}
@@ -169,13 +165,9 @@ container_name_regexp:
 
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = logger.WithField("type", "docker")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = log.WithField("type", "docker")
 		}
 
 		readLogs = false
@@ -310,14 +302,10 @@ func TestOneShot(t *testing.T) {
 
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = logger.WithField("type", "docker")
 		} else {
 			log.SetLevel(ts.logLevel)
-			subLogger = log.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = log.WithField("type", "docker")
 		}
 
 		readLogs = false

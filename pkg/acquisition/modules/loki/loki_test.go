@@ -124,9 +124,7 @@ query: >
 			testName:    "Invalid DelayFor",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "loki",
-	})
+	subLogger := log.WithField("type", "loki")
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -343,9 +341,7 @@ since: 1h
 
 	for _, ts := range tests {
 		logger := log.New()
-		subLogger := logger.WithFields(log.Fields{
-			"type": "loki",
-		})
+		subLogger := logger.WithField("type", "loki")
 		lokiSource := loki.LokiSource{}
 		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 
@@ -509,9 +505,7 @@ query: >
   {server="demo"}
 `
 	logger := log.New()
-	subLogger := logger.WithFields(log.Fields{
-		"type": "loki",
-	})
+	subLogger := logger.WithField("type", "loki")
 	title := time.Now().String()
 	lokiSource := loki.LokiSource{}
 

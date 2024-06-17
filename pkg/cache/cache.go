@@ -64,9 +64,7 @@ func CacheInit(cfg CacheCfg) error {
 	}
 
 	clog.SetLevel(*cfg.LogLevel)
-	cfg.Logger = clog.WithFields(log.Fields{
-		"cache": cfg.Name,
-	})
+	cfg.Logger = clog.WithField("cache", cfg.Name)
 
 	tmpCache := gcache.New(cfg.Size)
 

@@ -334,7 +334,7 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 }
 
 func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardId string, streamName string) error {
-	logger := k.logger.WithFields(log.Fields{"shard_id": shardId})
+	logger := k.logger.WithField("shard_id", shardId)
 	//ghetto sync, kinesis allows to subscribe to a closed shard, which will make the goroutine exit immediately
 	//and we won't be able to start a new one if this is the first one started by the tomb
 	//TODO: look into parent shards to see if a shard is closed before starting to read it ?
@@ -397,7 +397,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		return fmt.Errorf("resource part of stream ARN %s does not start with stream/", k.Config.StreamARN)
 	}
 
-	k.logger = k.logger.WithFields(log.Fields{"stream": parsedARN.Resource[7:]})
+	k.logger = k.logger.WithField("stream", parsedARN.Resource[7:])
 	k.logger.Info("starting kinesis acquisition with enhanced fan-out")
 	err = k.DeregisterConsumer()
 	if err != nil {
@@ -439,7 +439,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) error {
-	logger := k.logger.WithFields(log.Fields{"shard": shardId})
+	logger := k.logger.WithField("shard", shardId)
 	logger.Debugf("Starting to read shard")
 	sharIt, err := k.kClient.GetShardIterator(&kinesis.GetShardIteratorInput{ShardId: aws.String(shardId),
 		StreamName:        &k.Config.StreamName,
@@ -485,7 +485,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 }
 
 func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error {
-	k.logger = k.logger.WithFields(log.Fields{"stream": k.Config.StreamName})
+	k.logger = k.logger.WithField("stream", k.Config.StreamName)
 	k.logger.Info("starting kinesis acquisition from shards")
 	for {
 		shards, err := k.kClient.ListShards(&kinesis.ListShardsInput{

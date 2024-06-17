@@ -46,7 +46,7 @@ func (r *RemoteHubCfg) fetchIndex(ctx context.Context, destPath string) (bool, e
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
 		CompareContent().
-		WithLogger(logrus.WithFields(logrus.Fields{"url": url})).
+		WithLogger(logrus.WithField("url", url)).
 		Download(ctx, url)
 	if err != nil {
 		return false, err

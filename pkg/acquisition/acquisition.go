@@ -161,9 +161,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
 	}
-	subLogger := clog.WithFields(log.Fields{
-		"type": dsn,
-	})
+	subLogger := clog.WithField("type", dsn)
 	uniqueId := uuid.NewString()
 	if transformExpr != "" {
 		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)

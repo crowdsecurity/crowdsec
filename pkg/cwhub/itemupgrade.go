@@ -125,7 +125,7 @@ func (i *Item) FetchContentTo(ctx context.Context, destPath string) (bool, strin
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
 		WithMakeDirs(true).
-		WithLogger(logrus.WithFields(logrus.Fields{"url": url})).
+		WithLogger(logrus.WithField("url", url)).
 		CompareContent().
 		VerifyHash("sha256", wantHash)
 

@@ -75,9 +75,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 		return nil
 	}
 
-	logger = logger.WithFields(log.Fields{
-		"cn": extractedCN,
-	})
+	logger = logger.WithField("cn", extractedCN)
 
 	bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 	bouncer, err := a.DbClient.SelectBouncerByName(bouncerName)
@@ -141,9 +139,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 
 		clientIP := c.ClientIP()
 
-		logger := log.WithFields(log.Fields{
-			"ip": clientIP,
-		})
+		logger := log.WithField("ip", clientIP)
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 			bouncer = a.authTLS(c, logger)
@@ -158,9 +154,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			return
 		}
 
-		logger = logger.WithFields(log.Fields{
-			"name": bouncer.Name,
-		})
+		logger = logger.WithField("name", bouncer.Name)
 
 		if bouncer.IPAddress == "" {
 			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {

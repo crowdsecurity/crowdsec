@@ -45,10 +45,7 @@ func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.L
 	if LogLevel != nil {
 		clog.SetLevel(*LogLevel)
 	}
-	customLog := log.Fields{
-		"type": "crowdsec-cti",
-	}
-	subLogger := clog.WithFields(customLog)
+	subLogger := clog.WithField("type", "crowdsec-cti")
 	CrowdsecCTIInitCache(*Size, *TTL)
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(CTIApiKey), cticlient.WithLogger(subLogger))
 	CTIApiEnabled = true

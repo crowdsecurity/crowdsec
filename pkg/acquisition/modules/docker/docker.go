@@ -609,7 +609,7 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, deleteChan chan *
 		case newContainer := <-in:
 			if _, ok := d.runningContainerState[newContainer.ID]; !ok {
 				newContainer.t = &tomb.Tomb{}
-				newContainer.logger = d.logger.WithFields(log.Fields{"container_name": newContainer.Name})
+				newContainer.logger = d.logger.WithField("container_name", newContainer.Name)
 				newContainer.t.Go(func() error {
 					return d.TailDocker(newContainer, outChan, deleteChan)
 				})
