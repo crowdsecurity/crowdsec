@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -25,7 +26,6 @@ func (Machine) Fields() []ent.Field {
 			Default(types.UtcNow).
 			Nillable().Optional(),
 		field.Time("last_heartbeat").
-			Default(types.UtcNow).
 			Nillable().Optional(),
 		field.String("machineId").
 			Unique().

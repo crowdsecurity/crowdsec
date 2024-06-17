@@ -414,7 +414,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	}
 
 	if !notValidOnly {
-		if pending, err := cli.db.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(-duration)); err == nil {
+		if pending, err := cli.db.QueryMachinesInactiveSince(time.Now().UTC().Add(-duration)); err == nil {
 			machines = append(machines, pending...)
 		}
 	}
