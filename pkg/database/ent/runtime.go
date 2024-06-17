@@ -72,10 +72,6 @@ func init() {
 	bouncerDescIPAddress := bouncerFields[5].Descriptor()
 	// bouncer.DefaultIPAddress holds the default value on creation for the ip_address field.
 	bouncer.DefaultIPAddress = bouncerDescIPAddress.Default.(string)
-	// bouncerDescLastPull is the schema descriptor for last_pull field.
-	bouncerDescLastPull := bouncerFields[8].Descriptor()
-	// bouncer.DefaultLastPull holds the default value on creation for the last_pull field.
-	bouncer.DefaultLastPull = bouncerDescLastPull.Default.(func() time.Time)
 	// bouncerDescAuthType is the schema descriptor for auth_type field.
 	bouncerDescAuthType := bouncerFields[9].Descriptor()
 	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.

@@ -39,7 +39,30 @@ teardown() {
     assert_output --partial "API key for 'ciTestBouncer':"
     rune -0 cscli bouncers delete ciTestBouncer
     rune -0 cscli bouncers list -o json
-    assert_output '[]'
+    assert_json '[]'
+}
+
+@test "cscli bouncers list" {
+    export API_KEY=bouncerkey
+    rune -0 cscli bouncers add ciTestBouncer --key "$API_KEY"
+
+    rune -0 cscli bouncers list -o json
+    rune -0 jq -c '.[] | [.ip_address,.last_pull,.name]' <(output)
+    assert_json '["",null,"ciTestBouncer"]'
+    rune -0 cscli bouncers list -o raw
+    assert_line 'name,ip,revoked,last_pull,type,version,auth_type'
+    assert_line 'ciTestBouncer,,validated,,,,api-key'
+    rune -0 cscli bouncers list -o human
+    assert_output --regexp 'ciTestBouncer.*api-key.*'
+
+    # the first connection sets last_pull and ip address
+    rune -0 lapi-get '/v1/decisions'
+    rune -0 cscli bouncers list -o json
+    rune -0 jq -r '.[] | .ip_address' <(output)
+    assert_output 127.0.0.1
+    rune -0 cscli bouncers list -o json
+    rune -0 jq -r '.[] | .last_pull' <(output)
+    refute_output null
 }
 
 @test "we can create a bouncer with a known key" {
@@ -83,4 +106,3 @@ teardown() {
     rune -0 cscli bouncers prune
     assert_output 'No bouncers to prune.'
 }
-

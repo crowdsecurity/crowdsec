@@ -21,7 +21,12 @@ func getBouncersTable(out io.Writer, bouncers []*ent.Bouncer) {
 			revoked = emoji.Prohibited
 		}
 
-		t.AddRow(b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType)
+		lastPull := ""
+		if b.LastPull != nil {
+			lastPull = b.LastPull.Format(time.RFC3339)
+		}
+
+		t.AddRow(b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType)
 	}
 
 	t.Render()

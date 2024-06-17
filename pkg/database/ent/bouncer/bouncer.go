@@ -71,8 +71,6 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultIPAddress holds the default value on creation for the "ip_address" field.
 	DefaultIPAddress string
-	// DefaultLastPull holds the default value on creation for the "last_pull" field.
-	DefaultLastPull func() time.Time
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
 )

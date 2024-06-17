@@ -116,7 +116,12 @@ func (cli *cliBouncers) list() error {
 				valid = "pending"
 			}
 
-			if err := csvwriter.Write([]string{b.Name, b.IPAddress, valid, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType}); err != nil {
+			lastPull := ""
+			if b.LastPull != nil {
+				lastPull = b.LastPull.Format(time.RFC3339)
+			}
+
+			if err := csvwriter.Write([]string{b.Name, b.IPAddress, valid, lastPull, b.Type, b.Version, b.AuthType}); err != nil {
 				return fmt.Errorf("failed to write raw: %w", err)
 			}
 		}
@@ -259,7 +264,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		}
 	}
 
-	bouncers, err := cli.db.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(-duration))
+	bouncers, err := cli.db.QueryBouncersInactiveSince(time.Now().UTC().Add(-duration))
 	if err != nil {
 		return fmt.Errorf("unable to query bouncers: %w", err)
 	}
