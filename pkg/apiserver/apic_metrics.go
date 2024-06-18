@@ -19,6 +19,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
+type dbPayload struct {
+	Metrics     *models.MetricsDetailItem `json:"metrics"`
+	Meta        *models.MetricsMeta       `json:"meta"`
+	Datasources map[string]int64          `json:"datasources"`
+}
+
 func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	allMetrics := &models.AllMetrics{}
 	metricsIds := make([]int, 0)
@@ -34,7 +40,6 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	}
 
 	for _, bouncer := range bouncers {
-		metrics := models.RemediationComponentsMetrics{}
 
 		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(bouncer.Name)
 		if err != nil {
@@ -42,36 +47,44 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 			continue
 		}
 
-		metrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		//Might seem weird, but we duplicate the bouncers if we have multiple unsent metrics
 		for _, dbMetric := range dbMetrics {
-			metric := &models.MetricsDetailItem{}
+			rcMetrics := models.RemediationComponentsMetrics{}
+			rcMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
+
+			dbPayload := &dbPayload{}
 			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
 			metricsIds = append(metricsIds, dbMetric.ID)
 
-			err := json.Unmarshal([]byte(dbMetric.Payload), metric)
+			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
 				log.Errorf("unable to unmarshal bouncer metric (%s)", err)
 				continue
 			}
 
-			metrics.Metrics = append(metrics.Metrics, metric)
-		}
+			rcMetrics.Metrics = append(rcMetrics.Metrics, dbPayload.Metrics)
 
-		metrics.Os = &models.OSversion{
-			Name:    bouncer.Osname,
-			Version: bouncer.Osversion,
-		}
-		metrics.Type = bouncer.Type
-		metrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-		metrics.Version = &bouncer.Version
-		metrics.Name = bouncer.Name
-		metrics.LastPull = bouncer.LastPull.UTC().Unix()
+			rcMetrics.Os = &models.OSversion{
+				Name:    bouncer.Osname,
+				Version: bouncer.Osversion,
+			}
+			rcMetrics.Type = bouncer.Type
+			rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
+			rcMetrics.Version = &bouncer.Version
+			rcMetrics.Name = bouncer.Name
+			rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
 
-		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &metrics)
+			rcMetrics.Meta = &models.MetricsMeta{
+				UtcStartupTimestamp: dbPayload.Meta.UtcStartupTimestamp,
+				UtcNowTimestamp:     dbPayload.Meta.UtcNowTimestamp,
+				WindowSizeSeconds:   dbPayload.Meta.WindowSizeSeconds,
+			}
+
+			allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
+		}
 	}
 
 	for _, lp := range lps {
-		metrics := models.LogProcessorsMetrics{}
 
 		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(lp.MachineId)
 		if err != nil {
@@ -79,35 +92,49 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 			continue
 		}
 
-		metrics.Metrics = make([]*models.MetricsDetailItem, 0)
 		for _, dbMetric := range dbMetrics {
-			metric := &models.MetricsDetailItem{}
+			lpMetrics := models.LogProcessorsMetrics{}
+			lpMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
+
+			dbPayload := &dbPayload{}
 			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
 			metricsIds = append(metricsIds, dbMetric.ID)
 
-			err := json.Unmarshal([]byte(dbMetric.Payload), metric)
+			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
-				log.Errorf("unable to unmarshal LP metric (%s)", err)
+				log.Errorf("unable to unmarshal log processor metric (%s)", err)
 				continue
 			}
 
-			metrics.Metrics = append(metrics.Metrics, metric)
-		}
+			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics)
 
-		if lp.Hubstate != nil {
-			metrics.HubItems = *lp.Hubstate
-		}
-		metrics.Os = &models.OSversion{
-			Name:    lp.Osname,
-			Version: lp.Osversion,
-		}
-		metrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-		metrics.Version = &lp.Version
-		metrics.Name = lp.MachineId
-		metrics.LastPush = lp.LastPush.UTC().Unix()
-		metrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
+			if lp.Hubstate != nil {
+				lpMetrics.HubItems = *lp.Hubstate
+			}
+			lpMetrics.Os = &models.OSversion{
+				Name:    lp.Osname,
+				Version: lp.Osversion,
+			}
+			lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
+			lpMetrics.Version = &lp.Version
+			lpMetrics.Name = lp.MachineId
+			lpMetrics.LastPush = lp.LastPush.UTC().Unix()
+			lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
 
-		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &metrics)
+			lpMetrics.Meta = &models.MetricsMeta{
+				UtcStartupTimestamp: dbPayload.Meta.UtcStartupTimestamp,
+				UtcNowTimestamp:     dbPayload.Meta.UtcNowTimestamp,
+				WindowSizeSeconds:   dbPayload.Meta.WindowSizeSeconds,
+			}
+
+			lpMetrics.Datasources = make(map[string]int64)
+
+			for k, v := range dbPayload.Datasources {
+				lpMetrics.Datasources[k] = v
+			}
+
+			allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
+		}
 	}
 
 	//FIXME: all of this should only be done once on startup/reload
