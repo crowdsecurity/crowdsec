@@ -351,7 +351,6 @@ func (a *apic) SendUsageMetrics() {
 				continue
 			}
 			log.Infof("Usage metrics sent")
-
 		}
 	}
 }
