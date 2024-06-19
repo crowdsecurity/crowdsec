@@ -8,13 +8,14 @@ import (
 
 	"slices"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/blackfireio/osinfo"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -23,6 +24,19 @@ type dbPayload struct {
 	Metrics     *models.MetricsDetailItem `json:"metrics"`
 	Meta        *models.MetricsMeta       `json:"meta"`
 	Datasources map[string]int64          `json:"datasources"`
+}
+
+func detectOS() (string, string) {
+	if version.System == "docker" {
+		return "docker", ""
+	}
+
+	osInfo, err := osinfo.GetOSInfo()
+	if err != nil {
+		return version.System, "???"
+	}
+
+	return osInfo.Name, osInfo.Version
 }
 
 func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
@@ -47,10 +61,23 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 			continue
 		}
 
+		rcMetrics := models.RemediationComponentsMetrics{}
+
+		rcMetrics.Os = &models.OSversion{
+			Name:    bouncer.Osname,
+			Version: bouncer.Osversion,
+		}
+		rcMetrics.Type = bouncer.Type
+		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
+		rcMetrics.Version = &bouncer.Version
+		rcMetrics.Name = bouncer.Name
+		rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
+
+		rcMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		rcMetrics.Meta = &models.MetricsMeta{}
+
 		//Might seem weird, but we duplicate the bouncers if we have multiple unsent metrics
 		for _, dbMetric := range dbMetrics {
-			rcMetrics := models.RemediationComponentsMetrics{}
-			rcMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
 
 			dbPayload := &dbPayload{}
 			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
@@ -62,24 +89,16 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				continue
 			}
 
+			rcMetrics.Meta.UtcStartupTimestamp = dbPayload.Meta.UtcStartupTimestamp
+			rcMetrics.Meta.UtcNowTimestamp = dbPayload.Meta.UtcNowTimestamp
+			rcMetrics.Meta.WindowSizeSeconds = dbPayload.Meta.WindowSizeSeconds
+
 			rcMetrics.Metrics = append(rcMetrics.Metrics, dbPayload.Metrics)
+			allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
+		}
 
-			rcMetrics.Os = &models.OSversion{
-				Name:    bouncer.Osname,
-				Version: bouncer.Osversion,
-			}
-			rcMetrics.Type = bouncer.Type
-			rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-			rcMetrics.Version = &bouncer.Version
-			rcMetrics.Name = bouncer.Name
-			rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
-
-			rcMetrics.Meta = &models.MetricsMeta{
-				UtcStartupTimestamp: dbPayload.Meta.UtcStartupTimestamp,
-				UtcNowTimestamp:     dbPayload.Meta.UtcNowTimestamp,
-				WindowSizeSeconds:   dbPayload.Meta.WindowSizeSeconds,
-			}
-
+		//If we have no metrics, we still want to send the bouncer
+		if len(rcMetrics.Metrics) == 0 {
 			allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
 		}
 	}
@@ -92,9 +111,28 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 			continue
 		}
 
+		lpMetrics := models.LogProcessorsMetrics{}
+
+		lpMetrics.Os = &models.OSversion{
+			Name:    lp.Osname,
+			Version: lp.Osversion,
+		}
+		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
+		lpMetrics.Version = &lp.Version
+		lpMetrics.Name = lp.MachineId
+		lpMetrics.LastPush = lp.LastPush.UTC().Unix()
+		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
+
+		lpMetrics.Datasources = make(map[string]int64)
+
+		if lp.Hubstate != nil {
+			lpMetrics.HubItems = *lp.Hubstate
+		}
+
+		lpMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
+		lpMetrics.Meta = &models.MetricsMeta{}
+
 		for _, dbMetric := range dbMetrics {
-			lpMetrics := models.LogProcessorsMetrics{}
-			lpMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
 
 			dbPayload := &dbPayload{}
 			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
@@ -106,46 +144,37 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				continue
 			}
 
-			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics)
-
-			if lp.Hubstate != nil {
-				lpMetrics.HubItems = *lp.Hubstate
-			}
-			lpMetrics.Os = &models.OSversion{
-				Name:    lp.Osname,
-				Version: lp.Osversion,
-			}
-			lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-			lpMetrics.Version = &lp.Version
-			lpMetrics.Name = lp.MachineId
-			lpMetrics.LastPush = lp.LastPush.UTC().Unix()
-			lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
-
-			lpMetrics.Meta = &models.MetricsMeta{
-				UtcStartupTimestamp: dbPayload.Meta.UtcStartupTimestamp,
-				UtcNowTimestamp:     dbPayload.Meta.UtcNowTimestamp,
-				WindowSizeSeconds:   dbPayload.Meta.WindowSizeSeconds,
-			}
-
-			lpMetrics.Datasources = make(map[string]int64)
+			lpMetrics.Meta.UtcStartupTimestamp = dbPayload.Meta.UtcStartupTimestamp
+			lpMetrics.Meta.UtcNowTimestamp = dbPayload.Meta.UtcNowTimestamp
+			lpMetrics.Meta.WindowSizeSeconds = dbPayload.Meta.WindowSizeSeconds
 
 			for k, v := range dbPayload.Datasources {
 				lpMetrics.Datasources[k] = v
 			}
 
+			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics)
+			allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
+		}
+
+		//If we have no metrics, we still want to send the LP
+		if len(lpMetrics.Metrics) == 0 {
 			allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
 		}
 	}
 
 	//FIXME: all of this should only be done once on startup/reload
+	consoleOptions := strings.Join(csconfig.GetConfig().API.Server.ConsoleConfig.EnabledOptions(), ",")
 	allMetrics.Lapi = &models.LapiMetrics{
 		ConsoleOptions: models.ConsoleOptions{
-			"FIXME",
+			consoleOptions,
 		},
 	}
+
+	osName, osVersion := detectOS()
+
 	allMetrics.Lapi.Os = &models.OSversion{
-		Name:    "FIXME",
-		Version: "FIXME",
+		Name:    osName,
+		Version: osVersion,
 	}
 	allMetrics.Lapi.Version = ptr.Of(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
@@ -338,7 +367,6 @@ func (a *apic) SendUsageMetrics() {
 				continue
 			}
 
-			spew.Dump(metrics)
 			_, _, err = a.apiClient.UsageMetrics.Add(context.Background(), metrics)
 
 			if err != nil {
