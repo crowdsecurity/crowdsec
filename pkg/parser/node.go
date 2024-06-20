@@ -464,15 +464,11 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		}
 
 		clog.SetLevel(log.DebugLevel)
-		n.Logger = clog.WithFields(log.Fields{
-			"id": n.rn,
-		})
+		n.Logger = clog.WithField("id", n.rn)
 		n.Logger.Infof("%s has debug enabled", n.Name)
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
-		n.Logger = log.WithFields(log.Fields{
-			"id": n.rn,
-		})
+		n.Logger = log.WithField("id", n.rn)
 	}
 
 	/* display info about top-level nodes, they should be the only one with explicit stage name ?*/

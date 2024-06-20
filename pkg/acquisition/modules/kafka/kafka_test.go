@@ -149,9 +149,7 @@ func TestStreamingAcquisition(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kafka",
-	})
+	subLogger := log.WithField("type", "kafka")
 
 	createTopic("crowdsecplaintext", "localhost:9092")
 
@@ -222,9 +220,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kafka",
-	})
+	subLogger := log.WithField("type", "kafka")
 
 	createTopic("crowdsecssl", "localhost:9092")
 

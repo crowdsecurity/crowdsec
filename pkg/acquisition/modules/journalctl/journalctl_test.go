@@ -47,9 +47,7 @@ journalctl_filter:
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "journalctl",
-	})
+	subLogger := log.WithField("type", "journalctl")
 
 	for _, test := range tests {
 		f := JournalCtlSource{}
@@ -97,9 +95,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "journalctl",
-	})
+	subLogger := log.WithField("type", "journalctl")
 
 	for _, test := range tests {
 		f := JournalCtlSource{}
@@ -153,13 +149,9 @@ journalctl_filter:
 		if ts.expectedOutput != "" {
 			logger, hook = test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = logger.WithField("type", "journalctl")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = log.WithField("type", "journalctl")
 		}
 
 		tomb := tomb.Tomb{}
@@ -227,13 +219,9 @@ journalctl_filter:
 		if ts.expectedOutput != "" {
 			logger, hook = test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = logger.WithField("type", "journalctl")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = log.WithField("type", "journalctl")
 		}
 
 		tomb := tomb.Tomb{}

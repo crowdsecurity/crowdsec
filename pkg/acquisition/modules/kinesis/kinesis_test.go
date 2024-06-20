@@ -139,9 +139,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kinesis",
-	})
+	subLogger := log.WithField("type", "kinesis")
 	for _, test := range tests {
 		f := KinesisSource{}
 		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -171,9 +169,7 @@ stream_name: stream-1-shard`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}), configuration.METRICS_NONE)
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -217,9 +213,7 @@ stream_name: stream-2-shards`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}), configuration.METRICS_NONE)
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -266,9 +260,7 @@ from_subscription: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}), configuration.METRICS_NONE)
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -312,9 +304,7 @@ use_enhanced_fanout: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}))
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"))
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}

@@ -41,7 +41,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	InChan := make(chan appsec.ParsedRequest)
 	OutChan := make(chan types.Event)
 
-	logger := log.WithFields(log.Fields{"test": test.name})
+	logger := log.WithField("test", test.name)
 
 	//build rules
 	for ridx, rule := range test.inband_rules {

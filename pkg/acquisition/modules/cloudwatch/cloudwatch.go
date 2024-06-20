@@ -403,7 +403,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 					openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
 				}
 				newStream.t = tomb.Tomb{}
-				newStream.logger = cw.logger.WithFields(log.Fields{"stream": newStream.StreamName})
+				newStream.logger = cw.logger.WithField("stream", newStream.StreamName)
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
 				newStream.t.Go(func() error {
 					return cw.TailLogStream(&newStream, outChan)

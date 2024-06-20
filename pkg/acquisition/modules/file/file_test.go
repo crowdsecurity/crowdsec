@@ -49,9 +49,7 @@ exclude_regexps: ["as[a-$d"]`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "file",
-	})
+	subLogger := log.WithField("type", "file")
 
 	for _, tc := range tests {
 		tc := tc
@@ -91,9 +89,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "file",
-	})
+	subLogger := log.WithField("type", "file")
 
 	for _, tc := range tests {
 		tc := tc
@@ -211,9 +207,7 @@ filename: test_files/test_delete.log`,
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithFields(log.Fields{
-				"type": "file",
-			})
+			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event, 100)
@@ -372,9 +366,7 @@ force_inotify: true`, testPattern),
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithFields(log.Fields{
-				"type": "file",
-			})
+			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
@@ -451,9 +443,7 @@ func TestExclusion(t *testing.T) {
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
 	// logger.SetLevel(ts.logLevel)
-	subLogger := logger.WithFields(log.Fields{
-		"type": "file",
-	})
+	subLogger := logger.WithField("type", "file")
 
 	f := fileacquisition.FileSource{}
 	if err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE); err != nil {

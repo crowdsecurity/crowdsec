@@ -52,9 +52,7 @@ listen_addr: 10.0.0`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "syslog",
-	})
+	subLogger := log.WithField("type", "syslog")
 	for _, test := range tests {
 		s := SyslogSource{}
 		err := s.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -134,9 +132,7 @@ listen_addr: 127.0.0.1`,
 	for _, ts := range tests {
 		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
-			subLogger := log.WithFields(log.Fields{
-				"type": "syslog",
-			})
+			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}
 			err := s.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 			if err != nil {

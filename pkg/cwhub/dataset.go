@@ -46,7 +46,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				WithHTTPClient(hubClient).
 				ToFile(destPath).
 				CompareContent().
-				WithLogger(logrus.WithFields(logrus.Fields{"url": dataS.SourceURL}))
+				WithLogger(logrus.WithField("url", dataS.SourceURL))
 
 			if !force {
 				d = d.WithLastModified().
