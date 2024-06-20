@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -22,14 +22,14 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
-	heartbeat := time.Unix(baseMetrics.Meta.UtcNowTimestamp, 0)
+	heartbeat := time.Unix(*baseMetrics.Meta.UtcNowTimestamp, 0)
 
 	_, err := c.Ent.Machine.
 		Update().
 		Where(machine.MachineIdEQ(machineID)).
 		SetNillableVersion(baseMetrics.Version).
-		SetOsname(os.Name).
-		SetOsversion(os.Version).
+		SetOsname(*os.Name).
+		SetOsversion(*os.Version).
 		SetFeatureflags(features).
 		SetLastHeartbeat(heartbeat).
 		SetHubstate(hubItems).

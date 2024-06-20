@@ -64,12 +64,12 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		rcMetrics := models.RemediationComponentsMetrics{}
 
 		rcMetrics.Os = &models.OSversion{
-			Name:    bouncer.Osname,
-			Version: bouncer.Osversion,
+			Name:    ptr.Of(bouncer.Osname),
+			Version: ptr.Of(bouncer.Osversion),
 		}
 		rcMetrics.Type = bouncer.Type
 		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-		rcMetrics.Version = &bouncer.Version
+		rcMetrics.Version = ptr.Of(bouncer.Version)
 		rcMetrics.Name = bouncer.Name
 		rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
 
@@ -114,11 +114,11 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		lpMetrics := models.LogProcessorsMetrics{}
 
 		lpMetrics.Os = &models.OSversion{
-			Name:    lp.Osname,
-			Version: lp.Osversion,
+			Name:    ptr.Of(lp.Osname),
+			Version: ptr.Of(lp.Osversion),
 		}
 		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-		lpMetrics.Version = &lp.Version
+		lpMetrics.Version = ptr.Of(lp.Version)
 		lpMetrics.Name = lp.MachineId
 		lpMetrics.LastPush = lp.LastPush.UTC().Unix()
 		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
@@ -173,16 +173,16 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	osName, osVersion := detectOS()
 
 	allMetrics.Lapi.Os = &models.OSversion{
-		Name:    osName,
-		Version: osVersion,
+		Name:    ptr.Of(osName),
+		Version: ptr.Of(osVersion),
 	}
 	allMetrics.Lapi.Version = ptr.Of(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
 	allMetrics.Lapi.Meta = &models.MetricsMeta{
-		UtcStartupTimestamp: time.Now().UTC().Unix(), //FIXME: should be the actual startup time
-		UtcNowTimestamp:     time.Now().UTC().Unix(),
-		WindowSizeSeconds:   int64(a.metricsInterval.Seconds()),
+		UtcStartupTimestamp: ptr.Of(time.Now().UTC().Unix()), //FIXME: should be the actual startup time
+		UtcNowTimestamp:     ptr.Of(time.Now().UTC().Unix()),
+		WindowSizeSeconds:   ptr.Of(int64(a.metricsInterval.Seconds())),
 	}
 	allMetrics.Lapi.Metrics = make([]*models.MetricsDetailItem, 0)
 

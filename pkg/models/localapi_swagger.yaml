@@ -1061,6 +1061,9 @@ definitions:
           last_update:
             type: integer
             description: last update date
+        required:
+          - hub_items
+          - datasources
   LapiMetrics:
     title: LapiMetrics
     type: object
@@ -1112,8 +1115,6 @@ definitions:
         description: feature flags (expected to be empty for remediation components)
     required:
       - version
-      - os
-      - meta
   OSversion:
     title: OSversion
     type: object
@@ -1124,6 +1125,9 @@ definitions:
       version:
         type: string
         description: version of the OS
+    required:
+      - name
+      - version
   MetricsDetailItem:
     title: MetricsDetailItem
     type: object
@@ -1157,6 +1161,10 @@ definitions:
       utc_now_timestamp:
         type: integer
         description: UTC timestamp of the current time
+    required:
+      - window_size_seconds
+      - utc_startup_timestamp
+      - utc_now_timestamp
   MetricsLabels:
     title: MetricsLabels
     type: object

@@ -7,9 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string, baseMetrics *models.BaseMetrics) error {
@@ -22,8 +22,8 @@ func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string
 		Update().
 		Where(bouncer.NameEQ(bouncerName)).
 		SetNillableVersion(baseMetrics.Version).
-		SetOsname(os.Name).
-		SetOsversion(os.Version).
+		SetOsname(*os.Name).
+		SetOsversion(*os.Version).
 		SetFeatureflags(features).
 		SetType(bouncerType).
 		Save(c.CTX)

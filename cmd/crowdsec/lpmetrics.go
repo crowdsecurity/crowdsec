@@ -109,13 +109,13 @@ func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logge
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	meta := &models.MetricsMeta{
-		UtcStartupTimestamp: m.static.startupTS,
-		WindowSizeSeconds:   int64(m.interval.Seconds()),
+		UtcStartupTimestamp: ptr.Of(m.static.startupTS),
+		WindowSizeSeconds:   ptr.Of(int64(m.interval.Seconds())),
 	}
 
 	os := &models.OSversion{
-		Name:    m.static.osName,
-		Version: m.static.osVersion,
+		Name:    ptr.Of(m.static.osName),
+		Version: ptr.Of(m.static.osVersion),
 	}
 
 	base := models.BaseMetrics{
@@ -152,7 +152,7 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	for {
 		select {
 		case <-ticker.C:
-			met.LogProcessors[0].Meta.UtcNowTimestamp = time.Now().Unix()
+			met.LogProcessors[0].Meta.UtcNowTimestamp = ptr.Of(time.Now().Unix())
 
 			ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()

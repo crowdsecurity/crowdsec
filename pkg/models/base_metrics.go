@@ -24,15 +24,13 @@ type BaseMetrics struct {
 	FeatureFlags []string `json:"feature_flags"`
 
 	// metrics meta
-	// Required: true
-	Meta *MetricsMeta `json:"meta"`
+	Meta *MetricsMeta `json:"meta,omitempty"`
 
 	// metrics details
 	Metrics []*MetricsDetailItem `json:"metrics"`
 
 	// OS information
-	// Required: true
-	Os *OSversion `json:"os"`
+	Os *OSversion `json:"os,omitempty"`
 
 	// version of the remediation component
 	// Required: true
@@ -66,9 +64,8 @@ func (m *BaseMetrics) Validate(formats strfmt.Registry) error {
 }
 
 func (m *BaseMetrics) validateMeta(formats strfmt.Registry) error {
-
-	if err := validate.Required("meta", "body", m.Meta); err != nil {
-		return err
+	if swag.IsZero(m.Meta) { // not required
+		return nil
 	}
 
 	if m.Meta != nil {
@@ -112,9 +109,8 @@ func (m *BaseMetrics) validateMetrics(formats strfmt.Registry) error {
 }
 
 func (m *BaseMetrics) validateOs(formats strfmt.Registry) error {
-
-	if err := validate.Required("os", "body", m.Os); err != nil {
-		return err
+	if swag.IsZero(m.Os) { // not required
+		return nil
 	}
 
 	if m.Os != nil {
@@ -166,6 +162,10 @@ func (m *BaseMetrics) contextValidateMeta(ctx context.Context, formats strfmt.Re
 
 	if m.Meta != nil {
 
+		if swag.IsZero(m.Meta) { // not required
+			return nil
+		}
+
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
@@ -207,6 +207,10 @@ func (m *BaseMetrics) contextValidateMetrics(ctx context.Context, formats strfmt
 func (m *BaseMetrics) contextValidateOs(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Os != nil {
+
+		if swag.IsZero(m.Os) { // not required
+			return nil
+		}
 
 		if err := m.Os.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {

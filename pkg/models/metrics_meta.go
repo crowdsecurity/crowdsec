@@ -8,8 +8,10 @@ package models
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // MetricsMeta MetricsMeta
@@ -18,17 +20,64 @@ import (
 type MetricsMeta struct {
 
 	// UTC timestamp of the current time
-	UtcNowTimestamp int64 `json:"utc_now_timestamp,omitempty"`
+	// Required: true
+	UtcNowTimestamp *int64 `json:"utc_now_timestamp"`
 
 	// UTC timestamp of the startup of the software
-	UtcStartupTimestamp int64 `json:"utc_startup_timestamp,omitempty"`
+	// Required: true
+	UtcStartupTimestamp *int64 `json:"utc_startup_timestamp"`
 
 	// Size, in seconds, of the window used to compute the metric
-	WindowSizeSeconds int64 `json:"window_size_seconds,omitempty"`
+	// Required: true
+	WindowSizeSeconds *int64 `json:"window_size_seconds"`
 }
 
 // Validate validates this metrics meta
 func (m *MetricsMeta) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateUtcNowTimestamp(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUtcStartupTimestamp(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateWindowSizeSeconds(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *MetricsMeta) validateUtcNowTimestamp(formats strfmt.Registry) error {
+
+	if err := validate.Required("utc_now_timestamp", "body", m.UtcNowTimestamp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MetricsMeta) validateUtcStartupTimestamp(formats strfmt.Registry) error {
+
+	if err := validate.Required("utc_startup_timestamp", "body", m.UtcStartupTimestamp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MetricsMeta) validateWindowSizeSeconds(formats strfmt.Registry) error {
+
+	if err := validate.Required("window_size_seconds", "body", m.WindowSizeSeconds); err != nil {
+		return err
+	}
+
 	return nil
 }
 

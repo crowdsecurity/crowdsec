@@ -8,8 +8,10 @@ package models
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // OSversion OSversion
@@ -18,14 +20,47 @@ import (
 type OSversion struct {
 
 	// name of the OS
-	Name string `json:"name,omitempty"`
+	// Required: true
+	Name *string `json:"name"`
 
 	// version of the OS
-	Version string `json:"version,omitempty"`
+	// Required: true
+	Version *string `json:"version"`
 }
 
 // Validate validates this o sversion
 func (m *OSversion) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateVersion(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *OSversion) validateName(formats strfmt.Registry) error {
+
+	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *OSversion) validateVersion(formats strfmt.Registry) error {
+
+	if err := validate.Required("version", "body", m.Version); err != nil {
+		return err
+	}
+
 	return nil
 }
 

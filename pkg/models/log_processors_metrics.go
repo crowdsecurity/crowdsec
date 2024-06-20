@@ -11,6 +11,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // LogProcessorsMetrics LogProcessorsMetrics
@@ -20,10 +21,12 @@ type LogProcessorsMetrics struct {
 	BaseMetrics
 
 	// Number of datasources per type
-	Datasources map[string]int64 `json:"datasources,omitempty"`
+	// Required: true
+	Datasources map[string]int64 `json:"datasources"`
 
 	// hub items
-	HubItems HubItems `json:"hub_items,omitempty"`
+	// Required: true
+	HubItems HubItems `json:"hub_items"`
 
 	// last push date
 	LastPush int64 `json:"last_push,omitempty"`
@@ -46,9 +49,9 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		Datasources map[string]int64 `json:"datasources,omitempty"`
+		Datasources map[string]int64 `json:"datasources"`
 
-		HubItems HubItems `json:"hub_items,omitempty"`
+		HubItems HubItems `json:"hub_items"`
 
 		LastPush int64 `json:"last_push,omitempty"`
 
@@ -83,9 +86,9 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		Datasources map[string]int64 `json:"datasources,omitempty"`
+		Datasources map[string]int64 `json:"datasources"`
 
-		HubItems HubItems `json:"hub_items,omitempty"`
+		HubItems HubItems `json:"hub_items"`
 
 		LastPush int64 `json:"last_push,omitempty"`
 
@@ -121,6 +124,10 @@ func (m *LogProcessorsMetrics) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateDatasources(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateHubItems(formats); err != nil {
 		res = append(res, err)
 	}
@@ -131,10 +138,19 @@ func (m *LogProcessorsMetrics) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *LogProcessorsMetrics) validateDatasources(formats strfmt.Registry) error {
+
+	if err := validate.Required("datasources", "body", m.Datasources); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *LogProcessorsMetrics) validateHubItems(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.HubItems) { // not required
-		return nil
+	if err := validate.Required("hub_items", "body", m.HubItems); err != nil {
+		return err
 	}
 
 	if m.HubItems != nil {
@@ -171,10 +187,6 @@ func (m *LogProcessorsMetrics) ContextValidate(ctx context.Context, formats strf
 }
 
 func (m *LogProcessorsMetrics) contextValidateHubItems(ctx context.Context, formats strfmt.Registry) error {
-
-	if swag.IsZero(m.HubItems) { // not required
-		return nil
-	}
 
 	if err := m.HubItems.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {

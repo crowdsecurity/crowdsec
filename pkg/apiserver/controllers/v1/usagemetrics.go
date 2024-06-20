@@ -121,7 +121,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		return
 	}
 
-	collectedAt = time.Unix(baseMetrics.Meta.UtcNowTimestamp, 0).UTC()
+	collectedAt = time.Unix(*baseMetrics.Meta.UtcNowTimestamp, 0).UTC()
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
