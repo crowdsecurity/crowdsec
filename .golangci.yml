@@ -12,10 +12,6 @@ linters-settings:
     replace-allow-list:
       - golang.org/x/time/rate
 
-  gocognit:
-    # lower this after refactoring
-    min-complexity: 118
-
   govet:
     enable-all: true
     disable:
@@ -102,7 +98,8 @@ linters-settings:
       - name: add-constant
         disabled: true
       - name: cognitive-complexity
-        disabled: true
+        # lower this after refactoring
+        arguments: [119]
       - name: comment-spacings
         disabled: true
       - name: confusing-results
@@ -194,10 +191,11 @@ linters:
     # Redundant
     #
 
-    - gocyclo # revive
-    - cyclop  # revive
-    - lll     # revive
-    - funlen  # revive
+    - gocyclo  # revive
+    - cyclop   # revive
+    - lll      # revive
+    - funlen   # revive
+    - gocognit # revive
 
     #
     # Disabled until fixed for go 1.22
@@ -225,7 +223,6 @@ linters:
     # - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid.
     # - gochecknoinits      # Checks that no init functions are present in Go code
     # - gochecksumtype      # Run exhaustiveness checks on Go "sum types"
-    # - gocognit            # Computes and checks the cognitive complexity of functions
     # - gocritic            # Provides diagnostics that check for bugs, performance and style issues.
     # - goheader            # Checks is file header matches to pattern
     # - gomoddirectives     # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod.
