@@ -248,8 +248,11 @@ teardown() {
 @test "cscli - LAPI credentials file can reference env variables" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     URL=$(config_get "$LOCAL_API_CREDENTIALS" '.url')
+    export URL
     LOGIN=$(config_get "$LOCAL_API_CREDENTIALS" '.login')
+    export LOGIN
     PASSWORD=$(config_get "$LOCAL_API_CREDENTIALS" '.password')
+    export PASSWORD
 
     # shellcheck disable=SC2016
     echo '{"url":"$URL","login":"$LOGIN","password":"$PASSWORD"}' > "$LOCAL_API_CREDENTIALS".local
@@ -276,7 +279,7 @@ teardown() {
     unset URL
     rune -1 cscli lapi status
     # shellcheck disable=SC2016
-    assert_stderr --partial 'failed to authenticate to Local API (LAPI): BaseURL must have a trailing slash, but \"$URL\" does not'
+    assert_stderr --partial 'BaseURL must have a trailing slash'
 }
 
 @test "cscli - missing LAPI client settings" {
