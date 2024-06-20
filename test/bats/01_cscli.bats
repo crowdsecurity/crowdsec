@@ -245,6 +245,40 @@ teardown() {
     assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 }
 
+@test "cscli - LAPI credentials file can reference env variables" {
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+    URL=$(config_get "$LOCAL_API_CREDENTIALS" '.url')
+    LOGIN=$(config_get "$LOCAL_API_CREDENTIALS" '.login')
+    PASSWORD=$(config_get "$LOCAL_API_CREDENTIALS" '.password')
+
+    # shellcheck disable=SC2016
+    echo '{"url":"$URL","login":"$LOGIN","password":"$PASSWORD"}' > "$LOCAL_API_CREDENTIALS".local
+
+    config_set '.crowdsec_service.enable=false'
+    rune -0 ./instance-crowdsec start
+
+    rune -0 cscli lapi status
+    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+
+    rm "$LOCAL_API_CREDENTIALS".local
+
+    # shellcheck disable=SC2016
+    config_set "$LOCAL_API_CREDENTIALS" '.url="$URL"'
+    # shellcheck disable=SC2016
+    config_set "$LOCAL_API_CREDENTIALS" '.login="$LOGIN"'
+    # shellcheck disable=SC2016
+    config_set "$LOCAL_API_CREDENTIALS" '.password="$PASSWORD"'
+
+    rune -0 cscli lapi status
+    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+
+    # but if a variable is not defined, there is no specific error message
+    unset URL
+    rune -1 cscli lapi status
+    # shellcheck disable=SC2016
+    assert_stderr --partial 'failed to authenticate to Local API (LAPI): BaseURL must have a trailing slash, but \"$URL\" does not'
+}
+
 @test "cscli - missing LAPI client settings" {
     config_set 'del(.api.client)'
     rune -1 cscli lapi status
