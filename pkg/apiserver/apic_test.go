@@ -165,7 +165,6 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			api := getAPIC(t)
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
@@ -233,7 +232,6 @@ func TestNewAPIC(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
 			httpmock.Activate()
@@ -353,7 +351,6 @@ func TestAPICGetMetrics(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			apiClient := getAPIC(t)
 			cleanUp(apiClient)
@@ -461,7 +458,6 @@ func TestCreateAlertsForDecision(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			if got := createAlertsForDecisions(tc.args.decisions); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("createAlertsForDecisions() = %v, want %v", got, tc.want)
@@ -541,7 +537,6 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			addCounters, _ := makeAddAndDeleteCounters()
 			if got := fillAlertsWithDecisions(tc.args.alerts, tc.args.decisions, addCounters); !reflect.DeepEqual(got, tc.want) {
@@ -1159,7 +1154,6 @@ func TestAPICPull(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			api = getAPIC(t)
 			api.pullInterval = time.Millisecond
@@ -1286,7 +1280,6 @@ func TestShouldShareAlert(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ret := shouldShareAlert(tc.alert, tc.consoleConfig)
 			assert.Equal(t, tc.expectedRet, ret)

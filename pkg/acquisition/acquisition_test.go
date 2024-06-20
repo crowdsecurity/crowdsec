@@ -179,7 +179,6 @@ wowo: ajsajasjas
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.TestName, func(t *testing.T) {
 			common := configuration.DataSourceCommonCfg{}
 			yaml.Unmarshal([]byte(tc.String), &common)
@@ -282,7 +281,6 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.TestName, func(t *testing.T) {
 			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
@@ -549,7 +547,6 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
 			srcs, err := LoadAcquisitionFromDSN(tc.dsn, map[string]string{"type": "test_label"}, "")
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)

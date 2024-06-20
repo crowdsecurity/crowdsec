@@ -1414,7 +1414,6 @@ func TestParseUnixTime(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ParseUnixTime(tc.value)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -1518,7 +1517,6 @@ func TestIsIp(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
@@ -1571,7 +1569,6 @@ func TestToString(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			require.NoError(t, err)
@@ -1618,7 +1615,6 @@ func TestB64Decode(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
@@ -1691,7 +1687,6 @@ func TestParseKv(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			outMap := make(map[string]interface{})
 			env := map[string]interface{}{

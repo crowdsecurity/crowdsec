@@ -130,7 +130,6 @@ listen_addr: 127.0.0.1`,
 	}
 
 	for _, ts := range tests {
-		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}

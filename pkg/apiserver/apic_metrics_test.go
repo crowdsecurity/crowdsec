@@ -63,7 +63,6 @@ func TestAPICSendMetrics(t *testing.T) {
 	defer httpmock.Deactivate()
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 			require.NoError(t, err)

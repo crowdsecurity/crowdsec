@@ -251,7 +251,6 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 
 		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 		for _, runner := range w.AppsecRunners {
-			runner := runner
 			runner.outChan = out
 			t.Go(func() error {
 				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")

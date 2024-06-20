@@ -76,7 +76,6 @@ func TestSimulationLoading(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadSimulation()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -124,7 +123,6 @@ func TestIsSimulated(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			isSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
 			require.Equal(t, tc.expected, isSimulated)

@@ -47,7 +47,6 @@ func TestListFilesAtPath(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := listFilesAtPath(tc.path)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
