@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -98,7 +97,7 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse appsec configuration")
+		return fmt.Errorf("Cannot parse appsec configuration: %w", err)
 	}
 
 	if w.config.ListenAddr == "" && w.config.ListenSocket == "" {
@@ -153,7 +152,7 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse appsec configuration")
+		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
 	w.logger = logger
 	w.metricsLevel = MetricsLevel
@@ -264,7 +263,7 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 				_ = os.RemoveAll(w.config.ListenSocket)
 				listener, err := net.Listen("unix", w.config.ListenSocket)
 				if err != nil {
-					return errors.Wrap(err, "Appsec server failed")
+					return fmt.Errorf("Appsec server failed: %w", err)
 				}
 				defer listener.Close()
 				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
@@ -273,7 +272,7 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 					err = w.server.Serve(listener)
 				}
 				if err != nil && err != http.ErrServerClosed {
-					return errors.Wrap(err, "Appsec server failed")
+					return fmt.Errorf("Appsec server failed: %w", err)
 				}
 			}
 			return nil
@@ -289,7 +288,7 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 				}
 
 				if err != nil && err != http.ErrServerClosed {
-					return errors.Wrap(err, "Appsec server failed")
+					return fmt.Errorf("Appsec server failed: %w", err)
 				}
 			}
 			return nil
