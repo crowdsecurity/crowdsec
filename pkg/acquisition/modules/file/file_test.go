@@ -52,7 +52,6 @@ exclude_regexps: ["as[a-$d"]`,
 	subLogger := log.WithField("type", "file")
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
 			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
@@ -92,7 +91,6 @@ func TestConfigureDSN(t *testing.T) {
 	subLogger := log.WithField("type", "file")
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
 			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
@@ -202,7 +200,6 @@ filename: test_files/test_delete.log`,
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
@@ -361,7 +358,6 @@ force_inotify: true`, testPattern),
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
@@ -405,7 +401,7 @@ force_inotify: true`, testPattern),
 				fd, err := os.Create("test_files/stream.log")
 				require.NoError(t, err, "could not create test file")
 
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
 						os.Remove("test_files/stream.log")

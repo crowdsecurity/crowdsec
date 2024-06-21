@@ -1,13 +1,13 @@
 package exprhelpers
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/bluele/gcache"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -40,7 +40,7 @@ func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.L
 	}
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		return errors.Wrap(err, "while configuring datasource logger")
+		return fmt.Errorf("while configuring datasource logger: %w", err)
 	}
 	if LogLevel != nil {
 		clog.SetLevel(*LogLevel)

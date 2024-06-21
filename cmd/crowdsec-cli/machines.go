@@ -41,7 +41,7 @@ func generatePassword(length int) string {
 
 	buf := make([]byte, length)
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
 		if err != nil {
 			log.Fatalf("failed getting data from prng for password generation : %s", err)

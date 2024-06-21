@@ -109,7 +109,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
 	if c.PluginChannel != nil {
 	RETRY:
-		for try := 0; try < 3; try++ {
+		for try := range 3 {
 			select {
 			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
 				log.Debugf("alert sent to Plugin channel")

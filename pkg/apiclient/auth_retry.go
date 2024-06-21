@@ -41,7 +41,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		maxAttempts = 1
 	}
 
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		if i > 0 {
 			if r.withBackOff {
 				//nolint:gosec

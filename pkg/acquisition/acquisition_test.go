@@ -179,7 +179,6 @@ wowo: ajsajasjas
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.TestName, func(t *testing.T) {
 			common := configuration.DataSourceCommonCfg{}
 			yaml.Unmarshal([]byte(tc.String), &common)
@@ -282,7 +281,6 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.TestName, func(t *testing.T) {
 			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
@@ -323,7 +321,7 @@ func (f *MockCat) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockCat) GetName() string                  { return "mock_cat" }
 func (f *MockCat) GetMode() string                  { return "cat" }
 func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
 		out <- evt
@@ -370,7 +368,7 @@ func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) err
 	return errors.New("can't run in cat mode")
 }
 func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
 		out <- evt
@@ -453,7 +451,7 @@ type MockTailError struct {
 }
 
 func (f *MockTailError) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
 		out <- evt
@@ -549,7 +547,6 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
 			srcs, err := LoadAcquisitionFromDSN(tc.dsn, map[string]string{"type": "test_label"}, "")
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)

@@ -32,7 +32,6 @@ func TestNewCrowdSecConfig(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			result := &Config{}
 			assert.Equal(t, tc.expected, result)

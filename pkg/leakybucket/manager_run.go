@@ -298,7 +298,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
 	//find the relevant holders (scenarios)
-	for idx := 0; idx < len(holders); idx++ {
+	for idx := range len(holders) {
 		//for idx, holder := range holders {
 
 		//evaluate bucket's condition

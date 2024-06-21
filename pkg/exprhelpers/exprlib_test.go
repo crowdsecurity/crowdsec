@@ -2,12 +2,12 @@ package exprhelpers
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/antonmedv/expr"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -936,7 +936,7 @@ func TestGetDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1022,7 +1022,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetOrigin("CAPI").
 		SaveX(context.Background())
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	decision2 := dbClient.Ent.Decision.Create().
@@ -1041,7 +1041,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision2 == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1147,7 +1147,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	expiredDecision := dbClient.Ent.Decision.Create().
@@ -1165,7 +1165,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if expiredDecision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1253,7 +1253,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	longerDecision := dbClient.Ent.Decision.Create().
@@ -1271,7 +1271,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		SaveX(context.Background())
 
 	if longerDecision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1414,7 +1414,6 @@ func TestParseUnixTime(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ParseUnixTime(tc.value)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -1518,7 +1517,6 @@ func TestIsIp(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
@@ -1571,7 +1569,6 @@ func TestToString(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			require.NoError(t, err)
@@ -1618,7 +1615,6 @@ func TestB64Decode(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
@@ -1691,7 +1687,6 @@ func TestParseKv(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			outMap := make(map[string]interface{})
 			env := map[string]interface{}{
