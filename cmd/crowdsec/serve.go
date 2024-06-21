@@ -24,7 +24,7 @@ import (
 )
 
 //nolint:deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
-func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
+func debugHandler(cConfig *csconfig.Config) error {
 	var (
 		tmpFile string
 		err     error
@@ -49,7 +49,7 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	return nil
 }
 
-func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
+func reloadHandler() (*csconfig.Config, error) {
 	var tmpFile string
 
 	// re-initialize tombs
@@ -214,7 +214,7 @@ func shutdownCrowdsec() error {
 	return nil
 }
 
-func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
+func shutdown(cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
 			return fmt.Errorf("failed to shut down crowdsec: %w", err)
@@ -247,6 +247,22 @@ func drainChan(c chan types.Event) {
 	}
 }
 
+// watchdog sends a watchdog signal to systemd every 15 seconds
+func watchdog(ctx context.Context, logger log.FieldLogger) {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			csdaemon.Notify(csdaemon.Watchdog, logger)
+		}
+	}
+
+}
+
 func HandleSignals(cConfig *csconfig.Config) error {
 	var (
 		newConfig *csconfig.Config
@@ -270,24 +286,31 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
-	Loop:
-		for {
-			s := <-signalChan
+
+		logger := log.StandardLogger()
+
+		csdaemon.Notify(csdaemon.Ready, logger)
+
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
+
+		go watchdog(ctx, logger)
+
+		for s := range signalChan {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
 				log.Warning("SIGHUP received, reloading")
+				csdaemon.Notify(csdaemon.Reloading, logger)
 
-				if err = shutdown(s, cConfig); err != nil {
+				if err = shutdown(cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
-				if newConfig, err = reloadHandler(s); err != nil {
+				if newConfig, err = reloadHandler(); err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig != nil {
@@ -296,10 +319,11 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
-				if err = shutdown(s, cConfig); err != nil {
-					exitChan <- fmt.Errorf("failed shutdown: %w", err)
+				csdaemon.Notify(csdaemon.Stopping, logger)
 
-					break Loop
+				if err = shutdown(cConfig); err != nil {
+					exitChan <- fmt.Errorf("failed shutdown: %w", err)
+					return
 				}
 				exitChan <- nil
 			}
@@ -426,9 +450,9 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 
 		switch ch {
 		case apiTomb.Dead():
-			log.Infof("api shutdown")
+			log.Info("api shutdown")
 		case crowdsecTomb.Dead():
-			log.Infof("crowdsec shutdown")
+			log.Info("crowdsec shutdown")
 		}
 	}
 
