@@ -346,7 +346,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 }
 
 func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
-	for i := 0; i < len(erp.Lines); i++ {
+	for i := range len(erp.Lines) {
 		parts := strings.Split(erp.Lines[i], "\t")
 		if parts[0] == strconv.Itoa(ip) {
 			return parts

@@ -274,7 +274,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 			},
 		},
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		streams.Streams[0].Values[i] = LogValue{
 			Time: time.Now(),
 			Line: fmt.Sprintf("Log line #%d %v", i, title),

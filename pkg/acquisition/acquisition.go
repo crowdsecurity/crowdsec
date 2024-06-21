@@ -270,7 +270,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 
 func GetMetrics(sources []DataSource, aggregated bool) error {
 	var metrics []prometheus.Collector
-	for i := 0; i < len(sources); i++ {
+	for i := range len(sources) {
 		if aggregated {
 			metrics = sources[i].GetMetrics()
 		} else {
@@ -344,7 +344,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 		return nil
 	}
 
-	for i := 0; i < len(sources); i++ {
+	for i := range len(sources) {
 		subsrc := sources[i] //ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 

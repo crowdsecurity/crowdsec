@@ -401,7 +401,7 @@ force_inotify: true`, testPattern),
 				fd, err := os.Create("test_files/stream.log")
 				require.NoError(t, err, "could not create test file")
 
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
 						os.Remove("test_files/stream.log")

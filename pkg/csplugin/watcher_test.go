@@ -34,7 +34,7 @@ func resetWatcherAlertCounter(pw *PluginWatcher) {
 }
 
 func insertNAlertsToPlugin(pw *PluginWatcher, n int, pluginName string) {
-	for i := 0; i < n; i++ {
+	for range n {
 		pw.Inserts <- pluginName
 	}
 }
