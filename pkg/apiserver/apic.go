@@ -808,7 +808,7 @@ func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bo
 		return false, fmt.Errorf("while getting decision: %w", err)
 	}
 
-	if firstDecision == nil || firstDecision.Until == nil || firstDecision.Until.Sub(time.Now().UTC()) < (a.pullInterval+15*time.Minute) {
+	if firstDecision == nil || firstDecision.Until.Sub(time.Now().UTC()) < (a.pullInterval+15*time.Minute) {
 		log.Debugf("at least one decision found for %s, expire soon, force refresh", *blocklist.Name)
 		return true, nil
 	}

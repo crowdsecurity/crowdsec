@@ -96,7 +96,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "until", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "until", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
 		{Name: "scenario", Type: field.TypeString},
 		{Name: "type", Type: field.TypeString},
 		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
