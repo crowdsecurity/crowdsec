@@ -4,16 +4,18 @@ import (
 	"path/filepath"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 func GetFSType(path string) (string, error) {
-	kernel32, err := syscall.LoadLibrary("kernel32.dll")
+	kernel32, err := windows.LoadLibrary("kernel32.dll")
 	if err != nil {
 		return "", err
 	}
-	defer syscall.FreeLibrary(kernel32)
+	defer windows.FreeLibrary(kernel32)
 
-	getVolumeInformation, err := syscall.GetProcAddress(kernel32, "GetVolumeInformationW")
+	getVolumeInformation, err := windows.GetProcAddress(kernel32, "GetVolumeInformationW")
 	if err != nil {
 		return "", err
 	}
@@ -27,7 +29,7 @@ func GetFSType(path string) (string, error) {
 	// Get the root path of the volume
 	volumeRoot := filepath.VolumeName(absPath) + "\\"
 
-	volumeRootPtr, _ := syscall.UTF16PtrFromString(volumeRoot)
+	volumeRootPtr, _ := windows.UTF16PtrFromString(volumeRoot)
 
 	var (
 		fileSystemNameBuffer = make([]uint16, 260)
@@ -49,5 +51,5 @@ func GetFSType(path string) (string, error) {
 		return "", err
 	}
 
-	return syscall.UTF16ToString(fileSystemNameBuffer), nil
+	return windows.UTF16ToString(fileSystemNameBuffer), nil
 }

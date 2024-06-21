@@ -11,13 +11,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/pbnjay/memory"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/sys/unix"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
@@ -456,7 +456,7 @@ func (cli *cliDashboard) chownDatabase(gid string) error {
 
 	if stat, err := os.Stat(cfg.DbConfig.DbPath); !os.IsNotExist(err) {
 		info := stat.Sys()
-		if err := os.Chown(cfg.DbConfig.DbPath, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+		if err := os.Chown(cfg.DbConfig.DbPath, int(info.(*unix.Stat_t).Uid), intID); err != nil {
 			return fmt.Errorf("unable to chown sqlite db file '%s': %s", cfg.DbConfig.DbPath, err)
 		}
 	}
@@ -466,7 +466,7 @@ func (cli *cliDashboard) chownDatabase(gid string) error {
 			file := cfg.DbConfig.DbPath + ext
 			if stat, err := os.Stat(file); !os.IsNotExist(err) {
 				info := stat.Sys()
-				if err := os.Chown(file, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+				if err := os.Chown(file, int(info.(*unix.Stat_t).Uid), intID); err != nil {
 					return fmt.Errorf("unable to chown sqlite db file '%s': %s", file, err)
 				}
 			}
