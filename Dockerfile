@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.22.4-alpine3.18 AS build
+FROM golang:1.22.4-alpine3.20 AS build
 
 ARG BUILD_VERSION
 
@@ -20,7 +20,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
 
 COPY . .
 
-RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_SOURCE" && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
