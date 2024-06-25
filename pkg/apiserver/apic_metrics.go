@@ -21,8 +21,8 @@ import (
 )
 
 type dbPayload struct {
-	Metrics     *models.DetailedMetrics `json:"metrics"`
-	Datasources map[string]int64        `json:"datasources"`
+	Metrics     []*models.DetailedMetrics `json:"metrics"`
+	Datasources map[string]int64          `json:"datasources"`
 }
 
 func detectOS() (string, string) {
@@ -87,7 +87,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				continue
 			}
 
-			rcMetrics.Metrics = append(rcMetrics.Metrics, dbPayload.Metrics)
+			rcMetrics.Metrics = append(rcMetrics.Metrics, dbPayload.Metrics...)
 		}
 
 		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
@@ -133,7 +133,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				continue
 			}
 
-			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics)
+			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics...)
 
 			for k, v := range dbPayload.Datasources {
 				lpMetrics.Datasources[k] = v
