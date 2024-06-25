@@ -23,10 +23,6 @@ type MetricsMeta struct {
 	// Required: true
 	UtcNowTimestamp *int64 `json:"utc_now_timestamp"`
 
-	// UTC timestamp of the startup of the software
-	// Required: true
-	UtcStartupTimestamp *int64 `json:"utc_startup_timestamp"`
-
 	// Size, in seconds, of the window used to compute the metric
 	// Required: true
 	WindowSizeSeconds *int64 `json:"window_size_seconds"`
@@ -37,10 +33,6 @@ func (m *MetricsMeta) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateUtcNowTimestamp(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateUtcStartupTimestamp(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -57,15 +49,6 @@ func (m *MetricsMeta) Validate(formats strfmt.Registry) error {
 func (m *MetricsMeta) validateUtcNowTimestamp(formats strfmt.Registry) error {
 
 	if err := validate.Required("utc_now_timestamp", "body", m.UtcNowTimestamp); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *MetricsMeta) validateUtcStartupTimestamp(formats strfmt.Registry) error {
-
-	if err := validate.Required("utc_startup_timestamp", "body", m.UtcStartupTimestamp); err != nil {
 		return err
 	}
 

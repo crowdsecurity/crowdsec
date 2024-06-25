@@ -21,9 +21,8 @@ import (
 )
 
 type dbPayload struct {
-	Metrics     *models.MetricsDetailItem `json:"metrics"`
-	Meta        *models.MetricsMeta       `json:"meta"`
-	Datasources map[string]int64          `json:"datasources"`
+	Metrics     *models.DetailedMetrics `json:"metrics"`
+	Datasources map[string]int64        `json:"datasources"`
 }
 
 func detectOS() (string, string) {
@@ -73,8 +72,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		rcMetrics.Name = bouncer.Name
 		rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
 
-		rcMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
-		rcMetrics.Meta = &models.MetricsMeta{}
+		rcMetrics.Metrics = make([]*models.DetailedMetrics, 0)
 
 		//Might seem weird, but we duplicate the bouncers if we have multiple unsent metrics
 		for _, dbMetric := range dbMetrics {
@@ -89,18 +87,10 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				continue
 			}
 
-			rcMetrics.Meta.UtcStartupTimestamp = dbPayload.Meta.UtcStartupTimestamp
-			rcMetrics.Meta.UtcNowTimestamp = dbPayload.Meta.UtcNowTimestamp
-			rcMetrics.Meta.WindowSizeSeconds = dbPayload.Meta.WindowSizeSeconds
-
 			rcMetrics.Metrics = append(rcMetrics.Metrics, dbPayload.Metrics)
-			allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
 		}
 
-		//If we have no metrics, we still want to send the bouncer
-		if len(rcMetrics.Metrics) == 0 {
-			allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
-		}
+		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
 	}
 
 	for _, lp := range lps {
@@ -129,8 +119,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 			lpMetrics.HubItems = *lp.Hubstate
 		}
 
-		lpMetrics.Metrics = make([]*models.MetricsDetailItem, 0)
-		lpMetrics.Meta = &models.MetricsMeta{}
+		lpMetrics.Metrics = make([]*models.DetailedMetrics, 0)
 
 		for _, dbMetric := range dbMetrics {
 
@@ -144,22 +133,14 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				continue
 			}
 
-			lpMetrics.Meta.UtcStartupTimestamp = dbPayload.Meta.UtcStartupTimestamp
-			lpMetrics.Meta.UtcNowTimestamp = dbPayload.Meta.UtcNowTimestamp
-			lpMetrics.Meta.WindowSizeSeconds = dbPayload.Meta.WindowSizeSeconds
+			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics)
 
 			for k, v := range dbPayload.Datasources {
 				lpMetrics.Datasources[k] = v
 			}
-
-			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics)
-			allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
 		}
 
-		//If we have no metrics, we still want to send the LP
-		if len(lpMetrics.Metrics) == 0 {
-			allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
-		}
+		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
 	}
 
 	//FIXME: all of this should only be done once on startup/reload
@@ -179,12 +160,15 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	allMetrics.Lapi.Version = ptr.Of(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
-	allMetrics.Lapi.Meta = &models.MetricsMeta{
-		UtcStartupTimestamp: ptr.Of(time.Now().UTC().Unix()), //FIXME: should be the actual startup time
-		UtcNowTimestamp:     ptr.Of(time.Now().UTC().Unix()),
-		WindowSizeSeconds:   ptr.Of(int64(a.metricsInterval.Seconds())),
-	}
-	allMetrics.Lapi.Metrics = make([]*models.MetricsDetailItem, 0)
+	allMetrics.Lapi.Metrics = make([]*models.DetailedMetrics, 0)
+
+	allMetrics.Lapi.Metrics = append(allMetrics.Lapi.Metrics, &models.DetailedMetrics{
+		Meta: &models.MetricsMeta{
+			UtcNowTimestamp:   ptr.Of(time.Now().UTC().Unix()),
+			WindowSizeSeconds: ptr.Of(int64(a.metricsInterval.Seconds())),
+		},
+		Items: make([]*models.MetricsDetailItem, 0),
+	})
 
 	//Force an actual slice to avoid non existing fields in the json
 	if allMetrics.RemediationComponents == nil {

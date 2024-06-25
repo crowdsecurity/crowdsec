@@ -23,14 +23,15 @@ type BaseMetrics struct {
 	// feature flags (expected to be empty for remediation components)
 	FeatureFlags []string `json:"feature_flags"`
 
-	// metrics meta
-	Meta *MetricsMeta `json:"meta,omitempty"`
-
 	// metrics details
-	Metrics []*MetricsDetailItem `json:"metrics"`
+	Metrics []*DetailedMetrics `json:"metrics"`
 
-	// OS information
+	// os
 	Os *OSversion `json:"os,omitempty"`
+
+	// UTC timestamp of the startup of the software
+	// Required: true
+	UtcStartupTimestamp *int64 `json:"utc_startup_timestamp"`
 
 	// version of the remediation component
 	// Required: true
@@ -41,15 +42,15 @@ type BaseMetrics struct {
 func (m *BaseMetrics) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateMeta(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateMetrics(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if err := m.validateOs(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUtcStartupTimestamp(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -60,25 +61,6 @@ func (m *BaseMetrics) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *BaseMetrics) validateMeta(formats strfmt.Registry) error {
-	if swag.IsZero(m.Meta) { // not required
-		return nil
-	}
-
-	if m.Meta != nil {
-		if err := m.Meta.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
-			}
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -127,6 +109,15 @@ func (m *BaseMetrics) validateOs(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *BaseMetrics) validateUtcStartupTimestamp(formats strfmt.Registry) error {
+
+	if err := validate.Required("utc_startup_timestamp", "body", m.UtcStartupTimestamp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *BaseMetrics) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version); err != nil {
@@ -140,10 +131,6 @@ func (m *BaseMetrics) validateVersion(formats strfmt.Registry) error {
 func (m *BaseMetrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.contextValidateMeta(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.contextValidateMetrics(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -155,27 +142,6 @@ func (m *BaseMetrics) ContextValidate(ctx context.Context, formats strfmt.Regist
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *BaseMetrics) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
-
-	if m.Meta != nil {
-
-		if swag.IsZero(m.Meta) { // not required
-			return nil
-		}
-
-		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
-			}
-			return err
-		}
-	}
-
 	return nil
 }
 

@@ -689,7 +689,7 @@ paths:
       description: Post usage metrics from a LP or a bouncer
       summary: Send usage metrics
       tags:
-        - bouncers
+        - Remediation component
         - watchers
       operationId: usage-metrics
       produces:
@@ -1095,26 +1095,24 @@ definitions:
       version:
         type: string
         description: version of the remediation component
-      meta:
-        type: object
-        $ref: '#/definitions/MetricsMeta'
-        description: metrics meta
       os:
-        type: object
         $ref: '#/definitions/OSversion'
-        description: OS information
       metrics:
         type: array
         items:
-          $ref: '#/definitions/MetricsDetailItem'
+          $ref: '#/definitions/DetailedMetrics'
         description: metrics details
       feature_flags:
         type: array
         items: 
           type: string
         description: feature flags (expected to be empty for remediation components)
+      utc_startup_timestamp:
+        type: integer
+        description: UTC timestamp of the startup of the software
     required:
       - version
+      - utc_startup_timestamp
   OSversion:
     title: OSversion
     type: object
@@ -1128,6 +1126,19 @@ definitions:
     required:
       - name
       - version
+  DetailedMetrics:
+    type: object
+    title: DetailedMetrics
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/MetricsDetailItem'
+      meta:
+        $ref: '#/definitions/MetricsMeta'
+    required:
+      - meta
+      - items
   MetricsDetailItem:
     title: MetricsDetailItem
     type: object
@@ -1155,15 +1166,11 @@ definitions:
       window_size_seconds:
         type: integer
         description: Size, in seconds, of the window used to compute the metric
-      utc_startup_timestamp:
-        type: integer
-        description: UTC timestamp of the startup of the software
       utc_now_timestamp:
         type: integer
         description: UTC timestamp of the current time
     required:
       - window_size_seconds
-      - utc_startup_timestamp
       - utc_now_timestamp
   MetricsLabels:
     title: MetricsLabels

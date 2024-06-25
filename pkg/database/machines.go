@@ -22,7 +22,8 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
-	heartbeat := time.Unix(*baseMetrics.Meta.UtcNowTimestamp, 0)
+	//FIXME: nil deref
+	heartbeat := time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
 
 	_, err := c.Ent.Machine.
 		Update().

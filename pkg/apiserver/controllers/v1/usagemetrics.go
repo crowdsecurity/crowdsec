@@ -87,7 +87,6 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		payload = map[string]any{
 			"datasources": item0.Datasources,
 			"metrics":     item0.Metrics,
-			"meta":        item0.Meta,
 		}
 		baseMetrics = item0.BaseMetrics
 		hubItems = item0.HubItems
@@ -106,7 +105,6 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		payload = map[string]any{
 			"type":    item0.Type,
 			"metrics": item0.Metrics,
-			"meta":    item0.Meta,
 		}
 		baseMetrics = item0.BaseMetrics
 	default:
@@ -121,7 +119,12 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		return
 	}
 
-	collectedAt = time.Unix(*baseMetrics.Meta.UtcNowTimestamp, 0).UTC()
+	if baseMetrics.Metrics != nil && len(baseMetrics.Metrics) > 0 {
+		collectedAt = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0).UTC()
+	} else {
+		// if there's no timestamp, use the current time
+		collectedAt = time.Now().UTC()
+	}
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {

@@ -76,7 +76,7 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 	return staticMetrics{
 		osName:         osName,
 		osVersion:      osVersion,
-		startupTS:      time.Now().Unix(),
+		startupTS:      time.Now().UTC().Unix(),
 		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
 		consoleOptions: consoleOptions,
 		datasourceMap:  datasourceMap,
@@ -108,21 +108,17 @@ func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logge
 }
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
-	meta := &models.MetricsMeta{
-		UtcStartupTimestamp: ptr.Of(m.static.startupTS),
-		WindowSizeSeconds:   ptr.Of(int64(m.interval.Seconds())),
-	}
-
 	os := &models.OSversion{
 		Name:    ptr.Of(m.static.osName),
 		Version: ptr.Of(m.static.osVersion),
 	}
 
 	base := models.BaseMetrics{
-		Meta:         meta,
-		Os:           os,
-		Version:      ptr.Of(version.String()),
-		FeatureFlags: m.static.featureFlags,
+		UtcStartupTimestamp: ptr.Of(m.static.startupTS),
+		Os:                  os,
+		Version:             ptr.Of(version.String()),
+		FeatureFlags:        m.static.featureFlags,
+		Metrics:             make([]*models.DetailedMetrics, 0),
 	}
 
 	met := &models.LogProcessorsMetrics{
@@ -130,6 +126,14 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		Datasources: m.static.datasourceMap,
 		HubItems:    m.static.hubState,
 	}
+
+	met.Metrics = append(met.Metrics, &models.DetailedMetrics{
+		Meta: &models.MetricsMeta{
+			UtcNowTimestamp:   ptr.Of(time.Now().Unix()),
+			WindowSizeSeconds: ptr.Of(int64(m.interval.Seconds())),
+		},
+		Items: make([]*models.MetricsDetailItem, 0),
+	})
 
 	// TODO: more metric details... ?
 
@@ -152,7 +156,7 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	for {
 		select {
 		case <-ticker.C:
-			met.LogProcessors[0].Meta.UtcNowTimestamp = ptr.Of(time.Now().Unix())
+			//.UtcNowTimestamp = ptr.Of(time.Now().Unix())
 
 			ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
@@ -161,17 +165,21 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 			switch {
 			case errors.Is(err, context.DeadlineExceeded):
 				m.logger.Warnf("timeout sending lp metrics")
+				ticker.Reset(m.interval)
 				continue
 			case err != nil && resp != nil && resp.Response.StatusCode == http.StatusNotFound:
 				m.logger.Warnf("metrics endpoint not found, older LAPI?")
+				ticker.Reset(m.interval)
 				continue
 			case err != nil:
 				m.logger.Warnf("failed to send lp metrics: %s", err)
+				ticker.Reset(m.interval)
 				continue
 			}
 
 			if resp.Response.StatusCode != http.StatusCreated {
 				m.logger.Warnf("failed to send lp metrics: %s", resp.Response.Status)
+				ticker.Reset(m.interval)
 				continue
 			}
 
