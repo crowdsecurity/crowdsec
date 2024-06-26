@@ -43,6 +43,7 @@ func (Machine) Fields() []ent.Field {
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
 		field.JSON("hubstate", &models.HubItems{}).Optional(),
+		field.JSON("datasources", map[string]int64{}).Optional(),
 	}
 }
 

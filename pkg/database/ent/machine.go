@@ -51,6 +51,8 @@ type Machine struct {
 	Featureflags string `json:"featureflags,omitempty"`
 	// Hubstate holds the value of the "hubstate" field.
 	Hubstate *models.HubItems `json:"hubstate,omitempty"`
+	// Datasources holds the value of the "datasources" field.
+	Datasources map[string]int64 `json:"datasources,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MachineQuery when eager-loading is set.
 	Edges        MachineEdges `json:"edges"`
@@ -80,7 +82,7 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case machine.FieldHubstate:
+		case machine.FieldHubstate, machine.FieldDatasources:
 			values[i] = new([]byte)
 		case machine.FieldIsValidated:
 			values[i] = new(sql.NullBool)
@@ -211,6 +213,14 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field hubstate: %w", err)
 				}
 			}
+		case machine.FieldDatasources:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field datasources", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &m.Datasources); err != nil {
+					return fmt.Errorf("unmarshal field datasources: %w", err)
+				}
+			}
 		default:
 			m.selectValues.Set(columns[i], values[i])
 		}
@@ -302,6 +312,9 @@ func (m *Machine) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("hubstate=")
 	builder.WriteString(fmt.Sprintf("%v", m.Hubstate))
+	builder.WriteString(", ")
+	builder.WriteString("datasources=")
+	builder.WriteString(fmt.Sprintf("%v", m.Datasources))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -18,7 +18,7 @@ import (
 const CapiMachineID = types.CAPIOrigin
 const CapiListsMachineID = types.ListOrigin
 
-func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.BaseMetrics, hubItems *models.HubItems) error {
+func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.BaseMetrics, hubItems *models.HubItems, datasources map[string]int64) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
@@ -34,6 +34,7 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.
 		SetFeatureflags(features).
 		SetLastHeartbeat(heartbeat).
 		SetHubstate(hubItems).
+		SetDatasources(datasources).
 		// TODO: update scenarios
 		Save(c.CTX)
 	if err != nil {

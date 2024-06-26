@@ -22,8 +22,7 @@ import (
 )
 
 type dbPayload struct {
-	Metrics     []*models.DetailedMetrics `json:"metrics"`
-	Datasources map[string]int64          `json:"datasources"`
+	Metrics []*models.DetailedMetrics `json:"metrics"`
 }
 
 func detectOS() (string, string) {
@@ -114,7 +113,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		lpMetrics.LastPush = lp.LastPush.UTC().Unix()
 		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
 
-		lpMetrics.Datasources = make(map[string]int64)
+		lpMetrics.Datasources = lp.Datasources
 
 		if lp.Hubstate != nil {
 			lpMetrics.HubItems = *lp.Hubstate
@@ -135,10 +134,6 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 			}
 
 			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics...)
-
-			for k, v := range dbPayload.Datasources {
-				lpMetrics.Datasources[k] = v
-			}
 		}
 
 		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)

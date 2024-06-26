@@ -16,10 +16,10 @@ import (
 )
 
 // updateBaseMetrics updates the base metrics for a machine or bouncer
-func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, baseMetrics *models.BaseMetrics, hubItems *models.HubItems) error {
+func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, baseMetrics *models.BaseMetrics, hubItems *models.HubItems, datasources map[string]int64) error {
 	switch {
 	case machineID != "":
-		c.DBClient.MachineUpdateBaseMetrics(machineID, baseMetrics, hubItems)
+		c.DBClient.MachineUpdateBaseMetrics(machineID, baseMetrics, hubItems, datasources)
 	case bouncer != nil:
 		c.DBClient.BouncerUpdateBaseMetrics(bouncer.Name, bouncer.Type, baseMetrics)
 	default:
@@ -75,6 +75,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		payload     map[string]any
 		baseMetrics models.BaseMetrics
 		hubItems    models.HubItems
+		datasources map[string]int64
 	)
 
 	switch len(input.LogProcessors) {
@@ -85,11 +86,11 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		// guaranteed by the swagger schema
 		item0 := input.LogProcessors[0]
 		payload = map[string]any{
-			"datasources": item0.Datasources,
-			"metrics":     item0.Metrics,
+			"metrics": item0.Metrics,
 		}
 		baseMetrics = item0.BaseMetrics
 		hubItems = item0.HubItems
+		datasources = item0.Datasources
 	default:
 		log.Errorf("Payload has more than one log processor")
 		// this is not checked in the swagger schema
@@ -112,7 +113,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		return
 	}
 
-	err := c.updateBaseMetrics(machineID, bouncer, &baseMetrics, &hubItems)
+	err := c.updateBaseMetrics(machineID, bouncer, &baseMetrics, &hubItems, datasources)
 	if err != nil {
 		log.Errorf("Failed to update base metrics: %s", err)
 		c.HandleDBErrors(gctx, err)

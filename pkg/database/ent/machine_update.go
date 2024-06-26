@@ -264,6 +264,18 @@ func (mu *MachineUpdate) ClearHubstate() *MachineUpdate {
 	return mu
 }
 
+// SetDatasources sets the "datasources" field.
+func (mu *MachineUpdate) SetDatasources(m map[string]int64) *MachineUpdate {
+	mu.mutation.SetDatasources(m)
+	return mu
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (mu *MachineUpdate) ClearDatasources() *MachineUpdate {
+	mu.mutation.ClearDatasources()
+	return mu
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mu *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.AddAlertIDs(ids...)
@@ -431,6 +443,12 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.HubstateCleared() {
 		_spec.ClearField(machine.FieldHubstate, field.TypeJSON)
+	}
+	if value, ok := mu.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+	}
+	if mu.mutation.DatasourcesCleared() {
+		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
 	}
 	if mu.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -731,6 +749,18 @@ func (muo *MachineUpdateOne) ClearHubstate() *MachineUpdateOne {
 	return muo
 }
 
+// SetDatasources sets the "datasources" field.
+func (muo *MachineUpdateOne) SetDatasources(m map[string]int64) *MachineUpdateOne {
+	muo.mutation.SetDatasources(m)
+	return muo
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (muo *MachineUpdateOne) ClearDatasources() *MachineUpdateOne {
+	muo.mutation.ClearDatasources()
+	return muo
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (muo *MachineUpdateOne) AddAlertIDs(ids ...int) *MachineUpdateOne {
 	muo.mutation.AddAlertIDs(ids...)
@@ -928,6 +958,12 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	if muo.mutation.HubstateCleared() {
 		_spec.ClearField(machine.FieldHubstate, field.TypeJSON)
+	}
+	if value, ok := muo.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+	}
+	if muo.mutation.DatasourcesCleared() {
+		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
 	}
 	if muo.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{

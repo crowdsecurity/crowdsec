@@ -46,6 +46,8 @@ const (
 	FieldFeatureflags = "featureflags"
 	// FieldHubstate holds the string denoting the hubstate field in the database.
 	FieldHubstate = "hubstate"
+	// FieldDatasources holds the string denoting the datasources field in the database.
+	FieldDatasources = "datasources"
 	// EdgeAlerts holds the string denoting the alerts edge name in mutations.
 	EdgeAlerts = "alerts"
 	// Table holds the table name of the machine in the database.
@@ -78,6 +80,7 @@ var Columns = []string{
 	FieldOsversion,
 	FieldFeatureflags,
 	FieldHubstate,
+	FieldDatasources,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

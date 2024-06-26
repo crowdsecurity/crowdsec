@@ -214,6 +214,12 @@ func (mc *MachineCreate) SetHubstate(mi *models.HubItems) *MachineCreate {
 	return mc
 }
 
+// SetDatasources sets the "datasources" field.
+func (mc *MachineCreate) SetDatasources(m map[string]int64) *MachineCreate {
+	mc.mutation.SetDatasources(m)
+	return mc
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mc *MachineCreate) AddAlertIDs(ids ...int) *MachineCreate {
 	mc.mutation.AddAlertIDs(ids...)
@@ -407,6 +413,10 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	if value, ok := mc.mutation.Hubstate(); ok {
 		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
 		_node.Hubstate = value
+	}
+	if value, ok := mc.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+		_node.Datasources = value
 	}
 	if nodes := mc.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
