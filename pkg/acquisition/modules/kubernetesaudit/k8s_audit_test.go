@@ -47,7 +47,6 @@ listen_addr: 0.0.0.0`,
 			err := f.UnmarshalConfig([]byte(test.config))
 
 			assert.Contains(t, err.Error(), test.expectedErr)
-
 		})
 	}
 }

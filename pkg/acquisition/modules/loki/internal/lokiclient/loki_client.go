@@ -75,6 +75,7 @@ func (lc *LokiClient) resetFailStart() {
 	}
 	lc.fail_start = time.Time{}
 }
+
 func (lc *LokiClient) shouldRetry() bool {
 	if lc.fail_start.IsZero() {
 		lc.Logger.Warningf("loki is not available, will retry for %s", lc.config.FailMaxDuration)
@@ -186,7 +187,6 @@ func (lc *LokiClient) getURLFor(endpoint string, params map[string]string) strin
 	u.RawQuery = queryParams.Encode()
 
 	u.Path, err = url.JoinPath(lc.config.LokiPrefix, u.Path, endpoint)
-
 	if err != nil {
 		return ""
 	}
@@ -255,8 +255,8 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 		requestHeader.Add(k, v)
 	}
 	lc.Logger.Infof("Connecting to %s", u)
-	conn, _, err := dialer.Dial(u, requestHeader)
 
+	conn, _, err := dialer.Dial(u, requestHeader)
 	if err != nil {
 		lc.Logger.Errorf("Error connecting to websocket, err: %s", err)
 		return responseChan, errors.New("error connecting to websocket")
@@ -265,8 +265,8 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	lc.t.Go(func() error {
 		for {
 			jsonResponse := &LokiResponse{}
-			err = conn.ReadJSON(jsonResponse)
 
+			err = conn.ReadJSON(jsonResponse)
 			if err != nil {
 				lc.Logger.Errorf("Error reading from websocket: %s", err)
 				return fmt.Errorf("websocket error: %w", err)

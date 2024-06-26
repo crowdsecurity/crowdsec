@@ -15,7 +15,6 @@ import (
 )
 
 func TestAppsecRuleTransformsOthers(t *testing.T) {
-
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{

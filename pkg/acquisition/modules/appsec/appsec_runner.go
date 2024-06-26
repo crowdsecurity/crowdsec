@@ -179,7 +179,6 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 	}
 
 	in, err = request.Tx.ProcessRequestBody()
-
 	if err != nil {
 		r.logger.Errorf("unable to process request body : %s", err)
 		return err

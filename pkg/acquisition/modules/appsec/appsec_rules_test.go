@@ -14,7 +14,6 @@ import (
 )
 
 func TestAppsecRuleMatches(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
@@ -369,7 +368,6 @@ toto
 }
 
 func TestAppsecRuleTransforms(t *testing.T) {
-
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{
@@ -569,7 +567,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 }
 
 func TestAppsecRuleZones(t *testing.T) {
-
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{

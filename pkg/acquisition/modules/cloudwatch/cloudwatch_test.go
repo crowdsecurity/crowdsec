@@ -52,7 +52,7 @@ func checkForLocalStackAvailability() error {
 
 	_, err := net.Dial("tcp", v)
 	if err != nil {
-		return fmt.Errorf("while dialing %s : %s : aws endpoint isn't available", v, err)
+		return fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
 	}
 
 	return nil

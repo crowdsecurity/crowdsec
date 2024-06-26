@@ -112,7 +112,7 @@ func CrowdsecCTI(params ...any) (any, error) {
 			return &cticlient.SmokeItem{}, cticlient.ErrLimit
 		default:
 			ctiClient.Logger.Warnf("CTI API error : %s", err)
-			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error : %v", err)
+			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error: %w", err)
 		}
 	}
 

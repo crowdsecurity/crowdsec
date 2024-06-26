@@ -121,5 +121,4 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	log.Infof("events : %s", spew.Sdump(OutputEvents))
 	log.Infof("responses : %s", spew.Sdump(OutputResponses))
 	test.output_asserts(OutputEvents, OutputResponses, appsecResponse, http_status)
-
 }

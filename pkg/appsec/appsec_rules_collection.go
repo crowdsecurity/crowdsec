@@ -51,9 +51,7 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 	ret := make([]AppsecCollection, 0)
 
 	for _, appsecRule := range appsecRules {
-
 		tmpMatch, err := exprhelpers.Match(pattern, appsecRule.Name)
-
 		if err != nil {
 			logger.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
 			continue

@@ -370,5 +370,4 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	}
 
 	return nil
-
 }

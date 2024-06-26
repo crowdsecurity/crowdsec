@@ -13,7 +13,6 @@ import (
 )
 
 func TestAppsecDefaultPassRemediation(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic non-matching rule",
@@ -153,7 +152,6 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 }
 
 func TestAppsecDefaultRemediation(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",

@@ -42,7 +42,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
-
 			},
 		},
 		{

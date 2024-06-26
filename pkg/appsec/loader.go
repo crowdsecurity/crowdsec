@@ -14,7 +14,6 @@ var appsecRules = make(map[string]AppsecCollectionConfig) //FIXME: would probabl
 var hub *cwhub.Hub //FIXME: this is a temporary hack to make the hub available in the package
 
 func LoadAppsecRules(hubInstance *cwhub.Hub) error {
-
 	hub = hubInstance
 	appsecRules = make(map[string]AppsecCollectionConfig)
 
@@ -24,7 +23,6 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 		}
 
 		content, err := os.ReadFile(hubAppsecRuleItem.State.LocalPath)
-
 		if err != nil {
 			log.Warnf("unable to read file %s : %s", hubAppsecRuleItem.State.LocalPath, err)
 			continue
@@ -33,7 +31,6 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 		var rule AppsecCollectionConfig
 
 		err = yaml.UnmarshalStrict(content, &rule)
-
 		if err != nil {
 			log.Warnf("unable to unmarshal file %s : %s", hubAppsecRuleItem.State.LocalPath, err)
 			continue

@@ -123,7 +123,6 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
 			return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
-
 		}
 		return &dataSrc, nil
 	}
@@ -180,7 +179,6 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 	if prom == nil {
 		return configuration.METRICS_FULL
-
 	}
 	if !prom.Enabled {
 		return configuration.METRICS_NONE
@@ -193,7 +191,6 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 		return configuration.METRICS_FULL
 	}
 	return configuration.METRICS_FULL
-
 }
 
 // LoadAcquisitionFromFile unmarshals the configuration item and checks its availability

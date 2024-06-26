@@ -267,10 +267,8 @@ func TestDSNAcquis(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			done <- true
 			assert.Equal(t, test.expectedCount, linesRead)
-
 		})
 	}
-
 }
 
 func TestListPolling(t *testing.T) {
@@ -334,7 +332,6 @@ prefix: foo/
 			}()
 
 			err = f.StreamingAcquisition(out, &tb)
-
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -415,7 +412,6 @@ sqs_name: test
 			}()
 
 			err = f.StreamingAcquisition(out, &tb)
-
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}

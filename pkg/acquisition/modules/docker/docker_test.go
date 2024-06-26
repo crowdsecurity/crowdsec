@@ -379,5 +379,4 @@ func TestParseLabels(t *testing.T) {
 			assert.Equal(t, test.expected, labels)
 		})
 	}
-
 }
