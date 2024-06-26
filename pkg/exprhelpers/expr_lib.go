@@ -4,8 +4,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/oschwald/geoip2-golang"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
 
 type exprCustomFunc struct {

@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
 )
 
 var CTIUrl = "https://cti.api.crowdsec.net"
@@ -111,7 +112,7 @@ func CrowdsecCTI(params ...any) (any, error) {
 			return &cticlient.SmokeItem{}, cticlient.ErrLimit
 		default:
 			ctiClient.Logger.Warnf("CTI API error : %s", err)
-			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error : %v", err)
+			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error: %w", err)
 		}
 	}
 

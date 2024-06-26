@@ -12,16 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func getLocalStackEndpoint() (string, error) {
@@ -30,7 +31,7 @@ func getLocalStackEndpoint() (string, error) {
 		v = strings.TrimPrefix(v, "http://")
 		_, err := net.Dial("tcp", v)
 		if err != nil {
-			return "", fmt.Errorf("while dialing %s : %s : aws endpoint isn't available", v, err)
+			return "", fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
 		}
 	}
 	return endpoint, nil

@@ -11,10 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
 var (
@@ -69,7 +70,7 @@ func (r *LogRotate) rotateLogs(cfg PluginConfig) {
 	}
 	// Reopen the FileWriter
 	FileWriter.Close()
-	FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		logger.Error("Failed to reopen log file", "error", err)
 	}
@@ -173,7 +174,7 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 		// The file has been rotated outside our control
 		logger.Info("Log file has been rotated or missing attempting to reopen it")
 		FileWriter.Close()
-		FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			return err
 		}
@@ -213,7 +214,7 @@ func (s *FilePlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 		return &protobufs.Empty{}, err
 	}
 	FileWriteMutex = &sync.Mutex{}
-	FileWriter, err = os.OpenFile(d.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	FileWriter, err = os.OpenFile(d.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		logger.Error("Failed to open log file", "error", err)
 		return &protobufs.Empty{}, err
@@ -230,7 +231,7 @@ func (s *FilePlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 }
 
 func main() {
-	var handshake = plugin.HandshakeConfig{
+	handshake := plugin.HandshakeConfig{
 		ProtocolVersion:  1,
 		MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
 		MagicCookieValue: os.Getenv("CROWDSEC_PLUGIN_KEY"),

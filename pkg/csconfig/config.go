@@ -12,10 +12,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 )
 
 // defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */

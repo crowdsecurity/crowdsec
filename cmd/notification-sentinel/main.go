@@ -11,10 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
 type PluginConfig struct {
@@ -54,7 +55,6 @@ func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginNa
 }
 
 func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
@@ -73,7 +73,6 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	now := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
 
 	authorization, err := s.getAuthorizationHeader(now, len(notification.Text), notification.Name)
-
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
@@ -113,7 +112,7 @@ func (s *SentinelPlugin) Configure(ctx context.Context, config *protobufs.Config
 }
 
 func main() {
-	var handshake = plugin.HandshakeConfig{
+	handshake := plugin.HandshakeConfig{
 		ProtocolVersion:  1,
 		MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
 		MagicCookieValue: os.Getenv("CROWDSEC_PLUGIN_KEY"),

@@ -5,12 +5,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestAppsecOnMatchHooks(t *testing.T) {
@@ -41,7 +42,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
-
 			},
 		},
 		{

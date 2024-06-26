@@ -14,11 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -266,10 +267,8 @@ func TestDSNAcquis(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			done <- true
 			assert.Equal(t, test.expectedCount, linesRead)
-
 		})
 	}
-
 }
 
 func TestListPolling(t *testing.T) {
@@ -333,7 +332,6 @@ prefix: foo/
 			}()
 
 			err = f.StreamingAcquisition(out, &tb)
-
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -414,7 +412,6 @@ sqs_name: test
 			}()
 
 			err = f.StreamingAcquisition(out, &tb)
-
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}

@@ -2,10 +2,10 @@ package apiserver
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
