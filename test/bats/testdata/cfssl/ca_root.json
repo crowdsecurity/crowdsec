@@ -1,5 +1,5 @@
 {
-  "CN": "localhost",
+  "CN": "CrowdSec Test CA",
   "key": {
     "algo": "rsa",
     "size": 2048
@@ -9,7 +9,7 @@
       "C": "FR",
       "L": "Paris",
       "O": "Crowdsec",
-      "OU": "agent-ou",
+      "OU": "Crowdsec",
       "ST": "France"
     }
   ]

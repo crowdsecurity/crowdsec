@@ -281,7 +281,7 @@ def test_tls_client_ou(crowdsec, flavor, certs_dir):
         lapi.wait_for_http(8080, '/health', want_status=None)
         with cs_agent as agent:
             lapi.wait_for_log([
-                "*client certificate OU (?custom-client-ou?) doesn't match expected OU (?agent-ou?)*",
+                "*client certificate OU ?custom-client-ou? doesn't match expected OU ?agent-ou?*",
             ])
 
     lapi_env['AGENTS_ALLOWED_OU'] = 'custom-client-ou'

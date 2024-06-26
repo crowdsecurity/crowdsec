@@ -3,6 +3,19 @@
 
 set -u
 
+# root: root CA
+# inter: intermediate CA
+# inter_rev: intermediate CA revoked by root (CRL3)
+# leaf: valid client cert
+# leaf_rev1: client cert revoked by inter (CRL1)
+# leaf_rev2: client cert revoked by inter (CRL2)
+# leaf_rev3: client cert (indirectly) revoked by root
+#
+# CRL1: inter revokes leaf_rev1
+# CRL2: inter revokes leaf_rev2
+# CRL3: root revokes inter_rev
+# CRL4: root revokes leaf, but is ignored
+
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
@@ -10,43 +23,96 @@ setup_file() {
     tmpdir="$BATS_FILE_TMPDIR"
     export tmpdir
 
-    CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
+    CFDIR="$BATS_TEST_DIRNAME/testdata/cfssl"
     export CFDIR
 
-    # Generate the CA
-    cfssl gencert --initca "${CFDIR}/ca.json" 2>/dev/null | cfssljson --bare "${tmpdir}/ca"
+    # Root CA
+    cfssl gencert -loglevel 2 \
+        --initca "$CFDIR/ca_root.json" \
+        | cfssljson --bare "$tmpdir/root"
 
-    # Generate an intermediate
-    cfssl gencert --initca "${CFDIR}/intermediate.json" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
-    cfssl sign -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/inter.csr" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
+    # Intermediate CAs (valid or revoked)
+    for cert in "inter" "inter_rev"; do
+        cfssl gencert -loglevel 2 \
+            --initca "$CFDIR/ca_intermediate.json" \
+            | cfssljson --bare "$tmpdir/$cert"
 
-    # Generate server cert for crowdsec with the intermediate
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" 2>/dev/null | cfssljson --bare "${tmpdir}/server"
-
-    # Generate client cert for the bouncer
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer"
-
-    # Genearte client cert for the bouncer with an invalid OU
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer_invalid.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_bad_ou"
-
-    # Generate client cert for the bouncer directly signed by the CA, it should be refused by crowdsec as uses the intermediate
-    cfssl gencert -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/bouncer_invalid"
-
-    # Generate revoked client certs
-    for cert_name in "revoked_1" "revoked_2"; do
-        cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/bouncer.json" 2>/dev/null | cfssljson --bare "${tmpdir}/${cert_name}"
-        cfssl certinfo -cert "${tmpdir}/${cert_name}.pem" | jq -r '.serial_number' > "${tmpdir}/serials_${cert_name}.txt"
+        cfssl sign -loglevel 2 \
+            -ca "$tmpdir/root.pem" -ca-key "$tmpdir/root-key.pem" \
+            -config "$CFDIR/profiles.json" -profile intermediate_ca "$tmpdir/$cert.csr" \
+            | cfssljson --bare "$tmpdir/$cert"
     done
 
-    # Generate separate CRL blocks and concatenate them
-    for cert_name in "revoked_1" "revoked_2"; do
-        echo '-----BEGIN X509 CRL-----' > "${tmpdir}/crl_${cert_name}.pem"
-        cfssl gencrl "${tmpdir}/serials_${cert_name}.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" >> "${tmpdir}/crl_${cert_name}.pem"
-        echo '-----END X509 CRL-----' >> "${tmpdir}/crl_${cert_name}.pem"
-    done
-    cat "${tmpdir}/crl_revoked_1.pem" "${tmpdir}/crl_revoked_2.pem" >"${tmpdir}/crl.pem"
+    # Server cert for crowdsec with the intermediate
+    cfssl gencert -loglevel 2 \
+        -ca "$tmpdir/inter.pem" -ca-key "$tmpdir/inter-key.pem" \
+        -config "$CFDIR/profiles.json" -profile=server "$CFDIR/server.json" \
+        | cfssljson --bare "$tmpdir/server"
 
-    cat "${tmpdir}/ca.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
+    # Client certs (valid or revoked)
+    for cert in "leaf" "leaf_rev1" "leaf_rev2"; do
+        cfssl gencert -loglevel 3 \
+            -ca "$tmpdir/inter.pem" -ca-key "$tmpdir/inter-key.pem" \
+            -config "$CFDIR/profiles.json" -profile=client \
+            "$CFDIR/bouncer.json" \
+            | cfssljson --bare "$tmpdir/$cert"
+    done
+
+    # Client cert (by revoked inter)
+    cfssl gencert -loglevel 3 \
+        -ca "$tmpdir/inter_rev.pem" -ca-key "$tmpdir/inter_rev-key.pem" \
+        -config "$CFDIR/profiles.json" -profile=client \
+        "$CFDIR/bouncer.json" \
+        | cfssljson --bare "$tmpdir/leaf_rev3"
+
+    # Bad client cert (invalid OU)
+    cfssl gencert -loglevel 3 \
+        -ca "$tmpdir/inter.pem" -ca-key "$tmpdir/inter-key.pem" \
+        -config "$CFDIR/profiles.json" -profile=client \
+        "$CFDIR/bouncer_invalid.json" \
+        | cfssljson --bare "$tmpdir/leaf_bad_ou"
+
+    # Bad client cert (directly signed by the CA, it should be refused by crowdsec as it uses the intermediate)
+    cfssl gencert -loglevel 3 \
+        -ca "$tmpdir/root.pem" -ca-key "$tmpdir/root-key.pem" \
+        -config "$CFDIR/profiles.json" -profile=client \
+        "$CFDIR/bouncer.json" \
+        | cfssljson --bare "$tmpdir/leaf_invalid"
+
+    truncate -s 0 "$tmpdir/crl.pem"
+
+    # Revoke certs
+    {
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cert_serial_number "$tmpdir/leaf_rev1.pem") \
+            "$tmpdir/inter.pem" \
+            "$tmpdir/inter-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cert_serial_number "$tmpdir/leaf_rev2.pem") \
+            "$tmpdir/inter.pem" \
+            "$tmpdir/inter-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cert_serial_number "$tmpdir/inter_rev.pem") \
+            "$tmpdir/root.pem" \
+            "$tmpdir/root-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cert_serial_number "$tmpdir/leaf.pem") \
+            "$tmpdir/root.pem" \
+            "$tmpdir/root-key.pem"
+        echo '-----END X509 CRL-----'
+    } >> "$tmpdir/crl.pem"
+
+    cat "$tmpdir/root.pem" "$tmpdir/inter.pem" > "$tmpdir/bundle.pem"
 
     config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
@@ -79,8 +145,12 @@ teardown() {
     assert_output "[]"
 }
 
-@test "simulate one bouncer request with a valid cert" {
-    rune -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+@test "simulate a bouncer request with a valid cert" {
+    rune -0 curl -f -s \
+        --cert "$tmpdir/leaf.pem" \
+        --key "$tmpdir/leaf-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
+        https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
     rune -0 cscli bouncers list -o json
     rune -0 jq '. | length' <(output)
@@ -91,27 +161,54 @@ teardown() {
     rune cscli bouncers delete localhost@127.0.0.1
 }
 
-@test "simulate one bouncer request with an invalid cert" {
-    rune curl -s --cert "${tmpdir}/bouncer_invalid.pem" --key "${tmpdir}/bouncer_invalid-key.pem" --cacert "${tmpdir}/ca-key.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+@test "simulate a bouncer request with an invalid cert" {
+    rune -77 curl -f -s \
+        --cert "$tmpdir/leaf_invalid.pem" \
+        --key "$tmpdir/leaf_invalid-key.pem" \
+        --cacert "$tmpdir/root-key.pem" \
+        https://localhost:8080/v1/decisions\?ip=42.42.42.42
     rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
-@test "simulate one bouncer request with an invalid OU" {
-    rune curl -s --cert "${tmpdir}/bouncer_bad_ou.pem" --key "${tmpdir}/bouncer_bad_ou-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+@test "simulate a bouncer request with an invalid OU" {
+    rune -0 curl -s \
+        --cert "$tmpdir/leaf_bad_ou.pem" \
+        --key "$tmpdir/leaf_bad_ou-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
+        https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    assert_json '{message:"access forbidden"}'
     rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
-@test "simulate one bouncer request with a revoked certificate" {
+@test "simulate a bouncer request with a revoked certificate" {
     # we have two certificates revoked by different CRL blocks
-    for cert_name in "revoked_1" "revoked_2"; do
+    # we connect twice to test the cache too
+    for cert in "leaf_rev1" "leaf_rev2" "leaf_rev1" "leaf_rev2"; do
         truncate_log
-        rune -0 curl -i -s --cert "${tmpdir}/${cert_name}.pem" --key "${tmpdir}/${cert_name}-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
-        assert_log --partial "client certificate is revoked by CRL"
-        assert_log --partial "client certificate for CN=localhost OU=[bouncer-ou] is revoked"
+        rune -0 curl -s \
+            --cert "$tmpdir/$cert.pem" \
+            --key "$tmpdir/$cert-key.pem" \
+            --cacert "$tmpdir/bundle.pem" \
+            https://localhost:8080/v1/decisions\?ip=42.42.42.42
+        assert_log --partial "certificate revoked by CRL"
         assert_output --partial "access forbidden"
         rune -0 cscli bouncers list -o json
         assert_output "[]"
     done
 }
+
+# vvv this test must be last, or it can break the ones that follow
+
+@test "allowed_ou can't contain an empty string" {
+    ./instance-crowdsec stop
+    config_set '
+        .common.log_media="stdout" |
+        .api.server.tls.bouncers_allowed_ou=["bouncer-ou", ""]
+    '
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "allowed_ou configuration contains invalid empty string"
+}
+
+# ^^^ this test must be last, or it can break the ones that follow

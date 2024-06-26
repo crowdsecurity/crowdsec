@@ -10,8 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-// type ApiAlerts service
-
 type AlertsService service
 
 type AlertsListOpts struct {

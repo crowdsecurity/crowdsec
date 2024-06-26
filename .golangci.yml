@@ -462,10 +462,6 @@ issues:
       path: pkg/hubtest/hubtest_item.go
       text: "cyclomatic: .*RunWithLogFile"
 
-    - linters:
-        - canonicalheader
-      path: pkg/apiserver/middlewares/v1/tls_auth.go
-
     # tolerate complex functions in tests for now
     - linters:
         - maintidx

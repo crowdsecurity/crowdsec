@@ -155,6 +155,11 @@ assert_log() {
 }
 export -f assert_log
 
+cert_serial_number() {
+    cfssl certinfo -cert "$1" | jq -r '.serial_number'
+}
+export -f cert_serial_number
+
 # Compare ignoring the key order, and allow "expected" without quoted identifiers.
 # Preserve the output variable in case the following commands require it.
 assert_json() {
