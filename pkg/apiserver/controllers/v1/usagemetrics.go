@@ -42,8 +42,13 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	}
 
 	if err := input.Validate(strfmt.Default); err != nil {
-		log.Errorf("Failed to validate usage metrics: %s", err)
-		c.HandleDBErrors(gctx, err)
+		// work around a nuisance in the generated code
+		cleanErr := RepeatedPrefixError{
+			OriginalError: err,
+			Prefix: "validation failure list:\n",
+		}
+		log.Errorf("Failed to validate usage metrics: %s", cleanErr)
+		gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": cleanErr.Error()})
 		return
 	}
 
