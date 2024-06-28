@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,10 +14,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func (cli *cliConfig) restoreHub(dirPath string) error {
+func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(cfg), nil)
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), nil)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 				continue
 			}
 
-			if err = item.Install(false, false); err != nil {
+			if err = item.Install(ctx, false, false); err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
 			}
 		}
@@ -126,7 +127,7 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Acquisition files (acquis.yaml, acquis.d/*.yaml)
 */
-func (cli *cliConfig) restore(dirPath string) error {
+func (cli *cliConfig) restore(ctx context.Context, dirPath string) error {
 	var err error
 
 	cfg := cli.cfg()
@@ -237,7 +238,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 		}
 	}
 
-	if err = cli.restoreHub(dirPath); err != nil {
+	if err = cli.restoreHub(ctx, dirPath); err != nil {
 		return fmt.Errorf("failed to restore hub config: %w", err)
 	}
 
@@ -258,10 +259,10 @@ func (cli *cliConfig) newRestoreCmd() *cobra.Command {
 - Backup of API credentials (local API and online API)`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			dirPath := args[0]
 
-			if err := cli.restore(dirPath); err != nil {
+			if err := cli.restore(cmd.Context(), dirPath); err != nil {
 				return fmt.Errorf("failed to restore config from %s: %w", dirPath, err)
 			}
 

@@ -2,12 +2,12 @@ package exprhelpers
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/antonmedv/expr"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,9 @@ func getDBClient(t *testing.T) *database.Client {
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	require.NoError(t, err)
 
-	testDBClient, err := database.NewClient(&csconfig.DatabaseCfg{
+	ctx := context.Background()
+
+	testDBClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
@@ -215,7 +217,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	err = FileInit(TestFolder, filename, "regex")
 	require.NoError(t, err)
 
-	//cache with no TTL
+	// cache with no TTL
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(1)})
 	require.NoError(t, err)
 
@@ -227,7 +229,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	assert.True(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
-	//cache with TTL
+	// cache with TTL
 	ttl := 500 * time.Millisecond
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
 	require.NoError(t, err)
@@ -934,7 +936,7 @@ func TestGetDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -994,6 +996,7 @@ func TestGetDecisionsCount(t *testing.T) {
 		log.Printf("test '%s' : OK", test.name)
 	}
 }
+
 func TestGetDecisionsSinceCount(t *testing.T) {
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
@@ -1019,7 +1022,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetOrigin("CAPI").
 		SaveX(context.Background())
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	decision2 := dbClient.Ent.Decision.Create().
@@ -1038,7 +1041,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision2 == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1144,7 +1147,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	expiredDecision := dbClient.Ent.Decision.Create().
@@ -1162,7 +1165,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if expiredDecision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1250,7 +1253,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	longerDecision := dbClient.Ent.Decision.Create().
@@ -1268,7 +1271,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		SaveX(context.Background())
 
 	if longerDecision == nil {
-		require.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.New("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
@@ -1365,6 +1368,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
+
 		switch o := output.(type) {
 		case time.Duration:
 			require.LessOrEqual(t, int(o.Seconds()), int(test.max))
@@ -1376,7 +1380,6 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 			t.Fatalf("GetActiveDecisionsTimeLeft() should return a time.Duration or a float64")
 		}
 	}
-
 }
 
 func TestParseUnixTime(t *testing.T) {
@@ -1411,13 +1414,14 @@ func TestParseUnixTime(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ParseUnixTime(tc.value)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}
+
 			require.WithinDuration(t, tc.expected, output.(time.Time), time.Second)
 		})
 	}
@@ -1513,13 +1517,13 @@ func TestIsIp(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			require.NoError(t, err)
@@ -1565,7 +1569,6 @@ func TestToString(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			require.NoError(t, err)
@@ -1612,19 +1615,21 @@ func TestB64Decode(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
+
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			if tc.expectedRuntimeErr {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
@@ -1682,7 +1687,6 @@ func TestParseKv(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			outMap := make(map[string]interface{})
 			env := map[string]interface{}{

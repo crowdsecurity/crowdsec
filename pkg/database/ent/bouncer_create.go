@@ -225,10 +225,6 @@ func (bc *BouncerCreate) defaults() {
 		v := bouncer.DefaultIPAddress
 		bc.mutation.SetIPAddress(v)
 	}
-	if _, ok := bc.mutation.LastPull(); !ok {
-		v := bouncer.DefaultLastPull()
-		bc.mutation.SetLastPull(v)
-	}
 	if _, ok := bc.mutation.AuthType(); !ok {
 		v := bouncer.DefaultAuthType
 		bc.mutation.SetAuthType(v)
@@ -251,9 +247,6 @@ func (bc *BouncerCreate) check() error {
 	}
 	if _, ok := bc.mutation.Revoked(); !ok {
 		return &ValidationError{Name: "revoked", err: errors.New(`ent: missing required field "Bouncer.revoked"`)}
-	}
-	if _, ok := bc.mutation.LastPull(); !ok {
-		return &ValidationError{Name: "last_pull", err: errors.New(`ent: missing required field "Bouncer.last_pull"`)}
 	}
 	if _, ok := bc.mutation.AuthType(); !ok {
 		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Bouncer.auth_type"`)}
@@ -318,7 +311,7 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := bc.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
-		_node.LastPull = value
+		_node.LastPull = &value
 	}
 	if value, ok := bc.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)

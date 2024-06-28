@@ -9,7 +9,7 @@ import (
 	dbg "github.com/crowdsecurity/coraza/v3/debuglog"
 )
 
-var DebugRules map[int]bool = map[int]bool{}
+var DebugRules = map[int]bool{}
 
 func SetRuleDebug(id int, debug bool) {
 	DebugRules[id] = debug
@@ -90,14 +90,13 @@ func (e *crzLogEvent) Bool(key string, b bool) dbg.Event {
 
 func (e *crzLogEvent) Int(key string, i int) dbg.Event {
 	if e.muted {
-		// this allows us to have per-rule debug logging
-		if key == "rule_id" && GetRuleDebug(i) {
-			e.muted = false
-			e.fields = map[string]interface{}{}
-			e.level = log.DebugLevel
-		} else {
+		if key != "rule_id" || !GetRuleDebug(i) {
 			return e
 		}
+		// this allows us to have per-rule debug logging
+		e.muted = false
+		e.fields = map[string]interface{}{}
+		e.level = log.DebugLevel
 	}
 
 	e.fields[key] = i

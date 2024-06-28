@@ -6,15 +6,17 @@ import (
 	"slices"
 	"time"
 
-	"github.com/crowdsecurity/coraza/v3"
-	corazatypes "github.com/crowdsecurity/coraza/v3/types"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/coraza/v3"
+	corazatypes "github.com/crowdsecurity/coraza/v3/types"
+
+	// load body processors via init()
 	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // that's the runtime structure of the Application security engine as seen from the acquis
@@ -177,7 +179,6 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 	}
 
 	in, err = request.Tx.ProcessRequestBody()
-
 	if err != nil {
 		r.logger.Errorf("unable to process request body : %s", err)
 		return err

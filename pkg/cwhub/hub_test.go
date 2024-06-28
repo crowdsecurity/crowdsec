@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -18,7 +19,15 @@ func TestInitHubUpdate(t *testing.T) {
 		IndexPath:   ".index.json",
 	}
 
-	_, err := NewHub(hub.local, remote, true, nil)
+	_, err := NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	err = hub.Update(ctx)
+	require.NoError(t, err)
+
+	err = hub.Load()
 	require.NoError(t, err)
 }
 
@@ -47,7 +56,9 @@ func TestUpdateIndex(t *testing.T) {
 
 	hub.local.HubIndexFile = tmpIndex.Name()
 
-	err = hub.updateIndex()
+	ctx := context.Background()
+
+	err = hub.Update(ctx)
 	cstest.RequireErrorContains(t, err, "failed to build hub index request: invalid URL template 'x'")
 
 	// bad domain
@@ -59,7 +70,7 @@ func TestUpdateIndex(t *testing.T) {
 		IndexPath:   ".index.json",
 	}
 
-	err = hub.updateIndex()
+	err = hub.Update(ctx)
 	require.NoError(t, err)
 	// XXX: this is not failing
 	//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
@@ -75,6 +86,6 @@ func TestUpdateIndex(t *testing.T) {
 
 	hub.local.HubIndexFile = "/does/not/exist/index.json"
 
-	err = hub.updateIndex()
+	err = hub.Update(ctx)
 	cstest.RequireErrorContains(t, err, "failed to create temporary download file for /does/not/exist/index.json:")
 }

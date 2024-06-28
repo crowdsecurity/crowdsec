@@ -34,7 +34,7 @@ func isValidHostname(s string) bool {
 	last := byte('.')
 	nonNumeric := false // true once we've seen a letter or hyphen
 	partlen := 0
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		switch {
 		default:

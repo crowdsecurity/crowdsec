@@ -54,9 +54,7 @@ xpath_query: test`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "windowseventlog",
-	})
+	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
 		f := WinEventLogSource{}
 		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -113,9 +111,7 @@ event_level: bla`,
 			expectedErr:   "invalid log level",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "windowseventlog",
-	})
+	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
 		f := WinEventLogSource{}
 		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -181,9 +177,7 @@ event_ids:
 			expectedLines: nil,
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "windowseventlog",
-	})
+	subLogger := log.WithField("type", "windowseventlog")
 
 	evthandler, err := eventlog.Open("Application")
 

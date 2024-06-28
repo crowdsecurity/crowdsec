@@ -427,7 +427,7 @@ func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime 
 	}
 }
 
-// writeToZip adds a file to the zip archive, from a file, and retains the mtime
+// writeFileToZip adds a file to the zip archive, from a file, and retains the mtime
 func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile string) {
 	mtime := time.Now()
 
@@ -463,9 +463,9 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	w := bytes.NewBuffer(nil)
 	zipWriter := zip.NewWriter(w)
 
-	db, err := database.NewClient(cfg.DbConfig)
+	db, err := require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
-		log.Warnf("Could not connect to database: %s", err)
+		log.Warn(err)
 	}
 
 	if err = cfg.LoadAPIServer(true); err != nil {

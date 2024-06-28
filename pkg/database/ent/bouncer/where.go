@@ -604,6 +604,16 @@ func LastPullLTE(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldLTE(FieldLastPull, v))
 }
 
+// LastPullIsNil applies the IsNil predicate on the "last_pull" field.
+func LastPullIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldLastPull))
+}
+
+// LastPullNotNil applies the NotNil predicate on the "last_pull" field.
+func LastPullNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldLastPull))
+}
+
 // AuthTypeEQ applies the EQ predicate on the "auth_type" field.
 func AuthTypeEQ(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldAuthType, v))

@@ -124,9 +124,7 @@ query: >
 			testName:    "Invalid DelayFor",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "loki",
-	})
+	subLogger := log.WithField("type", "loki")
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -276,7 +274,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 			},
 		},
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		streams.Streams[0].Values[i] = LogValue{
 			Time: time.Now(),
 			Line: fmt.Sprintf("Log line #%d %v", i, title),
@@ -294,7 +292,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Scope-OrgID", "1234")
+	req.Header.Set("X-Scope-Orgid", "1234")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -343,9 +341,7 @@ since: 1h
 
 	for _, ts := range tests {
 		logger := log.New()
-		subLogger := logger.WithFields(log.Fields{
-			"type": "loki",
-		})
+		subLogger := logger.WithField("type", "loki")
 		lokiSource := loki.LokiSource{}
 		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 
@@ -509,9 +505,7 @@ query: >
   {server="demo"}
 `
 	logger := log.New()
-	subLogger := logger.WithFields(log.Fields{
-		"type": "loki",
-	})
+	subLogger := logger.WithField("type", "loki")
 	title := time.Now().String()
 	lokiSource := loki.LokiSource{}
 

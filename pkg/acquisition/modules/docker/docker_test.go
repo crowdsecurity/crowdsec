@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const testContainerName = "docker_test"
@@ -55,9 +55,7 @@ container_name:
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "docker",
-	})
+	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
 		f := DockerSource{}
@@ -108,9 +106,7 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "docker",
-	})
+	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
 		f := DockerSource{}
@@ -169,13 +165,9 @@ container_name_regexp:
 
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = logger.WithField("type", "docker")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = log.WithField("type", "docker")
 		}
 
 		readLogs = false
@@ -310,14 +302,10 @@ func TestOneShot(t *testing.T) {
 
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = logger.WithField("type", "docker")
 		} else {
 			log.SetLevel(ts.logLevel)
-			subLogger = log.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = log.WithField("type", "docker")
 		}
 
 		readLogs = false
@@ -391,5 +379,4 @@ func TestParseLabels(t *testing.T) {
 			assert.Equal(t, test.expected, labels)
 		})
 	}
-
 }

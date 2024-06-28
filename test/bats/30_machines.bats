@@ -62,6 +62,13 @@ teardown() {
     assert_output 1
 }
 
+@test "heartbeat is initially null" {
+    rune -0 cscli machines add foo --auto --file /dev/null
+    rune -0 cscli machines list -o json
+    rune -0 yq '.[] | select(.machineId == "foo") | .last_heartbeat' <(output)
+    assert_output null
+}
+
 @test "register, validate and then remove a machine" {
     rune -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_stderr --partial "Successfully registered to Local API (LAPI)"

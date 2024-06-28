@@ -41,7 +41,6 @@ func TestSetParsed(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.evt.SetParsed(tt.key, tt.value)
 			assert.Equal(t, tt.value, tt.evt.Parsed[tt.key])
@@ -82,7 +81,6 @@ func TestSetMeta(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.evt.SetMeta(tt.key, tt.value)
 			assert.Equal(t, tt.value, tt.evt.GetMeta(tt.key))
@@ -152,7 +150,6 @@ func TestParseIPSources(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ips := tt.evt.ParseIPSources()
 			assert.Equal(t, tt.expected, ips)

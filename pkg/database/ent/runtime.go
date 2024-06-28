@@ -72,10 +72,6 @@ func init() {
 	bouncerDescIPAddress := bouncerFields[5].Descriptor()
 	// bouncer.DefaultIPAddress holds the default value on creation for the ip_address field.
 	bouncer.DefaultIPAddress = bouncerDescIPAddress.Default.(string)
-	// bouncerDescLastPull is the schema descriptor for last_pull field.
-	bouncerDescLastPull := bouncerFields[8].Descriptor()
-	// bouncer.DefaultLastPull holds the default value on creation for the last_pull field.
-	bouncer.DefaultLastPull = bouncerDescLastPull.Default.(func() time.Time)
 	// bouncerDescAuthType is the schema descriptor for auth_type field.
 	bouncerDescAuthType := bouncerFields[9].Descriptor()
 	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.
@@ -146,10 +142,6 @@ func init() {
 	machineDescLastPush := machineFields[2].Descriptor()
 	// machine.DefaultLastPush holds the default value on creation for the last_push field.
 	machine.DefaultLastPush = machineDescLastPush.Default.(func() time.Time)
-	// machineDescLastHeartbeat is the schema descriptor for last_heartbeat field.
-	machineDescLastHeartbeat := machineFields[3].Descriptor()
-	// machine.DefaultLastHeartbeat holds the default value on creation for the last_heartbeat field.
-	machine.DefaultLastHeartbeat = machineDescLastHeartbeat.Default.(func() time.Time)
 	// machineDescScenarios is the schema descriptor for scenarios field.
 	machineDescScenarios := machineFields[7].Descriptor()
 	// machine.ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.

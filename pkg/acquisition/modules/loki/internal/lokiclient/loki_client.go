@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,11 +12,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 type LokiClient struct {
@@ -74,6 +75,7 @@ func (lc *LokiClient) resetFailStart() {
 	}
 	lc.fail_start = time.Time{}
 }
+
 func (lc *LokiClient) shouldRetry() bool {
 	if lc.fail_start.IsZero() {
 		lc.Logger.Warningf("loki is not available, will retry for %s", lc.config.FailMaxDuration)
@@ -120,11 +122,10 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 			resp, err := lc.Get(uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
-					return errors.Wrapf(err, "error querying range")
-				} else {
-					lc.increaseTicker(ticker)
-					continue
+					return fmt.Errorf("error querying range: %w", err)
 				}
+				lc.increaseTicker(ticker)
+				continue
 			}
 
 			if resp.StatusCode != http.StatusOK {
@@ -132,22 +133,20 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
-					return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
-				} else {
-					lc.increaseTicker(ticker)
-					continue
+					return fmt.Errorf("bad HTTP response code: %d: %s: %w", resp.StatusCode, string(body), err)
 				}
+				lc.increaseTicker(ticker)
+				continue
 			}
 
 			var lq LokiQueryRangeResponse
 			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
-					return errors.Wrapf(err, "error decoding Loki response")
-				} else {
-					lc.increaseTicker(ticker)
-					continue
+					return fmt.Errorf("error decoding Loki response: %w", err)
 				}
+				lc.increaseTicker(ticker)
+				continue
 			}
 			resp.Body.Close()
 			lc.Logger.Tracef("Got response: %+v", lq)
@@ -188,7 +187,6 @@ func (lc *LokiClient) getURLFor(endpoint string, params map[string]string) strin
 	u.RawQuery = queryParams.Encode()
 
 	u.Path, err = url.JoinPath(lc.config.LokiPrefix, u.Path, endpoint)
-
 	if err != nil {
 		return ""
 	}
@@ -257,18 +255,18 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 		requestHeader.Add(k, v)
 	}
 	lc.Logger.Infof("Connecting to %s", u)
-	conn, _, err := dialer.Dial(u, requestHeader)
 
+	conn, _, err := dialer.Dial(u, requestHeader)
 	if err != nil {
 		lc.Logger.Errorf("Error connecting to websocket, err: %s", err)
-		return responseChan, fmt.Errorf("error connecting to websocket")
+		return responseChan, errors.New("error connecting to websocket")
 	}
 
 	lc.t.Go(func() error {
 		for {
 			jsonResponse := &LokiResponse{}
-			err = conn.ReadJSON(jsonResponse)
 
+			err = conn.ReadJSON(jsonResponse)
 			if err != nil {
 				lc.Logger.Errorf("Error reading from websocket: %s", err)
 				return fmt.Errorf("websocket error: %w", err)

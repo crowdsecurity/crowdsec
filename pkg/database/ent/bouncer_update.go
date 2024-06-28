@@ -136,6 +136,12 @@ func (bu *BouncerUpdate) SetNillableLastPull(t *time.Time) *BouncerUpdate {
 	return bu
 }
 
+// ClearLastPull clears the value of the "last_pull" field.
+func (bu *BouncerUpdate) ClearLastPull() *BouncerUpdate {
+	bu.mutation.ClearLastPull()
+	return bu
+}
+
 // SetAuthType sets the "auth_type" field.
 func (bu *BouncerUpdate) SetAuthType(s string) *BouncerUpdate {
 	bu.mutation.SetAuthType(s)
@@ -290,6 +296,9 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := bu.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 	}
+	if bu.mutation.LastPullCleared() {
+		_spec.ClearField(bouncer.FieldLastPull, field.TypeTime)
+	}
 	if value, ok := bu.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 	}
@@ -436,6 +445,12 @@ func (buo *BouncerUpdateOne) SetNillableLastPull(t *time.Time) *BouncerUpdateOne
 	if t != nil {
 		buo.SetLastPull(*t)
 	}
+	return buo
+}
+
+// ClearLastPull clears the value of the "last_pull" field.
+func (buo *BouncerUpdateOne) ClearLastPull() *BouncerUpdateOne {
+	buo.mutation.ClearLastPull()
 	return buo
 }
 
@@ -622,6 +637,9 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	if value, ok := buo.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
+	}
+	if buo.mutation.LastPullCleared() {
+		_spec.ClearField(bouncer.FieldLastPull, field.TypeTime)
 	}
 	if value, ok := buo.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)

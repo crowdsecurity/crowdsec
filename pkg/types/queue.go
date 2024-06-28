@@ -22,7 +22,7 @@ func NewQueue(l int) *Queue {
 		Queue: make([]Event, 0, l),
 		L:     l,
 	}
-	log.WithFields(log.Fields{"Capacity": q.L}).Debugf("Creating queue")
+	log.WithField("Capacity", q.L).Debugf("Creating queue")
 	return q
 }
 

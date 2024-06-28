@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
-
 	"slices"
+	"time"
 
 	"github.com/blackfireio/osinfo"
 	log "github.com/sirupsen/logrus"

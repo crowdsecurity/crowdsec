@@ -22,12 +22,8 @@ func (t *HubTestItem) installScenarioItem(item *cwhub.Item) error {
 	// runtime/parsers/scenarios/
 	itemTypeDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
 
-	if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", hubDirScenarioDest, err)
-	}
-
-	if err := os.MkdirAll(itemTypeDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", itemTypeDirDest, err)
+	if err := createDirs([]string{hubDirScenarioDest, itemTypeDirDest}); err != nil {
+		return err
 	}
 
 	// runtime/hub/scenarios/crowdsecurity/ssh-bf.yaml

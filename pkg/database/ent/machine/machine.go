@@ -102,8 +102,6 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultLastPush holds the default value on creation for the "last_push" field.
 	DefaultLastPush func() time.Time
-	// DefaultLastHeartbeat holds the default value on creation for the "last_heartbeat" field.
-	DefaultLastHeartbeat func() time.Time
 	// ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
 	ScenariosValidator func(string) error
 	// DefaultIsValidated holds the default value on creation for the "isValidated" field.

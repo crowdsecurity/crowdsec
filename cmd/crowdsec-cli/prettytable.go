@@ -91,7 +91,7 @@ func newLightTable(output io.Writer) *Table {
 func (t *Table) setColumnConfigs() {
 	configs := []table.ColumnConfig{}
 	// the go-pretty table does not expose the names or number of columns
-	for i := 0; i < len(t.align); i++ {
+	for i := range len(t.align) {
 		configs = append(configs, table.ColumnConfig{
 			Number:           i + 1,
 			AlignHeader:      t.alignHeader[i],

@@ -30,9 +30,8 @@ import (
 	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -124,7 +123,6 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
 			return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
-
 		}
 		return &dataSrc, nil
 	}
@@ -161,9 +159,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
 	}
-	subLogger := clog.WithFields(log.Fields{
-		"type": dsn,
-	})
+	subLogger := clog.WithField("type", dsn)
 	uniqueId := uuid.NewString()
 	if transformExpr != "" {
 		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
@@ -183,7 +179,6 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 	if prom == nil {
 		return configuration.METRICS_FULL
-
 	}
 	if !prom.Enabled {
 		return configuration.METRICS_NONE
@@ -196,7 +191,6 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 		return configuration.METRICS_FULL
 	}
 	return configuration.METRICS_FULL
-
 }
 
 // LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
@@ -272,7 +266,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 
 func GetMetrics(sources []DataSource, aggregated bool) error {
 	var metrics []prometheus.Collector
-	for i := 0; i < len(sources); i++ {
+	for i := range len(sources) {
 		if aggregated {
 			metrics = sources[i].GetMetrics()
 		} else {
@@ -346,7 +340,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 		return nil
 	}
 
-	for i := 0; i < len(sources); i++ {
+	for i := range len(sources) {
 		subsrc := sources[i] //ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 

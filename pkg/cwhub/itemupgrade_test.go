@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,9 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, item.State.Downloaded)
 	require.False(t, item.State.Installed)
 
-	require.NoError(t, item.Install(false, false))
+	ctx := context.Background()
+
+	require.NoError(t, item.Install(ctx, false, false))
 
 	require.True(t, item.State.Downloaded)
 	require.True(t, item.State.Installed)
@@ -39,8 +42,14 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 		IndexPath:   ".index.json",
 	}
 
-	hub, err := NewHub(hub.local, remote, true, nil)
-	require.NoError(t, err, "failed to download index: %s", err)
+	hub, err := NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Update(ctx)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	hub = getHubOrFail(t, hub.local, remote)
 
@@ -51,7 +60,7 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, item.State.UpToDate)
 	require.False(t, item.State.Tainted)
 
-	didUpdate, err := item.Upgrade(false)
+	didUpdate, err := item.Upgrade(ctx, false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
@@ -71,7 +80,9 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.False(t, item.State.Installed)
 	require.False(t, hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario").State.Installed)
 
-	require.NoError(t, item.Install(false, false))
+	ctx := context.Background()
+
+	require.NoError(t, item.Install(ctx, false, false))
 
 	require.True(t, item.State.Downloaded)
 	require.True(t, item.State.Installed)
@@ -100,11 +111,17 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection").State.Installed)
 	require.True(t, hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection").State.UpToDate)
 
-	hub, err = NewHub(hub.local, remote, true, nil)
-	require.NoError(t, err, "failed to download index: %s", err)
+	hub, err = NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Update(ctx)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
-	didUpdate, err := item.Upgrade(false)
+	didUpdate, err := item.Upgrade(ctx, false)
 	require.NoError(t, err)
 	require.False(t, didUpdate)
 
@@ -114,8 +131,11 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 
 // getHubOrFail refreshes the hub state (load index, sync) and returns the singleton, or fails the test.
 func getHubOrFail(t *testing.T, local *csconfig.LocalHubCfg, remote *RemoteHubCfg) *Hub {
-	hub, err := NewHub(local, remote, false, nil)
-	require.NoError(t, err, "failed to load hub index")
+	hub, err := NewHub(local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	return hub
 }
@@ -132,7 +152,9 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.False(t, item.State.Installed)
 	require.False(t, hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario").State.Installed)
 
-	require.NoError(t, item.Install(false, false))
+	ctx := context.Background()
+
+	require.NoError(t, item.Install(ctx, false, false))
 
 	require.True(t, item.State.Downloaded)
 	require.True(t, item.State.Installed)
@@ -166,14 +188,20 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
-	hub, err = NewHub(hub.local, remote, true, nil)
-	require.NoError(t, err, "failed to download index: %s", err)
+	hub, err = NewHub(hub.local, remote, nil)
+	require.NoError(t, err)
+
+	err = hub.Update(ctx)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
 
 	require.False(t, hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario").State.Installed)
 	hub = getHubOrFail(t, hub.local, remote)
 
 	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
-	didUpdate, err := item.Upgrade(false)
+	didUpdate, err := item.Upgrade(ctx, false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 

@@ -60,24 +60,17 @@ func HashSHA512(str string) string {
 
 func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	if a.TlsAuth == nil {
-		logger.Error("TLS Auth is not configured but client presented a certificate")
+		logger.Warn("TLS Auth is not configured but client presented a certificate")
 		return nil
 	}
 
-	validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
-	if !validCert {
-		logger.Error(err)
-		return nil
-	}
-
+	extractedCN, err := a.TlsAuth.ValidateCert(c)
 	if err != nil {
-		logger.Error(err)
+		logger.Warn(err)
 		return nil
 	}
 
-	logger = logger.WithFields(log.Fields{
-		"cn": extractedCN,
-	})
+	logger = logger.WithField("cn", extractedCN)
 
 	bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 	bouncer, err := a.DbClient.SelectBouncerByName(bouncerName)
@@ -141,9 +134,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 
 		clientIP := c.ClientIP()
 
-		logger := log.WithFields(log.Fields{
-			"ip": clientIP,
-		})
+		logger := log.WithField("ip", clientIP)
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 			bouncer = a.authTLS(c, logger)
@@ -152,15 +143,14 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		if bouncer == nil {
+			// XXX: StatusUnauthorized?
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 
 			return
 		}
 
-		logger = logger.WithFields(log.Fields{
-			"name": bouncer.Name,
-		})
+		logger = logger.WithField("name", bouncer.Name)
 
 		if bouncer.IPAddress == "" {
 			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {

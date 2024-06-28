@@ -42,11 +42,8 @@ func TestDateParse(t *testing.T) {
 		},
 	}
 
-	logger := log.WithFields(log.Fields{
-		"test": "test",
-	})
+	logger := log.WithField("test", "test")
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, logger)
 			cstest.RequireErrorContains(t, err, tt.expectedErr)

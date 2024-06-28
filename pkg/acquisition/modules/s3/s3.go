@@ -131,7 +131,6 @@ func (s *S3Source) newS3Client() error {
 	}
 
 	sess, err := session.NewSessionWithOptions(options)
-
 	if err != nil {
 		return fmt.Errorf("failed to create aws session: %w", err)
 	}
@@ -146,7 +145,7 @@ func (s *S3Source) newS3Client() error {
 
 	s.s3Client = s3.New(sess, config)
 	if s.s3Client == nil {
-		return fmt.Errorf("failed to create S3 client")
+		return errors.New("failed to create S3 client")
 	}
 
 	return nil
@@ -167,7 +166,7 @@ func (s *S3Source) newSQSClient() error {
 	}
 
 	if sess == nil {
-		return fmt.Errorf("failed to create aws session")
+		return errors.New("failed to create aws session")
 	}
 	config := aws.NewConfig()
 	if s.Config.AwsRegion != "" {
@@ -178,7 +177,7 @@ func (s *S3Source) newSQSClient() error {
 	}
 	s.sqsClient = sqs.New(sess, config)
 	if s.sqsClient == nil {
-		return fmt.Errorf("failed to create SQS client")
+		return errors.New("failed to create SQS client")
 	}
 	return nil
 }
@@ -205,7 +204,7 @@ func (s *S3Source) getBucketContent() ([]*s3.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
 	bucketObjects := make([]*s3.Object, 0)
-	var continuationToken *string = nil
+	var continuationToken *string
 	for {
 		out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.Config.BucketName),
@@ -251,15 +250,14 @@ func (s *S3Source) listPoll() error {
 				continue
 			}
 			for i := len(bucketObjects) - 1; i >= 0; i-- {
-				if bucketObjects[i].LastModified.After(lastObjectDate) {
-					newObject = true
-					logger.Debugf("Found new object %s", *bucketObjects[i].Key)
-					s.readerChan <- S3Object{
-						Bucket: s.Config.BucketName,
-						Key:    *bucketObjects[i].Key,
-					}
-				} else {
+				if !bucketObjects[i].LastModified.After(lastObjectDate) {
 					break
+				}
+				newObject = true
+				logger.Debugf("Found new object %s", *bucketObjects[i].Key)
+				s.readerChan <- S3Object{
+					Bucket: s.Config.BucketName,
+					Key:    *bucketObjects[i].Key,
 				}
 			}
 			if newObject {
@@ -278,7 +276,7 @@ func extractBucketAndPrefixFromEventBridge(message *string) (string, string, err
 	if eventBody.Detail.Bucket.Name != "" {
 		return eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key, nil
 	}
-	return "", "", fmt.Errorf("invalid event body for event bridge format")
+	return "", "", errors.New("invalid event body for event bridge format")
 }
 
 func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) {
@@ -288,7 +286,7 @@ func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) 
 		return "", "", err
 	}
 	if len(s3notifBody.Records) == 0 {
-		return "", "", fmt.Errorf("no records found in S3 notification")
+		return "", "", errors.New("no records found in S3 notification")
 	}
 	if !strings.HasPrefix(s3notifBody.Records[0].EventName, "ObjectCreated:") {
 		return "", "", fmt.Errorf("event %s is not supported", s3notifBody.Records[0].EventName)
@@ -297,19 +295,20 @@ func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) 
 }
 
 func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
-	if s.Config.SQSFormat == SQSFormatEventBridge {
+	switch s.Config.SQSFormat {
+	case SQSFormatEventBridge:
 		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
 		if err != nil {
 			return "", "", err
 		}
 		return bucket, key, nil
-	} else if s.Config.SQSFormat == SQSFormatS3Notification {
+	case SQSFormatS3Notification:
 		bucket, key, err := extractBucketAndPrefixFromS3Notif(message)
 		if err != nil {
 			return "", "", err
 		}
 		return bucket, key, nil
-	} else {
+	default:
 		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
 		if err == nil {
 			s.Config.SQSFormat = SQSFormatEventBridge
@@ -320,7 +319,7 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 			s.Config.SQSFormat = SQSFormatS3Notification
 			return bucket, key, nil
 		}
-		return "", "", fmt.Errorf("SQS message format not supported")
+		return "", "", errors.New("SQS message format not supported")
 	}
 }
 
@@ -498,15 +497,15 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if s.Config.BucketName != "" && s.Config.SQSName != "" {
-		return fmt.Errorf("bucket_name and sqs_name are mutually exclusive")
+		return errors.New("bucket_name and sqs_name are mutually exclusive")
 	}
 
 	if s.Config.PollingMethod == PollMethodSQS && s.Config.SQSName == "" {
-		return fmt.Errorf("sqs_name is required when using sqs polling method")
+		return errors.New("sqs_name is required when using sqs polling method")
 	}
 
 	if s.Config.BucketName == "" && s.Config.PollingMethod == PollMethodList {
-		return fmt.Errorf("bucket_name is required")
+		return errors.New("bucket_name is required")
 	}
 
 	if s.Config.SQSFormat != "" && s.Config.SQSFormat != SQSFormatEventBridge && s.Config.SQSFormat != SQSFormatS3Notification {
@@ -569,7 +568,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	dsn = strings.TrimPrefix(dsn, "s3://")
 	args := strings.Split(dsn, "?")
 	if len(args[0]) == 0 {
-		return fmt.Errorf("empty s3:// DSN")
+		return errors.New("empty s3:// DSN")
 	}
 
 	if len(args) == 2 && len(args[1]) != 0 {

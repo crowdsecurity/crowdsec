@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -46,7 +47,6 @@ listen_addr: 0.0.0.0`,
 			err := f.UnmarshalConfig([]byte(test.config))
 
 			assert.Contains(t, err.Error(), test.expectedErr)
-
 		})
 	}
 }
@@ -67,9 +67,7 @@ webhook_path: /k8s-audit`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "k8s-audit",
-	})
+	subLogger := log.WithField("type", "k8s-audit")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -230,9 +228,7 @@ webhook_path: /k8s-audit`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "k8s-audit",
-	})
+	subLogger := log.WithField("type", "k8s-audit")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

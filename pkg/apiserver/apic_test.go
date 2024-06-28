@@ -38,9 +38,11 @@ import (
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 
+	ctx := context.Background()
+
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	require.NoError(t, err)
-	dbClient, err := database.NewClient(&csconfig.DatabaseCfg{
+	dbClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
@@ -56,7 +58,7 @@ func getAPIC(t *testing.T) *apic {
 
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
-		//DecisionDeleteChan: make(chan []*models.Decision),
+		// DecisionDeleteChan: make(chan []*models.Decision),
 		dbClient:     dbClient,
 		mu:           sync.Mutex{},
 		startup:      true,
@@ -163,7 +165,6 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			api := getAPIC(t)
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
@@ -176,10 +177,11 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 			}
 
 			scenarios, err := api.FetchScenariosListFromDB()
+			require.NoError(t, err)
+
 			for machineID := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(context.Background())
 			}
-			require.NoError(t, err)
 
 			assert.ElementsMatch(t, tc.expectedScenarios, scenarios)
 		})
@@ -230,10 +232,10 @@ func TestNewAPIC(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
 			httpmock.Activate()
+
 			defer httpmock.DeactivateAndReset()
 			httpmock.RegisterResponder("POST", "http://foobar/v3/watchers/login", httpmock.NewBytesResponder(
 				200, jsonMarshalX(
@@ -349,10 +351,10 @@ func TestAPICGetMetrics(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			apiClient := getAPIC(t)
 			cleanUp(apiClient)
+
 			for i, machineID := range tc.machineIDs {
 				apiClient.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
@@ -456,7 +458,6 @@ func TestCreateAlertsForDecision(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			if got := createAlertsForDecisions(tc.args.decisions); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("createAlertsForDecisions() = %v, want %v", got, tc.want)
@@ -536,7 +537,6 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			addCounters, _ := makeAddAndDeleteCounters()
 			if got := fillAlertsWithDecisions(tc.args.alerts, tc.args.decisions, addCounters); !reflect.DeepEqual(got, tc.want) {
@@ -548,7 +548,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 
 func TestAPICWhitelists(t *testing.T) {
 	api := getAPIC(t)
-	//one whitelist on IP, one on CIDR
+	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
 	api.whitelists.Ips = append(api.whitelists.Ips, net.ParseIP("9.2.3.4"), net.ParseIP("7.2.3.4"))
 
@@ -593,7 +593,7 @@ func TestAPICWhitelists(t *testing.T) {
 						Scope:    ptr.Of("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("13.2.3.4"), //wl by cidr
+								Value:    ptr.Of("13.2.3.4"), // wl by cidr
 								Duration: ptr.Of("24h"),
 							},
 						},
@@ -614,7 +614,7 @@ func TestAPICWhitelists(t *testing.T) {
 						Scope:    ptr.Of("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("13.2.3.5"), //wl by cidr
+								Value:    ptr.Of("13.2.3.5"), // wl by cidr
 								Duration: ptr.Of("24h"),
 							},
 						},
@@ -634,7 +634,7 @@ func TestAPICWhitelists(t *testing.T) {
 						Scope:    ptr.Of("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("9.2.3.4"), //wl by ip
+								Value:    ptr.Of("9.2.3.4"), // wl by ip
 								Duration: ptr.Of("24h"),
 							},
 						},
@@ -685,7 +685,7 @@ func TestAPICWhitelists(t *testing.T) {
 	err = api.PullTop(false)
 	require.NoError(t, err)
 
-	assertTotalDecisionCount(t, api.dbClient, 5) //2 from FIRE + 2 from bl + 1 existing
+	assertTotalDecisionCount(t, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
@@ -1077,7 +1077,7 @@ func TestAPICPush(t *testing.T) {
 			expectedCalls: 2,
 			alerts: func() []*models.Alert {
 				alerts := make([]*models.Alert, 100)
-				for i := 0; i < 100; i++ {
+				for i := range 100 {
 					alerts[i] = &models.Alert{
 						Scenario:        ptr.Of("crowdsec/test"),
 						ScenarioHash:    ptr.Of("certified"),
@@ -1103,6 +1103,7 @@ func TestAPICPush(t *testing.T) {
 
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
+
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
@@ -1153,7 +1154,6 @@ func TestAPICPull(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			api = getAPIC(t)
 			api.pullInterval = time.Millisecond
@@ -1280,7 +1280,6 @@ func TestShouldShareAlert(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ret := shouldShareAlert(tc.alert, tc.consoleConfig)
 			assert.Equal(t, tc.expectedRet, ret)

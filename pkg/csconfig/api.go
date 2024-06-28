@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
@@ -126,7 +127,9 @@ func (l *LocalApiClientCfg) Load() error {
 		return err
 	}
 
-	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
+
+	dec := yaml.NewDecoder(strings.NewReader(configData))
 	dec.KnownFields(true)
 
 	err = dec.Decode(&l.Credentials)

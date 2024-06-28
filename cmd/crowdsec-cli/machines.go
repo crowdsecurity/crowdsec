@@ -45,7 +45,7 @@ func generatePassword(length int) string {
 
 	buf := make([]byte, length)
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
 		if err != nil {
 			log.Fatalf("failed getting data from prng for password generation : %s", err)
@@ -132,14 +132,14 @@ Note: This command requires database direct access, so is intended to be run on 
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			if err = require.LAPI(cli.cfg()); err != nil {
 				return err
 			}
-			cli.db, err = database.NewClient(cli.cfg().DbConfig)
+			cli.db, err = require.DBClient(cmd.Context(), cli.cfg().DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to create new database client: %w", err)
+				return err
 			}
 
 			return nil
@@ -475,7 +475,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	}
 
 	if !notValidOnly {
-		if pending, err := cli.db.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(-duration)); err == nil {
+		if pending, err := cli.db.QueryMachinesInactiveSince(time.Now().UTC().Add(-duration)); err == nil {
 			machines = append(machines, pending...)
 		}
 	}

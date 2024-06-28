@@ -6,15 +6,15 @@ package appsecacquisition
 import (
 	"testing"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAppsecRuleTransformsOthers(t *testing.T) {
-
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{

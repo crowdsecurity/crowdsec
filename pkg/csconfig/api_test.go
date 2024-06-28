@@ -64,7 +64,6 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.Load()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -122,7 +121,6 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.Load()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -245,7 +243,6 @@ func TestLoadAPIServer(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadAPIServer(false)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -309,7 +306,6 @@ func TestParseCapiWhitelists(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			wl, err := parseCapiWhitelists(strings.NewReader(tc.input))
 			cstest.RequireErrorContains(t, err, tc.expectedErr)

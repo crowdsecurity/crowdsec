@@ -46,7 +46,6 @@ func TestLoadDBConfig(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadDBConfig(false)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)

@@ -107,7 +107,7 @@ func (cli *cliSimulation) NewEnableCmd() *cobra.Command {
 					return fmt.Errorf("unable to enable global simulation mode: %w", err)
 				}
 			} else {
-				printHelp(cmd)
+				_ = cmd.Help()
 			}
 
 			return nil
@@ -154,7 +154,7 @@ func (cli *cliSimulation) NewDisableCmd() *cobra.Command {
 					return fmt.Errorf("unable to disable global simulation mode: %w", err)
 				}
 			} else {
-				printHelp(cmd)
+				_ = cmd.Help()
 			}
 
 			return nil

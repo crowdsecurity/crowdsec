@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -81,9 +82,13 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
 		if err != nil {
-			return nil, fmt.Errorf("while loading hub index: %w", err)
+			return nil, err
+		}
+
+		if err := hub.Load(); err != nil {
+			return nil, err
 		}
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub)
@@ -318,8 +323,10 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
+	ctx := context.TODO()
+
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
-		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
+		dbClient, err := database.NewClient(ctx, cConfig.API.Server.DbConfig)
 		if err != nil {
 			return fmt.Errorf("failed to get database client: %w", err)
 		}
@@ -367,9 +374,13 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
 		if err != nil {
-			return fmt.Errorf("while loading hub index: %w", err)
+			return err
+		}
+
+		if err := hub.Load(); err != nil {
+			return err
 		}
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub)
@@ -390,7 +401,8 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if flags.TestMode {
 		log.Infof("Configuration test done")
 		pluginBroker.Kill()
-		os.Exit(0)
+
+		return nil
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {

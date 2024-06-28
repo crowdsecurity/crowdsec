@@ -333,6 +333,9 @@ config.yaml) each time the container is run.
 | `DISABLE_APPSEC_RULES`  | | Appsec rules files to remove, separated by space |
 |                         | | |
 | __Log verbosity__       | | |
+| `LEVEL_FATAL`           | false | Force FATAL level for the container log |
+| `LEVEL_ERROR`           | false | Force ERROR level for the container log |
+| `LEVEL_WARN`            | false | Force WARN level for the container log |
 | `LEVEL_INFO`            | false | Force INFO level for the container log |
 | `LEVEL_DEBUG`           | false | Force DEBUG level for the container log |
 | `LEVEL_TRACE`           | false | Force TRACE level (VERY verbose) for the container log |

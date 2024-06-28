@@ -3,8 +3,9 @@ package leakybucket
 import (
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type Trigger struct {

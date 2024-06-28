@@ -282,10 +282,6 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultLastPush()
 		mc.mutation.SetLastPush(v)
 	}
-	if _, ok := mc.mutation.LastHeartbeat(); !ok {
-		v := machine.DefaultLastHeartbeat()
-		mc.mutation.SetLastHeartbeat(v)
-	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)

@@ -8,8 +8,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-// type ApiAlerts service
-
 type AuthService service
 
 // Don't add it to the models, as they are used with LAPI, but the enroll endpoint is specific to CAPI

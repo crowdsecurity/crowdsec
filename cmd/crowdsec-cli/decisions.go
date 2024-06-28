@@ -28,7 +28,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	spamLimit := make(map[string]bool)
 	skipped := 0
 
-	for aIdx := 0; aIdx < len(*alerts); aIdx++ {
+	for aIdx := range len(*alerts) {
 		alertItem := (*alerts)[aIdx]
 		newDecisions := make([]*models.Decision, 0)
 

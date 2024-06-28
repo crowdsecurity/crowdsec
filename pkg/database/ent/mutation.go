@@ -2846,7 +2846,7 @@ func (m *BouncerMutation) LastPull() (r time.Time, exists bool) {
 // OldLastPull returns the old "last_pull" field's value of the Bouncer entity.
 // If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BouncerMutation) OldLastPull(ctx context.Context) (v time.Time, err error) {
+func (m *BouncerMutation) OldLastPull(ctx context.Context) (v *time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldLastPull is only allowed on UpdateOne operations")
 	}
@@ -2860,9 +2860,22 @@ func (m *BouncerMutation) OldLastPull(ctx context.Context) (v time.Time, err err
 	return oldValue.LastPull, nil
 }
 
+// ClearLastPull clears the value of the "last_pull" field.
+func (m *BouncerMutation) ClearLastPull() {
+	m.last_pull = nil
+	m.clearedFields[bouncer.FieldLastPull] = struct{}{}
+}
+
+// LastPullCleared returns if the "last_pull" field was cleared in this mutation.
+func (m *BouncerMutation) LastPullCleared() bool {
+	_, ok := m.clearedFields[bouncer.FieldLastPull]
+	return ok
+}
+
 // ResetLastPull resets all changes to the "last_pull" field.
 func (m *BouncerMutation) ResetLastPull() {
 	m.last_pull = nil
+	delete(m.clearedFields, bouncer.FieldLastPull)
 }
 
 // SetAuthType sets the "auth_type" field.
@@ -3330,6 +3343,9 @@ func (m *BouncerMutation) ClearedFields() []string {
 	if m.FieldCleared(bouncer.FieldVersion) {
 		fields = append(fields, bouncer.FieldVersion)
 	}
+	if m.FieldCleared(bouncer.FieldLastPull) {
+		fields = append(fields, bouncer.FieldLastPull)
+	}
 	if m.FieldCleared(bouncer.FieldOsname) {
 		fields = append(fields, bouncer.FieldOsname)
 	}
@@ -3361,6 +3377,9 @@ func (m *BouncerMutation) ClearField(name string) error {
 		return nil
 	case bouncer.FieldVersion:
 		m.ClearVersion()
+		return nil
+	case bouncer.FieldLastPull:
+		m.ClearLastPull()
 		return nil
 	case bouncer.FieldOsname:
 		m.ClearOsname()

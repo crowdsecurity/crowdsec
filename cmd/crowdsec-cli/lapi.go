@@ -376,8 +376,8 @@ cscli lapi context detect crowdsecurity/sshd-logs
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := cli.cfg()
 			if !detectAll && len(args) == 0 {
-				log.Infof("Please provide parsers to detect or --all flag.")
-				printHelp(cmd)
+				_ = cmd.Help()
+				return errors.New("please provide parsers to detect or --all flag")
 			}
 
 			// to avoid all the log.Info from the loaders functions
@@ -464,9 +464,8 @@ func (cli *cliLapi) newContextDeleteCmd() *cobra.Command {
 			if filePath == "" {
 				filePath = "the context file"
 			}
-			fmt.Printf("Command 'delete' is deprecated, please manually edit %s.", filePath)
 
-			return nil
+			return fmt.Errorf("command 'delete' has been removed, please manually edit %s", filePath)
 		},
 	}
 
@@ -491,9 +490,6 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 			}
 
 			return nil
-		},
-		Run: func(cmd *cobra.Command, _ []string) {
-			printHelp(cmd)
 		},
 	}
 

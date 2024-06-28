@@ -31,7 +31,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	maxAge := ""
 
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
-		return nil, errors.New("max_items can't be zero or negative number")
+		return nil, errors.New("max_items can't be zero or negative")
 	}
 
 	if config.MaxItems != nil {

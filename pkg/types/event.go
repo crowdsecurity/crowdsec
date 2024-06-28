@@ -4,9 +4,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/antonmedv/expr/vm"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -63,11 +63,12 @@ func (e *Event) SetParsed(key string, value string) bool {
 }
 
 func (e *Event) GetType() string {
-	if e.Type == OVFLW {
+	switch e.Type {
+	case OVFLW:
 		return "overflow"
-	} else if e.Type == LOG {
+	case LOG:
 		return "log"
-	} else {
+	default:
 		log.Warningf("unknown event type for %+v", e)
 		return "unknown"
 	}

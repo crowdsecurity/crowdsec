@@ -12,16 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func getLocalStackEndpoint() (string, error) {
@@ -30,7 +31,7 @@ func getLocalStackEndpoint() (string, error) {
 		v = strings.TrimPrefix(v, "http://")
 		_, err := net.Dial("tcp", v)
 		if err != nil {
-			return "", fmt.Errorf("while dialing %s : %s : aws endpoint isn't available", v, err)
+			return "", fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
 		}
 	}
 	return endpoint, nil
@@ -71,7 +72,7 @@ func WriteToStream(streamName string, count int, shards int, sub bool) {
 	}
 	sess := session.Must(session.NewSession())
 	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
-	for i := 0; i < count; i++ {
+	for i := range count {
 		partition := "partition"
 		if shards != 1 {
 			partition = fmt.Sprintf("partition-%d", i%shards)
@@ -139,9 +140,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kinesis",
-	})
+	subLogger := log.WithField("type", "kinesis")
 	for _, test := range tests {
 		f := KinesisSource{}
 		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -171,9 +170,7 @@ stream_name: stream-1-shard`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}), configuration.METRICS_NONE)
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -186,7 +183,7 @@ stream_name: stream-1-shard`,
 		//Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
-		for i := 0; i < test.count; i++ {
+		for i := range test.count {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
 		}
@@ -217,9 +214,7 @@ stream_name: stream-2-shards`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}), configuration.METRICS_NONE)
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -233,7 +228,7 @@ stream_name: stream-2-shards`,
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		c := 0
-		for i := 0; i < test.count; i++ {
+		for range test.count {
 			<-out
 			c += 1
 		}
@@ -266,9 +261,7 @@ from_subscription: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}), configuration.METRICS_NONE)
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}
@@ -281,7 +274,7 @@ from_subscription: true`,
 		//Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, true)
-		for i := 0; i < test.count; i++ {
+		for i := range test.count {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
 		}
@@ -312,9 +305,7 @@ use_enhanced_fanout: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithFields(log.Fields{
-			"type": "kinesis",
-		}))
+		err := f.Configure([]byte(config), log.WithField("type", "kinesis"))
 		if err != nil {
 			t.Fatalf("Error configuring source: %s", err)
 		}

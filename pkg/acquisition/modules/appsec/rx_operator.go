@@ -5,10 +5,11 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/crowdsecurity/coraza/v3/experimental/plugins"
-	"github.com/crowdsecurity/coraza/v3/experimental/plugins/plugintypes"
 	"github.com/wasilibs/go-re2"
 	"github.com/wasilibs/go-re2/experimental"
+
+	"github.com/crowdsecurity/coraza/v3/experimental/plugins"
+	"github.com/crowdsecurity/coraza/v3/experimental/plugins/plugintypes"
 )
 
 type rx struct {
@@ -50,9 +51,9 @@ func (o *rx) Evaluate(tx plugintypes.TransactionState, value string) bool {
 			tx.CaptureField(i, c)
 		}
 		return true
-	} else {
-		return o.re.MatchString(value)
 	}
+
+	return o.re.MatchString(value)
 }
 
 // RegisterRX registers the rx operator using a WASI implementation instead of Go.

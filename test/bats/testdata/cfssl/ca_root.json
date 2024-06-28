@@ -1,0 +1,16 @@
+{
+  "CN": "CrowdSec Test CA",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "FR",
+      "L": "Paris",
+      "O": "Crowdsec",
+      "OU": "Crowdsec",
+      "ST": "France"
+    }
+  ]
+}

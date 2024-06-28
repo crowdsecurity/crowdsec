@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -59,27 +58,19 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	ret := authInput{}
 
 	if j.TlsAuth == nil {
-		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-		c.Abort()
+		err := errors.New("tls authentication required")
+		log.Warn(err)
 
-		return nil, errors.New("TLS auth is not configured")
+		return nil, err
 	}
 
-	validCert, extractedCN, err := j.TlsAuth.ValidateCert(c)
+	extractedCN, err := j.TlsAuth.ValidateCert(c)
 	if err != nil {
-		log.Error(err)
-		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-		c.Abort()
-
-		return nil, fmt.Errorf("while trying to validate client cert: %w", err)
+		log.Warn(err)
+		return nil, err
 	}
 
-	if !validCert {
-		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-		c.Abort()
-
-		return nil, errors.New("failed cert authentication")
-	}
+	logger := log.WithField("ip", c.ClientIP())
 
 	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 
@@ -88,14 +79,12 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		First(j.DbClient.CTX)
 	if ent.IsNotFound(err) {
 		// Machine was not found, let's create it
-		log.Infof("machine %s not found, create it", ret.machineID)
+		logger.Infof("machine %s not found, create it", ret.machineID)
 		// let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
 		pwd, err := GenerateAPIKey(dummyAPIKeySize)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"ip": c.ClientIP(),
-				"cn": extractedCN,
-			}).Errorf("error generating password: %s", err)
+			logger.WithField("cn", extractedCN).
+				Errorf("error generating password: %s", err)
 
 			return nil, errors.New("error generating password")
 		}

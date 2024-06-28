@@ -5,9 +5,10 @@ import (
 	"os"
 	"text/template"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	log "github.com/sirupsen/logrus"
 )
 
 var helpers = template.FuncMap{

@@ -1,10 +1,10 @@
 {
-    "CN": "CrowdSec Test CA Intermediate",
-    "key": {
-      "algo": "rsa",
-      "size": 2048
-    },
-    "names": [
+  "CN": "CrowdSec Test CA Intermediate",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
     {
       "C": "FR",
       "L": "Paris",
@@ -12,8 +12,8 @@
       "OU": "Crowdsec Intermediate",
       "ST": "France"
     }
-   ],
-   "ca": {
+  ],
+  "ca": {
     "expiry": "42720h"
   }
-  }
+}

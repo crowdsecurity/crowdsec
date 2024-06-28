@@ -1,6 +1,7 @@
 package appsec_rule
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"strings"
@@ -10,7 +11,7 @@ type ModsecurityRule struct {
 	ids []uint32
 }
 
-var zonesMap map[string]string = map[string]string{
+var zonesMap = map[string]string{
 	"ARGS":             "ARGS_GET",
 	"ARGS_NAMES":       "ARGS_GET_NAMES",
 	"BODY_ARGS":        "ARGS_POST",
@@ -30,7 +31,7 @@ var zonesMap map[string]string = map[string]string{
 	"FILENAMES":        "FILES",
 }
 
-var transformMap map[string]string = map[string]string{
+var transformMap = map[string]string{
 	"lowercase": "t:lowercase",
 	"uppercase": "t:uppercase",
 	"b64decode": "t:base64Decode",
@@ -44,7 +45,7 @@ var transformMap map[string]string = map[string]string{
 	"html_entity_decode": "t:htmlEntityDecode",
 }
 
-var matchMap map[string]string = map[string]string{
+var matchMap = map[string]string{
 	"regex":           "@rx",
 	"equals":          "@streq",
 	"startsWith":      "@beginsWith",
@@ -59,7 +60,7 @@ var matchMap map[string]string = map[string]string{
 	"eq":              "@eq",
 }
 
-var bodyTypeMatch map[string]string = map[string]string{
+var bodyTypeMatch = map[string]string{
 	"json":       "JSON",
 	"xml":        "XML",
 	"multipart":  "MULTIPART",
@@ -67,9 +68,7 @@ var bodyTypeMatch map[string]string = map[string]string{
 }
 
 func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string) (string, []uint32, error) {
-
 	rules, err := m.buildRules(rule, appsecRuleName, false, 0, 0)
-
 	if err != nil {
 		return "", nil, err
 	}
@@ -99,7 +98,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	ret := make([]string, 0)
 
 	if len(rule.And) != 0 && len(rule.Or) != 0 {
-		return nil, fmt.Errorf("cannot have both 'and' and 'or' in the same rule")
+		return nil, errors.New("cannot have both 'and' and 'or' in the same rule")
 	}
 
 	if rule.And != nil {
@@ -166,15 +165,15 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	r.WriteByte(' ')
 
 	if rule.Match.Type != "" {
-		if match, ok := matchMap[rule.Match.Type]; ok {
-			prefix := ""
-			if rule.Match.Not {
-				prefix = "!"
-			}
-			r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
-		} else {
+		match, ok := matchMap[rule.Match.Type]
+		if !ok {
 			return nil, fmt.Errorf("unknown match type '%s'", rule.Match.Type)
 		}
+		prefix := ""
+		if rule.Match.Not {
+			prefix = "!"
+		}
+		r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
 	}
 
 	//Should phase:2 be configurable?
@@ -186,20 +185,20 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 				continue
 			}
 			r.WriteByte(',')
-			if mappedTransform, ok := transformMap[transform]; ok {
-				r.WriteString(mappedTransform)
-			} else {
+			mappedTransform, ok := transformMap[transform]
+			if !ok {
 				return nil, fmt.Errorf("unknown transform '%s'", transform)
 			}
+			r.WriteString(mappedTransform)
 		}
 	}
 
 	if rule.BodyType != "" {
-		if mappedBodyType, ok := bodyTypeMatch[rule.BodyType]; ok {
-			r.WriteString(fmt.Sprintf(",ctl:requestBodyProcessor=%s", mappedBodyType))
-		} else {
+		mappedBodyType, ok := bodyTypeMatch[rule.BodyType]
+		if !ok {
 			return nil, fmt.Errorf("unknown body type '%s'", rule.BodyType)
 		}
+		r.WriteString(fmt.Sprintf(",ctl:requestBodyProcessor=%s", mappedBodyType))
 	}
 
 	if and {

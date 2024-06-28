@@ -2,6 +2,7 @@ package main
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -61,10 +62,10 @@ func (cli cliItem) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) install(args []string, downloadOnly bool, force bool, ignoreError bool) error {
+func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool, force bool, ignoreError bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -82,7 +83,7 @@ func (cli cliItem) install(args []string, downloadOnly bool, force bool, ignoreE
 			continue
 		}
 
-		if err := item.Install(force, downloadOnly); err != nil {
+		if err := item.Install(ctx, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", item.Name, err)
 			}
@@ -113,8 +114,8 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.install(args, downloadOnly, force, ignoreError)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.install(cmd.Context(), args, downloadOnly, force, ignoreError)
 		},
 	}
 
@@ -252,10 +253,10 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) upgrade(args []string, force bool, all bool) error {
+func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -269,7 +270,7 @@ func (cli cliItem) upgrade(args []string, force bool, all bool) error {
 		updated := 0
 
 		for _, item := range items {
-			didUpdate, err := item.Upgrade(force)
+			didUpdate, err := item.Upgrade(ctx, force)
 			if err != nil {
 				return err
 			}
@@ -300,7 +301,7 @@ func (cli cliItem) upgrade(args []string, force bool, all bool) error {
 			return fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
-		didUpdate, err := item.Upgrade(force)
+		didUpdate, err := item.Upgrade(ctx, force)
 		if err != nil {
 			return err
 		}
@@ -334,8 +335,8 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.upgrade(args, force, all)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.upgrade(cmd.Context(), args, force, all)
 		},
 	}
 
@@ -346,7 +347,7 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMetrics bool) error {
+func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff bool, rev bool, noMetrics bool) error {
 	cfg := cli.cfg()
 
 	if rev && !diff {
@@ -360,7 +361,7 @@ func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMet
 	remote := (*cwhub.RemoteHubCfg)(nil)
 
 	if diff {
-		remote = require.RemoteHub(cfg)
+		remote = require.RemoteHub(ctx, cfg)
 	}
 
 	hub, err := require.Hub(cfg, remote, log.StandardLogger())
@@ -375,7 +376,7 @@ func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMet
 		}
 
 		if diff {
-			fmt.Println(cli.whyTainted(hub, item, rev))
+			fmt.Println(cli.whyTainted(ctx, hub, item, rev))
 
 			continue
 		}
@@ -412,8 +413,8 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.inspect(args, url, diff, rev, noMetrics)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.inspect(cmd.Context(), args, url, diff, rev, noMetrics)
 		},
 	}
 
@@ -465,7 +466,7 @@ func (cli cliItem) newListCmd() *cobra.Command {
 }
 
 // return the diff between the installed version and the latest version
-func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
+func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, reverse bool) (string, error) {
 	if !item.State.Installed {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -476,7 +477,7 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	}
 	defer os.Remove(dest.Name())
 
-	_, remoteURL, err := item.FetchContentTo(dest.Name())
+	_, remoteURL, err := item.FetchContentTo(ctx, dest.Name())
 	if err != nil {
 		return "", err
 	}
@@ -507,7 +508,7 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	return fmt.Sprintf("%s", diff), nil
 }
 
-func (cli cliItem) whyTainted(hub *cwhub.Hub, item *cwhub.Item, reverse bool) string {
+func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item, reverse bool) string {
 	if !item.State.Installed {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
@@ -532,7 +533,7 @@ func (cli cliItem) whyTainted(hub *cwhub.Hub, item *cwhub.Item, reverse bool) st
 			ret = append(ret, err.Error())
 		}
 
-		diff, err := cli.itemDiff(sub, reverse)
+		diff, err := cli.itemDiff(ctx, sub, reverse)
 		if err != nil {
 			ret = append(ret, err.Error())
 		}
