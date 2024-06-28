@@ -52,7 +52,6 @@ func collapseRepeatedPrefix(text string, prefix string) string {
 	return text
 }
 
-
 // RepeatedPrefixError wraps an error and removes the repeating prefix from its message
 type RepeatedPrefixError struct {
 	OriginalError error
