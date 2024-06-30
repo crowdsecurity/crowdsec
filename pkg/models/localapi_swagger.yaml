@@ -684,6 +684,36 @@ paths:
             $ref: "#/definitions/ErrorResponse"
       security:
       - JWTAuthorizer: []
+  /usage-metrics:
+    post:
+      description: Post usage metrics from a LP or a bouncer
+      summary: Send usage metrics
+      tags:
+        - Remediation component
+        - watchers
+      operationId: usage-metrics
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/AllMetrics'
+          description: 'All metrics'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+          headers: {}
+        '400':
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - APIKeyAuthorizer: []
+      - JWTAuthorizer: []
 definitions:
   WatcherRegistrationRequest:
     title: WatcherRegistrationRequest
@@ -994,6 +1024,181 @@ definitions:
           type: string
         value:
           type: string
+  RemediationComponentsMetrics:
+    title: RemediationComponentsMetrics
+    type: object
+    allOf:
+      - $ref: '#/definitions/BaseMetrics'
+      - properties: 
+          type:
+            type: string
+            description: type of the remediation component
+          name: 
+            type: string
+            description: name of the remediation component
+          last_pull:
+            type: integer
+            description: last pull date
+  LogProcessorsMetrics:
+    title: LogProcessorsMetrics
+    type: object
+    allOf:
+      - $ref: '#/definitions/BaseMetrics'
+      - properties:
+          hub_items:
+            $ref: '#/definitions/HubItems'
+          datasources:
+            type: object
+            description: Number of datasources per type
+            additionalProperties: 
+              type: integer
+          name:
+            type: string
+            description: name of the log processor
+          last_push:
+            type: integer
+            description: last push date
+          last_update:
+            type: integer
+            description: last update date
+        required:
+          - hub_items
+          - datasources
+  LapiMetrics:
+    title: LapiMetrics
+    type: object
+    allOf:
+      - $ref: '#/definitions/BaseMetrics'
+      - properties:
+          console_options:
+            $ref: '#/definitions/ConsoleOptions'
+  AllMetrics:
+    title: AllMetrics
+    type: object
+    properties:
+      remediation_components:
+        type: array
+        items:
+          $ref: '#/definitions/RemediationComponentsMetrics'
+        description: remediation components metrics
+      log_processors:
+        type: array
+        items:
+          $ref: '#/definitions/LogProcessorsMetrics'
+        description: log processors metrics
+      lapi:
+        $ref: '#/definitions/LapiMetrics'
+  BaseMetrics:
+    title: BaseMetrics
+    type: object
+    properties:
+      version:
+        type: string
+        description: version of the remediation component
+      os:
+        $ref: '#/definitions/OSversion'
+      metrics:
+        type: array
+        items:
+          $ref: '#/definitions/DetailedMetrics'
+        description: metrics details
+      feature_flags:
+        type: array
+        items: 
+          type: string
+        description: feature flags (expected to be empty for remediation components)
+      utc_startup_timestamp:
+        type: integer
+        description: UTC timestamp of the startup of the software
+    required:
+      - version
+      - utc_startup_timestamp
+  OSversion:
+    title: OSversion
+    type: object
+    properties: 
+      name:
+        type: string
+        description: name of the OS
+      version:
+        type: string
+        description: version of the OS
+    required:
+      - name
+      - version
+  DetailedMetrics:
+    type: object
+    title: DetailedMetrics
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/MetricsDetailItem'
+      meta:
+        $ref: '#/definitions/MetricsMeta'
+    required:
+      - meta
+      - items
+  MetricsDetailItem:
+    title: MetricsDetailItem
+    type: object
+    properties:
+      name: 
+        type: string
+        description: name of the metric
+      value:
+        type: number
+        description: value of the metric
+      unit:
+        type: string
+        description: unit of the metric
+      labels:
+        $ref: '#/definitions/MetricsLabels'
+        description: labels of the metric
+    required:
+      - name
+      - value
+      - unit
+  MetricsMeta:
+    title: MetricsMeta
+    type: object
+    properties:
+      window_size_seconds:
+        type: integer
+        description: Size, in seconds, of the window used to compute the metric
+      utc_now_timestamp:
+        type: integer
+        description: UTC timestamp of the current time
+    required:
+      - window_size_seconds
+      - utc_now_timestamp
+  MetricsLabels:
+    title: MetricsLabels
+    type: object
+    additionalProperties: 
+      type: string
+      description: label of the metric
+  ConsoleOptions:
+    title: ConsoleOptions
+    type: array
+    items:
+      type: string
+      description: enabled console options
+  HubItems:
+    title: HubItems
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/HubItem'
+  HubItem:
+    title: HubItem
+    type: object
+    properties:
+      version:
+        type: string
+        description: version of the hub item
+      status:
+        type: string
+        description: status of the hub item (official, custom, tainted, etc.)
   ErrorResponse:
     type: "object"
     required:
@@ -1007,6 +1212,16 @@ definitions:
         description: "more detail on individual errors"
     title: "error response"
     description: "error response return by the API"
+  SuccessResponse:
+    type: "object"
+    required:
+      - "message"
+    properties:
+      message:
+        type: "string"
+        description: "message"
+    title: "success response"
+    description: "success response return by the API"
 tags:
   - name: Remediation component
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
