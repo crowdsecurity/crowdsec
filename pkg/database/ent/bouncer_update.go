@@ -156,6 +156,66 @@ func (bu *BouncerUpdate) SetNillableAuthType(s *string) *BouncerUpdate {
 	return bu
 }
 
+// SetOsname sets the "osname" field.
+func (bu *BouncerUpdate) SetOsname(s string) *BouncerUpdate {
+	bu.mutation.SetOsname(s)
+	return bu
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableOsname(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetOsname(*s)
+	}
+	return bu
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (bu *BouncerUpdate) ClearOsname() *BouncerUpdate {
+	bu.mutation.ClearOsname()
+	return bu
+}
+
+// SetOsversion sets the "osversion" field.
+func (bu *BouncerUpdate) SetOsversion(s string) *BouncerUpdate {
+	bu.mutation.SetOsversion(s)
+	return bu
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableOsversion(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetOsversion(*s)
+	}
+	return bu
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (bu *BouncerUpdate) ClearOsversion() *BouncerUpdate {
+	bu.mutation.ClearOsversion()
+	return bu
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (bu *BouncerUpdate) SetFeatureflags(s string) *BouncerUpdate {
+	bu.mutation.SetFeatureflags(s)
+	return bu
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableFeatureflags(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetFeatureflags(*s)
+	}
+	return bu
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (bu *BouncerUpdate) ClearFeatureflags() *BouncerUpdate {
+	bu.mutation.ClearFeatureflags()
+	return bu
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (bu *BouncerUpdate) Mutation() *BouncerMutation {
 	return bu.mutation
@@ -241,6 +301,24 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := bu.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
+	}
+	if value, ok := bu.mutation.Osname(); ok {
+		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
+	}
+	if bu.mutation.OsnameCleared() {
+		_spec.ClearField(bouncer.FieldOsname, field.TypeString)
+	}
+	if value, ok := bu.mutation.Osversion(); ok {
+		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
+	}
+	if bu.mutation.OsversionCleared() {
+		_spec.ClearField(bouncer.FieldOsversion, field.TypeString)
+	}
+	if value, ok := bu.mutation.Featureflags(); ok {
+		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
+	}
+	if bu.mutation.FeatureflagsCleared() {
+		_spec.ClearField(bouncer.FieldFeatureflags, field.TypeString)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -390,6 +468,66 @@ func (buo *BouncerUpdateOne) SetNillableAuthType(s *string) *BouncerUpdateOne {
 	return buo
 }
 
+// SetOsname sets the "osname" field.
+func (buo *BouncerUpdateOne) SetOsname(s string) *BouncerUpdateOne {
+	buo.mutation.SetOsname(s)
+	return buo
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableOsname(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetOsname(*s)
+	}
+	return buo
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (buo *BouncerUpdateOne) ClearOsname() *BouncerUpdateOne {
+	buo.mutation.ClearOsname()
+	return buo
+}
+
+// SetOsversion sets the "osversion" field.
+func (buo *BouncerUpdateOne) SetOsversion(s string) *BouncerUpdateOne {
+	buo.mutation.SetOsversion(s)
+	return buo
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableOsversion(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetOsversion(*s)
+	}
+	return buo
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (buo *BouncerUpdateOne) ClearOsversion() *BouncerUpdateOne {
+	buo.mutation.ClearOsversion()
+	return buo
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (buo *BouncerUpdateOne) SetFeatureflags(s string) *BouncerUpdateOne {
+	buo.mutation.SetFeatureflags(s)
+	return buo
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableFeatureflags(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetFeatureflags(*s)
+	}
+	return buo
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (buo *BouncerUpdateOne) ClearFeatureflags() *BouncerUpdateOne {
+	buo.mutation.ClearFeatureflags()
+	return buo
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
 	return buo.mutation
@@ -505,6 +643,24 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	if value, ok := buo.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
+	}
+	if value, ok := buo.mutation.Osname(); ok {
+		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
+	}
+	if buo.mutation.OsnameCleared() {
+		_spec.ClearField(bouncer.FieldOsname, field.TypeString)
+	}
+	if value, ok := buo.mutation.Osversion(); ok {
+		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
+	}
+	if buo.mutation.OsversionCleared() {
+		_spec.ClearField(bouncer.FieldOsversion, field.TypeString)
+	}
+	if value, ok := buo.mutation.Featureflags(); ok {
+		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
+	}
+	if buo.mutation.FeatureflagsCleared() {
+		_spec.ClearField(bouncer.FieldFeatureflags, field.TypeString)
 	}
 	_node = &Bouncer{config: buo.config}
 	_spec.Assign = _node.assignValues

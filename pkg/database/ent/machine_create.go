@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
 // MachineCreate is the builder for creating a Machine entity.
@@ -162,6 +163,60 @@ func (mc *MachineCreate) SetNillableAuthType(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetAuthType(*s)
 	}
+	return mc
+}
+
+// SetOsname sets the "osname" field.
+func (mc *MachineCreate) SetOsname(s string) *MachineCreate {
+	mc.mutation.SetOsname(s)
+	return mc
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableOsname(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetOsname(*s)
+	}
+	return mc
+}
+
+// SetOsversion sets the "osversion" field.
+func (mc *MachineCreate) SetOsversion(s string) *MachineCreate {
+	mc.mutation.SetOsversion(s)
+	return mc
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableOsversion(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetOsversion(*s)
+	}
+	return mc
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (mc *MachineCreate) SetFeatureflags(s string) *MachineCreate {
+	mc.mutation.SetFeatureflags(s)
+	return mc
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableFeatureflags(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetFeatureflags(*s)
+	}
+	return mc
+}
+
+// SetHubstate sets the "hubstate" field.
+func (mc *MachineCreate) SetHubstate(ms map[string]schema.ItemState) *MachineCreate {
+	mc.mutation.SetHubstate(ms)
+	return mc
+}
+
+// SetDatasources sets the "datasources" field.
+func (mc *MachineCreate) SetDatasources(m map[string]int64) *MachineCreate {
+	mc.mutation.SetDatasources(m)
 	return mc
 }
 
@@ -338,6 +393,26 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	if value, ok := mc.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 		_node.AuthType = value
+	}
+	if value, ok := mc.mutation.Osname(); ok {
+		_spec.SetField(machine.FieldOsname, field.TypeString, value)
+		_node.Osname = value
+	}
+	if value, ok := mc.mutation.Osversion(); ok {
+		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
+		_node.Osversion = value
+	}
+	if value, ok := mc.mutation.Featureflags(); ok {
+		_spec.SetField(machine.FieldFeatureflags, field.TypeString, value)
+		_node.Featureflags = value
+	}
+	if value, ok := mc.mutation.Hubstate(); ok {
+		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
+		_node.Hubstate = value
+	}
+	if value, ok := mc.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+		_node.Datasources = value
 	}
 	if nodes := mc.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -36,7 +36,13 @@ type Bouncer struct {
 	// LastPull holds the value of the "last_pull" field.
 	LastPull *time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
-	AuthType     string `json:"auth_type"`
+	AuthType string `json:"auth_type"`
+	// Osname holds the value of the "osname" field.
+	Osname string `json:"osname,omitempty"`
+	// Osversion holds the value of the "osversion" field.
+	Osversion string `json:"osversion,omitempty"`
+	// Featureflags holds the value of the "featureflags" field.
+	Featureflags string `json:"featureflags,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -49,7 +55,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
 			values[i] = new(sql.NullInt64)
-		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType:
+		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
 			values[i] = new(sql.NullString)
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
@@ -135,6 +141,24 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.AuthType = value.String
 			}
+		case bouncer.FieldOsname:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osname", values[i])
+			} else if value.Valid {
+				b.Osname = value.String
+			}
+		case bouncer.FieldOsversion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osversion", values[i])
+			} else if value.Valid {
+				b.Osversion = value.String
+			}
+		case bouncer.FieldFeatureflags:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field featureflags", values[i])
+			} else if value.Valid {
+				b.Featureflags = value.String
+			}
 		default:
 			b.selectValues.Set(columns[i], values[i])
 		}
@@ -201,6 +225,15 @@ func (b *Bouncer) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(b.AuthType)
+	builder.WriteString(", ")
+	builder.WriteString("osname=")
+	builder.WriteString(b.Osname)
+	builder.WriteString(", ")
+	builder.WriteString("osversion=")
+	builder.WriteString(b.Osversion)
+	builder.WriteString(", ")
+	builder.WriteString("featureflags=")
+	builder.WriteString(b.Featureflags)
 	builder.WriteByte(')')
 	return builder.String()
 }

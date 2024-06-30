@@ -136,6 +136,48 @@ func (bc *BouncerCreate) SetNillableAuthType(s *string) *BouncerCreate {
 	return bc
 }
 
+// SetOsname sets the "osname" field.
+func (bc *BouncerCreate) SetOsname(s string) *BouncerCreate {
+	bc.mutation.SetOsname(s)
+	return bc
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsname(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsname(*s)
+	}
+	return bc
+}
+
+// SetOsversion sets the "osversion" field.
+func (bc *BouncerCreate) SetOsversion(s string) *BouncerCreate {
+	bc.mutation.SetOsversion(s)
+	return bc
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsversion(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsversion(*s)
+	}
+	return bc
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (bc *BouncerCreate) SetFeatureflags(s string) *BouncerCreate {
+	bc.mutation.SetFeatureflags(s)
+	return bc
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableFeatureflags(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetFeatureflags(*s)
+	}
+	return bc
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (bc *BouncerCreate) Mutation() *BouncerMutation {
 	return bc.mutation
@@ -274,6 +316,18 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	if value, ok := bc.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 		_node.AuthType = value
+	}
+	if value, ok := bc.mutation.Osname(); ok {
+		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
+		_node.Osname = value
+	}
+	if value, ok := bc.mutation.Osversion(); ok {
+		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
+		_node.Osversion = value
+	}
+	if value, ok := bc.mutation.Featureflags(); ok {
+		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
+		_node.Featureflags = value
 	}
 	return _node, _spec
 }

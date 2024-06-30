@@ -70,6 +70,9 @@ var (
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "last_pull", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
+		{Name: "osname", Type: field.TypeString, Nullable: true},
+		{Name: "osversion", Type: field.TypeString, Nullable: true},
+		{Name: "featureflags", Type: field.TypeString, Nullable: true},
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{
@@ -204,6 +207,11 @@ var (
 		{Name: "is_validated", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "password"},
+		{Name: "osname", Type: field.TypeString, Nullable: true},
+		{Name: "osversion", Type: field.TypeString, Nullable: true},
+		{Name: "featureflags", Type: field.TypeString, Nullable: true},
+		{Name: "hubstate", Type: field.TypeJSON, Nullable: true},
+		{Name: "datasources", Type: field.TypeJSON, Nullable: true},
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{
@@ -241,6 +249,28 @@ var (
 			},
 		},
 	}
+	// MetricsColumns holds the columns for the "metrics" table.
+	MetricsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "generated_type", Type: field.TypeEnum, Enums: []string{"LP", "RC"}},
+		{Name: "generated_by", Type: field.TypeString},
+		{Name: "collected_at", Type: field.TypeTime},
+		{Name: "pushed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "payload", Type: field.TypeString},
+	}
+	// MetricsTable holds the schema information for the "metrics" table.
+	MetricsTable = &schema.Table{
+		Name:       "metrics",
+		Columns:    MetricsColumns,
+		PrimaryKey: []*schema.Column{MetricsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "metric_generated_type_generated_by_collected_at",
+				Unique:  true,
+				Columns: []*schema.Column{MetricsColumns[1], MetricsColumns[2], MetricsColumns[3]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AlertsTable,
@@ -251,6 +281,7 @@ var (
 		LocksTable,
 		MachinesTable,
 		MetaTable,
+		MetricsTable,
 	}
 )
 
