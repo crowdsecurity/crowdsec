@@ -410,10 +410,28 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	return nil
 }
 
-func (cli *cliMachines) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// need to load config and db because PersistentPreRunE is not called for completions
+
+	var err error
+
+	cfg := cli.cfg()
+
+	if err = require.LAPI(cfg); err != nil {
+		cobra.CompError("unable to list machines " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+	if err != nil {
+		cobra.CompError("unable to list machines " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
 	machines, err := cli.db.ListMachines()
 	if err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
 	ret := []string{}

@@ -42,6 +42,18 @@ teardown() {
     assert_json '[]'
 }
 
+@test "bouncers delete has autocompletion" {
+    rune -0 cscli bouncers add foo1
+    rune -0 cscli bouncers add foo2
+    rune -0 cscli bouncers add bar
+    rune -0 cscli bouncers add baz
+    rune -0 cscli __complete bouncers delete 'foo'
+    assert_line --index 0 'foo1'
+    assert_line --index 1 'foo2'
+    refute_line 'bar'
+    refute_line 'baz'
+}
+
 @test "cscli bouncers list" {
     export API_KEY=bouncerkey
     rune -0 cscli bouncers add ciTestBouncer --key "$API_KEY"

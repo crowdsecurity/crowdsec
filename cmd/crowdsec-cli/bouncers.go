@@ -206,10 +206,28 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli *cliBouncers) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// need to load config and db because PersistentPreRunE is not called for completions
+
+	var err error
+
+	cfg := cli.cfg()
+
+	if err = require.LAPI(cfg); err != nil {
+		cobra.CompError("unable to list bouncers " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+	if err != nil {
+		cobra.CompError("unable to list bouncers " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
 	ret := []string{}
