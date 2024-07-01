@@ -14,7 +14,7 @@ type Metric struct {
 
 func (Metric) Fields() []ent.Field {
 	return []ent.Field{
-	        field.Enum("generated_type").
+		field.Enum("generated_type").
 			Values("LP", "RC").
 			Immutable().
 			Comment("Type of the metrics source: LP=logprocessor, RC=remediation"),
@@ -39,5 +39,5 @@ func (Metric) Indexes() []ent.Index {
 		// Don't store the same metrics multiple times.
 		index.Fields("generated_type", "generated_by", "collected_at").
 			Unique(),
-		}
+	}
 }

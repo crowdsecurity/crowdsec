@@ -10,7 +10,7 @@ import (
 
 // ItemState is defined here instead of using pkg/models/HubItem to avoid introducing a dependency
 type ItemState struct {
-	Status string `json:"status,omitempty"`
+	Status  string `json:"status,omitempty"`
 	Version string `json:"version,omitempty"`
 }
 
