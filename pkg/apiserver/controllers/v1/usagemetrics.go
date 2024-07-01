@@ -16,7 +16,7 @@ import (
 )
 
 // updateBaseMetrics updates the base metrics for a machine or bouncer
-func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, baseMetrics *models.BaseMetrics, hubItems *models.HubItems, datasources map[string]int64) error {
+func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	switch {
 	case machineID != "":
 		c.DBClient.MachineUpdateBaseMetrics(machineID, baseMetrics, hubItems, datasources)
@@ -118,7 +118,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		return
 	}
 
-	err := c.updateBaseMetrics(machineID, bouncer, &baseMetrics, &hubItems, datasources)
+	err := c.updateBaseMetrics(machineID, bouncer, baseMetrics, hubItems, datasources)
 	if err != nil {
 		log.Errorf("Failed to update base metrics: %s", err)
 		c.HandleDBErrors(gctx, err)

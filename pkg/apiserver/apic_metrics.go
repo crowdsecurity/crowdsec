@@ -93,7 +93,6 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	}
 
 	for _, lp := range lps {
-
 		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(lp.MachineId)
 		if err != nil {
 			log.Errorf("unable to get LP usage metrics: %s", err)
@@ -115,7 +114,15 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		lpMetrics.Datasources = lp.Datasources
 
 		if lp.Hubstate != nil {
-			lpMetrics.HubItems = *lp.Hubstate
+			// must carry over the hub state even if nothing is installed
+			hubItems := models.HubItems{}
+			for name, item := range lp.Hubstate {
+				hubItems[name] = models.HubItem{
+					Version: item.Version,
+					Status: item.Status,
+				}
+				lpMetrics.HubItems = hubItems
+			}
 		}
 
 		lpMetrics.Metrics = make([]*models.DetailedMetrics, 0)

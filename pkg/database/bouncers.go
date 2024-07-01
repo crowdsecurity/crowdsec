@@ -12,7 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string, baseMetrics *models.BaseMetrics) error {
+func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string, baseMetrics models.BaseMetrics) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 

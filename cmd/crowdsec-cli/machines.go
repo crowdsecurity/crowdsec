@@ -29,7 +29,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -156,7 +156,7 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func showItems(out io.Writer, itemType string, items map[string]models.HubItem) {
+func showItems(out io.Writer, itemType string, items map[string]schema.ItemState) {
 	t := newLightTable(out)
 	t.SetHeaders("Name", "Status", "Version")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
@@ -173,10 +173,10 @@ func showItems(out io.Writer, itemType string, items map[string]models.HubItem) 
 func showHubState(out io.Writer, machines []*ent.Machine) {
 
 	//FIXME: ugly
-	items := make(map[string]map[string]models.HubItem)
+	items := make(map[string]map[string]schema.ItemState)
 
 	for _, itemType := range cwhub.ItemTypes {
-		items[itemType] = map[string]models.HubItem{}
+		items[itemType] = map[string]schema.ItemState{}
 	}
 
 	for _, machine := range machines {
@@ -186,7 +186,7 @@ func showHubState(out io.Writer, machines []*ent.Machine) {
 			continue
 		}
 
-		for name, item := range *state {
+		for name, item := range state {
 			//here, name is type:actual_name
 			//we want to split it to get the type
 			split := strings.Split(name, ":")

@@ -11,6 +11,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -20,12 +21,20 @@ const (
 	CapiListsMachineID = types.ListOrigin
 )
 
-func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.BaseMetrics, hubItems *models.HubItems, datasources map[string]int64) error {
+func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
 	//FIXME: nil deref
 	heartbeat := time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
+
+	hubState := map[string]schema.ItemState{}
+	for name, item := range hubItems {
+		hubState[name] = schema.ItemState{
+			Version: item.Version,
+			Status:  item.Status,
+		}
+	}
 
 	_, err := c.Ent.Machine.
 		Update().
@@ -35,7 +44,7 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics *models.
 		SetOsversion(*os.Version).
 		SetFeatureflags(features).
 		SetLastHeartbeat(heartbeat).
-		SetHubstate(hubItems).
+		SetHubstate(hubState).
 		SetDatasources(datasources).
 		// TODO: update scenarios
 		Save(c.CTX)
