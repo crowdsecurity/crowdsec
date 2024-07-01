@@ -38,6 +38,16 @@ const (
 	FieldStatus = "status"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
+	// FieldOsname holds the string denoting the osname field in the database.
+	FieldOsname = "osname"
+	// FieldOsversion holds the string denoting the osversion field in the database.
+	FieldOsversion = "osversion"
+	// FieldFeatureflags holds the string denoting the featureflags field in the database.
+	FieldFeatureflags = "featureflags"
+	// FieldHubstate holds the string denoting the hubstate field in the database.
+	FieldHubstate = "hubstate"
+	// FieldDatasources holds the string denoting the datasources field in the database.
+	FieldDatasources = "datasources"
 	// EdgeAlerts holds the string denoting the alerts edge name in mutations.
 	EdgeAlerts = "alerts"
 	// Table holds the table name of the machine in the database.
@@ -66,6 +76,11 @@ var Columns = []string{
 	FieldIsValidated,
 	FieldStatus,
 	FieldAuthType,
+	FieldOsname,
+	FieldOsversion,
+	FieldFeatureflags,
+	FieldHubstate,
+	FieldDatasources,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -161,6 +176,21 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByAuthType orders the results by the auth_type field.
 func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAuthType, opts...).ToFunc()
+}
+
+// ByOsname orders the results by the osname field.
+func ByOsname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsname, opts...).ToFunc()
+}
+
+// ByOsversion orders the results by the osversion field.
+func ByOsversion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsversion, opts...).ToFunc()
+}
+
+// ByFeatureflags orders the results by the featureflags field.
+func ByFeatureflags(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFeatureflags, opts...).ToFunc()
 }
 
 // ByAlertsCount orders the results by alerts count.

@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
 // MachineUpdate is the builder for updating Machine entities.
@@ -191,6 +192,90 @@ func (mu *MachineUpdate) SetNillableAuthType(s *string) *MachineUpdate {
 	return mu
 }
 
+// SetOsname sets the "osname" field.
+func (mu *MachineUpdate) SetOsname(s string) *MachineUpdate {
+	mu.mutation.SetOsname(s)
+	return mu
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableOsname(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetOsname(*s)
+	}
+	return mu
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (mu *MachineUpdate) ClearOsname() *MachineUpdate {
+	mu.mutation.ClearOsname()
+	return mu
+}
+
+// SetOsversion sets the "osversion" field.
+func (mu *MachineUpdate) SetOsversion(s string) *MachineUpdate {
+	mu.mutation.SetOsversion(s)
+	return mu
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableOsversion(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetOsversion(*s)
+	}
+	return mu
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (mu *MachineUpdate) ClearOsversion() *MachineUpdate {
+	mu.mutation.ClearOsversion()
+	return mu
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (mu *MachineUpdate) SetFeatureflags(s string) *MachineUpdate {
+	mu.mutation.SetFeatureflags(s)
+	return mu
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableFeatureflags(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetFeatureflags(*s)
+	}
+	return mu
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (mu *MachineUpdate) ClearFeatureflags() *MachineUpdate {
+	mu.mutation.ClearFeatureflags()
+	return mu
+}
+
+// SetHubstate sets the "hubstate" field.
+func (mu *MachineUpdate) SetHubstate(ms map[string]schema.ItemState) *MachineUpdate {
+	mu.mutation.SetHubstate(ms)
+	return mu
+}
+
+// ClearHubstate clears the value of the "hubstate" field.
+func (mu *MachineUpdate) ClearHubstate() *MachineUpdate {
+	mu.mutation.ClearHubstate()
+	return mu
+}
+
+// SetDatasources sets the "datasources" field.
+func (mu *MachineUpdate) SetDatasources(m map[string]int64) *MachineUpdate {
+	mu.mutation.SetDatasources(m)
+	return mu
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (mu *MachineUpdate) ClearDatasources() *MachineUpdate {
+	mu.mutation.ClearDatasources()
+	return mu
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mu *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.AddAlertIDs(ids...)
@@ -334,6 +419,36 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := mu.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
+	}
+	if value, ok := mu.mutation.Osname(); ok {
+		_spec.SetField(machine.FieldOsname, field.TypeString, value)
+	}
+	if mu.mutation.OsnameCleared() {
+		_spec.ClearField(machine.FieldOsname, field.TypeString)
+	}
+	if value, ok := mu.mutation.Osversion(); ok {
+		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
+	}
+	if mu.mutation.OsversionCleared() {
+		_spec.ClearField(machine.FieldOsversion, field.TypeString)
+	}
+	if value, ok := mu.mutation.Featureflags(); ok {
+		_spec.SetField(machine.FieldFeatureflags, field.TypeString, value)
+	}
+	if mu.mutation.FeatureflagsCleared() {
+		_spec.ClearField(machine.FieldFeatureflags, field.TypeString)
+	}
+	if value, ok := mu.mutation.Hubstate(); ok {
+		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
+	}
+	if mu.mutation.HubstateCleared() {
+		_spec.ClearField(machine.FieldHubstate, field.TypeJSON)
+	}
+	if value, ok := mu.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+	}
+	if mu.mutation.DatasourcesCleared() {
+		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
 	}
 	if mu.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -562,6 +677,90 @@ func (muo *MachineUpdateOne) SetNillableAuthType(s *string) *MachineUpdateOne {
 	return muo
 }
 
+// SetOsname sets the "osname" field.
+func (muo *MachineUpdateOne) SetOsname(s string) *MachineUpdateOne {
+	muo.mutation.SetOsname(s)
+	return muo
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableOsname(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetOsname(*s)
+	}
+	return muo
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (muo *MachineUpdateOne) ClearOsname() *MachineUpdateOne {
+	muo.mutation.ClearOsname()
+	return muo
+}
+
+// SetOsversion sets the "osversion" field.
+func (muo *MachineUpdateOne) SetOsversion(s string) *MachineUpdateOne {
+	muo.mutation.SetOsversion(s)
+	return muo
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableOsversion(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetOsversion(*s)
+	}
+	return muo
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (muo *MachineUpdateOne) ClearOsversion() *MachineUpdateOne {
+	muo.mutation.ClearOsversion()
+	return muo
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (muo *MachineUpdateOne) SetFeatureflags(s string) *MachineUpdateOne {
+	muo.mutation.SetFeatureflags(s)
+	return muo
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableFeatureflags(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetFeatureflags(*s)
+	}
+	return muo
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (muo *MachineUpdateOne) ClearFeatureflags() *MachineUpdateOne {
+	muo.mutation.ClearFeatureflags()
+	return muo
+}
+
+// SetHubstate sets the "hubstate" field.
+func (muo *MachineUpdateOne) SetHubstate(ms map[string]schema.ItemState) *MachineUpdateOne {
+	muo.mutation.SetHubstate(ms)
+	return muo
+}
+
+// ClearHubstate clears the value of the "hubstate" field.
+func (muo *MachineUpdateOne) ClearHubstate() *MachineUpdateOne {
+	muo.mutation.ClearHubstate()
+	return muo
+}
+
+// SetDatasources sets the "datasources" field.
+func (muo *MachineUpdateOne) SetDatasources(m map[string]int64) *MachineUpdateOne {
+	muo.mutation.SetDatasources(m)
+	return muo
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (muo *MachineUpdateOne) ClearDatasources() *MachineUpdateOne {
+	muo.mutation.ClearDatasources()
+	return muo
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (muo *MachineUpdateOne) AddAlertIDs(ids ...int) *MachineUpdateOne {
 	muo.mutation.AddAlertIDs(ids...)
@@ -735,6 +934,36 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	if value, ok := muo.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
+	}
+	if value, ok := muo.mutation.Osname(); ok {
+		_spec.SetField(machine.FieldOsname, field.TypeString, value)
+	}
+	if muo.mutation.OsnameCleared() {
+		_spec.ClearField(machine.FieldOsname, field.TypeString)
+	}
+	if value, ok := muo.mutation.Osversion(); ok {
+		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
+	}
+	if muo.mutation.OsversionCleared() {
+		_spec.ClearField(machine.FieldOsversion, field.TypeString)
+	}
+	if value, ok := muo.mutation.Featureflags(); ok {
+		_spec.SetField(machine.FieldFeatureflags, field.TypeString, value)
+	}
+	if muo.mutation.FeatureflagsCleared() {
+		_spec.ClearField(machine.FieldFeatureflags, field.TypeString)
+	}
+	if value, ok := muo.mutation.Hubstate(); ok {
+		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
+	}
+	if muo.mutation.HubstateCleared() {
+		_spec.ClearField(machine.FieldHubstate, field.TypeJSON)
+	}
+	if value, ok := muo.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+	}
+	if muo.mutation.DatasourcesCleared() {
+		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
 	}
 	if muo.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
