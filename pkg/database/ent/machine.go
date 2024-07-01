@@ -11,7 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
 // Machine is the model entity for the Machine schema.
@@ -50,7 +50,7 @@ type Machine struct {
 	// Featureflags holds the value of the "featureflags" field.
 	Featureflags string `json:"featureflags,omitempty"`
 	// Hubstate holds the value of the "hubstate" field.
-	Hubstate *models.HubItems `json:"hubstate,omitempty"`
+	Hubstate map[string]schema.ItemState `json:"hubstate,omitempty"`
 	// Datasources holds the value of the "datasources" field.
 	Datasources map[string]int64 `json:"datasources,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.

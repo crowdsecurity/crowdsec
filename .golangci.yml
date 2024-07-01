@@ -48,7 +48,6 @@ linters-settings:
             desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
         files:
           - "!**/pkg/database/*.go"
-          - "!**/pkg/apiserver/controllers/v1/errors.go"
       yaml:
         files:
           - "!**/pkg/acquisition/acquisition.go"

@@ -14,7 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
 // MachineUpdate is the builder for updating Machine entities.
@@ -253,8 +253,8 @@ func (mu *MachineUpdate) ClearFeatureflags() *MachineUpdate {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (mu *MachineUpdate) SetHubstate(mi *models.HubItems) *MachineUpdate {
-	mu.mutation.SetHubstate(mi)
+func (mu *MachineUpdate) SetHubstate(ms map[string]schema.ItemState) *MachineUpdate {
+	mu.mutation.SetHubstate(ms)
 	return mu
 }
 
@@ -738,8 +738,8 @@ func (muo *MachineUpdateOne) ClearFeatureflags() *MachineUpdateOne {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (muo *MachineUpdateOne) SetHubstate(mi *models.HubItems) *MachineUpdateOne {
-	muo.mutation.SetHubstate(mi)
+func (muo *MachineUpdateOne) SetHubstate(ms map[string]schema.ItemState) *MachineUpdateOne {
+	muo.mutation.SetHubstate(ms)
 	return muo
 }
 

@@ -12,7 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
 // MachineCreate is the builder for creating a Machine entity.
@@ -209,8 +209,8 @@ func (mc *MachineCreate) SetNillableFeatureflags(s *string) *MachineCreate {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (mc *MachineCreate) SetHubstate(mi *models.HubItems) *MachineCreate {
-	mc.mutation.SetHubstate(mi)
+func (mc *MachineCreate) SetHubstate(ms map[string]schema.ItemState) *MachineCreate {
+	mc.mutation.SetHubstate(ms)
 	return mc
 }
 

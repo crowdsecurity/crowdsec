@@ -5,9 +5,14 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+// ItemState is defined here instead of using pkg/models/HubItem to avoid introducing a dependency
+type ItemState struct {
+	Status  string `json:"status,omitempty"`
+	Version string `json:"version,omitempty"`
+}
 
 // Machine holds the schema definition for the Machine entity.
 type Machine struct {
@@ -42,20 +47,10 @@ func (Machine) Fields() []ent.Field {
 		field.String("osname").Optional(),
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
-		field.JSON("hubstate", &models.HubItems{}).Optional(),
+		field.JSON("hubstate", map[string]ItemState{}).Optional(),
 		field.JSON("datasources", map[string]int64{}).Optional(),
 	}
 }
-
-//type HubItemState struct {
-//	Version string `json:"version"`
-//	Status string `json:"status"`
-//}
-//
-//type HubState struct {
-//	// the key is the FQName (type:author/name)
-//	Items map[string]HubItemState `json:"hub_items"`
-//}
 
 // Edges of the Machine.
 func (Machine) Edges() []ent.Edge {
