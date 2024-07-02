@@ -6543,7 +6543,7 @@ type MachineMutation struct {
 	osname         *string
 	osversion      *string
 	featureflags   *string
-	hubstate       *map[string]schema.ItemState
+	hubstate       *map[string][]schema.ItemState
 	datasources    *map[string]int64
 	clearedFields  map[string]struct{}
 	alerts         map[int]struct{}
@@ -7297,12 +7297,12 @@ func (m *MachineMutation) ResetFeatureflags() {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (m *MachineMutation) SetHubstate(ms map[string]schema.ItemState) {
+func (m *MachineMutation) SetHubstate(ms map[string][]schema.ItemState) {
 	m.hubstate = &ms
 }
 
 // Hubstate returns the value of the "hubstate" field in the mutation.
-func (m *MachineMutation) Hubstate() (r map[string]schema.ItemState, exists bool) {
+func (m *MachineMutation) Hubstate() (r map[string][]schema.ItemState, exists bool) {
 	v := m.hubstate
 	if v == nil {
 		return
@@ -7313,7 +7313,7 @@ func (m *MachineMutation) Hubstate() (r map[string]schema.ItemState, exists bool
 // OldHubstate returns the old "hubstate" field's value of the Machine entity.
 // If the Machine object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MachineMutation) OldHubstate(ctx context.Context) (v map[string]schema.ItemState, err error) {
+func (m *MachineMutation) OldHubstate(ctx context.Context) (v map[string][]schema.ItemState, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldHubstate is only allowed on UpdateOne operations")
 	}
@@ -7734,7 +7734,7 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 		m.SetFeatureflags(v)
 		return nil
 	case machine.FieldHubstate:
-		v, ok := value.(map[string]schema.ItemState)
+		v, ok := value.(map[string][]schema.ItemState)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

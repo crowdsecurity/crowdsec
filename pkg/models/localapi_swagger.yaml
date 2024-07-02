@@ -1188,11 +1188,16 @@ definitions:
     title: HubItems
     type: object
     additionalProperties:
-      $ref: '#/definitions/HubItem'
+      type: array
+      items:
+        $ref: '#/definitions/HubItem'
   HubItem:
     title: HubItem
     type: object
     properties:
+      name:
+        type: string
+        description: name of the hub item
       version:
         type: string
         description: version of the hub item

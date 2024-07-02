@@ -209,7 +209,7 @@ func (mc *MachineCreate) SetNillableFeatureflags(s *string) *MachineCreate {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (mc *MachineCreate) SetHubstate(ms map[string]schema.ItemState) *MachineCreate {
+func (mc *MachineCreate) SetHubstate(ms map[string][]schema.ItemState) *MachineCreate {
 	mc.mutation.SetHubstate(ms)
 	return mc
 }

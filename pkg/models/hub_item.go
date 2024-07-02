@@ -17,6 +17,9 @@ import (
 // swagger:model HubItem
 type HubItem struct {
 
+	// name of the hub item
+	Name string `json:"name,omitempty"`
+
 	// status of the hub item (official, custom, tainted, etc.)
 	Status string `json:"status,omitempty"`
 

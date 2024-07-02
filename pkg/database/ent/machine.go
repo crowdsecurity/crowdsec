@@ -50,7 +50,7 @@ type Machine struct {
 	// Featureflags holds the value of the "featureflags" field.
 	Featureflags string `json:"featureflags,omitempty"`
 	// Hubstate holds the value of the "hubstate" field.
-	Hubstate map[string]schema.ItemState `json:"hubstate,omitempty"`
+	Hubstate map[string][]schema.ItemState `json:"hubstate,omitempty"`
 	// Datasources holds the value of the "datasources" field.
 	Datasources map[string]int64 `json:"datasources,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.

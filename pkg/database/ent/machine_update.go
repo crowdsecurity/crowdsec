@@ -253,7 +253,7 @@ func (mu *MachineUpdate) ClearFeatureflags() *MachineUpdate {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (mu *MachineUpdate) SetHubstate(ms map[string]schema.ItemState) *MachineUpdate {
+func (mu *MachineUpdate) SetHubstate(ms map[string][]schema.ItemState) *MachineUpdate {
 	mu.mutation.SetHubstate(ms)
 	return mu
 }
@@ -738,7 +738,7 @@ func (muo *MachineUpdateOne) ClearFeatureflags() *MachineUpdateOne {
 }
 
 // SetHubstate sets the "hubstate" field.
-func (muo *MachineUpdateOne) SetHubstate(ms map[string]schema.ItemState) *MachineUpdateOne {
+func (muo *MachineUpdateOne) SetHubstate(ms map[string][]schema.ItemState) *MachineUpdateOne {
 	muo.mutation.SetHubstate(ms)
 	return muo
 }
