@@ -7,16 +7,18 @@ package models
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
 // HubItems HubItems
 //
 // swagger:model HubItems
-type HubItems map[string]HubItem
+type HubItems map[string][]HubItem
 
 // Validate validates this hub items
 func (m HubItems) Validate(formats strfmt.Registry) error {
@@ -27,15 +29,18 @@ func (m HubItems) Validate(formats strfmt.Registry) error {
 		if err := validate.Required(k, "body", m[k]); err != nil {
 			return err
 		}
-		if val, ok := m[k]; ok {
-			if err := val.Validate(formats); err != nil {
+
+		for i := 0; i < len(m[k]); i++ {
+
+			if err := m[k][i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(k)
+					return ve.ValidateName(k + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(k)
+					return ce.ValidateName(k + "." + strconv.Itoa(i))
 				}
 				return err
 			}
+
 		}
 
 	}
@@ -52,10 +57,21 @@ func (m HubItems) ContextValidate(ctx context.Context, formats strfmt.Registry) 
 
 	for k := range m {
 
-		if val, ok := m[k]; ok {
-			if err := val.ContextValidate(ctx, formats); err != nil {
+		for i := 0; i < len(m[k]); i++ {
+
+			if swag.IsZero(m[k][i]) { // not required
+				return nil
+			}
+
+			if err := m[k][i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName(k + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName(k + "." + strconv.Itoa(i))
+				}
 				return err
 			}
+
 		}
 
 	}
