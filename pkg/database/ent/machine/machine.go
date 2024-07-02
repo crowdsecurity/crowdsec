@@ -34,8 +34,6 @@ const (
 	FieldVersion = "version"
 	// FieldIsValidated holds the string denoting the isvalidated field in the database.
 	FieldIsValidated = "is_validated"
-	// FieldStatus holds the string denoting the status field in the database.
-	FieldStatus = "status"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
 	// FieldOsname holds the string denoting the osname field in the database.
@@ -74,7 +72,6 @@ var Columns = []string{
 	FieldScenarios,
 	FieldVersion,
 	FieldIsValidated,
-	FieldStatus,
 	FieldAuthType,
 	FieldOsname,
 	FieldOsversion,
@@ -166,11 +163,6 @@ func ByVersion(opts ...sql.OrderTermOption) OrderOption {
 // ByIsValidated orders the results by the isValidated field.
 func ByIsValidated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsValidated, opts...).ToFunc()
-}
-
-// ByStatus orders the results by the status field.
-func ByStatus(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
 // ByAuthType orders the results by the auth_type field.

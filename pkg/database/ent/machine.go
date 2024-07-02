@@ -39,8 +39,6 @@ type Machine struct {
 	Version string `json:"version,omitempty"`
 	// IsValidated holds the value of the "isValidated" field.
 	IsValidated bool `json:"isValidated,omitempty"`
-	// Status holds the value of the "status" field.
-	Status string `json:"status,omitempty"`
 	// AuthType holds the value of the "auth_type" field.
 	AuthType string `json:"auth_type"`
 	// Osname holds the value of the "osname" field.
@@ -88,7 +86,7 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case machine.FieldID:
 			values[i] = new(sql.NullInt64)
-		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType, machine.FieldOsname, machine.FieldOsversion, machine.FieldFeatureflags:
+		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldAuthType, machine.FieldOsname, machine.FieldOsversion, machine.FieldFeatureflags:
 			values[i] = new(sql.NullString)
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
@@ -174,12 +172,6 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field isValidated", values[i])
 			} else if value.Valid {
 				m.IsValidated = value.Bool
-			}
-		case machine.FieldStatus:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field status", values[i])
-			} else if value.Valid {
-				m.Status = value.String
 			}
 		case machine.FieldAuthType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -294,9 +286,6 @@ func (m *Machine) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("isValidated=")
 	builder.WriteString(fmt.Sprintf("%v", m.IsValidated))
-	builder.WriteString(", ")
-	builder.WriteString("status=")
-	builder.WriteString(m.Status)
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(m.AuthType)

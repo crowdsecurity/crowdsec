@@ -105,11 +105,6 @@ func IsValidated(v bool) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldIsValidated, v))
 }
 
-// Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
-func Status(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEQ(FieldStatus, v))
-}
-
 // AuthType applies equality check predicate on the "auth_type" field. It's identical to AuthTypeEQ.
 func AuthType(v string) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldAuthType, v))
@@ -663,81 +658,6 @@ func IsValidatedEQ(v bool) predicate.Machine {
 // IsValidatedNEQ applies the NEQ predicate on the "isValidated" field.
 func IsValidatedNEQ(v bool) predicate.Machine {
 	return predicate.Machine(sql.FieldNEQ(FieldIsValidated, v))
-}
-
-// StatusEQ applies the EQ predicate on the "status" field.
-func StatusEQ(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEQ(FieldStatus, v))
-}
-
-// StatusNEQ applies the NEQ predicate on the "status" field.
-func StatusNEQ(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldNEQ(FieldStatus, v))
-}
-
-// StatusIn applies the In predicate on the "status" field.
-func StatusIn(vs ...string) predicate.Machine {
-	return predicate.Machine(sql.FieldIn(FieldStatus, vs...))
-}
-
-// StatusNotIn applies the NotIn predicate on the "status" field.
-func StatusNotIn(vs ...string) predicate.Machine {
-	return predicate.Machine(sql.FieldNotIn(FieldStatus, vs...))
-}
-
-// StatusGT applies the GT predicate on the "status" field.
-func StatusGT(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldGT(FieldStatus, v))
-}
-
-// StatusGTE applies the GTE predicate on the "status" field.
-func StatusGTE(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldGTE(FieldStatus, v))
-}
-
-// StatusLT applies the LT predicate on the "status" field.
-func StatusLT(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldLT(FieldStatus, v))
-}
-
-// StatusLTE applies the LTE predicate on the "status" field.
-func StatusLTE(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldLTE(FieldStatus, v))
-}
-
-// StatusContains applies the Contains predicate on the "status" field.
-func StatusContains(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldContains(FieldStatus, v))
-}
-
-// StatusHasPrefix applies the HasPrefix predicate on the "status" field.
-func StatusHasPrefix(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldHasPrefix(FieldStatus, v))
-}
-
-// StatusHasSuffix applies the HasSuffix predicate on the "status" field.
-func StatusHasSuffix(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldHasSuffix(FieldStatus, v))
-}
-
-// StatusIsNil applies the IsNil predicate on the "status" field.
-func StatusIsNil() predicate.Machine {
-	return predicate.Machine(sql.FieldIsNull(FieldStatus))
-}
-
-// StatusNotNil applies the NotNil predicate on the "status" field.
-func StatusNotNil() predicate.Machine {
-	return predicate.Machine(sql.FieldNotNull(FieldStatus))
-}
-
-// StatusEqualFold applies the EqualFold predicate on the "status" field.
-func StatusEqualFold(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEqualFold(FieldStatus, v))
-}
-
-// StatusContainsFold applies the ContainsFold predicate on the "status" field.
-func StatusContainsFold(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldContainsFold(FieldStatus, v))
 }
 
 // AuthTypeEQ applies the EQ predicate on the "auth_type" field.

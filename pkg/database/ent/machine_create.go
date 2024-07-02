@@ -138,20 +138,6 @@ func (mc *MachineCreate) SetNillableIsValidated(b *bool) *MachineCreate {
 	return mc
 }
 
-// SetStatus sets the "status" field.
-func (mc *MachineCreate) SetStatus(s string) *MachineCreate {
-	mc.mutation.SetStatus(s)
-	return mc
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (mc *MachineCreate) SetNillableStatus(s *string) *MachineCreate {
-	if s != nil {
-		mc.SetStatus(*s)
-	}
-	return mc
-}
-
 // SetAuthType sets the "auth_type" field.
 func (mc *MachineCreate) SetAuthType(s string) *MachineCreate {
 	mc.mutation.SetAuthType(s)
@@ -385,10 +371,6 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	if value, ok := mc.mutation.IsValidated(); ok {
 		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 		_node.IsValidated = value
-	}
-	if value, ok := mc.mutation.Status(); ok {
-		_spec.SetField(machine.FieldStatus, field.TypeString, value)
-		_node.Status = value
 	}
 	if value, ok := mc.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
