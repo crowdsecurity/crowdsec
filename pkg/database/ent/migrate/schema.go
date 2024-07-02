@@ -205,7 +205,6 @@ var (
 		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 100000},
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool, Default: false},
-		{Name: "status", Type: field.TypeString, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "password"},
 		{Name: "osname", Type: field.TypeString, Nullable: true},
 		{Name: "osversion", Type: field.TypeString, Nullable: true},

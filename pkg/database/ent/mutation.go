@@ -6538,7 +6538,6 @@ type MachineMutation struct {
 	scenarios      *string
 	version        *string
 	isValidated    *bool
-	status         *string
 	auth_type      *string
 	osname         *string
 	osversion      *string
@@ -7064,55 +7063,6 @@ func (m *MachineMutation) ResetIsValidated() {
 	m.isValidated = nil
 }
 
-// SetStatus sets the "status" field.
-func (m *MachineMutation) SetStatus(s string) {
-	m.status = &s
-}
-
-// Status returns the value of the "status" field in the mutation.
-func (m *MachineMutation) Status() (r string, exists bool) {
-	v := m.status
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldStatus returns the old "status" field's value of the Machine entity.
-// If the Machine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MachineMutation) OldStatus(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldStatus requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
-	}
-	return oldValue.Status, nil
-}
-
-// ClearStatus clears the value of the "status" field.
-func (m *MachineMutation) ClearStatus() {
-	m.status = nil
-	m.clearedFields[machine.FieldStatus] = struct{}{}
-}
-
-// StatusCleared returns if the "status" field was cleared in this mutation.
-func (m *MachineMutation) StatusCleared() bool {
-	_, ok := m.clearedFields[machine.FieldStatus]
-	return ok
-}
-
-// ResetStatus resets all changes to the "status" field.
-func (m *MachineMutation) ResetStatus() {
-	m.status = nil
-	delete(m.clearedFields, machine.FieldStatus)
-}
-
 // SetAuthType sets the "auth_type" field.
 func (m *MachineMutation) SetAuthType(s string) {
 	m.auth_type = &s
@@ -7482,7 +7432,7 @@ func (m *MachineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -7512,9 +7462,6 @@ func (m *MachineMutation) Fields() []string {
 	}
 	if m.isValidated != nil {
 		fields = append(fields, machine.FieldIsValidated)
-	}
-	if m.status != nil {
-		fields = append(fields, machine.FieldStatus)
 	}
 	if m.auth_type != nil {
 		fields = append(fields, machine.FieldAuthType)
@@ -7562,8 +7509,6 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.Version()
 	case machine.FieldIsValidated:
 		return m.IsValidated()
-	case machine.FieldStatus:
-		return m.Status()
 	case machine.FieldAuthType:
 		return m.AuthType()
 	case machine.FieldOsname:
@@ -7605,8 +7550,6 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldVersion(ctx)
 	case machine.FieldIsValidated:
 		return m.OldIsValidated(ctx)
-	case machine.FieldStatus:
-		return m.OldStatus(ctx)
 	case machine.FieldAuthType:
 		return m.OldAuthType(ctx)
 	case machine.FieldOsname:
@@ -7698,13 +7641,6 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetIsValidated(v)
 		return nil
-	case machine.FieldStatus:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetStatus(v)
-		return nil
 	case machine.FieldAuthType:
 		v, ok := value.(string)
 		if !ok {
@@ -7789,9 +7725,6 @@ func (m *MachineMutation) ClearedFields() []string {
 	if m.FieldCleared(machine.FieldVersion) {
 		fields = append(fields, machine.FieldVersion)
 	}
-	if m.FieldCleared(machine.FieldStatus) {
-		fields = append(fields, machine.FieldStatus)
-	}
 	if m.FieldCleared(machine.FieldOsname) {
 		fields = append(fields, machine.FieldOsname)
 	}
@@ -7832,9 +7765,6 @@ func (m *MachineMutation) ClearField(name string) error {
 		return nil
 	case machine.FieldVersion:
 		m.ClearVersion()
-		return nil
-	case machine.FieldStatus:
-		m.ClearStatus()
 		return nil
 	case machine.FieldOsname:
 		m.ClearOsname()
@@ -7888,9 +7818,6 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldIsValidated:
 		m.ResetIsValidated()
-		return nil
-	case machine.FieldStatus:
-		m.ResetStatus()
 		return nil
 	case machine.FieldAuthType:
 		m.ResetAuthType()

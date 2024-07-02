@@ -206,12 +206,13 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// need to load config and db because PersistentPreRunE is not called for completions
-
+// validBouncerID returns a list of bouncer IDs for command completion
+func (cli *cliBouncers) validBouncerID(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var err error
 
 	cfg := cli.cfg()
+
+	// need to load config and db because PersistentPreRunE is not called for completions
 
 	if err = require.LAPI(cfg); err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
@@ -261,7 +262,7 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		ValidArgsFunction: cli.deleteValid,
+		ValidArgsFunction: cli.validBouncerID,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.delete(args)
 		},
