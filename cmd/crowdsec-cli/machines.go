@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/machineid"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -158,14 +157,6 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func splitFQName(fqName string) (string, string) {
-	parts := strings.Split(fqName, ":")
-	if len(parts) != 2 {
-		return "", ""
-	}
-	return parts[0], parts[1]
-}
-
 func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	state := machine.Hubstate
 
@@ -177,26 +168,15 @@ func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	// group state rows by type for multiple tables
 	rowsByType := make(map[string][]table.Row)
 
-	// sort by type + name
-	fqNames := maptools.SortedKeysNoCase(state)
+	for itemType, items := range state {
+		for _, item := range items {
+			if _, ok := rowsByType[itemType]; !ok {
+				rowsByType[itemType] = make([]table.Row, 0)
+			}
 
-	for _, fqName := range fqNames {
-		item := state[fqName]
-
-		// here, name is type:actual_name
-		// we want to split it to get the type
-		itemType, itemName := splitFQName(fqName)
-		if itemType == "" {
-			log.Warningf("invalid hub item name '%s'", fqName)
-			continue
+			row := table.Row{item.Name, item.Status, item.Version}
+			rowsByType[itemType] = append(rowsByType[itemType], row)
 		}
-
-		if _, ok := rowsByType[itemType]; !ok {
-			rowsByType[itemType] = make([]table.Row, 0)
-		}
-
-		row := table.Row{itemName, item.Status, item.Version}
-		rowsByType[itemType] = append(rowsByType[itemType], row)
 	}
 
 	for itemType, rows := range rowsByType {
@@ -670,13 +650,8 @@ func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
-	for _, fqName := range maptools.SortedKeysNoCase(machine.Hubstate) {
-		itemType, itemName := splitFQName(fqName)
-		if itemType != cwhub.COLLECTIONS {
-			continue
-		}
-
-		t.AppendRow(table.Row{"Collections", itemName})
+	for _, coll := range machine.Hubstate[cwhub.COLLECTIONS] {
+		t.AppendRow(table.Row{"Collections", coll.Name})
 	}
 
 	fmt.Fprintln(out, t.Render())
@@ -772,21 +747,10 @@ func (cli *cliMachines) inspectHub(machine *ent.Machine) error {
 
 		rows := make([][]string, 0)
 
-		state := machine.Hubstate
-
-		// sort by type + name
-		fqNames := maptools.SortedKeys(state)
-
-		for _, fqName := range fqNames {
-			itemType, itemName := splitFQName(fqName)
-			if itemType == "" {
-				log.Warningf("invalid hub item name '%s'", fqName)
-				continue
+		for itemType, items := range machine.Hubstate {
+			for _, item := range items {
+				rows = append(rows, []string{itemType, item.Name, item.Status, item.Version})
 			}
-
-			item := state[fqName]
-
-			rows = append(rows, []string{itemType, itemName, item.Status, item.Version})
 		}
 
 		for _, row := range rows {

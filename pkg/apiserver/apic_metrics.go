@@ -116,10 +116,14 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		if lp.Hubstate != nil {
 			// must carry over the hub state even if nothing is installed
 			hubItems := models.HubItems{}
-			for name, item := range lp.Hubstate {
-				hubItems[name] = models.HubItem{
-					Version: item.Version,
-					Status: item.Status,
+			for itemType, items := range lp.Hubstate {
+				hubItems[itemType] = []models.HubItem{}
+				for _, item := range items {
+					hubItems[itemType] = append(hubItems[itemType], models.HubItem{
+						Name:   item.Name,
+						Status: item.Status,
+						Version: item.Version,
+					})
 				}
 				lpMetrics.HubItems = hubItems
 			}

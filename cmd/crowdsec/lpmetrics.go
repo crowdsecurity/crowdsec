@@ -44,6 +44,7 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 	ret := models.HubItems{}
 
 	for _, itemType := range cwhub.ItemTypes {
+		ret[itemType] = []models.HubItem{}
 		items, _ := hub.GetInstalledItemsByType(itemType)
 		for _, item := range items {
 			status := "official"
@@ -53,10 +54,11 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 			if item.State.Tainted {
 				status = "tainted"
 			}
-			ret[item.FQName()] = models.HubItem{
-				Version: item.Version,
+			ret[itemType] = append(ret[itemType], models.HubItem{
+				Name:    item.Name,
 				Status:  status,
-			}
+				Version: item.Version,
+			})
 		}
 	}
 

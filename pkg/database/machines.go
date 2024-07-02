@@ -28,11 +28,15 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.B
 	//FIXME: nil deref
 	heartbeat := time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
 
-	hubState := map[string]schema.ItemState{}
-	for name, item := range hubItems {
-		hubState[name] = schema.ItemState{
-			Version: item.Version,
-			Status:  item.Status,
+	hubState := map[string][]schema.ItemState{}
+	for itemType, items := range hubItems {
+		hubState[itemType] = []schema.ItemState{}
+		for _, item := range items {
+			hubState[itemType] = append(hubState[itemType], schema.ItemState{
+				Name:    item.Name,
+				Status:  item.Status,
+				Version: item.Version,
+			})
 		}
 	}
 
