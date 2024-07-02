@@ -8,6 +8,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -139,6 +140,22 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		return nil
 	})
 	outputWg.Wait()
+
+	mp := NewMetricsProvider(
+		apiClient,
+		*cConfig.Crowdsec.MetricsInterval,
+		log.WithField("service", "lpmetrics"),
+		cConfig.API.Server.ConsoleConfig.EnabledOptions(),
+		datasources,
+		hub,
+	)
+
+	lpMetricsTomb := tomb.Tomb{}
+
+	lpMetricsTomb.Go(func() error {
+		// XXX: context?
+		return mp.Run(context.Background(), &lpMetricsTomb)
+	})
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false

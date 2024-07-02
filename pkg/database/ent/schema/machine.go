@@ -54,6 +54,7 @@ func (Machine) Fields() []ent.Field {
 // Edges of the Machine.
 func (Machine) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("alerts", Alert.Type),
+		edge.To("alerts", Alert.Type).
+		StructTag(`json:"dafuck"`),
 	}
 }

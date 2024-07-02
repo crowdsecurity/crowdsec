@@ -8,13 +8,22 @@ import (
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+)
+
+const (
+	// how long to keep metrics in the local database
+	defaultMetricsMaxAge = 7 * 24 * time.Hour
+	flushInterval        = 1 * time.Minute
 )
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
@@ -90,16 +99,44 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
 		}
 	}
-
-	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
+	baJob, err := scheduler.Every(flushInterval).Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
 	}
 
 	baJob.SingletonMode()
+
+	metricsJob, err := scheduler.Every(flushInterval).Do(c.flushMetrics, config.MetricsMaxAge)
+	if err != nil {
+		return nil, fmt.Errorf("while starting flushMetrics scheduler: %w", err)
+	}
+
+	metricsJob.SingletonMode()
+
 	scheduler.StartAsync()
 
 	return scheduler, nil
+}
+
+// flushMetrics deletes metrics older than maxAge, regardless if they have been pushed to CAPI or not
+func (c *Client) flushMetrics(maxAge *time.Duration) {
+	if maxAge == nil {
+		maxAge = ptr.Of(defaultMetricsMaxAge)
+	}
+
+	c.Log.Debugf("flushing metrics older than %s", maxAge)
+
+	deleted, err := c.Ent.Metric.Delete().Where(
+		metric.CollectedAtLTE(time.Now().UTC().Add(-*maxAge)),
+	).Exec(c.CTX)
+	if err != nil {
+		c.Log.Errorf("while flushing metrics: %s", err)
+		return
+	}
+
+	if deleted > 0 {
+		c.Log.Debugf("flushed %d metrics snapshots", deleted)
+	}
 }
 
 func (c *Client) FlushOrphans() {
