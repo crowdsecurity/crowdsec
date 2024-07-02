@@ -151,7 +151,7 @@ func init() {
 	// machine.DefaultIsValidated holds the default value on creation for the isValidated field.
 	machine.DefaultIsValidated = machineDescIsValidated.Default.(bool)
 	// machineDescAuthType is the schema descriptor for auth_type field.
-	machineDescAuthType := machineFields[11].Descriptor()
+	machineDescAuthType := machineFields[10].Descriptor()
 	// machine.DefaultAuthType holds the default value on creation for the auth_type field.
 	machine.DefaultAuthType = machineDescAuthType.Default.(string)
 	metaFields := schema.Meta{}.Fields()

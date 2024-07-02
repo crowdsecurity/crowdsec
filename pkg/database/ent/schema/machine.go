@@ -42,7 +42,6 @@ func (Machine) Fields() []ent.Field {
 		field.String("version").Optional(),
 		field.Bool("isValidated").
 			Default(false),
-		field.String("status").Optional(),
 		field.String("auth_type").Default(types.PasswordAuthType).StructTag(`json:"auth_type"`),
 		field.String("osname").Optional(),
 		field.String("osversion").Optional(),

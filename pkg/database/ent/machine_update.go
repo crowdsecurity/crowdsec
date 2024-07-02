@@ -158,26 +158,6 @@ func (mu *MachineUpdate) SetNillableIsValidated(b *bool) *MachineUpdate {
 	return mu
 }
 
-// SetStatus sets the "status" field.
-func (mu *MachineUpdate) SetStatus(s string) *MachineUpdate {
-	mu.mutation.SetStatus(s)
-	return mu
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableStatus(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetStatus(*s)
-	}
-	return mu
-}
-
-// ClearStatus clears the value of the "status" field.
-func (mu *MachineUpdate) ClearStatus() *MachineUpdate {
-	mu.mutation.ClearStatus()
-	return mu
-}
-
 // SetAuthType sets the "auth_type" field.
 func (mu *MachineUpdate) SetAuthType(s string) *MachineUpdate {
 	mu.mutation.SetAuthType(s)
@@ -411,12 +391,6 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := mu.mutation.IsValidated(); ok {
 		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 	}
-	if value, ok := mu.mutation.Status(); ok {
-		_spec.SetField(machine.FieldStatus, field.TypeString, value)
-	}
-	if mu.mutation.StatusCleared() {
-		_spec.ClearField(machine.FieldStatus, field.TypeString)
-	}
 	if value, ok := mu.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 	}
@@ -640,26 +614,6 @@ func (muo *MachineUpdateOne) SetNillableIsValidated(b *bool) *MachineUpdateOne {
 	if b != nil {
 		muo.SetIsValidated(*b)
 	}
-	return muo
-}
-
-// SetStatus sets the "status" field.
-func (muo *MachineUpdateOne) SetStatus(s string) *MachineUpdateOne {
-	muo.mutation.SetStatus(s)
-	return muo
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableStatus(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetStatus(*s)
-	}
-	return muo
-}
-
-// ClearStatus clears the value of the "status" field.
-func (muo *MachineUpdateOne) ClearStatus() *MachineUpdateOne {
-	muo.mutation.ClearStatus()
 	return muo
 }
 
@@ -925,12 +879,6 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	if value, ok := muo.mutation.IsValidated(); ok {
 		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
-	}
-	if value, ok := muo.mutation.Status(); ok {
-		_spec.SetField(machine.FieldStatus, field.TypeString, value)
-	}
-	if muo.mutation.StatusCleared() {
-		_spec.ClearField(machine.FieldStatus, field.TypeString)
 	}
 	if value, ok := muo.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
