@@ -34,8 +34,12 @@ teardown() {
 	EOT
     )
 
-    rune -0 curl -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    rune -22 curl -f -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
     refute_output
+    assert_stderr 'curl: (22) The requested URL returned error: 400'
+
+    rune -0 curl -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    assert_json '{message: "Missing log processor data"}'
     refute_stderr
 }
 
