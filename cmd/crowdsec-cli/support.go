@@ -193,12 +193,9 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	bouncers, err := db.ListBouncers()
-	if err != nil {
-		return fmt.Errorf("unable to list bouncers: %w", err)
-	}
-
-	getBouncersTable(out, bouncers)
+	// call the "cscli bouncers list" command directly, skip any preRun
+	cm := cliBouncers{db: db, cfg: cli.cfg}
+	cm.list(out)
 
 	stripped := stripAnsiString(out.String())
 

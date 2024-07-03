@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -12,12 +13,15 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -83,9 +87,28 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func (cli *cliBouncers) list() error {
-	out := color.Output
+func (cli *cliBouncers) listHuman(out io.Writer, bouncers []*ent.Bouncer) {
+	t := newLightTable(out).Writer
+	t.AppendHeader(table.Row{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version", "Auth Type"})
 
+	for _, b := range bouncers {
+		revoked := emoji.CheckMark
+		if b.Revoked {
+			revoked = emoji.Prohibited
+		}
+
+		lastPull := ""
+		if b.LastPull != nil {
+			lastPull = b.LastPull.Format(time.RFC3339)
+		}
+
+		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+func (cli *cliBouncers) list(out io.Writer) error {
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
@@ -93,7 +116,7 @@ func (cli *cliBouncers) list() error {
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		getBouncersTable(out, bouncers)
+		cli.listHuman(out, bouncers)
 	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
@@ -140,7 +163,7 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list()
+			return cli.list(color.Output)
 		},
 	}
 
@@ -293,7 +316,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		return nil
 	}
 
-	getBouncersTable(color.Output, bouncers)
+	cli.listHuman(color.Output, bouncers)
 
 	if !force {
 		if yes, err := askYesNo(
