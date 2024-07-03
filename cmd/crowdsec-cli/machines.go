@@ -188,7 +188,7 @@ func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	}
 }
 
-func (cli *cliMachines) listHuman(out io.Writer, machines []*ent.Machine) {
+func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 	t := newLightTable(out).Writer
 	t.AppendHeader(table.Row{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Last Heartbeat"})
 
@@ -203,7 +203,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines []*ent.Machine) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, fmt.Sprintf("%s/%s", m.Osname, m.Osversion), m.AuthType, hb})
+		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.GetOSNameAndVersion(), m.AuthType, hb})
 	}
 
 	fmt.Fprintln(out, t.Render())
@@ -236,13 +236,13 @@ func newMachineInfo(m *ent.Machine) machineInfo {
 		Version: m.Version,
 		IsValidated: m.IsValidated,
 		AuthType: m.AuthType,
-		OS: m.Osname + "/" + m.Osversion,
+		OS: m.GetOSNameAndVersion(),
 		Featureflags: strings.Split(m.Featureflags, ","),
 		Datasources: m.Datasources,
 	}
 }
 
-func (cli *cliMachines) listCSV(out io.Writer, machines []*ent.Machine) error {
+func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os"})
@@ -641,7 +641,7 @@ func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		{"Last Heartbeat", machine.LastHeartbeat},
 		{"Validated?", machine.IsValidated},
 		{"CrowdSec version", machine.Version},
-		{"OS", machine.Osname + "/" + machine.Osversion},
+		{"OS", machine.GetOSNameAndVersion()},
 		{"Auth type", machine.AuthType},
 	})
 
