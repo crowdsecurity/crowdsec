@@ -33,10 +33,12 @@ func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, b
 func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	var input models.AllMetrics
 
+	logger := log.WithField("func", "UsageMetrics")
+
 	// parse the payload
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
-		log.Errorf("Failed to bind json: %s", err)
+		logger.Errorf("Failed to bind json: %s", err)
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
@@ -45,14 +47,12 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		// work around a nuisance in the generated code
 		cleanErr := RepeatedPrefixError{
 			OriginalError: err,
-			Prefix: "validation failure list:\n",
+			Prefix:        "validation failure list:\n",
 		}
-		log.Errorf("Failed to validate usage metrics: %s", cleanErr)
+		logger.Errorf("Failed to validate usage metrics: %s", cleanErr)
 		gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": cleanErr.Error()})
 		return
 	}
-
-	// TODO: validate payload with the right type, depending on auth context
 
 	var (
 		generatedType metric.GeneratedType
@@ -62,19 +62,23 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	bouncer, _ := getBouncerFromContext(gctx)
 	if bouncer != nil {
-		log.Tracef("Received usage metris for bouncer: %s", bouncer.Name)
+		logger.Tracef("Received usage metris for bouncer: %s", bouncer.Name)
 		generatedType = metric.GeneratedTypeRC
 		generatedBy = bouncer.Name
 	}
 
 	machineID, _ := getMachineIDFromContext(gctx)
 	if machineID != "" {
-		log.Tracef("Received usage metrics for log processor: %s", machineID)
+		logger.Tracef("Received usage metrics for log processor: %s", machineID)
 		generatedType = metric.GeneratedTypeLP
 		generatedBy = machineID
 	}
 
-	// TODO: if both or none are set, which error should we return?
+	if machineID != "" && bouncer != nil {
+		logger.Errorf("Payload has both machineID and bouncer")
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": "Payload has both LP and RC data"})
+		return
+	}
 
 	var (
 		payload     map[string]any
@@ -85,11 +89,22 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	switch len(input.LogProcessors) {
 	case 0:
-		break
+		if machineID != "" {
+			logger.Errorf("Missing log processor data")
+			gctx.JSON(http.StatusBadRequest, gin.H{"message": "Missing log processor data"})
+			return
+		}
 	case 1:
 		// the final slice can't have more than one item,
 		// guaranteed by the swagger schema
 		item0 := input.LogProcessors[0]
+
+		err := item0.Validate(strfmt.Default)
+		if err != nil {
+			logger.Errorf("Failed to validate log processor data: %s", err)
+			gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": err.Error()})
+			return
+		}
 		payload = map[string]any{
 			"metrics": item0.Metrics,
 		}
@@ -97,7 +112,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		hubItems = item0.HubItems
 		datasources = item0.Datasources
 	default:
-		log.Errorf("Payload has more than one log processor")
+		logger.Errorf("Payload has more than one log processor")
 		// this is not checked in the swagger schema
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "Payload has more than one log processor"})
 		return
@@ -105,9 +120,21 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	switch len(input.RemediationComponents) {
 	case 0:
-		break
+		if bouncer != nil {
+			logger.Errorf("Missing remediation component data")
+			gctx.JSON(http.StatusBadRequest, gin.H{"message": "Missing remediation component data"})
+			return
+		}
 	case 1:
 		item0 := input.RemediationComponents[0]
+
+		err := item0.Validate(strfmt.Default)
+		if err != nil {
+			logger.Errorf("Failed to validate remediation component data: %s", err)
+			gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": err.Error()})
+			return
+		}
+
 		payload = map[string]any{
 			"type":    item0.Type,
 			"metrics": item0.Metrics,
@@ -120,7 +147,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	err := c.updateBaseMetrics(machineID, bouncer, baseMetrics, hubItems, datasources)
 	if err != nil {
-		log.Errorf("Failed to update base metrics: %s", err)
+		logger.Errorf("Failed to update base metrics: %s", err)
 		c.HandleDBErrors(gctx, err)
 		return
 	}
@@ -134,13 +161,13 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		log.Errorf("Failed to marshal usage metrics: %s", err)
+		logger.Errorf("Failed to marshal usage metrics: %s", err)
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
 	if _, err := c.DBClient.CreateMetric(generatedType, generatedBy, collectedAt, string(jsonPayload)); err != nil {
-		log.Error(err)
+		logger.Error(err)
 		c.HandleDBErrors(gctx, err)
 		return
 	}
