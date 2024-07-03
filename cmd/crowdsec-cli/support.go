@@ -193,12 +193,9 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	bouncers, err := db.ListBouncers()
-	if err != nil {
-		return fmt.Errorf("unable to list bouncers: %w", err)
-	}
-
-	getBouncersTable(out, bouncers)
+	// call the "cscli bouncers list" command directly, skip any preRun
+	cm := cliBouncers{db: db, cfg: cli.cfg}
+	cm.list(out)
 
 	stripped := stripAnsiString(out.String())
 
@@ -216,12 +213,9 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	machines, err := db.ListMachines()
-	if err != nil {
-		return fmt.Errorf("unable to list machines: %w", err)
-	}
-
-	getAgentsTable(out, machines)
+	// call the "cscli machines list" command directly, skip any preRun
+	cm := cliMachines{db: db, cfg: cli.cfg}
+	cm.list(out)
 
 	stripped := stripAnsiString(out.String())
 
@@ -617,6 +611,10 @@ cscli support dump -f /tmp/crowdsec-support.zip
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			output := cli.cfg().Cscli.Output
+			if output != "human" {
+				return fmt.Errorf("output format %s not supported for this command", output)
+			}
 			return cli.dump(cmd.Context(), outFile)
 		},
 	}
