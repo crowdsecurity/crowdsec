@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -12,12 +13,16 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -79,13 +84,92 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmd.AddCommand(cli.newAddCmd())
 	cmd.AddCommand(cli.newDeleteCmd())
 	cmd.AddCommand(cli.newPruneCmd())
+	cmd.AddCommand(cli.newInspectCmd())
 
 	return cmd
 }
 
-func (cli *cliBouncers) list() error {
-	out := color.Output
+func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
+	t := newLightTable(out).Writer
+	t.AppendHeader(table.Row{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version", "Auth Type"})
 
+	for _, b := range bouncers {
+		revoked := emoji.CheckMark
+		if b.Revoked {
+			revoked = emoji.Prohibited
+		}
+
+		lastPull := ""
+		if b.LastPull != nil {
+			lastPull = b.LastPull.Format(time.RFC3339)
+		}
+
+		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+// bouncerInfo contains only the data we want for inspect/list
+type bouncerInfo struct {
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name string `json:"name"`
+	Revoked bool `json:"revoked"`
+	IPAddress string `json:"ip_address"`
+	Type string `json:"type"`
+	Version string `json:"version"`
+	LastPull *time.Time `json:"last_pull"`
+	AuthType string `json:"auth_type"`
+	OS string `json:"os,omitempty"`
+	Featureflags []string `json:"featureflags,omitempty"`
+}
+
+func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
+	return bouncerInfo{
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
+		Name: b.Name,
+		Revoked: b.Revoked,
+		IPAddress: b.IPAddress,
+		Type: b.Type,
+		Version: b.Version,
+		LastPull: b.LastPull,
+		AuthType: b.AuthType,
+		OS: b.GetOSNameAndVersion(),
+		Featureflags: b.GetFeatureFlagList(),
+	}
+}
+
+func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
+	csvwriter := csv.NewWriter(out)
+
+	if err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"}); err != nil {
+		return fmt.Errorf("failed to write raw header: %w", err)
+	}
+
+	for _, b := range bouncers {
+		valid := "validated"
+		if b.Revoked {
+			valid = "pending"
+		}
+
+		lastPull := ""
+		if b.LastPull != nil {
+			lastPull = b.LastPull.Format(time.RFC3339)
+		}
+
+		if err := csvwriter.Write([]string{b.Name, b.IPAddress, valid, lastPull, b.Type, b.Version, b.AuthType}); err != nil {
+			return fmt.Errorf("failed to write raw: %w", err)
+		}
+	}
+
+	csvwriter.Flush()
+	return nil
+}
+
+
+func (cli *cliBouncers) list(out io.Writer) error {
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
@@ -93,40 +177,23 @@ func (cli *cliBouncers) list() error {
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		getBouncersTable(out, bouncers)
+		cli.listHuman(out, bouncers)
 	case "json":
+		info := make([]bouncerInfo, 0, len(bouncers))
+		for _, b := range bouncers {
+			info = append(info, newBouncerInfo(b))
+		}
+
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 
-		if err := enc.Encode(bouncers); err != nil {
-			return fmt.Errorf("failed to marshal: %w", err)
+		if err := enc.Encode(info); err != nil {
+			return errors.New("failed to marshal")
 		}
 
 		return nil
 	case "raw":
-		csvwriter := csv.NewWriter(out)
-
-		if err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"}); err != nil {
-			return fmt.Errorf("failed to write raw header: %w", err)
-		}
-
-		for _, b := range bouncers {
-			valid := "validated"
-			if b.Revoked {
-				valid = "pending"
-			}
-
-			lastPull := ""
-			if b.LastPull != nil {
-				lastPull = b.LastPull.Format(time.RFC3339)
-			}
-
-			if err := csvwriter.Write([]string{b.Name, b.IPAddress, valid, lastPull, b.Type, b.Version, b.AuthType}); err != nil {
-				return fmt.Errorf("failed to write raw: %w", err)
-			}
-		}
-
-		csvwriter.Flush()
+		return cli.listCSV(out, bouncers)
 	}
 
 	return nil
@@ -140,7 +207,7 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list()
+			return cli.list(color.Output)
 		},
 	}
 
@@ -206,12 +273,13 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// need to load config and db because PersistentPreRunE is not called for completions
-
+// validBouncerID returns a list of bouncer IDs for command completion
+func (cli *cliBouncers) validBouncerID(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var err error
 
 	cfg := cli.cfg()
+
+	// need to load config and db because PersistentPreRunE is not called for completions
 
 	if err = require.LAPI(cfg); err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
@@ -261,7 +329,7 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		ValidArgsFunction: cli.deleteValid,
+		ValidArgsFunction: cli.validBouncerID,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.delete(args)
 		},
@@ -292,7 +360,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		return nil
 	}
 
-	getBouncersTable(color.Output, bouncers)
+	cli.listHuman(color.Output, bouncers)
 
 	if !force {
 		if yes, err := askYesNo(
@@ -338,6 +406,87 @@ cscli bouncers prune -d 45m --force`,
 	flags := cmd.Flags()
 	flags.DurationVarP(&duration, "duration", "d", defaultDuration, "duration of time since last pull")
 	flags.BoolVar(&force, "force", false, "force prune without asking for confirmation")
+
+	return cmd
+}
+
+func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
+	t := newTable(out).Writer
+
+	t.SetTitle("Bouncer: " + bouncer.Name)
+
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+
+	lastPull := ""
+	if bouncer.LastPull != nil {
+		lastPull = bouncer.LastPull.String()
+	}
+
+	t.AppendRows([]table.Row{
+		{"Created At", bouncer.CreatedAt},
+		{"Last Update", bouncer.UpdatedAt},
+		{"Revoked?", bouncer.Revoked},
+		{"IP Address", bouncer.IPAddress},
+		{"Type", bouncer.Type},
+		{"Version", bouncer.Version},
+		{"Last Pull", lastPull},
+		{"Auth type", bouncer.AuthType},
+		{"OS", bouncer.GetOSNameAndVersion()},
+	})
+
+	for _, ff := range bouncer.GetFeatureFlagList() {
+		t.AppendRow(table.Row{"Feature Flags", ff})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {
+	out := color.Output
+	outputFormat := cli.cfg().Cscli.Output
+
+	switch outputFormat {
+	case "human":
+		cli.inspectHuman(out, bouncer)
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+
+		if err := enc.Encode(newBouncerInfo(bouncer)); err != nil {
+			return errors.New("failed to marshal")
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
+	}
+	return nil
+}
+
+
+func (cli *cliBouncers) newInspectCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "inspect [bouncer_name]",
+		Short:             "inspect a bouncer by name",
+		Example:           `cscli bouncers inspect "bouncer1"`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		ValidArgsFunction: cli.validBouncerID,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bouncerName := args[0]
+
+			b, err := cli.db.Ent.Bouncer.Query().
+				Where(bouncer.Name(bouncerName)).
+				Only(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("unable to read bouncer data '%s': %w", bouncerName, err)
+			}
+
+			return cli.inspect(b)
+		},
+	}
 
 	return cmd
 }

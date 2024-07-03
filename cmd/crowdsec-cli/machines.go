@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"slices"
@@ -16,6 +17,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -24,8 +26,10 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -147,13 +151,126 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmd.AddCommand(cli.newDeleteCmd())
 	cmd.AddCommand(cli.newValidateCmd())
 	cmd.AddCommand(cli.newPruneCmd())
+	cmd.AddCommand(cli.newInspectCmd())
 
 	return cmd
 }
 
-func (cli *cliMachines) list() error {
-	out := color.Output
+func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
+	state := machine.Hubstate
 
+	if len(state) == 0 {
+		fmt.Println("No hub items found for this machine")
+		return
+	}
+
+	// group state rows by type for multiple tables
+	rowsByType := make(map[string][]table.Row)
+
+	for itemType, items := range state {
+		for _, item := range items {
+			if _, ok := rowsByType[itemType]; !ok {
+				rowsByType[itemType] = make([]table.Row, 0)
+			}
+
+			row := table.Row{item.Name, item.Status, item.Version}
+			rowsByType[itemType] = append(rowsByType[itemType], row)
+		}
+	}
+
+	for itemType, rows := range rowsByType {
+		t := newTable(out).Writer
+		t.AppendHeader(table.Row{"Name", "Status", "Version"})
+		t.SetTitle(itemType)
+		t.AppendRows(rows)
+		fmt.Fprintln(out, t.Render())
+	}
+}
+
+func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
+	t := newLightTable(out).Writer
+	t.AppendHeader(table.Row{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Last Heartbeat"})
+
+	for _, m := range machines {
+		validated := emoji.Prohibited
+		if m.IsValidated {
+			validated = emoji.CheckMark
+		}
+
+		hb, active := getLastHeartbeat(m)
+		if !active {
+			hb = emoji.Warning + " " + hb
+		}
+
+		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.GetOSNameAndVersion(), m.AuthType, hb})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+// machineInfo contains only the data we want for inspect/list: no hub status, scenarios, edges, etc.
+type machineInfo struct {
+	CreatedAt     time.Time        `json:"created_at,omitempty"`
+	UpdatedAt     time.Time        `json:"updated_at,omitempty"`
+	LastPush      *time.Time       `json:"last_push,omitempty"`
+	LastHeartbeat *time.Time       `json:"last_heartbeat,omitempty"`
+	MachineId     string           `json:"machineId,omitempty"`
+	IpAddress     string           `json:"ipAddress,omitempty"`
+	Version       string           `json:"version,omitempty"`
+	IsValidated   bool             `json:"isValidated,omitempty"`
+	AuthType      string           `json:"auth_type"`
+	OS            string           `json:"os,omitempty"`
+	Featureflags  []string         `json:"featureflags,omitempty"`
+	Datasources   map[string]int64 `json:"datasources,omitempty"`
+}
+
+func newMachineInfo(m *ent.Machine) machineInfo {
+	return machineInfo{
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
+		LastPush:      m.LastPush,
+		LastHeartbeat: m.LastHeartbeat,
+		MachineId:     m.MachineId,
+		IpAddress:     m.IpAddress,
+		Version:       m.Version,
+		IsValidated:   m.IsValidated,
+		AuthType:      m.AuthType,
+		OS:            m.GetOSNameAndVersion(),
+		Featureflags:  m.GetFeatureFlagList(),
+		Datasources:   m.Datasources,
+	}
+}
+
+func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
+	csvwriter := csv.NewWriter(out)
+
+	err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os"})
+	if err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	for _, m := range machines {
+		validated := "false"
+		if m.IsValidated {
+			validated = "true"
+		}
+
+		hb := "-"
+		if m.LastHeartbeat != nil {
+			hb = m.LastHeartbeat.Format(time.RFC3339)
+		}
+
+		if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb, fmt.Sprintf("%s/%s", m.Osname, m.Osversion)}); err != nil {
+			return fmt.Errorf("failed to write raw output: %w", err)
+		}
+	}
+
+	csvwriter.Flush()
+
+	return nil
+}
+
+func (cli *cliMachines) list(out io.Writer) error {
 	machines, err := cli.db.ListMachines()
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %w", err)
@@ -161,38 +278,23 @@ func (cli *cliMachines) list() error {
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		getAgentsTable(out, machines)
+		cli.listHuman(out, machines)
 	case "json":
+		info := make([]machineInfo, 0, len(machines))
+		for _, m := range machines {
+			info = append(info, newMachineInfo(m))
+		}
+
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 
-		if err := enc.Encode(machines); err != nil {
+		if err := enc.Encode(info); err != nil {
 			return errors.New("failed to marshal")
 		}
 
 		return nil
 	case "raw":
-		csvwriter := csv.NewWriter(out)
-
-		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
-		if err != nil {
-			return fmt.Errorf("failed to write header: %w", err)
-		}
-
-		for _, m := range machines {
-			validated := "false"
-			if m.IsValidated {
-				validated = "true"
-			}
-
-			hb, _ := getLastHeartbeat(m)
-
-			if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb}); err != nil {
-				return fmt.Errorf("failed to write raw output: %w", err)
-			}
-		}
-
-		csvwriter.Flush()
+		return cli.listCSV(out, machines)
 	}
 
 	return nil
@@ -207,7 +309,7 @@ func (cli *cliMachines) newListCmd() *cobra.Command {
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list()
+			return cli.list(color.Output)
 		},
 	}
 
@@ -349,12 +451,13 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	return nil
 }
 
-func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// need to load config and db because PersistentPreRunE is not called for completions
-
+// validMachineID returns a list of machine IDs for command completion
+func (cli *cliMachines) validMachineID(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var err error
 
 	cfg := cli.cfg()
+
+	// need to load config and db because PersistentPreRunE is not called for completions
 
 	if err = require.LAPI(cfg); err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
@@ -405,7 +508,7 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		ValidArgsFunction: cli.deleteValid,
+		ValidArgsFunction: cli.validMachineID,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.delete(args)
 		},
@@ -417,7 +520,7 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force bool) error {
 	if duration < 2*time.Minute && !notValidOnly {
 		if yes, err := askYesNo(
-				"The duration you provided is less than 2 minutes. " +
+			"The duration you provided is less than 2 minutes. "+
 				"This can break installations if the machines are only temporarily disconnected. Continue?", false); err != nil {
 			return err
 		} else if !yes {
@@ -442,11 +545,11 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 		return nil
 	}
 
-	getAgentsTable(color.Output, machines)
+	cli.listHuman(color.Output, machines)
 
 	if !force {
 		if yes, err := askYesNo(
-				"You are about to PERMANENTLY remove the above machines from the database. " +
+			"You are about to PERMANENTLY remove the above machines from the database. "+
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err
 		} else if !yes {
@@ -460,7 +563,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 		return fmt.Errorf("unable to prune machines: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "successfully delete %d machines\n", deleted)
+	fmt.Fprintf(os.Stderr, "successfully deleted %d machines\n", deleted)
 
 	return nil
 }
@@ -518,6 +621,139 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 			return cli.validate(args[0])
 		},
 	}
+
+	return cmd
+}
+
+func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
+	t := newTable(out).Writer
+
+	t.SetTitle("Machine: " + machine.MachineId)
+
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+
+	t.AppendRows([]table.Row{
+		{"IP Address", machine.IpAddress},
+		{"Created At", machine.CreatedAt},
+		{"Last Update", machine.UpdatedAt},
+		{"Last Heartbeat", machine.LastHeartbeat},
+		{"Validated?", machine.IsValidated},
+		{"CrowdSec version", machine.Version},
+		{"OS", machine.GetOSNameAndVersion()},
+		{"Auth type", machine.AuthType},
+	})
+
+	for dsName, dsCount := range machine.Datasources {
+		t.AppendRow(table.Row{"Datasources", fmt.Sprintf("%s: %d", dsName, dsCount)})
+	}
+
+	for _, ff := range machine.GetFeatureFlagList() {
+		t.AppendRow(table.Row{"Feature Flags", ff})
+	}
+
+	for _, coll := range machine.Hubstate[cwhub.COLLECTIONS] {
+		t.AppendRow(table.Row{"Collections", coll.Name})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+func (cli *cliMachines) inspect(machine *ent.Machine) error {
+	out := color.Output
+	outputFormat := cli.cfg().Cscli.Output
+
+	switch outputFormat {
+	case "human":
+		cli.inspectHuman(out, machine)
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+
+		if err := enc.Encode(newMachineInfo(machine)); err != nil {
+			return errors.New("failed to marshal")
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
+	}
+
+	return nil
+}
+
+func (cli *cliMachines) inspectHub(machine *ent.Machine) error {
+	out := color.Output
+
+	switch cli.cfg().Cscli.Output {
+	case "human":
+		cli.inspectHubHuman(out, machine)
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+
+		if err := enc.Encode(machine.Hubstate); err != nil {
+			return errors.New("failed to marshal")
+		}
+
+		return nil
+	case "raw":
+		csvwriter := csv.NewWriter(out)
+
+		err := csvwriter.Write([]string{"type", "name", "status", "version"})
+		if err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
+
+		rows := make([][]string, 0)
+
+		for itemType, items := range machine.Hubstate {
+			for _, item := range items {
+				rows = append(rows, []string{itemType, item.Name, item.Status, item.Version})
+			}
+		}
+
+		for _, row := range rows {
+			if err := csvwriter.Write(row); err != nil {
+				return fmt.Errorf("failed to write raw output: %w", err)
+			}
+		}
+
+		csvwriter.Flush()
+	}
+
+	return nil
+}
+
+func (cli *cliMachines) newInspectCmd() *cobra.Command {
+	var showHub bool
+
+	cmd := &cobra.Command{
+		Use:               "inspect [machine_name]",
+		Short:             "inspect a machine by name",
+		Example:           `cscli machines inspect "machine1"`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		ValidArgsFunction: cli.validMachineID,
+		RunE: func(_ *cobra.Command, args []string) error {
+			machineID := args[0]
+			machine, err := cli.db.QueryMachineByID(machineID)
+			if err != nil {
+				return fmt.Errorf("unable to read machine data '%s': %w", machineID, err)
+			}
+
+			if showHub {
+				return cli.inspectHub(machine)
+			}
+
+			return cli.inspect(machine)
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.BoolVarP(&showHub, "hub", "H", false, "show hub state")
 
 	return cmd
 }
