@@ -256,7 +256,10 @@ func (cli *cliMachines) listCSV(out io.Writer, machines []*ent.Machine) error {
 			validated = "true"
 		}
 
-		hb, _ := getLastHeartbeat(m)
+		hb := "-"
+		if m.LastHeartbeat != nil {
+			hb = m.LastHeartbeat.Format(time.RFC3339)
+		}
 
 		if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb, fmt.Sprintf("%s/%s", m.Osname, m.Osversion)}); err != nil {
 			return fmt.Errorf("failed to write raw output: %w", err)
@@ -674,7 +677,7 @@ func (cli *cliMachines) inspect(machine *ent.Machine) error {
 
 		return nil
 	default:
-		return fmt.Errorf("output format '%s' not supported", outputFormat)
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
 	return nil
 }
