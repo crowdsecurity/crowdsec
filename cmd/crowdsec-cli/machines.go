@@ -209,49 +209,37 @@ func (cli *cliMachines) listHuman(out io.Writer, machines []*ent.Machine) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (cli *cliMachines) listJSON(out io.Writer, machines []*ent.Machine) error {
-	// only the info we want, no hub status, scenarios, edges, etc.
-	type machineInfo struct {
-		CreatedAt time.Time `json:"created_at,omitempty"`
-		UpdatedAt time.Time `json:"updated_at,omitempty"`
-		LastPush *time.Time `json:"last_push,omitempty"`
-		LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
-		MachineId string `json:"machineId,omitempty"`
-		IpAddress string `json:"ipAddress,omitempty"`
-		Version string `json:"version,omitempty"`
-		IsValidated bool `json:"isValidated,omitempty"`
-		AuthType string `json:"auth_type"`
-		OS string `json:"os,omitempty"`
-		Featureflags []string `json:"featureflags,omitempty"`
-		Datasources map[string]int64 `json:"datasources,omitempty"`
+// machineInfo contains only the data we want for inspect/list: no hub status, scenarios, edges, etc.
+type machineInfo struct {
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	LastPush *time.Time `json:"last_push,omitempty"`
+	LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
+	MachineId string `json:"machineId,omitempty"`
+	IpAddress string `json:"ipAddress,omitempty"`
+	Version string `json:"version,omitempty"`
+	IsValidated bool `json:"isValidated,omitempty"`
+	AuthType string `json:"auth_type"`
+	OS string `json:"os,omitempty"`
+	Featureflags []string `json:"featureflags,omitempty"`
+	Datasources map[string]int64 `json:"datasources,omitempty"`
+}
+
+func newMachineInfo(m *ent.Machine) machineInfo {
+	return machineInfo{
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+		LastPush: m.LastPush,
+		LastHeartbeat: m.LastHeartbeat,
+		MachineId: m.MachineId,
+		IpAddress: m.IpAddress,
+		Version: m.Version,
+		IsValidated: m.IsValidated,
+		AuthType: m.AuthType,
+		OS: m.Osname + "/" + m.Osversion,
+		Featureflags: strings.Split(m.Featureflags, ","),
+		Datasources: m.Datasources,
 	}
-
-	info := make([]machineInfo, 0, len(machines))
-	for _, m := range machines {
-		info = append(info, machineInfo{
-			CreatedAt: m.CreatedAt,
-			UpdatedAt: m.UpdatedAt,
-			LastPush: m.LastPush,
-			LastHeartbeat: m.LastHeartbeat,
-			MachineId: m.MachineId,
-			IpAddress: m.IpAddress,
-			Version: m.Version,
-			IsValidated: m.IsValidated,
-			AuthType: m.AuthType,
-			OS: m.Osname + "/" + m.Osversion,
-			Featureflags: strings.Split(m.Featureflags, ","),
-			Datasources: m.Datasources,
-		})
-	}
-
-	enc := json.NewEncoder(out)
-	enc.SetIndent("", "  ")
-
-	if err := enc.Encode(info); err != nil {
-		return errors.New("failed to marshal")
-	}
-
-	return nil
 }
 
 func (cli *cliMachines) listCSV(out io.Writer, machines []*ent.Machine) error {
@@ -290,7 +278,19 @@ func (cli *cliMachines) list(out io.Writer) error {
 	case "human":
 		cli.listHuman(out, machines)
 	case "json":
-		return cli.listJSON(out, machines)
+		info := make([]machineInfo, 0, len(machines))
+		for _, m := range machines {
+			info = append(info, newMachineInfo(m))
+		}
+
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+
+		if err := enc.Encode(info); err != nil {
+			return errors.New("failed to marshal")
+		}
+
+		return nil
 	case "raw":
 		return cli.listCSV(out, machines)
 	}
@@ -657,67 +657,24 @@ func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (*cliMachines) inspectJSON(out io.Writer, machine *ent.Machine) error {
-//	type view struct {
-//		MachineID string `json:"machineId"`
-//		Name         string `json:"name"`
-//		LocalVersion string `json:"local_version"`
-//		LocalPath    string `json:"local_path"`
-//		Description  string `json:"description"`
-//		UTF8Status   string `json:"utf8_status"`
-//		Status       string `json:"status"`
-//	}
-//
-//	hubStatus := make(map[string][]itemHubStatus)
-//	for _, itemType := range itemTypes {
-//		// empty slice in case there are no items of this type
-//		hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
-//
-//		for i, item := range items[itemType] {
-//			status := item.State.Text()
-//			statusEmo := item.State.Emoji()
-//			hubStatus[itemType][i] = itemHubStatus{
-//				Name:         item.Name,
-//				LocalVersion: item.State.LocalVersion,
-//				LocalPath:    item.State.LocalPath,
-//				Description:  item.Description,
-//				Status:       status,
-//				UTF8Status:   fmt.Sprintf("%v  %s", statusEmo, status),
-//			}
-//		}
-//	}
-//
-//	x, err := json.MarshalIndent(hubStatus, "", " ")
-//	if err != nil {
-//		return fmt.Errorf("failed to unmarshal: %w", err)
-//	}
-//
-//	out.Write(x)
-//
-//
-//
-//	enc := json.NewEncoder(out)
-//	enc.SetIndent("", "  ")
-//
-//	if err := enc.Encode(machineView); err != nil {
-//		return errors.New("failed to marshal")
-//	}
-//
-	return nil
-}
-
 func (cli *cliMachines) inspect(machine *ent.Machine) error {
 	out := color.Output
+	outputFormat := cli.cfg().Cscli.Output
 
-	switch cli.cfg().Cscli.Output {
+	switch outputFormat {
 	case "human":
 		cli.inspectHuman(out, machine)
 	case "json":
-		if err := cli.inspectJSON(out, machine); err != nil {
-			return err
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+
+		if err := enc.Encode(newMachineInfo(machine)); err != nil {
+			return errors.New("failed to marshal")
 		}
-	case "raw":
-		// TODO
+
+		return nil
+	default:
+		return fmt.Errorf("output format '%s' not supported", outputFormat)
 	}
 	return nil
 }
