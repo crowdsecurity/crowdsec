@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 const (
@@ -25,8 +26,20 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.B
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
-	//FIXME: nil deref
-	heartbeat := time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
+	if os == nil {
+		os = &models.OSversion{
+			Name:    ptr.Of(""),
+			Version: ptr.Of(""),
+		}
+	}
+
+	var heartbeat time.Time
+
+	if baseMetrics.Metrics == nil || len(baseMetrics.Metrics) == 0 {
+		heartbeat = time.Now().UTC()
+	} else {
+		heartbeat = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
+	}
 
 	hubState := map[string][]schema.ItemState{}
 	for itemType, items := range hubItems {
