@@ -63,7 +63,7 @@ func TestLPMetrics(t *testing.T) {
 	]
 }`,
 			expectedStatusCode: 400,
-			expectedResponse:   "",
+			expectedResponse:   "Missing remediation component data",
 			authType:           APIKEY,
 		},
 		{
@@ -103,7 +103,7 @@ func TestLPMetrics(t *testing.T) {
 	]
 }`,
 			expectedStatusCode: 422,
-			expectedResponse:   "",
+			expectedResponse:   "log_processors.0.datasources in body is required",
 			authType:           PASSWORD,
 		},
 	}
