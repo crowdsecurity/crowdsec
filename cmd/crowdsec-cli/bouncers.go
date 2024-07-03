@@ -137,7 +137,7 @@ func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
 		LastPull: b.LastPull,
 		AuthType: b.AuthType,
 		OS: b.GetOSNameAndVersion(),
-		Featureflags: strings.Split(b.Featureflags, ","),
+		Featureflags: b.GetFeatureFlagList(),
 	}
 }
 
@@ -436,7 +436,7 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{"OS", bouncer.GetOSNameAndVersion()},
 	})
 
-	for _, ff := range strings.Split(bouncer.Featureflags, ",") {
+	for _, ff := range bouncer.GetFeatureFlagList() {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 

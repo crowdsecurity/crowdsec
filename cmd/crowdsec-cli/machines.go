@@ -237,7 +237,7 @@ func newMachineInfo(m *ent.Machine) machineInfo {
 		IsValidated: m.IsValidated,
 		AuthType: m.AuthType,
 		OS: m.GetOSNameAndVersion(),
-		Featureflags: strings.Split(m.Featureflags, ","),
+		Featureflags: m.GetFeatureFlagList(),
 		Datasources: m.Datasources,
 	}
 }
@@ -649,7 +649,7 @@ func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Datasources", fmt.Sprintf("%s: %d", dsName, dsCount)})
 	}
 
-	for _, ff := range strings.Split(machine.Featureflags, ",") {
+	for _, ff := range machine.GetFeatureFlagList() {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
