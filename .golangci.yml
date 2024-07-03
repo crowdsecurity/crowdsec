@@ -143,6 +143,8 @@ linters-settings:
         disabled: true
       - name: struct-tag
         disabled: true
+      - name: redundant-import-alias
+        disabled: true
       - name: time-equal
         disabled: true
       - name: var-naming
