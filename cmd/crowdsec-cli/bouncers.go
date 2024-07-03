@@ -137,7 +137,7 @@ func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
 		LastPull: b.LastPull,
 		AuthType: b.AuthType,
 		OS: b.GetOSNameAndVersion(),
-		// XXX:		Featureflags: strings.Split(b.FeatureFlags, ","),
+		Featureflags: strings.Split(b.Featureflags, ","),
 	}
 }
 
@@ -419,6 +419,11 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{Number: 1, AutoMerge: true},
 	})
 
+	lastPull := ""
+	if bouncer.LastPull != nil {
+		lastPull = bouncer.LastPull.String()
+	}
+
 	t.AppendRows([]table.Row{
 		{"Created At", bouncer.CreatedAt},
 		{"Last Update", bouncer.UpdatedAt},
@@ -426,15 +431,14 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{"IP Address", bouncer.IPAddress},
 		{"Type", bouncer.Type},
 		{"Version", bouncer.Version},
-		{"Last Pull", bouncer.LastPull},
+		{"Last Pull", lastPull},
 		{"Auth type", bouncer.AuthType},
 		{"OS", bouncer.GetOSNameAndVersion()},
-		// XXX:		Featureflags: strings.Split(b.FeatureFlags, ","),
 	})
 
-	//	for _, ff := range strings.Split(bouncer.Featureflags, ",") {
-	//		t.AppendRow(table.Row{"Feature Flags", ff})
-	//	}
+	for _, ff := range strings.Split(bouncer.Featureflags, ",") {
+		t.AppendRow(table.Row{"Feature Flags", ff})
+	}
 
 	fmt.Fprintln(out, t.Render())
 }
