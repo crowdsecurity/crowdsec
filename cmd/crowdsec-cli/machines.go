@@ -24,14 +24,13 @@ import (
 
 	"github.com/crowdsecurity/machineid"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 const passwordLength = 64
@@ -211,34 +210,34 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 
 // machineInfo contains only the data we want for inspect/list: no hub status, scenarios, edges, etc.
 type machineInfo struct {
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	LastPush *time.Time `json:"last_push,omitempty"`
-	LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
-	MachineId string `json:"machineId,omitempty"`
-	IpAddress string `json:"ipAddress,omitempty"`
-	Version string `json:"version,omitempty"`
-	IsValidated bool `json:"isValidated,omitempty"`
-	AuthType string `json:"auth_type"`
-	OS string `json:"os,omitempty"`
-	Featureflags []string `json:"featureflags,omitempty"`
-	Datasources map[string]int64 `json:"datasources,omitempty"`
+	CreatedAt     time.Time        `json:"created_at,omitempty"`
+	UpdatedAt     time.Time        `json:"updated_at,omitempty"`
+	LastPush      *time.Time       `json:"last_push,omitempty"`
+	LastHeartbeat *time.Time       `json:"last_heartbeat,omitempty"`
+	MachineId     string           `json:"machineId,omitempty"`
+	IpAddress     string           `json:"ipAddress,omitempty"`
+	Version       string           `json:"version,omitempty"`
+	IsValidated   bool             `json:"isValidated,omitempty"`
+	AuthType      string           `json:"auth_type"`
+	OS            string           `json:"os,omitempty"`
+	Featureflags  []string         `json:"featureflags,omitempty"`
+	Datasources   map[string]int64 `json:"datasources,omitempty"`
 }
 
 func newMachineInfo(m *ent.Machine) machineInfo {
 	return machineInfo{
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-		LastPush: m.LastPush,
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
+		LastPush:      m.LastPush,
 		LastHeartbeat: m.LastHeartbeat,
-		MachineId: m.MachineId,
-		IpAddress: m.IpAddress,
-		Version: m.Version,
-		IsValidated: m.IsValidated,
-		AuthType: m.AuthType,
-		OS: m.GetOSNameAndVersion(),
-		Featureflags: m.GetFeatureFlagList(),
-		Datasources: m.Datasources,
+		MachineId:     m.MachineId,
+		IpAddress:     m.IpAddress,
+		Version:       m.Version,
+		IsValidated:   m.IsValidated,
+		AuthType:      m.AuthType,
+		OS:            m.GetOSNameAndVersion(),
+		Featureflags:  m.GetFeatureFlagList(),
+		Datasources:   m.Datasources,
 	}
 }
 
@@ -267,9 +266,9 @@ func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	}
 
 	csvwriter.Flush()
+
 	return nil
 }
-
 
 func (cli *cliMachines) list(out io.Writer) error {
 	machines, err := cli.db.ListMachines()
@@ -297,6 +296,7 @@ func (cli *cliMachines) list(out io.Writer) error {
 	case "raw":
 		return cli.listCSV(out, machines)
 	}
+
 	return nil
 }
 
@@ -679,6 +679,7 @@ func (cli *cliMachines) inspect(machine *ent.Machine) error {
 	default:
 		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
+
 	return nil
 }
 
@@ -721,6 +722,7 @@ func (cli *cliMachines) inspectHub(machine *ent.Machine) error {
 
 		csvwriter.Flush()
 	}
+
 	return nil
 }
 
