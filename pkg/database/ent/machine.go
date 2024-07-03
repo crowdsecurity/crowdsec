@@ -60,7 +60,7 @@ type Machine struct {
 // MachineEdges holds the relations/edges for other nodes in the graph.
 type MachineEdges struct {
 	// Alerts holds the value of the alerts edge.
-	Alerts []*Alert `json:"dafuck"`
+	Alerts []*Alert `json:"alerts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
