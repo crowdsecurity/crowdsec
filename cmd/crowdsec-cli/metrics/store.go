@@ -28,17 +28,17 @@ type metricStore map[string]metricSection
 func NewMetricStore() metricStore {
 	return metricStore{
 		"acquisition":    statAcquis{},
-		"scenarios":      statBucket{},
-		"parsers":        statParser{},
-		"lapi":           statLapi{},
-		"lapi-machine":   statLapiMachine{},
-		"lapi-bouncer":   statLapiBouncer{},
-		"lapi-decisions": statLapiDecision{},
-		"decisions":      statDecision{},
 		"alerts":         statAlert{},
-		"stash":          statStash{},
 		"appsec-engine":  statAppsecEngine{},
 		"appsec-rule":    statAppsecRule{},
+		"decisions":      statDecision{},
+		"lapi":           statLapi{},
+		"lapi-bouncer":   statLapiBouncer{},
+		"lapi-decisions": statLapiDecision{},
+		"lapi-machine":   statLapiMachine{},
+		"parsers":        statParser{},
+		"scenarios":      statBucket{},
+		"stash":          statStash{},
 		"whitelists":     statWhitelist{},
 	}
 }
@@ -78,16 +78,16 @@ func (ms metricStore) Fetch(url string) error {
 	/*walk*/
 
 	mAcquis := ms["acquisition"].(statAcquis)
-	mParser := ms["parsers"].(statParser)
-	mBucket := ms["scenarios"].(statBucket)
-	mLapi := ms["lapi"].(statLapi)
-	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
-	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
-	mLapiDecision := ms["lapi-decisions"].(statLapiDecision)
-	mDecision := ms["decisions"].(statDecision)
+	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
-	mAlert := ms["alerts"].(statAlert)
+	mDecision := ms["decisions"].(statDecision)
+	mLapi := ms["lapi"].(statLapi)
+	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
+	mLapiDecision := ms["lapi-decisions"].(statLapiDecision)
+	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
+	mParser := ms["parsers"].(statParser)
+	mBucket := ms["scenarios"].(statBucket)
 	mStash := ms["stash"].(statStash)
 	mWhitelist := ms["whitelists"].(statWhitelist)
 
