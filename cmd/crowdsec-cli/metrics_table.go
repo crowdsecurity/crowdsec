@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/jedib0t/go-pretty/v6/text"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 

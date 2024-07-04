@@ -8,10 +8,9 @@ import (
 	"io"
 	"os"
 
-	isatty "github.com/mattn/go-isatty"
-
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	isatty "github.com/mattn/go-isatty"
 )
 
 func RenderTitle(out io.Writer, title string) {
@@ -126,6 +125,7 @@ func (t *Table) setColumnConfigs() {
 			WidthMaxEnforcer: text.WrapSoft,
 		})
 	}
+
 	t.Writer.SetColumnConfigs(configs)
 }
 
