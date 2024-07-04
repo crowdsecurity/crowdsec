@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/blackfireio/osinfo"
@@ -120,13 +120,15 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 				hubItems[itemType] = []models.HubItem{}
 				for _, item := range items {
 					hubItems[itemType] = append(hubItems[itemType], models.HubItem{
-						Name:   item.Name,
-						Status: item.Status,
+						Name:    item.Name,
+						Status:  item.Status,
 						Version: item.Version,
 					})
 				}
 				lpMetrics.HubItems = hubItems
 			}
+		} else {
+			lpMetrics.HubItems = models.HubItems{}
 		}
 
 		lpMetrics.Metrics = make([]*models.DetailedMetrics, 0)
