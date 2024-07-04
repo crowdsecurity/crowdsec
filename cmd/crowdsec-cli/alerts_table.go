@@ -9,11 +9,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func alertsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
-	t := newTable(out)
+func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsResponse, printMachine bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 
 	header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
@@ -51,9 +52,9 @@ func alertsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine b
 	t.Render()
 }
 
-func alertDecisionsTable(out io.Writer, alert *models.Alert) {
+func alertDecisionsTable(out io.Writer, wantColor string, alert *models.Alert) {
 	foundActive := false
-	t := newTable(out)
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("ID", "scope:value", "action", "expiration", "created_at")
 
@@ -90,10 +91,10 @@ func alertDecisionsTable(out io.Writer, alert *models.Alert) {
 	}
 }
 
-func alertEventTable(out io.Writer, event *models.Event) {
+func alertEventTable(out io.Writer, wantColor string, event *models.Event) {
 	fmt.Fprintf(out, "\n- Date: %s\n", *event.Timestamp)
 
-	t := newTable(out)
+	t := cstable.New(out, wantColor)
 	t.SetHeaders("Key", "Value")
 	sort.Slice(event.Meta, func(i, j int) bool {
 		return event.Meta[i].Key < event.Meta[j].Key

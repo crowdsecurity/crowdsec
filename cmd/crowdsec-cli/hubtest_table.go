@@ -4,16 +4,18 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func hubTestResultTable(out io.Writer, testResult map[string]bool) {
-	t := newLightTable(out)
+func hubTestResultTable(out io.Writer, wantColor string, testResult map[string]bool) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Test", "Result")
-	t.SetHeaderAlignment(table.AlignLeft)
-	t.SetAlignment(table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft)
+	t.SetAlignment(text.AlignLeft)
 
 	for testName, success := range testResult {
 		status := emoji.CheckMarkButton
@@ -27,11 +29,11 @@ func hubTestResultTable(out io.Writer, testResult map[string]bool) {
 	t.Render()
 }
 
-func hubTestListTable(out io.Writer, tests []*hubtest.HubTestItem) {
-	t := newLightTable(out)
+func hubTestListTable(out io.Writer, wantColor string, tests []*hubtest.HubTestItem) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Name", "Path")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft)
 
 	for _, test := range tests {
 		t.AddRow(test.Name, test.Path)
@@ -40,11 +42,11 @@ func hubTestListTable(out io.Writer, tests []*hubtest.HubTestItem) {
 	t.Render()
 }
 
-func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
-	t := newLightTable(out)
+func hubTestParserCoverageTable(out io.Writer, wantColor string, coverage []hubtest.Coverage) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Parser", "Status", "Number of tests")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	parserTested := 0
 
@@ -61,11 +63,11 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t.Render()
 }
 
-func hubTestAppsecRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
-	t := newLightTable(out)
+func hubTestAppsecRuleCoverageTable(out io.Writer, wantColor string, coverage []hubtest.Coverage) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Appsec Rule", "Status", "Number of tests")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	parserTested := 0
 
@@ -82,11 +84,11 @@ func hubTestAppsecRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) 
 	t.Render()
 }
 
-func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
-	t := newLightTable(out)
+func hubTestScenarioCoverageTable(out io.Writer, wantColor string, coverage []hubtest.Coverage) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Scenario", "Status", "Number of tests")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	parserTested := 0
 

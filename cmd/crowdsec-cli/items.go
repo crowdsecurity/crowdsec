@@ -54,7 +54,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
+func listItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
 	switch output {
 	case "human":
 		nothingToDisplay := true
@@ -64,7 +64,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				continue
 			}
 
-			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
+			listHubItemTable(out, wantColor, "\n"+strings.ToUpper(itemType), items[itemType])
 
 			nothingToDisplay = false
 		}
@@ -143,7 +143,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 	return nil
 }
 
-func inspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string) error {
+func inspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string, wantColor string) error {
 	switch output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
@@ -174,7 +174,7 @@ func inspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusUR
 	if showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
 
-		if err := ShowMetrics(prometheusURL, item); err != nil {
+		if err := ShowMetrics(prometheusURL, item, wantColor); err != nil {
 			return err
 		}
 	}

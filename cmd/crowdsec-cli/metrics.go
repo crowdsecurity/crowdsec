@@ -19,6 +19,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/trace"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
 type (
@@ -49,7 +51,7 @@ var (
 )
 
 type metricSection interface {
-	Table(out io.Writer, noUnit bool, showEmpty bool)
+	Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool)
 	Description() (string, string)
 }
 
@@ -263,7 +265,7 @@ func NewCLIMetrics(cfg configGetter) *cliMetrics {
 	}
 }
 
-func (ms metricStore) Format(out io.Writer, sections []string, formatType string, noUnit bool) error {
+func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, formatType string, noUnit bool) error {
 	// copy only the sections we want
 	want := map[string]metricSection{}
 
@@ -282,7 +284,7 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 	switch formatType {
 	case "human":
 		for _, section := range maptools.SortedKeys(want) {
-			want[section].Table(out, noUnit, showEmpty)
+			want[section].Table(out, wantColor, noUnit, showEmpty)
 		}
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")
@@ -331,7 +333,7 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 		}
 	}
 
-	return ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit)
+	return ms.Format(color.Output, cfg.Cscli.Color, sections, cfg.Cscli.Output, noUnit)
 }
 
 func (cli *cliMetrics) NewCommand() *cobra.Command {
@@ -449,7 +451,7 @@ func (cli *cliMetrics) list() error {
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		t := newTable(color.Output)
+		t := cstable.New(color.Output, cli.cfg().Cscli.Color)
 		t.SetRowLines(true)
 		t.SetHeaders("Type", "Title", "Description")
 

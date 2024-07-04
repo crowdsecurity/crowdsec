@@ -167,7 +167,7 @@ func (cli *cliNotifications) NewListCmd() *cobra.Command {
 			}
 
 			if cfg.Cscli.Output == "human" {
-				notificationListTable(color.Output, ncfgs)
+				notificationListTable(color.Output, cfg.Cscli.Color, ncfgs)
 			} else if cfg.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {

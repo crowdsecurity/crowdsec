@@ -1,4 +1,4 @@
-package main
+package cstable
 
 // transisional file to keep (minimal) backwards compatibility with the old table
 // we can migrate the code to the new dependency later, it can already use the Writer interface
@@ -6,10 +6,35 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	isatty "github.com/mattn/go-isatty"
 )
+
+func RenderTitle(out io.Writer, title string) {
+	if out == nil {
+		panic("renderTableTitle: out is nil")
+	}
+
+	if title == "" {
+		return
+	}
+
+	fmt.Fprintln(out, title)
+}
+
+func shouldWeColorize(wantColor string) bool {
+	switch wantColor {
+	case "yes":
+		return true
+	case "no":
+		return false
+	default:
+		return isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	}
+}
 
 type Table struct {
 	Writer      table.Writer
@@ -18,7 +43,7 @@ type Table struct {
 	alignHeader []text.Align
 }
 
-func newTable(out io.Writer) *Table {
+func New(out io.Writer, wantColor string) *Table {
 	if out == nil {
 		panic("newTable: out is nil")
 	}
@@ -26,14 +51,14 @@ func newTable(out io.Writer) *Table {
 	t := table.NewWriter()
 
 	// colorize output, use unicode box characters
-	fancy := shouldWeColorize()
+	fancy := shouldWeColorize(wantColor)
 
-	color := table.ColorOptions{}
+	colorOptions := table.ColorOptions{}
 
 	if fancy {
-		color.Header = text.Colors{text.Italic}
-		color.Border = text.Colors{text.FgHiBlack}
-		color.Separator = text.Colors{text.FgHiBlack}
+		colorOptions.Header = text.Colors{text.Italic}
+		colorOptions.Border = text.Colors{text.FgHiBlack}
+		colorOptions.Separator = text.Colors{text.FgHiBlack}
 	}
 
 	// no upper/lower case transformations
@@ -46,7 +71,7 @@ func newTable(out io.Writer) *Table {
 
 	style := table.Style{
 		Box:     box,
-		Color:   color,
+		Color:   colorOptions,
 		Format:  format,
 		HTML:    table.DefaultHTMLOptions,
 		Options: table.OptionsDefault,
@@ -63,8 +88,8 @@ func newTable(out io.Writer) *Table {
 	}
 }
 
-func newLightTable(output io.Writer) *Table {
-	t := newTable(output)
+func NewLight(output io.Writer, wantColor string) *Table {
+	t := New(output, wantColor)
 	s := t.Writer.Style()
 	s.Box.Left = ""
 	s.Box.LeftSeparator = ""
@@ -100,6 +125,7 @@ func (t *Table) setColumnConfigs() {
 			WidthMaxEnforcer: text.WrapSoft,
 		})
 	}
+
 	t.Writer.SetColumnConfigs(configs)
 }
 
