@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // updateBaseMetrics updates the base metrics for a machine or bouncer
@@ -143,6 +144,13 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	default:
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "Payload has more than one remediation component"})
 		return
+	}
+
+	if baseMetrics.Os == nil {
+		baseMetrics.Os = &models.OSversion{
+			Name:    ptr.Of(""),
+			Version: ptr.Of(""),
+		}
 	}
 
 	err := c.updateBaseMetrics(machineID, bouncer, baseMetrics, hubItems, datasources)

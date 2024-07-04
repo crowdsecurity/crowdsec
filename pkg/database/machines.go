@@ -14,7 +14,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 const (
@@ -25,13 +24,6 @@ const (
 func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
-
-	if os == nil {
-		os = &models.OSversion{
-			Name:    ptr.Of(""),
-			Version: ptr.Of(""),
-		}
-	}
 
 	var heartbeat time.Time
 

@@ -16,8 +16,6 @@ func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
-	// XXX: bouncers have no heartbeat, they have "last pull", are we updating it?
-
 	_, err := c.Ent.Bouncer.
 		Update().
 		Where(bouncer.NameEQ(bouncerName)).
