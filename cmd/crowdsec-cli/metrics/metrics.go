@@ -1,4 +1,4 @@
-package main
+package metrics
 
 import (
 	"encoding/json"
@@ -21,6 +21,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 type (
@@ -255,11 +256,13 @@ func (ms metricStore) Fetch(url string) error {
 	return nil
 }
 
+type configGetter func() *csconfig.Config
+
 type cliMetrics struct {
 	cfg configGetter
 }
 
-func NewCLIMetrics(cfg configGetter) *cliMetrics {
+func NewCLI(cfg configGetter) *cliMetrics {
 	return &cliMetrics{
 		cfg: cfg,
 	}
