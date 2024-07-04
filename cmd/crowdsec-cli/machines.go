@@ -202,7 +202,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.GetOSNameAndVersion(), m.AuthType, hb})
+		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, getOSNameAndVersion(m), m.AuthType, hb})
 	}
 
 	fmt.Fprintln(out, t.Render())
@@ -235,8 +235,8 @@ func newMachineInfo(m *ent.Machine) machineInfo {
 		Version:       m.Version,
 		IsValidated:   m.IsValidated,
 		AuthType:      m.AuthType,
-		OS:            m.GetOSNameAndVersion(),
-		Featureflags:  m.GetFeatureFlagList(),
+		OS:            getOSNameAndVersion(m),
+		Featureflags:  getFeatureFlagList(m),
 		Datasources:   m.Datasources,
 	}
 }
@@ -641,7 +641,7 @@ func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		{"Last Heartbeat", machine.LastHeartbeat},
 		{"Validated?", machine.IsValidated},
 		{"CrowdSec version", machine.Version},
-		{"OS", machine.GetOSNameAndVersion()},
+		{"OS", getOSNameAndVersion(machine)},
 		{"Auth type", machine.AuthType},
 	})
 
@@ -649,7 +649,7 @@ func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Datasources", fmt.Sprintf("%s: %d", dsName, dsCount)})
 	}
 
-	for _, ff := range machine.GetFeatureFlagList() {
+	for _, ff := range getFeatureFlagList(machine) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 

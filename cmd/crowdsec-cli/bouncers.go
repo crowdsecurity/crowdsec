@@ -26,6 +26,40 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type featureflagProvider interface {
+	GetFeatureflags() string
+}
+
+type osProvider interface {
+	GetOsname() string
+	GetOsversion() string
+}
+
+func getOSNameAndVersion(o osProvider) string {
+	ret := o.GetOsname()
+	if o.GetOsversion() != "" {
+		if ret != "" {
+			ret += "/"
+		}
+
+		ret += o.GetOsversion()
+	}
+
+	if ret == "" {
+		return "?"
+	}
+
+	return ret
+}
+
+func getFeatureFlagList(o featureflagProvider) []string {
+	if o.GetFeatureflags() == "" {
+		return nil
+	}
+
+	return strings.Split(o.GetFeatureflags(), ",")
+}
+
 func askYesNo(message string, defaultAnswer bool) (bool, error) {
 	var answer bool
 
@@ -136,8 +170,8 @@ func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
 		Version: b.Version,
 		LastPull: b.LastPull,
 		AuthType: b.AuthType,
-		OS: b.GetOSNameAndVersion(),
-		Featureflags: b.GetFeatureFlagList(),
+		OS: getOSNameAndVersion(b),
+		Featureflags: getFeatureFlagList(b),
 	}
 }
 
@@ -433,10 +467,10 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{"Version", bouncer.Version},
 		{"Last Pull", lastPull},
 		{"Auth type", bouncer.AuthType},
-		{"OS", bouncer.GetOSNameAndVersion()},
+		{"OS", getOSNameAndVersion(bouncer)},
 	})
 
-	for _, ff := range bouncer.GetFeatureFlagList() {
+	for _, ff := range getFeatureFlagList(bouncer) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
