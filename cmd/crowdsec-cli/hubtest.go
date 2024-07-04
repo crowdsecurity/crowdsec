@@ -371,7 +371,7 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 
 			switch cfg.Cscli.Output {
 			case "human":
-				hubTestResultTable(color.Output, testResult)
+				hubTestResultTable(color.Output, cfg.Cscli.Color, testResult)
 			case "json":
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
@@ -480,7 +480,7 @@ func (cli *cliHubTest) NewListCmd() *cobra.Command {
 
 			switch cfg.Cscli.Output {
 			case "human":
-				hubTestListTable(color.Output, hubPtr.Tests)
+				hubTestListTable(color.Output, cfg.Cscli.Color, hubPtr.Tests)
 			case "json":
 				j, err := json.MarshalIndent(hubPtr.Tests, " ", "  ")
 				if err != nil {
@@ -578,15 +578,15 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 	switch cfg.Cscli.Output {
 	case "human":
 		if showParserCov || showAll {
-			hubTestParserCoverageTable(color.Output, parserCoverage)
+			hubTestParserCoverageTable(color.Output, cfg.Cscli.Color, parserCoverage)
 		}
 
 		if showScenarioCov || showAll {
-			hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
+			hubTestScenarioCoverageTable(color.Output, cfg.Cscli.Color, scenarioCoverage)
 		}
 
 		if showAppsecCov || showAll {
-			hubTestAppsecRuleCoverageTable(color.Output, appsecRuleCoverage)
+			hubTestAppsecRuleCoverageTable(color.Output, cfg.Cscli.Color, appsecRuleCoverage)
 		}
 
 		fmt.Println()

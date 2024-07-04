@@ -94,7 +94,7 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
 		return err
 	}
 
-	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
+	if err := ms.Format(humanMetrics, cfg.Cscli.Color, nil, "human", false); err != nil {
 		return fmt.Errorf("could not format prometheus metrics: %w", err)
 	}
 
@@ -173,7 +173,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType str
 		return fmt.Errorf("could not collect %s list: %w", itemType, err)
 	}
 
-	if err := listItems(out, []string{itemType}, items, false, "human"); err != nil {
+	if err := listItems(out, cli.cfg().Cscli.Color, []string{itemType}, items, false, "human"); err != nil {
 		return fmt.Errorf("could not list %s: %w", itemType, err)
 	}
 

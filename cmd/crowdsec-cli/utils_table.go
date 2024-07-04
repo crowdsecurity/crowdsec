@@ -5,28 +5,30 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
-func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
-	t := newLightTable(out)
+func listHubItemTable(out io.Writer, wantColor string, title string, items []*cwhub.Item) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	for _, item := range items {
 		status := fmt.Sprintf("%v  %s", item.State.Emoji(), item.State.Text())
 		t.AddRow(item.Name, status, item.State.LocalVersion, item.State.LocalPath)
 	}
 
-	renderTableTitle(out, title)
+	cstable.RenderTitle(out, title)
 	t.Render()
 }
 
-func appsecMetricsTable(out io.Writer, itemName string, metrics map[string]int) {
-	t := newTable(out)
+func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Inband Hits", "Outband Hits")
 
 	t.AddRow(
@@ -34,16 +36,16 @@ func appsecMetricsTable(out io.Writer, itemName string, metrics map[string]int) 
 		strconv.Itoa(metrics["outband_hits"]),
 	)
 
-	renderTableTitle(out, fmt.Sprintf("\n - (AppSec Rule) %s:", itemName))
+	cstable.RenderTitle(out, fmt.Sprintf("\n - (AppSec Rule) %s:", itemName))
 	t.Render()
 }
 
-func scenarioMetricsTable(out io.Writer, itemName string, metrics map[string]int) {
+func scenarioMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
 	if metrics["instantiation"] == 0 {
 		return
 	}
 
-	t := newTable(out)
+	t := cstable.New(out, wantColor)
 	t.SetHeaders("Current Count", "Overflows", "Instantiated", "Poured", "Expired")
 
 	t.AddRow(
@@ -54,12 +56,12 @@ func scenarioMetricsTable(out io.Writer, itemName string, metrics map[string]int
 		strconv.Itoa(metrics["underflow"]),
 	)
 
-	renderTableTitle(out, fmt.Sprintf("\n - (Scenario) %s:", itemName))
+	cstable.RenderTitle(out, fmt.Sprintf("\n - (Scenario) %s:", itemName))
 	t.Render()
 }
 
-func parserMetricsTable(out io.Writer, itemName string, metrics map[string]map[string]int) {
-	t := newTable(out)
+func parserMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]map[string]int) {
+	t := cstable.New(out, wantColor)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
 
 	// don't show table if no hits
@@ -79,7 +81,7 @@ func parserMetricsTable(out io.Writer, itemName string, metrics map[string]map[s
 	}
 
 	if showTable {
-		renderTableTitle(out, fmt.Sprintf("\n - (Parser) %s:", itemName))
+		cstable.RenderTitle(out, fmt.Sprintf("\n - (Parser) %s:", itemName))
 		t.Render()
 	}
 }

@@ -3,17 +3,19 @@ package main
 import (
 	"io"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
-func cmdConsoleStatusTable(out io.Writer, consoleCfg csconfig.ConsoleConfig) {
-	t := newTable(out)
+func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.ConsoleConfig) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 
 	t.SetHeaders("Option Name", "Activated", "Description")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	for _, option := range csconfig.CONSOLE_CONFIGS {
 		activated := emoji.CrossMark

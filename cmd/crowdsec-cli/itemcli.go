@@ -381,7 +381,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 			continue
 		}
 
-		if err = inspectItem(item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl); err != nil {
+		if err = inspectItem(item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
@@ -442,7 +442,7 @@ func (cli cliItem) list(args []string, all bool) error {
 		return err
 	}
 
-	return listItems(color.Output, []string{cli.name}, items, false, cfg.Cscli.Output)
+	return listItems(color.Output, cfg.Cscli.Color, []string{cli.name}, items, false, cfg.Cscli.Output)
 }
 
 func (cli cliItem) newListCmd() *cobra.Command {
