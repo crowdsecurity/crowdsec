@@ -276,7 +276,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 			consoleCfg := cfg.API.Server.ConsoleConfig
 			switch cfg.Cscli.Output {
 			case "human":
-				cmdConsoleStatusTable(color.Output, *consoleCfg)
+				cmdConsoleStatusTable(color.Output, cfg.Cscli.Color, *consoleCfg)
 			case "json":
 				out := map[string](*bool){
 					csconfig.SEND_MANUAL_SCENARIOS:  consoleCfg.ShareManualDecisions,

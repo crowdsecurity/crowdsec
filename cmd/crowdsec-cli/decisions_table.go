@@ -5,11 +5,12 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
-	t := newTable(out)
+	t := cstable.New(out, cli.cfg().Cscli.Color)
 	t.SetRowLines(false)
 
 	header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}

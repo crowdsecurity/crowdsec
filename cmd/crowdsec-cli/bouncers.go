@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -124,7 +125,7 @@ Note: This command requires database direct access, so is intended to be run on 
 }
 
 func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
-	t := newLightTable(out).Writer
+	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 	t.AppendHeader(table.Row{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version", "Auth Type"})
 
 	for _, b := range bouncers {
@@ -445,7 +446,7 @@ cscli bouncers prune -d 45m --force`,
 }
 
 func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
-	t := newTable(out).Writer
+	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 
 	t.SetTitle("Bouncer: " + bouncer.Name)
 

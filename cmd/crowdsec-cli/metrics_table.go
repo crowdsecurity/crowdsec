@@ -7,17 +7,18 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jedib0t/go-pretty/v6/text"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
 // ErrNilTable means a nil pointer was passed instead of a table instance. This is a programming error.
 var ErrNilTable = errors.New("nil table")
 
-func lapiMetricsToTable(t *Table, stats map[string]map[string]map[string]int) int {
+func lapiMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]int) int {
 	// stats: machine -> route -> method -> count
 	// sort keys to keep consistent order when printing
 	machineKeys := []string{}
@@ -55,7 +56,7 @@ func lapiMetricsToTable(t *Table, stats map[string]map[string]map[string]int) in
 	return numRows
 }
 
-func wlMetricsToTable(t *Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
+func wlMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, ErrNilTable
 	}
@@ -93,7 +94,7 @@ func wlMetricsToTable(t *Table, stats map[string]map[string]map[string]int, noUn
 	return numRows, nil
 }
 
-func metricsToTable(t *Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
+func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, ErrNilTable
 	}
@@ -145,11 +146,11 @@ func (s statBucket) Process(bucket, metric string, val int) {
 	s[bucket][metric] += val
 }
 
-func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statBucket) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Scenario", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
@@ -157,7 +158,7 @@ func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting scenario stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -178,11 +179,11 @@ func (s statAcquis) Process(source, metric string, val int) {
 	s[source][metric] += val
 }
 
-func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statAcquis) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket", "Lines whitelisted")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	keys := []string{"reads", "parsed", "unparsed", "pour", "whitelisted"}
 
@@ -190,7 +191,7 @@ func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting acquis stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -208,11 +209,11 @@ func (s statAppsecEngine) Process(appsecEngine, metric string, val int) {
 	s[appsecEngine][metric] += val
 }
 
-func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statAppsecEngine) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft)
 
 	keys := []string{"processed", "blocked"}
 
@@ -220,7 +221,7 @@ func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting appsec stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -242,19 +243,19 @@ func (s statAppsecRule) Process(appsecEngine, appsecRule string, metric string, 
 	s[appsecEngine][appsecRule][metric] += val
 }
 
-func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
+func (s statAppsecRule) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
 	for appsecEngine, appsecEngineRulesStats := range s {
-		t := newTable(out)
+		t := cstable.New(out, wantColor)
 		t.SetRowLines(false)
 		t.SetHeaders("Rule ID", "Triggered")
-		t.SetAlignment(table.AlignLeft, table.AlignLeft)
+		t.SetAlignment(text.AlignLeft, text.AlignLeft)
 
 		keys := []string{"triggered"}
 
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
 		} else if numRows > 0 || showEmpty {
-			renderTableTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
+			cstable.RenderTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
 			t.Render()
 		}
 	}
@@ -277,17 +278,17 @@ func (s statWhitelist) Process(whitelist, reason, metric string, val int) {
 	s[whitelist][reason][metric] += val
 }
 
-func (s statWhitelist) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statWhitelist) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Whitelist", "Reason", "Hits", "Whitelisted")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	if numRows, err := wlMetricsToTable(t, s, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -307,11 +308,11 @@ func (s statParser) Process(parser, metric string, val int) {
 	s[parser][metric] += val
 }
 
-func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statParser) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	keys := []string{"hits", "parsed", "unparsed"}
 
@@ -319,7 +320,7 @@ func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -339,11 +340,11 @@ func (s statStash) Process(name, mtype string, val int) {
 	}
 }
 
-func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statStash) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Name", "Type", "Items")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
 	numRows := 0
@@ -363,7 +364,7 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -381,11 +382,11 @@ func (s statLapi) Process(route, method string, val int) {
 	s[route][method] += val
 }
 
-func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statLapi) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Route", "Method", "Hits")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
 	numRows := 0
@@ -415,7 +416,7 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -437,17 +438,17 @@ func (s statLapiMachine) Process(machine, route, method string, val int) {
 	s[machine][route][method] += val
 }
 
-func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statLapiMachine) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Machine", "Route", "Method", "Hits")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -469,17 +470,17 @@ func (s statLapiBouncer) Process(bouncer, route, method string, val int) {
 	s[bouncer][route][method] += val
 }
 
-func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statLapiBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Route", "Method", "Hits")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -509,11 +510,11 @@ func (s statLapiDecision) Process(bouncer, fam string, val int) {
 	s[bouncer] = x
 }
 
-func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statLapiDecision) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Empty answers", "Non-empty answers")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	numRows := 0
 
@@ -529,7 +530,7 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -552,11 +553,11 @@ func (s statDecision) Process(reason, origin, action string, val int) {
 	s[reason][origin][action] += val
 }
 
-func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statDecision) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Origin", "Action", "Count")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	numRows := 0
 
@@ -577,7 +578,7 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -591,11 +592,11 @@ func (s statAlert) Process(reason string, val int) {
 	s[reason] += val
 }
 
-func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
-	t := newTable(out)
+func (s statAlert) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Count")
-	t.SetAlignment(table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft)
 
 	numRows := 0
 
@@ -610,7 +611,7 @@ func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n"+title+":")
+		cstable.RenderTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }

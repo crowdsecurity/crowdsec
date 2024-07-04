@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/machineid"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -156,7 +157,7 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
+func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	state := machine.Hubstate
 
 	if len(state) == 0 {
@@ -179,7 +180,7 @@ func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	}
 
 	for itemType, rows := range rowsByType {
-		t := newTable(out).Writer
+		t := cstable.New(out, cli.cfg().Cscli.Color).Writer
 		t.AppendHeader(table.Row{"Name", "Status", "Version"})
 		t.SetTitle(itemType)
 		t.AppendRows(rows)
@@ -188,7 +189,7 @@ func (*cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 }
 
 func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
-	t := newLightTable(out).Writer
+	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 	t.AppendHeader(table.Row{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Last Heartbeat"})
 
 	for _, m := range machines {
@@ -625,8 +626,8 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 	return cmd
 }
 
-func (*cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
-	t := newTable(out).Writer
+func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
+	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
 
 	t.SetTitle("Machine: " + machine.MachineId)
 
