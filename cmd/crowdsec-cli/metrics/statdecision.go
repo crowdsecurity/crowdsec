@@ -9,6 +9,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statDecision map[string]map[string]map[string]int
+
 func (s statDecision) Description() (string, string) {
 	return "Local API Decisions",
 		`Provides information about all currently active decisions. ` +

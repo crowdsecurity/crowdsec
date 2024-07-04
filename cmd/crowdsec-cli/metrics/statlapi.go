@@ -12,6 +12,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statLapi map[string]map[string]int
+
 func (s statLapi) Description() (string, string) {
 	return "Local API Metrics",
 		`Monitors the requests made to local API routes.`

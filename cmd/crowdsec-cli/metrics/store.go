@@ -18,28 +18,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 )
 
-type (
-	statAcquis       map[string]map[string]int
-	statParser       map[string]map[string]int
-	statBucket       map[string]map[string]int
-	statWhitelist    map[string]map[string]map[string]int
-	statLapi         map[string]map[string]int
-	statLapiMachine  map[string]map[string]map[string]int
-	statLapiBouncer  map[string]map[string]map[string]int
-	statLapiDecision map[string]struct {
-		NonEmpty int
-		Empty    int
-	}
-	statDecision     map[string]map[string]map[string]int
-	statAppsecEngine map[string]map[string]int
-	statAppsecRule   map[string]map[string]map[string]int
-	statAlert        map[string]int
-	statStash        map[string]struct {
-		Type  string
-		Count int
-	}
-)
-
 type metricSection interface {
 	Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool)
 	Description() (string, string)

@@ -9,6 +9,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statAcquis map[string]map[string]int
+
 func (s statAcquis) Description() (string, string) {
 	return "Acquisition Metrics",
 		`Measures the lines read, parsed, and unparsed per datasource. ` +

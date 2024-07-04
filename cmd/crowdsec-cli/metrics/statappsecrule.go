@@ -10,6 +10,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statAppsecRule map[string]map[string]map[string]int
+
 func (s statAppsecRule) Description() (string, string) {
 	return "Appsec Rule Metrics",
 		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`

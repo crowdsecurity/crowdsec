@@ -11,6 +11,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statStash map[string]struct {
+	Type  string
+	Count int
+}
+
 func (s statStash) Description() (string, string) {
 	return "Parser Stash Metrics",
 		`Tracks the status of stashes that might be created by various parsers and scenarios.`

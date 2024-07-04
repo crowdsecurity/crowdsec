@@ -9,6 +9,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statAlert map[string]int
+
 func (s statAlert) Description() (string, string) {
 	return "Local API Alerts",
 		`Tracks the total number of past and present alerts for the installed scenarios.`

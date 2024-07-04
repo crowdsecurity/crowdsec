@@ -9,6 +9,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statLapiDecision map[string]struct {
+	NonEmpty int
+	Empty    int
+}
+
 func (s statLapiDecision) Description() (string, string) {
 	return "Local API Bouncers Decisions",
 		`Tracks the number of empty/non-empty answers from LAPI to bouncers that are working in "live" mode.`

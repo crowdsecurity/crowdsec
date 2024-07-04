@@ -8,6 +8,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statLapiMachine map[string]map[string]map[string]int
+
 func (s statLapiMachine) Description() (string, string) {
 	return "Local API Machines Metrics",
 		`Tracks the number of calls to the local API from each registered machine.`

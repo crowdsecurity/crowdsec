@@ -9,6 +9,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statBucket map[string]map[string]int
+
 func (s statBucket) Description() (string, string) {
 	return "Scenario Metrics",
 		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. ` +

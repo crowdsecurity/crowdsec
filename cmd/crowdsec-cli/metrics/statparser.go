@@ -9,6 +9,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
+type statParser map[string]map[string]int
+
 func (s statParser) Description() (string, string) {
 	return "Parser Metrics",
 		`Tracks the number of events processed by each parser and indicates success of failure. ` +
