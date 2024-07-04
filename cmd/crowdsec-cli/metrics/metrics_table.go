@@ -132,36 +132,6 @@ func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []st
 	return numRows, nil
 }
 
-func (s statAppsecEngine) Description() (string, string) {
-	return "Appsec Metrics",
-		`Measures the number of parsed and blocked requests by the AppSec Component.`
-}
-
-func (s statAppsecEngine) Process(appsecEngine, metric string, val int) {
-	if _, ok := s[appsecEngine]; !ok {
-		s[appsecEngine] = make(map[string]int)
-	}
-
-	s[appsecEngine][metric] += val
-}
-
-func (s statAppsecEngine) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft)
-
-	keys := []string{"processed", "blocked"}
-
-	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
-		log.Warningf("while collecting appsec stats: %s", err)
-	} else if numRows > 0 || showEmpty {
-		title, _ := s.Description()
-		cstable.RenderTitle(out, "\n"+title+":")
-		t.Render()
-	}
-}
-
 func (s statAppsecRule) Description() (string, string) {
 	return "Appsec Rule Metrics",
 		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`
