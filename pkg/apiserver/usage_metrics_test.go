@@ -200,7 +200,7 @@ func TestLPMetrics(t *testing.T) {
 			machine, _ := dbClient.QueryMachineByID("test")
 			metrics, _ := dbClient.GetLPUsageMetricsByMachineID("test")
 
-			assert.Equal(t, tt.expectedMetricsCount, len(metrics))
+			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, machine.Osname)
 			assert.Equal(t, tt.expectedOSVersion, machine.Osversion)
 			assert.Equal(t, tt.expectedFeatureFlags, machine.Featureflags)
@@ -372,7 +372,7 @@ func TestRCMetrics(t *testing.T) {
 			bouncer, _ := dbClient.SelectBouncerByName("test")
 			metrics, _ := dbClient.GetBouncerUsageMetricsByName("test")
 
-			assert.Equal(t, tt.expectedMetricsCount, len(metrics))
+			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, bouncer.Osname)
 			assert.Equal(t, tt.expectedOSVersion, bouncer.Osversion)
 			assert.Equal(t, tt.expectedFeatureFlags, bouncer.Featureflags)
