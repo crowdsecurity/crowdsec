@@ -132,39 +132,6 @@ func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []st
 	return numRows, nil
 }
 
-func (s statAcquis) Description() (string, string) {
-	return "Acquisition Metrics",
-		`Measures the lines read, parsed, and unparsed per datasource. ` +
-			`Zero read lines indicate a misconfigured or inactive datasource. ` +
-			`Zero parsed lines mean the parser(s) failed. ` +
-			`Non-zero parsed lines are fine as crowdsec selects relevant lines.`
-}
-
-func (s statAcquis) Process(source, metric string, val int) {
-	if _, ok := s[source]; !ok {
-		s[source] = make(map[string]int)
-	}
-
-	s[source][metric] += val
-}
-
-func (s statAcquis) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket", "Lines whitelisted")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
-
-	keys := []string{"reads", "parsed", "unparsed", "pour", "whitelisted"}
-
-	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
-		log.Warningf("while collecting acquis stats: %s", err)
-	} else if numRows > 0 || showEmpty {
-		title, _ := s.Description()
-		cstable.RenderTitle(out, "\n"+title+":")
-		t.Render()
-	}
-}
-
 func (s statAppsecEngine) Description() (string, string) {
 	return "Appsec Metrics",
 		`Measures the number of parsed and blocked requests by the AppSec Component.`
