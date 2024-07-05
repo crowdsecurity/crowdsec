@@ -1,7 +1,21 @@
 # vim: set ft=dockerfile:
+FROM rust:1.70.0-slim-bullseye AS rust_build
+
+WORKDIR /
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    make
+RUN git clone https://github.com/daulet/tokenizers.git /tokenizer && \
+    cd /tokenizer && \
+    cargo build --release && \
+    cp target/release/libtokenizers.a /tokenizer/libtokenizers.a
+
 FROM golang:1.22.4-alpine3.20 AS build
 
 ARG BUILD_VERSION
+ARG ONNXRUNTIME_VERSION=1.13.1
 
 WORKDIR /go/src/crowdsec
 
@@ -20,7 +34,29 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
 
 COPY . .
 
-RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_SOURCE" && \
+COPY --from=rust_build /tokenizer/libtokenizers.a /usr/local/lib/
+
+
+# INSTALL ONNXRUNTIME
+RUN cd /tmp && \
+    wget -O onnxruntime.tgz https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION}.tgz && \
+    tar -C /tmp -xvf onnxruntime.tgz && \
+    mv onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION} onnxruntime && \
+    rm -rf onnxruntime.tgz && \
+    cp -R onnxruntime/lib /usr/local && \
+    cp -R onnxruntime/include /usr/local && \
+    rm -rf onnxruntime
+
+
+RUN ls -l /usr/local/lib/
+RUN ls -l /usr/local/
+RUN ls -l /usr/local/include/
+
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=0 CGO_CFLAGS="-D_LARGEFILE64_SOURCE -I/usr/local/include"  \
+        CGO_LDFLAGS="-L/usr/local/lib -lonnxruntime -lstdc++ /usr/local/lib/libtokenizers.a -ldl -lm -L/usr/local/lib -lonnxruntime" \
+        CGO_CPPFLAGS="-I/usr/local/include" \
+        LIBRARY_PATH="/usr/local/lib" \
+        LD_LIBRARY_PATH="/usr/local/lib" && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
