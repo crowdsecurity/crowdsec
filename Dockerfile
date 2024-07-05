@@ -15,7 +15,7 @@ RUN git clone https://github.com/daulet/tokenizers.git /tokenizer && \
 FROM golang:1.22.4-alpine3.20 AS build
 
 ARG BUILD_VERSION
-ARG ONNXRUNTIME_VERSION=1.13.1
+ARG ONNXRUNTIME_VERSION=1.12.1
 
 WORKDIR /go/src/crowdsec
 
@@ -46,11 +46,6 @@ RUN cd /tmp && \
     cp -R onnxruntime/lib /usr/local && \
     cp -R onnxruntime/include /usr/local && \
     rm -rf onnxruntime
-
-
-RUN ls -l /usr/local/lib/
-RUN ls -l /usr/local/
-RUN ls -l /usr/local/include/
 
 RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=0 CGO_CFLAGS="-D_LARGEFILE64_SOURCE -I/usr/local/include"  \
         CGO_LDFLAGS="-L/usr/local/lib -lonnxruntime -lstdc++ /usr/local/lib/libtokenizers.a -ldl -lm -L/usr/local/lib -lonnxruntime" \
