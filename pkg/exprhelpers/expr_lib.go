@@ -493,8 +493,15 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string) *net.IPNet),
 		},
 	},
+	{
+		name:     "SeemsMalicious",
+		function: AnomalyDetection,
+		signature: []interface{}{
+			new(func(string, string) string),
+		},
+	},
 }
 
-//go 1.20 "CutPrefix":              strings.CutPrefix,
+//go 1.20 "CutPrefix": strings.CutPrefix,
 //go 1.20 "CutSuffix": strings.CutSuffix,
 //"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
