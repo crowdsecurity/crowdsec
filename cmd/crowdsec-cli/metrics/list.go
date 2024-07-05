@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
@@ -34,15 +37,32 @@ func (cli *cliMetrics) list() error {
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		t := cstable.New(color.Output, cli.cfg().Cscli.Color)
-		t.SetRowLines(true)
-		t.SetHeaders("Type", "Title", "Description")
+		out := color.Output
+		t := cstable.New(out, cli.cfg().Cscli.Color).Writer
+		t.AppendHeader(table.Row{"Type", "Title", "Description"})
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{
+				Name: "Type",
+				AlignHeader: text.AlignCenter,
+			},
+			{
+				Name: "Title",
+				AlignHeader: text.AlignCenter,
+			},
+			{
+				Name: "Description",
+				AlignHeader: text.AlignCenter,
+				WidthMax: 60,
+				WidthMaxEnforcer: text.WrapSoft,
+			},
+		})
+		t.Style().Options.SeparateRows = true
 
 		for _, metric := range allMetrics {
-			t.AddRow(metric.Type, metric.Title, metric.Description)
+			t.AppendRow(table.Row{metric.Type, metric.Title, metric.Description})
 		}
 
-		t.Render()
+		fmt.Fprintln(out, t.Render())
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
