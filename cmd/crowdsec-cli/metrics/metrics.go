@@ -38,8 +38,8 @@ cscli metrics --url http://lapi.local:6060/metrics show acquisition parsers
 cscli metrics list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.show(nil, url, noUnit)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.show(cmd.Context(), nil, url, noUnit)
 		},
 	}
 

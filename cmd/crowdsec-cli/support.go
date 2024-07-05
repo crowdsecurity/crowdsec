@@ -78,7 +78,7 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
+func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
 	cfg := cli.cfg()
@@ -91,7 +91,7 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
 
 	ms := metrics.NewMetricStore()
 
-	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
+	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {
 		return err
 	}
 
@@ -493,7 +493,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		skipCAPI = true
 	}
 
-	if err = cli.dumpMetrics(ctx, zipWriter); err != nil {
+	if err = cli.dumpMetrics(ctx, db, zipWriter); err != nil {
 		log.Warn(err)
 	}
 

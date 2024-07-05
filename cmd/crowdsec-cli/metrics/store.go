@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/trace"
+
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 type metricSection interface {
@@ -29,6 +32,7 @@ func NewMetricStore() metricStore {
 	return metricStore{
 		"acquisition":    statAcquis{},
 		"alerts":         statAlert{},
+		"bouncers":       &statBouncer{},
 		"appsec-engine":  statAppsecEngine{},
 		"appsec-rule":    statAppsecRule{},
 		"decisions":      statDecision{},
@@ -43,7 +47,15 @@ func NewMetricStore() metricStore {
 	}
 }
 
-func (ms metricStore) Fetch(url string) error {
+func (ms metricStore) Fetch(ctx context.Context, url string, db *database.Client) error {
+	if err := ms["bouncers"].(*statBouncer).Fetch(ctx, db); err != nil {
+		return err
+	}
+
+	return ms.fetchPrometheusMetrics(url)
+}
+
+func (ms metricStore) fetchPrometheusMetrics(url string) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -75,10 +87,12 @@ func (ms metricStore) Fetch(url string) error {
 	}
 
 	log.Debugf("Finished reading metrics output, %d entries", len(result))
-	return ms.processMetrics(result)
+	ms.processPrometheusMetrics(result)
+
+	return nil
 }
 
-func (ms metricStore) processMetrics(result []*prom2json.Family) error {
+func (ms metricStore) processPrometheusMetrics(result []*prom2json.Family) {
 	mAcquis := ms["acquisition"].(statAcquis)
 	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
@@ -221,8 +235,6 @@ func (ms metricStore) processMetrics(result []*prom2json.Family) error {
 			}
 		}
 	}
-
-	return nil
 }
 
 func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, formatType string, noUnit bool) error {

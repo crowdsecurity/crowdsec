@@ -38,7 +38,7 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	}
 
 	if config.MaxOpenConns == nil {
-		log.Warningf("MaxOpenConns is 0, defaulting to %d", csconfig.DEFAULT_MAX_OPEN_CONNS)
+		log.Debugf("MaxOpenConns is 0, defaulting to %d", csconfig.DEFAULT_MAX_OPEN_CONNS)
 		config.MaxOpenConns = ptr.Of(csconfig.DEFAULT_MAX_OPEN_CONNS)
 	}
 
