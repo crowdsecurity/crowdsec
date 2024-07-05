@@ -62,14 +62,6 @@ func (c *Container) Create() error {
 	fmt.Print("\n")
 
 	hostConfig := &container.HostConfig{
-		PortBindings: nat.PortMap{
-			"3000/tcp": []nat.PortBinding{
-				{
-					HostIP:   c.ListenAddr,
-					HostPort: c.ListenPort,
-				},
-			},
-		},
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeBind,
@@ -77,6 +69,17 @@ func (c *Container) Create() error {
 				Target: containerSharedFolder,
 			},
 		},
+	}
+
+	if c.ListenPort != "-1" {
+		hostConfig.PortBindings = nat.PortMap{
+			"3000/tcp": []nat.PortBinding{
+				{
+					HostIP:   c.ListenAddr,
+					HostPort: c.ListenPort,
+				},
+			},
+		}
 	}
 
 	env := []string{

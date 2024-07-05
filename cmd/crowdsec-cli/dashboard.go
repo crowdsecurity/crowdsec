@@ -177,7 +177,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	flags.StringVarP(&metabaseDBPath, "dir", "d", "", "Shared directory with metabase container")
 	flags.StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	flags.StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
-	flags.StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+	flags.StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container, -1 to disable")
 	flags.BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	// flags.StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	flags.StringVar(&metabasePassword, "password", "", "metabase password")
