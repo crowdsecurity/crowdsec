@@ -75,8 +75,10 @@ func (ms metricStore) Fetch(url string) error {
 	}
 
 	log.Debugf("Finished reading metrics output, %d entries", len(result))
-	/*walk*/
+	return ms.processMetrics(result)
+}
 
+func (ms metricStore) processMetrics(result []*prom2json.Family) error {
 	mAcquis := ms["acquisition"].(statAcquis)
 	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
