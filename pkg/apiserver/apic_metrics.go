@@ -344,7 +344,9 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 func (a *apic) SendUsageMetrics() {
 	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
 
-	ticker := time.NewTicker(5 * time.Second)
+	firstRun := true
+
+	ticker := time.NewTicker(time.Millisecond)
 
 	for {
 		select {
@@ -353,6 +355,10 @@ func (a *apic) SendUsageMetrics() {
 			ticker.Stop()
 			return
 		case <-ticker.C:
+			if firstRun {
+				firstRun = false
+				ticker.Reset(30 * time.Minute)
+			}
 			metrics, metricsId, err := a.GetUsageMetrics()
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
