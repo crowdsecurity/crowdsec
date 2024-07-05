@@ -94,6 +94,9 @@ func (c *Container) Create() error {
 		Image: c.Image,
 		Tty:   true,
 		Env:   env,
+		ExposedPorts: nat.PortSet{
+			"3000/tcp": struct{}{},
+		},
 	}
 
 	log.Infof("creating container '%s'", c.Name)
