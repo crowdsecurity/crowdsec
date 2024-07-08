@@ -170,6 +170,11 @@ func UUID(v string) predicate.Alert {
 	return predicate.Alert(sql.FieldEQ(FieldUUID, v))
 }
 
+// Remediation applies equality check predicate on the "remediation" field. It's identical to RemediationEQ.
+func Remediation(v bool) predicate.Alert {
+	return predicate.Alert(sql.FieldEQ(FieldRemediation, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Alert {
 	return predicate.Alert(sql.FieldEQ(FieldCreatedAt, v))
@@ -1598,6 +1603,26 @@ func UUIDEqualFold(v string) predicate.Alert {
 // UUIDContainsFold applies the ContainsFold predicate on the "uuid" field.
 func UUIDContainsFold(v string) predicate.Alert {
 	return predicate.Alert(sql.FieldContainsFold(FieldUUID, v))
+}
+
+// RemediationEQ applies the EQ predicate on the "remediation" field.
+func RemediationEQ(v bool) predicate.Alert {
+	return predicate.Alert(sql.FieldEQ(FieldRemediation, v))
+}
+
+// RemediationNEQ applies the NEQ predicate on the "remediation" field.
+func RemediationNEQ(v bool) predicate.Alert {
+	return predicate.Alert(sql.FieldNEQ(FieldRemediation, v))
+}
+
+// RemediationIsNil applies the IsNil predicate on the "remediation" field.
+func RemediationIsNil() predicate.Alert {
+	return predicate.Alert(sql.FieldIsNull(FieldRemediation))
+}
+
+// RemediationNotNil applies the NotNil predicate on the "remediation" field.
+func RemediationNotNil() predicate.Alert {
+	return predicate.Alert(sql.FieldNotNull(FieldRemediation))
 }
 
 // HasOwner applies the HasEdge predicate on the "owner" edge.

@@ -618,6 +618,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
+			SetRemediation(alertItem.Remediation).
 			SetUUID(alertItem.UUID).
 			AddEvents(events...).
 			AddMetas(metas...)
