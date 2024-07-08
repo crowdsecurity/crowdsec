@@ -2,6 +2,7 @@
 FROM rust:1.70.0-slim-bullseye AS rust_build
 
 WORKDIR /
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
@@ -12,32 +13,10 @@ RUN git clone https://github.com/daulet/tokenizers.git /tokenizer && \
     cargo build --release && \
     cp target/release/libtokenizers.a /tokenizer/libtokenizers.a
 
-FROM debian AS onnxruntime_build
-
-ARG ONNXRUNTIME_VERSION=1.12.1
-
-WORKDIR /
-
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    curl \
-    git \
-    libprotobuf-dev \
-    protobuf-compiler \
-    python3 \
-    python3-pip \
-    wget \
-    zlib1g-dev
-
-RUN wget -O onnxruntime.tgz https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION}.tgz && \
-    tar -C . -xvf onnxruntime.tgz && \
-    mv onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION} onnxruntime && \
-    rm -rf onnxruntime.tgz
-
 FROM golang:1.22.4-alpine3.20 AS build
 
 ARG BUILD_VERSION
+ARG ONNXRUNTIME_VERSION=1.12.1
 
 WORKDIR /go/src/crowdsec
 
@@ -57,8 +36,17 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
 COPY . .
 
 COPY --from=rust_build /tokenizer/libtokenizers.a /usr/local/lib/
-COPY --from=onnxruntime_build /onnxruntime/lib /usr/local/lib
-COPY --from=onnxruntime_build /onnxruntime/include/ /usr/local/include
+
+
+# INSTALL ONNXRUNTIME
+RUN cd /tmp && \
+    wget -O onnxruntime.tgz https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION}.tgz && \
+    tar -C /tmp -xvf onnxruntime.tgz && \
+    mv onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION} onnxruntime && \
+    rm -rf onnxruntime.tgz && \
+    cp -R onnxruntime/lib /usr/local && \
+    cp -R onnxruntime/include /usr/local && \
+    rm -rf onnxruntime
 
 RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=0 CGO_CFLAGS="-D_LARGEFILE64_SOURCE -I/usr/local/include"  \
         CGO_LDFLAGS="-L/usr/local/lib -lonnxruntime -lstdc++ /usr/local/lib/libtokenizers.a -ldl -lm -L/usr/local/lib -lonnxruntime" \
