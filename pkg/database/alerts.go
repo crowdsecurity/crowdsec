@@ -555,7 +555,6 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 				if len(metaItem.Value) > 4095 {
 					c.Log.Warningf("truncated meta %s : value too long", metaItem.Key)
-
 					value = value[:4095]
 				}
 
@@ -679,7 +678,6 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			}
 		}
 	}
-
 	return ret, nil
 }
 
