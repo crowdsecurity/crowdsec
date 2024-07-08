@@ -241,7 +241,8 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		SetLeakSpeed(*alertItem.Leakspeed).
 		SetSimulated(*alertItem.Simulated).
 		SetScenarioVersion(*alertItem.ScenarioVersion).
-		SetScenarioHash(*alertItem.ScenarioHash)
+		SetScenarioHash(*alertItem.ScenarioHash).
+		SetRemediation(true) // it's from CAPI, we always have decisions
 
 	alertRef, err := alertB.Save(c.CTX)
 	if err != nil {
