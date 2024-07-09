@@ -13,7 +13,6 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -237,7 +236,7 @@ func (ms metricStore) processPrometheusMetrics(result []*prom2json.Family) {
 	}
 }
 
-func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, formatType string, noUnit bool) error {
+func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, outputFormat string, noUnit bool) error {
 	// copy only the sections we want
 	want := map[string]metricSection{}
 
@@ -253,7 +252,7 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 		want[section] = ms[section]
 	}
 
-	switch formatType {
+	switch outputFormat {
 	case "human":
 		for _, section := range maptools.SortedKeys(want) {
 			want[section].Table(out, wantColor, noUnit, showEmpty)
@@ -264,14 +263,8 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 		out.Write(x)
-	case "raw":
-		x, err := yaml.Marshal(want)
-		if err != nil {
-			return fmt.Errorf("failed to marshal metrics: %w", err)
-		}
-		out.Write(x)
 	default:
-		return fmt.Errorf("unknown format type %s", formatType)
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
 
 	return nil

@@ -6,7 +6,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -35,7 +34,9 @@ func (cli *cliMetrics) list() error {
 		})
 	}
 
-	switch cli.cfg().Cscli.Output {
+	outputFormat := cli.cfg().Cscli.Output
+
+	switch outputFormat {
 	case "human":
 		out := color.Output
 		t := cstable.New(out, cli.cfg().Cscli.Color).Writer
@@ -70,13 +71,8 @@ func (cli *cliMetrics) list() error {
 		}
 
 		fmt.Println(string(x))
-	case "raw":
-		x, err := yaml.Marshal(allMetrics)
-		if err != nil {
-			return fmt.Errorf("failed to marshal metric types: %w", err)
-		}
-
-		fmt.Println(string(x))
+	default:
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
 
 	return nil
