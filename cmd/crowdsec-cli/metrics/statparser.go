@@ -14,7 +14,7 @@ type statParser map[string]map[string]int
 func (s statParser) Description() (string, string) {
 	return "Parser Metrics",
 		`Tracks the number of events processed by each parser and indicates success of failure. ` +
-			`Zero parsed lines means the parer(s) failed. ` +
+			`Zero parsed lines means the parser(s) failed. ` +
 			`Non-zero unparsed lines are fine as crowdsec select relevant lines.`
 }
 
