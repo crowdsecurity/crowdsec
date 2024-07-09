@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
+	"strings"
 	"time"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	log "github.com/sirupsen/logrus"
 
@@ -31,7 +32,7 @@ type statBouncer struct {
 	// we keep de-normalized metrics so we can iterate
 	// over them multiple times and keep the aggregation code simple
 	rawMetrics []bouncerMetricItem
-	aggregated map[string]map[string]map[string]int64
+	aggregated map[string]map[string]map[string]map[string]int64
 }
 
 func (s *statBouncer) MarshalJSON() ([]byte, error) {
@@ -122,6 +123,14 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 				unit := *item.Unit
 				value := *item.Value
 
+				if unit == "byte" {
+					name = strings.TrimSuffix(name, "_bytes")
+				}
+
+				if unit == "packet" {
+					name = strings.TrimSuffix(name, "_packets")
+				}
+
 				rawMetric := bouncerMetricItem{
 					bouncerName: bouncerName,
 					ipType:      labels["ip_type"],
@@ -142,30 +151,34 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 }
 
 func (s *statBouncer) aggregate() {
-	// [bouncer][origin][name]value
+	// [bouncer][origin][name][unit]value
 	
 	// XXX: how about blocked ips?
 
 	if s.aggregated == nil {
-		s.aggregated = make(map[string]map[string]map[string]int64)
+		s.aggregated = make(map[string]map[string]map[string]map[string]int64)
 	}
 
 	// TODO: describe CAPI, total with all origins
 	
 	for _, raw := range s.rawMetrics {
 		if _, ok := s.aggregated[raw.bouncerName]; !ok {
-			s.aggregated[raw.bouncerName] = make(map[string]map[string]int64)
+			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]int64)
 		}
 
 		if _, ok := s.aggregated[raw.bouncerName][raw.origin]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin] = make(map[string]int64)
+			s.aggregated[raw.bouncerName][raw.origin] = make(map[string]map[string]int64)
 		}
 
 		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name] = 0
+			s.aggregated[raw.bouncerName][raw.origin][raw.name] = make(map[string]int64)
 		}
 
-		s.aggregated[raw.bouncerName][raw.origin][raw.name] += int64(raw.value)
+		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit]; !ok {
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = 0
+		}
+
+		s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
 	}
 }
 
@@ -178,10 +191,16 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 	// [bouncer][origin]; where origin=="" is the total
 	
 	for bouncerName := range bouncerNames {
-		t := cstable.New(out, wantColor)
-		t.SetRowLines(false)
-		t.SetHeaders("", "Bytes", "Packets")
-		t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
+		t := cstable.New(out, wantColor).Writer
+		t.AppendHeader(table.Row{"", "Bytes", "Bytes", "Packets", "Packets"}, table.RowConfig{AutoMerge: true})
+		t.AppendHeader(table.Row{"", "processed", "dropped", "processed", "dropped"})
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{Number:1, Align: text.AlignLeft},
+			{Number:2, Align: text.AlignRight},
+			{Number:3, Align: text.AlignRight},
+			{Number:4, Align: text.AlignRight},
+			{Number:5, Align: text.AlignRight},
+		})
 		// XXX: total of all origins
 		// XXX: blocked_ips and other metrics
 		
@@ -191,9 +210,13 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 		// unless we want a global table for all bouncers
 
 		for origin, metrics := range s.aggregated[bouncerName] {
-			t.AddRow(origin,
-				formatNumber(metrics["dropped_bytes"], noUnit),
-				strconv.FormatInt(metrics["dropped_packets"], 10),
+			t.AppendRow(
+				table.Row{origin,
+					formatNumber(metrics["processed"]["byte"], !noUnit),
+					formatNumber(metrics["dropped"]["byte"], !noUnit),
+					formatNumber(metrics["processed"]["packet"], !noUnit),
+					formatNumber(metrics["dropped"]["packet"], !noUnit),
+				},
 			)
 
 			numRows += 1
@@ -202,7 +225,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 		if numRows > 0 || showEmpty {
 			title, _ := s.Description()
 			cstable.RenderTitle(out, fmt.Sprintf("\n%s (%s):", title, bouncerName))
-			t.Render()
+			fmt.Fprintln(out, t.Render())
 		}
 	}
 
