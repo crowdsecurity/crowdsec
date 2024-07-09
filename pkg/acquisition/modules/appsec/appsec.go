@@ -268,7 +268,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 				} else {
 					err = w.server.Serve(listener)
 				}
-				if err != nil && err != http.ErrServerClosed {
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
