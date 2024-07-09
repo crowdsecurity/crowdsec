@@ -71,7 +71,7 @@ func (ms metricStore) fetchPrometheusMetrics(url string) error {
 
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
-			errChan <- fmt.Errorf("failed to fetch metrics: %w", err)
+			errChan <- fmt.Errorf("while fetching metrics: %w", err)
 			return
 		}
 		errChan <- nil

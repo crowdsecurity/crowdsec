@@ -34,9 +34,20 @@ type statBouncer struct {
 	aggregated map[string]map[string]map[string]int64
 }
 
+func (s *statBouncer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.aggregated)
+}
+
 func (s *statBouncer) Description() (string, string) {
 	return "Bouncer Metrics",
 		`Network traffic blocked by bouncers.`
+}
+
+func warnOnce(warningsLogged map[string]bool, msg string) {
+	if _, ok := warningsLogged[msg]; !ok {
+		log.Warningf(msg)
+		warningsLogged[msg] = true
+	}
 }
 
 func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
@@ -57,7 +68,10 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 	// keep track of oldest collection timestamp
 	var since *time.Time
 
-	for i, met := range metrics {
+	// don't spam the user with the same warnings
+	warningsLogged := make(map[string]bool)
+
+	for _, met := range metrics {
 		collectedAt := met.CollectedAt
 		if since == nil || collectedAt.Before(*since) {
 			since = &collectedAt
@@ -76,31 +90,36 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 			log.Warningf("while parsing metrics: %s", err)
 		}
 
-		fmt.Printf("row %d, %s, %+v\n", i, bouncerName, payload)
-
 		for _, m := range payload.Metrics {
 			for _, item := range m.Items {
 				labels := item.Labels
 
 				// these are mandatory but we got pointers, so...
-				// XXX: but we should only print these once, even for repeated offenses
+				
+				valid := true
 
 				if item.Name == nil {
-					log.Warningf("missing 'name' field in metrics reported by %s", bouncerName)
-					continue
+					warnOnce(warningsLogged, "missing 'name' field in metrics reported by "+bouncerName)
+					// no continue - keep checking the rest
+					valid = false
 				}
-				name := *item.Name
 
 				if item.Unit == nil {
-					log.Warningf("missing 'unit' field in metrics reported by %s", bouncerName)
-					continue
+					warnOnce(warningsLogged, "missing 'unit' field in metrics reported by "+bouncerName)
+					valid = false
 				}
-				unit := *item.Unit
 
 				if item.Value == nil {
-					log.Warningf("missing 'value' field in metrics reported by %s", bouncerName)
+					warnOnce(warningsLogged, "missing 'value' field in metrics reported by "+bouncerName)
+					valid = false
+				}
+
+				if !valid {
 					continue
 				}
+
+				name := *item.Name
+				unit := *item.Unit
 				value := *item.Value
 
 				rawMetric := bouncerMetricItem{
@@ -111,8 +130,6 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 					unit:        unit,
 					value:       value,
 				}
-
-				fmt.Printf("raw: %v\n", rawMetric)
 
 				s.rawMetrics = append(s.rawMetrics, rawMetric)
 			}
@@ -157,26 +174,36 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 	}
 
 	// [bouncer][origin]; where origin=="" is the total
+	
+	fmt.Printf("ShowEmpty: %t\n", showEmpty)
 
 	for bouncerName := range bouncerNames {
 		t := cstable.New(out, wantColor)
 		t.SetRowLines(false)
 		t.SetHeaders("", "Bytes", "Packets")
 		t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
-		// XXX: noUnit, showEmpty
 		// XXX: total of all origins
 		// XXX: blocked_ips and other metrics
-		// XXX: -o json
+		
+		numRows := 0
+
+		// we print one table per bouncer only if it has stats, so "showEmpty" has no effect
+		// unless we want a global table for all bouncers
 
 		for origin, metrics := range s.aggregated[bouncerName] {
 			t.AddRow(origin,
-				strconv.FormatInt(metrics["dropped_bytes"], 10),
+				formatNumber(metrics["dropped_bytes"], noUnit),
 				strconv.FormatInt(metrics["dropped_packets"], 10),
 			)
+
+			numRows += 1
 		}
-		title, _ := s.Description()
-		cstable.RenderTitle(out, fmt.Sprintf("\n%s (%s):", title, bouncerName))
-		t.Render()
+
+		if numRows > 0 || showEmpty {
+			title, _ := s.Description()
+			cstable.RenderTitle(out, fmt.Sprintf("\n%s (%s):", title, bouncerName))
+			t.Render()
+		}
 	}
 
 }

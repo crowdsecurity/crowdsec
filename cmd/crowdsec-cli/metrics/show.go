@@ -44,7 +44,7 @@ func (cli *cliMetrics) show(ctx context.Context, sections []string, url string, 
 	}
 
 	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {
-		log.Warnf("unable to fetch metrics: %s", err)
+		log.Warn(err)
 	}
 
 	// any section that we don't have in the store is an error

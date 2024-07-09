@@ -110,12 +110,7 @@ func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []st
 
 		for _, sl := range keys {
 			if v, ok := astats[sl]; ok && v != 0 {
-				numberToShow := strconv.Itoa(v)
-				if !noUnit {
-					numberToShow = formatNumber(v)
-				}
-
-				row = append(row, numberToShow)
+				row = append(row, formatNumber(int64(v), !noUnit))
 			} else {
 				row = append(row, "-")
 			}
