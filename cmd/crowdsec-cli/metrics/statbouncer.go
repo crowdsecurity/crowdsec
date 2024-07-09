@@ -149,6 +149,8 @@ func (s *statBouncer) aggregate() {
 	if s.aggregated == nil {
 		s.aggregated = make(map[string]map[string]map[string]int64)
 	}
+
+	// TODO: describe CAPI, total with all origins
 	
 	for _, raw := range s.rawMetrics {
 		if _, ok := s.aggregated[raw.bouncerName]; !ok {
@@ -175,8 +177,6 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 	// [bouncer][origin]; where origin=="" is the total
 	
-	fmt.Printf("ShowEmpty: %t\n", showEmpty)
-
 	for bouncerName := range bouncerNames {
 		t := cstable.New(out, wantColor)
 		t.SetRowLines(false)
