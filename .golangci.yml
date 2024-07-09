@@ -409,15 +409,7 @@ issues:
 
     - linters:
         - errorlint
-      text: "type assertion on error will fail on wrapped errors. Use errors.Is to check for specific errors"
-
-    - linters:
-        - errorlint
       text: "comparing with .* will fail on wrapped errors. Use errors.Is to check for a specific error"
-
-    - linters:
-        - errorlint
-      text: "switch on an error will fail on wrapped errors. Use errors.Is to check for specific errors"
 
     - linters:
         - nosprintfhostport
