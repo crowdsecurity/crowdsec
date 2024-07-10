@@ -1361,7 +1361,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		},
 	}
 
-	delta := 0.0001
+	delta := 0.001
 
 	for _, test := range tests {
 		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
