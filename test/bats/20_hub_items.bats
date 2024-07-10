@@ -46,7 +46,7 @@ teardown() {
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2":{"digest":$DIGEST, "deprecated": false}, "1.10": {"digest":$DIGEST, "deprecated": false}}}}}' \
     )
     echo "$new_hub" >"$INDEX_PATH"
- 
+
     rune -0 cscli collections install crowdsecurity/sshd
 
     truncate -s 0 "$CONFIG_DIR/collections/sshd.yaml"
@@ -78,7 +78,7 @@ teardown() {
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2.3.4":{"digest":"foo", "deprecated": false}}}}}' \
     )
     echo "$new_hub" >"$INDEX_PATH"
- 
+
     rune -0 cscli collections install crowdsecurity/sshd
     rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics -o json
     # XXX: we are on the verbose side here...

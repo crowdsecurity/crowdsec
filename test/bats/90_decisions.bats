@@ -179,7 +179,6 @@ teardown() {
 
     # disarding only some invalid decisions
 
-
     rune -0 cscli alerts delete --all
     truncate -s 0 "$LOGFILE"
 
