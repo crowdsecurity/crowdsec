@@ -298,10 +298,9 @@ lp_login() {
 }
 export -f lp_login
 
-# call the lapi through unix socket with an API_KEY (authenticates as a bouncer)
-# after $1, pass throught extra arguments to curl
 lapi-get() {
     [[ -z "$1" ]] && { fail "${FUNCNAME[0]}: missing path"; }
+    local path=$1
     shift
     [[ -z "$API_KEY" ]] && { fail "${FUNCNAME[0]}: missing API_KEY"; }
     local socket
@@ -309,11 +308,12 @@ lapi-get() {
     [[ -z "$socket" ]] && { fail "${FUNCNAME[0]}: missing .api.server.listen_socket"; }
 
     # curl needs a fake hostname when using a unix socket
-    curl -sS --fail-with-body -H "X-Api-Key: $API_KEY" --unix-socket "$socket" "http://lapi$1" "$@"
+    curl -sS --fail-with-body -H "X-Api-Key: $API_KEY" --unix-socket "$socket" "http://lapi$path" "$@"
 }
 export -f lapi-get
 
-# alias to change naming later
+# call the lapi through unix socket with an API_KEY (authenticates as a bouncer)
+# after $1, pass throught extra arguments to curl
 curl-with-key() {
     lapi-get "$@"
 }

@@ -41,6 +41,6 @@ teardown() {
     )
 
     rune -22 curl-with-key '/v1/usage-metrics' --data "$(echo "$payload" | yq -o j)" -X POST
-    assert_stderr 'curl: (22) The requested URL returned error: 404'
-    refute_output
+    assert_stderr 'curl: (22) The requested URL returned error: 400'
+    assert_json '{message: "Missing remediation component data"}'
 }
