@@ -192,7 +192,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 	
 	for bouncerName := range bouncerNames {
 		t := cstable.New(out, wantColor).Writer
-		t.AppendHeader(table.Row{"", "Bytes", "Bytes", "Packets", "Packets"}, table.RowConfig{AutoMerge: true})
+		t.AppendHeader(table.Row{"Origin", "Bytes", "Bytes", "Packets", "Packets"}, table.RowConfig{AutoMerge: true})
 		t.AppendHeader(table.Row{"", "processed", "dropped", "processed", "dropped"})
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{Number:1, Align: text.AlignLeft},
@@ -224,7 +224,9 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 		if numRows > 0 || showEmpty {
 			title, _ := s.Description()
-			cstable.RenderTitle(out, fmt.Sprintf("\n%s (%s):", title, bouncerName))
+			// don't use SetTitle() because it draws the title inside table box
+			// TODO: newline position wrt other stat tables
+			cstable.RenderTitle(out, fmt.Sprintf("%s (%s):", title, bouncerName))
 			fmt.Fprintln(out, t.Render())
 		}
 	}
