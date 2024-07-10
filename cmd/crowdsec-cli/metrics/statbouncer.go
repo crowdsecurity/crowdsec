@@ -12,6 +12,8 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/maptools"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
@@ -190,7 +192,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 	// [bouncer][origin]; where origin=="" is the total
 	
-	for bouncerName := range bouncerNames {
+	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
 		t := cstable.New(out, wantColor).Writer
 		t.AppendHeader(table.Row{"Origin", "Bytes", "Bytes", "Packets", "Packets"}, table.RowConfig{AutoMerge: true})
 		t.AppendHeader(table.Row{"", "processed", "dropped", "processed", "dropped"})
@@ -209,7 +211,9 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 		// we print one table per bouncer only if it has stats, so "showEmpty" has no effect
 		// unless we want a global table for all bouncers
 
-		for origin, metrics := range s.aggregated[bouncerName] {
+		// sort origins for stable output
+		for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
+			metrics := s.aggregated[bouncerName][origin]
 			t.AppendRow(
 				table.Row{origin,
 					formatNumber(metrics["processed"]["byte"], !noUnit),

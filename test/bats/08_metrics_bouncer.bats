@@ -208,10 +208,10 @@ teardown() {
 	|                                  | processed | dropped | processed | dropped |
 	+----------------------------------+-----------+---------+-----------+---------+
 	|                                  |       NaN |     NaN |       NaN |     NaN |
-	| lists:firehol_voipbl             |       NaN |   3.85k |       NaN |      58 |
-	| cscli                            |       NaN |     380 |       NaN |      10 |
 	| CAPI                             |       NaN |   3.80k |       NaN |     100 |
+	| cscli                            |       NaN |     380 |       NaN |      10 |
 	| lists:firehol_cruzit_web_attacks |       NaN |   1.03k |       NaN |      23 |
+	| lists:firehol_voipbl             |       NaN |   3.85k |       NaN |      58 |
 	+----------------------------------+-----------+---------+-----------+---------+
 	EOT
 
