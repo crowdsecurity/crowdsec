@@ -23,8 +23,8 @@ teardown() {
 
 #----------
 
-@test "usage metrics (empty payload)" {
-    # a registered log processor can send metrics for the console
+@test "lp usage metrics (empty payload)" {
+    # a registered log processor can send metrics for the lapi and console
     token=$(lp_login)
     usage_metrics="http://localhost:8080/v1/usage-metrics"
 
@@ -34,16 +34,12 @@ teardown() {
 	EOT
     )
 
-    rune -22 curl -f -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
-    refute_output
-    assert_stderr 'curl: (22) The requested URL returned error: 400'
-
-    rune -0 curl -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    rune -22 curl -sS --fail-with-body -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    assert_stderr --partial 'error: 400'
     assert_json '{message: "Missing log processor data"}'
-    refute_stderr
 }
 
-@test "usage metrics (bad payload)" {
+@test "lp usage metrics (bad payload)" {
     token=$(lp_login)
     usage_metrics="http://localhost:8080/v1/usage-metrics"
 
@@ -65,10 +61,9 @@ teardown() {
 	log_processors.0.datasources in body is required
 	log_processors.0.hub_items in body is required
 	EOT
-
 }
 
-@test "usage metrics (full payload)" {
+@test "lp usage metrics (full payload)" {
     token=$(lp_login)
     usage_metrics="http://localhost:8080/v1/usage-metrics"
 
