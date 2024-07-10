@@ -26,7 +26,6 @@ output_new_decisions() {
     jq -c '.new | map(select(.origin!="CAPI")) | .[] | del(.id) | (.. | .duration?) |= capture("(?<d>[[:digit:]]+h[[:digit:]]+m)").d' <(output) | sort
 }
 
-
 @test "adding decisions with different duration, scenario, origin" {
     # origin: test
     rune -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
@@ -223,4 +222,3 @@ output_new_decisions() {
 #            NewChecks: []DecisionCheck{},
 #        },
 #}
-

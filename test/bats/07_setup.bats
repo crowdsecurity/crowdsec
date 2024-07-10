@@ -822,4 +822,3 @@ update-notifier-motd.timer              enabled enabled
     assert_output "while unmarshaling setup file: yaml: line 2: could not find expected ':'"
     assert_stderr --partial "invalid setup file"
 }
-

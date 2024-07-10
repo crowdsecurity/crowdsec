@@ -96,7 +96,7 @@ teardown() {
     # non-existent
     rune -1 cscli scenario install foo/bar
     assert_stderr --partial "can't find 'foo/bar' in scenarios"
- 
+
     # not installed
     rune -0 cscli scenarios list crowdsecurity/ssh-bf
     assert_output --regexp 'crowdsecurity/ssh-bf.*disabled'
