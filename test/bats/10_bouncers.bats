@@ -68,7 +68,7 @@ teardown() {
     assert_output --regexp 'ciTestBouncer.*api-key.*'
 
     # the first connection sets last_pull and ip address
-    rune -0 lapi-get '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     rune -0 cscli bouncers list -o json
     rune -0 jq -r '.[] | .ip_address' <(output)
     assert_output 127.0.0.1

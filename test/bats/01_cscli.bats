@@ -130,7 +130,6 @@ teardown() {
 	EOT
 }
 
-
 @test "cscli - required configuration paths" {
     config=$(cat "$CONFIG_YAML")
     configdir=$(config_get '.config_paths.config_dir')
