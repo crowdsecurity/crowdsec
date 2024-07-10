@@ -25,35 +25,33 @@ teardown() {
 
 @test "lp usage metrics (empty payload)" {
     # a registered log processor can send metrics for the lapi and console
-    token=$(lp_login)
-    usage_metrics="http://localhost:8080/v1/usage-metrics"
+    TOKEN=$(lp-get-token)
+    export TOKEN
 
-    payload=$(cat <<-EOT
+    payload=$(yq -o j <<-EOT
 	remediation_components: []
 	log_processors: []
 	EOT
     )
 
-    rune -22 curl -sS --fail-with-body -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    rune -22 curl-with-token '/v1/usage-metrics' -X POST --data "$payload"
     assert_stderr --partial 'error: 400'
     assert_json '{message: "Missing log processor data"}'
 }
 
 @test "lp usage metrics (bad payload)" {
-    token=$(lp_login)
-    usage_metrics="http://localhost:8080/v1/usage-metrics"
+    TOKEN=$(lp-get-token)
+    export TOKEN
 
-    payload=$(cat <<-EOT
+    payload=$(yq -o j <<-EOT
 	remediation_components: []
 	log_processors:
 	    - version: "v1.0"
 	EOT
     )
 
-    rune -22 curl -f -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
-    assert_stderr "curl: (22) The requested URL returned error: 422"
-
-    rune -0 curl -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    rune -22 curl-with-token '/v1/usage-metrics' -X POST --data "$payload"
+    assert_stderr --partial "error: 422"
     rune -0 jq -r '.message' <(output)
     assert_output - <<-EOT
 	validation failure list:
@@ -64,10 +62,12 @@ teardown() {
 }
 
 @test "lp usage metrics (full payload)" {
-    token=$(lp_login)
-    usage_metrics="http://localhost:8080/v1/usage-metrics"
+    TOKEN=$(lp-get-token)
+    export TOKEN
 
-    payload=$(cat <<-EOT
+    # base payload without any measurement
+
+    payload=$(yq -o j <<-EOT
 	remediation_components: []
 	log_processors:
 	    - version: "v1.0"
@@ -95,6 +95,6 @@ teardown() {
 	EOT
     )
 
-    rune -0 curl -sS -H "Authorization: Bearer ${token}" -X POST "$usage_metrics" --data "$(echo "$payload" | yq -o j)"
+    rune -0 curl-with-token '/v1/usage-metrics' -X POST --data "$payload"
     refute_output
 }

@@ -34,13 +34,33 @@ teardown() {
     API_KEY=$(cscli bouncers add testbouncer -o raw)
     export API_KEY
 
-    payload=$(cat <<-EOT
+    payload=$(yq -o j <<-EOT
 	remediation_components: []
 	log_processors: []
 	EOT
     )
 
-    rune -22 curl-with-key '/v1/usage-metrics' --data "$(echo "$payload" | yq -o j)" -X POST
-    assert_stderr 'curl: (22) The requested URL returned error: 400'
+    rune -22 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+    assert_stderr --partial 'error: 400'
     assert_json '{message: "Missing remediation component data"}'
+}
+
+@test "rc usage metrics (bad payload)" {
+    API_KEY=$(cscli bouncers add testbouncer -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	    - version: "v1.0"
+	log_processors: []
+	EOT
+    )
+
+    rune -22 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+    assert_stderr --partial "error: 422"
+    rune -0 jq -r '.message' <(output)
+    assert_output - <<-EOT
+	validation failure list:
+	remediation_components.0.utc_startup_timestamp in body is required
+	EOT
 }
