@@ -28,7 +28,7 @@ func (Metric) Fields() []ent.Field {
 			Nillable().
 			Optional().
 			Comment("When the metrics are sent to the console"),
-		field.String("payload").
+		field.Text("payload").
 			Immutable().
 			Comment("The actual metrics (item0)"),
 	}
