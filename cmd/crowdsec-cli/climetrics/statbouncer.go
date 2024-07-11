@@ -208,14 +208,14 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
 		t := cstable.New(out, wantColor).Writer
-		t.AppendHeader(table.Row{"Origin", "Bytes", "Bytes", "Packets", "Packets"}, table.RowConfig{AutoMerge: true})
-		t.AppendHeader(table.Row{"", "processed", "dropped", "processed", "dropped"})
+		t.AppendHeader(table.Row{"Origin", "dropped", "dropped", "processed", "processed"}, table.RowConfig{AutoMerge: true})
+		t.AppendHeader(table.Row{"", "bytes", "packets", "bytes", "packets"})
 		t.SetColumnConfigs([]table.ColumnConfig{
-			{Number:1, Align: text.AlignLeft, AlignFooter: text.AlignRight},
-			{Number:2, Align: text.AlignRight, AlignFooter: text.AlignRight},
-			{Number:3, Align: text.AlignRight, AlignFooter: text.AlignRight},
-			{Number:4, Align: text.AlignRight, AlignFooter: text.AlignRight},
-			{Number:5, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:1, AlignHeader: text.AlignLeft, Align: text.AlignLeft, AlignFooter: text.AlignRight,},
+			{Number:2, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:3, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:4, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:5, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
 		})
 		// XXX: blocked_ips and other metrics
 
@@ -229,10 +229,10 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 			metrics := s.aggregated[bouncerName][origin]
 			t.AppendRow(
 				table.Row{origin,
-					formatNumber(metrics["processed"]["byte"], !noUnit),
 					formatNumber(metrics["dropped"]["byte"], !noUnit),
-					formatNumber(metrics["processed"]["packet"], !noUnit),
 					formatNumber(metrics["dropped"]["packet"], !noUnit),
+					formatNumber(metrics["processed"]["byte"], !noUnit),
+					formatNumber(metrics["processed"]["packet"], !noUnit),
 				},
 			)
 
@@ -243,10 +243,10 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 		t.AppendFooter(
 			table.Row{"Total",
-				formatNumber(totals["processed"]["byte"], !noUnit),
 				formatNumber(totals["dropped"]["byte"], !noUnit),
-				formatNumber(totals["processed"]["packet"], !noUnit),
 				formatNumber(totals["dropped"]["packet"], !noUnit),
+				formatNumber(totals["processed"]["byte"], !noUnit),
+				formatNumber(totals["processed"]["packet"], !noUnit),
 			},
 		)
 
