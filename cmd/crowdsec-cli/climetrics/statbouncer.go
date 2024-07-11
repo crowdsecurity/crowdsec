@@ -35,6 +35,7 @@ type statBouncer struct {
 	// over them multiple times and keep the aggregation code simple
 	rawMetrics []bouncerMetricItem
 	aggregated map[string]map[string]map[string]map[string]int64
+	aggregatedAllOrigin map[string]map[string]map[string]int64
 }
 
 func (s *statBouncer) MarshalJSON() ([]byte, error) {
@@ -158,6 +159,10 @@ func (s *statBouncer) aggregate() {
 		s.aggregated = make(map[string]map[string]map[string]map[string]int64)
 	}
 
+	if s.aggregatedAllOrigin == nil {
+		s.aggregatedAllOrigin = make(map[string]map[string]map[string]int64)
+	}
+
 	for _, raw := range s.rawMetrics {
 		if _, ok := s.aggregated[raw.bouncerName]; !ok {
 			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]int64)
@@ -176,6 +181,20 @@ func (s *statBouncer) aggregate() {
 		}
 
 		s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
+
+		if _, ok := s.aggregatedAllOrigin[raw.bouncerName]; !ok {
+			s.aggregatedAllOrigin[raw.bouncerName] = make(map[string]map[string]int64)
+		}
+
+		if _, ok := s.aggregatedAllOrigin[raw.bouncerName][raw.name]; !ok {
+			s.aggregatedAllOrigin[raw.bouncerName][raw.name] = make(map[string]int64)
+		}
+
+		if _, ok := s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit]; !ok {
+			s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit] = 0
+		}
+
+		s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit] += int64(raw.value)
 	}
 }
 
@@ -186,19 +205,18 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 	}
 
 	// [bouncer][origin]; where origin=="" is the total
-	
+
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
 		t := cstable.New(out, wantColor).Writer
 		t.AppendHeader(table.Row{"Origin", "Bytes", "Bytes", "Packets", "Packets"}, table.RowConfig{AutoMerge: true})
 		t.AppendHeader(table.Row{"", "processed", "dropped", "processed", "dropped"})
 		t.SetColumnConfigs([]table.ColumnConfig{
-			{Number:1, Align: text.AlignLeft},
-			{Number:2, Align: text.AlignRight},
-			{Number:3, Align: text.AlignRight},
-			{Number:4, Align: text.AlignRight},
-			{Number:5, Align: text.AlignRight},
+			{Number:1, Align: text.AlignLeft, AlignFooter: text.AlignRight},
+			{Number:2, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:3, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:4, Align: text.AlignRight, AlignFooter: text.AlignRight},
+			{Number:5, Align: text.AlignRight, AlignFooter: text.AlignRight},
 		})
-		// XXX: total of all origins
 		// XXX: blocked_ips and other metrics
 
 		numRows := 0
@@ -220,6 +238,17 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 			numRows += 1
 		}
+
+		totals := s.aggregatedAllOrigin[bouncerName]
+
+		t.AppendFooter(
+			table.Row{"Total",
+				formatNumber(totals["processed"]["byte"], !noUnit),
+				formatNumber(totals["dropped"]["byte"], !noUnit),
+				formatNumber(totals["processed"]["packet"], !noUnit),
+				formatNumber(totals["dropped"]["packet"], !noUnit),
+			},
+		)
 
 		if numRows > 0 || showEmpty {
 			title, _ := s.Description()

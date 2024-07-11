@@ -125,7 +125,9 @@ teardown() {
 	| Origin |        Bytes        |       Packets       |
 	|        | processed | dropped | processed | dropped |
 	+--------+-----------+---------+-----------+---------+
-	|        |       NaN |     NaN |       NaN |     NaN |
+	|        |         0 |       0 |         0 |       0 |
+	+--------+-----------+---------+-----------+---------+
+	|  Total |         0 |       0 |         0 |       0 |
 	+--------+-----------+---------+-----------+---------+
 	EOT
 
@@ -207,14 +209,16 @@ teardown() {
 	| Origin                           |        Bytes        |       Packets       |
 	|                                  | processed | dropped | processed | dropped |
 	+----------------------------------+-----------+---------+-----------+---------+
-	|                                  |       NaN |     NaN |       NaN |     NaN |
-	| CAPI                             |       NaN |   3.80k |       NaN |     100 |
-	| cscli                            |       NaN |     380 |       NaN |      10 |
-	| lists:firehol_cruzit_web_attacks |       NaN |   1.03k |       NaN |      23 |
-	| lists:firehol_voipbl             |       NaN |   3.85k |       NaN |      58 |
+	|                                  |         0 |       0 |         0 |       0 |
+	| CAPI                             |         0 |   3.80k |         0 |     100 |
+	| cscli                            |         0 |     380 |         0 |      10 |
+	| lists:firehol_cruzit_web_attacks |         0 |   1.03k |         0 |      23 |
+	| lists:firehol_voipbl             |         0 |   3.85k |         0 |      58 |
+	+----------------------------------+-----------+---------+-----------+---------+
+	|                            Total |         0 |   9.06k |         0 |     191 |
 	+----------------------------------+-----------+---------+-----------+---------+
 	EOT
 
-    # TODO: total of all origin, multiple item lists, active decisions discard older values
+    # TODO: ultiple item lists, active decisions discard older values
 
 }

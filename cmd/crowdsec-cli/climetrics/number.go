@@ -26,7 +26,7 @@ func formatNumber(num int64, withUnit bool) string {
 		return strconv.FormatInt(num, 10)
 	}
 
-	goodUnit := unit{}
+	goodUnit := ranges[len(ranges)-1]
 
 	for _, u := range ranges {
 		if num >= u.value {
