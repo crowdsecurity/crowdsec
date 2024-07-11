@@ -1,55 +1,25 @@
 package ent
 
-import (
-	"strings"
-)
-
-func (m *Machine) GetOSNameAndVersion() string {
-	ret := m.Osname
-	if m.Osversion != "" {
-		if ret != "" {
-			ret += "/"
-		}
-
-		ret += m.Osversion
-	}
-
-	if ret == "" {
-		return "?"
-	}
-
-	return ret
+func (m *Machine) GetOsname() string {
+	return m.Osname
 }
 
-func (b *Bouncer) GetOSNameAndVersion() string {
-	ret := b.Osname
-	if b.Osversion != "" {
-		if ret != "" {
-			ret += "/"
-		}
-
-		ret += b.Osversion
-	}
-
-	if ret == "" {
-		return "?"
-	}
-
-	return ret
+func (b *Bouncer) GetOsname() string {
+	return b.Osname
 }
 
-func (m *Machine) GetFeatureFlagList() []string {
-	if m.Featureflags == "" {
-		return nil
-	}
-
-	return strings.Split(m.Featureflags, ",")
+func (m *Machine) GetOsversion() string {
+	return m.Osversion
 }
 
-func (b *Bouncer) GetFeatureFlagList() []string {
-	if b.Featureflags == "" {
-		return nil
-	}
+func (b *Bouncer) GetOsversion() string {
+	return b.Osversion
+}
 
-	return strings.Split(b.Featureflags, ",")
+func (m *Machine) GetFeatureflags() string {
+	return m.Featureflags
+}
+
+func (b *Bouncer) GetFeatureflags() string {
+	return b.Featureflags
 }
