@@ -13,7 +13,6 @@ import (
 // CollectMetricsToPush (count limit? including stale?)
 // SetPushedMetrics
 // RemoveOldMetrics
-// avoid errors.Wrapf
 
 func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy string, collectedAt time.Time, payload string) (*ent.Metric, error) {
 	metric, err := c.Ent.Metric.
@@ -97,8 +96,8 @@ func (c *Client) GetBouncerUsageMetricsByName(bouncerName string) ([]*ent.Metric
 		Order(ent.Desc(metric.FieldCollectedAt)).
 		All(c.CTX)
 	if err != nil {
-		c.Log.Warningf("GetBouncerUsageMetricsByOrigin: %s", err)
-		return nil, fmt.Errorf("getting bouncer usage metrics by origin %s: %w", bouncerName, err)
+		c.Log.Warningf("GetBouncerUsageMetricsByName: %s", err)
+		return nil, fmt.Errorf("getting bouncer usage metrics by name %s: %w", bouncerName, err)
 	}
 
 	return metrics, nil

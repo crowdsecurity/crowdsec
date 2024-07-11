@@ -39,7 +39,6 @@ type DatabaseCfg struct {
 }
 
 type AuthGCCfg struct {
-	// XXX: define these as custom type (with days etc.) ?
 	Cert                  *string `yaml:"cert,omitempty"`
 	CertDuration          *time.Duration
 	Api                   *string `yaml:"api_key,omitempty"`

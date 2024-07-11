@@ -58,8 +58,9 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.B
 		// TODO: update scenarios
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update base machine metrics in database: %s", err)
+		return fmt.Errorf("unable to update base machine metrics in database: %w", err)
 	}
+
 	return nil
 }
 
@@ -203,7 +204,7 @@ func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 		SetScenarios(scenarios).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine in database: %w", err)
 	}
 
 	return nil
@@ -214,7 +215,7 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine IP in database: %s", err)
+		return fmt.Errorf("unable to update machine IP in database: %w", err)
 	}
 
 	return nil
@@ -225,7 +226,7 @@ func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
 		SetVersion(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine version in database: %s", err)
+		return fmt.Errorf("unable to update machine version in database: %w", err)
 	}
 
 	return nil

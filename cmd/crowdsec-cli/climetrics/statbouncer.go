@@ -98,7 +98,7 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 				labels := item.Labels
 
 				// these are mandatory but we got pointers, so...
-				
+
 				valid := true
 
 				if item.Name == nil {
@@ -154,15 +154,10 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 
 func (s *statBouncer) aggregate() {
 	// [bouncer][origin][name][unit]value
-	
-	// XXX: how about blocked ips?
-
 	if s.aggregated == nil {
 		s.aggregated = make(map[string]map[string]map[string]map[string]int64)
 	}
 
-	// TODO: describe CAPI, total with all origins
-	
 	for _, raw := range s.rawMetrics {
 		if _, ok := s.aggregated[raw.bouncerName]; !ok {
 			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]int64)
@@ -205,7 +200,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 		})
 		// XXX: total of all origins
 		// XXX: blocked_ips and other metrics
-		
+
 		numRows := 0
 
 		// we print one table per bouncer only if it has stats, so "showEmpty" has no effect
@@ -234,5 +229,4 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 			fmt.Fprintln(out, t.Render())
 		}
 	}
-
 }
