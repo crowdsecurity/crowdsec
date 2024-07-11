@@ -27,6 +27,40 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type featureflagProvider interface {
+	GetFeatureflags() string
+}
+
+type osProvider interface {
+	GetOsname() string
+	GetOsversion() string
+}
+
+func getOSNameAndVersion(o osProvider) string {
+	ret := o.GetOsname()
+	if o.GetOsversion() != "" {
+		if ret != "" {
+			ret += "/"
+		}
+
+		ret += o.GetOsversion()
+	}
+
+	if ret == "" {
+		return "?"
+	}
+
+	return ret
+}
+
+func getFeatureFlagList(o featureflagProvider) []string {
+	if o.GetFeatureflags() == "" {
+		return nil
+	}
+
+	return strings.Split(o.GetFeatureflags(), ",")
+}
+
 func askYesNo(message string, defaultAnswer bool) (bool, error) {
 	var answer bool
 
@@ -113,32 +147,32 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 
 // bouncerInfo contains only the data we want for inspect/list
 type bouncerInfo struct {
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name string `json:"name"`
-	Revoked bool `json:"revoked"`
-	IPAddress string `json:"ip_address"`
-	Type string `json:"type"`
-	Version string `json:"version"`
-	LastPull *time.Time `json:"last_pull"`
-	AuthType string `json:"auth_type"`
-	OS string `json:"os,omitempty"`
-	Featureflags []string `json:"featureflags,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	Name         string     `json:"name"`
+	Revoked      bool       `json:"revoked"`
+	IPAddress    string     `json:"ip_address"`
+	Type         string     `json:"type"`
+	Version      string     `json:"version"`
+	LastPull     *time.Time `json:"last_pull"`
+	AuthType     string     `json:"auth_type"`
+	OS           string     `json:"os,omitempty"`
+	Featureflags []string   `json:"featureflags,omitempty"`
 }
 
 func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
 	return bouncerInfo{
-		CreatedAt: b.CreatedAt,
-		UpdatedAt: b.UpdatedAt,
-		Name: b.Name,
-		Revoked: b.Revoked,
-		IPAddress: b.IPAddress,
-		Type: b.Type,
-		Version: b.Version,
-		LastPull: b.LastPull,
-		AuthType: b.AuthType,
-		OS: b.GetOSNameAndVersion(),
-		Featureflags: b.GetFeatureFlagList(),
+		CreatedAt:    b.CreatedAt,
+		UpdatedAt:    b.UpdatedAt,
+		Name:         b.Name,
+		Revoked:      b.Revoked,
+		IPAddress:    b.IPAddress,
+		Type:         b.Type,
+		Version:      b.Version,
+		LastPull:     b.LastPull,
+		AuthType:     b.AuthType,
+		OS:           getOSNameAndVersion(b),
+		Featureflags: getFeatureFlagList(b),
 	}
 }
 
@@ -166,9 +200,9 @@ func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 	}
 
 	csvwriter.Flush()
+
 	return nil
 }
-
 
 func (cli *cliBouncers) list(out io.Writer) error {
 	bouncers, err := cli.db.ListBouncers()
@@ -342,7 +376,7 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 	if duration < 2*time.Minute {
 		if yes, err := askYesNo(
-				"The duration you provided is less than 2 minutes. " +
+			"The duration you provided is less than 2 minutes. "+
 				"This may remove active bouncers. Continue?", false); err != nil {
 			return err
 		} else if !yes {
@@ -365,7 +399,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 
 	if !force {
 		if yes, err := askYesNo(
-				"You are about to PERMANENTLY remove the above bouncers from the database. " +
+			"You are about to PERMANENTLY remove the above bouncers from the database. "+
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err
 		} else if !yes {
@@ -434,10 +468,10 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{"Version", bouncer.Version},
 		{"Last Pull", lastPull},
 		{"Auth type", bouncer.AuthType},
-		{"OS", bouncer.GetOSNameAndVersion()},
+		{"OS", getOSNameAndVersion(bouncer)},
 	})
 
-	for _, ff := range bouncer.GetFeatureFlagList() {
+	for _, ff := range getFeatureFlagList(bouncer) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
@@ -463,9 +497,9 @@ func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {
 	default:
 		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
+
 	return nil
 }
-
 
 func (cli *cliBouncers) newInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
