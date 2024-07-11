@@ -1,4 +1,4 @@
-package metrics
+package climetrics
 
 import (
 	"github.com/spf13/cobra"
@@ -12,7 +12,7 @@ type cliMetrics struct {
 	cfg configGetter
 }
 
-func NewCLI(cfg configGetter) *cliMetrics {
+func New(cfg configGetter) *cliMetrics {
 	return &cliMetrics{
 		cfg: cfg,
 	}

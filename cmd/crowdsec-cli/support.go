@@ -22,7 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/metrics"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -89,7 +89,7 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw 
 
 	humanMetrics := new(bytes.Buffer)
 
-	ms := metrics.NewMetricStore()
+	ms := climetrics.NewMetricStore()
 
 	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {
 		return err
