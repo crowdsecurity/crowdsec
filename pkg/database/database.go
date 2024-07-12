@@ -14,8 +14,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -37,12 +35,11 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 		return nil, err
 	}
 
-	if config.MaxOpenConns == nil {
-		log.Warningf("MaxOpenConns is 0, defaulting to %d", csconfig.DEFAULT_MAX_OPEN_CONNS)
-		config.MaxOpenConns = ptr.Of(csconfig.DEFAULT_MAX_OPEN_CONNS)
+	if config.MaxOpenConns == 0 {
+		config.MaxOpenConns = csconfig.DEFAULT_MAX_OPEN_CONNS
 	}
 
-	db.SetMaxOpenConns(*config.MaxOpenConns)
+	db.SetMaxOpenConns(config.MaxOpenConns)
 	drv := entsql.OpenDB(dbdialect, db)
 
 	return drv, nil
