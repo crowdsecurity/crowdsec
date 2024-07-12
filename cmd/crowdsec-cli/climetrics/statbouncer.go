@@ -189,95 +189,114 @@ func (s *statBouncer) aggregate() {
 	}
 }
 
-func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+// bouncerTable displays a table of metrics for a single bouncer
+func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor string, noUnit bool) {
+	columns := make(map[string]map[string]bool)
+	for _, item := range s.rawMetrics {
+		if item.bouncerName != bouncerName {
+			continue
+		}
+		// build a map of the metric names and units, to display dynamic columns
+		if _, ok := columns[item.name]; !ok {
+			columns[item.name] = make(map[string]bool)
+		}
+		columns[item.name][item.unit] = true
+	}
+
+	// no metrics for this bouncer, skip. how did we get here ?
+	// anyway we can't honor the "showEmpty" flag in this case,
+	// we don't heven have the table headers
+
+	if len(columns) == 0 {
+		return
+	}
+
+	t := cstable.New(out, wantColor).Writer
+	header1 := table.Row{"Origin"}
+	header2 := table.Row{""}
+	colNum := 1
+
+	colCfg := []table.ColumnConfig{{
+		Number:colNum,
+		AlignHeader:
+		text.AlignLeft,
+		Align: text.AlignLeft,
+		AlignFooter: text.AlignRight,
+	}}
+
+	for _, name := range maptools.SortedKeys(columns) {
+		for _, unit := range maptools.SortedKeys(columns[name]) {
+			colNum += 1
+			header1 = append(header1, name)
+			header2 = append(header2, unit)
+			colCfg = append(colCfg, table.ColumnConfig{
+				Number: colNum,
+				AlignHeader: text.AlignCenter,
+				Align: text.AlignRight,
+				AlignFooter: text.AlignRight},
+			)
+		}
+	}
+
+	t.AppendHeader(header1, table.RowConfig{AutoMerge: true})
+	t.AppendHeader(header2)
+
+	t.SetColumnConfigs(colCfg)
+
+	numRows := 0
+
+	// sort all the ranges for stable output
+
+	for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
+		metrics := s.aggregated[bouncerName][origin]
+		row := table.Row{origin}
+		for _, name := range maptools.SortedKeys(columns) {
+			for _, unit := range maptools.SortedKeys(columns[name]) {
+				row = append(row, formatNumber(metrics[name][unit], !noUnit))
+			}
+		}
+		t.AppendRow(row)
+
+		numRows += 1
+	}
+
+	totals := s.aggregatedAllOrigin[bouncerName]
+
+	footer := table.Row{"Total"}
+	for _, name := range maptools.SortedKeys(columns) {
+		for _, unit := range maptools.SortedKeys(columns[name]) {
+			footer = append(footer, formatNumber(totals[name][unit], !noUnit))
+		}
+	}
+
+	t.AppendFooter(footer)
+
+	if numRows == 0 {
+		// this happens only if we decide to discard some data in the loop
+		return
+	}
+
+	title, _ := s.Description()
+	// don't use SetTitle() because it draws the title inside table box
+	// TODO: newline position wrt other stat tables
+	cstable.RenderTitle(out, fmt.Sprintf("%s (%s):", title, bouncerName))
+	fmt.Fprintln(out, t.Render())
+}
+
+// Table displays a table of metrics for each bouncer
+func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, _ bool) {
 	bouncerNames := make(map[string]bool)
 	for _, item := range s.rawMetrics {
 		bouncerNames[item.bouncerName] = true
 	}
 
-
+	nl := false
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
-		columns := make(map[string]map[string]bool)
-		for _, item := range s.rawMetrics {
-			if item.bouncerName != bouncerName {
-				continue
-			}
-			// build a map of the metric names and units, to display dynamic columns
-			if _, ok := columns[item.name]; !ok {
-				columns[item.name] = make(map[string]bool)
-			}
-			columns[item.name][item.unit] = true
+		if nl {
+			// empty line between tables
+			fmt.Fprintln(out)
 		}
-
-		t := cstable.New(out, wantColor).Writer
-		header1 := table.Row{"Origin"}
-		header2 := table.Row{""}
-		colNum := 1
-
-		colCfg := []table.ColumnConfig{{
-			Number:colNum,
-			AlignHeader:
-			text.AlignLeft,
-			Align: text.AlignLeft,
-			AlignFooter: text.AlignRight,
-		}}
-
-		for _, name := range maptools.SortedKeys(columns) {
-			for _, unit := range maptools.SortedKeys(columns[name]) {
-				colNum += 1
-				header1 = append(header1, name)
-				header2 = append(header2, unit)
-				colCfg = append(colCfg, table.ColumnConfig{
-					Number: colNum,
-					AlignHeader: text.AlignCenter,
-					Align: text.AlignRight,
-					AlignFooter: text.AlignRight},
-				)
-			}
-		}
-
-		t.AppendHeader(header1, table.RowConfig{AutoMerge: true})
-		t.AppendHeader(header2)
-
-		t.SetColumnConfigs(colCfg)
-
-		numRows := 0
-
-		// we print one table per bouncer only if it has stats, so "showEmpty" has no effect
-		// unless we want a global table for all bouncers
-
-		// sort all the ranges for stable output
-
-		for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
-			metrics := s.aggregated[bouncerName][origin]
-			row := table.Row{origin}
-			for _, name := range maptools.SortedKeys(columns) {
-				for _, unit := range maptools.SortedKeys(columns[name]) {
-					row = append(row, formatNumber(metrics[name][unit], !noUnit))
-				}
-			}
-			t.AppendRow(row)
-
-			numRows += 1
-		}
-
-		totals := s.aggregatedAllOrigin[bouncerName]
-
-		footer := table.Row{"Total"}
-		for _, name := range maptools.SortedKeys(columns) {
-			for _, unit := range maptools.SortedKeys(columns[name]) {
-				footer = append(footer, formatNumber(totals[name][unit], !noUnit))
-			}
-		}
-
-		t.AppendFooter(footer)
-
-		if numRows > 0 || showEmpty {
-			title, _ := s.Description()
-			// don't use SetTitle() because it draws the title inside table box
-			// TODO: newline position wrt other stat tables
-			cstable.RenderTitle(out, fmt.Sprintf("%s (%s):", title, bouncerName))
-			fmt.Fprintln(out, t.Render())
-		}
+		s.bouncerTable(out, bouncerName, wantColor, noUnit)
+		nl = true
 	}
 }
