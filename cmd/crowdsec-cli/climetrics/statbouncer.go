@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -125,14 +124,6 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 				name := *item.Name
 				unit := *item.Unit
 				value := *item.Value
-
-				if unit == "byte" {
-					name = strings.TrimSuffix(name, "_bytes")
-				}
-
-				if unit == "packet" {
-					name = strings.TrimSuffix(name, "_packets")
-				}
 
 				rawMetric := bouncerMetricItem{
 					bouncerName: bouncerName,
