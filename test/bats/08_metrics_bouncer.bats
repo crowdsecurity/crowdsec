@@ -124,8 +124,6 @@ teardown() {
 	| Origin |       foo       |
 	|        | dogyear | pound |
 	+--------+---------+-------+
-	|        |       2 |     5 |
-	+--------+---------+-------+
 	|  Total |       2 |     5 |
 	+--------+---------+-------+
 	EOT
@@ -208,7 +206,6 @@ teardown() {
 	| Origin                           | active_decisions |      dropped      |       foo       |
 	|                                  |        ip        |   byte  |  packet | dogyear | pound |
 	+----------------------------------+------------------+---------+---------+---------+-------+
-	|                                  |                0 |       0 |       0 |       2 |     5 |
 	| CAPI (community blocklist)       |                0 |   3.80k |     100 |       0 |     0 |
 	| cscli                            |                1 |     380 |      10 |       0 |     0 |
 	| lists:firehol_cruzit_web_attacks |                0 |   1.03k |      23 |       0 |     0 |
@@ -242,16 +239,17 @@ teardown() {
 	            value: 1000
 	            labels:
 	              origin: CAPI
-	          - name: processed
-	            unit: packet
-	            value: 100
-	            labels:
-	              origin: CAPI
-	          - name: processed
-	            unit: packet
-	            value: 100
+	          - name: dropped
+	            unit: byte
+	            value: 800
 	            labels:
 	              origin: lists:somelist
+	          - name: processed
+	            unit: bytes
+	            value: 12340
+	          - name: processed
+	            unit: packet
+	            value: 100
 	EOT
     )
 
@@ -272,6 +270,8 @@ teardown() {
 	          - name: dropped
 	            unit: byte
 	            value: 1500
+	            labels:
+	              origin: lists:somelist
 	          - name: dropped
 	            unit: byte
 	            value: 2000
@@ -280,34 +280,36 @@ teardown() {
 	          - name: dropped
 	            unit: packet
 	            value: 20
+	            labels:
+	              origin: lists:somelist
 	EOT
     )
 
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
 
     rune -0 cscli metrics show bouncers -o json
-    assert_json '{bouncers:{bouncer1:{CAPI:{dropped:{byte:1000},processed:{packet:100}},"lists:somelist":{processed:{packet:100}}},bouncer2:{"":{dropped:{byte:1500,packet:20}},CAPI:{dropped:{byte:2000}}}}}'
+    assert_json '{bouncers:{bouncer1:{"":{processed:{bytes:12340,packet:100}},CAPI:{dropped:{byte:1000}},"lists:somelist":{dropped:{byte:800}}},bouncer2:{"lists:somelist":{dropped:{byte:1500,packet:20}},CAPI:{dropped:{byte:2000}}}}}'
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
 	Bouncer Metrics (bouncer1) since 2024-02-08 13:35:16 +0000 UTC:
-	+----------------------------+---------+-----------+
-	| Origin                     | dropped | processed |
-	|                            |   byte  |   packet  |
-	+----------------------------+---------+-----------+
-	| CAPI (community blocklist) |   1.00k |       100 |
-	| lists:somelist             |       0 |       100 |
-	+----------------------------+---------+-----------+
-	|                      Total |   1.00k |       200 |
-	+----------------------------+---------+-----------+
-	
+	+----------------------------+---------+-----------------------+
+	| Origin                     | dropped |       processed       |
+	|                            |   byte  |   bytes   |   packet  |
+	+----------------------------+---------+-----------+-----------+
+	| CAPI (community blocklist) |   1.00k |         0 |         0 |
+	| lists:somelist             |     800 |         0 |         0 |
+	+----------------------------+---------+-----------+-----------+
+	|                      Total |   1.80k |    12.34k |       100 |
+	+----------------------------+---------+-----------+-----------+
+
 	Bouncer Metrics (bouncer2) since 2024-02-08 10:48:36 +0000 UTC:
 	+----------------------------+-------------------+
 	| Origin                     |      dropped      |
 	|                            |   byte  |  packet |
 	+----------------------------+---------+---------+
-	|                            |   1.50k |      20 |
 	| CAPI (community blocklist) |   2.00k |       0 |
+	| lists:somelist             |   1.50k |      20 |
 	+----------------------------+---------+---------+
 	|                      Total |   3.50k |      20 |
 	+----------------------------+---------+---------+

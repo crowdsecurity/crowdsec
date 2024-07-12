@@ -250,6 +250,13 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	// sort all the ranges for stable output
 
 	for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
+		if origin == "" {
+			// if the metric has no origin (i.e. processed bytes/packets)
+			// we don't display it in the table body but it still gets aggreagted
+			// in the footer's totals
+			continue
+		}
+
 		metrics := s.aggregated[bouncerName][origin]
 
 		// some users don't know what capi is
@@ -270,6 +277,10 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 	totals := s.aggregatedAllOrigin[bouncerName]
 
+	if numRows == 0 {
+		t.Style().Options.SeparateFooter = false
+	}
+
 	footer := table.Row{"Total"}
 	for _, name := range maptools.SortedKeys(columns) {
 		for _, unit := range maptools.SortedKeys(columns[name]) {
@@ -278,11 +289,6 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	}
 
 	t.AppendFooter(footer)
-
-	if numRows == 0 {
-		// this happens only if we decide to discard some data in the loop
-		return
-	}
 
 	title, _ := s.Description()
 	title = fmt.Sprintf("%s (%s)", title, bouncerName)
