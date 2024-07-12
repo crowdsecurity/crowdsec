@@ -91,6 +91,7 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		err := json.Unmarshal([]byte(met.Payload), &payload)
 		if err != nil {
 			log.Warningf("while parsing metrics: %s", err)
+			continue
 		}
 
 		for _, m := range payload.Metrics {
