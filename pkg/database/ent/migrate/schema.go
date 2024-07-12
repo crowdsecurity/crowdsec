@@ -255,7 +255,7 @@ var (
 		{Name: "generated_by", Type: field.TypeString},
 		{Name: "collected_at", Type: field.TypeTime},
 		{Name: "pushed_at", Type: field.TypeTime, Nullable: true},
-		{Name: "payload", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeString, Size: 2147483647},
 	}
 	// MetricsTable holds the schema information for the "metrics" table.
 	MetricsTable = &schema.Table{
