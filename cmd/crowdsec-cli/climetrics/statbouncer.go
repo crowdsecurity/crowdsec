@@ -30,6 +30,8 @@ type bouncerMetricItem struct {
 }
 
 type statBouncer struct {
+	// oldest collection timestamp for each bouncer
+	oldestTS map[string]*time.Time
 	// we keep de-normalized metrics so we can iterate
 	// over them multiple times and keep the aggregation code simple
 	rawMetrics []bouncerMetricItem
@@ -68,19 +70,18 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		return fmt.Errorf("unable to fetch metrics: %w", err)
 	}
 
-	// keep track of oldest collection timestamp
-	var since *time.Time
+	s.oldestTS = make(map[string]*time.Time)
 
 	// don't spam the user with the same warnings
 	warningsLogged := make(map[string]bool)
 
 	for _, met := range metrics {
-		collectedAt := met.CollectedAt
-		if since == nil || collectedAt.Before(*since) {
-			since = &collectedAt
-		}
-
 		bouncerName := met.GeneratedBy
+
+		collectedAt := met.CollectedAt
+		if s.oldestTS[bouncerName] == nil || collectedAt.Before(*s.oldestTS[bouncerName]) {
+			s.oldestTS[bouncerName] = &collectedAt
+		}
 
 		type bouncerMetrics struct {
 			Metrics []models.DetailedMetrics `json:"metrics"`
@@ -278,9 +279,16 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	}
 
 	title, _ := s.Description()
+	title = fmt.Sprintf("%s (%s)", title, bouncerName)
+	if s.oldestTS != nil {
+		// if we change this to .Local() beware of tests
+		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
+	}
+	title += ":"
+
 	// don't use SetTitle() because it draws the title inside table box
 	// TODO: newline position wrt other stat tables
-	cstable.RenderTitle(out, fmt.Sprintf("%s (%s):", title, bouncerName))
+	cstable.RenderTitle(out, title)
 	fmt.Fprintln(out, t.Render())
 }
 

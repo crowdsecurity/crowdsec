@@ -119,7 +119,7 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer):
+	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
 	+--------+-----------------+
 	| Origin |       foo       |
 	|        | dogyear | pound |
@@ -203,7 +203,7 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer):
+	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
 	+----------------------------------+------------------+-------------------+-----------------+
 	| Origin                           | active_decisions |      dropped      |       foo       |
 	|                                  |        ip        |   byte  |  packet | dogyear | pound |
@@ -231,7 +231,7 @@ teardown() {
     payload=$(yq -o j <<-EOT
 	remediation_components:
 	  - version: "v1.0"
-	    utc_startup_timestamp: 1707399316
+	    utc_startup_timestamp: 1707369316
 	    metrics:
 	      - meta:
 	          utc_now_timestamp: 1707399316
@@ -264,10 +264,10 @@ teardown() {
     payload=$(yq -o j <<-EOT
 	remediation_components:
 	  - version: "v1.0"
-	    utc_startup_timestamp: 1707399316
+	    utc_startup_timestamp: 1707379316
 	    metrics:
 	      - meta:
-	          utc_now_timestamp: 1707399316
+	          utc_now_timestamp: 1707389316
 	          window_size_seconds: 600
 	        items:
 	          - name: dropped
@@ -291,7 +291,7 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (bouncer1):
+	Bouncer Metrics (bouncer1) since 2024-02-08 13:35:16 +0000 UTC:
 	+----------------+---------+-----------+
 	| Origin         | dropped | processed |
 	|                |   byte  |   packet  |
@@ -301,7 +301,8 @@ teardown() {
 	+----------------+---------+-----------+
 	|          Total |   1.00k |       200 |
 	+----------------+---------+-----------+
-	Bouncer Metrics (bouncer2):
+	
+	Bouncer Metrics (bouncer2) since 2024-02-08 10:48:36 +0000 UTC:
 	+--------+-------------------+
 	| Origin |      dropped      |
 	|        |   byte  |  packet |
