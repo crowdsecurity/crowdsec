@@ -204,51 +204,79 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 		bouncerNames[item.bouncerName] = true
 	}
 
-	// [bouncer][origin]; where origin=="" is the total
+	columns := make(map[string]map[string]bool)
+	for _, item := range s.rawMetrics {
+		// build a map of the metric names and units, to display dynamic columns
+		if _, ok := columns[item.name]; !ok {
+			columns[item.name] = make(map[string]bool)
+		}
+		columns[item.name][item.unit] = true
+	}
 
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
 		t := cstable.New(out, wantColor).Writer
-		t.AppendHeader(table.Row{"Origin", "dropped", "dropped", "processed", "processed"}, table.RowConfig{AutoMerge: true})
-		t.AppendHeader(table.Row{"", "bytes", "packets", "bytes", "packets"})
-		t.SetColumnConfigs([]table.ColumnConfig{
-			{Number:1, AlignHeader: text.AlignLeft, Align: text.AlignLeft, AlignFooter: text.AlignRight,},
-			{Number:2, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
-			{Number:3, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
-			{Number:4, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
-			{Number:5, AlignHeader: text.AlignCenter, Align: text.AlignRight, AlignFooter: text.AlignRight},
-		})
-		// XXX: blocked_ips and other metrics
+		header1 := table.Row{"Origin"}
+		header2 := table.Row{""}
+		colNum := 1
+
+		colCfg := []table.ColumnConfig{{
+			Number:colNum,
+			AlignHeader:
+			text.AlignLeft,
+			Align: text.AlignLeft,
+			AlignFooter: text.AlignRight,
+		}}
+
+		for _, name := range maptools.SortedKeys(columns) {
+			for _, unit := range maptools.SortedKeys(columns[name]) {
+				println(name, unit)
+				colNum += 1
+				header1 = append(header1, name)
+				header2 = append(header2, unit)
+				colCfg = append(colCfg, table.ColumnConfig{
+					Number: colNum,
+					AlignHeader: text.AlignCenter,
+					Align: text.AlignRight,
+					AlignFooter: text.AlignRight},
+				)
+			}
+		}
+
+		t.AppendHeader(header1, table.RowConfig{AutoMerge: true})
+		t.AppendHeader(header2)
+
+		t.SetColumnConfigs(colCfg)
 
 		numRows := 0
 
 		// we print one table per bouncer only if it has stats, so "showEmpty" has no effect
 		// unless we want a global table for all bouncers
 
-		// sort origins for stable output
+		// sort all the ranges for stable output
+
 		for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
 			metrics := s.aggregated[bouncerName][origin]
-			t.AppendRow(
-				table.Row{origin,
-					formatNumber(metrics["dropped"]["byte"], !noUnit),
-					formatNumber(metrics["dropped"]["packet"], !noUnit),
-					formatNumber(metrics["processed"]["byte"], !noUnit),
-					formatNumber(metrics["processed"]["packet"], !noUnit),
-				},
-			)
+			row := table.Row{origin}
+			for _, name := range maptools.SortedKeys(columns) {
+				for _, unit := range maptools.SortedKeys(columns[name]) {
+					row = append(row, formatNumber(metrics[name][unit], !noUnit))
+				}
+			}
+			t.AppendRow(row)
 
 			numRows += 1
 		}
 
 		totals := s.aggregatedAllOrigin[bouncerName]
 
-		t.AppendFooter(
-			table.Row{"Total",
-				formatNumber(totals["dropped"]["byte"], !noUnit),
-				formatNumber(totals["dropped"]["packet"], !noUnit),
-				formatNumber(totals["processed"]["byte"], !noUnit),
-				formatNumber(totals["processed"]["packet"], !noUnit),
-			},
-		)
+		footer := table.Row{"Total"}
+		for _, name := range maptools.SortedKeys(columns) {
+			for _, unit := range maptools.SortedKeys(columns[name]) {
+				footer = append(footer, formatNumber(totals[name][unit], !noUnit))
+			}
+		}
+
+		t.AppendFooter(footer)
 
 		if numRows > 0 || showEmpty {
 			title, _ := s.Description()

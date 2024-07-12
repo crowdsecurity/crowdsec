@@ -117,18 +117,17 @@ teardown() {
     # but without labels the origin string is empty
     assert_json '{bouncers:{testbouncer:{"": {"foo": {"dogyear": 2, "pound": 5}}}}}'
 
-    # TODO: adjust the table output
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
 	Bouncer Metrics (testbouncer):
-	+--------+-------------------+-----------------------+
-	| Origin |      dropped      |       processed       |
-	|        |  bytes  | packets |   bytes   |  packets  |
-	+--------+---------+---------+-----------+-----------+
-	|        |       0 |       0 |         0 |         0 |
-	+--------+---------+---------+-----------+-----------+
-	|  Total |       0 |       0 |         0 |         0 |
-	+--------+---------+---------+-----------+-----------+
+	+--------+-----------------+
+	| Origin |       foo       |
+	|        | dogyear | pound |
+	+--------+---------+-------+
+	|        |       2 |     5 |
+	+--------+---------+-------+
+	|  Total |       2 |     5 |
+	+--------+---------+-------+
 	EOT
 
     # some more realistic values, at least for the labels
@@ -205,20 +204,20 @@ teardown() {
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
 	Bouncer Metrics (testbouncer):
-	+----------------------------------+-------------------+-----------------------+
-	| Origin                           |      dropped      |       processed       |
-	|                                  |  bytes  | packets |   bytes   |  packets  |
-	+----------------------------------+---------+---------+-----------+-----------+
-	|                                  |       0 |       0 |         0 |         0 |
-	| CAPI                             |   3.80k |     100 |         0 |         0 |
-	| cscli                            |     380 |      10 |         0 |         0 |
-	| lists:firehol_cruzit_web_attacks |   1.03k |      23 |         0 |         0 |
-	| lists:firehol_voipbl             |   3.85k |      58 |         0 |         0 |
-	+----------------------------------+---------+---------+-----------+-----------+
-	|                            Total |   9.06k |     191 |         0 |         0 |
-	+----------------------------------+---------+---------+-----------+-----------+
+	+----------------------------------+------------------+-------------------+-----------------+
+	| Origin                           | active_decisions |      dropped      |       foo       |
+	|                                  |        ip        |   byte  |  packet | dogyear | pound |
+	+----------------------------------+------------------+---------+---------+---------+-------+
+	|                                  |                0 |       0 |       0 |       2 |     5 |
+	| CAPI                             |                0 |   3.80k |     100 |       0 |     0 |
+	| cscli                            |                1 |     380 |      10 |       0 |     0 |
+	| lists:firehol_cruzit_web_attacks |                0 |   1.03k |      23 |       0 |     0 |
+	| lists:firehol_voipbl             |           51.94k |   3.85k |      58 |       0 |     0 |
+	+----------------------------------+------------------+---------+---------+---------+-------+
+	|                            Total |           51.94k |   9.06k |     191 |       2 |     5 |
+	+----------------------------------+------------------+---------+---------+---------+-------+
 	EOT
 
-    # TODO: ultiple item lists, active decisions discard older values
+    # TODO: multiple item lists, multiple bouncers
 
 }
