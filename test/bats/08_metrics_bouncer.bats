@@ -147,6 +147,8 @@ teardown() {
             {"name": "dropped",          "unit": "packet", "value": 10,    "labels": {"ip_type": "ipv4", "origin": "cscli"}},
             {"name": "dropped",          "unit": "packet", "value": 23,    "labels": {"ip_type": "ipv4", "origin": "lists:firehol_cruzit_web_attacks"}},
             {"name": "dropped",          "unit": "packet", "value": 58,    "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
+            {"name": "dropped",          "unit": "packet", "value": 0,     "labels": {"ip_type": "ipv4", "origin": "lists:anotherlist"}},
+            {"name": "dropped",          "unit": "byte",   "value": 0,     "labels": {"ip_type": "ipv4", "origin": "lists:anotherlist"}},
             {"name": "dropped",          "unit": "packet", "value": 0,     "labels": {"ip_type": "ipv6", "origin": "cscli"}}
           ]
         }
@@ -158,44 +160,50 @@ teardown() {
     rune -0 cscli metrics show bouncers -o json
     assert_json '{
     "bouncers": {
-     "testbouncer": {
-      "": {
-       "foo": {
-        "dogyear": 2,
-        "pound": 5
-       }
-      },
-      "CAPI": {
-       "dropped": {
-        "byte": 3800,
-        "packet": 100
-       }
-      },
-      "cscli": {
-       "active_decisions": {
-        "ip": 1
-       },
-       "dropped": {
-        "byte": 380,
-        "packet": 10
-       }
-      },
-      "lists:firehol_cruzit_web_attacks": {
-       "dropped": {
-        "byte": 1034,
-        "packet": 23
-       }
-      },
-      "lists:firehol_voipbl": {
-       "active_decisions": {
-        "ip": 51936
-       },
-       "dropped": {
-        "byte": 3847,
-        "packet": 58
-       }
+      "testbouncer": {
+        "": {
+          "foo": {
+            "dogyear": 2,
+            "pound": 5
+          }
+        },
+        "CAPI": {
+          "dropped": {
+            "byte": 3800,
+            "packet": 100
+          }
+        },
+        "cscli": {
+          "active_decisions": {
+            "ip": 1
+          },
+          "dropped": {
+            "byte": 380,
+            "packet": 10
+          }
+        },
+        "lists:firehol_cruzit_web_attacks": {
+          "dropped": {
+            "byte": 1034,
+            "packet": 23
+          }
+        },
+        "lists:firehol_voipbl": {
+          "active_decisions": {
+            "ip": 51936
+          },
+          "dropped": {
+            "byte": 3847,
+            "packet": 58
+          },
+        },
+        "lists:anotherlist": {
+          "dropped": {
+            "byte": 0,
+            "packet": 0
+          }
+        }
       }
-     }
     }
    }'
 
@@ -206,10 +214,11 @@ teardown() {
 	| Origin                           | active_decisions |      dropped      |       foo       |
 	|                                  |        ip        |   byte  |  packet | dogyear | pound |
 	+----------------------------------+------------------+---------+---------+---------+-------+
-	| CAPI (community blocklist)       |                0 |   3.80k |     100 |       0 |     0 |
-	| cscli                            |                1 |     380 |      10 |       0 |     0 |
-	| lists:firehol_cruzit_web_attacks |                0 |   1.03k |      23 |       0 |     0 |
-	| lists:firehol_voipbl             |           51.94k |   3.85k |      58 |       0 |     0 |
+	| CAPI (community blocklist)       |                - |   3.80k |     100 |       - |     - |
+	| cscli                            |                1 |     380 |      10 |       - |     - |
+	| lists:anotherlist                |                - |       0 |       0 |       - |     - |
+	| lists:firehol_cruzit_web_attacks |                - |   1.03k |      23 |       - |     - |
+	| lists:firehol_voipbl             |           51.94k |   3.85k |      58 |       - |     - |
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	|                            Total |           51.94k |   9.06k |     191 |       2 |     5 |
 	+----------------------------------+------------------+---------+---------+---------+-------+
@@ -297,8 +306,8 @@ teardown() {
 	| Origin                     | dropped |       processed       |
 	|                            |   byte  |   bytes   |   packet  |
 	+----------------------------+---------+-----------+-----------+
-	| CAPI (community blocklist) |   1.00k |         0 |         0 |
-	| lists:somelist             |     800 |         0 |         0 |
+	| CAPI (community blocklist) |   1.00k |         - |         - |
+	| lists:somelist             |     800 |         - |         - |
 	+----------------------------+---------+-----------+-----------+
 	|                      Total |   1.80k |    12.34k |       100 |
 	+----------------------------+---------+-----------+-----------+
@@ -308,7 +317,7 @@ teardown() {
 	| Origin                     |      dropped      |
 	|                            |   byte  |  packet |
 	+----------------------------+---------+---------+
-	| CAPI (community blocklist) |   2.00k |       0 |
+	| CAPI (community blocklist) |   2.00k |       - |
 	| lists:somelist             |   1.50k |      20 |
 	+----------------------------+---------+---------+
 	|                      Total |   3.50k |      20 |

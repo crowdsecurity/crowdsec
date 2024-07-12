@@ -267,7 +267,12 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		row := table.Row{origin}
 		for _, name := range maptools.SortedKeys(columns) {
 			for _, unit := range maptools.SortedKeys(columns[name]) {
-				row = append(row, formatNumber(metrics[name][unit], !noUnit))
+				valStr := "-"
+				val, ok := metrics[name][unit]
+				if ok {
+					valStr = formatNumber(val, !noUnit)
+				}
+				row = append(row, valStr)
 			}
 		}
 		t.AppendRow(row)
