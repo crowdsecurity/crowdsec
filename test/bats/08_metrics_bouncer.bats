@@ -212,7 +212,7 @@ teardown() {
 	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
 	+----------------------------------+------------------+-------------------+-----------------+
 	| Origin                           | active_decisions |      dropped      |       foo       |
-	|                                  |        ip        |   byte  |  packet | dogyear | pound |
+	|                                  |        IPs       |  bytes  | packets | dogyear | pound |
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	| CAPI (community blocklist)       |                - |   3.80k |     100 |       - |     - |
 	| cscli                            |                1 |     380 |      10 |       - |     - |
@@ -254,7 +254,7 @@ teardown() {
 	            labels:
 	              origin: lists:somelist
 	          - name: processed
-	            unit: bytes
+	            unit: byte
 	            value: 12340
 	          - name: processed
 	            unit: packet
@@ -297,14 +297,14 @@ teardown() {
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
 
     rune -0 cscli metrics show bouncers -o json
-    assert_json '{bouncers:{bouncer1:{"":{processed:{bytes:12340,packet:100}},CAPI:{dropped:{byte:1000}},"lists:somelist":{dropped:{byte:800}}},bouncer2:{"lists:somelist":{dropped:{byte:1500,packet:20}},CAPI:{dropped:{byte:2000}}}}}'
+    assert_json '{bouncers:{bouncer1:{"":{processed:{byte:12340,packet:100}},CAPI:{dropped:{byte:1000}},"lists:somelist":{dropped:{byte:800}}},bouncer2:{"lists:somelist":{dropped:{byte:1500,packet:20}},CAPI:{dropped:{byte:2000}}}}}'
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
 	Bouncer Metrics (bouncer1) since 2024-02-08 13:35:16 +0000 UTC:
 	+----------------------------+---------+-----------------------+
 	| Origin                     | dropped |       processed       |
-	|                            |   byte  |   bytes   |   packet  |
+	|                            |  bytes  |   bytes   |  packets  |
 	+----------------------------+---------+-----------+-----------+
 	| CAPI (community blocklist) |   1.00k |         - |         - |
 	| lists:somelist             |     800 |         - |         - |
@@ -315,7 +315,7 @@ teardown() {
 	Bouncer Metrics (bouncer2) since 2024-02-08 10:48:36 +0000 UTC:
 	+----------------------------+-------------------+
 	| Origin                     |      dropped      |
-	|                            |   byte  |  packet |
+	|                            |  bytes  | packets |
 	+----------------------------+---------+---------+
 	| CAPI (community blocklist) |   2.00k |       - |
 	| lists:somelist             |   1.50k |      20 |

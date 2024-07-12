@@ -39,6 +39,12 @@ type statBouncer struct {
 	aggregatedAllOrigin map[string]map[string]map[string]int64
 }
 
+var knownPlurals = map[string]string{
+	"byte":   "bytes",
+	"packet": "packets",
+	"ip":     "IPs",
+}
+
 func (s *statBouncer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.aggregated)
 }
@@ -230,6 +236,12 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		for _, unit := range maptools.SortedKeys(columns[name]) {
 			colNum += 1
 			header1 = append(header1, name)
+
+			// we don't add "s" to random words
+			if knownPlurals[unit] != "" {
+				unit = knownPlurals[unit]
+			}
+
 			header2 = append(header2, unit)
 			colCfg = append(colCfg, table.ColumnConfig{
 				Number: colNum,
