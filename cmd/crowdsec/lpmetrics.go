@@ -89,13 +89,13 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 }
 
 func detectOS() (string, string) {
-	if version.System == "docker" {
-		return "docker", ""
-	}
-
 	osInfo, err := osinfo.GetOSInfo()
 	if err != nil {
 		return version.System, "???"
+	}
+
+	if osInfo.Name != "" && version.System == "docker" {
+		return osInfo.Name + " (docker)", osInfo.Version
 	}
 
 	return osInfo.Name, osInfo.Version
