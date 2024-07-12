@@ -35,11 +35,8 @@ func (cli *cliMetrics) show(ctx context.Context, sections []string, url string, 
 
 	ms := NewMetricStore()
 
-	// XXX: only on lapi
 	db, err := require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
-		// XXX how to handle this - if we are not on lapi, etc.
-		// we may read lp metrics without lapi?
 		log.Warnf("unable to open database: %s", err)
 	}
 
