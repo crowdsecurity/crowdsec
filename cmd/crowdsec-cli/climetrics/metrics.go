@@ -1,4 +1,4 @@
-package metrics
+package climetrics
 
 import (
 	"github.com/spf13/cobra"
@@ -12,7 +12,7 @@ type cliMetrics struct {
 	cfg configGetter
 }
 
-func NewCLI(cfg configGetter) *cliMetrics {
+func New(cfg configGetter) *cliMetrics {
 	return &cliMetrics{
 		cfg: cfg,
 	}
@@ -38,8 +38,8 @@ cscli metrics --url http://lapi.local:6060/metrics show acquisition parsers
 cscli metrics list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.show(nil, url, noUnit)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.show(cmd.Context(), nil, url, noUnit)
 		},
 	}
 

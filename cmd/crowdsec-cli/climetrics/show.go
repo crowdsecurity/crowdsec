@@ -1,11 +1,16 @@
-package metrics
+package climetrics
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 var (
@@ -13,7 +18,7 @@ var (
 	ErrMetricsDisabled = errors.New("prometheus is not enabled, can't show metrics")
 )
 
-func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
+func (cli *cliMetrics) show(ctx context.Context, sections []string, url string, noUnit bool) error {
 	cfg := cli.cfg()
 
 	if url != "" {
@@ -30,8 +35,16 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 
 	ms := NewMetricStore()
 
-	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
-		return err
+	// XXX: only on lapi
+	db, err := require.DBClient(ctx, cfg.DbConfig)
+	if err != nil {
+		// XXX how to handle this - if we are not on lapi, etc.
+		// we may read lp metrics without lapi?
+		log.Warnf("unable to open database: %s", err)
+	}
+
+	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {
+		log.Warn(err)
 	}
 
 	// any section that we don't have in the store is an error
@@ -90,9 +103,9 @@ cscli metrics list; cscli metrics list -o json
 cscli metrics show acquisition parsers scenarios stash -o json`,
 		// Positional args are optional
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			args = expandAlias(args)
-			return cli.show(args, url, noUnit)
+			return cli.show(cmd.Context(), args, url, noUnit)
 		},
 	}
 
