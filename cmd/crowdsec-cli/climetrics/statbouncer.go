@@ -251,6 +251,12 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 	for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
 		metrics := s.aggregated[bouncerName][origin]
+
+		// some users don't know what capi is
+		if origin == "CAPI" {
+			origin += " (community blocklist)"
+		}
+
 		row := table.Row{origin}
 		for _, name := range maptools.SortedKeys(columns) {
 			for _, unit := range maptools.SortedKeys(columns[name]) {

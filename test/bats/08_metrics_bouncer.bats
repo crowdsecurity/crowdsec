@@ -209,7 +209,7 @@ teardown() {
 	|                                  |        ip        |   byte  |  packet | dogyear | pound |
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	|                                  |                0 |       0 |       0 |       2 |     5 |
-	| CAPI                             |                0 |   3.80k |     100 |       0 |     0 |
+	| CAPI (community blocklist)       |                0 |   3.80k |     100 |       0 |     0 |
 	| cscli                            |                1 |     380 |      10 |       0 |     0 |
 	| lists:firehol_cruzit_web_attacks |                0 |   1.03k |      23 |       0 |     0 |
 	| lists:firehol_voipbl             |           51.94k |   3.85k |      58 |       0 |     0 |
@@ -218,7 +218,7 @@ teardown() {
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	EOT
 
-    # TODO: multiple item lists, multiple bouncers
+    # TODO: multiple item lists
 
 }
 
@@ -241,12 +241,12 @@ teardown() {
 	            unit: byte
 	            value: 1000
 	            labels:
-	              origin: capi
+	              origin: CAPI
 	          - name: processed
 	            unit: packet
 	            value: 100
 	            labels:
-	              origin: capi
+	              origin: CAPI
 	          - name: processed
 	            unit: packet
 	            value: 100
@@ -256,7 +256,6 @@ teardown() {
     )
 
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
-
 
     API_KEY=$(cscli bouncers add bouncer2 -o raw)
     export API_KEY
@@ -277,7 +276,7 @@ teardown() {
 	            unit: byte
 	            value: 2000
 	            labels:
-	              origin: capi
+	              origin: CAPI
 	          - name: dropped
 	            unit: packet
 	            value: 20
@@ -287,30 +286,30 @@ teardown() {
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
 
     rune -0 cscli metrics show bouncers -o json
-    assert_json '{bouncers:{bouncer1:{capi:{dropped:{byte:1000},processed:{packet:100}},"lists:somelist":{processed:{packet:100}}},bouncer2:{"":{dropped:{byte:1500,packet:20}},capi:{dropped:{byte:2000}}}}}'
+    assert_json '{bouncers:{bouncer1:{CAPI:{dropped:{byte:1000},processed:{packet:100}},"lists:somelist":{processed:{packet:100}}},bouncer2:{"":{dropped:{byte:1500,packet:20}},CAPI:{dropped:{byte:2000}}}}}'
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
 	Bouncer Metrics (bouncer1) since 2024-02-08 13:35:16 +0000 UTC:
-	+----------------+---------+-----------+
-	| Origin         | dropped | processed |
-	|                |   byte  |   packet  |
-	+----------------+---------+-----------+
-	| capi           |   1.00k |       100 |
-	| lists:somelist |       0 |       100 |
-	+----------------+---------+-----------+
-	|          Total |   1.00k |       200 |
-	+----------------+---------+-----------+
+	+----------------------------+---------+-----------+
+	| Origin                     | dropped | processed |
+	|                            |   byte  |   packet  |
+	+----------------------------+---------+-----------+
+	| CAPI (community blocklist) |   1.00k |       100 |
+	| lists:somelist             |       0 |       100 |
+	+----------------------------+---------+-----------+
+	|                      Total |   1.00k |       200 |
+	+----------------------------+---------+-----------+
 	
 	Bouncer Metrics (bouncer2) since 2024-02-08 10:48:36 +0000 UTC:
-	+--------+-------------------+
-	| Origin |      dropped      |
-	|        |   byte  |  packet |
-	+--------+---------+---------+
-	|        |   1.50k |      20 |
-	| capi   |   2.00k |       0 |
-	+--------+---------+---------+
-	|  Total |   3.50k |      20 |
-	+--------+---------+---------+
+	+----------------------------+-------------------+
+	| Origin                     |      dropped      |
+	|                            |   byte  |  packet |
+	+----------------------------+---------+---------+
+	|                            |   1.50k |      20 |
+	| CAPI (community blocklist) |   2.00k |       0 |
+	+----------------------------+---------+---------+
+	|                      Total |   3.50k |      20 |
+	+----------------------------+---------+---------+
 	EOT
 }
