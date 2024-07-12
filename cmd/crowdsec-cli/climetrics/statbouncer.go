@@ -195,16 +195,20 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 		bouncerNames[item.bouncerName] = true
 	}
 
-	columns := make(map[string]map[string]bool)
-	for _, item := range s.rawMetrics {
-		// build a map of the metric names and units, to display dynamic columns
-		if _, ok := columns[item.name]; !ok {
-			columns[item.name] = make(map[string]bool)
-		}
-		columns[item.name][item.unit] = true
-	}
 
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
+		columns := make(map[string]map[string]bool)
+		for _, item := range s.rawMetrics {
+			if item.bouncerName != bouncerName {
+				continue
+			}
+			// build a map of the metric names and units, to display dynamic columns
+			if _, ok := columns[item.name]; !ok {
+				columns[item.name] = make(map[string]bool)
+			}
+			columns[item.name][item.unit] = true
+		}
+
 		t := cstable.New(out, wantColor).Writer
 		header1 := table.Row{"Origin"}
 		header2 := table.Row{""}
@@ -220,7 +224,6 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 		for _, name := range maptools.SortedKeys(columns) {
 			for _, unit := range maptools.SortedKeys(columns[name]) {
-				println(name, unit)
 				colNum += 1
 				header1 = append(header1, name)
 				header2 = append(header2, unit)

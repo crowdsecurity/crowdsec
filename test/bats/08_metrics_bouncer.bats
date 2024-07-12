@@ -51,7 +51,7 @@ teardown() {
 
     payload=$(yq -o j <<-EOT
 	remediation_components:
-	    - version: "v1.0"
+	  - version: "v1.0"
 	log_processors: []
 	EOT
     )
@@ -82,8 +82,8 @@ teardown() {
 
     payload=$(yq -o j <<-EOT
 	remediation_components:
-	    - version: "v1.0"
-	      utc_startup_timestamp: 1707399316
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707399316
 	log_processors: []
 	EOT
     )
@@ -220,4 +220,96 @@ teardown() {
 
     # TODO: multiple item lists, multiple bouncers
 
+}
+
+@test "rc usage metrics (multiple bouncers)" {
+    # multiple bouncers have separate totals and can have different types of metrics and units -> different columns
+
+    API_KEY=$(cscli bouncers add bouncer1 -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707399316
+	    metrics:
+	      - meta:
+	          utc_now_timestamp: 1707399316
+	          window_size_seconds: 600
+	        items:
+	          - name: dropped
+	            unit: byte
+	            value: 1000
+	            labels:
+	              origin: capi
+	          - name: processed
+	            unit: packet
+	            value: 100
+	            labels:
+	              origin: capi
+	          - name: processed
+	            unit: packet
+	            value: 100
+	            labels:
+	              origin: lists:somelist
+	EOT
+    )
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+
+    API_KEY=$(cscli bouncers add bouncer2 -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707399316
+	    metrics:
+	      - meta:
+	          utc_now_timestamp: 1707399316
+	          window_size_seconds: 600
+	        items:
+	          - name: dropped
+	            unit: byte
+	            value: 1500
+	          - name: dropped
+	            unit: byte
+	            value: 2000
+	            labels:
+	              origin: capi
+	          - name: dropped
+	            unit: packet
+	            value: 20
+	EOT
+    )
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+    rune -0 cscli metrics show bouncers -o json
+    assert_json '{bouncers:{bouncer1:{capi:{dropped:{byte:1000},processed:{packet:100}},"lists:somelist":{processed:{packet:100}}},bouncer2:{"":{dropped:{byte:1500,packet:20}},capi:{dropped:{byte:2000}}}}}'
+
+    rune -0 cscli metrics show bouncers
+    assert_output - <<-EOT
+	Bouncer Metrics (bouncer1):
+	+----------------+---------+-----------+
+	| Origin         | dropped | processed |
+	|                |   byte  |   packet  |
+	+----------------+---------+-----------+
+	| capi           |   1.00k |       100 |
+	| lists:somelist |       0 |       100 |
+	+----------------+---------+-----------+
+	|          Total |   1.00k |       200 |
+	+----------------+---------+-----------+
+	Bouncer Metrics (bouncer2):
+	+--------+-------------------+
+	| Origin |      dropped      |
+	|        |   byte  |  packet |
+	+--------+---------+---------+
+	|        |   1.50k |      20 |
+	| capi   |   2.00k |       0 |
+	+--------+---------+---------+
+	|  Total |   3.50k |      20 |
+	+--------+---------+---------+
+	EOT
 }
