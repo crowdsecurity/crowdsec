@@ -316,9 +316,10 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	title += ":"
 
 	// don't use SetTitle() because it draws the title inside table box
-	// TODO: newline position wrt other stat tables
-	cstable.RenderTitle(out, title)
-	fmt.Fprintln(out, t.Render())
+	io.WriteString(out, title+"\n")
+	io.WriteString(out, t.Render() + "\n")
+	// empty line between tables
+	io.WriteString(out, "\n")
 }
 
 // Table displays a table of metrics for each bouncer
@@ -328,13 +329,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, _ bool
 		bouncerNames[item.bouncerName] = true
 	}
 
-	nl := false
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
-		if nl {
-			// empty line between tables
-			fmt.Fprintln(out)
-		}
 		s.bouncerTable(out, bouncerName, wantColor, noUnit)
-		nl = true
 	}
 }

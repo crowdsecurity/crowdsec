@@ -41,8 +41,9 @@ func (s statAppsecRule) Table(out io.Writer, wantColor string, noUnit bool, show
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
 		} else if numRows > 0 || showEmpty {
-			cstable.RenderTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
+			io.WriteString(out, fmt.Sprintf("Appsec '%s' Rules Metrics:\n", appsecEngine))
 			t.Render()
+			io.WriteString(out, "\n")
 		}
 	}
 }

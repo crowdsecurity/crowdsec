@@ -38,7 +38,8 @@ func (s statParser) Table(out io.Writer, wantColor string, noUnit bool, showEmpt
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		cstable.RenderTitle(out, "\n"+title+":")
+		io.WriteString(out, title + ":\n")
 		t.Render()
+		io.WriteString(out, "\n")
 	}
 }

@@ -23,7 +23,7 @@ func listHubItemTable(out io.Writer, wantColor string, title string, items []*cw
 		t.AddRow(item.Name, status, item.State.LocalVersion, item.State.LocalPath)
 	}
 
-	cstable.RenderTitle(out, title)
+	io.WriteString(out, title+"\n")
 	t.Render()
 }
 
@@ -36,7 +36,7 @@ func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metric
 		strconv.Itoa(metrics["outband_hits"]),
 	)
 
-	cstable.RenderTitle(out, fmt.Sprintf("\n - (AppSec Rule) %s:", itemName))
+	io.WriteString(out, fmt.Sprintf("\n - (AppSec Rule) %s:\n", itemName))
 	t.Render()
 }
 
@@ -56,7 +56,7 @@ func scenarioMetricsTable(out io.Writer, wantColor string, itemName string, metr
 		strconv.Itoa(metrics["underflow"]),
 	)
 
-	cstable.RenderTitle(out, fmt.Sprintf("\n - (Scenario) %s:", itemName))
+	io.WriteString(out, fmt.Sprintf("\n - (Scenario) %s:\n", itemName))
 	t.Render()
 }
 
@@ -81,7 +81,7 @@ func parserMetricsTable(out io.Writer, wantColor string, itemName string, metric
 	}
 
 	if showTable {
-		cstable.RenderTitle(out, fmt.Sprintf("\n - (Parser) %s:", itemName))
+		io.WriteString(out, fmt.Sprintf("\n - (Parser) %s:\n", itemName))
 		t.Render()
 	}
 }

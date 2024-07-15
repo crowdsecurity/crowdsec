@@ -3,6 +3,7 @@ package climetrics
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -63,7 +64,7 @@ func (cli *cliMetrics) list() error {
 			t.AppendRow(table.Row{metric.Type, metric.Title, metric.Description})
 		}
 
-		fmt.Fprintln(out, t.Render())
+		io.WriteString(out, t.Render() + "\n")
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
