@@ -1392,12 +1392,12 @@ func TestParseUnixTime(t *testing.T) {
 		{
 			name:     "ParseUnix() test: valid value with milli",
 			value:    "1672239773.3590894",
-			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+			expected: time.Date(2022, 12, 28, 15, 2, 53, 0, time.UTC),
 		},
 		{
 			name:     "ParseUnix() test: valid value without milli",
 			value:    "1672239773",
-			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+			expected: time.Date(2022, 12, 28, 15, 2, 53, 0, time.UTC),
 		},
 		{
 			name:        "ParseUnix() test: invalid input",
