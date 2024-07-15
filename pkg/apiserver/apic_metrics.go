@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackfireio/osinfo"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -22,19 +21,6 @@ import (
 
 type dbPayload struct {
 	Metrics []*models.DetailedMetrics `json:"metrics"`
-}
-
-func detectOS() (string, string) {
-	if version.System == "docker" {
-		return "docker", ""
-	}
-
-	osInfo, err := osinfo.GetOSInfo()
-	if err != nil {
-		return version.System, "???"
-	}
-
-	return osInfo.Name, osInfo.Version
 }
 
 func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
@@ -159,7 +145,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		},
 	}
 
-	osName, osVersion := detectOS()
+	osName, osVersion := version.DetectOS()
 
 	allMetrics.Lapi.Os = &models.OSversion{
 		Name:    ptr.Of(osName),

@@ -6,20 +6,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/blackfireio/osinfo"
 	"github.com/sirupsen/logrus"
 
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
@@ -75,7 +74,7 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 		datasourceMap[ds.GetName()] += 1
 	}
 
-	osName, osVersion := detectOS()
+	osName, osVersion := version.DetectOS()
 
 	return staticMetrics{
 		osName:         osName,
@@ -86,19 +85,6 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 		datasourceMap:  datasourceMap,
 		hubState:       getHubState(hub),
 	}
-}
-
-func detectOS() (string, string) {
-	osInfo, err := osinfo.GetOSInfo()
-	if err != nil {
-		return version.System, "???"
-	}
-
-	if osInfo.Name != "" && version.System == "docker" {
-		return osInfo.Name + " (docker)", osInfo.Version
-	}
-
-	return osInfo.Name, osInfo.Version
 }
 
 func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
