@@ -35,6 +35,7 @@ type BaseMetrics struct {
 
 	// version of the remediation component
 	// Required: true
+	// Max Length: 255
 	Version *string `json:"version"`
 }
 
@@ -121,6 +122,10 @@ func (m *BaseMetrics) validateUtcStartupTimestamp(formats strfmt.Registry) error
 func (m *BaseMetrics) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version); err != nil {
+		return err
+	}
+
+	if err := validate.MaxLength("version", "body", *m.Version, 255); err != nil {
 		return err
 	}
 

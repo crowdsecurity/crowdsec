@@ -8,7 +8,9 @@ package models
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/validate"
 )
 
 // MetricsLabels MetricsLabels
@@ -18,6 +20,19 @@ type MetricsLabels map[string]string
 
 // Validate validates this metrics labels
 func (m MetricsLabels) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	for k := range m {
+
+		if err := validate.MaxLength(k, "body", m[k], 255); err != nil {
+			return err
+		}
+
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 

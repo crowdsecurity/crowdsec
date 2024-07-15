@@ -1095,6 +1095,7 @@ definitions:
       version:
         type: string
         description: version of the remediation component
+        maxLength: 255
       os:
         $ref: '#/definitions/OSversion'
       metrics:
@@ -1107,6 +1108,7 @@ definitions:
         items: 
           type: string
         description: feature flags (expected to be empty for remediation components)
+        maxLength: 255
       utc_startup_timestamp:
         type: integer
         description: UTC timestamp of the startup of the software
@@ -1120,9 +1122,11 @@ definitions:
       name:
         type: string
         description: name of the OS
+        maxLength: 255
       version:
         type: string
         description: version of the OS
+        maxLength: 255
     required:
       - name
       - version
@@ -1146,12 +1150,14 @@ definitions:
       name: 
         type: string
         description: name of the metric
+        maxLength: 255
       value:
         type: number
         description: value of the metric
       unit:
         type: string
         description: unit of the metric
+        maxLength: 255
       labels:
         $ref: '#/definitions/MetricsLabels'
         description: labels of the metric
@@ -1178,6 +1184,7 @@ definitions:
     additionalProperties: 
       type: string
       description: label of the metric
+      maxLength: 255
   ConsoleOptions:
     title: ConsoleOptions
     type: array

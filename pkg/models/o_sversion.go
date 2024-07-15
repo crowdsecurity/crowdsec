@@ -21,10 +21,12 @@ type OSversion struct {
 
 	// name of the OS
 	// Required: true
+	// Max Length: 255
 	Name *string `json:"name"`
 
 	// version of the OS
 	// Required: true
+	// Max Length: 255
 	Version *string `json:"version"`
 }
 
@@ -52,12 +54,20 @@ func (m *OSversion) validateName(formats strfmt.Registry) error {
 		return err
 	}
 
+	if err := validate.MaxLength("name", "body", *m.Name, 255); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (m *OSversion) validateVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("version", "body", m.Version); err != nil {
+		return err
+	}
+
+	if err := validate.MaxLength("version", "body", *m.Version, 255); err != nil {
 		return err
 	}
 
