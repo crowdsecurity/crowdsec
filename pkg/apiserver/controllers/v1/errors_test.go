@@ -15,7 +15,7 @@ func TestCollapseRepeatedPrefix(t *testing.T) {
 		want   string
 	}{
 		{
-			input: "aaabbbcccaaa", 
+			input: "aaabbbcccaaa",
 			prefix: "aaa",
 			want: "aaabbbcccaaa"},
 		{

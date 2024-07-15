@@ -8,12 +8,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 )
 
-// TODO:
-// what if they are alrady in the db (should get an error from the unique index)
-// CollectMetricsToPush (count limit? including stale?)
-// SetPushedMetrics
-// RemoveOldMetrics
-
 func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy string, collectedAt time.Time, payload string) (*ent.Metric, error) {
 	metric, err := c.Ent.Metric.
 		Create().

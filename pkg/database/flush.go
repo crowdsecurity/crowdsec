@@ -130,7 +130,7 @@ func (c *Client) flushMetrics(maxAge *time.Duration) {
 		metric.CollectedAtLTE(time.Now().UTC().Add(-*maxAge)),
 	).Exec(c.CTX)
 	if err != nil {
-		c.Log.Errorf("while flushing metrics: %s", err)
+		c.Log.Errorf("while flushing metrics: %w", err)
 		return
 	}
 

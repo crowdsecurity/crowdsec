@@ -150,7 +150,6 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	)
 
 	lpMetricsTomb.Go(func() error {
-		// XXX: context?
 		return mp.Run(context.Background(), &lpMetricsTomb)
 	})
 

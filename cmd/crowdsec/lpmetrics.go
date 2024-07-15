@@ -127,8 +127,6 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
 
-	// TODO: more metric details... ?
-
 	return &models.AllMetrics{
 		LogProcessors: []*models.LogProcessorsMetrics{met},
 	}
@@ -148,8 +146,6 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	for {
 		select {
 		case <-ticker.C:
-			//.UtcNowTimestamp = ptr.Of(time.Now().Unix())
-
 			ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 

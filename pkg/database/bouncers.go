@@ -26,7 +26,7 @@ func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string
 		SetType(bouncerType).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update base bouncer metrics in database: %s", err)
+		return fmt.Errorf("unable to update base bouncer metrics in database: %w", err)
 	}
 	return nil
 }
