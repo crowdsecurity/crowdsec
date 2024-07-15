@@ -23,9 +23,9 @@ teardown() {
 #----------
 
 @test "cscli metrics (crowdsec not running)" {
-    rune -1 cscli metrics
-    # crowdsec is down
-    assert_stderr --partial 'failed to fetch metrics: executing GET request for URL \"http://127.0.0.1:6060/metrics\" failed: Get \"http://127.0.0.1:6060/metrics\": dial tcp 127.0.0.1:6060: connect: connection refused'
+    rune -0 cscli metrics
+    # crowdsec is down, we won't get an error because some metrics come from the db instead
+    assert_stderr --partial 'while fetching metrics: executing GET request for URL \"http://127.0.0.1:6060/metrics\" failed: Get \"http://127.0.0.1:6060/metrics\": dial tcp 127.0.0.1:6060: connect: connection refused'
 }
 
 @test "cscli metrics (bad configuration)" {
@@ -72,10 +72,6 @@ teardown() {
     rune -0 jq 'keys' <(output)
     assert_output --partial '"alerts",'
     assert_output --partial '"parsers",'
-
-    rune -0 cscli metrics -o raw
-    assert_output --partial 'alerts: {}'
-    assert_output --partial 'parsers: {}'
 }
 
 @test "cscli metrics list" {
@@ -85,10 +81,6 @@ teardown() {
     rune -0 cscli metrics list -o json
     rune -0 jq -c '.[] | [.type,.title]' <(output)
     assert_line '["acquisition","Acquisition Metrics"]'
-
-    rune -0 cscli metrics list -o raw
-    assert_line "- type: acquisition"
-    assert_line "  title: Acquisition Metrics"
 }
 
 @test "cscli metrics show" {
@@ -108,8 +100,4 @@ teardown() {
     rune -0 cscli metrics show lapi -o json
     rune -0 jq -c '.lapi."/v1/watchers/login" | keys' <(output)
     assert_json '["POST"]'
-
-    rune -0 cscli metrics show lapi -o raw
-    assert_line 'lapi:'
-    assert_line '    /v1/watchers/login:'
 }

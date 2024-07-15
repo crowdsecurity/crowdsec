@@ -1,6 +1,7 @@
-package metrics
+package climetrics
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,10 +13,11 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/trace"
+
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 type metricSection interface {
@@ -28,22 +30,31 @@ type metricStore map[string]metricSection
 func NewMetricStore() metricStore {
 	return metricStore{
 		"acquisition":    statAcquis{},
-		"scenarios":      statBucket{},
-		"parsers":        statParser{},
-		"lapi":           statLapi{},
-		"lapi-machine":   statLapiMachine{},
-		"lapi-bouncer":   statLapiBouncer{},
-		"lapi-decisions": statLapiDecision{},
-		"decisions":      statDecision{},
 		"alerts":         statAlert{},
-		"stash":          statStash{},
+		"bouncers":       &statBouncer{},
 		"appsec-engine":  statAppsecEngine{},
 		"appsec-rule":    statAppsecRule{},
+		"decisions":      statDecision{},
+		"lapi":           statLapi{},
+		"lapi-bouncer":   statLapiBouncer{},
+		"lapi-decisions": statLapiDecision{},
+		"lapi-machine":   statLapiMachine{},
+		"parsers":        statParser{},
+		"scenarios":      statBucket{},
+		"stash":          statStash{},
 		"whitelists":     statWhitelist{},
 	}
 }
 
-func (ms metricStore) Fetch(url string) error {
+func (ms metricStore) Fetch(ctx context.Context, url string, db *database.Client) error {
+	if err := ms["bouncers"].(*statBouncer).Fetch(ctx, db); err != nil {
+		return err
+	}
+
+	return ms.fetchPrometheusMetrics(url)
+}
+
+func (ms metricStore) fetchPrometheusMetrics(url string) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -59,7 +70,7 @@ func (ms metricStore) Fetch(url string) error {
 
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
-			errChan <- fmt.Errorf("failed to fetch metrics: %w", err)
+			errChan <- fmt.Errorf("while fetching metrics: %w", err)
 			return
 		}
 		errChan <- nil
@@ -75,19 +86,23 @@ func (ms metricStore) Fetch(url string) error {
 	}
 
 	log.Debugf("Finished reading metrics output, %d entries", len(result))
-	/*walk*/
+	ms.processPrometheusMetrics(result)
 
+	return nil
+}
+
+func (ms metricStore) processPrometheusMetrics(result []*prom2json.Family) {
 	mAcquis := ms["acquisition"].(statAcquis)
-	mParser := ms["parsers"].(statParser)
-	mBucket := ms["scenarios"].(statBucket)
-	mLapi := ms["lapi"].(statLapi)
-	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
-	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
-	mLapiDecision := ms["lapi-decisions"].(statLapiDecision)
-	mDecision := ms["decisions"].(statDecision)
+	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
-	mAlert := ms["alerts"].(statAlert)
+	mDecision := ms["decisions"].(statDecision)
+	mLapi := ms["lapi"].(statLapi)
+	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
+	mLapiDecision := ms["lapi-decisions"].(statLapiDecision)
+	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
+	mParser := ms["parsers"].(statParser)
+	mBucket := ms["scenarios"].(statBucket)
 	mStash := ms["stash"].(statStash)
 	mWhitelist := ms["whitelists"].(statWhitelist)
 
@@ -219,11 +234,9 @@ func (ms metricStore) Fetch(url string) error {
 			}
 		}
 	}
-
-	return nil
 }
 
-func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, formatType string, noUnit bool) error {
+func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, outputFormat string, noUnit bool) error {
 	// copy only the sections we want
 	want := map[string]metricSection{}
 
@@ -239,7 +252,7 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 		want[section] = ms[section]
 	}
 
-	switch formatType {
+	switch outputFormat {
 	case "human":
 		for _, section := range maptools.SortedKeys(want) {
 			want[section].Table(out, wantColor, noUnit, showEmpty)
@@ -250,14 +263,8 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 		out.Write(x)
-	case "raw":
-		x, err := yaml.Marshal(want)
-		if err != nil {
-			return fmt.Errorf("failed to marshal metrics: %w", err)
-		}
-		out.Write(x)
 	default:
-		return fmt.Errorf("unknown format type %s", formatType)
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
 
 	return nil

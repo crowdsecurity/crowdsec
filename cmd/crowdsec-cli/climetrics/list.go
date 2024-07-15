@@ -1,4 +1,4 @@
-package metrics
+package climetrics
 
 import (
 	"encoding/json"
@@ -6,7 +6,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
@@ -32,17 +34,36 @@ func (cli *cliMetrics) list() error {
 		})
 	}
 
-	switch cli.cfg().Cscli.Output {
+	outputFormat := cli.cfg().Cscli.Output
+
+	switch outputFormat {
 	case "human":
-		t := cstable.New(color.Output, cli.cfg().Cscli.Color)
-		t.SetRowLines(true)
-		t.SetHeaders("Type", "Title", "Description")
+		out := color.Output
+		t := cstable.New(out, cli.cfg().Cscli.Color).Writer
+		t.AppendHeader(table.Row{"Type", "Title", "Description"})
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{
+				Name: "Type",
+				AlignHeader: text.AlignCenter,
+			},
+			{
+				Name: "Title",
+				AlignHeader: text.AlignCenter,
+			},
+			{
+				Name: "Description",
+				AlignHeader: text.AlignCenter,
+				WidthMax: 60,
+				WidthMaxEnforcer: text.WrapSoft,
+			},
+		})
+		t.Style().Options.SeparateRows = true
 
 		for _, metric := range allMetrics {
-			t.AddRow(metric.Type, metric.Title, metric.Description)
+			t.AppendRow(table.Row{metric.Type, metric.Title, metric.Description})
 		}
 
-		t.Render()
+		fmt.Fprintln(out, t.Render())
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
@@ -50,13 +71,8 @@ func (cli *cliMetrics) list() error {
 		}
 
 		fmt.Println(string(x))
-	case "raw":
-		x, err := yaml.Marshal(allMetrics)
-		if err != nil {
-			return fmt.Errorf("failed to marshal metric types: %w", err)
-		}
-
-		fmt.Println(string(x))
+	default:
+		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}
 
 	return nil

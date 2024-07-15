@@ -22,7 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/metrics"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -78,7 +78,7 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
+func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
 	cfg := cli.cfg()
@@ -89,9 +89,9 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
 
 	humanMetrics := new(bytes.Buffer)
 
-	ms := metrics.NewMetricStore()
+	ms := climetrics.NewMetricStore()
 
-	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
+	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {
 		return err
 	}
 
@@ -493,7 +493,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		skipCAPI = true
 	}
 
-	if err = cli.dumpMetrics(ctx, zipWriter); err != nil {
+	if err = cli.dumpMetrics(ctx, db, zipWriter); err != nil {
 		log.Warn(err)
 	}
 

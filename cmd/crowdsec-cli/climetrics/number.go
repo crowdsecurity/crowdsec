@@ -1,8 +1,9 @@
-package metrics
+package climetrics
 
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 type unit struct {
@@ -20,11 +21,15 @@ var ranges = []unit{
 	{value: 1, symbol: ""},
 }
 
-func formatNumber(num int) string {
-	goodUnit := unit{}
+func formatNumber(num int64, withUnit bool) string {
+	if !withUnit {
+		return strconv.FormatInt(num, 10)
+	}
+
+	goodUnit := ranges[len(ranges)-1]
 
 	for _, u := range ranges {
-		if int64(num) >= u.value {
+		if num >= u.value {
 			goodUnit = u
 			break
 		}
