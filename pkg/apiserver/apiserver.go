@@ -372,7 +372,6 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			s.apic.SendUsageMetrics()
 			return nil
 		})
-
 	}
 
 	s.httpServerTomb.Go(func() error {

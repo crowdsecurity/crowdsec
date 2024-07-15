@@ -2,8 +2,8 @@ package v1
 
 import (
 	"errors"
-
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,26 +15,25 @@ func TestCollapseRepeatedPrefix(t *testing.T) {
 		want   string
 	}{
 		{
-			input: "aaabbbcccaaa",
+			input:  "aaabbbcccaaa",
 			prefix: "aaa",
-			want: "aaabbbcccaaa"},
-		{
-			input: "hellohellohello world",
+			want:   "aaabbbcccaaa",
+		}, {
+			input:  "hellohellohello world",
 			prefix: "hello",
-			want: "hello world"},
-		{
-			input: "ababababxyz",
+			want:   "hello world",
+		}, {
+			input:  "ababababxyz",
 			prefix: "ab",
-			want: "abxyz",
-		},
-		{
-			input: "xyzxyzxyzxyzxyz",
+			want:   "abxyz",
+		}, {
+			input:  "xyzxyzxyzxyzxyz",
 			prefix: "xyz",
-			want: "xyz"},
-		{
-			input: "123123123456",
+			want:   "xyz",
+		}, {
+			input:  "123123123456",
 			prefix: "456",
-			want: "123123123456",
+			want:   "123123123456",
 		},
 	}
 

@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	/*tombs for the parser, buckets and outputs.*/
+	// tombs for the parser, buckets and outputs.
 	acquisTomb    tomb.Tomb
 	parsersTomb   tomb.Tomb
 	bucketsTomb   tomb.Tomb
@@ -41,17 +41,17 @@ var (
 
 	flags *Flags
 
-	/*the state of acquisition*/
+	// the state of acquisition
 	dataSources []acquisition.DataSource
-	/*the state of the buckets*/
+	// the state of the buckets
 	holders []leakybucket.BucketFactory
 	buckets *leakybucket.Buckets
 
 	inputLineChan   chan types.Event
 	inputEventChan  chan types.Event
 	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
-	/*settings*/
-	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
+	// settings
+	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
 )
 
@@ -308,7 +308,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.OnlineClient = nil
 		}
-		/*if the api is disabled as well, just read file and exit, don't daemonize*/
+		// if the api is disabled as well, just read file and exit, don't daemonize
 		if cConfig.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}

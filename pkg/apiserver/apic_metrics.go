@@ -38,7 +38,6 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	}
 
 	for _, bouncer := range bouncers {
-
 		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(bouncer.Name)
 		if err != nil {
 			log.Errorf("unable to get bouncer usage metrics: %s", err)
@@ -59,11 +58,10 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 		rcMetrics.Metrics = make([]*models.DetailedMetrics, 0)
 
-		//Might seem weird, but we duplicate the bouncers if we have multiple unsent metrics
+		// Might seem weird, but we duplicate the bouncers if we have multiple unsent metrics
 		for _, dbMetric := range dbMetrics {
-
 			dbPayload := &dbPayload{}
-			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
+			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
 			metricsIds = append(metricsIds, dbMetric.ID)
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
@@ -111,6 +109,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 						Version: item.Version,
 					})
 				}
+
 				lpMetrics.HubItems = hubItems
 			}
 		} else {
@@ -120,9 +119,8 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		lpMetrics.Metrics = make([]*models.DetailedMetrics, 0)
 
 		for _, dbMetric := range dbMetrics {
-
 			dbPayload := &dbPayload{}
-			//Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
+			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
 			metricsIds = append(metricsIds, dbMetric.ID)
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
@@ -137,7 +135,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
 	}
 
-	//FIXME: all of this should only be done once on startup/reload
+	// FIXME: all of this should only be done once on startup/reload
 	consoleOptions := strings.Join(csconfig.GetConfig().API.Server.ConsoleConfig.EnabledOptions(), ",")
 	allMetrics.Lapi = &models.LapiMetrics{
 		ConsoleOptions: models.ConsoleOptions{
@@ -164,7 +162,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
 
-	//Force an actual slice to avoid non existing fields in the json
+	// Force an actual slice to avoid non existing fields in the json
 	if allMetrics.RemediationComponents == nil {
 		allMetrics.RemediationComponents = make([]*models.RemediationComponentsMetrics, 0)
 	}
@@ -337,14 +335,16 @@ func (a *apic) SendUsageMetrics() {
 	for {
 		select {
 		case <-a.metricsTomb.Dying():
-			//The normal metrics routine also kills push/pull tombs, does that make sense ?
+			// The normal metrics routine also kills push/pull tombs, does that make sense ?
 			ticker.Stop()
 			return
 		case <-ticker.C:
 			if firstRun {
 				firstRun = false
+
 				ticker.Reset(a.usageMetricsInterval)
 			}
+
 			metrics, metricsId, err := a.GetUsageMetrics()
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
@@ -352,19 +352,22 @@ func (a *apic) SendUsageMetrics() {
 			}
 
 			_, resp, err := a.apiClient.UsageMetrics.Add(context.Background(), metrics)
-
 			if err != nil {
 				log.Errorf("unable to send usage metrics: %s", err)
+
 				if resp.Response.StatusCode >= http.StatusBadRequest && resp.Response.StatusCode != http.StatusUnprocessableEntity {
-					//In case of 422, mark the metrics as sent anyway, the API did not like what we sent, and it's unlikely we'll be able to fix it
+					// In case of 422, mark the metrics as sent anyway, the API did not like what we sent,
+					// and it's unlikely we'll be able to fix it
 					continue
 				}
 			}
+
 			err = a.MarkUsageMetricsAsSent(metricsId)
 			if err != nil {
 				log.Errorf("unable to mark usage metrics as sent: %s", err)
 				continue
 			}
+
 			log.Infof("Sent %d usage metrics", len(metricsId))
 		}
 	}

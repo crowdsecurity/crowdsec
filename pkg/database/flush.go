@@ -99,6 +99,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
 		}
 	}
+
 	baJob, err := scheduler.Every(flushInterval).Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
@@ -130,7 +131,7 @@ func (c *Client) flushMetrics(maxAge *time.Duration) {
 		metric.CollectedAtLTE(time.Now().UTC().Add(-*maxAge)),
 	).Exec(c.CTX)
 	if err != nil {
-		c.Log.Errorf("while flushing metrics: %w", err)
+		c.Log.Errorf("while flushing metrics: %s", err)
 		return
 	}
 
@@ -154,7 +155,6 @@ func (c *Client) FlushOrphans() {
 
 	eventsCount, err = c.Ent.Decision.Delete().Where(
 		decision.Not(decision.HasOwner())).Where(decision.UntilLTE(time.Now().UTC())).Exec(c.CTX)
-
 	if err != nil {
 		c.Log.Warningf("error while deleting orphan decisions: %s", err)
 		return
@@ -175,7 +175,6 @@ func (c *Client) flushBouncers(authType string, duration *time.Duration) {
 	).Where(
 		bouncer.AuthTypeEQ(authType),
 	).Exec(c.CTX)
-
 	if err != nil {
 		c.Log.Errorf("while auto-deleting expired bouncers (%s): %s", authType, err)
 		return
@@ -196,7 +195,6 @@ func (c *Client) flushAgents(authType string, duration *time.Duration) {
 		machine.Not(machine.HasAlerts()),
 		machine.AuthTypeEQ(authType),
 	).Exec(c.CTX)
-
 	if err != nil {
 		c.Log.Errorf("while auto-deleting expired machines (%s): %s", authType, err)
 		return
@@ -290,7 +288,6 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			if maxid > 0 {
 				// This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
 				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(c.CTX)
-
 				if err != nil {
 					c.Log.Errorf("FlushAlerts: Could not delete alerts: %s", err)
 					return fmt.Errorf("could not delete alerts: %w", err)

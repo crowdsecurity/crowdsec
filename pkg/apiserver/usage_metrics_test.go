@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLPMetrics(t *testing.T) {
@@ -184,7 +185,6 @@ func TestLPMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			lapi := SetupLAPITest(t)
 
 			dbClient, err := database.NewClient(context.Background(), lapi.DBConfig)
@@ -211,7 +211,6 @@ func TestLPMetrics(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestRCMetrics(t *testing.T) {
@@ -356,7 +355,6 @@ func TestRCMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			lapi := SetupLAPITest(t)
 
 			dbClient, err := database.NewClient(context.Background(), lapi.DBConfig)
@@ -383,5 +381,4 @@ func TestRCMetrics(t *testing.T) {
 			}
 		})
 	}
-
 }

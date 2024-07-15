@@ -46,9 +46,11 @@ func collapseRepeatedPrefix(text string, prefix string) string {
 		count++
 		text = strings.TrimPrefix(text, prefix)
 	}
+
 	if count > 0 {
 		return prefix + text
 	}
+
 	return text
 }
 

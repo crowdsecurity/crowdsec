@@ -17,6 +17,7 @@ func (s *UsageMetricsService) Add(ctx context.Context, metrics *models.AllMetric
 	if err != nil {
 		return nil, nil, err
 	}
+
 	var response interface{}
 
 	resp, err := s.client.Do(ctx, req, &response)

@@ -28,6 +28,7 @@ func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string
 	if err != nil {
 		return fmt.Errorf("unable to update base bouncer metrics in database: %w", err)
 	}
+
 	return nil
 }
 

@@ -141,7 +141,7 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 
 	met := m.metricsPayload()
 
-	ticker := time.NewTicker(1) //Send on start
+	ticker := time.NewTicker(1) // Send on start
 
 	for {
 		select {

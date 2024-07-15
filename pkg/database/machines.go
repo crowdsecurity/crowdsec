@@ -55,7 +55,6 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.B
 		SetLastHeartbeat(heartbeat).
 		SetHubstate(hubState).
 		SetDatasources(datasources).
-		// TODO: update scenarios
 		Save(c.CTX)
 	if err != nil {
 		return fmt.Errorf("unable to update base machine metrics in database: %w", err)

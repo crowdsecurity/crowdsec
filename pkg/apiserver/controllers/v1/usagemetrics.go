@@ -2,7 +2,7 @@ package v1
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"time"
 
@@ -10,10 +10,11 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // updateBaseMetrics updates the base metrics for a machine or bouncer
@@ -24,7 +25,7 @@ func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, b
 	case bouncer != nil:
 		c.DBClient.BouncerUpdateBaseMetrics(bouncer.Name, bouncer.Type, baseMetrics)
 	default:
-		return fmt.Errorf("no machineID or bouncerName set")
+		return errors.New("no machineID or bouncerName set")
 	}
 
 	return nil
@@ -41,6 +42,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	if err := gctx.ShouldBindJSON(&input); err != nil {
 		logger.Errorf("Failed to bind json: %s", err)
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+
 		return
 	}
 
@@ -52,6 +54,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		}
 		logger.Errorf("Failed to validate usage metrics: %s", cleanErr)
 		gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": cleanErr.Error()})
+
 		return
 	}
 
@@ -64,6 +67,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	bouncer, _ := getBouncerFromContext(gctx)
 	if bouncer != nil {
 		logger.Tracef("Received usage metris for bouncer: %s", bouncer.Name)
+
 		generatedType = metric.GeneratedTypeRC
 		generatedBy = bouncer.Name
 	}
@@ -71,6 +75,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	machineID, _ := getMachineIDFromContext(gctx)
 	if machineID != "" {
 		logger.Tracef("Received usage metrics for log processor: %s", machineID)
+
 		generatedType = metric.GeneratedTypeLP
 		generatedBy = machineID
 	}
@@ -79,12 +84,14 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		// how did we get here?
 		logger.Error("No machineID or bouncer in request context after authentication")
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": "No machineID or bouncer in request context after authentication"})
+
 		return
 	}
 
 	if machineID != "" && bouncer != nil {
 		logger.Errorf("Payload has both machineID and bouncer")
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "Payload has both LP and RC data"})
+
 		return
 	}
 
@@ -100,6 +107,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		if machineID != "" {
 			logger.Errorf("Missing log processor data")
 			gctx.JSON(http.StatusBadRequest, gin.H{"message": "Missing log processor data"})
+
 			return
 		}
 	case 1:
@@ -111,8 +119,10 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		if err != nil {
 			logger.Errorf("Failed to validate log processor data: %s", err)
 			gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": err.Error()})
+
 			return
 		}
+
 		payload = map[string]any{
 			"metrics": item0.Metrics,
 		}
@@ -123,6 +133,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		logger.Errorf("Payload has more than one log processor")
 		// this is not checked in the swagger schema
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "Payload has more than one log processor"})
+
 		return
 	}
 
@@ -131,6 +142,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		if bouncer != nil {
 			logger.Errorf("Missing remediation component data")
 			gctx.JSON(http.StatusBadRequest, gin.H{"message": "Missing remediation component data"})
+
 			return
 		}
 	case 1:
@@ -140,6 +152,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		if err != nil {
 			logger.Errorf("Failed to validate remediation component data: %s", err)
 			gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": err.Error()})
+
 			return
 		}
 
@@ -164,6 +177,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	if err != nil {
 		logger.Errorf("Failed to update base metrics: %s", err)
 		c.HandleDBErrors(gctx, err)
+
 		return
 	}
 
@@ -178,12 +192,14 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	if err != nil {
 		logger.Errorf("Failed to marshal usage metrics: %s", err)
 		c.HandleDBErrors(gctx, err)
+
 		return
 	}
 
 	if _, err := c.DBClient.CreateMetric(generatedType, generatedBy, collectedAt, string(jsonPayload)); err != nil {
 		logger.Error(err)
 		c.HandleDBErrors(gctx, err)
+
 		return
 	}
 

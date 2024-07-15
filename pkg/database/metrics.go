@@ -100,8 +100,7 @@ func (c *Client) GetBouncerUsageMetricsByName(bouncerName string) ([]*ent.Metric
 func (c *Client) MarkUsageMetricsAsSent(ids []int) error {
 	_, err := c.Ent.Metric.Update().
 		Where(metric.IDIn(ids...)).
-		// XXX: no utc?
-		SetPushedAt(time.Now()).
+		SetPushedAt(time.Now().UTC()).
 		Save(c.CTX)
 	if err != nil {
 		c.Log.Warningf("MarkUsageMetricsAsSent: %s", err)

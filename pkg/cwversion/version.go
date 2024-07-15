@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	Codename string         // = "SoumSoum"
+	Codename string // = "SoumSoum"
 	Libre2   = "WebAssembly"
 )
 
