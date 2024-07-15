@@ -142,7 +142,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 
 	mp := NewMetricsProvider(
 		apiClient,
-		*cConfig.Crowdsec.MetricsInterval,
+		lpMetricsDefaultInterval,
 		log.WithField("service", "lpmetrics"),
 		cConfig.API.Server.ConsoleConfig.EnabledOptions(),
 		datasources,

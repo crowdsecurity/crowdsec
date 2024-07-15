@@ -332,7 +332,7 @@ func (a *apic) SendUsageMetrics() {
 
 	firstRun := true
 
-	ticker := time.NewTicker(time.Millisecond)
+	ticker := time.NewTicker(a.usageMetricsIntervalFirst)
 
 	for {
 		select {
@@ -343,7 +343,7 @@ func (a *apic) SendUsageMetrics() {
 		case <-ticker.C:
 			if firstRun {
 				firstRun = false
-				ticker.Reset(30 * time.Minute)
+				ticker.Reset(a.usageMetricsInterval)
 			}
 			metrics, metricsId, err := a.GetUsageMetrics()
 			if err != nil {
@@ -365,7 +365,7 @@ func (a *apic) SendUsageMetrics() {
 				log.Errorf("unable to mark usage metrics as sent: %s", err)
 				continue
 			}
-			log.Infof("Usage metrics sent")
+			log.Infof("Sent %d usage metrics", len(metricsId))
 		}
 	}
 }

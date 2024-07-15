@@ -58,13 +58,12 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 2500,
-				MetricsInterval:           ptr.Of(defaultMetricsInterval),
 				AcquisitionFiles:          []string{acquisFullPath},
 				SimulationFilePath:        "./testdata/simulation.yaml",
 				// context is loaded in pkg/alertcontext
-//				ContextToSend: map[string][]string{
-//					"source_ip": {"evt.Parsed.source_ip"},
-//				},
+				//				ContextToSend: map[string][]string{
+				//					"source_ip": {"evt.Parsed.source_ip"},
+				//				},
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
 				},
@@ -99,12 +98,11 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 0,
-				MetricsInterval:           ptr.Of(defaultMetricsInterval),
 				AcquisitionFiles:          []string{acquisFullPath, acquisInDirFullPath},
 				// context is loaded in pkg/alertcontext
-//				ContextToSend: map[string][]string{
-//					"source_ip": {"evt.Parsed.source_ip"},
-//				},
+				//				ContextToSend: map[string][]string{
+				//					"source_ip": {"evt.Parsed.source_ip"},
+				//				},
 				SimulationFilePath: "./testdata/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
@@ -138,13 +136,12 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 10,
-				MetricsInterval:           ptr.Of(defaultMetricsInterval),
 				AcquisitionFiles:          []string{},
 				SimulationFilePath:        "",
 				// context is loaded in pkg/alertcontext
-//				ContextToSend: map[string][]string{
-//					"source_ip": {"evt.Parsed.source_ip"},
-//				},
+				//				ContextToSend: map[string][]string{
+				//					"source_ip": {"evt.Parsed.source_ip"},
+				//				},
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
 				},

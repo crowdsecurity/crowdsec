@@ -4,17 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-)
-
-const (
-	defaultMetricsInterval = 30 * time.Minute
-	minimumMetricsInterval = 15 * time.Minute
 )
 
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
@@ -32,7 +26,6 @@ type CrowdsecServiceCfg struct {
 	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
-	MetricsInterval           *time.Duration    `yaml:"metrics_interval,omitempty"`
 
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
@@ -139,28 +132,11 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.AcquisitionFiles[i] = f
 	}
 
-	c.Crowdsec.setMetricsInterval()
-
 	if err = c.LoadAPIClient(); err != nil {
 		return fmt.Errorf("loading api client: %w", err)
 	}
 
 	return nil
-}
-
-func (c *CrowdsecServiceCfg) setMetricsInterval() {
-	switch {
-	case c.MetricsInterval == nil:
-		log.Tracef("metrics_interval is not set, default to %s", defaultMetricsInterval)
-		c.MetricsInterval = ptr.Of(defaultMetricsInterval)
-	case *c.MetricsInterval == time.Duration(0):
-		log.Info("metrics_interval is set to 0, disabling metrics")
-	case *c.MetricsInterval < minimumMetricsInterval:
-		log.Warnf("metrics_interval is too low (%s), setting it to %s", *c.MetricsInterval, minimumMetricsInterval)
-		c.MetricsInterval = ptr.Of(minimumMetricsInterval)
-	default:
-		log.Tracef("metrics_interval set to %s", c.MetricsInterval)
-	}
 }
 
 func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {

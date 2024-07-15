@@ -21,6 +21,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
+const lpMetricsDefaultInterval = 30 * time.Minute
+
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
 	apic     *apiclient.ApiClient
