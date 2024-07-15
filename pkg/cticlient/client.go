@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -43,7 +44,10 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("X-Api-Key", c.apiKey)
+	req.Header.Set("User-Agent", cwversion.UserAgent())
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
