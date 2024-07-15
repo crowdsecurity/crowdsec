@@ -33,7 +33,7 @@ type DatabaseCfg struct {
 	Type             string      `yaml:"type"`
 	Flush            *FlushDBCfg `yaml:"flush"`
 	LogLevel         *log.Level  `yaml:"log_level"`
-	MaxOpenConns     *int        `yaml:"max_open_conns,omitempty"`
+	MaxOpenConns     int         `yaml:"max_open_conns,omitempty"`
 	UseWal           *bool       `yaml:"use_wal,omitempty"`
 	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
 }
@@ -68,8 +68,8 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 		c.API.Server.DbConfig = c.DbConfig
 	}
 
-	if c.DbConfig.MaxOpenConns == nil {
-		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
+	if c.DbConfig.MaxOpenConns == 0 {
+		c.DbConfig.MaxOpenConns = DEFAULT_MAX_OPEN_CONNS
 	}
 
 	if !inCli && c.DbConfig.Type == "sqlite" {
@@ -134,6 +134,7 @@ func (d *DatabaseCfg) ConnectionString() string {
 		} else {
 			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
 		}
+
 		if d.Sslmode != "" {
 			connString = fmt.Sprintf("%s&tls=%s", connString, d.Sslmode)
 		}
