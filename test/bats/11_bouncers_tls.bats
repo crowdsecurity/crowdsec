@@ -162,6 +162,33 @@ teardown() {
     rune cscli bouncers delete localhost@127.0.0.1
 }
 
+@test "a bouncer authenticated with TLS can send metrics" {
+    payload=$(yq -o j <<-EOT
+	remediation_components: []
+	log_processors: []
+	EOT
+    )
+
+    # with mutual authentication there is no api key, so it's detected as RC if user agent != crowdsec
+
+    rune -22 curl --fail-with-body -sS \
+        --cert "$tmpdir/leaf.pem" \
+        --key "$tmpdir/leaf-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
+        https://localhost:8080/v1/usage-metrics -X POST --data "$payload"
+    assert_stderr --partial 'error: 400'
+    assert_json '{message: "Missing remediation component data"}'
+
+    rune -22 curl --fail-with-body -sS \
+        --cert "$tmpdir/leaf.pem" \
+        --key "$tmpdir/leaf-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
+        --user-agent "crowdsec/someversion" \
+        https://localhost:8080/v1/usage-metrics -X POST --data "$payload"
+    assert_stderr --partial 'error: 401'
+    assert_json '{code:401, message: "cookie token is empty"}'
+}
+
 @test "simulate a bouncer request with an invalid cert" {
     rune -77 curl --fail-with-body -sS \
         --cert "$tmpdir/leaf_invalid.pem" \

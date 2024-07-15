@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/alexliesenfeld/health"
 	"github.com/gin-gonic/gin"
@@ -61,11 +62,17 @@ func serveHealth() http.HandlerFunc {
 
 func eitherAuthMiddleware(jwtMiddleware gin.HandlerFunc, apiKeyMiddleware gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// XXX: what when there's no api key for a RC?
-		if c.GetHeader("X-Api-Key") != "" {
+		switch {
+		case c.GetHeader("X-Api-Key") != "":
 			apiKeyMiddleware(c)
-		} else {
+		case c.GetHeader("Authorization") != "":
 			jwtMiddleware(c)
+		// uh no auth header. is this TLS with mutual authentication?
+		case strings.HasPrefix(c.Request.UserAgent(), "crowdsec/"):
+			// guess log processors by sniffing user-agent
+			jwtMiddleware(c)
+		default:
+			apiKeyMiddleware(c)
 		}
 	}
 }

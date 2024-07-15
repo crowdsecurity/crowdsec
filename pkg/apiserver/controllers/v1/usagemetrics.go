@@ -75,6 +75,13 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		generatedBy = machineID
 	}
 
+	if generatedBy == "" {
+		// how did we get here?
+		logger.Error("No machineID or bouncer in request context after authentication")
+		gctx.JSON(http.StatusInternalServerError, gin.H{"message": "No machineID or bouncer in request context after authentication"})
+		return
+	}
+
 	if machineID != "" && bouncer != nil {
 		logger.Errorf("Payload has both machineID and bouncer")
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "Payload has both LP and RC data"})

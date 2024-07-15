@@ -15,7 +15,6 @@ setup() {
     load "../lib/setup.sh"
     ./instance-data load
     ./instance-crowdsec start
-    skip "require the usage_metrics endpoint on apiserver"
 }
 
 teardown() {
