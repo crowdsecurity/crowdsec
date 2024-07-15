@@ -187,6 +187,8 @@ teardown() {
         https://localhost:8080/v1/usage-metrics -X POST --data "$payload"
     assert_stderr --partial 'error: 401'
     assert_json '{code:401, message: "cookie token is empty"}'
+
+    rune cscli bouncers delete localhost@127.0.0.1
 }
 
 @test "simulate a bouncer request with an invalid cert" {
