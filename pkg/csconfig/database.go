@@ -134,6 +134,7 @@ func (d *DatabaseCfg) ConnectionString() string {
 		} else {
 			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
 		}
+
 		if d.Sslmode != "" {
 			connString = fmt.Sprintf("%s&tls=%s", connString, d.Sslmode)
 		}
