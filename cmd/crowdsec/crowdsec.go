@@ -8,7 +8,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -149,8 +148,6 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		datasources,
 		hub,
 	)
-
-	lpMetricsTomb := tomb.Tomb{}
 
 	lpMetricsTomb.Go(func() error {
 		// XXX: context?

@@ -179,6 +179,13 @@ func ShutdownCrowdsecRoutines() error {
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
+	lpMetricsTomb.Kill(nil)
+
+	if err := lpMetricsTomb.Wait(); err != nil {
+		log.Warningf("Metrics returned error : %s", err)
+		reterr = err
+	}
+
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
 
