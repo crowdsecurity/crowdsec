@@ -6,18 +6,18 @@ import (
 
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
-	Output             string            `yaml:"output,omitempty"`
-	Color              string            `yaml:"color,omitempty"`
-	HubBranch          string            `yaml:"hub_branch"`
-	HubURLTemplate     string            `yaml:"__hub_url_template__,omitempty"`
-	SimulationConfig   *SimulationConfig `yaml:"-"`
-	DbConfig           *DatabaseCfg      `yaml:"-"`
+	Output           string            `yaml:"output,omitempty"`
+	Color            string            `yaml:"color,omitempty"`
+	HubBranch        string            `yaml:"hub_branch"`
+	HubURLTemplate   string            `yaml:"__hub_url_template__,omitempty"`
+	SimulationConfig *SimulationConfig `yaml:"-"`
+	DbConfig         *DatabaseCfg      `yaml:"-"`
 
-	SimulationFilePath string            `yaml:"-"`
-	PrometheusUrl      string            `yaml:"prometheus_uri"`
+	SimulationFilePath string `yaml:"-"`
+	PrometheusUrl      string `yaml:"prometheus_uri"`
 }
 
-const defaultHubURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+const defaultHubURLTemplate = "https://cdn-hub.crowdsec.net/%s/%s"
 
 func (c *Config) loadCSCLI() error {
 	if c.Cscli == nil {
