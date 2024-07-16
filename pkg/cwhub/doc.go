@@ -101,7 +101,7 @@
 // To provide the remote hub configuration, use the second parameter of NewHub():
 //
 //	remoteHub := cwhub.RemoteHubCfg{
-//		URLTemplate: "https://cdn-hub.crowdsec.net/%s/%s",
+//		URLTemplate: "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s",
 //		Branch: "master",
 //		IndexPath: ".index.json",
 //	}
