@@ -241,7 +241,8 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		SetLeakSpeed(*alertItem.Leakspeed).
 		SetSimulated(*alertItem.Simulated).
 		SetScenarioVersion(*alertItem.ScenarioVersion).
-		SetScenarioHash(*alertItem.ScenarioHash)
+		SetScenarioHash(*alertItem.ScenarioHash).
+		SetRemediation(true) // it's from CAPI, we always have decisions
 
 	alertRef, err := alertB.Save(c.CTX)
 	if err != nil {
@@ -554,7 +555,6 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 				if len(metaItem.Value) > 4095 {
 					c.Log.Warningf("truncated meta %s : value too long", metaItem.Key)
-
 					value = value[:4095]
 				}
 
@@ -618,6 +618,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
+			SetRemediation(alertItem.Remediation).
 			SetUUID(alertItem.UUID).
 			AddEvents(events...).
 			AddMetas(metas...)
@@ -677,7 +678,6 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			}
 		}
 	}
-
 	return ret, nil
 }
 

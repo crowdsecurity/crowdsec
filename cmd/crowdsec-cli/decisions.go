@@ -374,9 +374,10 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 			Scope:    &addScope,
 			Value:    &addValue,
 		},
-		StartAt:   &startAt,
-		StopAt:    &stopAt,
-		CreatedAt: createdAt,
+		StartAt:     &startAt,
+		StopAt:      &stopAt,
+		CreatedAt:   createdAt,
+		Remediation: true,
 	}
 	alerts = append(alerts, &alert)
 
