@@ -43,6 +43,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
 		Simulated:       &alert.Simulated,
+		Remediation:     alert.Remediation,
 		UUID:            alert.UUID,
 		Source: &models.Source{
 			Scope:     &alert.SourceScope,
