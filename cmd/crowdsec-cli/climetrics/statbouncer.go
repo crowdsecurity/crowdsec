@@ -34,8 +34,8 @@ type statBouncer struct {
 	oldestTS map[string]*time.Time
 	// we keep de-normalized metrics so we can iterate
 	// over them multiple times and keep the aggregation code simple
-	rawMetrics []bouncerMetricItem
-	aggregated map[string]map[string]map[string]map[string]int64
+	rawMetrics          []bouncerMetricItem
+	aggregated          map[string]map[string]map[string]map[string]int64
 	aggregatedAllOrigin map[string]map[string]map[string]int64
 }
 
@@ -57,6 +57,7 @@ func (s *statBouncer) Description() (string, string) {
 func warnOnce(warningsLogged map[string]bool, msg string) {
 	if _, ok := warningsLogged[msg]; !ok {
 		log.Warningf(msg)
+
 		warningsLogged[msg] = true
 	}
 }
@@ -200,6 +201,7 @@ func (s *statBouncer) aggregate() {
 // bouncerTable displays a table of metrics for a single bouncer
 func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor string, noUnit bool) {
 	columns := make(map[string]map[string]bool)
+
 	for _, item := range s.rawMetrics {
 		if item.bouncerName != bouncerName {
 			continue
@@ -208,6 +210,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		if _, ok := columns[item.name]; !ok {
 			columns[item.name] = make(map[string]bool)
 		}
+
 		columns[item.name][item.unit] = true
 	}
 
@@ -225,16 +228,16 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	colNum := 1
 
 	colCfg := []table.ColumnConfig{{
-		Number:colNum,
-		AlignHeader:
-		text.AlignLeft,
-		Align: text.AlignLeft,
+		Number:      colNum,
+		AlignHeader: text.AlignLeft,
+		Align:       text.AlignLeft,
 		AlignFooter: text.AlignRight,
 	}}
 
 	for _, name := range maptools.SortedKeys(columns) {
 		for _, unit := range maptools.SortedKeys(columns[name]) {
 			colNum += 1
+
 			header1 = append(header1, name)
 
 			// we don't add "s" to random words
@@ -244,11 +247,11 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 			header2 = append(header2, unit)
 			colCfg = append(colCfg, table.ColumnConfig{
-				Number: colNum,
+				Number:      colNum,
 				AlignHeader: text.AlignCenter,
-				Align: text.AlignRight,
-				AlignFooter: text.AlignRight},
-			)
+				Align:       text.AlignRight,
+				AlignFooter: text.AlignRight,
+			})
 		}
 	}
 
@@ -277,16 +280,20 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		}
 
 		row := table.Row{origin}
+
 		for _, name := range maptools.SortedKeys(columns) {
 			for _, unit := range maptools.SortedKeys(columns[name]) {
 				valStr := "-"
+
 				val, ok := metrics[name][unit]
 				if ok {
 					valStr = formatNumber(val, !noUnit)
 				}
+
 				row = append(row, valStr)
 			}
 		}
+
 		t.AppendRow(row)
 
 		numRows += 1
@@ -299,6 +306,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	}
 
 	footer := table.Row{"Total"}
+
 	for _, name := range maptools.SortedKeys(columns) {
 		for _, unit := range maptools.SortedKeys(columns[name]) {
 			footer = append(footer, formatNumber(totals[name][unit], !noUnit))
@@ -309,16 +317,19 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 	title, _ := s.Description()
 	title = fmt.Sprintf("%s (%s)", title, bouncerName)
+
 	if s.oldestTS != nil {
 		// if we change this to .Local() beware of tests
 		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
 	}
+
 	title += ":"
 
 	// don't use SetTitle() because it draws the title inside table box
-	// TODO: newline position wrt other stat tables
-	cstable.RenderTitle(out, title)
-	fmt.Fprintln(out, t.Render())
+	io.WriteString(out, title+"\n")
+	io.WriteString(out, t.Render() + "\n")
+	// empty line between tables
+	io.WriteString(out, "\n")
 }
 
 // Table displays a table of metrics for each bouncer
@@ -328,13 +339,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, _ bool
 		bouncerNames[item.bouncerName] = true
 	}
 
-	nl := false
 	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
-		if nl {
-			// empty line between tables
-			fmt.Fprintln(out)
-		}
 		s.bouncerTable(out, bouncerName, wantColor, noUnit)
-		nl = true
 	}
 }

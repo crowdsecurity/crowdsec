@@ -5,17 +5,16 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
 // ErrNilTable means a nil pointer was passed instead of a table instance. This is a programming error.
 var ErrNilTable = errors.New("nil table")
 
-func lapiMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]int) int {
+func lapiMetricsToTable(t table.Writer, stats map[string]map[string]map[string]int) int {
 	// stats: machine -> route -> method -> count
 	// sort keys to keep consistent order when printing
 	machineKeys := []string{}
@@ -32,7 +31,7 @@ func lapiMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string
 		machineRow := stats[machine]
 		for routeName, route := range machineRow {
 			for methodName, count := range route {
-				row := []string{
+				row := table.Row{
 					machine,
 					routeName,
 					methodName,
@@ -43,7 +42,7 @@ func lapiMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string
 					row = append(row, "-")
 				}
 
-				t.AddRow(row...)
+				t.AppendRow(row)
 
 				numRows++
 			}
@@ -53,7 +52,7 @@ func lapiMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string
 	return numRows
 }
 
-func wlMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
+func wlMetricsToTable(t table.Writer, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, ErrNilTable
 	}
@@ -62,7 +61,7 @@ func wlMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]i
 
 	for _, name := range maptools.SortedKeys(stats) {
 		for _, reason := range maptools.SortedKeys(stats[name]) {
-			row := []string{
+			row := table.Row{
 				name,
 				reason,
 				"-",
@@ -82,7 +81,7 @@ func wlMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]i
 				}
 			}
 
-			t.AddRow(row...)
+			t.AppendRow(row)
 
 			numRows++
 		}
@@ -91,7 +90,7 @@ func wlMetricsToTable(t *cstable.Table, stats map[string]map[string]map[string]i
 	return numRows, nil
 }
 
-func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
+func metricsToTable(t table.Writer, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, ErrNilTable
 	}
@@ -104,9 +103,7 @@ func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []st
 			continue
 		}
 
-		row := []string{
-			alabel,
-		}
+		row := table.Row{alabel}
 
 		for _, sl := range keys {
 			if v, ok := astats[sl]; ok && v != 0 {
@@ -116,7 +113,7 @@ func metricsToTable(t *cstable.Table, stats map[string]map[string]int, keys []st
 			}
 		}
 
-		t.AddRow(row...)
+		t.AppendRow(row)
 
 		numRows++
 	}

@@ -142,7 +142,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
 	}
 
-	fmt.Fprintln(out, t.Render())
+	io.WriteString(out, t.Render() + "\n")
 }
 
 // bouncerInfo contains only the data we want for inspect/list
@@ -475,7 +475,7 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
-	fmt.Fprintln(out, t.Render())
+	io.WriteString(out, t.Render() + "\n")
 }
 
 func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {

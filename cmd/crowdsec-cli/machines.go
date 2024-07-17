@@ -184,7 +184,7 @@ func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendHeader(table.Row{"Name", "Status", "Version"})
 		t.SetTitle(itemType)
 		t.AppendRows(rows)
-		fmt.Fprintln(out, t.Render())
+		io.WriteString(out, t.Render() + "\n")
 	}
 }
 
@@ -206,7 +206,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, getOSNameAndVersion(m), m.AuthType, hb})
 	}
 
-	fmt.Fprintln(out, t.Render())
+	io.WriteString(out, t.Render() + "\n")
 }
 
 // machineInfo contains only the data we want for inspect/list: no hub status, scenarios, edges, etc.
@@ -658,7 +658,7 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Collections", coll.Name})
 	}
 
-	fmt.Fprintln(out, t.Render())
+	io.WriteString(out, t.Render() + "\n")
 }
 
 func (cli *cliMachines) inspect(machine *ent.Machine) error {
