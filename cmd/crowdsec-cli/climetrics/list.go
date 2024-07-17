@@ -6,10 +6,9 @@ import (
 	"io"
 
 	"github.com/fatih/color"
-	"github.com/spf13/cobra"
-
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
@@ -44,20 +43,21 @@ func (cli *cliMetrics) list() error {
 		t.AppendHeader(table.Row{"Type", "Title", "Description"})
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{
-				Name: "Type",
+				Name:        "Type",
 				AlignHeader: text.AlignCenter,
 			},
 			{
-				Name: "Title",
+				Name:        "Title",
 				AlignHeader: text.AlignCenter,
 			},
 			{
-				Name: "Description",
-				AlignHeader: text.AlignCenter,
-				WidthMax: 60,
+				Name:             "Description",
+				AlignHeader:      text.AlignCenter,
+				WidthMax:         60,
 				WidthMaxEnforcer: text.WrapSoft,
 			},
 		})
+
 		t.Style().Options.SeparateRows = true
 
 		for _, metric := range allMetrics {

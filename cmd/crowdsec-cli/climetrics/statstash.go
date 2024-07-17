@@ -45,7 +45,6 @@ func (s statStash) Table(out io.Writer, wantColor string, noUnit bool, showEmpty
 			alabel,
 			astats.Type,
 			strconv.Itoa(astats.Count),
-
 		})
 
 		numRows++
