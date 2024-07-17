@@ -52,6 +52,7 @@ func (Alert) Fields() []ent.Field {
 		field.String("scenarioHash").Optional().Immutable(),
 		field.Bool("simulated").Default(false).Immutable(),
 		field.String("uuid").Optional().Immutable(), // this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each alert
+		field.Bool("remediation").Optional().Immutable(),
 	}
 }
 
