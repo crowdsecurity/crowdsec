@@ -4,7 +4,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
@@ -30,22 +30,21 @@ func (s statDecision) Process(reason, origin, action string, val int) {
 }
 
 func (s statDecision) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Reason", "Origin", "Action", "Count")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Reason", "Origin", "Action", "Count"})
 
 	numRows := 0
 
+	// TODO: sort by reason, origin, action
 	for reason, origins := range s {
 		for origin, actions := range origins {
 			for action, hits := range actions {
-				t.AddRow(
+				t.AppendRow(table.Row{
 					reason,
 					origin,
 					action,
 					strconv.Itoa(hits),
-				)
+				})
 
 				numRows++
 			}
@@ -55,7 +54,7 @@ func (s statDecision) Table(out io.Writer, wantColor string, noUnit bool, showEm
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		io.WriteString(out, title + ":\n")
-		t.Render()
+		io.WriteString(out, t.Render() + "\n")
 		io.WriteString(out, "\n")
 	}
 }

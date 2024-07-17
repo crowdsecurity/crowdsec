@@ -3,7 +3,7 @@ package climetrics
 import (
 	"io"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
@@ -25,10 +25,8 @@ func (s statAppsecEngine) Process(appsecEngine, metric string, val int) {
 }
 
 func (s statAppsecEngine) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Appsec Engine", "Processed", "Blocked"})
 
 	keys := []string{"processed", "blocked"}
 
@@ -37,7 +35,7 @@ func (s statAppsecEngine) Table(out io.Writer, wantColor string, noUnit bool, sh
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		io.WriteString(out, title + ":\n")
-		t.Render()
+		io.WriteString(out, t.Render() + "\n")
 		io.WriteString(out, "\n")
 	}
 }

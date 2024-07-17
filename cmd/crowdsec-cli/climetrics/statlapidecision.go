@@ -4,7 +4,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
@@ -40,19 +40,17 @@ func (s statLapiDecision) Process(bouncer, fam string, val int) {
 }
 
 func (s statLapiDecision) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Bouncer", "Empty answers", "Non-empty answers")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Bouncer", "Empty answers", "Non-empty answers"})
 
 	numRows := 0
 
 	for bouncer, hits := range s {
-		t.AddRow(
+		t.AppendRow(table.Row{
 			bouncer,
 			strconv.Itoa(hits.Empty),
 			strconv.Itoa(hits.NonEmpty),
-		)
+		})
 
 		numRows++
 	}
@@ -60,7 +58,7 @@ func (s statLapiDecision) Table(out io.Writer, wantColor string, noUnit bool, sh
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		io.WriteString(out, title + ":\n")
-		t.Render()
+		io.WriteString(out, t.Render() + "\n")
 		io.WriteString(out, "\n")
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
@@ -21,18 +21,17 @@ func (s statAlert) Process(reason string, val int) {
 }
 
 func (s statAlert) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Reason", "Count")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Reason", "Count"})
 
 	numRows := 0
 
+	// TODO: sort keys
 	for scenario, hits := range s {
-		t.AddRow(
+		t.AppendRow(table.Row{
 			scenario,
 			strconv.Itoa(hits),
-		)
+		})
 
 		numRows++
 	}
@@ -40,7 +39,7 @@ func (s statAlert) Table(out io.Writer, wantColor string, noUnit bool, showEmpty
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		io.WriteString(out, title + ":\n")
-		t.Render()
+		io.WriteString(out, t.Render() + "\n")
 		io.WriteString(out, "\n")
 	}
 }

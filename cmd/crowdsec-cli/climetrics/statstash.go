@@ -4,7 +4,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
@@ -32,10 +32,8 @@ func (s statStash) Process(name, mtype string, val int) {
 }
 
 func (s statStash) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Name", "Type", "Items")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Name", "Type", "Items"})
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
 	numRows := 0
@@ -43,12 +41,12 @@ func (s statStash) Table(out io.Writer, wantColor string, noUnit bool, showEmpty
 	for _, alabel := range maptools.SortedKeys(s) {
 		astats := s[alabel]
 
-		row := []string{
+		t.AppendRow(table.Row{
 			alabel,
 			astats.Type,
 			strconv.Itoa(astats.Count),
-		}
-		t.AddRow(row...)
+
+		})
 
 		numRows++
 	}
@@ -56,7 +54,7 @@ func (s statStash) Table(out io.Writer, wantColor string, noUnit bool, showEmpty
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		io.WriteString(out, title + ":\n")
-		t.Render()
+		io.WriteString(out, t.Render() + "\n")
 		io.WriteString(out, "\n")
 	}
 }

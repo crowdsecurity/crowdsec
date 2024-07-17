@@ -3,7 +3,7 @@ package climetrics
 import (
 	"io"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
@@ -29,17 +29,15 @@ func (s statWhitelist) Process(whitelist, reason, metric string, val int) {
 }
 
 func (s statWhitelist) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Whitelist", "Reason", "Hits", "Whitelisted")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Whitelist", "Reason", "Hits", "Whitelisted"})
 
 	if numRows, err := wlMetricsToTable(t, s, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		io.WriteString(out, title + ":\n")
-		t.Render()
+		io.WriteString(out, t.Render() + "\n")
 		io.WriteString(out, "\n")
 	}
 }
