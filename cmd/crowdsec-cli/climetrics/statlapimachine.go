@@ -3,7 +3,7 @@ package climetrics
 import (
 	"io"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
@@ -28,16 +28,15 @@ func (s statLapiMachine) Process(machine, route, method string, val int) {
 }
 
 func (s statLapiMachine) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Machine", "Route", "Method", "Hits")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Machine", "Route", "Method", "Hits"})
 
 	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		cstable.RenderTitle(out, "\n"+title+":")
-		t.Render()
+		io.WriteString(out, title + ":\n")
+		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, "\n")
 	}
 }

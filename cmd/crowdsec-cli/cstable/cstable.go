@@ -13,18 +13,6 @@ import (
 	isatty "github.com/mattn/go-isatty"
 )
 
-func RenderTitle(out io.Writer, title string) {
-	if out == nil {
-		panic("renderTableTitle: out is nil")
-	}
-
-	if title == "" {
-		return
-	}
-
-	fmt.Fprintln(out, title)
-}
-
 func shouldWeColorize(wantColor string) bool {
 	switch wantColor {
 	case "yes":
