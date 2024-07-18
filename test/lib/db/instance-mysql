@@ -21,7 +21,7 @@ about() {
 
 check_requirements() {
     if ! command -v mysql >/dev/null; then
-        die "missing required program 'mysql' as a mysql client (package mariadb-client-core-10.6 on debian like system)"
+        die "missing required program 'mysql' as a mysql client (package mariadb-client on debian like system)"
     fi
 }
 
