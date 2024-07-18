@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-const mockURLTemplate = "https://cdn-hub.crowdsec.net/crowdsecurity/%s/index/%s"
+const mockURLTemplate = "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s"
 
 /*
  To test :
