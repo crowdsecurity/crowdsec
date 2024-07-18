@@ -333,6 +333,8 @@ fi
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
     if istrue "$(conf_get '.db_config.type == "sqlite"')"; then
+        # force the creation of the db file(s)
+        cscli machines inspect create-db --error >/dev/null 2>&1 || :
         # don't fail if the db is not there yet
         if chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null; then
             echo "sqlite database permissions updated"
