@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
@@ -30,19 +30,19 @@ func (s statAppsecRule) Process(appsecEngine, appsecRule string, metric string, 
 }
 
 func (s statAppsecRule) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	// TODO: sort keys
 	for appsecEngine, appsecEngineRulesStats := range s {
-		t := cstable.New(out, wantColor)
-		t.SetRowLines(false)
-		t.SetHeaders("Rule ID", "Triggered")
-		t.SetAlignment(text.AlignLeft, text.AlignLeft)
+		t := cstable.New(out, wantColor).Writer
+		t.AppendHeader(table.Row{"Rule ID", "Triggered"})
 
 		keys := []string{"triggered"}
 
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
 		} else if numRows > 0 || showEmpty {
-			cstable.RenderTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
-			t.Render()
+			io.WriteString(out, fmt.Sprintf("Appsec '%s' Rules Metrics:\n", appsecEngine))
+			io.WriteString(out, t.Render() + "\n")
+			io.WriteString(out, "\n")
 		}
 	}
 }
