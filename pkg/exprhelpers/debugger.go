@@ -108,9 +108,6 @@ func (o *OpOutput) String() string {
 }
 
 func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
-
-	code_snippet := ""
-
 	locations := program.Locations()
 	src := string(program.Source())
 
@@ -134,61 +131,6 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 	}
 
 	return cleanTextForDebug(src[locations[ip].From:end])
-
-	//log.Tracef("# extracting code for ip %d [%s]", ip, parts[1])
-	/*if program.Locations()[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the beginning)
-		log.Tracef("zero location ?")
-		return ""
-	}
-	startLine := program.Locations()[ip].Line
-	startColumn := program.Locations()[ip].Column
-	lines := strings.Split(string(program.Source()), "\n")
-
-	endCol := 0
-	endLine := 0
-
-	for i := ip + 1; i < len(program.Locations()); i++ {
-		if program.Locations()[i].Line > startLine || (program.Locations()[i].Line == startLine && program.Locations()[i].Column > startColumn) {
-			//we didn't had values yet and it's superior to current one, take it
-			if endLine == 0 && endCol == 0 {
-				endLine = program.Locations()[i].Line
-				endCol = program.Locations()[i].Column
-			}
-			//however, we are looking for the closest upper one
-			if program.Locations()[i].Line < endLine || (program.Locations()[i].Line == endLine && program.Locations()[i].Column < endCol) {
-				endLine = program.Locations()[i].Line
-				endCol = program.Locations()[i].Column
-			}
-
-		}
-	}
-	//maybe it was the last instruction ?
-	if endCol == 0 && endLine == 0 {
-		endLine = len(lines)
-		endCol = len(lines[endLine-1])
-	}
-	code_snippet := ""
-	startLine -= 1 //line count starts at 1
-	endLine -= 1
-
-	for i := startLine; i <= endLine; i++ {
-		if i == startLine {
-			if startLine != endLine {
-				code_snippet += lines[i][startColumn:]
-				continue
-			}
-			code_snippet += lines[i][startColumn:endCol]
-			break
-		}
-		if i == endLine {
-			code_snippet += lines[i][:endCol]
-			break
-		}
-		code_snippet += lines[i]
-	}
-
-	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)*/
-	return cleanTextForDebug(code_snippet)
 }
 
 func autoQuote(v any) string {
