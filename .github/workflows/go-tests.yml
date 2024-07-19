@@ -156,7 +156,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v4
+      uses: golangci/golangci-lint-action@v6
       with:
         version: v1.59
         args: --issues-exit-code=1 --timeout 10m
