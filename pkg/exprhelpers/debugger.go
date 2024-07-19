@@ -110,19 +110,16 @@ func (o *OpOutput) String() string {
 func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
 
 	code_snippet := ""
-	fmt.Printf("extractCode: %d %v\n", ip, parts)
-	fmt.Printf("extractCode: %d %v\n", ip, program.Locations())
-	fmt.Printf("extractCode: %d %v\n", ip, program.Source())
 
 	locations := program.Locations()
 	src := string(program.Source())
 
-	target := locations[ip]
+	currentInstruction := locations[ip]
 
 	var closest *file.Location
 
 	for i := ip + 1; i < len(locations); i++ {
-		if locations[i].From > target.From {
+		if locations[i].From > currentInstruction.From {
 			if closest == nil || locations[i].From < closest.From {
 				closest = &locations[i]
 			}
@@ -131,9 +128,9 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 
 	end := 0
 	if closest == nil {
-		end = len(src) - 1
+		end = len(src)
 	} else {
-		end = closest.To
+		end = closest.From
 	}
 
 	return cleanTextForDebug(src[locations[ip].From:end])
