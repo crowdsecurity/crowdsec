@@ -121,10 +121,10 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 
 	var closest *file.Location
 
-	for i, pos := range locations {
-		if i != ip && (pos.From > target.From || (pos.From == target.From && pos.To > target.To)) {
-			if closest == nil || pos.From < closest.From || (pos.From == closest.From && pos.To < closest.To) {
-				closest = &pos
+	for i := ip + 1; i < len(locations); i++ {
+		if locations[i].From > target.From {
+			if closest == nil || locations[i].From < closest.From {
+				closest = &locations[i]
 			}
 		}
 	}
@@ -133,7 +133,7 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 	if closest == nil {
 		end = len(src) - 1
 	} else {
-		end = closest.To + 1
+		end = closest.To
 	}
 
 	return cleanTextForDebug(src[locations[ip].From:end])
