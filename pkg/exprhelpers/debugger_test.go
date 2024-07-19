@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/antonmedv/expr"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -52,6 +52,7 @@ type teststruct struct {
 	Foo string
 }
 
+// You need to add the tag expr_debug when running the tests
 func TestBaseDbg(t *testing.T) {
 	defaultEnv := map[string]interface{}{
 		"queue":        &types.Queue{},

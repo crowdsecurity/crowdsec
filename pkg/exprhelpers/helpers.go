@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
 	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/client_golang/prometheus"

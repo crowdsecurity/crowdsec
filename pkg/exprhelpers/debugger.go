@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/file"
+	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -108,29 +109,58 @@ func (o *OpOutput) String() string {
 
 func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
 
+	code_snippet := ""
+	fmt.Printf("extractCode: %d %v\n", ip, parts)
+	fmt.Printf("extractCode: %d %v\n", ip, program.Locations())
+	fmt.Printf("extractCode: %d %v\n", ip, program.Source())
+
+	locations := program.Locations()
+	src := string(program.Source())
+
+	target := locations[ip]
+
+	var closest *file.Location
+
+	for i, pos := range locations {
+		if i != ip && (pos.From > target.From || (pos.From == target.From && pos.To > target.To)) {
+			if closest == nil || pos.From < closest.From || (pos.From == closest.From && pos.To < closest.To) {
+				closest = &pos
+			}
+		}
+	}
+
+	end := 0
+	if closest == nil {
+		end = len(src) - 1
+	} else {
+		end = closest.To + 1
+	}
+
+	return cleanTextForDebug(src[locations[ip].From:end])
+
 	//log.Tracef("# extracting code for ip %d [%s]", ip, parts[1])
-	if program.Locations[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the beginning)
+	/*if program.Locations()[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the beginning)
 		log.Tracef("zero location ?")
 		return ""
 	}
-	startLine := program.Locations[ip].Line
-	startColumn := program.Locations[ip].Column
-	lines := strings.Split(program.Source.Content(), "\n")
+	startLine := program.Locations()[ip].Line
+	startColumn := program.Locations()[ip].Column
+	lines := strings.Split(string(program.Source()), "\n")
 
 	endCol := 0
 	endLine := 0
 
-	for i := ip + 1; i < len(program.Locations); i++ {
-		if program.Locations[i].Line > startLine || (program.Locations[i].Line == startLine && program.Locations[i].Column > startColumn) {
+	for i := ip + 1; i < len(program.Locations()); i++ {
+		if program.Locations()[i].Line > startLine || (program.Locations()[i].Line == startLine && program.Locations()[i].Column > startColumn) {
 			//we didn't had values yet and it's superior to current one, take it
 			if endLine == 0 && endCol == 0 {
-				endLine = program.Locations[i].Line
-				endCol = program.Locations[i].Column
+				endLine = program.Locations()[i].Line
+				endCol = program.Locations()[i].Column
 			}
 			//however, we are looking for the closest upper one
-			if program.Locations[i].Line < endLine || (program.Locations[i].Line == endLine && program.Locations[i].Column < endCol) {
-				endLine = program.Locations[i].Line
-				endCol = program.Locations[i].Column
+			if program.Locations()[i].Line < endLine || (program.Locations()[i].Line == endLine && program.Locations()[i].Column < endCol) {
+				endLine = program.Locations()[i].Line
+				endCol = program.Locations()[i].Column
 			}
 
 		}
@@ -160,7 +190,7 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 		code_snippet += lines[i]
 	}
 
-	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)
+	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)*/
 	return cleanTextForDebug(code_snippet)
 }
 
@@ -189,7 +219,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		prevIdxOut = IdxOut - 1
 		currentDepth = outputs[prevIdxOut].CodeDepth
 		if outputs[prevIdxOut].Func && !outputs[prevIdxOut].Finalized {
-			stack := vm.Stack()
+			stack := vm.Stack
 			num_items := 1
 			for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
 				outputs[prevIdxOut].FuncResults = append(outputs[prevIdxOut].FuncResults, autoQuote(stack[i]))
@@ -197,7 +227,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 			}
 			outputs[prevIdxOut].Finalized = true
 		} else if (outputs[prevIdxOut].Comparison || outputs[prevIdxOut].Condition) && !outputs[prevIdxOut].Finalized {
-			stack := vm.Stack()
+			stack := vm.Stack
 			outputs[prevIdxOut].StrConditionResult = fmt.Sprintf("%+v", stack)
 			if val, ok := stack[0].(bool); ok {
 				outputs[prevIdxOut].ConditionResult = new(bool)
@@ -207,7 +237,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		}
 	}
 
-	erp.Logger.Tracef("[STEP %d:%s] (stack:%+v) (parts:%+v) {depth:%d}", ip, parts[1], vm.Stack(), parts, currentDepth)
+	erp.Logger.Tracef("[STEP %d:%s] (stack:%+v) (parts:%+v) {depth:%d}", ip, parts[1], vm.Stack, parts, currentDepth)
 	out := OpOutput{}
 	out.CodeDepth = currentDepth
 	out.Code = erp.extractCode(ip, program, parts)
@@ -221,8 +251,8 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		out.CodeDepth -= IndentStep
 		out.BlockEnd = true
 		//OpEnd can carry value, if it's any/all/count etc.
-		if len(vm.Stack()) > 0 {
-			out.StrConditionResult = fmt.Sprintf("%v", vm.Stack())
+		if len(vm.Stack) > 0 {
+			out.StrConditionResult = fmt.Sprintf("%v", vm.Stack)
 		}
 		outputs = append(outputs, out)
 	case "OpNot":
@@ -241,7 +271,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		out.StrConditionResult = "false"
 		outputs = append(outputs, out)
 	case "OpJumpIfTrue": //OR
-		stack := vm.Stack()
+		stack := vm.Stack
 		out.JumpIf = true
 		out.IfTrue = true
 		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
@@ -252,7 +282,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		}
 		outputs = append(outputs, out)
 	case "OpJumpIfFalse": //AND
-		stack := vm.Stack()
+		stack := vm.Stack
 		out.JumpIf = true
 		out.IfFalse = true
 		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
@@ -264,7 +294,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	case "OpCall1": //Op for function calls
 		out.Func = true
 		out.FuncName = parts[3]
-		stack := vm.Stack()
+		stack := vm.Stack
 		num_items := 1
 		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
 			out.Args = append(out.Args, autoQuote(stack[i]))
@@ -274,7 +304,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	case "OpCall2": //Op for function calls
 		out.Func = true
 		out.FuncName = parts[3]
-		stack := vm.Stack()
+		stack := vm.Stack
 		num_items := 2
 		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
 			out.Args = append(out.Args, autoQuote(stack[i]))
@@ -284,7 +314,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	case "OpCall3": //Op for function calls
 		out.Func = true
 		out.FuncName = parts[3]
-		stack := vm.Stack()
+		stack := vm.Stack
 		num_items := 3
 		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
 			out.Args = append(out.Args, autoQuote(stack[i]))
@@ -297,7 +327,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	case "OpCallN": //Op for function calls with more than 3 args
 		out.Func = true
 		out.FuncName = parts[1]
-		stack := vm.Stack()
+		stack := vm.Stack
 
 		//for OpCallN, we get the number of args
 		if len(program.Arguments) >= ip {
@@ -310,19 +340,19 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 				}
 			}
 		} else { //let's blindly take the items on stack
-			for _, val := range vm.Stack() {
+			for _, val := range vm.Stack {
 				out.Args = append(out.Args, autoQuote(val))
 			}
 		}
 		outputs = append(outputs, out)
 	case "OpEqualString", "OpEqual", "OpEqualInt": //comparisons
-		stack := vm.Stack()
+		stack := vm.Stack
 		out.Comparison = true
 		out.Left = autoQuote(stack[0])
 		out.Right = autoQuote(stack[1])
 		outputs = append(outputs, out)
 	case "OpIn": //in operator
-		stack := vm.Stack()
+		stack := vm.Stack
 		out.Condition = true
 		out.ConditionIn = true
 		//seems that we tend to receive stack[1] as a map.
@@ -332,7 +362,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		out.Args = append(out.Args, autoQuote(stack[1]))
 		outputs = append(outputs, out)
 	case "OpContains": //kind OpIn , but reverse
-		stack := vm.Stack()
+		stack := vm.Stack
 		out.Condition = true
 		out.ConditionContains = true
 		//seems that we tend to receive stack[1] as a map.
@@ -347,7 +377,10 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 
 func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
 	for i := range len(erp.Lines) {
-		parts := strings.Split(erp.Lines[i], "\t")
+		parts := strings.Fields(erp.Lines[i])
+		if len(parts) == 0 {
+			continue
+		}
 		if parts[0] == strconv.Itoa(ip) {
 			return parts
 		}
@@ -371,7 +404,7 @@ func cleanTextForDebug(text string) string {
 }
 
 func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry, ret any) {
-	logger.Debugf("dbg(result=%v): %s", ret, cleanTextForDebug(program.Source.Content()))
+	logger.Debugf("dbg(result=%v): %s", ret, cleanTextForDebug(string(program.Source())))
 	for _, output := range outputs {
 		logger.Debugf("%s", output.String())
 	}
@@ -383,57 +416,41 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 	erp := ExprRuntimeDebug{
 		Logger: logger,
 	}
-	debugErr := make(chan error)
-	var buf strings.Builder
 	vm := vm.Debug()
-	done := false
-	program.Opcodes(&buf)
-	lines := strings.Split(buf.String(), "\n")
+	opcodes := program.Disassemble()
+	lines := strings.Split(opcodes, "\n")
 	erp.Lines = lines
 
 	go func() {
+		//We must never return until the execution of the program is done
 		var err error
 		erp.Logger.Tracef("[START] ip 0")
 		ops := erp.ipSeek(0)
 		if ops == nil {
-			debugErr <- fmt.Errorf("failed getting ops for ip 0")
-			return
+			log.Warningf("error while debugging expr: failed getting ops for ip 0")
 		}
 		if outputs, err = erp.ipDebug(0, vm, program, ops, outputs); err != nil {
-			debugErr <- fmt.Errorf("error while debugging at ip 0")
+			log.Warningf("error while debugging expr: error while debugging at ip 0")
 		}
 		vm.Step()
 		for ip := range vm.Position() {
 			ops := erp.ipSeek(ip)
-			if ops == nil { //we reached the end of the program, we shouldn't throw an error
+			if ops == nil {
 				erp.Logger.Tracef("[DONE] ip %d", ip)
-				debugErr <- nil
-				return
+				continue
 			}
 			if outputs, err = erp.ipDebug(ip, vm, program, ops, outputs); err != nil {
-				debugErr <- fmt.Errorf("error while debugging at ip %d", ip)
-				return
-			}
-			if done {
-				debugErr <- nil
-				return
+				log.Warningf("error while debugging expr: error while debugging at ip %d", ip)
 			}
 			vm.Step()
 		}
-		debugErr <- nil
 	}()
 
 	var return_error error
 	ret, err := vm.Run(program, env)
-	done = true
 	//if the expr runtime failed, we don't need to wait for the debug to finish
 	if err != nil {
 		return_error = err
-	} else {
-		err = <-debugErr
-		if err != nil {
-			log.Warningf("error while debugging expr: %s", err)
-		}
 	}
 	//the overall result of expression is the result of last op ?
 	if len(outputs) > 0 {

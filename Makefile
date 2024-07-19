@@ -77,7 +77,7 @@ ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
-GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
 # this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
