@@ -107,7 +107,7 @@ func (o *OpOutput) String() string {
 	return ret + ""
 }
 
-func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
+func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
 	locations := program.Locations()
 	src := string(program.Source())
 
@@ -123,7 +123,7 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 		}
 	}
 
-	end := 0
+	var end int
 	if closest == nil {
 		end = len(src)
 	} else {
@@ -179,7 +179,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	erp.Logger.Tracef("[STEP %d:%s] (stack:%+v) (parts:%+v) {depth:%d}", ip, parts[1], vm.Stack, parts, currentDepth)
 	out := OpOutput{}
 	out.CodeDepth = currentDepth
-	out.Code = erp.extractCode(ip, program, parts)
+	out.Code = erp.extractCode(ip, program)
 
 	switch parts[1] {
 	case "OpBegin":
