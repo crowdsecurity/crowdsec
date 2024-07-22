@@ -15,12 +15,14 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 // un-aggregated data, de-normalized.
 type bouncerMetricItem struct {
+	collectedAt time.Time
 	bouncerName string
 	ipType      string
 	origin      string
@@ -72,11 +74,16 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 	metrics, err := db.Ent.Metric.Query().
 		Where(
 			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
-		).All(ctx)
+		).
+		// we will process metrics ordered by timestamp, so that active_decisions
+		// can override previous values
+		Order(ent.Asc(metric.FieldCollectedAt)).
+		All(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch metrics: %w", err)
 	}
 
+	// keep the oldest timestamp for each bouncer
 	s.oldestTS = make(map[string]*time.Time)
 
 	// don't spam the user with the same warnings
@@ -135,6 +142,7 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 				value := *item.Value
 
 				rawMetric := bouncerMetricItem{
+					collectedAt: collectedAt,
 					bouncerName: bouncerName,
 					ipType:      labels["ip_type"],
 					origin:      labels["origin"],
@@ -180,21 +188,32 @@ func (s *statBouncer) aggregate() {
 			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = 0
 		}
 
-		s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
-
-		if _, ok := s.aggregatedAllOrigin[raw.bouncerName]; !ok {
-			s.aggregatedAllOrigin[raw.bouncerName] = make(map[string]map[string]int64)
+		if raw.name == "active_decisions" {
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = int64(raw.value)
+		} else {
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
 		}
+	}
 
-		if _, ok := s.aggregatedAllOrigin[raw.bouncerName][raw.name]; !ok {
-			s.aggregatedAllOrigin[raw.bouncerName][raw.name] = make(map[string]int64)
+	for bouncerName := range s.aggregated {
+		if _, ok := s.aggregatedAllOrigin[bouncerName]; !ok {
+			s.aggregatedAllOrigin[bouncerName] = make(map[string]map[string]int64)
 		}
+		for origin := range s.aggregated[bouncerName] {
+			for name := range s.aggregated[bouncerName][origin] {
+				if _, ok := s.aggregatedAllOrigin[bouncerName][name]; !ok {
+					s.aggregatedAllOrigin[bouncerName][name] = make(map[string]int64)
+				}
+				for unit := range s.aggregated[bouncerName][origin][name] {
+					if _, ok := s.aggregatedAllOrigin[bouncerName][name][unit]; !ok {
+						s.aggregatedAllOrigin[bouncerName][name][unit] = 0
+					}
 
-		if _, ok := s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit]; !ok {
-			s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit] = 0
+					value := s.aggregated[bouncerName][origin][name][unit]
+					s.aggregatedAllOrigin[bouncerName][name][unit] += value
+				}
+			}
 		}
-
-		s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit] += int64(raw.value)
 	}
 }
 
