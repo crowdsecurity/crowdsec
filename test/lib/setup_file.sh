@@ -265,7 +265,7 @@ hub_strip_index() {
     local INDEX
     INDEX=$(config_get .config_paths.index_path)
     local hub_min
-    hub_min=$(jq <"$INDEX" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
+    hub_min=$(jq <"$INDEX" 'del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
     echo "$hub_min" >"$INDEX"
 }
 export -f hub_strip_index
