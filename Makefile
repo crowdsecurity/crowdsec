@@ -225,7 +225,7 @@ test: testenv  ## Run unit tests with localstack
 
 .PHONY: go-acc
 go-acc: testenv  ## Run unit tests with localstack + coverage
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -tags $(GO_TAGS) -- $(LD_OPTS)
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models --tags $(GO_TAGS) -- $(LD_OPTS)
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \
