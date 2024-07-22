@@ -76,7 +76,7 @@ teardown() {
     assert_stderr --partial "invalid hub item appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest version missing from index"
 
     rune -1 cscli appsec-rules install crowdsecurity/vpatch-laravel-debug-mode --force
-    assert_stderr --partial "error while installing 'crowdsecurity/vpatch-laravel-debug-mode': while downloading crowdsecurity/vpatch-laravel-debug-mode: latest hash missing from index"
+    assert_stderr --partial "error while installing 'crowdsecurity/vpatch-laravel-debug-mode': latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again"
 }
 
 @test "missing reference in hub index" {
