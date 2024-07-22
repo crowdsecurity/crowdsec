@@ -10,7 +10,6 @@
                 }
             },
             "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-            "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
             "description": "foobar collection : foobar",
             "author": "crowdsecurity",
             "labels": null,
@@ -34,7 +33,6 @@
                 }
             },
             "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-            "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
             "description": "test_collection : foobar",
             "author": "crowdsecurity",
             "labels": null,
@@ -52,7 +50,6 @@
                 }
             },
             "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-            "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
             "description": "foobar collection : foobar",
             "author": "crowdsecurity",
             "labels": null,
@@ -73,7 +70,6 @@
                 }
             },
             "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-            "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
             "description": "A foobar parser",
             "author": "crowdsecurity",
             "labels": null
@@ -89,7 +85,6 @@
                 }
             },
             "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-            "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
             "description": "A foobar parser",
             "author": "crowdsecurity",
             "labels": null
@@ -107,7 +102,6 @@
                 }
             },
             "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-            "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
             "description": "a foobar scenario",
             "author": "crowdsecurity",
             "labels": {
