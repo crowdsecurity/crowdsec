@@ -77,6 +77,7 @@ ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
+#expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
 # this will be used by Go in the make target, some distributions require it
@@ -220,11 +221,11 @@ testenv:
 
 .PHONY: test
 test: testenv  ## Run unit tests with localstack
-	$(GOTEST) $(LD_OPTS) ./...
+	$(GOTEST) --tags=$(GO_TAGS) $(LD_OPTS) ./...
 
 .PHONY: go-acc
 go-acc: testenv  ## Run unit tests with localstack + coverage
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS)
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -tags $(GO_TAGS) -- $(LD_OPTS)
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \
