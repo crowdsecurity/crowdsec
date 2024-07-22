@@ -275,8 +275,13 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		metrics := s.aggregated[bouncerName][origin]
 
 		// some users don't know what capi is
-		if origin == "CAPI" {
+		switch origin {
+		case "CAPI":
 			origin += " (community blocklist)"
+		case "cscli":
+			origin += " (manual decisions)"
+		case "crowdsec":
+			origin += " (security engine)"
 		}
 
 		row := table.Row{origin}
