@@ -215,7 +215,7 @@ teardown() {
 	|                                  |        IPs       |  bytes  | packets | dogyear | pound |
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	| CAPI (community blocklist)       |                - |   3.80k |     100 |       - |     - |
-	| cscli                            |                1 |     380 |      10 |       - |     - |
+	| cscli (manual decisions)         |                1 |     380 |      10 |       - |     - |
 	| lists:anotherlist                |                - |       0 |       0 |       - |     - |
 	| lists:firehol_cruzit_web_attacks |                - |   1.03k |      23 |       - |     - |
 	| lists:firehol_voipbl             |           51.94k |   3.85k |      58 |       - |     - |
