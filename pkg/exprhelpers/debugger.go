@@ -376,7 +376,7 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 			ops := erp.ipSeek(ip)
 			if ops == nil {
 				erp.Logger.Tracef("[DONE] ip %d", ip)
-				continue
+				break
 			}
 			if outputs, err = erp.ipDebug(ip, vm, program, ops, outputs); err != nil {
 				log.Warningf("error while debugging expr: error while debugging at ip %d", ip)
