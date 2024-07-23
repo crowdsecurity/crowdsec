@@ -144,7 +144,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		apiClient,
 		lpMetricsDefaultInterval,
 		log.WithField("service", "lpmetrics"),
-		cConfig.API.Server.ConsoleConfig.EnabledOptions(),
+		[]string{},
 		datasources,
 		hub,
 	)
