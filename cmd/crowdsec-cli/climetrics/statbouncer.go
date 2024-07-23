@@ -108,22 +108,20 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		}
 
 		for _, m := range payload.Metrics {
+			// fields like timestamp, name, etc. are mandatory but we got pointers, so we check anyway
+			if m.Meta.UtcNowTimestamp == nil {
+				warnOnce(warningsLogged, "missing 'utc_now_timestamp' field in metrics reported by "+bouncerName)
+				continue
+			}
+
+			collectedAt := time.Unix(*m.Meta.UtcNowTimestamp, 0).UTC()
+
+			if s.oldestTS[bouncerName].IsZero() || collectedAt.Before(s.oldestTS[bouncerName]) {
+				s.oldestTS[bouncerName] = collectedAt
+			}
+
 			for _, item := range m.Items {
 				labels := item.Labels
-
-				var collectedAt time.Time
-				if m.Meta.UtcNowTimestamp != nil {
-					// if one of these timestamps is nil, we'll just keep the zero value (!!)
-					// and no timestamp will be displayed in the table title
-					// maybe a warning is in order, and skip like we do with name etc ?
-					collectedAt = time.Unix(*m.Meta.UtcNowTimestamp, 0).UTC()
-				}
-
-				if s.oldestTS[bouncerName].IsZero() || collectedAt.Before(s.oldestTS[bouncerName]) {
-					s.oldestTS[bouncerName] = collectedAt
-				}
-
-				// these are mandatory but we got pointers, so...
 
 				valid := true
 

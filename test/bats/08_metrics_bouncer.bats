@@ -74,6 +74,18 @@ teardown() {
     payload=$(yq -o j '.remediation_components[0].utc_startup_timestamp = 1707399316' <<<"$payload")
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
     refute_output
+
+    payload=$(yq -o j '.remediation_components[0].metrics = [{"meta": {}}]' <<<"$payload")
+    rune -22 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+    assert_stderr --partial "error: 422"
+    rune -0 jq -r '.message' <(output)
+    assert_output - <<-EOT
+	validation failure list:
+	remediation_components.0.metrics.0.items in body is required
+	validation failure list:
+	remediation_components.0.metrics.0.meta.utc_now_timestamp in body is required
+	remediation_components.0.metrics.0.meta.window_size_seconds in body is required
+	EOT
 }
 
 @test "rc usage metrics (good payload)" {
