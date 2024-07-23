@@ -199,6 +199,16 @@ func ReceivedAtLTE(v time.Time) predicate.Metric {
 	return predicate.Metric(sql.FieldLTE(FieldReceivedAt, v))
 }
 
+// ReceivedAtIsNil applies the IsNil predicate on the "received_at" field.
+func ReceivedAtIsNil() predicate.Metric {
+	return predicate.Metric(sql.FieldIsNull(FieldReceivedAt))
+}
+
+// ReceivedAtNotNil applies the NotNil predicate on the "received_at" field.
+func ReceivedAtNotNil() predicate.Metric {
+	return predicate.Metric(sql.FieldNotNull(FieldReceivedAt))
+}
+
 // PushedAtEQ applies the EQ predicate on the "pushed_at" field.
 func PushedAtEQ(v time.Time) predicate.Metric {
 	return predicate.Metric(sql.FieldEQ(FieldPushedAt, v))

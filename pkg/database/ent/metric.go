@@ -23,7 +23,7 @@ type Metric struct {
 	// It must come from the auth middleware.
 	GeneratedBy string `json:"generated_by,omitempty"`
 	// When the metrics are received by LAPI
-	ReceivedAt time.Time `json:"received_at,omitempty"`
+	ReceivedAt *time.Time `json:"received_at,omitempty"`
 	// When the metrics are sent to the console
 	PushedAt *time.Time `json:"pushed_at,omitempty"`
 	// The actual metrics (item0)
@@ -79,7 +79,8 @@ func (m *Metric) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field received_at", values[i])
 			} else if value.Valid {
-				m.ReceivedAt = value.Time
+				m.ReceivedAt = new(time.Time)
+				*m.ReceivedAt = value.Time
 			}
 		case metric.FieldPushedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -136,8 +137,10 @@ func (m *Metric) String() string {
 	builder.WriteString("generated_by=")
 	builder.WriteString(m.GeneratedBy)
 	builder.WriteString(", ")
-	builder.WriteString("received_at=")
-	builder.WriteString(m.ReceivedAt.Format(time.ANSIC))
+	if v := m.ReceivedAt; v != nil {
+		builder.WriteString("received_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	if v := m.PushedAt; v != nil {
 		builder.WriteString("pushed_at=")
