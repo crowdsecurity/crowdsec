@@ -38,7 +38,11 @@ type statBouncer struct {
 	// we keep de-normalized metrics so we can iterate
 	// over them multiple times and keep the aggregation code simple
 	rawMetrics          []bouncerMetricItem
-	aggregated          map[string]map[string]map[string]map[string]int64
+	// [bouncer][origin][name][unit][iptype]value
+	aggregated          map[string]map[string]map[string]map[string]map[string]int64
+	// [bouncer][origin][name][unit]value
+	aggregatedAllIPType map[string]map[string]map[string]map[string]int64
+	// [bouncer][name][unit]value
 	aggregatedAllOrigin map[string]map[string]map[string]int64
 }
 
@@ -49,7 +53,7 @@ var knownPlurals = map[string]string{
 }
 
 func (s *statBouncer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.aggregated)
+	return json.Marshal(s.aggregatedAllIPType)
 }
 
 func (s *statBouncer) Description() (string, string) {
@@ -203,55 +207,91 @@ func (statBouncer) formatMetricOrigin(origin string) string {
 }
 
 func (s *statBouncer) aggregate() {
-	// [bouncer][origin][name][unit]value
+	// [bouncer][origin][name][unit][iptype]value
 	if s.aggregated == nil {
-		s.aggregated = make(map[string]map[string]map[string]map[string]int64)
+		s.aggregated = make(map[string]map[string]map[string]map[string]map[string]int64)
 	}
 
 	if s.aggregatedAllOrigin == nil {
 		s.aggregatedAllOrigin = make(map[string]map[string]map[string]int64)
 	}
 
+	if s.aggregatedAllIPType == nil {
+		s.aggregatedAllIPType = make(map[string]map[string]map[string]map[string]int64)
+	}
+
+	// first round, we aggregate over time if the metric is not of type "gauge"
+
 	for _, raw := range s.rawMetrics {
 		if _, ok := s.aggregated[raw.bouncerName]; !ok {
-			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]int64)
+			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]map[string]int64)
 		}
 
 		if _, ok := s.aggregated[raw.bouncerName][raw.origin]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin] = make(map[string]map[string]int64)
+			s.aggregated[raw.bouncerName][raw.origin] = make(map[string]map[string]map[string]int64)
 		}
 
 		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name] = make(map[string]int64)
+			s.aggregated[raw.bouncerName][raw.origin][raw.name] = make(map[string]map[string]int64)
 		}
 
 		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = 0
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = make(map[string]int64)
+		}
+
+		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType]; !ok {
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = 0
 		}
 
 		if s.isGauge(raw.name) {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = int64(raw.value)
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = int64(raw.value)
 		} else {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
+			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] += int64(raw.value)
 		}
 	}
 
+	// second round, we always aggregate over ip type
+
 	for bouncerName := range s.aggregated {
+		if _, ok := s.aggregatedAllIPType[bouncerName]; !ok {
+			s.aggregatedAllIPType[bouncerName] = make(map[string]map[string]map[string]int64)
+		}
+		for origin := range s.aggregated[bouncerName] {
+			if _, ok := s.aggregatedAllIPType[bouncerName][origin]; !ok {
+				s.aggregatedAllIPType[bouncerName][origin] = make(map[string]map[string]int64)
+			}
+			for name := range s.aggregated[bouncerName][origin] {
+				if _, ok := s.aggregatedAllIPType[bouncerName][origin][name]; !ok {
+					s.aggregatedAllIPType[bouncerName][origin][name] = make(map[string]int64)
+				}
+				for unit := range s.aggregated[bouncerName][origin][name] {
+					if _, ok := s.aggregatedAllIPType[bouncerName][origin][name][unit]; !ok {
+						s.aggregatedAllIPType[bouncerName][origin][name][unit] = 0
+					}
+
+					for ipType := range s.aggregated[bouncerName][origin][name][unit] {
+						value := s.aggregated[bouncerName][origin][name][unit][ipType]
+						s.aggregatedAllIPType[bouncerName][origin][name][unit] += value
+					}
+				}
+			}
+		}
+	}
+
+	// third round, we always aggregate over origin
+
+	for bouncerName := range s.aggregatedAllIPType {
 		if _, ok := s.aggregatedAllOrigin[bouncerName]; !ok {
 			s.aggregatedAllOrigin[bouncerName] = make(map[string]map[string]int64)
 		}
-		for origin := range s.aggregated[bouncerName] {
-			for name := range s.aggregated[bouncerName][origin] {
+		for origin := range s.aggregatedAllIPType[bouncerName] {
+			for name := range s.aggregatedAllIPType[bouncerName][origin] {
 				if _, ok := s.aggregatedAllOrigin[bouncerName][name]; !ok {
 					s.aggregatedAllOrigin[bouncerName][name] = make(map[string]int64)
 				}
-				for unit := range s.aggregated[bouncerName][origin][name] {
-					if _, ok := s.aggregatedAllOrigin[bouncerName][name][unit]; !ok {
-						s.aggregatedAllOrigin[bouncerName][name][unit] = 0
-					}
-
-					value := s.aggregated[bouncerName][origin][name][unit]
-					s.aggregatedAllOrigin[bouncerName][name][unit] += value
+				for unit := range s.aggregatedAllIPType[bouncerName][origin][name] {
+					val := s.aggregatedAllIPType[bouncerName][origin][name][unit]
+					s.aggregatedAllOrigin[bouncerName][name][unit] += val
 				}
 			}
 		}
@@ -332,7 +372,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 			continue
 		}
 
-		metrics := s.aggregated[bouncerName][origin]
+		metrics := s.aggregatedAllIPType[bouncerName][origin]
 
 		row := table.Row{s.formatMetricOrigin(origin)}
 

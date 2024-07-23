@@ -127,7 +127,7 @@ teardown() {
     rune -0 cscli metrics show bouncers -o json
     # aggregation is ok -- we are truncating, not rounding, because the float is mandated by swagger.
     # but without labels the origin string is empty
-    assert_json '{bouncers:{testbouncer:{"": {"foo": {"dogyear": 2, "pound": 5}}}}}'
+    assert_json '{bouncers:{testbouncer:{"": {foo: {dogyear: 2, pound: 5}}}}}'
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
@@ -148,7 +148,7 @@ teardown() {
         {
           "meta": {"utc_now_timestamp": 1707399916, "window_size_seconds":600},
           "items":[
-            {"name": "active_decisions", "unit": "ip",     "value": 500, "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
+            {"name": "active_decisions", "unit": "ip",     "value": 500,   "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
             {"name": "active_decisions", "unit": "ip",     "value": 1,     "labels": {"ip_type": "ipv6", "origin": "cscli"}},
             {"name": "dropped",          "unit": "byte",   "value": 3800,  "labels": {"ip_type": "ipv4", "origin": "CAPI"}},
             {"name": "dropped",          "unit": "byte",   "value": 0,     "labels": {"ip_type": "ipv4", "origin": "cscli"}},
@@ -244,7 +244,7 @@ teardown() {
           "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
           "items":[
             {"name": "active_decisions", "unit": "ip",     "value": 250, "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
-            {"name": "active_decisions", "unit": "ip",     "value": 10,     "labels": {"ip_type": "ipv6", "origin": "cscli"}}
+            {"name": "active_decisions", "unit": "ip",     "value": 10,  "labels": {"ip_type": "ipv6", "origin": "cscli"}}
           ]
         }
         ] |
@@ -370,9 +370,58 @@ teardown() {
 	|                    Total |     30 |        25 |
 	+--------------------------+--------+-----------+
 	EOT
+}
 
-    # TODO: multiple item lists
+@test "rc usage metrics (ipv4/ipv6)" {
+    # gauge metrics are not aggregated over time, but they are over ip type
 
+    API_KEY=$(cscli bouncers add testbouncer -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707369316
+	log_processors: []
+	EOT
+    )
+
+    payload=$(yq -o j '
+        .remediation_components[0].metrics = [
+        {
+          "meta": {"utc_now_timestamp": 1707460000, "window_size_seconds":600},
+          "items":[
+            {"name": "active_decisions", "unit": "ip", "value": 200, "labels": {"ip_type": "ipv4", "origin": "cscli"}},
+            {"name": "active_decisions", "unit": "ip", "value": 30,  "labels": {"ip_type": "ipv6", "origin": "cscli"}}
+          ]
+        }, {
+          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
+          "items":[
+            {"name": "active_decisions", "unit": "ip", "value": 400, "labels": {"ip_type": "ipv4", "origin": "cscli"}},
+            {"name": "active_decisions", "unit": "ip", "value": 50,  "labels": {"ip_type": "ipv6", "origin": "cscli"}}
+          ]
+        }
+        ] |
+        .remediation_components[0].type = "crowdsec-firewall-bouncer"
+    ' <<<"$payload")
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+    rune -0 cscli metrics show bouncers -o json
+    assert_json '{bouncers: {testbouncer: {cscli: {active_decisions: {ip: 230}}}}}'
+
+    rune -0 cscli metrics show bouncers
+    assert_output - <<-EOT
+	Bouncer Metrics (testbouncer) since 2024-02-09 03:40:00 +0000 UTC:
+	+--------------------------+------------------+
+	| Origin                   | active_decisions |
+	|                          |        IPs       |
+	+--------------------------+------------------+
+	| cscli (manual decisions) |              230 |
+	+--------------------------+------------------+
+	|                    Total |              230 |
+	+--------------------------+------------------+
+	EOT
 }
 
 @test "rc usage metrics (multiple bouncers)" {
