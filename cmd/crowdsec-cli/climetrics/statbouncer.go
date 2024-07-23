@@ -70,6 +70,8 @@ func logWarningOnce(warningsLogged map[string]bool, msg string) {
 	}
 }
 
+// extractRawMetrics converts metrics from the database to a de-normalized, de-duplicated slice
+// it returns the slice and the oldest timestamp for each bouncer
 func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricItem, map[string]time.Time) {
 	oldestTS := make(map[string]time.Time, 0)
 
@@ -172,8 +174,6 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		Where(
 			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
 		).
-		// we will process metrics ordered by timestamp, so that active_decisions
-		// can override previous values
 		All(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch metrics: %w", err)
@@ -183,7 +183,9 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 
 	s.rawMetrics, s.oldestTS = s.extractRawMetrics(metrics)
 
-	s.aggregate()
+	s.aggregateOverTime()
+	s.aggregateOverIPType()
+	s.aggregateOverOrigin()
 
 	return nil
 }
@@ -212,18 +214,10 @@ func (*statBouncer) formatMetricOrigin(origin string) string {
 	return origin
 }
 
-func (s *statBouncer) aggregate() {
+func (s *statBouncer) aggregateOverTime() {
 	// [bouncer][origin][name][unit][iptype]value
 	if s.aggregated == nil {
 		s.aggregated = make(map[string]map[string]map[string]map[string]map[string]int64)
-	}
-
-	if s.aggregatedAllOrigin == nil {
-		s.aggregatedAllOrigin = make(map[string]map[string]map[string]int64)
-	}
-
-	if s.aggregatedAllIPType == nil {
-		s.aggregatedAllIPType = make(map[string]map[string]map[string]map[string]int64)
 	}
 
 	// first round, we aggregate over time if the metric is not of type "gauge"
@@ -255,6 +249,12 @@ func (s *statBouncer) aggregate() {
 			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] += int64(raw.value)
 		}
 	}
+}
+
+func (s *statBouncer) aggregateOverIPType() {
+	if s.aggregatedAllIPType == nil {
+		s.aggregatedAllIPType = make(map[string]map[string]map[string]map[string]int64)
+	}
 
 	// second round, we always aggregate over ip type
 
@@ -282,6 +282,12 @@ func (s *statBouncer) aggregate() {
 				}
 			}
 		}
+	}
+}
+
+func (s *statBouncer) aggregateOverOrigin() {
+	if s.aggregatedAllOrigin == nil {
+		s.aggregatedAllOrigin = make(map[string]map[string]map[string]int64)
 	}
 
 	// third round, we always aggregate over origin
