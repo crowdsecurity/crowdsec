@@ -34,8 +34,75 @@ type bouncerMetricItem struct {
 }
 
 type aggregationOverTime map[string]map[string]map[string]map[string]map[string]int64
+
+func (a aggregationOverTime) add(bouncerName, origin, name, unit, ipType string, value float64, isGauge bool) {
+	if _, ok := a[bouncerName]; !ok {
+		a[bouncerName] = make(map[string]map[string]map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin]; !ok {
+		a[bouncerName][origin] = make(map[string]map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name]; !ok {
+		a[bouncerName][origin][name] = make(map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name][unit]; !ok {
+		a[bouncerName][origin][name][unit] = make(map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name][unit][ipType]; !ok {
+		a[bouncerName][origin][name][unit][ipType] = 0
+	}
+
+	if isGauge {
+		a[bouncerName][origin][name][unit][ipType] = int64(value)
+	} else {
+		a[bouncerName][origin][name][unit][ipType] += int64(value)
+	}
+}
+
+
 type aggregationOverIPType map[string]map[string]map[string]map[string]int64
+
+func (a aggregationOverIPType) add(bouncerName, origin, name, unit string, value int64) {
+	if _, ok := a[bouncerName]; !ok {
+		a[bouncerName] = make(map[string]map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin]; !ok {
+		a[bouncerName][origin] = make(map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name]; !ok {
+		a[bouncerName][origin][name] = make(map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name][unit]; !ok {
+		a[bouncerName][origin][name][unit] = 0
+	}
+
+	a[bouncerName][origin][name][unit] += value
+}
+
 type aggregationOverOrigin map[string]map[string]map[string]int64
+
+func (a aggregationOverOrigin) add(bouncerName, name, unit string, value int64) {
+	if _, ok := a[bouncerName]; !ok {
+		a[bouncerName] = make(map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][name]; !ok {
+		a[bouncerName][name] = make(map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][name][unit]; !ok {
+		a[bouncerName][name][unit] = 0
+	}
+
+	a[bouncerName][name][unit] += value
+}
 
 type statBouncer struct {
 	// oldest collection timestamp for each bouncer
@@ -222,34 +289,8 @@ func (s *statBouncer) newAggregationOverTime(rawMetrics []bouncerMetricItem) agg
 	
 	ret := aggregationOverTime{}
 
-	// first round, we aggregate over time if the metric is not of type "gauge"
-
 	for _, raw := range rawMetrics {
-		if _, ok := ret[raw.bouncerName]; !ok {
-			ret[raw.bouncerName] = make(map[string]map[string]map[string]map[string]int64)
-		}
-
-		if _, ok := ret[raw.bouncerName][raw.origin]; !ok {
-			ret[raw.bouncerName][raw.origin] = make(map[string]map[string]map[string]int64)
-		}
-
-		if _, ok := ret[raw.bouncerName][raw.origin][raw.name]; !ok {
-			ret[raw.bouncerName][raw.origin][raw.name] = make(map[string]map[string]int64)
-		}
-
-		if _, ok := ret[raw.bouncerName][raw.origin][raw.name][raw.unit]; !ok {
-			ret[raw.bouncerName][raw.origin][raw.name][raw.unit] = make(map[string]int64)
-		}
-
-		if _, ok := ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType]; !ok {
-			ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = 0
-		}
-
-		if s.isGauge(raw.name) {
-			ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = int64(raw.value)
-		} else {
-			ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] += int64(raw.value)
-		}
+		ret.add(raw.bouncerName, raw.origin, raw.name, raw.unit, raw.ipType, raw.value, s.isGauge(raw.name))
 	}
 
 	return ret
@@ -258,28 +299,13 @@ func (s *statBouncer) newAggregationOverTime(rawMetrics []bouncerMetricItem) agg
 func (*statBouncer) newAggregationOverIPType(aggMetrics aggregationOverTime) aggregationOverIPType {
 	ret := aggregationOverIPType{}
 
-	// second round, we always aggregate over ip type
-
 	for bouncerName := range aggMetrics {
-		if _, ok := ret[bouncerName]; !ok {
-			ret[bouncerName] = make(map[string]map[string]map[string]int64)
-		}
 		for origin := range aggMetrics[bouncerName] {
-			if _, ok := ret[bouncerName][origin]; !ok {
-				ret[bouncerName][origin] = make(map[string]map[string]int64)
-			}
 			for name := range aggMetrics[bouncerName][origin] {
-				if _, ok := ret[bouncerName][origin][name]; !ok {
-					ret[bouncerName][origin][name] = make(map[string]int64)
-				}
 				for unit := range aggMetrics[bouncerName][origin][name] {
-					if _, ok := ret[bouncerName][origin][name][unit]; !ok {
-						ret[bouncerName][origin][name][unit] = 0
-					}
-
 					for ipType := range aggMetrics[bouncerName][origin][name][unit] {
 						value := aggMetrics[bouncerName][origin][name][unit][ipType]
-						ret[bouncerName][origin][name][unit] += value
+						ret.add(bouncerName, origin, name, unit, value)
 					}
 				}
 			}
@@ -289,23 +315,15 @@ func (*statBouncer) newAggregationOverIPType(aggMetrics aggregationOverTime) agg
 	return ret
 }
 
-func (s *statBouncer) newAggregationOverOrigin(aggMetrics aggregationOverIPType) aggregationOverOrigin {
+func (*statBouncer) newAggregationOverOrigin(aggMetrics aggregationOverIPType) aggregationOverOrigin {
 	ret := aggregationOverOrigin{}
 
-	// third round, we always aggregate over origin
-
 	for bouncerName := range aggMetrics {
-		if _, ok := ret[bouncerName]; !ok {
-			ret[bouncerName] = make(map[string]map[string]int64)
-		}
 		for origin := range aggMetrics[bouncerName] {
 			for name := range aggMetrics[bouncerName][origin] {
-				if _, ok := ret[bouncerName][name]; !ok {
-					ret[bouncerName][name] = make(map[string]int64)
-				}
 				for unit := range aggMetrics[bouncerName][origin][name] {
 					val := aggMetrics[bouncerName][origin][name][unit]
-					ret[bouncerName][name][unit] += val
+					ret.add(bouncerName, name, unit, val)
 				}
 			}
 		}
