@@ -61,7 +61,6 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 	var (
 		generatedType metric.GeneratedType
 		generatedBy   string
-		collectedAt   time.Time
 	)
 
 	bouncer, _ := getBouncerFromContext(gctx)
@@ -181,13 +180,6 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		return
 	}
 
-	if baseMetrics.Metrics != nil && len(baseMetrics.Metrics) > 0 {
-		collectedAt = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0).UTC()
-	} else {
-		// if there's no timestamp, use the current time
-		collectedAt = time.Now().UTC()
-	}
-
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		logger.Errorf("Failed to marshal usage metrics: %s", err)
@@ -196,7 +188,9 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		return
 	}
 
-	if _, err := c.DBClient.CreateMetric(generatedType, generatedBy, collectedAt, string(jsonPayload)); err != nil {
+	receivedAt := time.Now().UTC()
+
+	if _, err := c.DBClient.CreateMetric(generatedType, generatedBy, receivedAt, string(jsonPayload)); err != nil {
 		logger.Error(err)
 		c.HandleDBErrors(gctx, err)
 

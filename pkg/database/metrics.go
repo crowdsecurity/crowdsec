@@ -8,43 +8,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 )
 
-func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy string, collectedAt time.Time, payload string) (*ent.Metric, error) {
+func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy string, receivedAt time.Time, payload string) (*ent.Metric, error) {
 	metric, err := c.Ent.Metric.
 		Create().
 		SetGeneratedType(generatedType).
 		SetGeneratedBy(generatedBy).
-		SetCollectedAt(collectedAt).
+		SetReceivedAt(receivedAt).
 		SetPayload(payload).
 		Save(c.CTX)
-
-	switch {
-	case ent.IsConstraintError(err):
-		// pretty safe guess, it's the unique index
-		c.Log.Infof("storing metrics snapshot for '%s' at %s: already exists", generatedBy, collectedAt)
-		// it's polite to accept a duplicate snapshot without any error
-		return nil, nil
-	case err != nil:
+	if  err != nil {
 		c.Log.Warningf("CreateMetric: %s", err)
-		return nil, fmt.Errorf("storing metrics snapshot for '%s' at %s: %w", generatedBy, collectedAt, InsertFail)
+		return nil, fmt.Errorf("storing metrics snapshot for '%s' at %s: %w", generatedBy, receivedAt, InsertFail)
 	}
 
 	return metric, nil
-}
-
-func (c *Client) GetLPsUsageMetrics() ([]*ent.Metric, error) {
-	metrics, err := c.Ent.Metric.Query().
-		Where(
-			metric.GeneratedTypeEQ(metric.GeneratedTypeLP),
-			metric.PushedAtIsNil(),
-		).
-		Order(ent.Desc(metric.FieldCollectedAt)).
-		All(c.CTX)
-	if err != nil {
-		c.Log.Warningf("GetLPsUsageMetrics: %s", err)
-		return nil, fmt.Errorf("getting LPs usage metrics: %w", err)
-	}
-
-	return metrics, nil
 }
 
 func (c *Client) GetLPUsageMetricsByMachineID(machineId string) ([]*ent.Metric, error) {
@@ -54,27 +31,12 @@ func (c *Client) GetLPUsageMetricsByMachineID(machineId string) ([]*ent.Metric, 
 			metric.GeneratedByEQ(machineId),
 			metric.PushedAtIsNil(),
 		).
-		Order(ent.Desc(metric.FieldCollectedAt)).
+		// XXX: do we need to sort?
+		Order(ent.Desc(metric.FieldReceivedAt)).
 		All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("GetLPUsageMetricsByOrigin: %s", err)
 		return nil, fmt.Errorf("getting LP usage metrics by origin %s: %w", machineId, err)
-	}
-
-	return metrics, nil
-}
-
-func (c *Client) GetBouncersUsageMetrics() ([]*ent.Metric, error) {
-	metrics, err := c.Ent.Metric.Query().
-		Where(
-			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
-			metric.PushedAtIsNil(),
-		).
-		Order(ent.Desc(metric.FieldCollectedAt)).
-		All(c.CTX)
-	if err != nil {
-		c.Log.Warningf("GetBouncersUsageMetrics: %s", err)
-		return nil, fmt.Errorf("getting bouncers usage metrics: %w", err)
 	}
 
 	return metrics, nil
@@ -87,7 +49,7 @@ func (c *Client) GetBouncerUsageMetricsByName(bouncerName string) ([]*ent.Metric
 			metric.GeneratedByEQ(bouncerName),
 			metric.PushedAtIsNil(),
 		).
-		Order(ent.Desc(metric.FieldCollectedAt)).
+		Order(ent.Desc(metric.FieldReceivedAt)).
 		All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("GetBouncerUsageMetricsByName: %s", err)

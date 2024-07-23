@@ -128,7 +128,7 @@ func (c *Client) flushMetrics(maxAge *time.Duration) {
 	c.Log.Debugf("flushing metrics older than %s", maxAge)
 
 	deleted, err := c.Ent.Metric.Delete().Where(
-		metric.CollectedAtLTE(time.Now().UTC().Add(-*maxAge)),
+		metric.ReceivedAtLTE(time.Now().UTC().Add(-*maxAge)),
 	).Exec(c.CTX)
 	if err != nil {
 		c.Log.Errorf("while flushing metrics: %s", err)

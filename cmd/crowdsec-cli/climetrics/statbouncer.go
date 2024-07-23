@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -34,7 +34,7 @@ type bouncerMetricItem struct {
 
 type statBouncer struct {
 	// oldest collection timestamp for each bouncer
-	oldestTS map[string]*time.Time
+	oldestTS map[string]time.Time
 	// we keep de-normalized metrics so we can iterate
 	// over them multiple times and keep the aggregation code simple
 	rawMetrics          []bouncerMetricItem
@@ -78,25 +78,22 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		).
 		// we will process metrics ordered by timestamp, so that active_decisions
 		// can override previous values
-		Order(ent.Asc(metric.FieldCollectedAt)).
 		All(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch metrics: %w", err)
 	}
 
 	// keep the oldest timestamp for each bouncer
-	s.oldestTS = make(map[string]*time.Time)
+	s.oldestTS = make(map[string]time.Time, 0)
 
 	// don't spam the user with the same warnings
 	warningsLogged := make(map[string]bool)
 
+	// store raw metrics, de-duplicated in case some were sent multiple times
+	uniqueRaw := make(map[bouncerMetricItem]struct{})
+
 	for _, met := range metrics {
 		bouncerName := met.GeneratedBy
-
-		collectedAt := met.CollectedAt
-		if s.oldestTS[bouncerName] == nil || collectedAt.Before(*s.oldestTS[bouncerName]) {
-			s.oldestTS[bouncerName] = &collectedAt
-		}
 
 		type bouncerMetrics struct {
 			Metrics []models.DetailedMetrics `json:"metrics"`
@@ -113,6 +110,18 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		for _, m := range payload.Metrics {
 			for _, item := range m.Items {
 				labels := item.Labels
+
+				var collectedAt time.Time
+				if m.Meta.UtcNowTimestamp != nil {
+					// if one of these timestamps is nil, we'll just keep the zero value (!!)
+					// and no timestamp will be displayed in the table title
+					// maybe a warning is in order, and skip like we do with name etc ?
+					collectedAt = time.Unix(*m.Meta.UtcNowTimestamp, 0).UTC()
+				}
+
+				if s.oldestTS[bouncerName].IsZero() || collectedAt.Before(s.oldestTS[bouncerName]) {
+					s.oldestTS[bouncerName] = collectedAt
+				}
 
 				// these are mandatory but we got pointers, so...
 
@@ -138,24 +147,33 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 					continue
 				}
 
-				name := *item.Name
-				unit := *item.Unit
-				value := *item.Value
-
 				rawMetric := bouncerMetricItem{
 					collectedAt: collectedAt,
 					bouncerName: bouncerName,
 					ipType:      labels["ip_type"],
 					origin:      labels["origin"],
-					name:        name,
-					unit:        unit,
-					value:       value,
+					name:        *item.Name,
+					unit:        *item.Unit,
+					value:       *item.Value,
 				}
 
-				s.rawMetrics = append(s.rawMetrics, rawMetric)
+				uniqueRaw[rawMetric] = struct{}{}
 			}
 		}
 	}
+
+	// extract raw metric structs
+	keys := make([]bouncerMetricItem, 0, len(uniqueRaw))
+	for key := range uniqueRaw {
+		keys = append(keys, key)
+	}
+
+	// order them by timestamp
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].collectedAt.Before(keys[j].collectedAt)
+	})
+
+	s.rawMetrics = keys
 
 	s.aggregate()
 
@@ -358,7 +376,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	title = fmt.Sprintf("%s (%s)", title, bouncerName)
 
 	if s.oldestTS != nil {
-		// if we change this to .Local() beware of tests
+		// if you change this to .Local() beware of tests
 		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
 	}
 

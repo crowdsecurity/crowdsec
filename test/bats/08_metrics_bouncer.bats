@@ -325,25 +325,16 @@ teardown() {
     payload=$(yq -o j '
         .remediation_components[0].metrics = [
         {
-          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
-          "items":[
-            {"name": "ima_gauge", "unit": "second", "value": 20, "labels": {"origin": "cscli"}},
-            {"name": "notagauge", "unit": "inch",   "value": 10, "labels": {"origin": "cscli"}}
-          ]
-        }
-        ] |
-        .remediation_components[0].type = "crowdsec-firewall-bouncer"
-    ' <<<"$payload")
-
-    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
-
-    payload=$(yq -o j '
-        .remediation_components[0].metrics = [
-        {
           "meta": {"utc_now_timestamp": 1707460000, "window_size_seconds":600},
           "items":[
             {"name": "ima_gauge", "unit": "second", "value": 30, "labels": {"origin": "cscli"}},
             {"name": "notagauge", "unit": "inch",   "value": 15, "labels": {"origin": "cscli"}}
+          ]
+        }, {
+          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
+          "items":[
+            {"name": "ima_gauge", "unit": "second", "value": 20, "labels": {"origin": "cscli"}},
+            {"name": "notagauge", "unit": "inch",   "value": 10, "labels": {"origin": "cscli"}}
           ]
         }
         ] |
