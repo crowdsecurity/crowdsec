@@ -17,6 +17,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -61,7 +62,7 @@ func (s *statBouncer) Description() (string, string) {
 		`Network traffic blocked by bouncers.`
 }
 
-func warnOnce(warningsLogged map[string]bool, msg string) {
+func logWarningOnce(warningsLogged map[string]bool, msg string) {
 	if _, ok := warningsLogged[msg]; !ok {
 		log.Warningf(msg)
 
@@ -69,26 +70,8 @@ func warnOnce(warningsLogged map[string]bool, msg string) {
 	}
 }
 
-func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
-	if db == nil {
-		return nil
-	}
-
-	// query all bouncer metrics that have not been flushed
-
-	metrics, err := db.Ent.Metric.Query().
-		Where(
-			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
-		).
-		// we will process metrics ordered by timestamp, so that active_decisions
-		// can override previous values
-		All(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to fetch metrics: %w", err)
-	}
-
-	// keep the oldest timestamp for each bouncer
-	s.oldestTS = make(map[string]time.Time, 0)
+func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricItem, map[string]time.Time) {
+	oldestTS := make(map[string]time.Time, 0)
 
 	// don't spam the user with the same warnings
 	warningsLogged := make(map[string]bool)
@@ -114,14 +97,14 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		for _, m := range payload.Metrics {
 			// fields like timestamp, name, etc. are mandatory but we got pointers, so we check anyway
 			if m.Meta.UtcNowTimestamp == nil {
-				warnOnce(warningsLogged, "missing 'utc_now_timestamp' field in metrics reported by "+bouncerName)
+				logWarningOnce(warningsLogged, "missing 'utc_now_timestamp' field in metrics reported by "+bouncerName)
 				continue
 			}
 
 			collectedAt := time.Unix(*m.Meta.UtcNowTimestamp, 0).UTC()
 
-			if s.oldestTS[bouncerName].IsZero() || collectedAt.Before(s.oldestTS[bouncerName]) {
-				s.oldestTS[bouncerName] = collectedAt
+			if oldestTS[bouncerName].IsZero() || collectedAt.Before(oldestTS[bouncerName]) {
+				oldestTS[bouncerName] = collectedAt
 			}
 
 			for _, item := range m.Items {
@@ -130,18 +113,18 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 				valid := true
 
 				if item.Name == nil {
-					warnOnce(warningsLogged, "missing 'name' field in metrics reported by "+bouncerName)
+					logWarningOnce(warningsLogged, "missing 'name' field in metrics reported by "+bouncerName)
 					// no continue - keep checking the rest
 					valid = false
 				}
 
 				if item.Unit == nil {
-					warnOnce(warningsLogged, "missing 'unit' field in metrics reported by "+bouncerName)
+					logWarningOnce(warningsLogged, "missing 'unit' field in metrics reported by "+bouncerName)
 					valid = false
 				}
 
 				if item.Value == nil {
-					warnOnce(warningsLogged, "missing 'value' field in metrics reported by "+bouncerName)
+					logWarningOnce(warningsLogged, "missing 'value' field in metrics reported by "+bouncerName)
 					valid = false
 				}
 
@@ -175,7 +158,30 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 		return keys[i].collectedAt.Before(keys[j].collectedAt)
 	})
 
-	s.rawMetrics = keys
+	return keys, oldestTS
+}
+
+func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
+	if db == nil {
+		return nil
+	}
+
+	// query all bouncer metrics that have not been flushed
+
+	metrics, err := db.Ent.Metric.Query().
+		Where(
+			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
+		).
+		// we will process metrics ordered by timestamp, so that active_decisions
+		// can override previous values
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to fetch metrics: %w", err)
+	}
+
+	// de-normalize, de-duplicate metrics and keep the oldest timestamp for each bouncer
+
+	s.rawMetrics, s.oldestTS = s.extractRawMetrics(metrics)
 
 	s.aggregate()
 
@@ -183,18 +189,18 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 }
 
 // return true if the metric is a gauge and should not be aggregated
-func (statBouncer) isGauge(name string) bool {
+func (*statBouncer) isGauge(name string) bool {
 	return name == "active_decisions" || strings.HasSuffix(name, "_gauge")
 }
 
 // formatMetricName returns the metric name to display in the table header
-func (statBouncer) formatMetricName(name string) string {
+func (*statBouncer) formatMetricName(name string) string {
 	return strings.TrimSuffix(name, "_gauge")
 }
 
 // formatMetricOrigin returns the origin to display in the table rows
 // (for example, some users don't know what capi is)
-func (statBouncer) formatMetricOrigin(origin string) string {
+func (*statBouncer) formatMetricOrigin(origin string) string {
 	switch origin {
 	case "CAPI":
 		origin += " (community blocklist)"
