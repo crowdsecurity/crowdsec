@@ -33,18 +33,19 @@ type bouncerMetricItem struct {
 	value       float64
 }
 
+type aggregationOverTime map[string]map[string]map[string]map[string]map[string]int64
+type aggregationOverIPType map[string]map[string]map[string]map[string]int64
+type aggregationOverOrigin map[string]map[string]map[string]int64
+
 type statBouncer struct {
 	// oldest collection timestamp for each bouncer
 	oldestTS map[string]time.Time
-	// we keep de-normalized metrics so we can iterate
-	// over them multiple times and keep the aggregation code simple
-	rawMetrics          []bouncerMetricItem
-	// [bouncer][origin][name][unit][iptype]value
-	aggregated          map[string]map[string]map[string]map[string]map[string]int64
+	// aggregate over ip type: always sum
 	// [bouncer][origin][name][unit]value
-	aggregatedAllIPType map[string]map[string]map[string]map[string]int64
+	aggOverIPType aggregationOverIPType
+	// aggregate over origin: always sum
 	// [bouncer][name][unit]value
-	aggregatedAllOrigin map[string]map[string]map[string]int64
+	aggOverOrigin aggregationOverOrigin
 }
 
 var knownPlurals = map[string]string{
@@ -54,10 +55,10 @@ var knownPlurals = map[string]string{
 }
 
 func (s *statBouncer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.aggregatedAllIPType)
+	return json.Marshal(s.aggOverIPType)
 }
 
-func (s *statBouncer) Description() (string, string) {
+func (*statBouncer) Description() (string, string) {
 	return "Bouncer Metrics",
 		`Network traffic blocked by bouncers.`
 }
@@ -181,11 +182,12 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 
 	// de-normalize, de-duplicate metrics and keep the oldest timestamp for each bouncer
 
-	s.rawMetrics, s.oldestTS = s.extractRawMetrics(metrics)
+	rawMetrics, oldestTS := s.extractRawMetrics(metrics)
 
-	s.aggregateOverTime()
-	s.aggregateOverIPType()
-	s.aggregateOverOrigin()
+	s.oldestTS = oldestTS
+	aggOverTime := s.newAggregationOverTime(rawMetrics)
+	s.aggOverIPType = s.newAggregationOverIPType(aggOverTime)
+	s.aggOverOrigin = s.newAggregationOverOrigin(s.aggOverIPType)
 
 	return nil
 }
@@ -214,121 +216,123 @@ func (*statBouncer) formatMetricOrigin(origin string) string {
 	return origin
 }
 
-func (s *statBouncer) aggregateOverTime() {
+func (s *statBouncer) newAggregationOverTime(rawMetrics []bouncerMetricItem) aggregationOverTime {
+	// aggregate over time: sum for non-gauge, last by timestamp for gauge
 	// [bouncer][origin][name][unit][iptype]value
-	if s.aggregated == nil {
-		s.aggregated = make(map[string]map[string]map[string]map[string]map[string]int64)
-	}
+	
+	ret := aggregationOverTime{}
 
 	// first round, we aggregate over time if the metric is not of type "gauge"
 
-	for _, raw := range s.rawMetrics {
-		if _, ok := s.aggregated[raw.bouncerName]; !ok {
-			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]map[string]int64)
+	for _, raw := range rawMetrics {
+		if _, ok := ret[raw.bouncerName]; !ok {
+			ret[raw.bouncerName] = make(map[string]map[string]map[string]map[string]int64)
 		}
 
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin] = make(map[string]map[string]map[string]int64)
+		if _, ok := ret[raw.bouncerName][raw.origin]; !ok {
+			ret[raw.bouncerName][raw.origin] = make(map[string]map[string]map[string]int64)
 		}
 
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name] = make(map[string]map[string]int64)
+		if _, ok := ret[raw.bouncerName][raw.origin][raw.name]; !ok {
+			ret[raw.bouncerName][raw.origin][raw.name] = make(map[string]map[string]int64)
 		}
 
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = make(map[string]int64)
+		if _, ok := ret[raw.bouncerName][raw.origin][raw.name][raw.unit]; !ok {
+			ret[raw.bouncerName][raw.origin][raw.name][raw.unit] = make(map[string]int64)
 		}
 
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = 0
+		if _, ok := ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType]; !ok {
+			ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = 0
 		}
 
 		if s.isGauge(raw.name) {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = int64(raw.value)
+			ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] = int64(raw.value)
 		} else {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] += int64(raw.value)
+			ret[raw.bouncerName][raw.origin][raw.name][raw.unit][raw.ipType] += int64(raw.value)
 		}
 	}
+
+	return ret
 }
 
-func (s *statBouncer) aggregateOverIPType() {
-	if s.aggregatedAllIPType == nil {
-		s.aggregatedAllIPType = make(map[string]map[string]map[string]map[string]int64)
-	}
+func (*statBouncer) newAggregationOverIPType(aggMetrics aggregationOverTime) aggregationOverIPType {
+	ret := aggregationOverIPType{}
 
 	// second round, we always aggregate over ip type
 
-	for bouncerName := range s.aggregated {
-		if _, ok := s.aggregatedAllIPType[bouncerName]; !ok {
-			s.aggregatedAllIPType[bouncerName] = make(map[string]map[string]map[string]int64)
+	for bouncerName := range aggMetrics {
+		if _, ok := ret[bouncerName]; !ok {
+			ret[bouncerName] = make(map[string]map[string]map[string]int64)
 		}
-		for origin := range s.aggregated[bouncerName] {
-			if _, ok := s.aggregatedAllIPType[bouncerName][origin]; !ok {
-				s.aggregatedAllIPType[bouncerName][origin] = make(map[string]map[string]int64)
+		for origin := range aggMetrics[bouncerName] {
+			if _, ok := ret[bouncerName][origin]; !ok {
+				ret[bouncerName][origin] = make(map[string]map[string]int64)
 			}
-			for name := range s.aggregated[bouncerName][origin] {
-				if _, ok := s.aggregatedAllIPType[bouncerName][origin][name]; !ok {
-					s.aggregatedAllIPType[bouncerName][origin][name] = make(map[string]int64)
+			for name := range aggMetrics[bouncerName][origin] {
+				if _, ok := ret[bouncerName][origin][name]; !ok {
+					ret[bouncerName][origin][name] = make(map[string]int64)
 				}
-				for unit := range s.aggregated[bouncerName][origin][name] {
-					if _, ok := s.aggregatedAllIPType[bouncerName][origin][name][unit]; !ok {
-						s.aggregatedAllIPType[bouncerName][origin][name][unit] = 0
+				for unit := range aggMetrics[bouncerName][origin][name] {
+					if _, ok := ret[bouncerName][origin][name][unit]; !ok {
+						ret[bouncerName][origin][name][unit] = 0
 					}
 
-					for ipType := range s.aggregated[bouncerName][origin][name][unit] {
-						value := s.aggregated[bouncerName][origin][name][unit][ipType]
-						s.aggregatedAllIPType[bouncerName][origin][name][unit] += value
+					for ipType := range aggMetrics[bouncerName][origin][name][unit] {
+						value := aggMetrics[bouncerName][origin][name][unit][ipType]
+						ret[bouncerName][origin][name][unit] += value
 					}
 				}
 			}
 		}
 	}
+
+	return ret
 }
 
-func (s *statBouncer) aggregateOverOrigin() {
-	if s.aggregatedAllOrigin == nil {
-		s.aggregatedAllOrigin = make(map[string]map[string]map[string]int64)
-	}
+func (s *statBouncer) newAggregationOverOrigin(aggMetrics aggregationOverIPType) aggregationOverOrigin {
+	ret := aggregationOverOrigin{}
 
 	// third round, we always aggregate over origin
 
-	for bouncerName := range s.aggregatedAllIPType {
-		if _, ok := s.aggregatedAllOrigin[bouncerName]; !ok {
-			s.aggregatedAllOrigin[bouncerName] = make(map[string]map[string]int64)
+	for bouncerName := range aggMetrics {
+		if _, ok := ret[bouncerName]; !ok {
+			ret[bouncerName] = make(map[string]map[string]int64)
 		}
-		for origin := range s.aggregatedAllIPType[bouncerName] {
-			for name := range s.aggregatedAllIPType[bouncerName][origin] {
-				if _, ok := s.aggregatedAllOrigin[bouncerName][name]; !ok {
-					s.aggregatedAllOrigin[bouncerName][name] = make(map[string]int64)
+		for origin := range aggMetrics[bouncerName] {
+			for name := range aggMetrics[bouncerName][origin] {
+				if _, ok := ret[bouncerName][name]; !ok {
+					ret[bouncerName][name] = make(map[string]int64)
 				}
-				for unit := range s.aggregatedAllIPType[bouncerName][origin][name] {
-					val := s.aggregatedAllIPType[bouncerName][origin][name][unit]
-					s.aggregatedAllOrigin[bouncerName][name][unit] += val
+				for unit := range aggMetrics[bouncerName][origin][name] {
+					val := aggMetrics[bouncerName][origin][name][unit]
+					ret[bouncerName][name][unit] += val
 				}
 			}
 		}
 	}
+
+	return ret
 }
 
 // bouncerTable displays a table of metrics for a single bouncer
 func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor string, noUnit bool) {
-	columns := make(map[string]map[string]bool)
+	columns := make(map[string]map[string]struct{})
 
-	for _, item := range s.rawMetrics {
-		if item.bouncerName != bouncerName {
-			continue
-		}
-		// build a map of the metric names and units, to display dynamic columns
-		if _, ok := columns[item.name]; !ok {
-			columns[item.name] = make(map[string]bool)
-		}
-
-		columns[item.name][item.unit] = true
+	bouncerData, ok := s.aggOverOrigin[bouncerName]
+	if !ok {
+		// no metrics for this bouncer, skip. how did we get here ?
+		// anyway we can't honor the "showEmpty" flag in this case,
+		// we don't even have the table headers
+		return
 	}
 
-	// no metrics for this bouncer, skip. how did we get here ?
-	// anyway we can't honor the "showEmpty" flag in this case,
-	// we don't heven have the table headers
+	for metricName, units := range bouncerData {
+		// build a map of the metric names and units, to display dynamic columns
+		columns[metricName] = make(map[string]struct{})
+		for unit := range units {
+			columns[metricName][unit] = struct{}{}
+		}
+	}
 
 	if len(columns) == 0 {
 		return
@@ -376,7 +380,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 	// sort all the ranges for stable output
 
-	for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
+	for _, origin := range maptools.SortedKeys(s.aggOverIPType[bouncerName]) {
 		if origin == "" {
 			// if the metric has no origin (i.e. processed bytes/packets)
 			// we don't display it in the table body but it still gets aggreagted
@@ -384,7 +388,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 			continue
 		}
 
-		metrics := s.aggregatedAllIPType[bouncerName][origin]
+		metrics := s.aggOverIPType[bouncerName][origin]
 
 		row := table.Row{s.formatMetricOrigin(origin)}
 
@@ -406,7 +410,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		numRows += 1
 	}
 
-	totals := s.aggregatedAllOrigin[bouncerName]
+	totals := s.aggOverOrigin[bouncerName]
 
 	if numRows == 0 {
 		t.Style().Options.SeparateFooter = false
@@ -441,12 +445,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 // Table displays a table of metrics for each bouncer
 func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, _ bool) {
-	bouncerNames := make(map[string]bool)
-	for _, item := range s.rawMetrics {
-		bouncerNames[item.bouncerName] = true
-	}
-
-	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
+	for _, bouncerName := range maptools.SortedKeys(s.aggOverOrigin) {
 		s.bouncerTable(out, bouncerName, wantColor, noUnit)
 	}
 }
