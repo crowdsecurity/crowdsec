@@ -138,7 +138,7 @@ func logWarningOnce(warningsLogged map[string]bool, msg string) {
 // extractRawMetrics converts metrics from the database to a de-normalized, de-duplicated slice
 // it returns the slice and the oldest timestamp for each bouncer
 func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricItem, map[string]time.Time) {
-	oldestTS := make(map[string]time.Time, 0)
+	oldestTS := make(map[string]time.Time)
 
 	// don't spam the user with the same warnings
 	warningsLogged := make(map[string]bool)
@@ -149,14 +149,11 @@ func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricIte
 	for _, met := range metrics {
 		bouncerName := met.GeneratedBy
 
-		type bouncerMetrics struct {
+		var payload struct {
 			Metrics []models.DetailedMetrics `json:"metrics"`
 		}
 
-		payload := bouncerMetrics{}
-
-		err := json.Unmarshal([]byte(met.Payload), &payload)
-		if err != nil {
+		if err := json.Unmarshal([]byte(met.Payload), &payload); err != nil {
 			log.Warningf("while parsing metrics for %s: %s", bouncerName, err)
 			continue
 		}
@@ -175,8 +172,6 @@ func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricIte
 			}
 
 			for _, item := range m.Items {
-				labels := item.Labels
-
 				valid := true
 
 				if item.Name == nil {
@@ -202,8 +197,8 @@ func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricIte
 				rawMetric := bouncerMetricItem{
 					collectedAt: collectedAt,
 					bouncerName: bouncerName,
-					ipType:      labels["ip_type"],
-					origin:      labels["origin"],
+					ipType:      item.Labels["ip_type"],
+					origin:      item.Labels["origin"],
 					name:        *item.Name,
 					unit:        *item.Unit,
 					value:       *item.Value,
@@ -236,9 +231,7 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 	// query all bouncer metrics that have not been flushed
 
 	metrics, err := db.Ent.Metric.Query().
-		Where(
-			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
-		).
+		Where(metric.GeneratedTypeEQ(metric.GeneratedTypeRC)).
 		All(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch metrics: %w", err)
@@ -271,19 +264,17 @@ func (*statBouncer) formatMetricName(name string) string {
 func (*statBouncer) formatMetricOrigin(origin string) string {
 	switch origin {
 	case "CAPI":
-		origin += " (community blocklist)"
+		return origin + " (community blocklist)"
 	case "cscli":
-		origin += " (manual decisions)"
+		return origin + " (manual decisions)"
 	case "crowdsec":
-		origin += " (security engine)"
+		return origin + " (security engine)"
+	default:
+		return origin
 	}
-	return origin
 }
 
 func (s *statBouncer) newAggregationOverTime(rawMetrics []bouncerMetricItem) aggregationOverTime {
-	// aggregate over time: sum for non-gauge, last by timestamp for gauge
-	// [bouncer][origin][name][unit][iptype]value
-	
 	ret := aggregationOverTime{}
 
 	for _, raw := range rawMetrics {
@@ -372,8 +363,8 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 			header1 = append(header1, s.formatMetricName(name))
 
 			// we don't add "s" to random words
-			if knownPlurals[unit] != "" {
-				unit = knownPlurals[unit]
+			if plural, ok := knownPlurals[unit]; ok {
+				unit = plural
 			}
 
 			header2 = append(header2, unit)
@@ -411,8 +402,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 			for _, unit := range maptools.SortedKeys(columns[name]) {
 				valStr := "-"
 
-				val, ok := metrics[name][unit]
-				if ok {
+				if val, ok := metrics[name][unit]; ok {
 					valStr = formatNumber(val, !noUnit)
 				}
 
@@ -449,11 +439,9 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
 	}
 
-	title += ":"
-
 	// don't use SetTitle() because it draws the title inside table box
-	io.WriteString(out, title+"\n")
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, title+":\n")
+	io.WriteString(out, t.Render()+"\n")
 	// empty line between tables
 	io.WriteString(out, "\n")
 }
