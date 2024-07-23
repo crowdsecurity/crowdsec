@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -161,6 +162,30 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 	return nil
 }
 
+// return true if the metric is a gauge and should not be aggregated
+func (statBouncer) isGauge(name string) bool {
+	return name == "active_decisions" || strings.HasSuffix(name, "_gauge")
+}
+
+// formatMetricName returns the metric name to display in the table header
+func (statBouncer) formatMetricName(name string) string {
+	return strings.TrimSuffix(name, "_gauge")
+}
+
+// formatMetricOrigin returns the origin to display in the table rows
+// (for example, some users don't know what capi is)
+func (statBouncer) formatMetricOrigin(origin string) string {
+	switch origin {
+	case "CAPI":
+		origin += " (community blocklist)"
+	case "cscli":
+		origin += " (manual decisions)"
+	case "crowdsec":
+		origin += " (security engine)"
+	}
+	return origin
+}
+
 func (s *statBouncer) aggregate() {
 	// [bouncer][origin][name][unit]value
 	if s.aggregated == nil {
@@ -188,7 +213,7 @@ func (s *statBouncer) aggregate() {
 			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = 0
 		}
 
-		if raw.name == "active_decisions" {
+		if s.isGauge(raw.name) {
 			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = int64(raw.value)
 		} else {
 			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
@@ -257,7 +282,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		for _, unit := range maptools.SortedKeys(columns[name]) {
 			colNum += 1
 
-			header1 = append(header1, name)
+			header1 = append(header1, s.formatMetricName(name))
 
 			// we don't add "s" to random words
 			if knownPlurals[unit] != "" {
@@ -293,17 +318,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 		metrics := s.aggregated[bouncerName][origin]
 
-		// some users don't know what capi is
-		switch origin {
-		case "CAPI":
-			origin += " (community blocklist)"
-		case "cscli":
-			origin += " (manual decisions)"
-		case "crowdsec":
-			origin += " (security engine)"
-		}
-
-		row := table.Row{origin}
+		row := table.Row{s.formatMetricOrigin(origin)}
 
 		for _, name := range maptools.SortedKeys(columns) {
 			for _, unit := range maptools.SortedKeys(columns[name]) {

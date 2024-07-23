@@ -224,7 +224,7 @@ teardown() {
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	EOT
 
-    # active_decisions is not a counter: new values override the old ones
+    # active_decisions is actually a gauge: values should not be aggregated, keep only the latest one
 
     payload=$(yq -o j '
         .remediation_components[0].metrics = [
@@ -305,6 +305,67 @@ teardown() {
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	|                            Total |              260 |   9.06k |     191 |       2 |     5 |
 	+----------------------------------+------------------+---------+---------+---------+-------+
+	EOT
+}
+
+@test "rc usage metrics (unknown metrics)" {
+    # new metrics are introduced in a new bouncer version, unknown by this version of cscli: some are gauges, some are not
+
+    API_KEY=$(cscli bouncers add testbouncer -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707369316
+	log_processors: []
+	EOT
+    )
+
+    payload=$(yq -o j '
+        .remediation_components[0].metrics = [
+        {
+          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
+          "items":[
+            {"name": "ima_gauge", "unit": "second", "value": 20, "labels": {"origin": "cscli"}},
+            {"name": "notagauge", "unit": "inch",   "value": 10, "labels": {"origin": "cscli"}}
+          ]
+        }
+        ] |
+        .remediation_components[0].type = "crowdsec-firewall-bouncer"
+    ' <<<"$payload")
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+    payload=$(yq -o j '
+        .remediation_components[0].metrics = [
+        {
+          "meta": {"utc_now_timestamp": 1707460000, "window_size_seconds":600},
+          "items":[
+            {"name": "ima_gauge", "unit": "second", "value": 30, "labels": {"origin": "cscli"}},
+            {"name": "notagauge", "unit": "inch",   "value": 15, "labels": {"origin": "cscli"}}
+          ]
+        }
+        ] |
+        .remediation_components[0].type = "crowdsec-firewall-bouncer"
+    ' <<<"$payload")
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+    rune -0 cscli metrics show bouncers -o json
+    assert_json '{bouncers: {testbouncer: {cscli: {ima_gauge: {second: 30}, notagauge: {inch: 25}}}}}'
+
+    rune -0 cscli metrics show bouncers
+    assert_output - <<-EOT
+	Bouncer Metrics (testbouncer) since 2024-02-09 03:40:00 +0000 UTC:
+	+--------------------------+--------+-----------+
+	| Origin                   |   ima  | notagauge |
+	|                          | second |    inch   |
+	+--------------------------+--------+-----------+
+	| cscli (manual decisions) |     30 |        25 |
+	+--------------------------+--------+-----------+
+	|                    Total |     30 |        25 |
+	+--------------------------+--------+-----------+
 	EOT
 
     # TODO: multiple item lists
