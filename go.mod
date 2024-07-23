@@ -13,7 +13,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/agext/levenshtein v1.2.3
 	github.com/alexliesenfeld/health v0.8.0
-	github.com/antonmedv/expr v1.15.3
 	github.com/appleboy/gin-jwt/v2 v2.9.2
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.52.0
@@ -33,6 +32,7 @@ require (
 	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.4.0
+	github.com/expr-lang/expr v1.16.9
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gin-gonic/gin v1.9.1
@@ -111,7 +111,6 @@ require (
 	github.com/creack/pty v1.1.18 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/expr-lang/expr v1.16.9 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
