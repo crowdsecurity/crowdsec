@@ -22,7 +22,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-// un-aggregated data, de-normalized.
+// bouncerMetricItem represents unaggregated, denormalized metric data.
+// Possibly not unique if a bouncer sent the same data multiple times.
 type bouncerMetricItem struct {
 	collectedAt time.Time
 	bouncerName string
@@ -33,6 +34,9 @@ type bouncerMetricItem struct {
 	value       float64
 }
 
+// aggregationOverTime is the first level of aggregation: we aggregate
+// over time, then over ip type, then over origin. we only sum values
+// for non-gauge metrics, and take the last value for gauge metrics.
 type aggregationOverTime map[string]map[string]map[string]map[string]map[string]int64
 
 func (a aggregationOverTime) add(bouncerName, origin, name, unit, ipType string, value float64, isGauge bool) {
@@ -52,10 +56,6 @@ func (a aggregationOverTime) add(bouncerName, origin, name, unit, ipType string,
 		a[bouncerName][origin][name][unit] = make(map[string]int64)
 	}
 
-	if _, ok := a[bouncerName][origin][name][unit][ipType]; !ok {
-		a[bouncerName][origin][name][unit][ipType] = 0
-	}
-
 	if isGauge {
 		a[bouncerName][origin][name][unit][ipType] = int64(value)
 	} else {
@@ -63,7 +63,9 @@ func (a aggregationOverTime) add(bouncerName, origin, name, unit, ipType string,
 	}
 }
 
-
+// aggregationOverIPType is the second level of aggregation: data is summed
+// regardless of the metrics type (gauge or not). This is used to display
+// table rows, they won't differentiate ipv4 and ipv6
 type aggregationOverIPType map[string]map[string]map[string]map[string]int64
 
 func (a aggregationOverIPType) add(bouncerName, origin, name, unit string, value int64) {
@@ -79,13 +81,12 @@ func (a aggregationOverIPType) add(bouncerName, origin, name, unit string, value
 		a[bouncerName][origin][name] = make(map[string]int64)
 	}
 
-	if _, ok := a[bouncerName][origin][name][unit]; !ok {
-		a[bouncerName][origin][name][unit] = 0
-	}
-
 	a[bouncerName][origin][name][unit] += value
 }
 
+// aggregationOverOrigin is the third level of aggregation: these are
+// the totals at the end of the table. Metrics without an origin will
+// be added to the totals but not displayed in the rows, only in the footer.
 type aggregationOverOrigin map[string]map[string]map[string]int64
 
 func (a aggregationOverOrigin) add(bouncerName, name, unit string, value int64) {
@@ -95,10 +96,6 @@ func (a aggregationOverOrigin) add(bouncerName, name, unit string, value int64) 
 
 	if _, ok := a[bouncerName][name]; !ok {
 		a[bouncerName][name] = make(map[string]int64)
-	}
-
-	if _, ok := a[bouncerName][name][unit]; !ok {
-		a[bouncerName][name][unit] = 0
 	}
 
 	a[bouncerName][name][unit] += value
