@@ -22,8 +22,8 @@ type Metric struct {
 	// Source of the metrics: machine id, bouncer name...
 	// It must come from the auth middleware.
 	GeneratedBy string `json:"generated_by,omitempty"`
-	// When the metrics are collected/calculated at the source
-	CollectedAt time.Time `json:"collected_at,omitempty"`
+	// When the metrics are received by LAPI
+	ReceivedAt time.Time `json:"received_at,omitempty"`
 	// When the metrics are sent to the console
 	PushedAt *time.Time `json:"pushed_at,omitempty"`
 	// The actual metrics (item0)
@@ -40,7 +40,7 @@ func (*Metric) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case metric.FieldGeneratedType, metric.FieldGeneratedBy, metric.FieldPayload:
 			values[i] = new(sql.NullString)
-		case metric.FieldCollectedAt, metric.FieldPushedAt:
+		case metric.FieldReceivedAt, metric.FieldPushedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -75,11 +75,11 @@ func (m *Metric) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.GeneratedBy = value.String
 			}
-		case metric.FieldCollectedAt:
+		case metric.FieldReceivedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field collected_at", values[i])
+				return fmt.Errorf("unexpected type %T for field received_at", values[i])
 			} else if value.Valid {
-				m.CollectedAt = value.Time
+				m.ReceivedAt = value.Time
 			}
 		case metric.FieldPushedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -136,8 +136,8 @@ func (m *Metric) String() string {
 	builder.WriteString("generated_by=")
 	builder.WriteString(m.GeneratedBy)
 	builder.WriteString(", ")
-	builder.WriteString("collected_at=")
-	builder.WriteString(m.CollectedAt.Format(time.ANSIC))
+	builder.WriteString("received_at=")
+	builder.WriteString(m.ReceivedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	if v := m.PushedAt; v != nil {
 		builder.WriteString("pushed_at=")

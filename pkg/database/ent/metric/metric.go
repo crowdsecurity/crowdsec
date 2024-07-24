@@ -17,8 +17,8 @@ const (
 	FieldGeneratedType = "generated_type"
 	// FieldGeneratedBy holds the string denoting the generated_by field in the database.
 	FieldGeneratedBy = "generated_by"
-	// FieldCollectedAt holds the string denoting the collected_at field in the database.
-	FieldCollectedAt = "collected_at"
+	// FieldReceivedAt holds the string denoting the received_at field in the database.
+	FieldReceivedAt = "received_at"
 	// FieldPushedAt holds the string denoting the pushed_at field in the database.
 	FieldPushedAt = "pushed_at"
 	// FieldPayload holds the string denoting the payload field in the database.
@@ -32,7 +32,7 @@ var Columns = []string{
 	FieldID,
 	FieldGeneratedType,
 	FieldGeneratedBy,
-	FieldCollectedAt,
+	FieldReceivedAt,
 	FieldPushedAt,
 	FieldPayload,
 }
@@ -88,9 +88,9 @@ func ByGeneratedBy(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGeneratedBy, opts...).ToFunc()
 }
 
-// ByCollectedAt orders the results by the collected_at field.
-func ByCollectedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCollectedAt, opts...).ToFunc()
+// ByReceivedAt orders the results by the received_at field.
+func ByReceivedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReceivedAt, opts...).ToFunc()
 }
 
 // ByPushedAt orders the results by the pushed_at field.

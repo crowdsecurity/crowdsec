@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -17,6 +20,48 @@ const (
 	CapiMachineID      = types.CAPIOrigin
 	CapiListsMachineID = types.ListOrigin
 )
+
+func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
+	os := baseMetrics.Os
+	features := strings.Join(baseMetrics.FeatureFlags, ",")
+
+	var heartbeat time.Time
+
+	if baseMetrics.Metrics == nil || len(baseMetrics.Metrics) == 0 {
+		heartbeat = time.Now().UTC()
+	} else {
+		heartbeat = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
+	}
+
+	hubState := map[string][]schema.ItemState{}
+	for itemType, items := range hubItems {
+		hubState[itemType] = []schema.ItemState{}
+		for _, item := range items {
+			hubState[itemType] = append(hubState[itemType], schema.ItemState{
+				Name:    item.Name,
+				Status:  item.Status,
+				Version: item.Version,
+			})
+		}
+	}
+
+	_, err := c.Ent.Machine.
+		Update().
+		Where(machine.MachineIdEQ(machineID)).
+		SetNillableVersion(baseMetrics.Version).
+		SetOsname(*os.Name).
+		SetOsversion(*os.Version).
+		SetFeatureflags(features).
+		SetLastHeartbeat(heartbeat).
+		SetHubstate(hubState).
+		SetDatasources(datasources).
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update base machine metrics in database: %w", err)
+	}
+
+	return nil
+}
 
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
@@ -158,7 +203,7 @@ func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 		SetScenarios(scenarios).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine in database: %w", err)
 	}
 
 	return nil
@@ -169,7 +214,7 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine IP in database: %s", err)
+		return fmt.Errorf("unable to update machine IP in database: %w", err)
 	}
 
 	return nil
@@ -180,7 +225,7 @@ func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
 		SetVersion(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine version in database: %s", err)
+		return fmt.Errorf("unable to update machine version in database: %w", err)
 	}
 
 	return nil

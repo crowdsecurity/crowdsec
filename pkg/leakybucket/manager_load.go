@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"

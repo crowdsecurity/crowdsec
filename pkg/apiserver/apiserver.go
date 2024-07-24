@@ -367,6 +367,11 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			s.apic.SendMetrics(make(chan bool))
 			return nil
 		})
+
+		s.apic.metricsTomb.Go(func() error {
+			s.apic.SendUsageMetrics()
+			return nil
+		})
 	}
 
 	s.httpServerTomb.Go(func() error {
@@ -375,7 +380,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 	if err := s.httpServerTomb.Wait(); err != nil {
 		return fmt.Errorf("local API server stopped with error: %w", err)
-        }
+	}
 
 	return nil
 }

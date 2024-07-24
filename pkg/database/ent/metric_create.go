@@ -32,9 +32,9 @@ func (mc *MetricCreate) SetGeneratedBy(s string) *MetricCreate {
 	return mc
 }
 
-// SetCollectedAt sets the "collected_at" field.
-func (mc *MetricCreate) SetCollectedAt(t time.Time) *MetricCreate {
-	mc.mutation.SetCollectedAt(t)
+// SetReceivedAt sets the "received_at" field.
+func (mc *MetricCreate) SetReceivedAt(t time.Time) *MetricCreate {
+	mc.mutation.SetReceivedAt(t)
 	return mc
 }
 
@@ -103,8 +103,8 @@ func (mc *MetricCreate) check() error {
 	if _, ok := mc.mutation.GeneratedBy(); !ok {
 		return &ValidationError{Name: "generated_by", err: errors.New(`ent: missing required field "Metric.generated_by"`)}
 	}
-	if _, ok := mc.mutation.CollectedAt(); !ok {
-		return &ValidationError{Name: "collected_at", err: errors.New(`ent: missing required field "Metric.collected_at"`)}
+	if _, ok := mc.mutation.ReceivedAt(); !ok {
+		return &ValidationError{Name: "received_at", err: errors.New(`ent: missing required field "Metric.received_at"`)}
 	}
 	if _, ok := mc.mutation.Payload(); !ok {
 		return &ValidationError{Name: "payload", err: errors.New(`ent: missing required field "Metric.payload"`)}
@@ -143,9 +143,9 @@ func (mc *MetricCreate) createSpec() (*Metric, *sqlgraph.CreateSpec) {
 		_spec.SetField(metric.FieldGeneratedBy, field.TypeString, value)
 		_node.GeneratedBy = value
 	}
-	if value, ok := mc.mutation.CollectedAt(); ok {
-		_spec.SetField(metric.FieldCollectedAt, field.TypeTime, value)
-		_node.CollectedAt = value
+	if value, ok := mc.mutation.ReceivedAt(); ok {
+		_spec.SetField(metric.FieldReceivedAt, field.TypeTime, value)
+		_node.ReceivedAt = value
 	}
 	if value, ok := mc.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)
