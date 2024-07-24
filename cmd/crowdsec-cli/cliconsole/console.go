@@ -352,13 +352,8 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ConsoleManagement != nil {
-				if *consoleCfg.ConsoleManagement == wanted {
-					log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-					*consoleCfg.ConsoleManagement = wanted
-				}
+			if consoleCfg.ConsoleManagement != nil && *consoleCfg.ConsoleManagement == wanted {
+				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				consoleCfg.ConsoleManagement = ptr.Of(wanted)
@@ -390,52 +385,32 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareCustomScenarios != nil {
-				if *consoleCfg.ShareCustomScenarios == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-					*consoleCfg.ShareCustomScenarios = wanted
-				}
+			if consoleCfg.ShareCustomScenarios != nil && *consoleCfg.ShareCustomScenarios == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 				consoleCfg.ShareCustomScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareTaintedScenarios != nil {
-				if *consoleCfg.ShareTaintedScenarios == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-					*consoleCfg.ShareTaintedScenarios = wanted
-				}
+			if consoleCfg.ShareTaintedScenarios != nil && *consoleCfg.ShareTaintedScenarios == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 				consoleCfg.ShareTaintedScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareManualDecisions != nil {
-				if *consoleCfg.ShareManualDecisions == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-					*consoleCfg.ShareManualDecisions = wanted
-				}
+			if consoleCfg.ShareManualDecisions != nil && *consoleCfg.ShareManualDecisions == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				consoleCfg.ShareManualDecisions = ptr.Of(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareContext != nil {
-				if *consoleCfg.ShareContext == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
-					*consoleCfg.ShareContext = wanted
-				}
+			if consoleCfg.ShareContext != nil && *consoleCfg.ShareContext == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
 				consoleCfg.ShareContext = ptr.Of(wanted)
