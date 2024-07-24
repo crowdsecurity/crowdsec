@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -263,7 +264,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLILapi(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCompletionCmd())
 	cmd.AddCommand(cliconsole.New(cli.cfg, reloadMessage).NewCommand())
-	cmd.AddCommand(NewCLIExplain(cli.cfg).NewCommand())
+	cmd.AddCommand(cliexplain.New(cli.cfg, ConfigFilePath).NewCommand())
 	cmd.AddCommand(NewCLIHubTest(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLINotifications(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLISupport(cli.cfg).NewCommand())

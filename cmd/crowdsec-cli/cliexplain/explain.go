@@ -1,4 +1,4 @@
-package main
+package cliexplain
 
 import (
 	"bufio"
@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
@@ -40,8 +41,11 @@ func getLineCountForFile(filepath string) (int, error) {
 	return lc, nil
 }
 
+type configGetter func() *csconfig.Config
+
 type cliExplain struct {
 	cfg   configGetter
+	configFilePath string
 	flags struct {
 		logFile               string
 		dsn                   string
@@ -56,9 +60,10 @@ type cliExplain struct {
 	}
 }
 
-func NewCLIExplain(cfg configGetter) *cliExplain {
+func New(cfg configGetter, configFilePath string) *cliExplain {
 	return &cliExplain{
 		cfg: cfg,
+		configFilePath: configFilePath,
 	}
 }
 
@@ -214,7 +219,7 @@ func (cli *cliExplain) run() error {
 		return errors.New("no acquisition (--file or --dsn) provided, can't run cscli test")
 	}
 
-	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
+	cmdArgs := []string{"-c", cli.configFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
 
 	if labels != "" {
 		log.Debugf("adding labels %s", labels)
