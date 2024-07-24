@@ -218,6 +218,6 @@ func assertCollectionDepsInstalled(t *testing.T, hub *Hub, collection string) {
 }
 
 func pushUpdateToCollectionInHub() {
-	responseByPath["/master/.index.json"] = fileToStringX("./testdata/index2.json")
-	responseByPath["/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./testdata/collection_v2.yaml")
+	responseByPath["/crowdsecurity/master/.index.json"] = fileToStringX("./testdata/index2.json")
+	responseByPath["/crowdsecurity/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./testdata/collection_v2.yaml")
 }
