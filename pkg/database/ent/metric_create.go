@@ -38,14 +38,6 @@ func (mc *MetricCreate) SetReceivedAt(t time.Time) *MetricCreate {
 	return mc
 }
 
-// SetNillableReceivedAt sets the "received_at" field if the given value is not nil.
-func (mc *MetricCreate) SetNillableReceivedAt(t *time.Time) *MetricCreate {
-	if t != nil {
-		mc.SetReceivedAt(*t)
-	}
-	return mc
-}
-
 // SetPushedAt sets the "pushed_at" field.
 func (mc *MetricCreate) SetPushedAt(t time.Time) *MetricCreate {
 	mc.mutation.SetPushedAt(t)
@@ -73,7 +65,6 @@ func (mc *MetricCreate) Mutation() *MetricMutation {
 
 // Save creates the Metric in the database.
 func (mc *MetricCreate) Save(ctx context.Context) (*Metric, error) {
-	mc.defaults()
 	return withHooks(ctx, mc.sqlSave, mc.mutation, mc.hooks)
 }
 
@@ -99,14 +90,6 @@ func (mc *MetricCreate) ExecX(ctx context.Context) {
 	}
 }
 
-// defaults sets the default values of the builder before save.
-func (mc *MetricCreate) defaults() {
-	if _, ok := mc.mutation.ReceivedAt(); !ok {
-		v := metric.DefaultReceivedAt()
-		mc.mutation.SetReceivedAt(v)
-	}
-}
-
 // check runs all checks and user-defined validators on the builder.
 func (mc *MetricCreate) check() error {
 	if _, ok := mc.mutation.GeneratedType(); !ok {
@@ -119,6 +102,9 @@ func (mc *MetricCreate) check() error {
 	}
 	if _, ok := mc.mutation.GeneratedBy(); !ok {
 		return &ValidationError{Name: "generated_by", err: errors.New(`ent: missing required field "Metric.generated_by"`)}
+	}
+	if _, ok := mc.mutation.ReceivedAt(); !ok {
+		return &ValidationError{Name: "received_at", err: errors.New(`ent: missing required field "Metric.received_at"`)}
 	}
 	if _, ok := mc.mutation.Payload(); !ok {
 		return &ValidationError{Name: "payload", err: errors.New(`ent: missing required field "Metric.payload"`)}
@@ -159,7 +145,7 @@ func (mc *MetricCreate) createSpec() (*Metric, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := mc.mutation.ReceivedAt(); ok {
 		_spec.SetField(metric.FieldReceivedAt, field.TypeTime, value)
-		_node.ReceivedAt = &value
+		_node.ReceivedAt = value
 	}
 	if value, ok := mc.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)
@@ -190,7 +176,6 @@ func (mcb *MetricCreateBulk) Save(ctx context.Context) ([]*Metric, error) {
 	for i := range mcb.builders {
 		func(i int, root context.Context) {
 			builder := mcb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*MetricMutation)
 				if !ok {

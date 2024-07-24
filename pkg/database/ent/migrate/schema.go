@@ -254,7 +254,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "generated_type", Type: field.TypeEnum, Enums: []string{"LP", "RC"}},
 		{Name: "generated_by", Type: field.TypeString},
-		{Name: "received_at", Type: field.TypeTime, Nullable: true},
+		{Name: "received_at", Type: field.TypeTime},
 		{Name: "pushed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "payload", Type: field.TypeString, Size: 2147483647},
 	}

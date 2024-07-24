@@ -4,7 +4,6 @@ package metric
 
 import (
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 )
@@ -47,11 +46,6 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
-
-var (
-	// DefaultReceivedAt holds the default value on creation for the "received_at" field.
-	DefaultReceivedAt func() time.Time
-)
 
 // GeneratedType defines the type for the "generated_type" enum field.
 type GeneratedType string

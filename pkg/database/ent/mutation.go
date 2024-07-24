@@ -8836,7 +8836,7 @@ func (m *MetricMutation) ReceivedAt() (r time.Time, exists bool) {
 // OldReceivedAt returns the old "received_at" field's value of the Metric entity.
 // If the Metric object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MetricMutation) OldReceivedAt(ctx context.Context) (v *time.Time, err error) {
+func (m *MetricMutation) OldReceivedAt(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldReceivedAt is only allowed on UpdateOne operations")
 	}
@@ -8850,22 +8850,9 @@ func (m *MetricMutation) OldReceivedAt(ctx context.Context) (v *time.Time, err e
 	return oldValue.ReceivedAt, nil
 }
 
-// ClearReceivedAt clears the value of the "received_at" field.
-func (m *MetricMutation) ClearReceivedAt() {
-	m.received_at = nil
-	m.clearedFields[metric.FieldReceivedAt] = struct{}{}
-}
-
-// ReceivedAtCleared returns if the "received_at" field was cleared in this mutation.
-func (m *MetricMutation) ReceivedAtCleared() bool {
-	_, ok := m.clearedFields[metric.FieldReceivedAt]
-	return ok
-}
-
 // ResetReceivedAt resets all changes to the "received_at" field.
 func (m *MetricMutation) ResetReceivedAt() {
 	m.received_at = nil
-	delete(m.clearedFields, metric.FieldReceivedAt)
 }
 
 // SetPushedAt sets the "pushed_at" field.
@@ -9114,9 +9101,6 @@ func (m *MetricMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *MetricMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(metric.FieldReceivedAt) {
-		fields = append(fields, metric.FieldReceivedAt)
-	}
 	if m.FieldCleared(metric.FieldPushedAt) {
 		fields = append(fields, metric.FieldPushedAt)
 	}
@@ -9134,9 +9118,6 @@ func (m *MetricMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MetricMutation) ClearField(name string) error {
 	switch name {
-	case metric.FieldReceivedAt:
-		m.ClearReceivedAt()
-		return nil
 	case metric.FieldPushedAt:
 		m.ClearPushedAt()
 		return nil

@@ -89,9 +89,6 @@ func (mu *MetricUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if mu.mutation.ReceivedAtCleared() {
-		_spec.ClearField(metric.FieldReceivedAt, field.TypeTime)
-	}
 	if value, ok := mu.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)
 	}
@@ -208,9 +205,6 @@ func (muo *MetricUpdateOne) sqlSave(ctx context.Context) (_node *Metric, err err
 				ps[i](selector)
 			}
 		}
-	}
-	if muo.mutation.ReceivedAtCleared() {
-		_spec.ClearField(metric.FieldReceivedAt, field.TypeTime)
 	}
 	if value, ok := muo.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)

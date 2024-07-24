@@ -3,7 +3,6 @@ package schema
 import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // Metric is actually a set of metrics collected by a device
@@ -23,9 +22,6 @@ func (Metric) Fields() []ent.Field {
 			Comment("Source of the metrics: machine id, bouncer name...\nIt must come from the auth middleware."),
 		field.Time("received_at").
 			Immutable().
-			Default(types.UtcNow).
-			Nillable().
-			Optional().
 			Comment("When the metrics are received by LAPI"),
 		field.Time("pushed_at").
 			Nillable().

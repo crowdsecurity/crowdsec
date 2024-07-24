@@ -13,7 +13,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
@@ -171,10 +170,4 @@ func init() {
 	metaDescValue := metaFields[3].Descriptor()
 	// meta.ValueValidator is a validator for the "value" field. It is called by the builders before save.
 	meta.ValueValidator = metaDescValue.Validators[0].(func(string) error)
-	metricFields := schema.Metric{}.Fields()
-	_ = metricFields
-	// metricDescReceivedAt is the schema descriptor for received_at field.
-	metricDescReceivedAt := metricFields[2].Descriptor()
-	// metric.DefaultReceivedAt holds the default value on creation for the received_at field.
-	metric.DefaultReceivedAt = metricDescReceivedAt.Default.(func() time.Time)
 }
