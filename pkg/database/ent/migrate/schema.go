@@ -254,7 +254,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "generated_type", Type: field.TypeEnum, Enums: []string{"LP", "RC"}},
 		{Name: "generated_by", Type: field.TypeString},
-		{Name: "collected_at", Type: field.TypeTime},
+		{Name: "received_at", Type: field.TypeTime},
 		{Name: "pushed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "payload", Type: field.TypeString, Size: 2147483647},
 	}
@@ -263,13 +263,6 @@ var (
 		Name:       "metrics",
 		Columns:    MetricsColumns,
 		PrimaryKey: []*schema.Column{MetricsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "metric_generated_type_generated_by_collected_at",
-				Unique:  true,
-				Columns: []*schema.Column{MetricsColumns[1], MetricsColumns[2], MetricsColumns[3]},
-			},
-		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{

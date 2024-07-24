@@ -10,8 +10,8 @@ import (
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/antonmedv/expr"
 	"github.com/blackfireio/osinfo"
+	"github.com/expr-lang/expr"
 	"github.com/shirou/gopsutil/v3/process"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"

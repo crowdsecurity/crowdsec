@@ -3,7 +3,7 @@ package climetrics
 import (
 	"io"
 
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
@@ -26,10 +26,8 @@ func (s statBucket) Process(bucket, metric string, val int) {
 }
 
 func (s statBucket) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
-	t := cstable.New(out, wantColor)
-	t.SetRowLines(false)
-	t.SetHeaders("Scenario", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Scenario", "Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
 
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
@@ -37,7 +35,8 @@ func (s statBucket) Table(out io.Writer, wantColor string, noUnit bool, showEmpt
 		log.Warningf("while collecting scenario stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		cstable.RenderTitle(out, "\n"+title+":")
-		t.Render()
+		io.WriteString(out, title + ":\n")
+		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, "\n")
 	}
 }

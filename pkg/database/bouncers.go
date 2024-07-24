@@ -2,13 +2,35 @@ package database
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
+
+func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string, baseMetrics models.BaseMetrics) error {
+	os := baseMetrics.Os
+	features := strings.Join(baseMetrics.FeatureFlags, ",")
+
+	_, err := c.Ent.Bouncer.
+		Update().
+		Where(bouncer.NameEQ(bouncerName)).
+		SetNillableVersion(baseMetrics.Version).
+		SetOsname(*os.Name).
+		SetOsversion(*os.Version).
+		SetFeatureflags(features).
+		SetType(bouncerType).
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update base bouncer metrics in database: %w", err)
+	}
+
+	return nil
+}
 
 func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).First(c.CTX)

@@ -50,9 +50,10 @@ type AuthGCCfg struct {
 type FlushDBCfg struct {
 	MaxItems *int `yaml:"max_items,omitempty"`
 	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
-	MaxAge     *string    `yaml:"max_age,omitempty"`
-	BouncersGC *AuthGCCfg `yaml:"bouncers_autodelete,omitempty"`
-	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
+	MaxAge        *string        `yaml:"max_age,omitempty"`
+	BouncersGC    *AuthGCCfg     `yaml:"bouncers_autodelete,omitempty"`
+	AgentsGC      *AuthGCCfg     `yaml:"agents_autodelete,omitempty"`
+	MetricsMaxAge *time.Duration `yaml:"metrics_max_age,omitempty"`
 }
 
 func (c *Config) LoadDBConfig(inCli bool) error {
@@ -80,9 +81,9 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 			case err != nil:
 				log.Warnf("unable to determine if database is on network filesystem: %s", err)
 				log.Warning(
-				"You are using sqlite without WAL, this can have a performance impact. " +
-				"If you do not store the database in a network share, set db_config.use_wal to true. " +
-				"Set explicitly to false to disable this warning.")
+					"You are using sqlite without WAL, this can have a performance impact. " +
+						"If you do not store the database in a network share, set db_config.use_wal to true. " +
+						"Set explicitly to false to disable this warning.")
 			case isNetwork:
 				log.Debugf("database is on network filesystem (%s), setting useWal to false", fsType)
 				c.DbConfig.UseWal = ptr.Of(false)

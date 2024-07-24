@@ -34,7 +34,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.22.4"
+        go-version: "1.22.5"
 
     - name: Build
       run: |
@@ -43,7 +43,7 @@ jobs:
     - name: Run tests
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
-        go test -coverprofile coverage.out -covermode=atomic ./... > out.txt
+        go test -tags expr_debug -coverprofile coverage.out -covermode=atomic ./... > out.txt
         if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
         cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
@@ -55,7 +55,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v4
+      uses: golangci/golangci-lint-action@v6
       with:
         version: v1.59
         args: --issues-exit-code=1 --timeout 10m

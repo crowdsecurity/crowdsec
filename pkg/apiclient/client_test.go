@@ -348,5 +348,5 @@ func TestNewClientBadAnswer(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
-	cstest.RequireErrorContains(t, err, "invalid body: invalid character 'b' looking for beginning of value")
+	cstest.RequireErrorContains(t, err, "invalid body: bad")
 }

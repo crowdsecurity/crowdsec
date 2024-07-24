@@ -15,7 +15,6 @@ setup() {
     load "../lib/setup.sh"
     ./instance-data load
     ./instance-crowdsec start
-    skip "require the usage_metrics endpoint on apiserver"
 }
 
 teardown() {
@@ -75,6 +74,18 @@ teardown() {
     payload=$(yq -o j '.remediation_components[0].utc_startup_timestamp = 1707399316' <<<"$payload")
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
     refute_output
+
+    payload=$(yq -o j '.remediation_components[0].metrics = [{"meta": {}}]' <<<"$payload")
+    rune -22 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+    assert_stderr --partial "error: 422"
+    rune -0 jq -r '.message' <(output)
+    assert_output - <<-EOT
+	validation failure list:
+	remediation_components.0.metrics.0.items in body is required
+	validation failure list:
+	remediation_components.0.metrics.0.meta.utc_now_timestamp in body is required
+	remediation_components.0.metrics.0.meta.window_size_seconds in body is required
+	EOT
 }
 
 @test "rc usage metrics (good payload)" {
@@ -116,7 +127,7 @@ teardown() {
     rune -0 cscli metrics show bouncers -o json
     # aggregation is ok -- we are truncating, not rounding, because the float is mandated by swagger.
     # but without labels the origin string is empty
-    assert_json '{bouncers:{testbouncer:{"": {"foo": {"dogyear": 2, "pound": 5}}}}}'
+    assert_json '{bouncers:{testbouncer:{"": {foo: {dogyear: 2, pound: 5}}}}}'
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
@@ -137,7 +148,7 @@ teardown() {
         {
           "meta": {"utc_now_timestamp": 1707399916, "window_size_seconds":600},
           "items":[
-            {"name": "active_decisions", "unit": "ip",     "value": 51936, "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
+            {"name": "active_decisions", "unit": "ip",     "value": 500,   "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
             {"name": "active_decisions", "unit": "ip",     "value": 1,     "labels": {"ip_type": "ipv6", "origin": "cscli"}},
             {"name": "dropped",          "unit": "byte",   "value": 3800,  "labels": {"ip_type": "ipv4", "origin": "CAPI"}},
             {"name": "dropped",          "unit": "byte",   "value": 0,     "labels": {"ip_type": "ipv4", "origin": "cscli"}},
@@ -191,7 +202,7 @@ teardown() {
         },
         "lists:firehol_voipbl": {
           "active_decisions": {
-            "ip": 51936
+            "ip": 500
           },
           "dropped": {
             "byte": 3847,
@@ -216,17 +227,201 @@ teardown() {
 	|                                  |        IPs       |  bytes  | packets | dogyear | pound |
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	| CAPI (community blocklist)       |                - |   3.80k |     100 |       - |     - |
-	| cscli                            |                1 |     380 |      10 |       - |     - |
+	| cscli (manual decisions)         |                1 |     380 |      10 |       - |     - |
 	| lists:anotherlist                |                - |       0 |       0 |       - |     - |
 	| lists:firehol_cruzit_web_attacks |                - |   1.03k |      23 |       - |     - |
-	| lists:firehol_voipbl             |           51.94k |   3.85k |      58 |       - |     - |
+	| lists:firehol_voipbl             |              500 |   3.85k |      58 |       - |     - |
 	+----------------------------------+------------------+---------+---------+---------+-------+
-	|                            Total |           51.94k |   9.06k |     191 |       2 |     5 |
+	|                            Total |              501 |   9.06k |     191 |       2 |     5 |
 	+----------------------------------+------------------+---------+---------+---------+-------+
 	EOT
 
-    # TODO: multiple item lists
+    # active_decisions is actually a gauge: values should not be aggregated, keep only the latest one
 
+    payload=$(yq -o j '
+        .remediation_components[0].metrics = [
+        {
+          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
+          "items":[
+            {"name": "active_decisions", "unit": "ip",     "value": 250, "labels": {"ip_type": "ipv4", "origin": "lists:firehol_voipbl"}},
+            {"name": "active_decisions", "unit": "ip",     "value": 10,  "labels": {"ip_type": "ipv6", "origin": "cscli"}}
+          ]
+        }
+        ] |
+        .remediation_components[0].type = "crowdsec-firewall-bouncer"
+    ' <<<"$payload")
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+    rune -0 cscli metrics show bouncers -o json
+    assert_json '{
+    "bouncers": {
+      "testbouncer": {
+        "": {
+          "foo": {
+            "dogyear": 2,
+            "pound": 5
+          }
+        },
+        "CAPI": {
+          "dropped": {
+            "byte": 3800,
+            "packet": 100
+          }
+        },
+        "cscli": {
+          "active_decisions": {
+            "ip": 10
+          },
+          "dropped": {
+            "byte": 380,
+            "packet": 10
+          }
+        },
+        "lists:firehol_cruzit_web_attacks": {
+          "dropped": {
+            "byte": 1034,
+            "packet": 23
+          }
+        },
+        "lists:firehol_voipbl": {
+          "active_decisions": {
+            "ip": 250
+          },
+          "dropped": {
+            "byte": 3847,
+            "packet": 58
+          },
+        },
+        "lists:anotherlist": {
+          "dropped": {
+            "byte": 0,
+            "packet": 0
+          }
+        }
+      }
+    }
+   }'
+
+    rune -0 cscli metrics show bouncers
+    assert_output - <<-EOT
+	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
+	+----------------------------------+------------------+-------------------+-----------------+
+	| Origin                           | active_decisions |      dropped      |       foo       |
+	|                                  |        IPs       |  bytes  | packets | dogyear | pound |
+	+----------------------------------+------------------+---------+---------+---------+-------+
+	| CAPI (community blocklist)       |                - |   3.80k |     100 |       - |     - |
+	| cscli (manual decisions)         |               10 |     380 |      10 |       - |     - |
+	| lists:anotherlist                |                - |       0 |       0 |       - |     - |
+	| lists:firehol_cruzit_web_attacks |                - |   1.03k |      23 |       - |     - |
+	| lists:firehol_voipbl             |              250 |   3.85k |      58 |       - |     - |
+	+----------------------------------+------------------+---------+---------+---------+-------+
+	|                            Total |              260 |   9.06k |     191 |       2 |     5 |
+	+----------------------------------+------------------+---------+---------+---------+-------+
+	EOT
+}
+
+@test "rc usage metrics (unknown metrics)" {
+    # new metrics are introduced in a new bouncer version, unknown by this version of cscli: some are gauges, some are not
+
+    API_KEY=$(cscli bouncers add testbouncer -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707369316
+	log_processors: []
+	EOT
+    )
+
+    payload=$(yq -o j '
+        .remediation_components[0].metrics = [
+        {
+          "meta": {"utc_now_timestamp": 1707460000, "window_size_seconds":600},
+          "items":[
+            {"name": "ima_gauge", "unit": "second", "value": 30, "labels": {"origin": "cscli"}},
+            {"name": "notagauge", "unit": "inch",   "value": 15, "labels": {"origin": "cscli"}}
+          ]
+        }, {
+          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
+          "items":[
+            {"name": "ima_gauge", "unit": "second", "value": 20, "labels": {"origin": "cscli"}},
+            {"name": "notagauge", "unit": "inch",   "value": 10, "labels": {"origin": "cscli"}}
+          ]
+        }
+        ] |
+        .remediation_components[0].type = "crowdsec-firewall-bouncer"
+    ' <<<"$payload")
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+    rune -0 cscli metrics show bouncers -o json
+    assert_json '{bouncers: {testbouncer: {cscli: {ima_gauge: {second: 30}, notagauge: {inch: 25}}}}}'
+
+    rune -0 cscli metrics show bouncers
+    assert_output - <<-EOT
+	Bouncer Metrics (testbouncer) since 2024-02-09 03:40:00 +0000 UTC:
+	+--------------------------+--------+-----------+
+	| Origin                   |   ima  | notagauge |
+	|                          | second |    inch   |
+	+--------------------------+--------+-----------+
+	| cscli (manual decisions) |     30 |        25 |
+	+--------------------------+--------+-----------+
+	|                    Total |     30 |        25 |
+	+--------------------------+--------+-----------+
+	EOT
+}
+
+@test "rc usage metrics (ipv4/ipv6)" {
+    # gauge metrics are not aggregated over time, but they are over ip type
+
+    API_KEY=$(cscli bouncers add testbouncer -o raw)
+    export API_KEY
+
+    payload=$(yq -o j <<-EOT
+	remediation_components:
+	  - version: "v1.0"
+	    utc_startup_timestamp: 1707369316
+	log_processors: []
+	EOT
+    )
+
+    payload=$(yq -o j '
+        .remediation_components[0].metrics = [
+        {
+          "meta": {"utc_now_timestamp": 1707460000, "window_size_seconds":600},
+          "items":[
+            {"name": "active_decisions", "unit": "ip", "value": 200, "labels": {"ip_type": "ipv4", "origin": "cscli"}},
+            {"name": "active_decisions", "unit": "ip", "value": 30,  "labels": {"ip_type": "ipv6", "origin": "cscli"}}
+          ]
+        }, {
+          "meta": {"utc_now_timestamp": 1707450000, "window_size_seconds":600},
+          "items":[
+            {"name": "active_decisions", "unit": "ip", "value": 400, "labels": {"ip_type": "ipv4", "origin": "cscli"}},
+            {"name": "active_decisions", "unit": "ip", "value": 50,  "labels": {"ip_type": "ipv6", "origin": "cscli"}}
+          ]
+        }
+        ] |
+        .remediation_components[0].type = "crowdsec-firewall-bouncer"
+    ' <<<"$payload")
+
+    rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
+
+    rune -0 cscli metrics show bouncers -o json
+    assert_json '{bouncers: {testbouncer: {cscli: {active_decisions: {ip: 230}}}}}'
+
+    rune -0 cscli metrics show bouncers
+    assert_output - <<-EOT
+	Bouncer Metrics (testbouncer) since 2024-02-09 03:40:00 +0000 UTC:
+	+--------------------------+------------------+
+	| Origin                   | active_decisions |
+	|                          |        IPs       |
+	+--------------------------+------------------+
+	| cscli (manual decisions) |              230 |
+	+--------------------------+------------------+
+	|                    Total |              230 |
+	+--------------------------+------------------+
+	EOT
 }
 
 @test "rc usage metrics (multiple bouncers)" {

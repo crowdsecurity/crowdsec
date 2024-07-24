@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/antonmedv/expr"
+	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
