@@ -31,8 +31,6 @@ func (c *Client) GetLPUsageMetricsByMachineID(machineId string) ([]*ent.Metric, 
 			metric.GeneratedByEQ(machineId),
 			metric.PushedAtIsNil(),
 		).
-		// XXX: do we need to sort?
-		Order(ent.Desc(metric.FieldReceivedAt)).
 		All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("GetLPUsageMetricsByOrigin: %s", err)
@@ -49,7 +47,6 @@ func (c *Client) GetBouncerUsageMetricsByName(bouncerName string) ([]*ent.Metric
 			metric.GeneratedByEQ(bouncerName),
 			metric.PushedAtIsNil(),
 		).
-		Order(ent.Desc(metric.FieldReceivedAt)).
 		All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("GetBouncerUsageMetricsByName: %s", err)
