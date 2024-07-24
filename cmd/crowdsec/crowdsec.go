@@ -140,6 +140,19 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	})
 	outputWg.Wait()
 
+	mp := NewMetricsProvider(
+		apiClient,
+		lpMetricsDefaultInterval,
+		log.WithField("service", "lpmetrics"),
+		[]string{},
+		datasources,
+		hub,
+	)
+
+	lpMetricsTomb.Go(func() error {
+		return mp.Run(context.Background(), &lpMetricsTomb)
+	})
+
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false
 		if cConfig.Prometheus.Level == configuration.CFG_METRICS_AGGREGATE {

@@ -35,26 +35,30 @@ import (
 
 const (
 	// delta values must be smaller than the interval
-	pullIntervalDefault    = time.Hour * 2
-	pullIntervalDelta      = 5 * time.Minute
-	pushIntervalDefault    = time.Second * 10
-	pushIntervalDelta      = time.Second * 7
-	metricsIntervalDefault = time.Minute * 30
-	metricsIntervalDelta   = time.Minute * 15
+	pullIntervalDefault       = time.Hour * 2
+	pullIntervalDelta         = 5 * time.Minute
+	pushIntervalDefault       = time.Second * 10
+	pushIntervalDelta         = time.Second * 7
+	metricsIntervalDefault    = time.Minute * 30
+	metricsIntervalDelta      = time.Minute * 15
+	usageMetricsInterval      = time.Minute * 30
+	usageMetricsIntervalFirst = time.Minute * 15
 )
 
 type apic struct {
 	// when changing the intervals in tests, always set *First too
 	// or they can be negative
-	pullInterval         time.Duration
-	pullIntervalFirst    time.Duration
-	pushInterval         time.Duration
-	pushIntervalFirst    time.Duration
-	metricsInterval      time.Duration
-	metricsIntervalFirst time.Duration
-	dbClient             *database.Client
-	apiClient            *apiclient.ApiClient
-	AlertsAddChan        chan []*models.Alert
+	pullInterval              time.Duration
+	pullIntervalFirst         time.Duration
+	pushInterval              time.Duration
+	pushIntervalFirst         time.Duration
+	metricsInterval           time.Duration
+	metricsIntervalFirst      time.Duration
+	usageMetricsInterval      time.Duration
+	usageMetricsIntervalFirst time.Duration
+	dbClient                  *database.Client
+	apiClient                 *apiclient.ApiClient
+	AlertsAddChan             chan []*models.Alert
 
 	mu            sync.Mutex
 	pushTomb      tomb.Tomb
@@ -175,24 +179,26 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	var err error
 
 	ret := &apic{
-		AlertsAddChan:        make(chan []*models.Alert),
-		dbClient:             dbClient,
-		mu:                   sync.Mutex{},
-		startup:              true,
-		credentials:          config.Credentials,
-		pullTomb:             tomb.Tomb{},
-		pushTomb:             tomb.Tomb{},
-		metricsTomb:          tomb.Tomb{},
-		scenarioList:         make([]string, 0),
-		consoleConfig:        consoleConfig,
-		pullInterval:         pullIntervalDefault,
-		pullIntervalFirst:    randomDuration(pullIntervalDefault, pullIntervalDelta),
-		pushInterval:         pushIntervalDefault,
-		pushIntervalFirst:    randomDuration(pushIntervalDefault, pushIntervalDelta),
-		metricsInterval:      metricsIntervalDefault,
-		metricsIntervalFirst: randomDuration(metricsIntervalDefault, metricsIntervalDelta),
-		isPulling:            make(chan bool, 1),
-		whitelists:           apicWhitelist,
+		AlertsAddChan:             make(chan []*models.Alert),
+		dbClient:                  dbClient,
+		mu:                        sync.Mutex{},
+		startup:                   true,
+		credentials:               config.Credentials,
+		pullTomb:                  tomb.Tomb{},
+		pushTomb:                  tomb.Tomb{},
+		metricsTomb:               tomb.Tomb{},
+		scenarioList:              make([]string, 0),
+		consoleConfig:             consoleConfig,
+		pullInterval:              pullIntervalDefault,
+		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
+		pushInterval:              pushIntervalDefault,
+		pushIntervalFirst:         randomDuration(pushIntervalDefault, pushIntervalDelta),
+		metricsInterval:           metricsIntervalDefault,
+		metricsIntervalFirst:      randomDuration(metricsIntervalDefault, metricsIntervalDelta),
+		usageMetricsInterval:      usageMetricsInterval,
+		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalFirst),
+		isPulling:                 make(chan bool, 1),
+		whitelists:                apicWhitelist,
 	}
 
 	password := strfmt.Password(config.Credentials.Password)

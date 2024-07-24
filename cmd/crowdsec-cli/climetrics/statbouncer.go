@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -15,12 +17,15 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-// un-aggregated data, de-normalized.
+// bouncerMetricItem represents unaggregated, denormalized metric data.
+// Possibly not unique if a bouncer sent the same data multiple times.
 type bouncerMetricItem struct {
+	collectedAt time.Time
 	bouncerName string
 	ipType      string
 	origin      string
@@ -29,14 +34,82 @@ type bouncerMetricItem struct {
 	value       float64
 }
 
+// aggregationOverTime is the first level of aggregation: we aggregate
+// over time, then over ip type, then over origin. we only sum values
+// for non-gauge metrics, and take the last value for gauge metrics.
+type aggregationOverTime map[string]map[string]map[string]map[string]map[string]int64
+
+func (a aggregationOverTime) add(bouncerName, origin, name, unit, ipType string, value float64, isGauge bool) {
+	if _, ok := a[bouncerName]; !ok {
+		a[bouncerName] = make(map[string]map[string]map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin]; !ok {
+		a[bouncerName][origin] = make(map[string]map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name]; !ok {
+		a[bouncerName][origin][name] = make(map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name][unit]; !ok {
+		a[bouncerName][origin][name][unit] = make(map[string]int64)
+	}
+
+	if isGauge {
+		a[bouncerName][origin][name][unit][ipType] = int64(value)
+	} else {
+		a[bouncerName][origin][name][unit][ipType] += int64(value)
+	}
+}
+
+// aggregationOverIPType is the second level of aggregation: data is summed
+// regardless of the metrics type (gauge or not). This is used to display
+// table rows, they won't differentiate ipv4 and ipv6
+type aggregationOverIPType map[string]map[string]map[string]map[string]int64
+
+func (a aggregationOverIPType) add(bouncerName, origin, name, unit string, value int64) {
+	if _, ok := a[bouncerName]; !ok {
+		a[bouncerName] = make(map[string]map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin]; !ok {
+		a[bouncerName][origin] = make(map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][origin][name]; !ok {
+		a[bouncerName][origin][name] = make(map[string]int64)
+	}
+
+	a[bouncerName][origin][name][unit] += value
+}
+
+// aggregationOverOrigin is the third level of aggregation: these are
+// the totals at the end of the table. Metrics without an origin will
+// be added to the totals but not displayed in the rows, only in the footer.
+type aggregationOverOrigin map[string]map[string]map[string]int64
+
+func (a aggregationOverOrigin) add(bouncerName, name, unit string, value int64) {
+	if _, ok := a[bouncerName]; !ok {
+		a[bouncerName] = make(map[string]map[string]int64)
+	}
+
+	if _, ok := a[bouncerName][name]; !ok {
+		a[bouncerName][name] = make(map[string]int64)
+	}
+
+	a[bouncerName][name][unit] += value
+}
+
 type statBouncer struct {
 	// oldest collection timestamp for each bouncer
-	oldestTS map[string]*time.Time
-	// we keep de-normalized metrics so we can iterate
-	// over them multiple times and keep the aggregation code simple
-	rawMetrics          []bouncerMetricItem
-	aggregated          map[string]map[string]map[string]map[string]int64
-	aggregatedAllOrigin map[string]map[string]map[string]int64
+	oldestTS map[string]time.Time
+	// aggregate over ip type: always sum
+	// [bouncer][origin][name][unit]value
+	aggOverIPType aggregationOverIPType
+	// aggregate over origin: always sum
+	// [bouncer][name][unit]value
+	aggOverOrigin aggregationOverOrigin
 }
 
 var knownPlurals = map[string]string{
@@ -46,20 +119,108 @@ var knownPlurals = map[string]string{
 }
 
 func (s *statBouncer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.aggregated)
+	return json.Marshal(s.aggOverIPType)
 }
 
-func (s *statBouncer) Description() (string, string) {
+func (*statBouncer) Description() (string, string) {
 	return "Bouncer Metrics",
 		`Network traffic blocked by bouncers.`
 }
 
-func warnOnce(warningsLogged map[string]bool, msg string) {
+func logWarningOnce(warningsLogged map[string]bool, msg string) {
 	if _, ok := warningsLogged[msg]; !ok {
 		log.Warningf(msg)
 
 		warningsLogged[msg] = true
 	}
+}
+
+// extractRawMetrics converts metrics from the database to a de-normalized, de-duplicated slice
+// it returns the slice and the oldest timestamp for each bouncer
+func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricItem, map[string]time.Time) {
+	oldestTS := make(map[string]time.Time)
+
+	// don't spam the user with the same warnings
+	warningsLogged := make(map[string]bool)
+
+	// store raw metrics, de-duplicated in case some were sent multiple times
+	uniqueRaw := make(map[bouncerMetricItem]struct{})
+
+	for _, met := range metrics {
+		bouncerName := met.GeneratedBy
+
+		var payload struct {
+			Metrics []models.DetailedMetrics `json:"metrics"`
+		}
+
+		if err := json.Unmarshal([]byte(met.Payload), &payload); err != nil {
+			log.Warningf("while parsing metrics for %s: %s", bouncerName, err)
+			continue
+		}
+
+		for _, m := range payload.Metrics {
+			// fields like timestamp, name, etc. are mandatory but we got pointers, so we check anyway
+			if m.Meta.UtcNowTimestamp == nil {
+				logWarningOnce(warningsLogged, "missing 'utc_now_timestamp' field in metrics reported by "+bouncerName)
+				continue
+			}
+
+			collectedAt := time.Unix(*m.Meta.UtcNowTimestamp, 0).UTC()
+
+			if oldestTS[bouncerName].IsZero() || collectedAt.Before(oldestTS[bouncerName]) {
+				oldestTS[bouncerName] = collectedAt
+			}
+
+			for _, item := range m.Items {
+				valid := true
+
+				if item.Name == nil {
+					logWarningOnce(warningsLogged, "missing 'name' field in metrics reported by "+bouncerName)
+					// no continue - keep checking the rest
+					valid = false
+				}
+
+				if item.Unit == nil {
+					logWarningOnce(warningsLogged, "missing 'unit' field in metrics reported by "+bouncerName)
+					valid = false
+				}
+
+				if item.Value == nil {
+					logWarningOnce(warningsLogged, "missing 'value' field in metrics reported by "+bouncerName)
+					valid = false
+				}
+
+				if !valid {
+					continue
+				}
+
+				rawMetric := bouncerMetricItem{
+					collectedAt: collectedAt,
+					bouncerName: bouncerName,
+					ipType:      item.Labels["ip_type"],
+					origin:      item.Labels["origin"],
+					name:        *item.Name,
+					unit:        *item.Unit,
+					value:       *item.Value,
+				}
+
+				uniqueRaw[rawMetric] = struct{}{}
+			}
+		}
+	}
+
+	// extract raw metric structs
+	keys := make([]bouncerMetricItem, 0, len(uniqueRaw))
+	for key := range uniqueRaw {
+		keys = append(keys, key)
+	}
+
+	// order them by timestamp
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].collectedAt.Before(keys[j].collectedAt)
+	})
+
+	return keys, oldestTS
 }
 
 func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
@@ -70,153 +231,114 @@ func (s *statBouncer) Fetch(ctx context.Context, db *database.Client) error {
 	// query all bouncer metrics that have not been flushed
 
 	metrics, err := db.Ent.Metric.Query().
-		Where(
-			metric.GeneratedTypeEQ(metric.GeneratedTypeRC),
-		).All(ctx)
+		Where(metric.GeneratedTypeEQ(metric.GeneratedTypeRC)).
+		All(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to fetch metrics: %w", err)
 	}
 
-	s.oldestTS = make(map[string]*time.Time)
+	// de-normalize, de-duplicate metrics and keep the oldest timestamp for each bouncer
 
-	// don't spam the user with the same warnings
-	warningsLogged := make(map[string]bool)
+	rawMetrics, oldestTS := s.extractRawMetrics(metrics)
 
-	for _, met := range metrics {
-		bouncerName := met.GeneratedBy
-
-		collectedAt := met.CollectedAt
-		if s.oldestTS[bouncerName] == nil || collectedAt.Before(*s.oldestTS[bouncerName]) {
-			s.oldestTS[bouncerName] = &collectedAt
-		}
-
-		type bouncerMetrics struct {
-			Metrics []models.DetailedMetrics `json:"metrics"`
-		}
-
-		payload := bouncerMetrics{}
-
-		err := json.Unmarshal([]byte(met.Payload), &payload)
-		if err != nil {
-			log.Warningf("while parsing metrics for %s: %s", bouncerName, err)
-			continue
-		}
-
-		for _, m := range payload.Metrics {
-			for _, item := range m.Items {
-				labels := item.Labels
-
-				// these are mandatory but we got pointers, so...
-
-				valid := true
-
-				if item.Name == nil {
-					warnOnce(warningsLogged, "missing 'name' field in metrics reported by "+bouncerName)
-					// no continue - keep checking the rest
-					valid = false
-				}
-
-				if item.Unit == nil {
-					warnOnce(warningsLogged, "missing 'unit' field in metrics reported by "+bouncerName)
-					valid = false
-				}
-
-				if item.Value == nil {
-					warnOnce(warningsLogged, "missing 'value' field in metrics reported by "+bouncerName)
-					valid = false
-				}
-
-				if !valid {
-					continue
-				}
-
-				name := *item.Name
-				unit := *item.Unit
-				value := *item.Value
-
-				rawMetric := bouncerMetricItem{
-					bouncerName: bouncerName,
-					ipType:      labels["ip_type"],
-					origin:      labels["origin"],
-					name:        name,
-					unit:        unit,
-					value:       value,
-				}
-
-				s.rawMetrics = append(s.rawMetrics, rawMetric)
-			}
-		}
-	}
-
-	s.aggregate()
+	s.oldestTS = oldestTS
+	aggOverTime := s.newAggregationOverTime(rawMetrics)
+	s.aggOverIPType = s.newAggregationOverIPType(aggOverTime)
+	s.aggOverOrigin = s.newAggregationOverOrigin(s.aggOverIPType)
 
 	return nil
 }
 
-func (s *statBouncer) aggregate() {
-	// [bouncer][origin][name][unit]value
-	if s.aggregated == nil {
-		s.aggregated = make(map[string]map[string]map[string]map[string]int64)
+// return true if the metric is a gauge and should not be aggregated
+func (*statBouncer) isGauge(name string) bool {
+	return name == "active_decisions" || strings.HasSuffix(name, "_gauge")
+}
+
+// formatMetricName returns the metric name to display in the table header
+func (*statBouncer) formatMetricName(name string) string {
+	return strings.TrimSuffix(name, "_gauge")
+}
+
+// formatMetricOrigin returns the origin to display in the table rows
+// (for example, some users don't know what capi is)
+func (*statBouncer) formatMetricOrigin(origin string) string {
+	switch origin {
+	case "CAPI":
+		return origin + " (community blocklist)"
+	case "cscli":
+		return origin + " (manual decisions)"
+	case "crowdsec":
+		return origin + " (security engine)"
+	default:
+		return origin
+	}
+}
+
+func (s *statBouncer) newAggregationOverTime(rawMetrics []bouncerMetricItem) aggregationOverTime {
+	ret := aggregationOverTime{}
+
+	for _, raw := range rawMetrics {
+		ret.add(raw.bouncerName, raw.origin, raw.name, raw.unit, raw.ipType, raw.value, s.isGauge(raw.name))
 	}
 
-	if s.aggregatedAllOrigin == nil {
-		s.aggregatedAllOrigin = make(map[string]map[string]map[string]int64)
+	return ret
+}
+
+func (*statBouncer) newAggregationOverIPType(aggMetrics aggregationOverTime) aggregationOverIPType {
+	ret := aggregationOverIPType{}
+
+	for bouncerName := range aggMetrics {
+		for origin := range aggMetrics[bouncerName] {
+			for name := range aggMetrics[bouncerName][origin] {
+				for unit := range aggMetrics[bouncerName][origin][name] {
+					for ipType := range aggMetrics[bouncerName][origin][name][unit] {
+						value := aggMetrics[bouncerName][origin][name][unit][ipType]
+						ret.add(bouncerName, origin, name, unit, value)
+					}
+				}
+			}
+		}
 	}
 
-	for _, raw := range s.rawMetrics {
-		if _, ok := s.aggregated[raw.bouncerName]; !ok {
-			s.aggregated[raw.bouncerName] = make(map[string]map[string]map[string]int64)
+	return ret
+}
+
+func (*statBouncer) newAggregationOverOrigin(aggMetrics aggregationOverIPType) aggregationOverOrigin {
+	ret := aggregationOverOrigin{}
+
+	for bouncerName := range aggMetrics {
+		for origin := range aggMetrics[bouncerName] {
+			for name := range aggMetrics[bouncerName][origin] {
+				for unit := range aggMetrics[bouncerName][origin][name] {
+					val := aggMetrics[bouncerName][origin][name][unit]
+					ret.add(bouncerName, name, unit, val)
+				}
+			}
 		}
-
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin] = make(map[string]map[string]int64)
-		}
-
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name] = make(map[string]int64)
-		}
-
-		if _, ok := s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit]; !ok {
-			s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] = 0
-		}
-
-		s.aggregated[raw.bouncerName][raw.origin][raw.name][raw.unit] += int64(raw.value)
-
-		if _, ok := s.aggregatedAllOrigin[raw.bouncerName]; !ok {
-			s.aggregatedAllOrigin[raw.bouncerName] = make(map[string]map[string]int64)
-		}
-
-		if _, ok := s.aggregatedAllOrigin[raw.bouncerName][raw.name]; !ok {
-			s.aggregatedAllOrigin[raw.bouncerName][raw.name] = make(map[string]int64)
-		}
-
-		if _, ok := s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit]; !ok {
-			s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit] = 0
-		}
-
-		s.aggregatedAllOrigin[raw.bouncerName][raw.name][raw.unit] += int64(raw.value)
 	}
+
+	return ret
 }
 
 // bouncerTable displays a table of metrics for a single bouncer
 func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor string, noUnit bool) {
-	columns := make(map[string]map[string]bool)
+	columns := make(map[string]map[string]struct{})
 
-	for _, item := range s.rawMetrics {
-		if item.bouncerName != bouncerName {
-			continue
-		}
-		// build a map of the metric names and units, to display dynamic columns
-		if _, ok := columns[item.name]; !ok {
-			columns[item.name] = make(map[string]bool)
-		}
-
-		columns[item.name][item.unit] = true
+	bouncerData, ok := s.aggOverOrigin[bouncerName]
+	if !ok {
+		// no metrics for this bouncer, skip. how did we get here ?
+		// anyway we can't honor the "showEmpty" flag in this case,
+		// we don't even have the table headers
+		return
 	}
 
-	// no metrics for this bouncer, skip. how did we get here ?
-	// anyway we can't honor the "showEmpty" flag in this case,
-	// we don't heven have the table headers
+	for metricName, units := range bouncerData {
+		// build a map of the metric names and units, to display dynamic columns
+		columns[metricName] = make(map[string]struct{})
+		for unit := range units {
+			columns[metricName][unit] = struct{}{}
+		}
+	}
 
 	if len(columns) == 0 {
 		return
@@ -238,11 +360,11 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		for _, unit := range maptools.SortedKeys(columns[name]) {
 			colNum += 1
 
-			header1 = append(header1, name)
+			header1 = append(header1, s.formatMetricName(name))
 
 			// we don't add "s" to random words
-			if knownPlurals[unit] != "" {
-				unit = knownPlurals[unit]
+			if plural, ok := knownPlurals[unit]; ok {
+				unit = plural
 			}
 
 			header2 = append(header2, unit)
@@ -264,7 +386,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 
 	// sort all the ranges for stable output
 
-	for _, origin := range maptools.SortedKeys(s.aggregated[bouncerName]) {
+	for _, origin := range maptools.SortedKeys(s.aggOverIPType[bouncerName]) {
 		if origin == "" {
 			// if the metric has no origin (i.e. processed bytes/packets)
 			// we don't display it in the table body but it still gets aggreagted
@@ -272,21 +394,15 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 			continue
 		}
 
-		metrics := s.aggregated[bouncerName][origin]
+		metrics := s.aggOverIPType[bouncerName][origin]
 
-		// some users don't know what capi is
-		if origin == "CAPI" {
-			origin += " (community blocklist)"
-		}
-
-		row := table.Row{origin}
+		row := table.Row{s.formatMetricOrigin(origin)}
 
 		for _, name := range maptools.SortedKeys(columns) {
 			for _, unit := range maptools.SortedKeys(columns[name]) {
 				valStr := "-"
 
-				val, ok := metrics[name][unit]
-				if ok {
+				if val, ok := metrics[name][unit]; ok {
 					valStr = formatNumber(val, !noUnit)
 				}
 
@@ -299,7 +415,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		numRows += 1
 	}
 
-	totals := s.aggregatedAllOrigin[bouncerName]
+	totals := s.aggOverOrigin[bouncerName]
 
 	if numRows == 0 {
 		t.Style().Options.SeparateFooter = false
@@ -319,27 +435,20 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	title = fmt.Sprintf("%s (%s)", title, bouncerName)
 
 	if s.oldestTS != nil {
-		// if we change this to .Local() beware of tests
+		// if you change this to .Local() beware of tests
 		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
 	}
 
-	title += ":"
-
 	// don't use SetTitle() because it draws the title inside table box
-	io.WriteString(out, title+"\n")
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, title+":\n")
+	io.WriteString(out, t.Render()+"\n")
 	// empty line between tables
 	io.WriteString(out, "\n")
 }
 
 // Table displays a table of metrics for each bouncer
 func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, _ bool) {
-	bouncerNames := make(map[string]bool)
-	for _, item := range s.rawMetrics {
-		bouncerNames[item.bouncerName] = true
-	}
-
-	for _, bouncerName := range maptools.SortedKeys(bouncerNames) {
+	for _, bouncerName := range maptools.SortedKeys(s.aggOverOrigin) {
 		s.bouncerTable(out, bouncerName, wantColor, noUnit)
 	}
 }
