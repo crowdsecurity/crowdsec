@@ -1,4 +1,4 @@
-package main
+package cliconsole
 
 import (
 	"context"
@@ -28,13 +28,17 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
 type cliConsole struct {
-	cfg configGetter
+	cfg           func() *csconfig.Config
+	reloadMessage string
 }
 
-func NewCLIConsole(cfg configGetter) *cliConsole {
+func New(cfg configGetter, reloadMessage string) *cliConsole {
 	return &cliConsole{
-		cfg: cfg,
+		cfg:           cfg,
+		reloadMessage: reloadMessage,
 	}
 }
 
@@ -221,7 +225,7 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("%v have been enabled", args)
 			}
 
-			log.Infof(ReloadMessage())
+			log.Info(cli.reloadMessage)
 
 			return nil
 		},
@@ -255,7 +259,7 @@ Disable given information push to the central API.`,
 				log.Infof("%v have been disabled", args)
 			}
 
-			log.Infof(ReloadMessage())
+			log.Info(cli.reloadMessage)
 
 			return nil
 		},

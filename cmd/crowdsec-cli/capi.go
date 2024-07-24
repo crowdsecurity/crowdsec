@@ -119,7 +119,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		fmt.Println(string(apiConfigDump))
 	}
 
-	log.Warning(ReloadMessage())
+	log.Warning(reloadMessage)
 
 	return nil
 }
