@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-const mockURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+const mockURLTemplate = "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s"
 
 /*
  To test :
@@ -143,18 +143,18 @@ func fileToStringX(path string) string {
 
 func setResponseByPath() {
 	responseByPath = map[string]string{
-		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./testdata/foobar_parser.yaml"),
-		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./testdata/foobar_parser.yaml"),
-		"/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./testdata/collection_v1.yaml"),
-		"/master/.index.json": fileToStringX("./testdata/index1.json"),
-		"/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
+		"/crowdsecurity/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./testdata/foobar_parser.yaml"),
+		"/crowdsecurity/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./testdata/foobar_parser.yaml"),
+		"/crowdsecurity/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./testdata/collection_v1.yaml"),
+		"/crowdsecurity/master/.index.json": fileToStringX("./testdata/index1.json"),
+		"/crowdsecurity/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
 name: crowdsecurity/foobar_scenario`,
-		"/master/scenarios/crowdsecurity/barfoo_scenario.yaml": `filter: true
+		"/crowdsecurity/master/scenarios/crowdsecurity/barfoo_scenario.yaml": `filter: true
 name: crowdsecurity/foobar_scenario`,
-		"/master/collections/crowdsecurity/foobar_subcollection.yaml": `
+		"/crowdsecurity/master/collections/crowdsecurity/foobar_subcollection.yaml": `
 blah: blalala
 qwe: jejwejejw`,
-		"/master/collections/crowdsecurity/foobar.yaml": `
+		"/crowdsecurity/master/collections/crowdsecurity/foobar.yaml": `
 blah: blalala
 qwe: jejwejejw`,
 	}
