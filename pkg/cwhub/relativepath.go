@@ -12,6 +12,7 @@ func relativePathComponents(path string, baseDir string) []string {
 	if err != nil {
 		return []string{}
 	}
+
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
 		return []string{}
@@ -25,4 +26,3 @@ func relativePathComponents(path string, baseDir string) []string {
 
 	return strings.Split(relPath, string(filepath.Separator))
 }
-
