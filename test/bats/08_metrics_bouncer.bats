@@ -23,10 +23,15 @@ teardown() {
 
 #----------
 
-@test "cscli metrics show bouncers" {
-    # there are no bouncers, so no metrics yet
+@test "cscli metrics show bouncers (empty)" {
+    # this message is given only if we ask explicitly for bouncers
+    notfound="No bouncer metrics found."
+
     rune -0 cscli metrics show bouncers
-    refute_output
+    assert_output "$notfound"
+
+    rune -0 cscli metrics list
+    refute_output "$notfound"
 }
 
 @test "rc usage metrics (empty payload)" {
