@@ -176,7 +176,7 @@ teardown() {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 ln -s /this/does/not/exist.yaml "$CONFIG_DIR/collections/foobar.yaml"
     rune -0 cscli hub list
-    assert_stderr --partial "link target does not exist: $CONFIG_DIR/collections/foobar.yaml -> /this/does/not/exist.yaml"
+    assert_stderr --partial "Ignoring file $CONFIG_DIR/collections/foobar.yaml: lstat /this/does/not/exist.yaml: no such file or directory"
     rune -0 cscli hub list -o json
     rune -0 jq '.collections' <(output)
     assert_json '[]'
@@ -199,4 +199,64 @@ teardown() {
     rune -0 touch "$CONFIG_DIR/scenarios/foo/bar.yaml"
     rune -0 cscli hub list
     assert_stderr --partial "Ignoring file $CONFIG_DIR/scenarios/foo/bar.yaml: unknown configuration type"
+}
+
+@test "don't traverse hidden directories (starting with a dot)" {
+    rune -0 mkdir -p "$CONFIG_DIR/scenarios/.foo"
+    rune -0 touch "$CONFIG_DIR/scenarios/.foo/bar.yaml"
+    rune -0 cscli hub list --trace
+    assert_stderr --partial "skipping hidden directory $CONFIG_DIR/scenarios/.foo"
+}
+
+@test "allow symlink to target inside a hidden directory" {
+    # k8s config maps use hidden directories and links when mounted
+    rune -0 mkdir -p "$CONFIG_DIR/scenarios/.foo"
+
+    # ignored
+    rune -0 touch "$CONFIG_DIR/scenarios/.foo/hidden.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq '.scenarios | length' <(output)
+    assert_output 0
+
+    # real file
+    rune -0 touch "$CONFIG_DIR/scenarios/myfoo.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq '.scenarios | length' <(output)
+    assert_output 1
+
+    rune -0 rm "$CONFIG_DIR/scenarios/myfoo.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq '.scenarios | length' <(output)
+    assert_output 0
+
+    # link to ignored is not ignored
+    rune -0 ln -s "$CONFIG_DIR/scenarios/.foo/hidden.yaml" "$CONFIG_DIR/scenarios/myfoo.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq '.scenarios | length' <(output)
+    assert_output 1
+}
+
+@test "item files can be links to links" {
+    rune -0 mkdir -p "$CONFIG_DIR"/scenarios/{.foo,.bar}
+
+    rune -0 ln -s "$CONFIG_DIR/scenarios/.foo/hidden.yaml" "$CONFIG_DIR/scenarios/.bar/hidden.yaml"
+
+    # link to a danling link
+    rune -0 ln -s "$CONFIG_DIR/scenarios/.bar/hidden.yaml" "$CONFIG_DIR/scenarios/myfoo.yaml"
+    rune -0 cscli scenarios list
+    assert_stderr --partial "Ignoring file $CONFIG_DIR/scenarios/myfoo.yaml: lstat $CONFIG_DIR/scenarios/.foo/hidden.yaml: no such file or directory"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq '.scenarios | length' <(output)
+    assert_output 0
+
+    # detect link loops
+    rune -0 ln -s "$CONFIG_DIR/scenarios/.bar/hidden.yaml" "$CONFIG_DIR/scenarios/.foo/hidden.yaml"
+    rune -0 cscli scenarios list
+    assert_stderr --partial "Ignoring file $CONFIG_DIR/scenarios/myfoo.yaml: too many levels of symbolic links"
+
+    rune -0 rm "$CONFIG_DIR/scenarios/.foo/hidden.yaml"
+    rune -0 touch "$CONFIG_DIR/scenarios/.foo/hidden.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq '.scenarios | length' <(output)
+    assert_output 1
 }
