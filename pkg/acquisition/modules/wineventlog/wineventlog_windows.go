@@ -88,7 +88,7 @@ func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publish
 		2000,                // Timeout in milliseconds to wait.
 		0,                   // Reserved. Must be zero.
 		&returned)           // The number of handles in the array that are set by the API.
-	if err == windows.ERROR_NO_MORE_ITEMS {
+	if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 		return nil, err
 	} else if err != nil {
 		return nil, fmt.Errorf("wevtapi.EvtNext failed: %v", err)
@@ -182,7 +182,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 			}
 			if status == syscall.WAIT_OBJECT_0 {
 				renderedEvents, err := w.getXMLEvents(w.evtConfig, publisherCache, subscription, 500)
-				if err == windows.ERROR_NO_MORE_ITEMS {
+				if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 					windows.ResetEvent(w.evtConfig.SignalEvent)
 				} else if err != nil {
 					w.logger.Errorf("getXMLEvents failed: %v", err)
