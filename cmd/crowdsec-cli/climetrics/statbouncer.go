@@ -447,8 +447,15 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 }
 
 // Table displays a table of metrics for each bouncer
-func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, _ bool) {
+func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
+	found := false
+
 	for _, bouncerName := range maptools.SortedKeys(s.aggOverOrigin) {
 		s.bouncerTable(out, bouncerName, wantColor, noUnit)
+		found = true
+	}
+
+	if !found && showEmpty {
+		io.WriteString(out, "No bouncer metrics found.\n\n")
 	}
 }
