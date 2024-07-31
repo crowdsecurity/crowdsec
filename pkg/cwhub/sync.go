@@ -80,58 +80,73 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 	hubDir := h.local.HubDir
 	installDir := h.local.InstallDir
 
-	subs := strings.Split(path, string(os.PathSeparator))
+	subsHub := relativePathComponents(path, hubDir)
+	subsInstall := relativePathComponents(path, installDir)
 
-	logger.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubDir, installDir)
-	logger.Tracef("subs:%v", subs)
-	// we're in hub (~/.hub/hub/)
-	if strings.HasPrefix(path, hubDir) {
+	switch {
+	case len(subsHub) > 0:
 		logger.Tracef("in hub dir")
 
 		// .../hub/parsers/s00-raw/crowdsecurity/skip-pretag.yaml
 		// .../hub/scenarios/crowdsecurity/ssh_bf.yaml
 		// .../hub/profiles/crowdsecurity/linux.yaml
-		if len(subs) < 4 {
-			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
+		if len(subsHub) < 3 {
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
+		}
+
+		ftype := subsHub[0]
+		if !slices.Contains(ItemTypes, ftype) {
+			// this doesn't really happen anymore, because we only scan the {hubtype} directories
+			return nil, fmt.Errorf("unknown configuration type '%s'", ftype)
+		}
+
+		stage := ""
+		fauthor := subsHub[1]
+		fname := subsHub[2]
+
+		if ftype == PARSERS || ftype == POSTOVERFLOWS {
+			stage = subsHub[1]
+			fauthor = subsHub[2]
+			fname = subsHub[3]
 		}
 
 		ret = &itemFileInfo{
 			inhub:   true,
-			fname:   subs[len(subs)-1],
-			fauthor: subs[len(subs)-2],
-			stage:   subs[len(subs)-3],
-			ftype:   subs[len(subs)-4],
+			ftype:   ftype,
+			stage:   stage,
+			fauthor: fauthor,
+			fname:   fname,
 		}
-	} else if strings.HasPrefix(path, installDir) { // we're in install /etc/crowdsec/<type>/...
+
+	case len(subsInstall) > 0:
 		logger.Tracef("in install dir")
 
-		if len(subs) < 3 {
-			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
-		}
 		// .../config/parser/stage/file.yaml
 		// .../config/postoverflow/stage/file.yaml
 		// .../config/scenarios/scenar.yaml
 		// .../config/collections/linux.yaml //file is empty
+
+		if len(subsInstall) < 2 {
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsInstall))
+		}
+
+		// this can be in any number of subdirs, we ignore them
+
+		ftype := subsInstall[0]
+		stage := ""
+		if ftype == PARSERS || ftype == POSTOVERFLOWS {
+			stage = subsInstall[1]
+		}
+
 		ret = &itemFileInfo{
 			inhub:   false,
-			fname:   subs[len(subs)-1],
-			stage:   subs[len(subs)-2],
-			ftype:   subs[len(subs)-3],
+			ftype:   ftype,
+			stage:   stage,
 			fauthor: "",
+			fname:   subsInstall[len(subsInstall)-1],
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
-	}
-
-	logger.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
-
-	if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		if !slices.Contains(ItemTypes, ret.stage) {
-			return nil, errors.New("unknown configuration type")
-		}
-
-		ret.ftype = ret.stage
-		ret.stage = ""
 	}
 
 	logger.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)

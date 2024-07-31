@@ -194,13 +194,6 @@ teardown() {
     assert_output 'false'
 }
 
-@test "skip files if we can't guess their type" {
-    rune -0 mkdir -p "$CONFIG_DIR/scenarios/foo"
-    rune -0 touch "$CONFIG_DIR/scenarios/foo/bar.yaml"
-    rune -0 cscli hub list
-    assert_stderr --partial "Ignoring file $CONFIG_DIR/scenarios/foo/bar.yaml: unknown configuration type"
-}
-
 @test "don't traverse hidden directories (starting with a dot)" {
     rune -0 mkdir -p "$CONFIG_DIR/scenarios/.foo"
     rune -0 touch "$CONFIG_DIR/scenarios/.foo/bar.yaml"
@@ -259,4 +252,21 @@ teardown() {
     rune -0 cscli scenarios list -o json
     rune -0 jq '.scenarios | length' <(output)
     assert_output 1
+}
+
+@test "item files can be in a subdirectory" {
+    rune -0 mkdir -p "$CONFIG_DIR/scenarios/sub/sub2/sub3"
+    rune -0 touch "$CONFIG_DIR/scenarios/sub/imlocal.yaml"
+    rune -0 cscli scenarios inspect imlocal.yaml -o json
+    rune -0 jq -e '[.tainted,.local==false,true]' <(output)
+    rune -0 rm "$CONFIG_DIR/scenarios/sub/imlocal.yaml"
+
+    rune -0 ln -s "$HUB_DIR/scenarios/crowdsecurity/smb-bf.yaml" "$CONFIG_DIR/scenarios/sub/smb-bf.yaml"
+    rune -0 cscli scenarios inspect crowdsecurity/smb-bf -o json
+    rune -0 jq -e '[.tainted,.local==false,false]' <(output)
+    rune -0 rm "$CONFIG_DIR/scenarios/sub/smb-bf.yaml"
+
+    rune -0 ln -s "$HUB_DIR/scenarios/crowdsecurity/smb-bf.yaml" "$CONFIG_DIR/scenarios/sub/sub2/sub3/smb-bf.yaml"
+    rune -0 cscli scenarios inspect crowdsecurity/smb-bf -o json
+    rune -0 jq -e '[.tainted,.local==false,false]' <(output)
 }
