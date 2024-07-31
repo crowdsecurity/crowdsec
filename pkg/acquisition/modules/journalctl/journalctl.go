@@ -3,6 +3,7 @@ package journalctlacquisition
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -98,7 +99,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	if stdoutscanner == nil {
 		cancel()
 		cmd.Wait()
-		return fmt.Errorf("failed to create stdout scanner")
+		return errors.New("failed to create stdout scanner")
 	}
 
 	stderrScanner := bufio.NewScanner(stderr)
@@ -106,7 +107,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	if stderrScanner == nil {
 		cancel()
 		cmd.Wait()
-		return fmt.Errorf("failed to create stderr scanner")
+		return errors.New("failed to create stderr scanner")
 	}
 	t.Go(func() error {
 		return readLine(stdoutscanner, stdoutChan, errChan)
@@ -189,7 +190,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if len(j.config.Filters) == 0 {
-		return fmt.Errorf("journalctl_filter is required")
+		return errors.New("journalctl_filter is required")
 	}
 	j.args = append(args, j.config.Filters...)
 	j.src = fmt.Sprintf("journalctl-%s", strings.Join(j.config.Filters, "."))
@@ -223,7 +224,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 
 	qs := strings.TrimPrefix(dsn, "journalctl://")
 	if len(qs) == 0 {
-		return fmt.Errorf("empty journalctl:// DSN")
+		return errors.New("empty journalctl:// DSN")
 	}
 
 	params, err := url.ParseQuery(qs)
@@ -236,7 +237,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 			j.config.Filters = append(j.config.Filters, value...)
 		case "log_level":
 			if len(value) != 1 {
-				return fmt.Errorf("expected zero or one value for 'log_level'")
+				return errors.New("expected zero or one value for 'log_level'")
 			}
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {

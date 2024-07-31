@@ -2,6 +2,7 @@ package cloudwatchacquisition
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -111,7 +112,7 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if len(cw.Config.GroupName) == 0 {
-		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
+		return errors.New("group_name is mandatory for CloudwatchSource")
 	}
 
 	if cw.Config.Mode == "" {
@@ -189,7 +190,7 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, Metr
 	} else {
 		if cw.Config.AwsRegion == nil {
 			cw.logger.Errorf("aws_region is not specified, specify it or aws_config_dir")
-			return fmt.Errorf("aws_region is not specified, specify it or aws_config_dir")
+			return errors.New("aws_region is not specified, specify it or aws_config_dir")
 		}
 		os.Setenv("AWS_REGION", *cw.Config.AwsRegion)
 	}
@@ -228,7 +229,7 @@ func (cw *CloudwatchSource) newClient() error {
 	}
 
 	if sess == nil {
-		return fmt.Errorf("failed to create aws session")
+		return errors.New("failed to create aws session")
 	}
 	if v := os.Getenv("AWS_ENDPOINT_FORCE"); v != "" {
 		cw.logger.Debugf("[testing] overloading endpoint with %s", v)
@@ -237,7 +238,7 @@ func (cw *CloudwatchSource) newClient() error {
 		cw.cwClient = cloudwatchlogs.New(sess)
 	}
 	if cw.cwClient == nil {
-		return fmt.Errorf("failed to create cloudwatch client")
+		return errors.New("failed to create cloudwatch client")
 	}
 	return nil
 }
@@ -516,7 +517,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 			}
 		case <-cfg.t.Dying():
 			cfg.logger.Infof("logstream tail stopping")
-			return fmt.Errorf("killed")
+			return errors.New("killed")
 		}
 	}
 }
@@ -527,11 +528,11 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 	dsn = strings.TrimPrefix(dsn, cw.GetName()+"://")
 	args := strings.Split(dsn, "?")
 	if len(args) != 2 {
-		return fmt.Errorf("query is mandatory (at least start_date and end_date or backlog)")
+		return errors.New("query is mandatory (at least start_date and end_date or backlog)")
 	}
 	frags := strings.Split(args[0], ":")
 	if len(frags) != 2 {
-		return fmt.Errorf("cloudwatch path must contain group and stream : /my/group/name:stream/name")
+		return errors.New("cloudwatch path must contain group and stream : /my/group/name:stream/name")
 	}
 	cw.Config.GroupName = frags[0]
 	cw.Config.StreamName = &frags[1]
@@ -547,7 +548,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 		switch k {
 		case "log_level":
 			if len(v) != 1 {
-				return fmt.Errorf("expected zero or one value for 'log_level'")
+				return errors.New("expected zero or one value for 'log_level'")
 			}
 			lvl, err := log.ParseLevel(v[0])
 			if err != nil {
@@ -557,14 +558,14 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 
 		case "profile":
 			if len(v) != 1 {
-				return fmt.Errorf("expected zero or one value for 'profile'")
+				return errors.New("expected zero or one value for 'profile'")
 			}
 			awsprof := v[0]
 			cw.Config.AwsProfile = &awsprof
 			cw.logger.Debugf("profile set to '%s'", *cw.Config.AwsProfile)
 		case "start_date":
 			if len(v) != 1 {
-				return fmt.Errorf("expected zero or one argument for 'start_date'")
+				return errors.New("expected zero or one argument for 'start_date'")
 			}
 			//let's reuse our parser helper so that a ton of date formats are supported
 			strdate, startDate := parser.GenDateParse(v[0])
@@ -572,7 +573,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			cw.Config.StartTime = &startDate
 		case "end_date":
 			if len(v) != 1 {
-				return fmt.Errorf("expected zero or one argument for 'end_date'")
+				return errors.New("expected zero or one argument for 'end_date'")
 			}
 			//let's reuse our parser helper so that a ton of date formats are supported
 			strdate, endDate := parser.GenDateParse(v[0])
@@ -580,7 +581,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			cw.Config.EndTime = &endDate
 		case "backlog":
 			if len(v) != 1 {
-				return fmt.Errorf("expected zero or one argument for 'backlog'")
+				return errors.New("expected zero or one argument for 'backlog'")
 			}
 			//let's reuse our parser helper so that a ton of date formats are supported
 			duration, err := time.ParseDuration(v[0])
@@ -605,10 +606,10 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 	}
 
 	if cw.Config.StreamName == nil || cw.Config.GroupName == "" {
-		return fmt.Errorf("missing stream or group name")
+		return errors.New("missing stream or group name")
 	}
 	if cw.Config.StartTime == nil || cw.Config.EndTime == nil {
-		return fmt.Errorf("start_date and end_date or backlog are mandatory in one-shot mode")
+		return errors.New("start_date and end_date or backlog are mandatory in one-shot mode")
 	}
 
 	cw.Config.Mode = configuration.CAT_MODE
@@ -699,7 +700,7 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	l := types.Line{}
 	evt := types.Event{}
 	if log.Message == nil {
-		return evt, fmt.Errorf("nil message")
+		return evt, errors.New("nil message")
 	}
 	msg := *log.Message
 	if cfg.PrependCloudwatchTimestamp != nil && *cfg.PrependCloudwatchTimestamp {

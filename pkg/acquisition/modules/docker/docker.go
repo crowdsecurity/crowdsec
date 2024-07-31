@@ -3,6 +3,7 @@ package dockeracquisition
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -88,11 +89,11 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 && !d.Config.UseContainerLabels {
-		return fmt.Errorf("no containers names or containers ID configuration provided")
+		return errors.New("no containers names or containers ID configuration provided")
 	}
 
 	if d.Config.UseContainerLabels && (len(d.Config.ContainerName) > 0 || len(d.Config.ContainerID) > 0 || len(d.Config.ContainerIDRegexp) > 0 || len(d.Config.ContainerNameRegexp) > 0) {
-		return fmt.Errorf("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
+		return errors.New("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
 	d.CheckIntervalDuration, err = time.ParseDuration(d.Config.CheckInterval)
@@ -225,7 +226,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 		switch k {
 		case "log_level":
 			if len(v) != 1 {
-				return fmt.Errorf("only one 'log_level' parameters is required, not many")
+				return errors.New("only one 'log_level' parameters is required, not many")
 			}
 			lvl, err := log.ParseLevel(v[0])
 			if err != nil {
@@ -234,17 +235,17 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			d.logger.Logger.SetLevel(lvl)
 		case "until":
 			if len(v) != 1 {
-				return fmt.Errorf("only one 'until' parameters is required, not many")
+				return errors.New("only one 'until' parameters is required, not many")
 			}
 			d.containerLogsOptions.Until = v[0]
 		case "since":
 			if len(v) != 1 {
-				return fmt.Errorf("only one 'since' parameters is required, not many")
+				return errors.New("only one 'since' parameters is required, not many")
 			}
 			d.containerLogsOptions.Since = v[0]
 		case "follow_stdout":
 			if len(v) != 1 {
-				return fmt.Errorf("only one 'follow_stdout' parameters is required, not many")
+				return errors.New("only one 'follow_stdout' parameters is required, not many")
 			}
 			followStdout, err := strconv.ParseBool(v[0])
 			if err != nil {
@@ -254,7 +255,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			d.containerLogsOptions.ShowStdout = followStdout
 		case "follow_stderr":
 			if len(v) != 1 {
-				return fmt.Errorf("only one 'follow_stderr' parameters is required, not many")
+				return errors.New("only one 'follow_stderr' parameters is required, not many")
 			}
 			followStdErr, err := strconv.ParseBool(v[0])
 			if err != nil {
@@ -264,7 +265,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			d.containerLogsOptions.ShowStderr = followStdErr
 		case "docker_host":
 			if len(v) != 1 {
-				return fmt.Errorf("only one 'docker_host' parameters is required, not many")
+				return errors.New("only one 'docker_host' parameters is required, not many")
 			}
 			if err := client.WithHost(v[0])(dockerClient); err != nil {
 				return err
