@@ -210,10 +210,6 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return false, false, err
 	}
 
-	if err = client.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-		return true, false, err
-	}
-
 	client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
 	if client.IsEnrolled() {
