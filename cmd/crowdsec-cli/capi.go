@@ -218,9 +218,9 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 
 	if client.IsEnrolled() {
 		return true, true, nil
-	} else {
-		return true, false, nil
 	}
+	return true, false, nil
+
 }
 
 func (cli *cliCapi) status() error {
