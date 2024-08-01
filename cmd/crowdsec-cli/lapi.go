@@ -84,14 +84,14 @@ func (cli *cliLapi) status() error {
 		return err
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
+	fmt.Printf("Loaded credentials from %s\n", cfg.API.Client.CredentialsFilePath)
+	fmt.Printf("Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
 	if err := QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
-	log.Infof("You can successfully interact with Local API (LAPI)")
+	fmt.Println("You can successfully interact with Local API (LAPI)")
 
 	return nil
 }

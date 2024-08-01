@@ -290,6 +290,8 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatal(err)
+		color.New(color.FgRed).Fprint(os.Stderr, "Error: ")
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }

@@ -30,9 +30,8 @@ teardown() {
 }
 
 @test "don't overwrite local credentials by default" {
-    rune -1 cscli machines add local -a -o json
-    rune -0 jq -r '.msg' <(stderr)
-    assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
+    rune -1 cscli machines add local -a
+    assert_stderr --regexp 'Error: credentials file '.*' already exists: please remove it, use "--force" or specify a different file with "-f"'
     rune -0 cscli machines add local -a --force
     assert_stderr --partial "Machine 'local' successfully added to the local API."
 }

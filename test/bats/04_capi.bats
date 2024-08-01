@@ -55,10 +55,10 @@ setup() {
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli capi status
-    assert_stderr --partial "Loaded credentials from"
-    assert_stderr --partial "Trying to authenticate with username"
-    assert_stderr --partial " on https://api.crowdsec.net/"
-    assert_stderr --partial "You can successfully interact with Central API (CAPI)"
+    assert_output --partial "Loaded credentials from"
+    assert_output --partial "Trying to authenticate with username"
+    assert_output --partial " on https://api.crowdsec.net/"
+    assert_output --partial "You can successfully interact with Central API (CAPI)"
 }
 
 @test "cscli alerts list: receive a community pull when capi is enabled" {
@@ -85,7 +85,7 @@ setup() {
     config_disable_agent
     ./instance-crowdsec start
     rune -0 cscli capi status
-    assert_stderr --partial "You can successfully interact with Central API (CAPI)"
+    assert_line "You can successfully interact with Central API (CAPI)"
 }
 
 @test "capi register must be run from lapi" {

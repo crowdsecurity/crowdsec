@@ -202,14 +202,14 @@ func (cli *cliCapi) status() error {
 		return err
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
+	fmt.Printf("Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
+	fmt.Printf("Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
 	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 
-	log.Info("You can successfully interact with Central API (CAPI)")
+	fmt.Println("You can successfully interact with Central API (CAPI)")
 
 	return nil
 }
