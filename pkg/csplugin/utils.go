@@ -51,7 +51,7 @@ func getUID(username string) (uint32, error) {
 		return 0, err
 	}
 	if uid < 0 || uid > math.MaxInt32 {
-		return 0, fmt.Errorf("out of bound uid")
+		return 0, errors.New("out of bound uid")
 	}
 	return uint32(uid), nil
 }
@@ -66,7 +66,7 @@ func getGID(groupname string) (uint32, error) {
 		return 0, err
 	}
 	if gid < 0 || gid > math.MaxInt32 {
-		return 0, fmt.Errorf("out of bound gid")
+		return 0, errors.New("out of bound gid")
 	}
 	return uint32(gid), nil
 }

@@ -171,7 +171,7 @@ func (i *Item) FetchContentTo(ctx context.Context, destPath string) (bool, strin
 
 	downloaded, err := d.Download(ctx, url)
 	if err != nil {
-		return false, "", fmt.Errorf("while downloading %s to %s: %w", i.Name, url, err)
+		return false, "", err
 	}
 
 	return downloaded, url, nil

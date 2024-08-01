@@ -3,6 +3,7 @@ package kubernetesauditacquisition
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -73,15 +74,15 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	ka.config = k8sConfig
 
 	if ka.config.ListenAddr == "" {
-		return fmt.Errorf("listen_addr cannot be empty")
+		return errors.New("listen_addr cannot be empty")
 	}
 
 	if ka.config.ListenPort == 0 {
-		return fmt.Errorf("listen_port cannot be empty")
+		return errors.New("listen_port cannot be empty")
 	}
 
 	if ka.config.WebhookPath == "" {
-		return fmt.Errorf("webhook_path cannot be empty")
+		return errors.New("webhook_path cannot be empty")
 	}
 
 	if ka.config.WebhookPath[0] != '/' {
@@ -119,7 +120,7 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, Met
 }
 
 func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return fmt.Errorf("k8s-audit datasource does not support command-line acquisition")
+	return errors.New("k8s-audit datasource does not support command-line acquisition")
 }
 
 func (ka *KubernetesAuditSource) GetMode() string {
@@ -131,7 +132,7 @@ func (ka *KubernetesAuditSource) GetName() string {
 }
 
 func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("k8s-audit datasource does not support one-shot acquisition")
+	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
 func (ka *KubernetesAuditSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {

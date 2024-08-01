@@ -116,7 +116,10 @@ make_init_data() {
 
     "$CSCLI" --warning hub update
 
-    ./bin/preload-hub-items
+    # preload some content and data files
+    "$CSCLI" collections install crowdsecurity/linux --download-only
+    # sub-items did not respect --download-only
+    ./bin/remove-all-hub-items
 
     # force TCP, the default would be unix socket
     "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --url http://127.0.0.1:8080 --auto --force

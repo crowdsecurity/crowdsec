@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -79,11 +80,11 @@ func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
 }
 
 func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return fmt.Errorf("syslog datasource does not support one shot acquisition")
+	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
 func (s *SyslogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("syslog datasource does not support one shot acquisition")
+	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
 func validatePort(port int) bool {
