@@ -23,7 +23,7 @@ type Decision struct {
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Until holds the value of the "until" field.
-	Until *time.Time `json:"until,omitempty"`
+	Until time.Time `json:"until,omitempty"`
 	// Scenario holds the value of the "scenario" field.
 	Scenario string `json:"scenario,omitempty"`
 	// Type holds the value of the "type" field.
@@ -126,8 +126,7 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field until", values[i])
 			} else if value.Valid {
-				d.Until = new(time.Time)
-				*d.Until = value.Time
+				d.Until = value.Time
 			}
 		case decision.FieldScenario:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -254,10 +253,8 @@ func (d *Decision) String() string {
 	builder.WriteString("updated_at=")
 	builder.WriteString(d.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := d.Until; v != nil {
-		builder.WriteString("until=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
+	builder.WriteString("until=")
+	builder.WriteString(d.Until.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("scenario=")
 	builder.WriteString(d.Scenario)
