@@ -8,11 +8,11 @@ import (
 	"io"
 	"os"
 	"path"
-	"slices"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
@@ -117,13 +117,14 @@ func (h *Hub) ItemStats() []string {
 	tainted := 0
 
 	for _, itemType := range ItemTypes {
-		if len(h.GetItemMap(itemType)) == 0 {
+		items := h.GetItemsByType(itemType, false)
+		if len(items) == 0 {
 			continue
 		}
 
-		loaded += fmt.Sprintf("%d %s, ", len(h.GetItemMap(itemType)), itemType)
+		loaded += fmt.Sprintf("%d %s, ", len(items), itemType)
 
-		for _, item := range h.GetItemMap(itemType) {
+		for _, item := range items {
 			if item.State.IsLocal() {
 				local++
 			}
@@ -218,73 +219,62 @@ func (h *Hub) GetItemFQ(itemFQName string) (*Item, error) {
 	return i, nil
 }
 
-// GetNamesByType returns a slice of (full) item names for a given type
-// (eg. for collections: crowdsecurity/apache2 crowdsecurity/nginx).
-func (h *Hub) GetNamesByType(itemType string) []string {
-	m := h.GetItemMap(itemType)
-	if m == nil {
-		return nil
-	}
-
-	names := make([]string, 0, len(m))
-	for k := range m {
-		names = append(names, k)
-	}
-
-	return names
-}
-
-// GetItemsByType returns a slice of all the items of a given type, installed or not.
-func (h *Hub) GetItemsByType(itemType string) ([]*Item, error) {
-	if !slices.Contains(ItemTypes, itemType) {
-		return nil, fmt.Errorf("invalid item type %s", itemType)
-	}
-
+// GetItemsByType returns a slice of all the items of a given type, installed or not, optionally sorted by case-insensitive name.
+// A non-existent type will silently return an empty slice.
+func (h *Hub) GetItemsByType(itemType string, sorted bool) []*Item {
 	items := h.items[itemType]
 
 	ret := make([]*Item, len(items))
 
-	idx := 0
+	if sorted {
+		for idx, name := range maptools.SortedKeysNoCase(items) {
+			ret[idx] = items[name]
+		}
 
+		return ret
+	}
+
+	idx := 0
 	for _, item := range items {
 		ret[idx] = item
-		idx++
+		idx += 1
 	}
 
-	return ret, nil
+	return ret
 }
 
-// GetInstalledItemsByType returns a slice of the installed items of a given type.
-func (h *Hub) GetInstalledItemsByType(itemType string) ([]*Item, error) {
-	if !slices.Contains(ItemTypes, itemType) {
-		return nil, fmt.Errorf("invalid item type %s", itemType)
-	}
+// GetInstalledByType returns a slice of all the installed items of a given type, optionally sorted by case-insensitive name.
+// A non-existent type will silently return an empty slice.
+func (h *Hub) GetInstalledByType(itemType string, sorted bool) []*Item {
+	ret := make([]*Item, 0)
 
-	items := h.items[itemType]
-
-	retItems := make([]*Item, 0)
-
-	for _, item := range items {
+	for _, item := range h.GetItemsByType(itemType, sorted) {
 		if item.State.Installed {
-			retItems = append(retItems, item)
+			ret = append(ret, item)
 		}
 	}
 
-	return retItems, nil
+	return ret
 }
 
-// GetInstalledNamesByType returns the names of the installed items of a given type.
-func (h *Hub) GetInstalledNamesByType(itemType string) ([]string, error) {
-	items, err := h.GetInstalledItemsByType(itemType)
-	if err != nil {
-		return nil, err
+// GetInstalledListForAPI returns a slice of names of all the installed scenarios and appsec-rules.
+// The returned list is sorted by type (scenarios first) and case-insensitive name.
+func (h *Hub) GetInstalledListForAPI() []string {
+	scenarios := h.GetInstalledByType(SCENARIOS, true)
+	appsecRules := h.GetInstalledByType(APPSEC_RULES, true)
+
+	ret := make([]string, len(scenarios)+len(appsecRules))
+
+	idx := 0
+	for _, item := range scenarios {
+		ret[idx] = item.Name
+		idx += 1
 	}
 
-	retStr := make([]string, len(items))
-
-	for idx, it := range items {
-		retStr[idx] = it.Name
+	for _, item := range appsecRules {
+		ret[idx] = item.Name
+		idx += 1
 	}
 
-	return retStr, nil
+	return ret
 }

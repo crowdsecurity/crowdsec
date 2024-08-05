@@ -17,11 +17,7 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 	hub = hubInstance
 	appsecRules = make(map[string]AppsecCollectionConfig)
 
-	for _, hubAppsecRuleItem := range hub.GetItemMap(cwhub.APPSEC_RULES) {
-		if !hubAppsecRuleItem.State.Installed {
-			continue
-		}
-
+	for _, hubAppsecRuleItem := range hub.GetInstalledByType(cwhub.APPSEC_RULES, false) {
 		content, err := os.ReadFile(hubAppsecRuleItem.State.LocalPath)
 		if err != nil {
 			log.Warnf("unable to read file %s : %s", hubAppsecRuleItem.State.LocalPath, err)

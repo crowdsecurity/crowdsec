@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -44,11 +43,4 @@ func safePath(dir, filePath string) (string, error) {
 	}
 
 	return absFilePath, nil
-}
-
-// SortItemSlice sorts a slice of items by name, case insensitive.
-func SortItemSlice(items []*Item) {
-	sort.Slice(items, func(i, j int) bool {
-		return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
-	})
 }
