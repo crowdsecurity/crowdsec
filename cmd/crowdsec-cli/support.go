@@ -260,11 +260,17 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "CAPI URL: %s\n", cred.URL)
 	fmt.Fprintf(out, "CAPI username: %s\n", cred.Login)
 
-	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
+	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	if err != nil {
 		return fmt.Errorf("could not authenticate to Central API (CAPI): %w", err)
 	}
+	if auth {
+		fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
+	}
 
-	fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
+	if enrolled {
+		fmt.Fprintln(out, "Your instance is enrolled in the console")
+	}
 
 	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), out)
 
