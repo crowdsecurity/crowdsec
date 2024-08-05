@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -164,7 +165,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	}
 
 	if wc.Name == "" {
-		return fmt.Errorf("name cannot be empty")
+		return errors.New("name cannot be empty")
 	}
 	if wc.LogLevel == nil {
 		lvl := wc.Logger.Logger.GetLevel()

@@ -55,7 +55,6 @@ func (i *Item) Install(ctx context.Context, force bool, downloadOnly bool) error
 	}
 
 	if downloadOnly && downloaded {
-		i.hub.logger.Infof("Downloaded %s", i.Name)
 		return nil
 	}
 

@@ -3,6 +3,7 @@ package exprhelpers
 import (
 	"bufio"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -772,7 +773,7 @@ func ParseKV(params ...any) (any, error) {
 	matches := keyValuePattern.FindAllStringSubmatch(blob, -1)
 	if matches == nil {
 		log.Errorf("could not find any key/value pair in line")
-		return nil, fmt.Errorf("invalid input format")
+		return nil, errors.New("invalid input format")
 	}
 	if _, ok := target[prefix]; !ok {
 		target[prefix] = make(map[string]string)
@@ -780,7 +781,7 @@ func ParseKV(params ...any) (any, error) {
 		_, ok := target[prefix].(map[string]string)
 		if !ok {
 			log.Errorf("ParseKV: target is not a map[string]string")
-			return nil, fmt.Errorf("target is not a map[string]string")
+			return nil, errors.New("target is not a map[string]string")
 		}
 	}
 	for _, match := range matches {
