@@ -239,7 +239,7 @@ func (cli *cliCapi) status() error {
 	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
 
 	if err != nil {
-		log.Errorf("CAPI: failed to authenticate to Central API (CAPI): %s", err)
+		return fmt.Errorf("CAPI: failed to authenticate to Central API (CAPI): %s", err)
 	}
 	if auth {
 		log.Info("You can successfully interact with Central API (CAPI)")
