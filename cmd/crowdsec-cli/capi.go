@@ -177,7 +177,7 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		//PapiURL:       papiURL,
 		VersionPrefix: "v3",
 		UpdateScenario: func() ([]string, error) {
-			scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
+			l_scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 			if err != nil {
 				return nil, err
 			}
@@ -185,8 +185,8 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 			if err != nil {
 				return nil, err
 			}
-			ret := make([]string, 0, len(scenarios)+len(appsecRules))
-			ret = append(ret, scenarios...)
+			ret := make([]string, 0, len(l_scenarios)+len(appsecRules))
+			ret = append(ret, l_scenarios...)
 			ret = append(ret, appsecRules...)
 
 			return ret, nil
