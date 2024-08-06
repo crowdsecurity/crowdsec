@@ -17,7 +17,12 @@ import (
 
 // selectItems returns a slice of items of a given type, selected by name and sorted by case-insensitive name
 func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]*cwhub.Item, error) {
-	itemNames := hub.GetNamesByType(itemType)
+	allItems := hub.GetItemsByType(itemType, true)
+
+	itemNames := make([]string, len(allItems))
+	for idx, item := range allItems {
+		itemNames[idx] = item.Name
+	}
 
 	notExist := []string{}
 
@@ -38,7 +43,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 		installedOnly = false
 	}
 
-	items := make([]*cwhub.Item, 0, len(itemNames))
+	wantedItems := make([]*cwhub.Item, 0, len(itemNames))
 
 	for _, itemName := range itemNames {
 		item := hub.GetItem(itemType, itemName)
@@ -46,12 +51,10 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 			continue
 		}
 
-		items = append(items, item)
+		wantedItems = append(wantedItems, item)
 	}
 
-	cwhub.SortItemSlice(items)
-
-	return items, nil
+	return wantedItems, nil
 }
 
 func listItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {

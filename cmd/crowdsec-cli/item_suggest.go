@@ -19,7 +19,7 @@ func suggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) str
 	score := 100
 	nearest := ""
 
-	for _, item := range hub.GetItemMap(itemType) {
+	for _, item := range hub.GetItemsByType(itemType, false) {
 		d := levenshtein.Distance(itemName, item.Name, nil)
 		if d < score {
 			score = d
@@ -44,7 +44,7 @@ func compAllItems(itemType string, args []string, toComplete string, cfg configG
 
 	comp := make([]string, 0)
 
-	for _, item := range hub.GetItemMap(itemType) {
+	for _, item := range hub.GetItemsByType(itemType, false) {
 		if !slices.Contains(args, item.Name) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
 		}
@@ -61,22 +61,14 @@ func compInstalledItems(itemType string, args []string, toComplete string, cfg c
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	items, err := hub.GetInstalledNamesByType(itemType)
-	if err != nil {
-		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
-		return nil, cobra.ShellCompDirectiveDefault
-	}
+	items := hub.GetInstalledByType(itemType, true)
 
 	comp := make([]string, 0)
 
-	if toComplete != "" {
-		for _, item := range items {
-			if strings.Contains(item, toComplete) {
-				comp = append(comp, item)
-			}
+	for _, item := range items {
+		if strings.Contains(item.Name, toComplete) {
+			comp = append(comp, item.Name)
 		}
-	} else {
-		comp = items
 	}
 
 	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)

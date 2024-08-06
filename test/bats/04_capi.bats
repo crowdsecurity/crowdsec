@@ -51,7 +51,7 @@ setup() {
     config_enable_capi
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     rune -1 cscli capi status
-    assert_stderr --partial "no scenarios installed, abort"
+    assert_stderr --partial "no scenarios or appsec-rules installed, abort"
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli capi status

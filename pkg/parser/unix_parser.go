@@ -66,21 +66,20 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 	}
 
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.POSTOVERFLOWS} {
-		for _, hubParserItem := range hub.GetItemMap(itemType) {
-			if hubParserItem.State.Installed {
-				stagefile := Stagefile{
-					Filename: hubParserItem.State.LocalPath,
-					Stage:    hubParserItem.Stage,
-				}
-				if itemType == cwhub.PARSERS {
-					parsers.StageFiles = append(parsers.StageFiles, stagefile)
-				}
-				if itemType == cwhub.POSTOVERFLOWS {
-					parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
-				}
+		for _, hubParserItem := range hub.GetInstalledByType(itemType, false) {
+			stagefile := Stagefile{
+				Filename: hubParserItem.State.LocalPath,
+				Stage:    hubParserItem.Stage,
+			}
+			if itemType == cwhub.PARSERS {
+				parsers.StageFiles = append(parsers.StageFiles, stagefile)
+			}
+			if itemType == cwhub.POSTOVERFLOWS {
+				parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
 			}
 		}
 	}
+
 	if parsers.StageFiles != nil {
 		sort.Slice(parsers.StageFiles, func(i, j int) bool {
 			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename

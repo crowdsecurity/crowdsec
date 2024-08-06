@@ -177,19 +177,13 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 }
 
 func (wc *AppsecConfig) Load(configName string) error {
-	appsecConfigs := hub.GetItemMap(cwhub.APPSEC_CONFIGS)
+	item := hub.GetItem(cwhub.APPSEC_CONFIGS, configName)
 
-	for _, hubAppsecConfigItem := range appsecConfigs {
-		if !hubAppsecConfigItem.State.Installed {
-			continue
-		}
-		if hubAppsecConfigItem.Name != configName {
-			continue
-		}
-		wc.Logger.Infof("loading %s", hubAppsecConfigItem.State.LocalPath)
-		err := wc.LoadByPath(hubAppsecConfigItem.State.LocalPath)
+	if item != nil && item.State.Installed {
+		wc.Logger.Infof("loading %s", item.State.LocalPath)
+		err := wc.LoadByPath(item.State.LocalPath)
 		if err != nil {
-			return fmt.Errorf("unable to load appsec-config %s : %s", hubAppsecConfigItem.State.LocalPath, err)
+			return fmt.Errorf("unable to load appsec-config %s : %s", item.State.LocalPath, err)
 		}
 		return nil
 	}

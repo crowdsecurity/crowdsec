@@ -23,7 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -74,20 +73,6 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		return fmt.Errorf("could not parse CAPI URL: %w", err)
 	}
 
-	hub, err := require.Hub(cfg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-	if err != nil {
-		return fmt.Errorf("failed to get installed scenarios: %w", err)
-	}
-
-	if len(scenarios) == 0 {
-		scenarios = make([]string, 0)
-	}
-
 	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
 
 	if len(opts) != 0 {
@@ -125,10 +110,15 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		}
 	}
 
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
 	c, _ := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
-		Scenarios:     scenarios,
+		Scenarios:     hub.GetInstalledListForAPI(),
 		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v3",

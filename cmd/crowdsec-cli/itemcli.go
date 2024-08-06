@@ -147,19 +147,14 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 	}
 
 	if all {
-		getter := hub.GetInstalledItemsByType
+		itemGetter := hub.GetInstalledByType
 		if purge {
-			getter = hub.GetItemsByType
-		}
-
-		items, err := getter(cli.name)
-		if err != nil {
-			return err
+			itemGetter = hub.GetItemsByType
 		}
 
 		removed := 0
 
-		for _, item := range items {
+		for _, item := range itemGetter(cli.name, true) {
 			didRemove, err := item.Remove(purge, force)
 			if err != nil {
 				return err
@@ -262,14 +257,9 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all b
 	}
 
 	if all {
-		items, err := hub.GetInstalledItemsByType(cli.name)
-		if err != nil {
-			return err
-		}
-
 		updated := 0
 
-		for _, item := range items {
+		for _, item := range hub.GetInstalledByType(cli.name, true) {
 			didUpdate, err := item.Upgrade(ctx, force)
 			if err != nil {
 				return err

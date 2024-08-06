@@ -45,11 +45,6 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-	if err != nil {
-		return fmt.Errorf("failed to get scenarios: %w", err)
-	}
-
 	client, err := apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
 		cwversion.UserAgent(),
@@ -60,10 +55,12 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 
 	pw := strfmt.Password(password)
 
+	itemsForAPI := hub.GetInstalledListForAPI()
+
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
 		Password:  &pw,
-		Scenarios: scenarios,
+		Scenarios: itemsForAPI,
 	}
 
 	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
