@@ -257,7 +257,8 @@ teardown() {
 @test "item files can be in a subdirectory" {
     rune -0 mkdir -p "$CONFIG_DIR/scenarios/sub/sub2/sub3"
     rune -0 touch "$CONFIG_DIR/scenarios/sub/imlocal.yaml"
-    rune -0 cscli scenarios inspect imlocal.yaml -o json
+    # subdir name is now part of the item name
+    rune -0 cscli scenarios inspect sub/imlocal.yaml -o json
     rune -0 jq -e '[.tainted,.local==false,true]' <(output)
     rune -0 rm "$CONFIG_DIR/scenarios/sub/imlocal.yaml"
 
@@ -269,4 +270,13 @@ teardown() {
     rune -0 ln -s "$HUB_DIR/scenarios/crowdsecurity/smb-bf.yaml" "$CONFIG_DIR/scenarios/sub/sub2/sub3/smb-bf.yaml"
     rune -0 cscli scenarios inspect crowdsecurity/smb-bf -o json
     rune -0 jq -e '[.tainted,.local==false,false]' <(output)
+}
+
+@test "same file name for local items in different subdirectories" {
+    rune -0 mkdir -p "$CONFIG_DIR"/scenarios/{foo,bar}
+    rune -0 touch "$CONFIG_DIR/scenarios/foo/local.yaml"
+    rune -0 touch "$CONFIG_DIR/scenarios/bar/local.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq -c '[.scenarios[].name] | sort' <(output)
+    assert_json '["bar/local.yaml","foo/local.yaml"]'
 }
