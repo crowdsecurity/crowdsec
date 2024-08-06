@@ -130,12 +130,15 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsInstall))
 		}
 
-		// this can be in any number of subdirs, we ignore them
+		// this can be in any number of subdirs, we join them to compose the item name
 
 		ftype := subsInstall[0]
 		stage := ""
+		fname := strings.Join(subsInstall[1:], "/")
+
 		if ftype == PARSERS || ftype == POSTOVERFLOWS {
 			stage = subsInstall[1]
+			fname = strings.Join(subsInstall[2:], "/")
 		}
 
 		ret = &itemFileInfo{
@@ -143,7 +146,7 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 			ftype:   ftype,
 			stage:   stage,
 			fauthor: "",
-			fname:   subsInstall[len(subsInstall)-1],
+			fname:   fname,
 		}
 	default:
 		return nil, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
