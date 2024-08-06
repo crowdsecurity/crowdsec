@@ -222,11 +222,11 @@ teardown() {
     rune -0 jq '.scenarios | length' <(output)
     assert_output 0
 
-    # link to ignored is not ignored
+    # link to ignored is not ignored, and the name comes from the link
     rune -0 ln -s "$CONFIG_DIR/scenarios/.foo/hidden.yaml" "$CONFIG_DIR/scenarios/myfoo.yaml"
     rune -0 cscli scenarios list -o json
-    rune -0 jq '.scenarios | length' <(output)
-    assert_output 1
+    rune -0 jq -c '[.scenarios[].name] | sort' <(output)
+    assert_json '["myfoo.yaml"]'
 }
 
 @test "item files can be links to links" {
