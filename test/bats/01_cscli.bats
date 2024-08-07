@@ -366,16 +366,14 @@ teardown() {
 }
 
 @test "cscli doc" {
-    # generating documentation requires a directory named "doc"
-
     cd "$BATS_TEST_TMPDIR"
     rune -1 cscli doc
     refute_output
-    assert_stderr --regexp 'failed to generate cobra doc: open doc/.*: no such file or directory'
+    assert_stderr --regexp 'failed to generate cscli documentation: open doc/.*: no such file or directory'
 
     mkdir -p doc
     rune -0 cscli doc
-    refute_output
+    assert_output "Documentation generated in ./doc"
     refute_stderr
     assert_file_exists "doc/cscli.md"
     assert_file_not_exist "doc/cscli_setup.md"
@@ -385,6 +383,14 @@ teardown() {
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
     rune -0 cscli doc
     assert_file_exists "doc/cscli_setup.md"
+
+    # specify a target directory
+    mkdir -p "$BATS_TEST_TMPDIR/doc2"
+    rune -0 cscli doc --target "$BATS_TEST_TMPDIR/doc2"
+    assert_output "Documentation generated in $BATS_TEST_TMPDIR/doc2"
+    refute_stderr
+    assert_file_exists "$BATS_TEST_TMPDIR/doc2/cscli_setup.md"
+
 }
 
 @test "feature.yaml for subcommands" {
