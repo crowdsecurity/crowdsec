@@ -271,7 +271,7 @@ linters:
     #
 
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occations, where the check for the returned error can be omitted.
+    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
     - exhaustive            # check exhaustiveness of enum switch statements
     - gci                   # Gci control golang package import order and make it always deterministic.
     - godot                 # Check if comments end in a period
@@ -386,10 +386,6 @@ issues:
     - linters:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
-
-    - linters:
-        - perfsprint
-      text: "fmt.Errorf can be replaced with errors.New"
 
     #
     # Will fix, easy but some neurons required
