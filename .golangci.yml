@@ -387,10 +387,6 @@ issues:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
-    - linters:
-        - perfsprint
-      text: "fmt.Errorf can be replaced with errors.New"
-
     #
     # Will fix, easy but some neurons required
     #
