@@ -16,12 +16,18 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	err := fmt.Sprintf("API error: %s", *e.Message)
+	message := ptr.OrEmpty(e.Message)
+	errors := ""
+
 	if len(e.Errors) > 0 {
-		err += fmt.Sprintf(" (%s)", e.Errors)
+		errors = fmt.Sprintf(" (%s)", e.Errors)
 	}
 
-	return err
+	if message == "" && errors == "" {
+		errors = "(no errors)"
+	}
+
+	return fmt.Sprintf("API error: %s%s", message, errors)
 }
 
 // CheckResponse verifies the API response and builds an appropriate Go error if necessary.
