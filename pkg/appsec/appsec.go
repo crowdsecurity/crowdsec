@@ -87,7 +87,8 @@ type AppsecSubEngineOpts struct {
 
 // runtime version of AppsecConfig
 type AppsecRuntimeConfig struct {
-	Name           string
+	Name string
+
 	OutOfBandRules []AppsecCollection
 
 	InBandRules []AppsecCollection
@@ -107,6 +108,8 @@ type AppsecRuntimeConfig struct {
 	OutOfBandTx ExtendedTransaction //is it a good idea ?
 	InBandTx    ExtendedTransaction //is it a good idea ?
 	Response    AppsecTempResponse
+
+	FlagSkipProcessing bool
 	//should we store matched rules here ?
 
 	Logger *log.Entry
@@ -603,6 +606,15 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) DenyRequest() error {
+	w.Logger.Debugf("setting action to deny")
+	w.Response.Action = BanRemediation
+	w.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+	w.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
+	//w.Response.InBandInterrupt = true
+	return nil
+}
+
 func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	//log.Infof("setting to %s", action)
 	w.Logger.Debugf("setting action to %s", action)
@@ -613,6 +625,12 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 func (w *AppsecRuntimeConfig) SetHTTPCode(code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
 	w.Response.UserHTTPResponseCode = code
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SkipProcessing() error {
+	w.Logger.Debugf("setting flag to skip normal processing")
+	w.FlagSkipProcessing = true
 	return nil
 }
 

@@ -660,6 +660,34 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				require.Equal(t, "foobar", responses[0].Action)
 			},
 		},
+		{
+			name:             "pre_eval : SetRemediation (WAF rule in expr) + Bypass",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "IsInBand && 1 == 1", Apply: []string{"SetRemediation('ban')", "SetReturnCode(403)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"bar": []string{"bar"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+				//require.Equal(t, http.StatusForbidden, statusCode)
+				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
+				//require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
+			},
+		},
 	}
 
 	for _, test := range tests {

@@ -32,6 +32,10 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]in
 		"SetRemediationByTag":     w.SetActionByTag,
 		"SetRemediationByID":      w.SetActionByID,
 		"SetRemediationByName":    w.SetActionByName,
+		"SetRemediation":          w.SetAction,
+		"SetReturnCode":           w.SetHTTPCode,
+		"SkipProcessing":          w.SkipProcessing,
+		"DenyRequest":             w.DenyRequest,
 	}
 }
 

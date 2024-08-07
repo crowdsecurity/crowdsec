@@ -128,11 +128,23 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		}
 	}()
 
+	r.logger.Infof("(before pre_eval) planned remediation: %s", r.AppsecRuntime.Response.Action)             //.Response.Action =
+	r.logger.Infof("(before pre_eval) planned resp code: %d", r.AppsecRuntime.Response.UserHTTPResponseCode) //.Response.Action =
+	r.logger.Infof("(before pre_eval) planned response: %+v", r.AppsecRuntime.Response)                      //.Response.Action =
+
 	//pre eval (expr) rules
 	err = r.AppsecRuntime.ProcessPreEvalRules(request)
 	if err != nil {
 		r.logger.Errorf("unable to process PreEval rules: %s", err)
 		//FIXME: should we abort here ?
+	}
+
+	r.logger.Infof("(after pre_eval) planned remediation: %s", r.AppsecRuntime.Response.Action)             //.Response.Action =
+	r.logger.Infof("(after pre_eval) planned resp code: %d", r.AppsecRuntime.Response.UserHTTPResponseCode) //.Response.Action =
+	r.logger.Infof("(after pre_eval) planned response: %+v", r.AppsecRuntime.Response)                      //.Response.Action =
+
+	if r.AppsecRuntime.FlagSkipProcessing {
+		return nil
 	}
 
 	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
@@ -214,6 +226,8 @@ func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) erro
 }
 
 func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
+
+	r.logger.Infof("entering inband interrupt")
 	//create the associated event for crowdsec itself
 	evt, err := EventFromRequest(request, r.Labels)
 	if err != nil {
@@ -322,6 +336,9 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 		logger.Errorf("unable to process InBand rules: %s", err)
 		return
 	}
+	logger.Infof("(after processInBand) planned remediation: %s", r.AppsecRuntime.Response.Action)             //.Response.Action =
+	logger.Infof("(after processInBand) planned resp code: %d", r.AppsecRuntime.Response.UserHTTPResponseCode) //.Response.Action =
+	logger.Infof("(after processInBand) planned response: %+v", r.AppsecRuntime.Response)                      //.Response.Action =
 
 	// time spent to process in band rules
 	inBandParsingElapsed := time.Since(startInBandParsing)
