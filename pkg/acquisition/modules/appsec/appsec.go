@@ -49,12 +49,10 @@ type AppsecSourceConfig struct {
 
 // runtime structure of AppsecSourceConfig
 type AppsecSource struct {
-	metricsLevel  int
 	config        AppsecSourceConfig
 	logger        *log.Entry
 	mux           *http.ServeMux
 	server        *http.Server
-	outChan       chan types.Event
 	InChan        chan appsec.ParsedRequest
 	AppsecRuntime *appsec.AppsecRuntimeConfig
 	AppsecConfigs map[string]appsec.AppsecConfig
@@ -162,7 +160,6 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	}
 
 	w.logger = logger
-	w.metricsLevel = MetricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {
@@ -266,8 +263,6 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 }
 
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	w.outChan = out
-
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
 
