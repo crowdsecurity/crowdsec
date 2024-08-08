@@ -243,3 +243,25 @@ func (w MatchedRules) ByAccuracy(accuracy string) MatchedRules {
 	log.Debugf("ByAccuracy(%s) -> %d", accuracy, len(ret))
 	return ret
 }
+
+func (w MatchedRules) ByName(name string) MatchedRules {
+	ret := MatchedRules{}
+	for _, rule := range w {
+		if rule["name"] == name {
+			ret = append(ret, rule)
+		}
+	}
+	log.Debugf("ByName(%s) -> %d", name, len(ret))
+	return ret
+}
+
+func (w MatchedRules) ByMsg(msg string) MatchedRules {
+	ret := MatchedRules{}
+	for _, rule := range w {
+		if rule["msg"] == msg {
+			ret = append(ret, rule)
+		}
+	}
+	log.Debugf("ByMsg(%s) -> %d", msg, len(ret))
+	return ret
+}
