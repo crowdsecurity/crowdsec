@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -201,7 +201,6 @@ func (n *Node) processWhitelist(cachedExprEnv map[string]interface{}, p *types.E
 
 	return isWhitelisted, nil
 }
-
 
 func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, bool, error) {
 	// Process grok if present, should be exclusive with nodes :)

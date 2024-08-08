@@ -25,10 +25,6 @@ BUILD_STATIC ?= 0
 # List of plugins to build
 PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 
-# Can be overriden, if you can deal with the consequences
-BUILD_REQUIRE_GO_MAJOR ?= 1
-BUILD_REQUIRE_GO_MINOR ?= 21
-
 #--------------------------------------
 
 GO = go
@@ -81,7 +77,8 @@ ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
-GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+#expr_debug tag is required to enable the debug mode in expr
+GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
 # this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
@@ -128,10 +125,10 @@ endif
 #--------------------------------------
 
 .PHONY: build
-build: pre-build goversion crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
+build: build-info crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 
-.PHONY: pre-build
-pre-build:  ## Sanity checks and build information
+.PHONY: build-info
+build-info:  ## Print build information
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
 
 ifneq (,$(RE2_FAIL))
@@ -195,11 +192,11 @@ clean: clean-debian clean-rpm testclean  ## Remove build artifacts
 	)
 
 .PHONY: cscli
-cscli: goversion  ## Build cscli
+cscli:  ## Build cscli
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: crowdsec
-crowdsec: goversion  ## Build crowdsec
+crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: generate
@@ -223,12 +220,12 @@ testenv:
 	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it'
 
 .PHONY: test
-test: testenv goversion  ## Run unit tests with localstack
-	$(GOTEST) $(LD_OPTS) ./...
+test: testenv  ## Run unit tests with localstack
+	$(GOTEST) --tags=$(GO_TAGS) $(LD_OPTS) ./...
 
 .PHONY: go-acc
-go-acc: testenv goversion  ## Run unit tests with localstack + coverage
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS)
+go-acc: testenv  ## Run unit tests with localstack + coverage
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models --tags $(GO_TAGS) -- $(LD_OPTS)
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \
@@ -305,5 +302,4 @@ else
 include test/bats.mk
 endif
 
-include mk/goversion.mk
 include mk/help.mk

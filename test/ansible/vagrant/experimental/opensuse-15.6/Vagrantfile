@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 Vagrant.configure('2') do |config|
-  config.vm.box = 'opensuse/Leap-15.4.x86_64'
+  config.vm.box = 'opensuse/Leap-15.6.x86_64'
+  config.vm.box_version = "15.6.13.280"
   config.vm.define 'crowdsec'
 
   config.vm.provision 'shell', path: 'bootstrap'

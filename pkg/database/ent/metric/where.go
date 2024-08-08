@@ -59,9 +59,9 @@ func GeneratedBy(v string) predicate.Metric {
 	return predicate.Metric(sql.FieldEQ(FieldGeneratedBy, v))
 }
 
-// CollectedAt applies equality check predicate on the "collected_at" field. It's identical to CollectedAtEQ.
-func CollectedAt(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldEQ(FieldCollectedAt, v))
+// ReceivedAt applies equality check predicate on the "received_at" field. It's identical to ReceivedAtEQ.
+func ReceivedAt(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldEQ(FieldReceivedAt, v))
 }
 
 // PushedAt applies equality check predicate on the "pushed_at" field. It's identical to PushedAtEQ.
@@ -159,44 +159,44 @@ func GeneratedByContainsFold(v string) predicate.Metric {
 	return predicate.Metric(sql.FieldContainsFold(FieldGeneratedBy, v))
 }
 
-// CollectedAtEQ applies the EQ predicate on the "collected_at" field.
-func CollectedAtEQ(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldEQ(FieldCollectedAt, v))
+// ReceivedAtEQ applies the EQ predicate on the "received_at" field.
+func ReceivedAtEQ(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldEQ(FieldReceivedAt, v))
 }
 
-// CollectedAtNEQ applies the NEQ predicate on the "collected_at" field.
-func CollectedAtNEQ(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldNEQ(FieldCollectedAt, v))
+// ReceivedAtNEQ applies the NEQ predicate on the "received_at" field.
+func ReceivedAtNEQ(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldNEQ(FieldReceivedAt, v))
 }
 
-// CollectedAtIn applies the In predicate on the "collected_at" field.
-func CollectedAtIn(vs ...time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldIn(FieldCollectedAt, vs...))
+// ReceivedAtIn applies the In predicate on the "received_at" field.
+func ReceivedAtIn(vs ...time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldIn(FieldReceivedAt, vs...))
 }
 
-// CollectedAtNotIn applies the NotIn predicate on the "collected_at" field.
-func CollectedAtNotIn(vs ...time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldNotIn(FieldCollectedAt, vs...))
+// ReceivedAtNotIn applies the NotIn predicate on the "received_at" field.
+func ReceivedAtNotIn(vs ...time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldNotIn(FieldReceivedAt, vs...))
 }
 
-// CollectedAtGT applies the GT predicate on the "collected_at" field.
-func CollectedAtGT(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldGT(FieldCollectedAt, v))
+// ReceivedAtGT applies the GT predicate on the "received_at" field.
+func ReceivedAtGT(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldGT(FieldReceivedAt, v))
 }
 
-// CollectedAtGTE applies the GTE predicate on the "collected_at" field.
-func CollectedAtGTE(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldGTE(FieldCollectedAt, v))
+// ReceivedAtGTE applies the GTE predicate on the "received_at" field.
+func ReceivedAtGTE(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldGTE(FieldReceivedAt, v))
 }
 
-// CollectedAtLT applies the LT predicate on the "collected_at" field.
-func CollectedAtLT(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldLT(FieldCollectedAt, v))
+// ReceivedAtLT applies the LT predicate on the "received_at" field.
+func ReceivedAtLT(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldLT(FieldReceivedAt, v))
 }
 
-// CollectedAtLTE applies the LTE predicate on the "collected_at" field.
-func CollectedAtLTE(v time.Time) predicate.Metric {
-	return predicate.Metric(sql.FieldLTE(FieldCollectedAt, v))
+// ReceivedAtLTE applies the LTE predicate on the "received_at" field.
+func ReceivedAtLTE(v time.Time) predicate.Metric {
+	return predicate.Metric(sql.FieldLTE(FieldReceivedAt, v))
 }
 
 // PushedAtEQ applies the EQ predicate on the "pushed_at" field.

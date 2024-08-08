@@ -143,6 +143,8 @@ linters-settings:
         disabled: true
       - name: struct-tag
         disabled: true
+      - name: redundant-import-alias
+        disabled: true
       - name: time-equal
         disabled: true
       - name: var-naming
@@ -269,7 +271,7 @@ linters:
     #
 
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occations, where the check for the returned error can be omitted.
+    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
     - exhaustive            # check exhaustiveness of enum switch statements
     - gci                   # Gci control golang package import order and make it always deterministic.
     - godot                 # Check if comments end in a period
@@ -385,10 +387,6 @@ issues:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
-    - linters:
-        - perfsprint
-      text: "fmt.Errorf can be replaced with errors.New"
-
     #
     # Will fix, easy but some neurons required
     #
@@ -407,15 +405,7 @@ issues:
 
     - linters:
         - errorlint
-      text: "type assertion on error will fail on wrapped errors. Use errors.Is to check for specific errors"
-
-    - linters:
-        - errorlint
       text: "comparing with .* will fail on wrapped errors. Use errors.Is to check for a specific error"
-
-    - linters:
-        - errorlint
-      text: "switch on an error will fail on wrapped errors. Use errors.Is to check for specific errors"
 
     - linters:
         - nosprintfhostport

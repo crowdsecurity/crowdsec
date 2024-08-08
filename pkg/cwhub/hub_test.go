@@ -65,7 +65,7 @@ func TestUpdateIndex(t *testing.T) {
 	fmt.Println("Test 'bad domain'")
 
 	hub.remote = &RemoteHubCfg{
-		URLTemplate: "https://baddomain/%s/%s",
+		URLTemplate: "https://baddomain/crowdsecurity/%s/%s",
 		Branch:      "master",
 		IndexPath:   ".index.json",
 	}

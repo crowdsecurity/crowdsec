@@ -72,7 +72,7 @@ func (cli *cliHub) list(all bool) error {
 		}
 	}
 
-	err = listItems(color.Output, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
+	err = listItems(color.Output, cfg.Cscli.Color, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
 	if err != nil {
 		return err
 	}

@@ -148,28 +148,53 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	return cmd
 }
 
-// QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct
-func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) error {
+// QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
+func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
+
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return fmt.Errorf("parsing api url: %w", err)
+		return false, false, fmt.Errorf("parsing api url: %w", err)
 	}
 
 	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
 	if err != nil {
-		return fmt.Errorf("failed to get scenarios: %w", err)
+		return false, false, fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
 	if len(scenarios) == 0 {
-		return errors.New("no scenarios installed, abort")
+		return false, false, errors.New("no scenarios installed, abort")
 	}
 
-	client, err := apiclient.NewDefaultClient(apiURL,
-		CAPIURLPrefix,
-		cwversion.UserAgent(),
-		nil)
+	passwd := strfmt.Password(password)
+
+	client, err := apiclient.NewClient(&apiclient.Config{
+		MachineID: login,
+		Password:  passwd,
+		Scenarios: scenarios,
+		UserAgent: cwversion.UserAgent(),
+		URL:       apiURL,
+		//I don't believe papi is neede to check enrollement
+		//PapiURL:       papiURL,
+		VersionPrefix: "v3",
+		UpdateScenario: func() ([]string, error) {
+			l_scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
+			if err != nil {
+				return nil, err
+			}
+			appsecRules, err := hub.GetInstalledNamesByType(cwhub.APPSEC_RULES)
+			if err != nil {
+				return nil, err
+			}
+			ret := make([]string, 0, len(l_scenarios)+len(appsecRules))
+			ret = append(ret, l_scenarios...)
+			ret = append(ret, appsecRules...)
+
+			return ret, nil
+		},
+	})
+
 	if err != nil {
-		return fmt.Errorf("init default client: %w", err)
+		return false, false, fmt.Errorf("new client api: %w", err)
 	}
 
 	pw := strfmt.Password(password)
@@ -180,12 +205,18 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		Scenarios: scenarios,
 	}
 
-	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
+	authResp, _, err := client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
-		return err
+		return false, false, err
 	}
 
-	return nil
+	client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+
+	if client.IsEnrolled() {
+		return true, true, nil
+	}
+	return true, false, nil
+
 }
 
 func (cli *cliCapi) status() error {
@@ -205,12 +236,17 @@ func (cli *cliCapi) status() error {
 	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
 	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
 
-	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
-		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
+	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+
+	if err != nil {
+		return fmt.Errorf("CAPI: failed to authenticate to Central API (CAPI): %s", err)
 	}
-
-	log.Info("You can successfully interact with Central API (CAPI)")
-
+	if auth {
+		log.Info("You can successfully interact with Central API (CAPI)")
+	}
+	if enrolled {
+		log.Info("Your instance is enrolled in the console")
+	}
 	return nil
 }
 

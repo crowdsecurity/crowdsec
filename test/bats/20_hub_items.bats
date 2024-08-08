@@ -46,7 +46,7 @@ teardown() {
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2":{"digest":$DIGEST, "deprecated": false}, "1.10": {"digest":$DIGEST, "deprecated": false}}}}}' \
     )
     echo "$new_hub" >"$INDEX_PATH"
- 
+
     rune -0 cscli collections install crowdsecurity/sshd
 
     truncate -s 0 "$CONFIG_DIR/collections/sshd.yaml"
@@ -78,7 +78,7 @@ teardown() {
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2.3.4":{"digest":"foo", "deprecated": false}}}}}' \
     )
     echo "$new_hub" >"$INDEX_PATH"
- 
+
     rune -0 cscli collections install crowdsecurity/sshd
     rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics -o json
     # XXX: we are on the verbose side here...
@@ -192,4 +192,11 @@ teardown() {
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
     rune -0 jq -c '.tainted' <(output)
     assert_output 'false'
+}
+
+@test "skip files if we can't guess their type" {
+    rune -0 mkdir -p "$CONFIG_DIR/scenarios/foo"
+    rune -0 touch "$CONFIG_DIR/scenarios/foo/bar.yaml"
+    rune -0 cscli hub list
+    assert_stderr --partial "Ignoring file $CONFIG_DIR/scenarios/foo/bar.yaml: unknown configuration type"
 }

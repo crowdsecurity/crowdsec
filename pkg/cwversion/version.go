@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	Codename string         // = "SoumSoum"
+	Codename string // = "SoumSoum"
 	Libre2   = "WebAssembly"
 )
 
@@ -21,19 +21,8 @@ const (
 	Constraint_acquis   = ">= 1.0, < 2.0"
 )
 
-func versionWithTag() string {
-	// if the version number already contains the tag, don't duplicate it
-	ret := version.Version
-
-	if !strings.HasSuffix(ret, version.Tag) && !strings.HasSuffix(ret, "g"+version.Tag+"-dirty") {
-		ret += "-" + version.Tag
-	}
-
-	return ret
-}
-
 func FullString() string {
-	ret := fmt.Sprintf("version: %s\n", versionWithTag())
+	ret := fmt.Sprintf("version: %s\n", version.String())
 	ret += fmt.Sprintf("Codename: %s\n", Codename)
 	ret += fmt.Sprintf("BuildDate: %s\n", version.BuildDate)
 	ret += fmt.Sprintf("GoVersion: %s\n", version.GoVersion)
@@ -49,7 +38,7 @@ func FullString() string {
 }
 
 func UserAgent() string {
-	return "crowdsec/" + versionWithTag() + "-" + version.System
+	return "crowdsec/" + version.String() + "-" + version.System
 }
 
 // VersionStrip remove the tag from the version string, used to match with a hub branch

@@ -22,6 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -77,7 +78,7 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
+func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
 	cfg := cli.cfg()
@@ -88,13 +89,13 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, zw *zip.Writer) error {
 
 	humanMetrics := new(bytes.Buffer)
 
-	ms := NewMetricStore()
+	ms := climetrics.NewMetricStore()
 
-	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
+	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {
 		return err
 	}
 
-	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
+	if err := ms.Format(humanMetrics, cfg.Cscli.Color, nil, "human", false); err != nil {
 		return fmt.Errorf("could not format prometheus metrics: %w", err)
 	}
 
@@ -173,7 +174,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType str
 		return fmt.Errorf("could not collect %s list: %w", itemType, err)
 	}
 
-	if err := listItems(out, []string{itemType}, items, false, "human"); err != nil {
+	if err := listItems(out, cli.cfg().Cscli.Color, []string{itemType}, items, false, "human"); err != nil {
 		return fmt.Errorf("could not list %s: %w", itemType, err)
 	}
 
@@ -193,12 +194,9 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	bouncers, err := db.ListBouncers()
-	if err != nil {
-		return fmt.Errorf("unable to list bouncers: %w", err)
-	}
-
-	getBouncersTable(out, bouncers)
+	// call the "cscli bouncers list" command directly, skip any preRun
+	cm := cliBouncers{db: db, cfg: cli.cfg}
+	cm.list(out)
 
 	stripped := stripAnsiString(out.String())
 
@@ -216,12 +214,9 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 
 	out := new(bytes.Buffer)
 
-	machines, err := db.ListMachines()
-	if err != nil {
-		return fmt.Errorf("unable to list machines: %w", err)
-	}
-
-	getAgentsTable(out, machines)
+	// call the "cscli machines list" command directly, skip any preRun
+	cm := cliMachines{db: db, cfg: cli.cfg}
+	cm.list(out)
 
 	stripped := stripAnsiString(out.String())
 
@@ -265,11 +260,17 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "CAPI URL: %s\n", cred.URL)
 	fmt.Fprintf(out, "CAPI username: %s\n", cred.Login)
 
-	if err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
+	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	if err != nil {
 		return fmt.Errorf("could not authenticate to Central API (CAPI): %w", err)
 	}
+	if auth {
+		fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
+	}
 
-	fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
+	if enrolled {
+		fmt.Fprintln(out, "Your instance is enrolled in the console")
+	}
 
 	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), out)
 
@@ -498,7 +499,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		skipCAPI = true
 	}
 
-	if err = cli.dumpMetrics(ctx, zipWriter); err != nil {
+	if err = cli.dumpMetrics(ctx, db, zipWriter); err != nil {
 		log.Warn(err)
 	}
 
@@ -617,6 +618,10 @@ cscli support dump -f /tmp/crowdsec-support.zip
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			output := cli.cfg().Cscli.Output
+			if output != "human" {
+				return fmt.Errorf("output format %s not supported for this command", output)
+			}
 			return cli.dump(cmd.Context(), outFile)
 		},
 	}

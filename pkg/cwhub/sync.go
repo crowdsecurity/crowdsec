@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -99,7 +100,7 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 
 	if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
 		if !slices.Contains(ItemTypes, ret.stage) {
-			return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
+			return nil, errors.New("unknown configuration type")
 		}
 
 		ret.ftype = ret.stage
@@ -196,7 +197,8 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 	info, err := h.getItemFileInfo(path, h.logger)
 	if err != nil {
-		return err
+		h.logger.Warningf("Ignoring file %s: %s", path, err)
+		return nil
 	}
 
 	// non symlinks are local user files or hub files

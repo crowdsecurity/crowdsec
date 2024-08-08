@@ -42,6 +42,24 @@ teardown() {
     assert_json '[]'
 }
 
+@test "bouncer api-key auth" {
+    rune -0 cscli bouncers add ciTestBouncer --key "goodkey"
+
+    # connect with good credentials
+    rune -0 curl-tcp "/v1/decisions" -sS --fail-with-body -H "X-Api-Key: goodkey"
+    assert_output null
+
+    # connect with bad credentials
+    rune -22 curl-tcp "/v1/decisions" -sS --fail-with-body -H "X-Api-Key: badkey"
+    assert_stderr --partial 'error: 403'
+    assert_json '{message:"access forbidden"}'
+
+    # connect with no credentials
+    rune -22 curl-tcp "/v1/decisions" -sS --fail-with-body
+    assert_stderr --partial 'error: 403'
+    assert_json '{message:"access forbidden"}'
+}
+
 @test "bouncers delete has autocompletion" {
     rune -0 cscli bouncers add foo1
     rune -0 cscli bouncers add foo2
@@ -68,7 +86,7 @@ teardown() {
     assert_output --regexp 'ciTestBouncer.*api-key.*'
 
     # the first connection sets last_pull and ip address
-    rune -0 lapi-get '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     rune -0 cscli bouncers list -o json
     rune -0 jq -r '.[] | .ip_address' <(output)
     assert_output 127.0.0.1

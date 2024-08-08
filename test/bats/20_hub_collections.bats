@@ -177,7 +177,7 @@ teardown() {
     echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
 
     rune -1 cscli collections install crowdsecurity/sshd
-    assert_stderr --partial "error while installing 'crowdsecurity/sshd': while enabling crowdsecurity/sshd: crowdsecurity/sshd is tainted, won't enable unless --force"
+    assert_stderr --partial "error while installing 'crowdsecurity/sshd': while enabling crowdsecurity/sshd: crowdsecurity/sshd is tainted, won't overwrite unless --force"
 
     rune -0 cscli collections install crowdsecurity/sshd --force
     assert_stderr --partial "Enabled crowdsecurity/sshd"

@@ -62,12 +62,17 @@ teardown() {
     assert_output 1
 }
 
-@test "machines delete has autocompletion" {
+@test "machines [delete|inspect] has autocompletion" {
     rune -0 cscli machines add -a -f /dev/null foo1
     rune -0 cscli machines add -a -f /dev/null foo2
     rune -0 cscli machines add -a -f /dev/null bar
     rune -0 cscli machines add -a -f /dev/null baz
     rune -0 cscli __complete machines delete 'foo'
+    assert_line --index 0 'foo1'
+    assert_line --index 1 'foo2'
+    refute_line 'bar'
+    refute_line 'baz'
+    rune -0 cscli __complete machines inspect 'foo'
     assert_line --index 0 'foo1'
     assert_line --index 1 'foo2'
     refute_line 'bar'

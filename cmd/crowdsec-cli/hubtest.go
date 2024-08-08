@@ -371,7 +371,7 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 
 			switch cfg.Cscli.Output {
 			case "human":
-				hubTestResultTable(color.Output, testResult)
+				hubTestResultTable(color.Output, cfg.Cscli.Color, testResult)
 			case "json":
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
@@ -480,7 +480,7 @@ func (cli *cliHubTest) NewListCmd() *cobra.Command {
 
 			switch cfg.Cscli.Output {
 			case "human":
-				hubTestListTable(color.Output, hubPtr.Tests)
+				hubTestListTable(color.Output, cfg.Cscli.Color, hubPtr.Tests)
 			case "json":
 				j, err := json.MarshalIndent(hubPtr.Tests, " ", "  ")
 				if err != nil {
@@ -505,7 +505,9 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 	if err := HubTest.LoadAllTests(); err != nil {
 		return fmt.Errorf("unable to load all tests: %+v", err)
 	}
+
 	var err error
+
 	scenarioCoverage := []hubtest.Coverage{}
 	parserCoverage := []hubtest.Coverage{}
 	appsecRuleCoverage := []hubtest.Coverage{}
@@ -521,12 +523,15 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		if err != nil {
 			return fmt.Errorf("while getting parser coverage: %w", err)
 		}
+
 		parserTested := 0
+
 		for _, test := range parserCoverage {
 			if test.TestsCount > 0 {
 				parserTested++
 			}
 		}
+
 		parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
 	}
 
@@ -537,6 +542,7 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		}
 
 		scenarioTested := 0
+
 		for _, test := range scenarioCoverage {
 			if test.TestsCount > 0 {
 				scenarioTested++
@@ -553,11 +559,13 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		}
 
 		appsecRuleTested := 0
+
 		for _, test := range appsecRuleCoverage {
 			if test.TestsCount > 0 {
 				appsecRuleTested++
 			}
 		}
+
 		appsecRuleCoveragePercent = int(math.Round((float64(appsecRuleTested) / float64(len(appsecRuleCoverage)) * 100)))
 	}
 
@@ -572,30 +580,34 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		case showAppsecCov:
 			fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
 		}
+
 		return nil
 	}
 
 	switch cfg.Cscli.Output {
 	case "human":
 		if showParserCov || showAll {
-			hubTestParserCoverageTable(color.Output, parserCoverage)
+			hubTestParserCoverageTable(color.Output, cfg.Cscli.Color, parserCoverage)
 		}
 
 		if showScenarioCov || showAll {
-			hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
+			hubTestScenarioCoverageTable(color.Output, cfg.Cscli.Color, scenarioCoverage)
 		}
 
 		if showAppsecCov || showAll {
-			hubTestAppsecRuleCoverageTable(color.Output, appsecRuleCoverage)
+			hubTestAppsecRuleCoverageTable(color.Output, cfg.Cscli.Color, appsecRuleCoverage)
 		}
 
 		fmt.Println()
+
 		if showParserCov || showAll {
 			fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
 		}
+
 		if showScenarioCov || showAll {
 			fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
 		}
+
 		if showAppsecCov || showAll {
 			fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
 		}
@@ -604,16 +616,21 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		if err != nil {
 			return err
 		}
+
 		fmt.Printf("%s", dump)
+
 		dump, err = json.MarshalIndent(scenarioCoverage, "", " ")
 		if err != nil {
 			return err
 		}
+
 		fmt.Printf("%s", dump)
+
 		dump, err = json.MarshalIndent(appsecRuleCoverage, "", " ")
 		if err != nil {
 			return err
 		}
+
 		fmt.Printf("%s", dump)
 	default:
 		return errors.New("only human/json output modes are supported")

@@ -5,15 +5,17 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
-func notificationListTable(out io.Writer, ncfgs map[string]NotificationsCfg) {
-	t := newLightTable(out)
+func notificationListTable(out io.Writer, wantColor string, ncfgs map[string]NotificationsCfg) {
+	t := cstable.NewLight(out, wantColor)
 	t.SetHeaders("Active", "Name", "Type", "Profile name")
-	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
-	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
+	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
 	keys := make([]string, 0, len(ncfgs))
 	for k := range ncfgs {

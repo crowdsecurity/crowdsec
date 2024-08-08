@@ -21,6 +21,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -54,7 +55,8 @@ func DecisionsFromAlert(alert *models.Alert) string {
 }
 
 func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
-	switch cli.cfg().Cscli.Output {
+	cfg := cli.cfg()
+	switch cfg.Cscli.Output {
 	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
 		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
@@ -104,7 +106,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 			return nil
 		}
 
-		alertsTable(color.Output, alerts, printMachine)
+		alertsTable(color.Output, cfg.Cscli.Color, alerts, printMachine)
 	}
 
 	return nil
@@ -118,6 +120,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
  - Date         : {{.CreatedAt}}
  - Machine      : {{.MachineID}}
  - Simulation   : {{.Simulated}}
+ - Remediation  : {{.Remediation}}
  - Reason       : {{.Scenario}}
  - Events Count : {{.EventsCount}}
  - Scope:Value  : {{.Source.Scope}}{{if .Source.Value}}:{{.Source.Value}}{{end}}
@@ -138,7 +141,9 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 		return err
 	}
 
-	alertDecisionsTable(color.Output, alert)
+	cfg := cli.cfg()
+
+	alertDecisionsTable(color.Output, cfg.Cscli.Color, alert)
 
 	if len(alert.Meta) > 0 {
 		fmt.Printf("\n - Context  :\n")
@@ -146,7 +151,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 			return alert.Meta[i].Key < alert.Meta[j].Key
 		})
 
-		table := newTable(color.Output)
+		table := cstable.New(color.Output, cfg.Cscli.Color)
 		table.SetRowLines(false)
 		table.SetHeaders("Key", "Value")
 
@@ -171,7 +176,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 		fmt.Printf("\n - Events  :\n")
 
 		for _, event := range alert.Events {
-			alertEventTable(color.Output, event)
+			alertEventTable(color.Output, cfg.Cscli.Color, event)
 		}
 	}
 

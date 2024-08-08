@@ -13,7 +13,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/agext/levenshtein v1.2.3
 	github.com/alexliesenfeld/health v0.8.0
-	github.com/antonmedv/expr v1.15.3
 	github.com/appleboy/gin-jwt/v2 v2.9.2
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.52.0
@@ -26,7 +25,7 @@ require (
 	github.com/corazawaf/libinjection-go v0.1.2
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20240108124027-a62b8d8e5607
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
-	github.com/crowdsecurity/go-cs-lib v0.0.11
+	github.com/crowdsecurity/go-cs-lib v0.0.13
 	github.com/crowdsecurity/grokky v0.2.1
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/daulet/tokenizers v0.8.0
@@ -34,6 +33,7 @@ require (
 	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.4.0
+	github.com/expr-lang/expr v1.16.9
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gin-gonic/gin v1.9.1

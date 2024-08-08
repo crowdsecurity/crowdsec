@@ -2,7 +2,7 @@ package csplugin
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	plugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
@@ -35,7 +35,7 @@ func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notific
 		return &protobufs.Empty{}, err
 
 	case <-ctx.Done():
-		return &protobufs.Empty{}, fmt.Errorf("timeout exceeded")
+		return &protobufs.Empty{}, errors.New("timeout exceeded")
 	}
 }
 

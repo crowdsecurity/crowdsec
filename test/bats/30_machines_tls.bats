@@ -3,7 +3,6 @@
 
 set -u
 
-
 # root: root CA
 # inter: intermediate CA
 # inter_rev: intermediate CA revoked by root (CRL3)

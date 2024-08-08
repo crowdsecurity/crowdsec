@@ -112,7 +112,7 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 
 func (cli *cliNotifications) getProfilesConfigs() (map[string]NotificationsCfg, error) {
 	cfg := cli.cfg()
-	// A bit of a tricky stuf now: reconcile profiles and notification plugins
+	// A bit of a tricky stuff now: reconcile profiles and notification plugins
 	pcfgs, err := cli.getPluginConfigs()
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func (cli *cliNotifications) NewListCmd() *cobra.Command {
 			}
 
 			if cfg.Cscli.Output == "human" {
-				notificationListTable(color.Output, ncfgs)
+				notificationListTable(color.Output, cfg.Cscli.Color, ncfgs)
 			} else if cfg.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {

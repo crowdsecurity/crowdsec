@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,23 +16,23 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func ShowMetrics(prometheusURL string, hubItem *cwhub.Item) error {
+func ShowMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(prometheusURL, hubItem.Name)
-		parserMetricsTable(color.Output, hubItem.Name, metrics)
+		parserMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
 		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
-		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
+		scenarioMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, sub := range hubItem.SubItems() {
-			if err := ShowMetrics(prometheusURL, sub); err != nil {
+			if err := ShowMetrics(prometheusURL, sub, wantColor); err != nil {
 				return err
 			}
 		}
 	case cwhub.APPSEC_RULES:
 		metrics := GetAppsecRuleMetric(prometheusURL, hubItem.Name)
-		appsecMetricsTable(color.Output, hubItem.Name, metrics)
+		appsecMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	default: // no metrics for this item type
 	}
 
@@ -290,38 +288,4 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 
 	return result
-}
-
-type unit struct {
-	value  int64
-	symbol string
-}
-
-var ranges = []unit{
-	{value: 1e18, symbol: "E"},
-	{value: 1e15, symbol: "P"},
-	{value: 1e12, symbol: "T"},
-	{value: 1e9, symbol: "G"},
-	{value: 1e6, symbol: "M"},
-	{value: 1e3, symbol: "k"},
-	{value: 1, symbol: ""},
-}
-
-func formatNumber(num int) string {
-	goodUnit := unit{}
-
-	for _, u := range ranges {
-		if int64(num) >= u.value {
-			goodUnit = u
-			break
-		}
-	}
-
-	if goodUnit.value == 1 {
-		return fmt.Sprintf("%d%s", num, goodUnit.symbol)
-	}
-
-	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
-
-	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
 }

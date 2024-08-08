@@ -30,7 +30,7 @@ setup() {
 }
 
 @test "API - first decisions list: must be empty" {
-    rune -0 lapi-get '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     assert_output 'null'
 }
 
@@ -46,7 +46,7 @@ setup() {
 }
 
 @test "API - all decisions" {
-    rune -0 lapi-get '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     rune -0 jq -c '[ . | length, .[0].value ]' <(output)
     assert_output '[1,"1.2.3.4"]'
 }
@@ -60,7 +60,7 @@ setup() {
 }
 
 @test "API - decision for 1.2.3.4" {
-    rune -0 lapi-get '/v1/decisions?ip=1.2.3.4'
+    rune -0 curl-with-key '/v1/decisions?ip=1.2.3.4'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '1.2.3.4'
 }
@@ -71,7 +71,7 @@ setup() {
 }
 
 @test "API - decision for 1.2.3.5" {
-    rune -0 lapi-get '/v1/decisions?ip=1.2.3.5'
+    rune -0 curl-with-key '/v1/decisions?ip=1.2.3.5'
     assert_output 'null'
 }
 
@@ -83,7 +83,7 @@ setup() {
 }
 
 @test "API - decision for 1.2.3.0/24" {
-    rune -0 lapi-get '/v1/decisions?range=1.2.3.0/24'
+    rune -0 curl-with-key '/v1/decisions?range=1.2.3.0/24'
     assert_output 'null'
 }
 
@@ -94,7 +94,7 @@ setup() {
 }
 
 @test "API - decisions where IP in 1.2.3.0/24" {
-    rune -0 lapi-get '/v1/decisions?range=1.2.3.0/24&contains=false'
+    rune -0 curl-with-key '/v1/decisions?range=1.2.3.0/24&contains=false'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '1.2.3.4'
 }

@@ -41,7 +41,7 @@ setup() {
 }
 
 @test "API - all decisions" {
-    rune -0 lapi-get "/v1/decisions"
+    rune -0 curl-with-key "/v1/decisions"
     rune -0 jq -r '.[].value' <(output)
     assert_output '1111:2222:3333:4444:5555:6666:7777:8888'
 }
@@ -53,7 +53,7 @@ setup() {
 }
 
 @test "API - decisions for ip 1111:2222:3333:4444:5555:6666:7777:888" {
-    rune -0 lapi-get '/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8888'
+    rune -0 curl-with-key '/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8888'
     rune -0 jq -r '.[].value' <(output)
     assert_output '1111:2222:3333:4444:5555:6666:7777:8888'
 }
@@ -64,7 +64,7 @@ setup() {
 }
 
 @test "API - decisions for ip 1211:2222:3333:4444:5555:6666:7777:888" {
-    rune -0 lapi-get '/v1/decisions?ip=1211:2222:3333:4444:5555:6666:7777:8888'
+    rune -0 curl-with-key '/v1/decisions?ip=1211:2222:3333:4444:5555:6666:7777:8888'
     assert_output 'null'
 }
 
@@ -74,7 +74,7 @@ setup() {
 }
 
 @test "API - decisions for ip 1111:2222:3333:4444:5555:6666:7777:8887" {
-    rune -0 lapi-get '/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8887'
+    rune -0 curl-with-key '/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8887'
     assert_output 'null'
 }
 
@@ -84,7 +84,7 @@ setup() {
 }
 
 @test "API - decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/48" {
-    rune -0 lapi-get '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48'
+    rune -0 curl-with-key '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48'
     assert_output 'null'
 }
 
@@ -95,7 +95,7 @@ setup() {
 }
 
 @test "API - decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/48" {
-    rune -0 lapi-get '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48&&contains=false'
+    rune -0 curl-with-key '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48&&contains=false'
     rune -0 jq -r '.[].value' <(output)
     assert_output '1111:2222:3333:4444:5555:6666:7777:8888'
 }
@@ -106,7 +106,7 @@ setup() {
 }
 
 @test "API - decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/64" {
-    rune -0 lapi-get '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64'
+    rune -0 curl-with-key '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64'
     assert_output 'null'
 }
 
@@ -117,7 +117,7 @@ setup() {
 }
 
 @test "API - decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64" {
-    rune -0 lapi-get '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64&&contains=false'
+    rune -0 curl-with-key '/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64&&contains=false'
     rune -0 jq -r '.[].value' <(output)
     assert_output '1111:2222:3333:4444:5555:6666:7777:8888'
 }

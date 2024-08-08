@@ -1,13 +1,14 @@
 package appsec
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"regexp"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -164,7 +165,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	}
 
 	if wc.Name == "" {
-		return fmt.Errorf("name cannot be empty")
+		return errors.New("name cannot be empty")
 	}
 	if wc.LogLevel == nil {
 		lvl := wc.Logger.Logger.GetLevel()

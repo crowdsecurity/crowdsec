@@ -60,6 +60,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -178,6 +179,15 @@ func ShutdownCrowdsecRoutines() error {
 		// this can happen if outputs are stuck in a http retry loop
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
+
+	lpMetricsTomb.Kill(nil)
+
+	if err := lpMetricsTomb.Wait(); err != nil {
+		log.Warningf("Metrics returned error : %s", err)
+		reterr = err
+	}
+
+	log.Debugf("metrics are done")
 
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
@@ -322,6 +332,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+	lpMetricsTomb = tomb.Tomb{}
 
 	ctx := context.TODO()
 

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -277,7 +278,7 @@ cscli dashboard remove --force
 					return fmt.Errorf("unable to ask to force: %s", err)
 				}
 				if !answer {
-					return fmt.Errorf("user stated no to continue")
+					return errors.New("user stated no to continue")
 				}
 			}
 			if metabase.IsContainerExist(metabaseContainerID) {
@@ -289,7 +290,7 @@ cscli dashboard remove --force
 				if err == nil { // if group exist, remove it
 					groupDelCmd, err := exec.LookPath("groupdel")
 					if err != nil {
-						return fmt.Errorf("unable to find 'groupdel' command, can't continue")
+						return errors.New("unable to find 'groupdel' command, can't continue")
 					}
 
 					groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
@@ -366,7 +367,7 @@ func checkSystemMemory(forceYes *bool) error {
 		}
 
 		if !answer {
-			return fmt.Errorf("user stated no to continue")
+			return errors.New("user stated no to continue")
 		}
 
 		return nil
@@ -399,7 +400,7 @@ func disclaimer(forceYes *bool) error {
 		}
 
 		if !answer {
-			return fmt.Errorf("user stated no to responsibilities")
+			return errors.New("user stated no to responsibilities")
 		}
 
 		return nil
@@ -435,7 +436,7 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 
 	groupAddCmd, err := exec.LookPath("groupadd")
 	if err != nil {
-		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+		return dockerGroup, errors.New("unable to find 'groupadd' command, can't continue")
 	}
 
 	groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
