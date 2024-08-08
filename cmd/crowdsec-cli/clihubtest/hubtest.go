@@ -1,4 +1,4 @@
-package main
+package clihubtest
 
 import (
 	"encoding/json"
@@ -16,10 +16,13 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
+
+type configGetter func() *csconfig.Config
 
 var (
 	HubTest        hubtest.HubTest
@@ -32,7 +35,7 @@ type cliHubTest struct {
 	cfg configGetter
 }
 
-func NewCLIHubTest(cfg configGetter) *cliHubTest {
+func New(cfg configGetter) *cliHubTest {
 	return &cliHubTest{
 		cfg: cfg,
 	}
