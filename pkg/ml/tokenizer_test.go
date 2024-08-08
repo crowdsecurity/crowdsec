@@ -1,3 +1,6 @@
+//go:build !nomlsupport
+// +build !nomlsupport
+
 package ml
 
 import (
@@ -22,9 +25,14 @@ func TestTokenize(t *testing.T) {
 		},
 	}
 
+	tokenizer, err := NewTokenizer("tests")
+	if err != nil {
+		t.Errorf("NewTokenizer returned error: %v", err)
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ids, tokens, err := tokenize(tt.inputText)
+			ids, tokens, _, err := tokenizer.Encode(tt.inputText, false, false, false)
 
 			if err != nil {
 				t.Errorf("tokenize returned error: %v", err)

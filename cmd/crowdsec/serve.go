@@ -352,6 +352,11 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		}
 	}
 
+	// TO-DO: add config
+	if err := exprhelpers.InitRobertaInferencePipeline("/var/models"); err != nil {
+		return fmt.Errorf("failed to init roberta inference pipeline: %w", err)
+	}
+
 	if !cConfig.DisableAPI {
 		if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
 			log.Warningf("Communication with CrowdSec Central API disabled from configuration file")

@@ -16,7 +16,7 @@ func TestAnomalyDetection(t *testing.T) {
 		{
 			name:         "Empty verb and path",
 			params:       []any{"", ""},
-			expectResult: 0,
+			expectResult: 1,
 			err:          nil,
 		},
 		{
@@ -38,6 +38,8 @@ func TestAnomalyDetection(t *testing.T) {
 			err:          nil,
 		},
 	}
+
+	InitRobertaInferencePipeline("/var/models")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
