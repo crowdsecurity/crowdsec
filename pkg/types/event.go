@@ -68,6 +68,8 @@ func (e *Event) GetType() string {
 		return "overflow"
 	case LOG:
 		return "log"
+	case APPSEC:
+		return "appsec"
 	default:
 		log.Warningf("unknown event type for %+v", e)
 		return "unknown"
