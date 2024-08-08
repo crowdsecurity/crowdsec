@@ -29,15 +29,16 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var testMachineID = "test"
-var testPassword = strfmt.Password("test")
-var MachineTest = models.WatcherAuthRequest{
-	MachineID: &testMachineID,
-	Password:  &testPassword,
-}
-
-var UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
-var emptyBody = strings.NewReader("")
+var (
+	testMachineID = "test"
+	testPassword  = strfmt.Password("test")
+	MachineTest   = models.WatcherAuthRequest{
+		MachineID: &testMachineID,
+		Password:  &testPassword,
+	}
+	UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
+	emptyBody = strings.NewReader("")
+)
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}

@@ -348,5 +348,5 @@ func TestNewClientBadAnswer(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
-	cstest.RequireErrorContains(t, err, "invalid body: bad")
+	cstest.RequireErrorContains(t, err, "API error: http code 401, response: bad")
 }
