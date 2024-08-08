@@ -54,6 +54,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
 		rcMetrics.Version = ptr.Of(bouncer.Version)
 		rcMetrics.Name = bouncer.Name
+
 		rcMetrics.LastPull = 0
 		if bouncer.LastPull != nil {
 			rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
@@ -95,12 +96,13 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
 		lpMetrics.Version = ptr.Of(lp.Version)
 		lpMetrics.Name = lp.MachineId
+
 		lpMetrics.LastPush = 0
 		if lp.LastPush != nil {
 			lpMetrics.LastPush = lp.LastPush.UTC().Unix()
 		}
-		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
 
+		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
 		lpMetrics.Datasources = lp.Datasources
 
 		hubItems := models.HubItems{}
@@ -116,7 +118,6 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 						Version: item.Version,
 					})
 				}
-
 			}
 		}
 
@@ -213,6 +214,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 		if bouncer.LastPull != nil {
 			lastPull = bouncer.LastPull.Format(time.RFC3339)
 		}
+
 		bouncersInfo[i] = &models.MetricsBouncerInfo{
 			Version:    bouncer.Version,
 			CustomName: bouncer.Name,
