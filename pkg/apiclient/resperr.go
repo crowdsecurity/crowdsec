@@ -48,8 +48,11 @@ func CheckResponse(r *http.Response) error {
 	case http.StatusUnprocessableEntity:
 		ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid request: %s", r.StatusCode, string(data)))
 	default:
-		if err := json.Unmarshal(data, ret); err != nil {
-			ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid body: %s", r.StatusCode, string(data)))
+		// try to unmarshal and if there are no 'message' or 'errors' fields, display the body as is,
+		// the API is following a different convention
+		err := json.Unmarshal(data, ret)
+		if err != nil || (ret.Message == nil && len(ret.Errors) == 0) {
+			ret.Message = ptr.Of(fmt.Sprintf("http code %d, response: %s", r.StatusCode, string(data)))
 			return ret
 		}
 	}
