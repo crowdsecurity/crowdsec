@@ -12,6 +12,33 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
+// getCoverage returns the coverage and the percentage of tests that passed
+func getCoverage(show bool, getCoverageFunc func() ([]hubtest.Coverage, error)) ([]hubtest.Coverage, int, error) {
+	if !show {
+		return nil, 0, nil
+	}
+
+	coverage, err := getCoverageFunc()
+	if err != nil {
+		return nil, 0, fmt.Errorf("while getting coverage: %w", err)
+	}
+
+	tested := 0
+	for _, test := range coverage {
+		if test.TestsCount > 0 {
+			tested++
+		}
+	}
+
+	// keep coverage 0 if there's no tests?
+	percent := 0
+	if len(coverage) > 0 {
+		percent = int(math.Round((float64(tested) / float64(len(coverage)) * 100)))
+	}
+
+	return coverage, percent, nil
+}
+
 func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAppsecCov bool, showOnlyPercent bool) error {
 	cfg := cli.cfg()
 
@@ -22,71 +49,30 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 
 	var err error
 
-	scenarioCoverage := []hubtest.Coverage{}
-	parserCoverage := []hubtest.Coverage{}
-	appsecRuleCoverage := []hubtest.Coverage{}
-	scenarioCoveragePercent := 0
-	parserCoveragePercent := 0
-	appsecRuleCoveragePercent := 0
-
-	// if both are false (flag by default), show both
-	showAll := !showScenarioCov && !showParserCov && !showAppsecCov
-
-	if showParserCov || showAll {
-		parserCoverage, err = HubTest.GetParsersCoverage()
-		if err != nil {
-			return fmt.Errorf("while getting parser coverage: %w", err)
-		}
-
-		parserTested := 0
-
-		for _, test := range parserCoverage {
-			if test.TestsCount > 0 {
-				parserTested++
-			}
-		}
-
-		parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
+	// if all are false (flag by default), show them
+	if !showParserCov && !showScenarioCov && !showAppsecCov {
+		showParserCov = true
+		showScenarioCov = true
+		showAppsecCov = true
 	}
 
-	if showScenarioCov || showAll {
-		scenarioCoverage, err = HubTest.GetScenariosCoverage()
-		if err != nil {
-			return fmt.Errorf("while getting scenario coverage: %w", err)
-		}
-
-		scenarioTested := 0
-
-		for _, test := range scenarioCoverage {
-			if test.TestsCount > 0 {
-				scenarioTested++
-			}
-		}
-
-		scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
+	parserCoverage, parserCoveragePercent, err := getCoverage(showParserCov, HubTest.GetParsersCoverage)
+	if err != nil {
+		return err
 	}
 
-	if showAppsecCov || showAll {
-		appsecRuleCoverage, err = HubTest.GetAppsecCoverage()
-		if err != nil {
-			return fmt.Errorf("while getting scenario coverage: %w", err)
-		}
+	scenarioCoverage, scenarioCoveragePercent, err := getCoverage(showScenarioCov, HubTest.GetScenariosCoverage)
+	if err != nil {
+		return err
+	}
 
-		appsecRuleTested := 0
-
-		for _, test := range appsecRuleCoverage {
-			if test.TestsCount > 0 {
-				appsecRuleTested++
-			}
-		}
-
-		appsecRuleCoveragePercent = int(math.Round((float64(appsecRuleTested) / float64(len(appsecRuleCoverage)) * 100)))
+	appsecRuleCoverage, appsecRuleCoveragePercent, err := getCoverage(showAppsecCov, HubTest.GetAppsecCoverage)
+	if err != nil {
+		return err
 	}
 
 	if showOnlyPercent {
 		switch {
-		case showAll:
-			fmt.Printf("parsers=%d%%\nscenarios=%d%%\nappsec_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, appsecRuleCoveragePercent)
 		case showParserCov:
 			fmt.Printf("parsers=%d%%", parserCoveragePercent)
 		case showScenarioCov:
@@ -100,29 +86,29 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 
 	switch cfg.Cscli.Output {
 	case "human":
-		if showParserCov || showAll {
+		if showParserCov {
 			hubTestParserCoverageTable(color.Output, cfg.Cscli.Color, parserCoverage)
 		}
 
-		if showScenarioCov || showAll {
+		if showScenarioCov {
 			hubTestScenarioCoverageTable(color.Output, cfg.Cscli.Color, scenarioCoverage)
 		}
 
-		if showAppsecCov || showAll {
+		if showAppsecCov {
 			hubTestAppsecRuleCoverageTable(color.Output, cfg.Cscli.Color, appsecRuleCoverage)
 		}
 
 		fmt.Println()
 
-		if showParserCov || showAll {
+		if showParserCov {
 			fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
 		}
 
-		if showScenarioCov || showAll {
+		if showScenarioCov {
 			fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
 		}
 
-		if showAppsecCov || showAll {
+		if showAppsecCov {
 			fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
 		}
 	case "json":
