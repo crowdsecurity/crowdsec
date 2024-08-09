@@ -161,7 +161,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
 
-	log.Warning(ReloadMessage())
+	log.Warning(reloadMessage)
 
 	return nil
 }
