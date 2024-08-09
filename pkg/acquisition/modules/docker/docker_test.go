@@ -220,7 +220,7 @@ container_name_regexp:
 	}
 }
 
-func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
+func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
 	if readLogs {
 		return []dockerTypes.Container{}, nil
 	}
