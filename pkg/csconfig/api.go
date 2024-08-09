@@ -61,7 +61,7 @@ type CTICfg struct {
 
 func (a *CTICfg) Load() error {
 	if a.Key == nil {
-		*a.Enabled = false
+		a.Enabled = ptr.Of(false)
 	}
 
 	if a.Key != nil && *a.Key == "" {
@@ -69,8 +69,7 @@ func (a *CTICfg) Load() error {
 	}
 
 	if a.Enabled == nil {
-		a.Enabled = new(bool)
-		*a.Enabled = true
+		a.Enabled = ptr.Of(true)
 	}
 
 	if a.CacheTimeout == nil {
