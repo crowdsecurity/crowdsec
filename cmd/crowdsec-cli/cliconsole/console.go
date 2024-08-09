@@ -1,4 +1,4 @@
-package main
+package cliconsole
 
 import (
 	"context"
@@ -28,13 +28,17 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
 type cliConsole struct {
-	cfg configGetter
+	cfg           func() *csconfig.Config
+	reloadMessage string
 }
 
-func NewCLIConsole(cfg configGetter) *cliConsole {
+func New(cfg configGetter, reloadMessage string) *cliConsole {
 	return &cliConsole{
-		cfg: cfg,
+		cfg:           cfg,
+		reloadMessage: reloadMessage,
 	}
 }
 
@@ -221,7 +225,7 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("%v have been enabled", args)
 			}
 
-			log.Infof(ReloadMessage())
+			log.Info(cli.reloadMessage)
 
 			return nil
 		},
@@ -255,7 +259,7 @@ Disable given information push to the central API.`,
 				log.Infof("%v have been disabled", args)
 			}
 
-			log.Infof(ReloadMessage())
+			log.Info(cli.reloadMessage)
 
 			return nil
 		},
@@ -348,13 +352,8 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ConsoleManagement != nil {
-				if *consoleCfg.ConsoleManagement == wanted {
-					log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-					*consoleCfg.ConsoleManagement = wanted
-				}
+			if consoleCfg.ConsoleManagement != nil && *consoleCfg.ConsoleManagement == wanted {
+				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				consoleCfg.ConsoleManagement = ptr.Of(wanted)
@@ -386,52 +385,32 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareCustomScenarios != nil {
-				if *consoleCfg.ShareCustomScenarios == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-					*consoleCfg.ShareCustomScenarios = wanted
-				}
+			if consoleCfg.ShareCustomScenarios != nil && *consoleCfg.ShareCustomScenarios == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 				consoleCfg.ShareCustomScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareTaintedScenarios != nil {
-				if *consoleCfg.ShareTaintedScenarios == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-					*consoleCfg.ShareTaintedScenarios = wanted
-				}
+			if consoleCfg.ShareTaintedScenarios != nil && *consoleCfg.ShareTaintedScenarios == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 				consoleCfg.ShareTaintedScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareManualDecisions != nil {
-				if *consoleCfg.ShareManualDecisions == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-					*consoleCfg.ShareManualDecisions = wanted
-				}
+			if consoleCfg.ShareManualDecisions != nil && *consoleCfg.ShareManualDecisions == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				consoleCfg.ShareManualDecisions = ptr.Of(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
 			/*for each flag check if it's already set before setting it*/
-			if consoleCfg.ShareContext != nil {
-				if *consoleCfg.ShareContext == wanted {
-					log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
-				} else {
-					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
-					*consoleCfg.ShareContext = wanted
-				}
+			if consoleCfg.ShareContext != nil && *consoleCfg.ShareContext == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
 				consoleCfg.ShareContext = ptr.Of(wanted)
