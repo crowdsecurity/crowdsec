@@ -106,9 +106,11 @@ func (t *Tokenizer) Encode(text string, addSpecialTokens, padToMaxLength, return
 
 	ids, tokens := t.tk.Encode(text, addSpecialTokens)
 
-	// Truncate to max length (left)
-	ids = ids[len(ids)-t.modelMaxLength:]
-	tokens = tokens[len(tokens)-t.modelMaxLength:]
+	// Truncate to max length (right truncation)
+	if len(ids) > t.modelMaxLength {
+		ids = ids[:t.modelMaxLength]
+		tokens = tokens[:t.modelMaxLength]
+	}
 
 	//[]uint32 to []int64
 	int64Ids := make([]int64, len(ids))
