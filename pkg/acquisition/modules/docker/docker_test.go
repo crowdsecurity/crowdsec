@@ -235,7 +235,7 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 	return containers, nil
 }
 
-func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
+func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
 	if readLogs {
 		return io.NopCloser(strings.NewReader("")), nil
 	}

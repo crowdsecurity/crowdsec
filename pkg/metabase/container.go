@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	typesImage "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
@@ -47,7 +47,7 @@ func NewContainer(listenAddr string, listenPort string, sharedFolder string, con
 func (c *Container) Create() error {
 	ctx := context.Background()
 	log.Printf("Pulling docker image %s", c.Image)
-	reader, err := c.CLI.ImagePull(ctx, c.Image, types.ImagePullOptions{})
+	reader, err := c.CLI.ImagePull(ctx, c.Image, typesImage.PullOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to pull docker image : %s", err)
 	}
@@ -105,7 +105,7 @@ func (c *Container) Create() error {
 
 func (c *Container) Start() error {
 	ctx := context.Background()
-	if err := c.CLI.ContainerStart(ctx, c.Name, types.ContainerStartOptions{}); err != nil {
+	if err := c.CLI.ContainerStart(ctx, c.Name, container.StartOptions{}); err != nil {
 		return fmt.Errorf("failed while starting %s : %s", c.ID, err)
 	}
 
@@ -118,7 +118,7 @@ func StartContainer(name string) error {
 		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	ctx := context.Background()
-	if err := cli.ContainerStart(ctx, name, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, name, container.StartOptions{}); err != nil {
 		return fmt.Errorf("failed while starting %s : %s", name, err)
 	}
 
@@ -146,7 +146,7 @@ func RemoveContainer(name string) error {
 	}
 	ctx := context.Background()
 	log.Printf("Removing docker metabase %s", name)
-	if err := cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{}); err != nil {
+	if err := cli.ContainerRemove(ctx, name, container.RemoveOptions{}); err != nil {
 		return fmt.Errorf("failed to remove container %s : %s", name, err)
 	}
 	return nil
@@ -159,7 +159,7 @@ func RemoveImageContainer(image string) error {
 	}
 	ctx := context.Background()
 	log.Printf("Removing docker image '%s'", image)
-	if _, err := cli.ImageRemove(ctx, image, types.ImageRemoveOptions{}); err != nil {
+	if _, err := cli.ImageRemove(ctx, image, typesImage.RemoveOptions{}); err != nil {
 		return fmt.Errorf("failed to remove image container %s : %s", image, err)
 	}
 	return nil
