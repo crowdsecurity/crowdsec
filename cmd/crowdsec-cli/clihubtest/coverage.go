@@ -87,15 +87,15 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 	switch cfg.Cscli.Output {
 	case "human":
 		if showParserCov {
-			hubTestParserCoverageTable(color.Output, cfg.Cscli.Color, parserCoverage)
+			hubTestCoverageTable(color.Output, cfg.Cscli.Color, []string{"Parser", "Status", "Number of tests"}, parserCoverage)
 		}
 
 		if showScenarioCov {
-			hubTestScenarioCoverageTable(color.Output, cfg.Cscli.Color, scenarioCoverage)
+			hubTestCoverageTable(color.Output, cfg.Cscli.Color, []string{"Scenario", "Status", "Number of tests"}, parserCoverage)
 		}
 
 		if showAppsecCov {
-			hubTestAppsecRuleCoverageTable(color.Output, cfg.Cscli.Color, appsecRuleCoverage)
+			hubTestCoverageTable(color.Output, cfg.Cscli.Color, []string{"Appsec Rule", "Status", "Number of tests"}, parserCoverage)
 		}
 
 		fmt.Println()
