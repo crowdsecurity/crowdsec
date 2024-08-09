@@ -45,7 +45,7 @@ func (r *RobertaClassificationInferencePipeline) Close() {
 }
 
 func (pipeline *RobertaClassificationInferencePipeline) PredictLabel(text string) (int, error) {
-	ids, _, attentionMask, err := pipeline.tokenizer.Encode(text, false, true, true)
+	ids, _, attentionMask, err := pipeline.tokenizer.Encode(text, true, true, true)
 	// fmt.Println("RobertaClassificationInferencePipeline: ids: ", ids)
 	// fmt.Println("RobertaClassificationInferencePipeline: attentionMask: ", attentionMask)
 	if err != nil {
