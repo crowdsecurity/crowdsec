@@ -42,51 +42,9 @@ func hubTestListTable(out io.Writer, wantColor string, tests []*hubtest.HubTestI
 	t.Render()
 }
 
-func hubTestParserCoverageTable(out io.Writer, wantColor string, coverage []hubtest.Coverage) {
+func hubTestCoverageTable(out io.Writer, wantColor string, headers []string, coverage []hubtest.Coverage) {
 	t := cstable.NewLight(out, wantColor)
-	t.SetHeaders("Parser", "Status", "Number of tests")
-	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
-
-	parserTested := 0
-
-	for _, test := range coverage {
-		status := emoji.RedCircle
-		if test.TestsCount > 0 {
-			status = emoji.GreenCircle
-			parserTested++
-		}
-
-		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
-	}
-
-	t.Render()
-}
-
-func hubTestAppsecRuleCoverageTable(out io.Writer, wantColor string, coverage []hubtest.Coverage) {
-	t := cstable.NewLight(out, wantColor)
-	t.SetHeaders("Appsec Rule", "Status", "Number of tests")
-	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
-	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
-
-	parserTested := 0
-
-	for _, test := range coverage {
-		status := emoji.RedCircle
-		if test.TestsCount > 0 {
-			status = emoji.GreenCircle
-			parserTested++
-		}
-
-		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
-	}
-
-	t.Render()
-}
-
-func hubTestScenarioCoverageTable(out io.Writer, wantColor string, coverage []hubtest.Coverage) {
-	t := cstable.NewLight(out, wantColor)
-	t.SetHeaders("Scenario", "Status", "Number of tests")
+	t.SetHeaders(headers...)
 	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
