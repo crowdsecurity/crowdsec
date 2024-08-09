@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
@@ -56,7 +57,7 @@ type DockerSource struct {
 	logger                *log.Entry
 	Client                client.CommonAPIClient
 	t                     *tomb.Tomb
-	containerLogsOptions  *dockerTypes.ContainerLogsOptions
+	containerLogsOptions  *dockerContainer.LogsOptions
 }
 
 type ContainerConfig struct {
@@ -120,7 +121,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 	}
 
-	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
+	d.containerLogsOptions = &dockerContainer.LogsOptions{
 		ShowStdout: d.Config.FollowStdout,
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     true,
@@ -192,7 +193,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 		return err
 	}
 
-	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
+	d.containerLogsOptions = &dockerContainer.LogsOptions{
 		ShowStdout: d.Config.FollowStdout,
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     false,
@@ -288,7 +289,7 @@ func (d *DockerSource) SupportedModes() []string {
 // OneShotAcquisition reads a set of file and returns when done
 func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
-	runningContainer, err := d.Client.ContainerList(ctx, dockerTypes.ContainerListOptions{})
+	runningContainer, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -478,7 +479,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 		case <-ticker.C:
 			// to track for garbage collection
 			runningContainersID := make(map[string]bool)
-			runningContainer, err := d.Client.ContainerList(ctx, dockerTypes.ContainerListOptions{})
+			runningContainer, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
 			if err != nil {
 				if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
 					for idx, container := range d.runningContainerState {
