@@ -488,10 +488,14 @@ func (cli *cliMachines) validMachineID(cmd *cobra.Command, args []string, toComp
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli *cliMachines) delete(machines []string) error {
+func (cli *cliMachines) delete(machines []string, ignoreMissing bool) error {
 	for _, machineID := range machines {
 		if err := cli.db.DeleteWatcher(machineID); err != nil {
-			log.Errorf("unable to delete machine '%s': %s", machineID, err)
+			var notFoundErr *database.MachineNotFoundError
+			if ignoreMissing && errors.As(err, &notFoundErr) {
+				return nil
+			}
+			log.Errorf("unable to delete machine: %s", err)
 			return nil
 		}
 
@@ -502,6 +506,8 @@ func (cli *cliMachines) delete(machines []string) error {
 }
 
 func (cli *cliMachines) newDeleteCmd() *cobra.Command {
+	var ignoreMissing bool
+
 	cmd := &cobra.Command{
 		Use:               "delete [machine_name]...",
 		Short:             "delete machine(s) by name",
@@ -511,9 +517,12 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validMachineID,
 		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.delete(args)
+			return cli.delete(args, ignoreMissing)
 		},
 	}
+
+	flags := cmd.Flags()
+	flags.BoolVar(&ignoreMissing, "ignore-missing", false, "don't print errors if one or more machines don't exist")
 
 	return cmd
 }

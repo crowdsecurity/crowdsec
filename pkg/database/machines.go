@@ -21,6 +21,14 @@ const (
 	CapiListsMachineID = types.ListOrigin
 )
 
+type MachineNotFoundError struct {
+	MachineID string
+}
+
+func (e *MachineNotFoundError) Error() string {
+	return fmt.Sprintf("'%s' does not exist", e.MachineID)
+}
+
 func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
@@ -168,7 +176,7 @@ func (c *Client) DeleteWatcher(name string) error {
 	}
 
 	if nbDeleted == 0 {
-		return errors.New("machine doesn't exist")
+		return &MachineNotFoundError{MachineID: name}
 	}
 
 	return nil

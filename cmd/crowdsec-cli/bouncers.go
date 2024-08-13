@@ -344,11 +344,14 @@ func (cli *cliBouncers) validBouncerID(cmd *cobra.Command, args []string, toComp
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli *cliBouncers) delete(bouncers []string) error {
+func (cli *cliBouncers) delete(bouncers []string, ignoreMissing bool) error {
 	for _, bouncerID := range bouncers {
-		err := cli.db.DeleteBouncer(bouncerID)
-		if err != nil {
-			return fmt.Errorf("unable to delete bouncer '%s': %w", bouncerID, err)
+		if err := cli.db.DeleteBouncer(bouncerID); err != nil {
+			var notFoundErr *database.BouncerNotFoundError
+			if ignoreMissing && errors.As(err, &notFoundErr) {
+				return nil
+			}
+			return fmt.Errorf("unable to delete bouncer: %w", err)
 		}
 
 		log.Infof("bouncer '%s' deleted successfully", bouncerID)
@@ -358,17 +361,23 @@ func (cli *cliBouncers) delete(bouncers []string) error {
 }
 
 func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
+	var ignoreMissing bool
+
 	cmd := &cobra.Command{
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer(s) from the database",
+		Example:           `cscli bouncers delete "bouncer1" "bouncer2"`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validBouncerID,
 		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.delete(args)
+			return cli.delete(args, ignoreMissing)
 		},
 	}
+
+	flags := cmd.Flags()
+	flags.BoolVar(&ignoreMissing, "ignore-missing", false, "don't print errors if one or more bouncers don't exist")
 
 	return cmd
 }
