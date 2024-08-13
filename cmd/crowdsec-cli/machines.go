@@ -495,7 +495,9 @@ func (cli *cliMachines) delete(machines []string, ignoreMissing bool) error {
 			if ignoreMissing && errors.As(err, &notFoundErr) {
 				return nil
 			}
+
 			log.Errorf("unable to delete machine: %s", err)
+
 			return nil
 		}
 

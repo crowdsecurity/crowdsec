@@ -205,8 +205,8 @@ func (c *Client) UpdateMachineLastHeartBeat(machineID string) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
-	_, err := c.Ent.Machine.UpdateOneID(ID).
+func (c *Client) UpdateMachineScenarios(scenarios string, id int) error {
+	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetUpdatedAt(time.Now().UTC()).
 		SetScenarios(scenarios).
 		Save(c.CTX)
@@ -217,8 +217,8 @@ func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
-	_, err := c.Ent.Machine.UpdateOneID(ID).
+func (c *Client) UpdateMachineIP(ipAddr string, id int) error {
+	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
@@ -228,8 +228,8 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
-	_, err := c.Ent.Machine.UpdateOneID(ID).
+func (c *Client) UpdateMachineVersion(ipAddr string, id int) error {
+	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetVersion(ipAddr).
 		Save(c.CTX)
 	if err != nil {

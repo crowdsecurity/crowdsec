@@ -351,6 +351,7 @@ func (cli *cliBouncers) delete(bouncers []string, ignoreMissing bool) error {
 			if ignoreMissing && errors.As(err, &notFoundErr) {
 				return nil
 			}
+
 			return fmt.Errorf("unable to delete bouncer: %w", err)
 		}
 
