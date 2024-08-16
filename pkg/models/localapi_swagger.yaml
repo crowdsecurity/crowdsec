@@ -160,6 +160,8 @@ paths:
           description: "400 response"
           schema:
             $ref: "#/definitions/ErrorResponse"
+      security:
+      - APIKeyAuthorizer: []
     head:
       description: Returns information about existing decisions
       summary: GetDecisions
