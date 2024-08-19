@@ -161,7 +161,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 
 		valueStr, err := TruncateContext(values, alertContext.ContextValueLen)
 		if err != nil {
-			log.Warningf(err.Error())
+			log.Warning(err.Error())
 		}
 
 		meta := models.MetaItems0{

@@ -578,7 +578,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				errMsg = fmt.Sprintf(errMsg+" : %s", err)
 			}
 
-			logger.Warningf(errMsg)
+			logger.Warning(errMsg)
 
 			return nil
 		case line := <-tail.Lines:

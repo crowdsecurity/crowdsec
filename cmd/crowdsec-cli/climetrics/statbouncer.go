@@ -129,7 +129,7 @@ func (*statBouncer) Description() (string, string) {
 
 func logWarningOnce(warningsLogged map[string]bool, msg string) {
 	if _, ok := warningsLogged[msg]; !ok {
-		log.Warningf(msg)
+		log.Warning(msg)
 
 		warningsLogged[msg] = true
 	}

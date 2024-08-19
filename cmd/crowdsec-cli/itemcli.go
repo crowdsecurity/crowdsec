@@ -78,7 +78,7 @@ func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool
 				return errors.New(msg)
 			}
 
-			log.Errorf(msg)
+			log.Error(msg)
 
 			continue
 		}

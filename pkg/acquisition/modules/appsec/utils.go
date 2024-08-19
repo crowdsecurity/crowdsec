@@ -159,7 +159,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 		valueStr, err := alertcontext.TruncateContext(values, alertcontext.MaxContextValueLen)
 		if err != nil {
-			log.Warningf(err.Error())
+			log.Warning(err.Error())
 		}
 
 		meta := models.MetaItems0{

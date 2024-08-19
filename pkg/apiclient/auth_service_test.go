@@ -161,7 +161,7 @@ func TestWatcherAuth(t *testing.T) {
 			bodyBytes, err := io.ReadAll(resp.Response.Body)
 			require.NoError(t, err)
 
-			log.Printf(string(bodyBytes))
+			log.Print(string(bodyBytes))
 			t.Fatalf("The AuthenticateWatcher function should have returned an error for the response code %d", errorCodeToTest)
 		}
 
