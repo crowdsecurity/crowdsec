@@ -81,7 +81,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		return nil, errors.New("SMTP host is not set")
 	}
 
-	if d.ReceiverEmails == nil || len(d.ReceiverEmails) == 0 {
+	if len(d.ReceiverEmails) == 0 {
 		return nil, errors.New("receiver emails are not set")
 	}
 

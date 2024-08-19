@@ -167,7 +167,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		return nil
 	}
 
-	if request.Body != nil && len(request.Body) > 0 {
+	if len(request.Body) > 0 {
 		in, _, err = request.Tx.WriteRequestBody(request.Body)
 		if err != nil {
 			r.logger.Errorf("unable to write request body : %s", err)
