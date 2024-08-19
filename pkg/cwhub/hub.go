@@ -153,7 +153,7 @@ func (h *Hub) ItemStats() []string {
 // Update downloads the latest version of the index and writes it to disk if it changed. It cannot be called after Load()
 // unless the hub is completely empty.
 func (h *Hub) Update(ctx context.Context) error {
-	if h.pathIndex != nil && len(h.pathIndex) > 0 {
+	if len(h.pathIndex) > 0 {
 		// if this happens, it's a bug.
 		return errors.New("cannot update hub after items have been loaded")
 	}

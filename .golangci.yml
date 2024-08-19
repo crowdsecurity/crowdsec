@@ -17,6 +17,7 @@ linters-settings:
     disable:
      - reflectvaluecompare
      - fieldalignment
+     - printf
 
   maintidx:
     # raise this after refactoring

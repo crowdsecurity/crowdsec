@@ -35,7 +35,7 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.B
 
 	var heartbeat time.Time
 
-	if baseMetrics.Metrics == nil || len(baseMetrics.Metrics) == 0 {
+	if len(baseMetrics.Metrics) == 0 {
 		heartbeat = time.Now().UTC()
 	} else {
 		heartbeat = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
