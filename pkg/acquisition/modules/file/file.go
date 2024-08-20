@@ -385,7 +385,6 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		}
 
 		filink, err := os.Lstat(file)
-
 		if err != nil {
 			f.logger.Errorf("Could not lstat() new file %s, ignoring it : %s", file, err)
 			continue
@@ -629,8 +628,8 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	var scanner *bufio.Scanner
 
 	logger := f.logger.WithField("oneshot", filename)
-	fd, err := os.Open(filename)
 
+	fd, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("failed opening %s: %w", filename, err)
 	}

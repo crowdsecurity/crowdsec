@@ -16,7 +16,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
