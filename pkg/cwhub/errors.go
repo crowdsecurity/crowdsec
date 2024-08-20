@@ -5,10 +5,8 @@ import (
 	"fmt"
 )
 
-var (
-	// ErrNilRemoteHub is returned when trying to download with a local-only configuration.
-	ErrNilRemoteHub = errors.New("remote hub configuration is not provided. Please report this issue to the developers")
-)
+// ErrNilRemoteHub is returned when trying to download with a local-only configuration.
+var ErrNilRemoteHub = errors.New("remote hub configuration is not provided. Please report this issue to the developers")
 
 // IndexNotFoundError is returned when the remote hub index is not found.
 type IndexNotFoundError struct {

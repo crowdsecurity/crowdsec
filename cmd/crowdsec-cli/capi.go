@@ -21,11 +21,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const (
-	CAPIBaseURL   = "https://api.crowdsec.net/"
-	CAPIURLPrefix = "v3"
-)
-
 type cliCapi struct {
 	cfg configGetter
 }
@@ -78,7 +73,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		Password:      password,
 		UserAgent:     cwversion.UserAgent(),
 		URL:           apiurl,
-		VersionPrefix: CAPIURLPrefix,
+		VersionPrefix: "v3",
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("api client register ('%s'): %w", types.CAPIBaseURL, err)
