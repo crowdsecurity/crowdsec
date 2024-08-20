@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.22.6-bookworm AS build
+FROM golang:1.22-bookworm AS build
 
 ARG BUILD_VERSION
 
