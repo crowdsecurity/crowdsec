@@ -32,7 +32,7 @@ func ValidateContextExpr(key string, expressions []string) error {
 	for _, expression := range expressions {
 		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("compilation of '%s' failed: %v", expression, err)
+			return fmt.Errorf("compilation of '%s' failed: %w", expression, err)
 		}
 	}
 
@@ -74,7 +74,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		for _, value := range values {
 			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 			if err != nil {
-				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
+				return fmt.Errorf("compilation of '%s' context value failed: %w", value, err)
 			}
 
 			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
@@ -133,7 +133,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 
 				output, err := expr.Run(value, map[string]interface{}{"evt": evt})
 				if err != nil {
-					errors = append(errors, fmt.Errorf("failed to get value for %s : %v", key, err))
+					errors = append(errors, fmt.Errorf("failed to get value for %s: %w", key, err))
 					continue
 				}
 
@@ -143,7 +143,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 				case int:
 					val = strconv.Itoa(out)
 				default:
-					errors = append(errors, fmt.Errorf("unexpected return type for %s : %T", key, output))
+					errors = append(errors, fmt.Errorf("unexpected return type for %s: %T", key, output))
 					continue
 				}
 
@@ -161,7 +161,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 
 		valueStr, err := TruncateContext(values, alertContext.ContextValueLen)
 		if err != nil {
-			log.Warningf(err.Error())
+			log.Warning(err.Error())
 		}
 
 		meta := models.MetaItems0{
