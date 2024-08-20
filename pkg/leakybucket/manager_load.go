@@ -271,8 +271,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					log.Errorf("Bad yaml in %s : %v", f, err)
-					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
+					log.Errorf("Bad yaml in %s: %v", f, err)
+					return nil, nil, fmt.Errorf("bad yaml in %s: %w", f, err)
 				}
 
 				log.Tracef("End of yaml file")
@@ -323,8 +323,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 			err = LoadBucket(&bucketFactory, tomb)
 			if err != nil {
-				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
-				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
+				log.Errorf("Failed to load bucket %s: %v", bucketFactory.Name, err)
+				return nil, nil, fmt.Errorf("loading of %s failed: %w", bucketFactory.Name, err)
 			}
 
 			bucketFactory.orderEvent = orderEvent
@@ -367,7 +367,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.LeakSpeed != "" {
 		if bucketFactory.leakspeed, err = time.ParseDuration(bucketFactory.LeakSpeed); err != nil {
-			return fmt.Errorf("bad leakspeed '%s' in %s : %v", bucketFactory.LeakSpeed, bucketFactory.Filename, err)
+			return fmt.Errorf("bad leakspeed '%s' in %s: %w", bucketFactory.LeakSpeed, bucketFactory.Filename, err)
 		}
 	} else {
 		bucketFactory.leakspeed = time.Duration(0)
@@ -375,7 +375,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Duration != "" {
 		if bucketFactory.duration, err = time.ParseDuration(bucketFactory.Duration); err != nil {
-			return fmt.Errorf("invalid Duration '%s' in %s : %v", bucketFactory.Duration, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid Duration '%s' in %s: %w", bucketFactory.Duration, bucketFactory.Filename, err)
 		}
 	}
 
@@ -386,13 +386,13 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 	if err != nil {
-		return fmt.Errorf("invalid filter '%s' in %s : %v", bucketFactory.Filter, bucketFactory.Filename, err)
+		return fmt.Errorf("invalid filter '%s' in %s: %w", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.GroupBy != "" {
 		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("invalid groupby '%s' in %s : %v", bucketFactory.GroupBy, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid groupby '%s' in %s: %w", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
 	}
 
@@ -411,7 +411,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	case "bayesian":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	default:
-		return fmt.Errorf("invalid type '%s' in %s : %v", bucketFactory.Type, bucketFactory.Filename, err)
+		return fmt.Errorf("invalid type '%s' in %s: %w", bucketFactory.Type, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.Distinct != "" {
@@ -476,7 +476,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	bucketFactory.output = false
 	if err := ValidateFactory(bucketFactory); err != nil {
-		return fmt.Errorf("invalid bucket from %s : %v", bucketFactory.Filename, err)
+		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
 	}
 
 	bucketFactory.tomb = tomb

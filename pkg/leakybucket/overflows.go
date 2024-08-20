@@ -247,8 +247,9 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 
 // alertFormatSource iterates over the queue to collect sources
 func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Source, string, error) {
-	var sources = make(map[string]models.Source)
 	var source_type string
+
+	sources := make(map[string]models.Source)
 
 	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
 
@@ -310,6 +311,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		StopAt:          &stopAt,
 		Simulated:       &leaky.Simulated,
 	}
+
 	if leaky.BucketConfig == nil {
 		return runtimeAlert, errors.New("leaky.BucketConfig is nil")
 	}
