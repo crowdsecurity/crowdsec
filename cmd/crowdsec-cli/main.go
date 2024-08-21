@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -152,14 +153,6 @@ func (cli *cliRoot) initialize() error {
 	return nil
 }
 
-// list of valid subcommands for the shell completion
-var validArgs = []string{
-	"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
-	"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
-	"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
-	"postoverflows", "scenarios", "simulation", "support", "version",
-}
-
 func (cli *cliRoot) colorize(cmd *cobra.Command) {
 	cc.Init(&cc.Config{
 		RootCmd:         cmd,
@@ -189,6 +182,14 @@ func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
 		return nil, fmt.Errorf("failed to set feature flags from env: %w", err)
+	}
+
+	// list of valid subcommands for the shell completion
+	validArgs := []string{
+		"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+		"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
+		"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
+		"postoverflows", "scenarios", "simulation", "support", "version",
 	}
 
 	cmd := &cobra.Command{
@@ -238,16 +239,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		return nil, err
 	}
 
-	if len(os.Args) > 1 {
-		cobra.OnInitialize(
-			func() {
-				if err := cli.initialize(); err != nil {
-					log.Fatal(err)
-				}
-			},
-		)
-	}
-
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
 	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
@@ -263,7 +254,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLILapi(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCompletionCmd())
 	cmd.AddCommand(cliconsole.New(cli.cfg, reloadMessage).NewCommand())
-	cmd.AddCommand(NewCLIExplain(cli.cfg).NewCommand())
+	cmd.AddCommand(cliexplain.New(cli.cfg, ConfigFilePath).NewCommand())
 	cmd.AddCommand(NewCLIHubTest(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLINotifications(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLISupport(cli.cfg).NewCommand())
@@ -278,6 +269,16 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	if fflag.CscliSetup.IsEnabled() {
 		cmd.AddCommand(NewCLISetup(cli.cfg).NewCommand())
+	}
+
+	if len(os.Args) > 1 {
+		cobra.OnInitialize(
+			func() {
+				if err := cli.initialize(); err != nil {
+					log.Fatal(err)
+				}
+			},
+		)
 	}
 
 	return cmd, nil
