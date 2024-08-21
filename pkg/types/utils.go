@@ -14,8 +14,24 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
-	/*Configure logs*/
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool) error {
+	if format == "" {
+		format = "text"
+	}
+
+	switch format {
+		case "text":
+			logFormatter = &log.TextFormatter{
+				TimestampFormat: time.RFC3339,
+				FullTimestamp: true,
+				ForceColors: forceColors,
+			}
+		case "json":
+			logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
+		default:
+			return fmt.Errorf("unknown log_format '%s'", format)
+	}
+
 	if cfgMode == "file" {
 		_maxsize := 500
 		if maxSize != 0 {
@@ -45,9 +61,10 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
+
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+
 	log.SetFormatter(logFormatter)
 	return nil
 }
