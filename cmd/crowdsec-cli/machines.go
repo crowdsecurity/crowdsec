@@ -1,13 +1,11 @@
 package main
 
 import (
-	saferand "crypto/rand"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"os"
 	"slices"
 	"strings"
@@ -16,13 +14,10 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	"github.com/google/uuid"
 	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-
-	"github.com/crowdsecurity/machineid"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -33,67 +28,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-const passwordLength = 64
-
-func generatePassword(length int) string {
-	upper := "ABCDEFGHIJKLMNOPQRSTUVWXY"
-	lower := "abcdefghijklmnopqrstuvwxyz"
-	digits := "0123456789"
-
-	charset := upper + lower + digits
-	charsetLength := len(charset)
-
-	buf := make([]byte, length)
-
-	for i := range length {
-		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
-		if err != nil {
-			log.Fatalf("failed getting data from prng for password generation : %s", err)
-		}
-
-		buf[i] = charset[rInt.Int64()]
-	}
-
-	return string(buf)
-}
-
-// Returns a unique identifier for each crowdsec installation, using an
-// identifier of the OS installation where available, otherwise a random
-// string.
-func generateIDPrefix() (string, error) {
-	prefix, err := machineid.ID()
-	if err == nil {
-		return prefix, nil
-	}
-
-	log.Debugf("failed to get machine-id with usual files: %s", err)
-
-	bID, err := uuid.NewRandom()
-	if err == nil {
-		return bID.String(), nil
-	}
-
-	return "", fmt.Errorf("generating machine id: %w", err)
-}
-
-// Generate a unique identifier, composed by a prefix and a random suffix.
-// The prefix can be provided by a parameter to use in test environments.
-func generateID(prefix string) (string, error) {
-	var err error
-	if prefix == "" {
-		prefix, err = generateIDPrefix()
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
-	suffix := generatePassword(16)
-
-	return prefix + suffix, nil
-}
 
 // getLastHeartbeat returns the last heartbeat timestamp of a machine
 // and a boolean indicating if the machine is considered active or not.
@@ -364,7 +298,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 			return errors.New("please specify a machine name to add, or use --auto")
 		}
 
-		machineID, err = generateID("")
+		machineID, err = generateMachineID("")
 		if err != nil {
 			return fmt.Errorf("unable to generate machine id: %w", err)
 		}

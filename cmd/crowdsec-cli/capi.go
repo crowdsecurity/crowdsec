@@ -56,7 +56,7 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	cfg := cli.cfg()
 
-	capiUser, err := generateID(capiUserPrefix)
+	capiUser, err := generateMachineID(capiUserPrefix)
 	if err != nil {
 		return fmt.Errorf("unable to generate machine id: %w", err)
 	}

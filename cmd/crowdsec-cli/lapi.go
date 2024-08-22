@@ -100,7 +100,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	cfg := cli.cfg()
 
 	if lapiUser == "" {
-		lapiUser, err = generateID("")
+		lapiUser, err = generateMachineID("")
 		if err != nil {
 			return fmt.Errorf("unable to generate machine id: %w", err)
 		}
