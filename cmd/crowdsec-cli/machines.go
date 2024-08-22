@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -298,7 +299,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 			return errors.New("please specify a machine name to add, or use --auto")
 		}
 
-		machineID, err = generateMachineID("")
+		machineID, err = idgen.GenerateMachineID("")
 		if err != nil {
 			return fmt.Errorf("unable to generate machine id: %w", err)
 		}
@@ -335,7 +336,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 			return errors.New("please specify a password with --password or use --auto")
 		}
 
-		machinePassword = generatePassword(passwordLength)
+		machinePassword = idgen.GeneratePassword(idgen.PasswordLength)
 	} else if machinePassword == "" && interactive {
 		qs := &survey.Password{
 			Message: "Please provide a password for the machine:",

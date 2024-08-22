@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -56,12 +57,12 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	cfg := cli.cfg()
 
-	capiUser, err := generateMachineID(capiUserPrefix)
+	capiUser, err := idgen.GenerateMachineID(capiUserPrefix)
 	if err != nil {
 		return fmt.Errorf("unable to generate machine id: %w", err)
 	}
 
-	password := strfmt.Password(generatePassword(passwordLength))
+	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
 
 	apiurl, err := url.Parse(types.CAPIBaseURL)
 	if err != nil {

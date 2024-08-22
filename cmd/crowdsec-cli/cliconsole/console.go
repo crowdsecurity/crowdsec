@@ -30,7 +30,7 @@ import (
 type configGetter func() *csconfig.Config
 
 type cliConsole struct {
-	cfg           func() *csconfig.Config
+	cfg           configGetter
 	reloadMessage string
 }
 

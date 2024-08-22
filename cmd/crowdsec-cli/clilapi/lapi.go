@@ -1,4 +1,4 @@
-package main
+package clilapi
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -28,13 +29,17 @@ import (
 
 const LAPIURLPrefix = "v1"
 
+type configGetter func() *csconfig.Config
+
 type cliLapi struct {
-	cfg configGetter
+	cfg           configGetter
+	reloadMessage string
 }
 
-func NewCLILapi(cfg configGetter) *cliLapi {
+func New(cfg configGetter, reloadMessage string) *cliLapi {
 	return &cliLapi{
 		cfg: cfg,
+		reloadMessage: reloadMessage,
 	}
 }
 
@@ -100,13 +105,13 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	cfg := cli.cfg()
 
 	if lapiUser == "" {
-		lapiUser, err = generateMachineID("")
+		lapiUser, err = idgen.GenerateMachineID("")
 		if err != nil {
 			return fmt.Errorf("unable to generate machine id: %w", err)
 		}
 	}
 
-	password := strfmt.Password(generatePassword(passwordLength))
+	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
 
 	apiurl, err := prepareAPIURL(cfg.API.Client, apiURL)
 	if err != nil {
@@ -158,7 +163,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
 
-	log.Warning(reloadMessage)
+	log.Warning(cli.reloadMessage)
 
 	return nil
 }
