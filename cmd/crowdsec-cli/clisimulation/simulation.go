@@ -1,4 +1,4 @@
-package main
+package clisimulation
 
 import (
 	"errors"
@@ -12,14 +12,17 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
+
+type configGetter func() *csconfig.Config
 
 type cliSimulation struct {
 	cfg configGetter
 }
 
-func NewCLISimulation(cfg configGetter) *cliSimulation {
+func New(cfg configGetter) *cliSimulation {
 	return &cliSimulation{
 		cfg: cfg,
 	}
