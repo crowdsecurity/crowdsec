@@ -145,19 +145,15 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 
 // QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
 func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
-
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return false, false, fmt.Errorf("parsing api url: %w", err)
 	}
 
-	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-	if err != nil {
-		return false, false, fmt.Errorf("failed to get scenarios: %w", err)
-	}
+	itemsForAPI := hub.GetInstalledListForAPI()
 
-	if len(scenarios) == 0 {
-		return false, false, errors.New("no scenarios installed, abort")
+	if len(itemsForAPI) == 0 {
+		return false, false, errors.New("no scenarios or appsec-rules installed, abort")
 	}
 
 	passwd := strfmt.Password(password)
@@ -165,29 +161,16 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID: login,
 		Password:  passwd,
-		Scenarios: scenarios,
+		Scenarios: itemsForAPI,
 		UserAgent: cwversion.UserAgent(),
 		URL:       apiURL,
-		//I don't believe papi is neede to check enrollement
-		//PapiURL:       papiURL,
+		// I don't believe papi is neede to check enrollement
+		// PapiURL:       papiURL,
 		VersionPrefix: "v3",
 		UpdateScenario: func() ([]string, error) {
-			l_scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-			if err != nil {
-				return nil, err
-			}
-			appsecRules, err := hub.GetInstalledNamesByType(cwhub.APPSEC_RULES)
-			if err != nil {
-				return nil, err
-			}
-			ret := make([]string, 0, len(l_scenarios)+len(appsecRules))
-			ret = append(ret, l_scenarios...)
-			ret = append(ret, appsecRules...)
-
-			return ret, nil
+			return itemsForAPI, nil
 		},
 	})
-
 	if err != nil {
 		return false, false, fmt.Errorf("new client api: %w", err)
 	}
@@ -197,7 +180,7 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
 		Password:  &pw,
-		Scenarios: scenarios,
+		Scenarios: itemsForAPI,
 	}
 
 	authResp, _, err := client.Auth.AuthenticateWatcher(context.Background(), t)
@@ -211,7 +194,6 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return true, true, nil
 	}
 	return true, false, nil
-
 }
 
 func (cli *cliCapi) status() error {
@@ -232,7 +214,6 @@ func (cli *cliCapi) status() error {
 	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
 
 	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
-
 	if err != nil {
 		return fmt.Errorf("CAPI: failed to authenticate to Central API (CAPI): %s", err)
 	}

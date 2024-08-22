@@ -148,16 +148,11 @@ func (cli *cliHub) upgrade(ctx context.Context, force bool) error {
 	}
 
 	for _, itemType := range cwhub.ItemTypes {
-		items, err := hub.GetInstalledItemsByType(itemType)
-		if err != nil {
-			return err
-		}
-
 		updated := 0
 
 		log.Infof("Upgrading %s", itemType)
 
-		for _, item := range items {
+		for _, item := range hub.GetInstalledByType(itemType, true) {
 			didUpdate, err := item.Upgrade(ctx, force)
 			if err != nil {
 				return err
