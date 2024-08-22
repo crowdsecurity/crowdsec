@@ -1,4 +1,4 @@
-package main
+package clipapi
 
 import (
 	"fmt"
@@ -12,13 +12,16 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
+
+type configGetter func() *csconfig.Config
 
 type cliPapi struct {
 	cfg configGetter
 }
 
-func NewCLIPapi(cfg configGetter) *cliPapi {
+func New(cfg configGetter) *cliPapi {
 	return &cliPapi{
 		cfg: cfg,
 	}
