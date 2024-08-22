@@ -21,6 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clinotifications"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisimulation"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -273,7 +274,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIAppsecRule(cli.cfg).NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
-		cmd.AddCommand(NewCLISetup(cli.cfg).NewCommand())
+		cmd.AddCommand(clisetup.New(cli.cfg).NewCommand())
 	}
 
 	if len(os.Args) > 1 {
