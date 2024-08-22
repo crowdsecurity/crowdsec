@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -33,13 +34,11 @@ type configGetter func() *csconfig.Config
 
 type cliLapi struct {
 	cfg           configGetter
-	reloadMessage string
 }
 
-func New(cfg configGetter, reloadMessage string) *cliLapi {
+func New(cfg configGetter) *cliLapi {
 	return &cliLapi{
 		cfg: cfg,
-		reloadMessage: reloadMessage,
 	}
 }
 
@@ -163,7 +162,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
 
-	log.Warning(cli.reloadMessage)
+	log.Warning(reload.Message)
 
 	return nil
 }
