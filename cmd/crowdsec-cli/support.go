@@ -22,6 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -261,7 +262,7 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "CAPI URL: %s\n", cred.URL)
 	fmt.Fprintf(out, "CAPI username: %s\n", cred.Login)
 
-	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	auth, enrolled, err := clicapi.QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("could not authenticate to Central API (CAPI): %w", err)
 	}

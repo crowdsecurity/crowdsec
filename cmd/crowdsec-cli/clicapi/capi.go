@@ -1,4 +1,4 @@
-package main
+package clicapi
 
 import (
 	"context"
@@ -22,13 +22,17 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
 type cliCapi struct {
 	cfg configGetter
+	reloadMessage string
 }
 
-func NewCLICapi(cfg configGetter) *cliCapi {
+func New(cfg configGetter, reloadMessage string) *cliCapi {
 	return &cliCapi{
 		cfg: cfg,
+		reloadMessage: reloadMessage,
 	}
 }
 
@@ -115,7 +119,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		fmt.Println(string(apiConfigDump))
 	}
 
-	log.Warning(reloadMessage)
+	log.Warning(cli.reloadMessage)
 
 	return nil
 }
