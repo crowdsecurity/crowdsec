@@ -100,13 +100,17 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	patternsDir := cConfig.ConfigPaths.PatternDir
 	log.Infof("Loading grok library %s", patternsDir)
 	/* load base regexps for two grok parsers */
-	parsers.Ctx, err = Init(map[string]interface{}{"patterns": patternsDir,
-		"data": cConfig.ConfigPaths.DataDir})
+	parsers.Ctx, err = Init(map[string]interface{}{
+		"patterns": patternsDir,
+		"data":     cConfig.ConfigPaths.DataDir,
+	})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
-	parsers.Povfwctx, err = Init(map[string]interface{}{"patterns": patternsDir,
-		"data": cConfig.ConfigPaths.DataDir})
+	parsers.Povfwctx, err = Init(map[string]interface{}{
+		"patterns": patternsDir,
+		"data":     cConfig.ConfigPaths.DataDir,
+	})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
 	}

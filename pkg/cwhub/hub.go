@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 

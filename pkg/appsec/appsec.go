@@ -40,7 +40,6 @@ const (
 )
 
 func (h *Hook) Build(hookStage int) error {
-
 	ctx := map[string]interface{}{}
 	switch hookStage {
 	case hookOnLoad:
@@ -54,7 +53,7 @@ func (h *Hook) Build(hookStage int) error {
 	}
 	opts := exprhelpers.GetExprOptions(ctx)
 	if h.Filter != "" {
-		program, err := expr.Compile(h.Filter, opts...) //FIXME: opts
+		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
 			return fmt.Errorf("unable to compile filter %s : %w", h.Filter, err)
 		}
@@ -73,11 +72,11 @@ func (h *Hook) Build(hookStage int) error {
 type AppsecTempResponse struct {
 	InBandInterrupt         bool
 	OutOfBandInterrupt      bool
-	Action                  string //allow, deny, captcha, log
-	UserHTTPResponseCode    int    //The response code to send to the user
-	BouncerHTTPResponseCode int    //The response code to send to the remediation component
-	SendEvent               bool   //do we send an internal event on rule match
-	SendAlert               bool   //do we send an alert on rule match
+	Action                  string // allow, deny, captcha, log
+	UserHTTPResponseCode    int    // The response code to send to the user
+	BouncerHTTPResponseCode int    // The response code to send to the remediation component
+	SendEvent               bool   // do we send an internal event on rule match
+	SendAlert               bool   // do we send an alert on rule match
 }
 
 type AppsecSubEngineOpts struct {
@@ -93,7 +92,7 @@ type AppsecRuntimeConfig struct {
 	InBandRules []AppsecCollection
 
 	DefaultRemediation        string
-	RemediationByTag          map[string]string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	RemediationByTag          map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 	RemediationById           map[int]string
 	CompiledOnLoad            []Hook
 	CompiledPreEval           []Hook
@@ -101,22 +100,22 @@ type AppsecRuntimeConfig struct {
 	CompiledOnMatch           []Hook
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
-	//CorazaLogger              debuglog.Logger
+	// CorazaLogger              debuglog.Logger
 
-	//those are ephemeral, created/destroyed with every req
-	OutOfBandTx ExtendedTransaction //is it a good idea ?
-	InBandTx    ExtendedTransaction //is it a good idea ?
+	// those are ephemeral, created/destroyed with every req
+	OutOfBandTx ExtendedTransaction // is it a good idea ?
+	InBandTx    ExtendedTransaction // is it a good idea ?
 	Response    AppsecTempResponse
-	//should we store matched rules here ?
+	// should we store matched rules here ?
 
 	Logger *log.Entry
 
-	//Set by on_load to ignore some rules on loading
+	// Set by on_load to ignore some rules on loading
 	DisabledInBandRuleIds   []int
-	DisabledInBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	DisabledInBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 
 	DisabledOutOfBandRuleIds   []int
-	DisabledOutOfBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 }
 
 type AppsecConfig struct {
@@ -125,10 +124,10 @@ type AppsecConfig struct {
 	InBandRules            []string `yaml:"inband_rules"`
 	DefaultRemediation     string   `yaml:"default_remediation"`
 	DefaultPassAction      string   `yaml:"default_pass_action"`
-	BouncerBlockedHTTPCode int      `yaml:"blocked_http_code"`      //returned to the bouncer
-	BouncerPassedHTTPCode  int      `yaml:"passed_http_code"`       //returned to the bouncer
-	UserBlockedHTTPCode    int      `yaml:"user_blocked_http_code"` //returned to the user
-	UserPassedHTTPCode     int      `yaml:"user_passed_http_code"`  //returned to the user
+	BouncerBlockedHTTPCode int      `yaml:"blocked_http_code"`      // returned to the bouncer
+	BouncerPassedHTTPCode  int      `yaml:"passed_http_code"`       // returned to the bouncer
+	UserBlockedHTTPCode    int      `yaml:"user_blocked_http_code"` // returned to the user
+	UserPassedHTTPCode     int      `yaml:"user_passed_http_code"`  // returned to the user
 
 	OnLoad            []Hook              `yaml:"on_load"`
 	PreEval           []Hook              `yaml:"pre_eval"`
@@ -152,7 +151,6 @@ func (w *AppsecRuntimeConfig) ClearResponse() {
 }
 
 func (wc *AppsecConfig) LoadByPath(file string) error {
-
 	wc.Logger.Debugf("loading config %s", file)
 
 	yamlFile, err := os.ReadFile(file)
@@ -218,10 +216,10 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		wc.DefaultRemediation = BanRemediation
 	}
 
-	//set the defaults
+	// set the defaults
 	switch wc.DefaultRemediation {
 	case BanRemediation, CaptchaRemediation, AllowRemediation:
-		//those are the officially supported remediation(s)
+		// those are the officially supported remediation(s)
 	default:
 		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation)
 	}
@@ -231,7 +229,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	ret.DefaultRemediation = wc.DefaultRemediation
 
 	wc.Logger.Tracef("Loading config %+v", wc)
-	//load rules
+	// load rules
 	for _, rule := range wc.OutOfBandRules {
 		wc.Logger.Infof("loading outofband rule %s", rule)
 		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
@@ -253,7 +251,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
-	//load hooks
+	// load hooks
 	for _, hook := range wc.OnLoad {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
@@ -298,7 +296,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		ret.CompiledOnMatch = append(ret.CompiledOnMatch, hook)
 	}
 
-	//variable tracking
+	// variable tracking
 	for _, variable := range wc.VariablesTracking {
 		compiledVariableRule, err := regexp.Compile(variable)
 		if err != nil {
@@ -454,7 +452,6 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
 			o, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", err)
 				continue
@@ -598,7 +595,7 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 }
 
 func (w *AppsecRuntimeConfig) SetAction(action string) error {
-	//log.Infof("setting to %s", action)
+	// log.Infof("setting to %s", action)
 	w.Logger.Debugf("setting action to %s", action)
 	w.Response.Action = action
 	return nil
@@ -622,7 +619,7 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	if response.Action == AllowRemediation {
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
-	} else { //ban, captcha and anything else
+	} else { // ban, captcha and anything else
 		resp.HTTPStatus = response.UserHTTPResponseCode
 		if resp.HTTPStatus == 0 {
 			resp.HTTPStatus = w.Config.UserBlockedHTTPCode

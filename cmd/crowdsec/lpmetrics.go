@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -88,7 +87,8 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 }
 
 func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
-	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) *MetricsProvider {
+	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
+) *MetricsProvider {
 	return &MetricsProvider{
 		apic:     apic,
 		interval: interval,

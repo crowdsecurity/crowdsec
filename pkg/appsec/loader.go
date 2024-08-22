@@ -9,9 +9,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-var appsecRules = make(map[string]AppsecCollectionConfig) //FIXME: would probably be better to have a struct for this
+var appsecRules = make(map[string]AppsecCollectionConfig) // FIXME: would probably be better to have a struct for this
 
-var hub *cwhub.Hub //FIXME: this is a temporary hack to make the hub available in the package
+var hub *cwhub.Hub // FIXME: this is a temporary hack to make the hub available in the package
 
 func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 	hub = hubInstance

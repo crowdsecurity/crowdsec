@@ -145,7 +145,6 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 
 // QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
 func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
-
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return false, false, fmt.Errorf("parsing api url: %w", err)
@@ -165,14 +164,13 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		Scenarios: itemsForAPI,
 		UserAgent: cwversion.UserAgent(),
 		URL:       apiURL,
-		//I don't believe papi is neede to check enrollement
-		//PapiURL:       papiURL,
+		// I don't believe papi is neede to check enrollement
+		// PapiURL:       papiURL,
 		VersionPrefix: "v3",
 		UpdateScenario: func() ([]string, error) {
 			return itemsForAPI, nil
 		},
 	})
-
 	if err != nil {
 		return false, false, fmt.Errorf("new client api: %w", err)
 	}
@@ -196,7 +194,6 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		return true, true, nil
 	}
 	return true, false, nil
-
 }
 
 func (cli *cliCapi) status() error {
@@ -217,7 +214,6 @@ func (cli *cliCapi) status() error {
 	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
 
 	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
-
 	if err != nil {
 		return fmt.Errorf("CAPI: failed to authenticate to Central API (CAPI): %s", err)
 	}

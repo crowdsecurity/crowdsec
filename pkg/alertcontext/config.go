@@ -98,7 +98,6 @@ func addContextFromFile(toSend map[string][]string, filePath string) error {
 	return nil
 }
 
-
 // LoadConsoleContext loads the context from the hub (if provided) and the file console_context_path.
 func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
