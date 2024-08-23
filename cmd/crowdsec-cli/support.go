@@ -165,15 +165,15 @@ func (cli *cliSupport) dumpOSInfo(zw *zip.Writer) error {
 }
 
 func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
+	log.Infof("Collecting hub")
+
 	if hub == nil {
 		return errors.New("no hub connection")
 	}
 
-	log.Infof("Collecting hub")
-
 	out := new(bytes.Buffer)
-
 	ch := clihub.New(cli.cfg)
+
 	if err := ch.List(out, hub, false); err != nil {
 		return err
 	}
@@ -193,9 +193,8 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	}
 
 	out := new(bytes.Buffer)
-
-	// call the "cscli bouncers list" command directly, skip any preRun
 	cm := cliBouncers{db: db, cfg: cli.cfg}
+
 	if err := cm.list(out); err != nil {
 		return err
 	}
@@ -215,9 +214,8 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 	}
 
 	out := new(bytes.Buffer)
-
-	// call the "cscli machines list" command directly, skip any preRun
 	cm := cliMachines{db: db, cfg: cli.cfg}
+
 	if err := cm.list(out); err != nil {
 		return err
 	}
@@ -232,22 +230,17 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	log.Info("Collecting LAPI status")
 
-	cfg := cli.cfg()
-	cred := cfg.API.Client.Credentials
-
 	out := new(bytes.Buffer)
+	cl := clilapi.New(cli.cfg)
 
-	fmt.Fprintf(out, "LAPI credentials file: %s\n", cfg.API.Client.CredentialsFilePath)
-	fmt.Fprintf(out, "LAPI URL: %s\n", cred.URL)
-	fmt.Fprintf(out, "LAPI username: %s\n", cred.Login)
-
-	if err := clilapi.QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
-		return fmt.Errorf("could not authenticate to Local API (LAPI): %w", err)
+	err := cl.Status(out, hub)
+	if err != nil {
+		fmt.Fprintf(out, "%s\n", err)
 	}
 
-	fmt.Fprintln(out, "You can successfully interact with Local API (LAPI)")
+	stripped := stripAnsiString(out.String())
 
-	cli.writeToZip(zw, SUPPORT_LAPI_STATUS_PATH, time.Now(), out)
+	cli.writeToZip(zw, SUPPORT_LAPI_STATUS_PATH, time.Now(), strings.NewReader(stripped))
 
 	return nil
 }
@@ -255,28 +248,17 @@ func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	log.Info("Collecting CAPI status")
 
-	cfg := cli.cfg()
-	cred := cfg.API.Server.OnlineClient.Credentials
-
 	out := new(bytes.Buffer)
+	cc := clicapi.New(cli.cfg)
 
-	fmt.Fprintf(out, "CAPI credentials file: %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
-	fmt.Fprintf(out, "CAPI URL: %s\n", cred.URL)
-	fmt.Fprintf(out, "CAPI username: %s\n", cred.Login)
-
-	auth, enrolled, err := clicapi.QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	err := cc.Status(out, hub)
 	if err != nil {
-		return fmt.Errorf("could not authenticate to Central API (CAPI): %w", err)
-	}
-	if auth {
-		fmt.Fprintln(out, "You can successfully interact with Central API (CAPI)")
+		fmt.Fprintf(out, "%s\n", err)
 	}
 
-	if enrolled {
-		fmt.Fprintln(out, "Your instance is enrolled in the console")
-	}
+	stripped := stripAnsiString(out.String())
 
-	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), out)
+	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), strings.NewReader(stripped))
 
 	return nil
 }

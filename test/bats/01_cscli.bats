@@ -213,9 +213,9 @@ teardown() {
     rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status
 
-    assert_stderr --partial "Loaded credentials from"
-    assert_stderr --partial "Trying to authenticate with username"
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --partial "Loaded credentials from"
+    assert_output --partial "Trying to authenticate with username"
+    assert_output --partial "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli - missing LAPI credentials file" {
@@ -260,7 +260,7 @@ teardown() {
     rune -0 ./instance-crowdsec start
 
     rune -0 cscli lapi status
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --partial "You can successfully interact with Local API (LAPI)"
 
     rm "$LOCAL_API_CREDENTIALS".local
 
@@ -272,7 +272,7 @@ teardown() {
     config_set "$LOCAL_API_CREDENTIALS" '.password="$PASSWORD"'
 
     rune -0 cscli lapi status
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --partial "You can successfully interact with Local API (LAPI)"
 
     # but if a variable is not defined, there is no specific error message
     unset URL
@@ -299,7 +299,7 @@ teardown() {
 
     rune -1 cscli lapi status -o json
     rune -0 jq -r '.msg' <(stderr)
-    assert_output 'failed to authenticate to Local API (LAPI): parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
+    assert_output 'failed to authenticate to Local API (LAPI): parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
 }
 
 @test "cscli - bad LAPI password" {
