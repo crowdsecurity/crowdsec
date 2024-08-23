@@ -162,6 +162,7 @@ func (i *Item) FetchContentTo(ctx context.Context, destPath string) (bool, strin
 		New().
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
+		WithETagFn(downloader.SHA256).
 		WithMakeDirs(true).
 		WithLogger(logrus.WithField("url", url)).
 		CompareContent().
