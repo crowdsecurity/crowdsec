@@ -45,6 +45,7 @@ func (r *RemoteHubCfg) fetchIndex(ctx context.Context, destPath string) (bool, e
 		New().
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
+		WithETagFn(downloader.SHA256).
 		CompareContent().
 		WithLogger(logrus.WithField("url", url)).
 		Download(ctx, url)
