@@ -1,4 +1,4 @@
-package main
+package clisetup
 
 import (
 	"bytes"
@@ -18,11 +18,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
 
+type configGetter func() *csconfig.Config
+
 type cliSetup struct {
 	cfg configGetter
 }
 
-func NewCLISetup(cfg configGetter) *cliSetup {
+func New(cfg configGetter) *cliSetup {
 	return &cliSetup{
 		cfg: cfg,
 	}

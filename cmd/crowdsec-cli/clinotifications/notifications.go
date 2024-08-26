@@ -1,4 +1,4 @@
-package main
+package clinotifications
 
 import (
 	"context"
@@ -40,11 +40,13 @@ type NotificationsCfg struct {
 	ids      []uint
 }
 
+type configGetter func() *csconfig.Config
+
 type cliNotifications struct {
 	cfg configGetter
 }
 
-func NewCLINotifications(cfg configGetter) *cliNotifications {
+func New(cfg configGetter) *cliNotifications {
 	return &cliNotifications{
 		cfg: cfg,
 	}

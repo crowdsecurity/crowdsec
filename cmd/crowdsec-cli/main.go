@@ -19,6 +19,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clinotifications"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisimulation"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -249,7 +253,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDecisions(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIAlerts(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLISimulation(cli.cfg).NewCommand())
+	cmd.AddCommand(clisimulation.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIBouncers(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIMachines(cli.cfg).NewCommand())
 	cmd.AddCommand(clicapi.New(cli.cfg).NewCommand())
@@ -258,9 +262,9 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliconsole.New(cli.cfg).NewCommand())
 	cmd.AddCommand(cliexplain.New(cli.cfg, ConfigFilePath).NewCommand())
 	cmd.AddCommand(NewCLIHubTest(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLINotifications(cli.cfg).NewCommand())
+	cmd.AddCommand(clinotifications.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLISupport(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIPapi(cli.cfg).NewCommand())
+	cmd.AddCommand(clipapi.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLICollection(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIParser(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIScenario(cli.cfg).NewCommand())
@@ -270,7 +274,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIAppsecRule(cli.cfg).NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
-		cmd.AddCommand(NewCLISetup(cli.cfg).NewCommand())
+		cmd.AddCommand(clisetup.New(cli.cfg).NewCommand())
 	}
 
 	if len(os.Args) > 1 {
