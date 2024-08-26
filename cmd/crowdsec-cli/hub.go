@@ -99,9 +99,10 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliHub) update(ctx context.Context) error {
+func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	local := cli.cfg().Hub
 	remote := require.RemoteHub(ctx, cli.cfg())
+	remote.EmbedItemContent = withContent
 
 	// don't use require.Hub because if there is no index file, it would fail
 	hub, err := cwhub.NewHub(local, remote, log.StandardLogger())
@@ -125,6 +126,8 @@ func (cli *cliHub) update(ctx context.Context) error {
 }
 
 func (cli *cliHub) newUpdateCmd() *cobra.Command {
+	withContent := false
+
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Download the latest index (catalog of available configurations)",
@@ -134,9 +137,12 @@ Fetches the .index.json file from the hub, containing the list of available conf
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.update(cmd.Context())
+			return cli.update(cmd.Context(), withContent)
 		},
 	}
+
+	flags := cmd.Flags()
+	flags.BoolVar(&withContent, "with-content", false, "Download index with embedded item content")
 
 	return cmd
 }
