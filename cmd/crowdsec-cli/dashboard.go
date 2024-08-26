@@ -20,6 +20,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 )
@@ -137,7 +138,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				isValid := passwordIsValid(metabasePassword)
 				for !isValid {
-					metabasePassword = generatePassword(16)
+					metabasePassword = idgen.GeneratePassword(16)
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}

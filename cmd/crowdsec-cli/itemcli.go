@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -92,7 +93,7 @@ func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool
 		}
 	}
 
-	log.Info(reloadMessage)
+	log.Info(reload.Message)
 
 	return nil
 }
@@ -170,7 +171,7 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 		log.Infof("Removed %d %s", removed, cli.name)
 
 		if removed > 0 {
-			log.Info(reloadMessage)
+			log.Info(reload.Message)
 		}
 
 		return nil
@@ -212,7 +213,7 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 	log.Infof("Removed %d %s", removed, cli.name)
 
 	if removed > 0 {
-		log.Info(reloadMessage)
+		log.Info(reload.Message)
 	}
 
 	return nil
@@ -273,7 +274,7 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all b
 		log.Infof("Updated %d %s", updated, cli.name)
 
 		if updated > 0 {
-			log.Info(reloadMessage)
+			log.Info(reload.Message)
 		}
 
 		return nil
@@ -304,7 +305,7 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all b
 	}
 
 	if updated > 0 {
-		log.Info(reloadMessage)
+		log.Info(reload.Message)
 	}
 
 	return nil

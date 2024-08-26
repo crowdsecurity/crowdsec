@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -44,7 +45,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
 			if cmd.Name() != "status" {
-				log.Info(reloadMessage)
+				log.Info(reload.Message)
 			}
 		},
 	}

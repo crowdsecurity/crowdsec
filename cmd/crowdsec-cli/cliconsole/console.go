@@ -20,6 +20,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -30,14 +31,12 @@ import (
 type configGetter func() *csconfig.Config
 
 type cliConsole struct {
-	cfg           func() *csconfig.Config
-	reloadMessage string
+	cfg           configGetter
 }
 
-func New(cfg configGetter, reloadMessage string) *cliConsole {
+func New(cfg configGetter) *cliConsole {
 	return &cliConsole{
 		cfg:           cfg,
-		reloadMessage: reloadMessage,
 	}
 }
 
@@ -215,7 +214,7 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("%v have been enabled", args)
 			}
 
-			log.Info(cli.reloadMessage)
+			log.Info(reload.Message)
 
 			return nil
 		},
@@ -249,7 +248,7 @@ Disable given information push to the central API.`,
 				log.Infof("%v have been disabled", args)
 			}
 
-			log.Info(cli.reloadMessage)
+			log.Info(reload.Message)
 
 			return nil
 		},

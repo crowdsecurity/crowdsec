@@ -22,6 +22,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -237,7 +239,7 @@ func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "LAPI URL: %s\n", cred.URL)
 	fmt.Fprintf(out, "LAPI username: %s\n", cred.Login)
 
-	if err := QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
+	if err := clilapi.QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("could not authenticate to Local API (LAPI): %w", err)
 	}
 
@@ -260,7 +262,7 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "CAPI URL: %s\n", cred.URL)
 	fmt.Fprintf(out, "CAPI username: %s\n", cred.Login)
 
-	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	auth, enrolled, err := clicapi.QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("could not authenticate to Central API (CAPI): %w", err)
 	}

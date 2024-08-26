@@ -1,4 +1,4 @@
-package main
+package clicapi
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -21,11 +23,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
 type cliCapi struct {
 	cfg configGetter
 }
 
-func NewCLICapi(cfg configGetter) *cliCapi {
+func New(cfg configGetter) *cliCapi {
 	return &cliCapi{
 		cfg: cfg,
 	}
@@ -56,12 +60,12 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	cfg := cli.cfg()
 
-	capiUser, err := generateID(capiUserPrefix)
+	capiUser, err := idgen.GenerateMachineID(capiUserPrefix)
 	if err != nil {
 		return fmt.Errorf("unable to generate machine id: %w", err)
 	}
 
-	password := strfmt.Password(generatePassword(passwordLength))
+	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
 
 	apiurl, err := url.Parse(types.CAPIBaseURL)
 	if err != nil {
@@ -114,7 +118,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		fmt.Println(string(apiConfigDump))
 	}
 
-	log.Warning(reloadMessage)
+	log.Warning(reload.Message)
 
 	return nil
 }
