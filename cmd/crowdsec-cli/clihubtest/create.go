@@ -56,7 +56,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			configFileData := &hubtest.HubTestItemConfig{}
 			if logType == "appsec" {
 				// create empty nuclei template file
-				nucleiFileName := fmt.Sprintf("%s.yaml", testName)
+				nucleiFileName := testName + ".yaml"
 				nucleiFilePath := filepath.Join(testPath, nucleiFileName)
 
 				nucleiFile, err := os.OpenFile(nucleiFilePath, os.O_RDWR|os.O_CREATE, 0o755)
@@ -79,7 +79,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFilePath)
 			} else {
 				// create empty log file
-				logFileName := fmt.Sprintf("%s.log", testName)
+				logFileName := testName + ".log"
 				logFilePath := filepath.Join(testPath, logFileName)
 				logFile, err := os.Create(logFilePath)
 				if err != nil {

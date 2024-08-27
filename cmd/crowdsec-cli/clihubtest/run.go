@@ -22,8 +22,10 @@ func (cli *cliHubTest) run(runAll bool, NucleiTargetHost string, AppSecHost stri
 	if !runAll && len(args) == 0 {
 		return errors.New("please provide test to run or --all flag")
 	}
+
 	hubPtr.NucleiTargetHost = NucleiTargetHost
 	hubPtr.AppSecHost = AppSecHost
+
 	if runAll {
 		if err := hubPtr.LoadAllTests(); err != nil {
 			return fmt.Errorf("unable to load all tests: %+v", err)
@@ -39,10 +41,12 @@ func (cli *cliHubTest) run(runAll bool, NucleiTargetHost string, AppSecHost stri
 
 	// set timezone to avoid DST issues
 	os.Setenv("TZ", "UTC")
+
 	for _, test := range hubPtr.Tests {
 		if cfg.Cscli.Output == "human" {
 			log.Infof("Running test '%s'", test.Name)
 		}
+
 		err := test.Run()
 		if err != nil {
 			log.Errorf("running test '%s' failed: %+v", test.Name, err)
@@ -51,7 +55,6 @@ func (cli *cliHubTest) run(runAll bool, NucleiTargetHost string, AppSecHost stri
 
 	return nil
 }
-
 
 func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 	var (
@@ -91,6 +94,7 @@ func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
 						}
 					}
+
 					return fmt.Errorf("please fill your assert file(s) for test '%s', exiting", test.Name)
 				}
 				testResult[test.Name] = test.Success

@@ -24,6 +24,7 @@ func getCoverage(show bool, getCoverageFunc func() ([]hubtest.Coverage, error)) 
 	}
 
 	tested := 0
+
 	for _, test := range coverage {
 		if test.TestsCount > 0 {
 			tested++
