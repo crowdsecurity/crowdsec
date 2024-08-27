@@ -24,8 +24,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
-    cscli hub update && \
-    ./docker/preload-hub-items && \
+    cscli hub update --with-content && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists
 
