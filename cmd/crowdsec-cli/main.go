@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihubtest"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
@@ -249,7 +250,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
 	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIHub(cli.cfg).NewCommand())
+	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDecisions(cli.cfg).NewCommand())

@@ -1,9 +1,10 @@
-package main
+package clihub
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
@@ -11,14 +12,17 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
+
+type configGetter = func() *csconfig.Config
 
 type cliHub struct {
 	cfg configGetter
 }
 
-func NewCLIHub(cfg configGetter) *cliHub {
+func New(cfg configGetter) *cliHub {
 	return &cliHub{
 		cfg: cfg,
 	}
@@ -47,13 +51,8 @@ cscli hub upgrade`,
 	return cmd
 }
 
-func (cli *cliHub) list(all bool) error {
+func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
 	cfg := cli.cfg()
-
-	hub, err := require.Hub(cfg, nil, log.StandardLogger())
-	if err != nil {
-		return err
-	}
 
 	for _, v := range hub.Warnings {
 		log.Info(v)
@@ -65,14 +64,16 @@ func (cli *cliHub) list(all bool) error {
 
 	items := make(map[string][]*cwhub.Item)
 
+	var err error
+
 	for _, itemType := range cwhub.ItemTypes {
-		items[itemType], err = selectItems(hub, itemType, nil, !all)
+		items[itemType], err = SelectItems(hub, itemType, nil, !all)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = listItems(color.Output, cfg.Cscli.Color, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
+	err = ListItems(out, cfg.Cscli.Color, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,12 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list(all)
+			hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
+			if err != nil {
+				return err
+			}
+
+			return cli.List(color.Output, hub, all)
 		},
 	}
 

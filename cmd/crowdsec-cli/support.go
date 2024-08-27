@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -38,7 +39,7 @@ const (
 	SUPPORT_VERSION_PATH          = "version.txt"
 	SUPPORT_FEATURES_PATH         = "features.txt"
 	SUPPORT_OS_INFO_PATH          = "osinfo.txt"
-	SUPPORT_HUB_DIR               = "hub/"
+	SUPPORT_HUB                   = "hub.txt"
 	SUPPORT_BOUNCERS_PATH         = "lapi/bouncers.txt"
 	SUPPORT_AGENTS_PATH           = "lapi/agents.txt"
 	SUPPORT_CROWDSEC_CONFIG_PATH  = "config/crowdsec.yaml"
@@ -163,26 +164,21 @@ func (cli *cliSupport) dumpOSInfo(zw *zip.Writer) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub, itemType string) error {
-	var err error
+func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
+	if hub == nil {
+		return errors.New("no hub connection")
+	}
+
+	log.Infof("Collecting hub")
 
 	out := new(bytes.Buffer)
 
-	log.Infof("Collecting hub: %s", itemType)
-
-	items := make(map[string][]*cwhub.Item)
-
-	if items[itemType], err = selectItems(hub, itemType, nil, true); err != nil {
-		return fmt.Errorf("could not collect %s list: %w", itemType, err)
-	}
-
-	if err := listItems(out, cli.cfg().Cscli.Color, []string{itemType}, items, false, "human"); err != nil {
-		return fmt.Errorf("could not list %s: %w", itemType, err)
-	}
+	ch := clihub.New(cli.cfg)
+	ch.List(out, hub, false)
 
 	stripped := stripAnsiString(out.String())
 
-	cli.writeToZip(zw, SUPPORT_HUB_DIR+itemType+".txt", time.Now(), strings.NewReader(stripped))
+	cli.writeToZip(zw, SUPPORT_HUB, time.Now(), strings.NewReader(stripped))
 
 	return nil
 }
@@ -513,12 +509,8 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		log.Warnf("could not collect main config file: %s", err)
 	}
 
-	if hub != nil {
-		for _, itemType := range cwhub.ItemTypes {
-			if err = cli.dumpHubItems(zipWriter, hub, itemType); err != nil {
-				log.Warnf("could not collect %s information: %s", itemType, err)
-			}
-		}
+	if err = cli.dumpHubItems(zipWriter, hub); err != nil {
+		log.Warnf("could not collect hub information: %s", err)
 	}
 
 	if err = cli.dumpBouncers(zipWriter, db); err != nil {
