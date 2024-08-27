@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
@@ -59,21 +59,6 @@ func getFeatureFlagList(o featureflagProvider) []string {
 	}
 
 	return strings.Split(o.GetFeatureflags(), ",")
-}
-
-func askYesNo(message string, defaultAnswer bool) (bool, error) {
-	var answer bool
-
-	prompt := &survey.Confirm{
-		Message: message,
-		Default: defaultAnswer,
-	}
-
-	if err := survey.AskOne(prompt, &answer); err != nil {
-		return defaultAnswer, err
-	}
-
-	return answer, nil
 }
 
 type cliBouncers struct {
@@ -385,7 +370,7 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 
 func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 	if duration < 2*time.Minute {
-		if yes, err := askYesNo(
+		if yes, err := ask.YesNo(
 			"The duration you provided is less than 2 minutes. "+
 				"This may remove active bouncers. Continue?", false); err != nil {
 			return err
@@ -408,7 +393,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 	cli.listHuman(color.Output, bouncers)
 
 	if !force {
-		if yes, err := askYesNo(
+		if yes, err := ask.YesNo(
 			"You are about to PERMANENTLY remove the above bouncers from the database. "+
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err

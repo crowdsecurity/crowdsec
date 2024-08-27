@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -466,7 +467,7 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 
 func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force bool) error {
 	if duration < 2*time.Minute && !notValidOnly {
-		if yes, err := askYesNo(
+		if yes, err := ask.YesNo(
 			"The duration you provided is less than 2 minutes. "+
 				"This can break installations if the machines are only temporarily disconnected. Continue?", false); err != nil {
 			return err
@@ -495,7 +496,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	cli.listHuman(color.Output, machines)
 
 	if !force {
-		if yes, err := askYesNo(
+		if yes, err := ask.YesNo(
 			"You are about to PERMANENTLY remove the above machines from the database. "+
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err
