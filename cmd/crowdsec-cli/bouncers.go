@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clientinfo"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
@@ -26,40 +27,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-type featureflagProvider interface {
-	GetFeatureflags() string
-}
-
-type osProvider interface {
-	GetOsname() string
-	GetOsversion() string
-}
-
-func getOSNameAndVersion(o osProvider) string {
-	ret := o.GetOsname()
-	if o.GetOsversion() != "" {
-		if ret != "" {
-			ret += "/"
-		}
-
-		ret += o.GetOsversion()
-	}
-
-	if ret == "" {
-		return "?"
-	}
-
-	return ret
-}
-
-func getFeatureFlagList(o featureflagProvider) []string {
-	if o.GetFeatureflags() == "" {
-		return nil
-	}
-
-	return strings.Split(o.GetFeatureflags(), ",")
-}
 
 type cliBouncers struct {
 	db  *database.Client
@@ -156,8 +123,8 @@ func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
 		Version:      b.Version,
 		LastPull:     b.LastPull,
 		AuthType:     b.AuthType,
-		OS:           getOSNameAndVersion(b),
-		Featureflags: getFeatureFlagList(b),
+		OS:           clientinfo.GetOSNameAndVersion(b),
+		Featureflags: clientinfo.GetFeatureFlagList(b),
 	}
 }
 
@@ -463,10 +430,10 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{"Version", bouncer.Version},
 		{"Last Pull", lastPull},
 		{"Auth type", bouncer.AuthType},
-		{"OS", getOSNameAndVersion(bouncer)},
+		{"OS", clientinfo.GetOSNameAndVersion(bouncer)},
 	})
 
-	for _, ff := range getFeatureFlagList(bouncer) {
+	for _, ff := range clientinfo.GetFeatureFlagList(bouncer) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 

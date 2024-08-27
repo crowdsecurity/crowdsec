@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clientinfo"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -139,7 +140,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, getOSNameAndVersion(m), m.AuthType, hb})
+		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, clientinfo.GetOSNameAndVersion(m), m.AuthType, hb})
 	}
 
 	io.WriteString(out, t.Render() + "\n")
@@ -172,8 +173,8 @@ func newMachineInfo(m *ent.Machine) machineInfo {
 		Version:       m.Version,
 		IsValidated:   m.IsValidated,
 		AuthType:      m.AuthType,
-		OS:            getOSNameAndVersion(m),
-		Featureflags:  getFeatureFlagList(m),
+		OS:            clientinfo.GetOSNameAndVersion(m),
+		Featureflags:  clientinfo.GetFeatureFlagList(m),
 		Datasources:   m.Datasources,
 	}
 }
@@ -589,7 +590,7 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		{"Last Heartbeat", machine.LastHeartbeat},
 		{"Validated?", machine.IsValidated},
 		{"CrowdSec version", machine.Version},
-		{"OS", getOSNameAndVersion(machine)},
+		{"OS", clientinfo.GetOSNameAndVersion(machine)},
 		{"Auth type", machine.AuthType},
 	})
 
@@ -597,7 +598,7 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Datasources", fmt.Sprintf("%s: %d", dsName, dsCount)})
 	}
 
-	for _, ff := range getFeatureFlagList(machine) {
+	for _, ff := range clientinfo.GetFeatureFlagList(machine) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
