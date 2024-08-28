@@ -174,7 +174,9 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
 	out := new(bytes.Buffer)
 
 	ch := clihub.New(cli.cfg)
-	ch.List(out, hub, false)
+	if err := ch.List(out, hub, false); err != nil {
+		return err
+	}
 
 	stripped := stripAnsiString(out.String())
 
@@ -194,7 +196,9 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 
 	// call the "cscli bouncers list" command directly, skip any preRun
 	cm := cliBouncers{db: db, cfg: cli.cfg}
-	cm.list(out)
+	if err := cm.list(out); err != nil {
+		return err
+	}
 
 	stripped := stripAnsiString(out.String())
 
@@ -214,7 +218,9 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 
 	// call the "cscli machines list" command directly, skip any preRun
 	cm := cliMachines{db: db, cfg: cli.cfg}
-	cm.list(out)
+	if err := cm.list(out); err != nil {
+		return err
+	}
 
 	stripped := stripAnsiString(out.String())
 
