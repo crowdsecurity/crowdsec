@@ -1,4 +1,4 @@
-package main
+package clialert
 
 import (
 	"fmt"
@@ -8,7 +8,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
+// XXX: no way.
+
+func ManageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
 	/*if a range is provided, change the scope*/
 	if *ipRange != "" {
 		_, _, err := net.ParseCIDR(*ipRange)

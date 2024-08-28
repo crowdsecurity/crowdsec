@@ -1,4 +1,4 @@
-package main
+package clidecision
 
 import (
 	"context"
@@ -17,7 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -114,12 +116,14 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	return nil
 }
 
+type configGetter func() *csconfig.Config
+
 type cliDecisions struct {
 	client *apiclient.ApiClient
 	cfg    configGetter
 }
 
-func NewCLIDecisions(cfg configGetter) *cliDecisions {
+func New(cfg configGetter) *cliDecisions {
 	return &cliDecisions{
 		cfg: cfg,
 	}
@@ -171,7 +175,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
 	var err error
 	/*take care of shorthand options*/
-	if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
+	if err = clialert.ManageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
 		return err
 	}
 
@@ -327,7 +331,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 
 	/*take care of shorthand options*/
-	if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
+	if err := clialert.ManageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
 		return err
 	}
 
@@ -435,7 +439,7 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 	var err error
 
 	/*take care of shorthand options*/
-	if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
+	if err = clialert.ManageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
 		return err
 	}
 

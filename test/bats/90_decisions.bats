@@ -108,12 +108,12 @@ teardown() {
     # invalid json
     rune -1 cscli decisions import -i - <<<'{"blah":"blah"}' --format json
     assert_stderr --partial 'Parsing json'
-    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []main.decisionRaw'
+    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []clidecision.decisionRaw'
 
     # json with extra data
     rune -1 cscli decisions import -i - <<<'{"values":"1.2.3.4","blah":"blah"}' --format json
     assert_stderr --partial 'Parsing json'
-    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []main.decisionRaw'
+    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []clidecision.decisionRaw'
 
     #----------
     # CSV
