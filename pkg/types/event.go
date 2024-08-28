@@ -2,6 +2,7 @@ package types
 
 import (
 	"net"
+	"strings"
 	"time"
 
 	"github.com/expr-lang/expr/vm"
@@ -143,3 +144,19 @@ func (r RuntimeAlert) GetSources() []string {
 	}
 	return ret
 }
+
+func NormalizeScope(scope string) string {
+	switch strings.ToLower(scope) {
+	case "ip":
+		return Ip
+	case "range":
+		return Range
+	case "as":
+		return AS
+	case "country":
+		return Country
+	default:
+		return scope
+	}
+}
+

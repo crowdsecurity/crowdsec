@@ -238,8 +238,10 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 }
 
 func (cli *cliAlerts) list(alertListFilter apiclient.AlertsListOpts, limit *int, contained *bool, printMachine bool) error {
-	if err := ManageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
-		alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
+	var err error
+
+	*alertListFilter.ScopeEquals, err = SanitizeScope(*alertListFilter.ScopeEquals, *alertListFilter.IPEquals, *alertListFilter.RangeEquals)
+	if err != nil {
 		return err
 	}
 
@@ -381,8 +383,8 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 	var err error
 
 	if !AlertDeleteAll {
-		if err = ManageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
-			alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
+		*alertDeleteFilter.ScopeEquals, err = SanitizeScope(*alertDeleteFilter.ScopeEquals, *alertDeleteFilter.IPEquals, *alertDeleteFilter.RangeEquals)
+		if err != nil {
 			return err
 		}
 

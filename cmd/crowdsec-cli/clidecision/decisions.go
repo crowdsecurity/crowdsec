@@ -174,8 +174,9 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 
 func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
 	var err error
-	/*take care of shorthand options*/
-	if err = clialert.ManageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
+
+	*filter.ScopeEquals, err = clialert.SanitizeScope(*filter.ScopeEquals, *filter.IPEquals, *filter.RangeEquals)
+	if err != nil {
 		return err
 	}
 
@@ -330,8 +331,10 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	stopAt := time.Now().UTC().Format(time.RFC3339)
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 
-	/*take care of shorthand options*/
-	if err := clialert.ManageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
+	var err error
+
+	addScope, err = clialert.SanitizeScope(addScope, addIP, addRange)
+	if err != nil {
 		return err
 	}
 
@@ -385,7 +388,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	}
 	alerts = append(alerts, &alert)
 
-	_, _, err := cli.client.Alerts.Add(context.Background(), alerts)
+	_, _, err = cli.client.Alerts.Add(context.Background(), alerts)
 	if err != nil {
 		return err
 	}
@@ -439,7 +442,8 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 	var err error
 
 	/*take care of shorthand options*/
-	if err = clialert.ManageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
+	*delFilter.ScopeEquals, err = clialert.SanitizeScope(*delFilter.ScopeEquals, *delFilter.IPEquals, *delFilter.RangeEquals)
+	if err != nil {
 		return err
 	}
 
