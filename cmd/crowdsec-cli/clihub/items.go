@@ -1,4 +1,4 @@
-package main
+package clihub
 
 import (
 	"encoding/csv"
@@ -16,7 +16,7 @@ import (
 )
 
 // selectItems returns a slice of items of a given type, selected by name and sorted by case-insensitive name
-func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]*cwhub.Item, error) {
+func SelectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]*cwhub.Item, error) {
 	allItems := hub.GetItemsByType(itemType, true)
 
 	itemNames := make([]string, len(allItems))
@@ -57,7 +57,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return wantedItems, nil
 }
 
-func listItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
+func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
 	switch output {
 	case "human":
 		nothingToDisplay := true
@@ -146,7 +146,7 @@ func listItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 	return nil
 }
 
-func inspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string, wantColor string) error {
+func InspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string, wantColor string) error {
 	switch output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)

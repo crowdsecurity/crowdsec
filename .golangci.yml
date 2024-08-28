@@ -482,7 +482,7 @@ issues:
 
     - linters:
         - revive
-      path: "cmd/crowdsec-cli/item_metrics.go"
+      path: "cmd/crowdsec-cli/clihub/item_metrics.go"
       text: "deep-exit: .*"
 
     - linters:

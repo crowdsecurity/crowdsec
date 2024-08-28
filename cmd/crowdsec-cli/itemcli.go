@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -372,7 +373,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 			continue
 		}
 
-		if err = inspectItem(item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		if err = clihub.InspectItem(item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
@@ -428,12 +429,12 @@ func (cli cliItem) list(args []string, all bool) error {
 
 	items := make(map[string][]*cwhub.Item)
 
-	items[cli.name], err = selectItems(hub, cli.name, args, !all)
+	items[cli.name], err = clihub.SelectItems(hub, cli.name, args, !all)
 	if err != nil {
 		return err
 	}
 
-	return listItems(color.Output, cfg.Cscli.Color, []string{cli.name}, items, false, cfg.Cscli.Output)
+	return clihub.ListItems(color.Output, cfg.Cscli.Color, []string{cli.name}, items, false, cfg.Cscli.Output)
 }
 
 func (cli cliItem) newListCmd() *cobra.Command {
