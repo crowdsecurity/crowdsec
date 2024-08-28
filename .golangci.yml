@@ -27,7 +27,7 @@ linters-settings:
 
   nestif:
     # lower this after refactoring
-    min-complexity: 20
+    min-complexity: 19
 
   nlreturn:
     block-size: 5
