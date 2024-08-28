@@ -1,4 +1,4 @@
-package main
+package climachine
 
 // Custom types for flag validation and conversion.
 

@@ -22,9 +22,11 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -193,9 +195,9 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	}
 
 	out := new(bytes.Buffer)
-	cm := cliBouncers{db: db, cfg: cli.cfg}
+	cm := clibouncer.New(cli.cfg)
 
-	if err := cm.list(out); err != nil {
+	if err := cm.List(out, db); err != nil {
 		return err
 	}
 
@@ -214,9 +216,9 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 	}
 
 	out := new(bytes.Buffer)
-	cm := cliMachines{db: db, cfg: cli.cfg}
+	cm := climachine.New(cli.cfg)
 
-	if err := cm.list(out); err != nil {
+	if err := cm.List(out, db); err != nil {
 		return err
 	}
 
