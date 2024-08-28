@@ -1,4 +1,4 @@
-package main
+package clisupport
 
 import (
 	"archive/zip"
@@ -373,11 +373,13 @@ func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	return nil
 }
 
+type configGetter func() *csconfig.Config
+
 type cliSupport struct {
 	cfg configGetter
 }
 
-func NewCLISupport(cfg configGetter) *cliSupport {
+func New(cfg configGetter) *cliSupport {
 	return &cliSupport{
 		cfg: cfg,
 	}
