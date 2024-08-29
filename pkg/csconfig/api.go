@@ -490,6 +490,10 @@ func (c *LocalApiServerCfg) LoadAutoRegister() error {
 		return errors.New("missing token value for api.server.auto_register")
 	}
 
+	if len(c.AutoRegister.Token) < 32 {
+		return errors.New("token value for api.server.auto_register is too short (min 32 characters)")
+	}
+
 	if c.AutoRegister.AllowedRanges == nil {
 		return errors.New("missing allowed_ranges value for api.server.auto_register")
 	}

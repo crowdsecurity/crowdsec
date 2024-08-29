@@ -731,6 +731,8 @@ definitions:
         format: password
       registration_token:
         type: string
+        minLength: 32
+        maxLength: 255
     required:
       - machine_id
       - password
