@@ -1,10 +1,10 @@
-package main
+package cliitem
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIParser(cfg configGetter) *cliItem {
+func NewParser(cfg configGetter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.PARSERS,

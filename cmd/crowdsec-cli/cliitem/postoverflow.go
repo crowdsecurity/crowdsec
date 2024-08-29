@@ -1,10 +1,10 @@
-package main
+package cliitem
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIPostOverflow(cfg configGetter) *cliItem {
+func NewPostOverflow(cfg configGetter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.POSTOVERFLOWS,

@@ -1,10 +1,10 @@
-package main
+package cliitem
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIScenario(cfg configGetter) *cliItem {
+func NewScenario(cfg configGetter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.SCENARIOS,
