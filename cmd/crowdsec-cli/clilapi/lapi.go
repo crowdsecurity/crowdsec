@@ -33,7 +33,7 @@ const LAPIURLPrefix = "v1"
 type configGetter func() *csconfig.Config
 
 type cliLapi struct {
-	cfg           configGetter
+	cfg configGetter
 }
 
 func New(cfg configGetter) *cliLapi {
@@ -97,7 +97,7 @@ func (cli *cliLapi) status() error {
 	return nil
 }
 
-func (cli *cliLapi) register(apiURL string, outputFile string, machine string) error {
+func (cli *cliLapi) register(apiURL string, outputFile string, machine string, token string) error {
 	var err error
 
 	lapiUser := machine
@@ -118,11 +118,12 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	}
 
 	_, err = apiclient.RegisterClient(&apiclient.Config{
-		MachineID:     lapiUser,
-		Password:      password,
-		UserAgent:     cwversion.UserAgent(),
-		URL:           apiurl,
-		VersionPrefix: LAPIURLPrefix,
+		MachineID:         lapiUser,
+		Password:          password,
+		UserAgent:         cwversion.UserAgent(),
+		RegistrationToken: token,
+		URL:               apiurl,
+		VersionPrefix:     LAPIURLPrefix,
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("api client register: %w", err)
@@ -209,6 +210,7 @@ func (cli *cliLapi) newRegisterCmd() *cobra.Command {
 		apiURL     string
 		outputFile string
 		machine    string
+		token      string
 	)
 
 	cmd := &cobra.Command{
@@ -219,7 +221,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.register(apiURL, outputFile, machine)
+			return cli.register(apiURL, outputFile, machine, token)
 		},
 	}
 
@@ -227,6 +229,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	flags.StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
 	flags.StringVarP(&outputFile, "file", "f", "", "output file destination")
 	flags.StringVar(&machine, "machine", "", "Name of the machine to register with")
+	flags.StringVar(&token, "token", "", "Auto registration token to use")
 
 	return cmd
 }

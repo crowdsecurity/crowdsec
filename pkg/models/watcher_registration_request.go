@@ -27,6 +27,9 @@ type WatcherRegistrationRequest struct {
 	// Required: true
 	// Format: password
 	Password *strfmt.Password `json:"password"`
+
+	// registration token
+	RegistrationToken string `json:"registration_token,omitempty"`
 }
 
 // Validate validates this watcher registration request

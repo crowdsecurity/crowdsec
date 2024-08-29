@@ -236,32 +236,40 @@ type CapiWhitelist struct {
 	Cidrs []*net.IPNet `yaml:"cidrs,omitempty"`
 }
 
+type LocalAPIAutoRegisterCfg struct {
+	Enable              *bool        `yaml:"enabled"`
+	Token               string       `yaml:"token"`
+	AllowedRanges       []string     `yaml:"allowed_ranges,omitempty"`
+	AllowedRangesParsed []*net.IPNet `yaml:"-"`
+}
+
 /*local api service configuration*/
 type LocalApiServerCfg struct {
-	Enable                        *bool               `yaml:"enable"`
-	ListenURI                     string              `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
-	ListenSocket                  string              `yaml:"listen_socket,omitempty"`
-	TLS                           *TLSCfg             `yaml:"tls"`
-	DbConfig                      *DatabaseCfg        `yaml:"-"`
-	LogDir                        string              `yaml:"-"`
-	LogMedia                      string              `yaml:"-"`
-	OnlineClient                  *OnlineApiClientCfg `yaml:"online_client"`
-	ProfilesPath                  string              `yaml:"profiles_path,omitempty"`
-	ConsoleConfigPath             string              `yaml:"console_path,omitempty"`
-	ConsoleConfig                 *ConsoleConfig      `yaml:"-"`
-	Profiles                      []*ProfileCfg       `yaml:"-"`
-	LogLevel                      *log.Level          `yaml:"log_level"`
-	UseForwardedForHeaders        bool                `yaml:"use_forwarded_for_headers,omitempty"`
-	TrustedProxies                *[]string           `yaml:"trusted_proxies,omitempty"`
-	CompressLogs                  *bool               `yaml:"-"`
-	LogMaxSize                    int                 `yaml:"-"`
-	LogMaxAge                     int                 `yaml:"-"`
-	LogMaxFiles                   int                 `yaml:"-"`
-	TrustedIPs                    []string            `yaml:"trusted_ips,omitempty"`
-	PapiLogLevel                  *log.Level          `yaml:"papi_log_level"`
-	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
-	CapiWhitelistsPath            string              `yaml:"capi_whitelists_path,omitempty"`
-	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
+	Enable                        *bool                    `yaml:"enable"`
+	ListenURI                     string                   `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
+	ListenSocket                  string                   `yaml:"listen_socket,omitempty"`
+	TLS                           *TLSCfg                  `yaml:"tls"`
+	DbConfig                      *DatabaseCfg             `yaml:"-"`
+	LogDir                        string                   `yaml:"-"`
+	LogMedia                      string                   `yaml:"-"`
+	OnlineClient                  *OnlineApiClientCfg      `yaml:"online_client"`
+	ProfilesPath                  string                   `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
+	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
+	Profiles                      []*ProfileCfg            `yaml:"-"`
+	LogLevel                      *log.Level               `yaml:"log_level"`
+	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
+	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
+	CompressLogs                  *bool                    `yaml:"-"`
+	LogMaxSize                    int                      `yaml:"-"`
+	LogMaxAge                     int                      `yaml:"-"`
+	LogMaxFiles                   int                      `yaml:"-"`
+	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
+	PapiLogLevel                  *log.Level               `yaml:"papi_log_level"`
+	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
+	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
+	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
+	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 }
 
 func (c *LocalApiServerCfg) ClientURL() string {
@@ -346,6 +354,14 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 
 	if c.API.Server.CapiWhitelistsPath != "" && !inCli {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
+	}
+
+	if err := c.API.Server.LoadAutoRegister(); err != nil {
+		return err
+	}
+
+	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
+		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
 	}
 
 	c.API.Server.LogDir = c.Common.LogDir
@@ -454,4 +470,39 @@ func (c *Config) LoadAPIClient() error {
 	}
 
 	return c.API.Client.Load()
+}
+
+func (c *LocalApiServerCfg) LoadAutoRegister() error {
+	if c.AutoRegister == nil {
+		return nil
+	}
+
+	//Disable by default
+	if c.AutoRegister.Enable == nil {
+		c.AutoRegister.Enable = ptr.Of(false)
+	}
+
+	if !*c.AutoRegister.Enable {
+		return nil
+	}
+
+	if c.AutoRegister.Token == "" {
+		return errors.New("missing token value for api.server.auto_register")
+	}
+
+	if c.AutoRegister.AllowedRanges == nil {
+		return errors.New("missing allowed_ranges value for api.server.auto_register")
+	}
+
+	c.AutoRegister.AllowedRangesParsed = make([]*net.IPNet, 0, len(c.AutoRegister.AllowedRanges))
+
+	for _, ipRange := range c.AutoRegister.AllowedRanges {
+		_, ipNet, err := net.ParseCIDR(ipRange)
+		if err != nil {
+			return fmt.Errorf("auto_register: failed to parse allowed range '%s': %w", ipRange, err)
+		}
+		c.AutoRegister.AllowedRangesParsed = append(c.AutoRegister.AllowedRangesParsed, ipNet)
+	}
+
+	return nil
 }

@@ -23,9 +23,10 @@ type Controller struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	PluginChannel chan csplugin.ProfileAlert
-	ConsoleConfig csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
+	PluginChannel   chan csplugin.ProfileAlert
+	ConsoleConfig   csconfig.ConsoleConfig
+	TrustedIPs      []net.IPNet
+	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
 }
 
 type ControllerV1Config struct {
@@ -36,9 +37,10 @@ type ControllerV1Config struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	PluginChannel chan csplugin.ProfileAlert
-	ConsoleConfig csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
+	PluginChannel   chan csplugin.ProfileAlert
+	ConsoleConfig   csconfig.ConsoleConfig
+	TrustedIPs      []net.IPNet
+	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -59,6 +61,7 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		PluginChannel:      cfg.PluginChannel,
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
+		AutoRegisterCfg:    cfg.AutoRegisterCfg,
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 
