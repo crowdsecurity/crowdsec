@@ -66,7 +66,7 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 
 	if err != nil {
 		log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": *input.MachineID}).Errorf("Auto-register failed: %s", err)
-		gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
+		gctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
 		return
 	}
 
