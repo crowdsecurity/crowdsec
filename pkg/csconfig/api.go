@@ -474,6 +474,9 @@ func (c *Config) LoadAPIClient() error {
 
 func (c *LocalApiServerCfg) LoadAutoRegister() error {
 	if c.AutoRegister == nil {
+		c.AutoRegister = &LocalAPIAutoRegisterCfg{
+			Enable: ptr.Of(false),
+		}
 		return nil
 	}
 

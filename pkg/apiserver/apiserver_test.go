@@ -75,6 +75,9 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 	err := config.API.Server.LoadProfiles()
 	require.NoError(t, err)
 
+	err = config.API.Server.LoadAutoRegister()
+	require.NoError(t, err)
+
 	return config
 }
 
@@ -111,6 +114,9 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	}
 	config.API = &apiConfig
 	err := config.API.Server.LoadProfiles()
+	require.NoError(t, err)
+
+	err = config.API.Server.LoadAutoRegister()
 	require.NoError(t, err)
 
 	return config
