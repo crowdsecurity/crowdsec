@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -23,7 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type configGetter func() *csconfig.Config
+type configGetter = func() *csconfig.Config
 
 type cliCapi struct {
 	cfg configGetter
@@ -147,11 +149,11 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	return cmd
 }
 
-// QueryCAPIStatus checks if the Local API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
-func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
+// queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
+func queryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return false, false, fmt.Errorf("parsing api url: %w", err)
+		return false, false, err
 	}
 
 	itemsForAPI := hub.GetInstalledListForAPI()
@@ -176,7 +178,7 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		},
 	})
 	if err != nil {
-		return false, false, fmt.Errorf("new client api: %w", err)
+		return false, false, err
 	}
 
 	pw := strfmt.Password(password)
@@ -197,10 +199,11 @@ func QueryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 	if client.IsEnrolled() {
 		return true, true, nil
 	}
+
 	return true, false, nil
 }
 
-func (cli *cliCapi) status() error {
+func (cli *cliCapi) Status(out io.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
 
 	if err := require.CAPIRegistered(cfg); err != nil {
@@ -209,24 +212,22 @@ func (cli *cliCapi) status() error {
 
 	cred := cfg.API.Server.OnlineClient.Credentials
 
-	hub, err := require.Hub(cfg, nil, nil)
+	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
+	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
+
+	auth, enrolled, err := queryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 
-	log.Infof("Loaded credentials from %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
-
-	auth, enrolled, err := QueryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
-	if err != nil {
-		return fmt.Errorf("CAPI: failed to authenticate to Central API (CAPI): %s", err)
-	}
 	if auth {
-		log.Info("You can successfully interact with Central API (CAPI)")
+		fmt.Fprint(out, "You can successfully interact with Central API (CAPI)\n")
 	}
+
 	if enrolled {
-		log.Info("Your instance is enrolled in the console")
+		fmt.Fprint(out, "Your instance is enrolled in the console\n")
 	}
+
 	return nil
 }
 
@@ -237,7 +238,12 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.status()
+			hub, err := require.Hub(cli.cfg(), nil, nil)
+			if err != nil {
+				return err
+			}
+
+			return cli.Status(color.Output, hub)
 		},
 	}
 
