@@ -29,10 +29,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+const registrationToken = "igheethauCaeteSaiyee3LosohPhahze"
+
 var (
 	testMachineID = "test"
 	testPassword  = strfmt.Password("test")
-	MachineTest   = models.WatcherAuthRequest{
+	MachineTest   = models.WatcherRegistrationRequest{
 		MachineID: &testMachineID,
 		Password:  &testPassword,
 	}
@@ -64,6 +66,14 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 			ShareManualDecisions:  new(bool),
 			ShareTaintedScenarios: new(bool),
 			ShareCustomScenarios:  new(bool),
+		},
+		AutoRegister: &csconfig.LocalAPIAutoRegisterCfg{
+			Enable: ptr.Of(true),
+			Token:  registrationToken,
+			AllowedRanges: []string{
+				"127.0.0.1/8",
+				"::1/128",
+			},
 		},
 	}
 
@@ -257,8 +267,10 @@ func readDecisionsStreamResp(t *testing.T, resp *httptest.ResponseRecorder) (map
 	return response, resp.Code
 }
 
-func CreateTestMachine(t *testing.T, router *gin.Engine) string {
-	b, err := json.Marshal(MachineTest)
+func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
+	regReq := MachineTest
+	regReq.RegistrationToken = token
+	b, err := json.Marshal(regReq)
 	require.NoError(t, err)
 
 	body := string(b)

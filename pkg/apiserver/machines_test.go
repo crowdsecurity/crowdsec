@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -122,7 +123,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 func TestCreateMachineAlreadyExist(t *testing.T) {
 	router, _ := NewAPITest(t)
 
-	body := CreateTestMachine(t, router)
+	body := CreateTestMachine(t, router, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
@@ -136,4 +137,33 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 
 	assert.Equal(t, 403, w.Code)
 	assert.Equal(t, `{"message":"user 'test': user already exist"}`, w.Body.String())
+}
+
+func TestAutoRegistration(t *testing.T) {
+	router, _ := NewAPITest(t)
+
+	regReq := MachineTest
+	regReq.RegistrationToken = "vohl1feibechieG5coh8musheish2auj"
+	b, err := json.Marshal(regReq)
+	require.NoError(t, err)
+
+	body := string(b)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	router.ServeHTTP(w, req)
+
+	fmt.Printf("resp %v\n", w.Body.String())
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	/*body = CreateTestMachine(t, router, registrationToken)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusAccepted, w.Code)*/
 }
