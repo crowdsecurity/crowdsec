@@ -169,7 +169,7 @@ teardown() {
 
     rune -0 ./instance-crowdsec start
     rune -1 cscli lapi register --machine newmachine --token meh
-    assert_stderr --partial '500 Internal Server Error: API error: validation failure list:'
+    assert_stderr --partial '422 Unprocessable Entity: API error: http code 422, invalid request:'
     assert_stderr --partial 'registration_token in body should be at least 32 chars long'
 
     rune -0 cscli lapi register --machine newmachine --token 12345678901234567890123456789012
@@ -199,3 +199,15 @@ teardown() {
     assert_output "true"
 }
 
+@test "cscli lapi register --token (bad source ip)" {
+    config_set '.api.server.auto_registration.enabled=true'
+    config_set '.api.server.auto_registration.token="12345678901234567890123456789012"'
+    config_set '.api.server.auto_registration.allowed_ranges=["127.0.0.2/32"]'
+
+    rune -0 ./instance-crowdsec start
+
+    rune -1 cscli lapi register --machine outofrange --token 12345678901234567890123456789012
+    assert_stderr --partial "401 Unauthorized: API error: IP not in allowed range for auto registration"
+    rune -1 cscli machines inspect outofrange -o json
+    assert_stderr --partial "unable to read machine data 'outofrange': user 'outofrange': user doesn't exist"
+}
