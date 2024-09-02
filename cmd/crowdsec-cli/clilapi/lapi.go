@@ -139,10 +139,11 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string, t
 		dumpFile = ""
 	}
 
-	apiCfg := csconfig.ApiCredentialsCfg{
-		Login:    lapiUser,
-		Password: password.String(),
-		URL:      apiURL,
+	apiCfg := cfg.API.Client.Credentials
+	apiCfg.Login = lapiUser
+	apiCfg.Password = password.String()
+	if apiURL != "" {
+		apiCfg.URL = apiURL
 	}
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)

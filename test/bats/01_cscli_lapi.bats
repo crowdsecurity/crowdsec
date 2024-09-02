@@ -127,3 +127,17 @@ teardown() {
     rune -0 jq -r '.msg' <(stderr)
     assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
 }
+
+@test "cscli lapi register" {
+    rune -1 cscli lapi register
+    assert_stderr --partial "connection refused"
+
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+
+    rune -0 ./instance-crowdsec start
+    rune -0 cscli lapi register
+    assert_stderr --partial "Successfully registered to Local API"
+    assert_stderr --partial "Local API credentials written to '$LOCAL_API_CREDENTIALS'"
+    assert_stderr --partial "Run 'sudo systemctl reload crowdsec' for the new configuration to be effective."
+}
+
