@@ -58,7 +58,7 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 	}
 
 	if err := input.Validate(strfmt.Default); err != nil {
-		c.HandleDBErrors(gctx, err)
+		gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": err.Error()})
 		return
 	}
 
