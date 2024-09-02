@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 var (
@@ -102,6 +103,10 @@ cscli dashboard remove
 			}
 
 			log.Warn("cscli dashboard will be deprecated in version 1.7.0, read more at https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
+
+			if version.System == "docker" {
+				return errors.New("cscli dashboard is not supported whilst running CrowdSec within a container please see: https://github.com/crowdsecurity/example-docker-compose/tree/main/basic")
+			}
 
 			return nil
 		},
