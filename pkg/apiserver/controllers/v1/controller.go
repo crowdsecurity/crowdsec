@@ -7,7 +7,6 @@ import (
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -23,7 +22,6 @@ type Controller struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	PluginChannel   chan csplugin.ProfileAlert
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
@@ -37,7 +35,6 @@ type ControllerV1Config struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	PluginChannel   chan csplugin.ProfileAlert
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
@@ -58,7 +55,6 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		Profiles:           profiles,
 		AlertsAddChan:      cfg.AlertsAddChan,
 		DecisionDeleteChan: cfg.DecisionDeleteChan,
-		PluginChannel:      cfg.PluginChannel,
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,

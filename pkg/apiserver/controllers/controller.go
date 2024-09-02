@@ -12,7 +12,6 @@ import (
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -24,7 +23,6 @@ type Controller struct {
 	Profiles                      []*csconfig.ProfileCfg
 	AlertsAddChan                 chan []*models.Alert
 	DecisionDeleteChan            chan []*models.Decision
-	PluginChannel                 chan csplugin.ProfileAlert
 	Log                           *log.Logger
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
@@ -87,7 +85,6 @@ func (c *Controller) NewV1() error {
 		ProfilesCfg:        c.Profiles,
 		DecisionDeleteChan: c.DecisionDeleteChan,
 		AlertsAddChan:      c.AlertsAddChan,
-		PluginChannel:      c.PluginChannel,
 		ConsoleConfig:      *c.ConsoleConfig,
 		TrustedIPs:         c.TrustedIPs,
 		AutoRegisterCfg:    c.AutoRegisterCfg,

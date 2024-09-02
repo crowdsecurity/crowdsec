@@ -23,7 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -523,10 +522,6 @@ func (s *APIServer) Shutdown() error {
 	}
 
 	return nil
-}
-
-func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
-	s.controller.PluginChannel = broker.PluginChannel
 }
 
 func (s *APIServer) InitController() error {

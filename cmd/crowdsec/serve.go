@@ -59,7 +59,6 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
-	pluginTomb = tomb.Tomb{}
 	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
@@ -331,7 +330,6 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
-	pluginTomb = tomb.Tomb{}
 	lpMetricsTomb = tomb.Tomb{}
 
 	ctx := context.TODO()
@@ -411,7 +409,6 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 
 	if flags.TestMode {
 		log.Infof("Configuration test done")
-		pluginBroker.Kill()
 
 		return nil
 	}

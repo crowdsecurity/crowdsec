@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -128,33 +126,6 @@ func TestCreateAlert(t *testing.T) {
 	w = lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, `["1"]`, w.Body.String())
-}
-
-func TestCreateAlertChannels(t *testing.T) {
-	apiServer, config := NewAPIServer(t)
-	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
-	apiServer.InitController()
-
-	loginResp := LoginToTestAPI(t, apiServer.router, config)
-	lapi := LAPI{router: apiServer.router, loginResp: loginResp}
-
-	var (
-		pd csplugin.ProfileAlert
-		wg sync.WaitGroup
-	)
-
-	wg.Add(1)
-
-	go func() {
-		pd = <-apiServer.controller.PluginChannel
-
-		wg.Done()
-	}()
-
-	lapi.InsertAlertFromFile(t, "./tests/alert_ssh-bf.json")
-	wg.Wait()
-	assert.Len(t, pd.Alert.Decisions, 1)
-	apiServer.Close()
 }
 
 func TestAlertListFilters(t *testing.T) {

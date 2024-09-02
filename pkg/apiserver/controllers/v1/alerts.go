@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -107,23 +106,6 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	return data
 }
 
-func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
-	if c.PluginChannel != nil {
-	RETRY:
-		for try := range 3 {
-			select {
-			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
-				log.Debugf("alert sent to Plugin channel")
-
-				break RETRY
-			default:
-				log.Warningf("Cannot send alert to Plugin channel (try: %d)", try)
-				time.Sleep(time.Millisecond * 50)
-			}
-		}
-	}
-}
-
 func normalizeScope(scope string) string {
 	switch strings.ToLower(scope) {
 	case "ip":
@@ -180,7 +162,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				decision.UUID = uuid.NewString()
 			}
 
-			for pIdx, profile := range c.Profiles {
+			for _, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					profile.Logger.Warningf("error while evaluating profile %s : %v", profile.Cfg.Name, err)
@@ -191,8 +173,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				if !matched {
 					continue
 				}
-
-				c.sendAlertToPluginChannel(alert, uint(pIdx))
 
 				if profile.Cfg.OnSuccess == "break" {
 					break
@@ -207,7 +187,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			continue
 		}
 
-		for pIdx, profile := range c.Profiles {
+		for _, profile := range c.Profiles {
 			profileDecisions, matched, err := profile.EvaluateProfile(alert)
 			forceBreak := false
 
@@ -241,9 +221,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			if len(alert.Decisions) == 0 { // non manual decision
 				alert.Decisions = append(alert.Decisions, profileDecisions...)
 			}
-
-			profileAlert := *alert
-			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
 
 			if profile.Cfg.OnSuccess == "break" || forceBreak {
 				break
