@@ -161,3 +161,41 @@ teardown() {
     rune -0 jq -r '.isValidated' <(output)
     assert_output "true"
 }
+
+@test "cscli lapi register --token (ignored)" {
+    # A token is ignored if the server is not configured with it
+    rune -1 cscli lapi register --machine newmachine --token meh
+    assert_stderr --partial "connection refused"
+
+    rune -0 ./instance-crowdsec start
+    rune -1 cscli lapi register --machine newmachine --token meh
+    assert_stderr --partial '500 Internal Server Error: API error: validation failure list:'
+    assert_stderr --partial 'registration_token in body should be at least 32 chars long'
+
+    rune -0 cscli lapi register --machine newmachine --token 12345678901234567890123456789012
+    assert_stderr --partial "Successfully registered to Local API"
+
+    rune -0 cscli machines inspect newmachine -o json
+    rune -0 jq -r '.isValidated' <(output)
+    assert_output "null"
+}
+
+@test "cscli lapi register --token" {
+    config_set '.api.server.auto_registration.enabled=true'
+    config_set '.api.server.auto_registration.token="12345678901234567890123456789012"'
+    config_set '.api.server.auto_registration.allowed_ranges=["127.0.0.1/32"]'
+
+    rune -0 ./instance-crowdsec start
+
+    rune -1 cscli lapi register --machine malicious --token 123456789012345678901234badtoken
+    assert_stderr --partial "401 Unauthorized: API error: invalid token for auto registration"
+    rune -1 cscli machines inspect malicious -o json
+    assert_stderr --partial "unable to read machine data 'malicious': user 'malicious': user doesn't exist"
+
+    rune -0 cscli lapi register --machine newmachine --token 12345678901234567890123456789012
+    assert_stderr --partial "Successfully registered to Local API"
+    rune -0 cscli machines inspect newmachine -o json
+    rune -0 jq -r '.isValidated' <(output)
+    assert_output "true"
+}
+
