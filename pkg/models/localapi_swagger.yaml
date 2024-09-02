@@ -312,6 +312,9 @@ paths:
         '201':
           description: Watcher Created
           headers: {}
+        '202':
+          description: Watcher Validated
+          headers: {}
         '400':
           description: "400 response"
           schema:
@@ -726,6 +729,10 @@ definitions:
       password:
         type: string
         format: password
+      registration_token:
+        type: string
+        minLength: 32
+        maxLength: 255
     required:
       - machine_id
       - password
