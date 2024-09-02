@@ -29,6 +29,7 @@ type Controller struct {
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
 	HandlerV1                     *v1.Controller
+	AutoRegisterCfg               *csconfig.LocalAPIAutoRegisterCfg
 	DisableRemoteLapiRegistration bool
 }
 
@@ -89,6 +90,7 @@ func (c *Controller) NewV1() error {
 		PluginChannel:      c.PluginChannel,
 		ConsoleConfig:      *c.ConsoleConfig,
 		TrustedIPs:         c.TrustedIPs,
+		AutoRegisterCfg:    c.AutoRegisterCfg,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)

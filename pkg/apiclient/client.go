@@ -177,7 +177,7 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 
-	resp, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password})
+	resp, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password, RegistrationToken: config.RegistrationToken})
 	/*if we have http status, return it*/
 	if err != nil {
 		if resp != nil && resp.Response != nil {

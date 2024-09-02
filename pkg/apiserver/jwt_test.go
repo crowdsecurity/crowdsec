@@ -12,7 +12,7 @@ import (
 func TestLogin(t *testing.T) {
 	router, config := NewAPITest(t)
 
-	body := CreateTestMachine(t, router)
+	body := CreateTestMachine(t, router, "")
 
 	// Login with machine not validated yet
 	w := httptest.NewRecorder()
