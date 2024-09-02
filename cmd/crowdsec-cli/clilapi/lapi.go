@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"slices"
 	"sort"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -30,7 +32,7 @@ import (
 
 const LAPIURLPrefix = "v1"
 
-type configGetter func() *csconfig.Config
+type configGetter = func() *csconfig.Config
 
 type cliLapi struct {
 	cfg configGetter
@@ -42,11 +44,11 @@ func New(cfg configGetter) *cliLapi {
 	}
 }
 
-// QueryLAPIStatus checks if the Local API is reachable, and if the credentials are correct
-func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) error {
+// queryLAPIStatus checks if the Local API is reachable, and if the credentials are correct.
+func queryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return fmt.Errorf("parsing api url: %w", err)
+		return false, err
 	}
 
 	client, err := apiclient.NewDefaultClient(apiURL,
@@ -54,7 +56,7 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		cwversion.UserAgent(),
 		nil)
 	if err != nil {
-		return fmt.Errorf("init default client: %w", err)
+		return false, err
 	}
 
 	pw := strfmt.Password(password)
@@ -69,30 +71,26 @@ func QueryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 
 	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return true, nil
 }
 
-func (cli *cliLapi) status() error {
+func (cli *cliLapi) Status(out io.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
 
 	cred := cfg.API.Client.Credentials
 
-	hub, err := require.Hub(cfg, nil, nil)
+	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Client.CredentialsFilePath)
+	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
+
+	_, err := queryLAPIStatus(hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
-		return err
-	}
-
-	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
-	log.Infof("Trying to authenticate with username %s on %s", cred.Login, cred.URL)
-
-	if err := QueryLAPIStatus(hub, cred.URL, cred.Login, cred.Password); err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
-	log.Infof("You can successfully interact with Local API (LAPI)")
+	fmt.Fprintf(out, "You can successfully interact with Local API (LAPI)\n")
 
 	return nil
 }
@@ -198,7 +196,12 @@ func (cli *cliLapi) newStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.status()
+			hub, err := require.Hub(cli.cfg(), nil, nil)
+			if err != nil {
+				return err
+			}
+
+			return cli.Status(color.Output, hub)
 		},
 	}
 

@@ -1,4 +1,4 @@
-package main
+package clibouncer
 
 import (
 	"encoding/csv"
@@ -21,6 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
@@ -28,12 +29,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter = func() *csconfig.Config
+
 type cliBouncers struct {
 	db  *database.Client
 	cfg configGetter
 }
 
-func NewCLIBouncers(cfg configGetter) *cliBouncers {
+func New(cfg configGetter) *cliBouncers {
 	return &cliBouncers{
 		cfg: cfg,
 	}
@@ -156,8 +159,11 @@ func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 	return nil
 }
 
-func (cli *cliBouncers) list(out io.Writer) error {
-	bouncers, err := cli.db.ListBouncers()
+func (cli *cliBouncers) List(out io.Writer, db *database.Client) error {
+	// XXX: must use the provided db object, the one in the struct might be nil
+	// (calling List directly skips the PersistentPreRunE)
+
+	bouncers, err := db.ListBouncers()
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
 	}
@@ -194,7 +200,7 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list(color.Output)
+			return cli.List(color.Output, cli.db)
 		},
 	}
 

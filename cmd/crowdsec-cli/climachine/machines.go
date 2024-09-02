@@ -1,4 +1,4 @@
-package main
+package climachine
 
 import (
 	"encoding/csv"
@@ -49,12 +49,14 @@ func getLastHeartbeat(m *ent.Machine) (string, bool) {
 	return hb, true
 }
 
+type configGetter = func() *csconfig.Config
+
 type cliMachines struct {
 	db  *database.Client
 	cfg configGetter
 }
 
-func NewCLIMachines(cfg configGetter) *cliMachines {
+func New(cfg configGetter) *cliMachines {
 	return &cliMachines{
 		cfg: cfg,
 	}
@@ -208,8 +210,11 @@ func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	return nil
 }
 
-func (cli *cliMachines) list(out io.Writer) error {
-	machines, err := cli.db.ListMachines()
+func (cli *cliMachines) List(out io.Writer, db *database.Client) error {
+	// XXX: must use the provided db object, the one in the struct might be nil
+	// (calling List directly skips the PersistentPreRunE)
+
+	machines, err := db.ListMachines()
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %w", err)
 	}
@@ -247,7 +252,7 @@ func (cli *cliMachines) newListCmd() *cobra.Command {
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.list(color.Output)
+			return cli.List(color.Output, cli.db)
 		},
 	}
 
