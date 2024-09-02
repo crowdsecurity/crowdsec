@@ -21,13 +21,21 @@ const (
 	CapiListsMachineID = types.ListOrigin
 )
 
+type MachineNotFoundError struct {
+	MachineID string
+}
+
+func (e *MachineNotFoundError) Error() string {
+	return fmt.Sprintf("'%s' does not exist", e.MachineID)
+}
+
 func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
 	var heartbeat time.Time
 
-	if baseMetrics.Metrics == nil || len(baseMetrics.Metrics) == 0 {
+	if len(baseMetrics.Metrics) == 0 {
 		heartbeat = time.Now().UTC()
 	} else {
 		heartbeat = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
@@ -168,7 +176,7 @@ func (c *Client) DeleteWatcher(name string) error {
 	}
 
 	if nbDeleted == 0 {
-		return errors.New("machine doesn't exist")
+		return &MachineNotFoundError{MachineID: name}
 	}
 
 	return nil
@@ -197,8 +205,8 @@ func (c *Client) UpdateMachineLastHeartBeat(machineID string) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
-	_, err := c.Ent.Machine.UpdateOneID(ID).
+func (c *Client) UpdateMachineScenarios(scenarios string, id int) error {
+	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetUpdatedAt(time.Now().UTC()).
 		SetScenarios(scenarios).
 		Save(c.CTX)
@@ -209,8 +217,8 @@ func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
-	_, err := c.Ent.Machine.UpdateOneID(ID).
+func (c *Client) UpdateMachineIP(ipAddr string, id int) error {
+	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
@@ -220,8 +228,8 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
-	_, err := c.Ent.Machine.UpdateOneID(ID).
+func (c *Client) UpdateMachineVersion(ipAddr string, id int) error {
+	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetVersion(ipAddr).
 		Save(c.CTX)
 	if err != nil {

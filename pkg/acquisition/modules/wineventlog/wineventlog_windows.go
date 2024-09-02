@@ -246,11 +246,11 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if w.config.EventChannel != "" && w.config.XPathQuery != "" {
-		return fmt.Errorf("event_channel and xpath_query are mutually exclusive")
+		return errors.New("event_channel and xpath_query are mutually exclusive")
 	}
 
 	if w.config.EventChannel == "" && w.config.XPathQuery == "" {
-		return fmt.Errorf("event_channel or xpath_query must be set")
+		return errors.New("event_channel or xpath_query must be set")
 	}
 
 	w.config.Mode = configuration.TAIL_MODE

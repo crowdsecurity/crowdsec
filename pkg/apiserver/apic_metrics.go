@@ -54,7 +54,11 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
 		rcMetrics.Version = ptr.Of(bouncer.Version)
 		rcMetrics.Name = bouncer.Name
-		rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
+
+		rcMetrics.LastPull = 0
+		if bouncer.LastPull != nil {
+			rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
+		}
 
 		rcMetrics.Metrics = make([]*models.DetailedMetrics, 0)
 
@@ -92,14 +96,19 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
 		lpMetrics.Version = ptr.Of(lp.Version)
 		lpMetrics.Name = lp.MachineId
-		lpMetrics.LastPush = lp.LastPush.UTC().Unix()
-		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
 
+		lpMetrics.LastPush = 0
+		if lp.LastPush != nil {
+			lpMetrics.LastPush = lp.LastPush.UTC().Unix()
+		}
+
+		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
 		lpMetrics.Datasources = lp.Datasources
+
+		hubItems := models.HubItems{}
 
 		if lp.Hubstate != nil {
 			// must carry over the hub state even if nothing is installed
-			hubItems := models.HubItems{}
 			for itemType, items := range lp.Hubstate {
 				hubItems[itemType] = []models.HubItem{}
 				for _, item := range items {
@@ -109,12 +118,10 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 						Version: item.Version,
 					})
 				}
-
-				lpMetrics.HubItems = hubItems
 			}
-		} else {
-			lpMetrics.HubItems = models.HubItems{}
 		}
+
+		lpMetrics.HubItems = hubItems
 
 		lpMetrics.Metrics = make([]*models.DetailedMetrics, 0)
 
@@ -203,11 +210,16 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	bouncersInfo := make([]*models.MetricsBouncerInfo, len(bouncers))
 
 	for i, bouncer := range bouncers {
+		lastPull := ""
+		if bouncer.LastPull != nil {
+			lastPull = bouncer.LastPull.Format(time.RFC3339)
+		}
+
 		bouncersInfo[i] = &models.MetricsBouncerInfo{
 			Version:    bouncer.Version,
 			CustomName: bouncer.Name,
 			Name:       bouncer.Type,
-			LastPull:   bouncer.LastPull.Format(time.RFC3339),
+			LastPull:   lastPull,
 		}
 	}
 
@@ -330,6 +342,7 @@ func (a *apic) SendUsageMetrics() {
 
 	firstRun := true
 
+	log.Debugf("Start sending usage metrics to CrowdSec Central API (interval: %s once, then %s)", a.usageMetricsIntervalFirst, a.usageMetricsInterval)
 	ticker := time.NewTicker(a.usageMetricsIntervalFirst)
 
 	for {

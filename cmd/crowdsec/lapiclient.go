@@ -16,20 +16,6 @@ import (
 )
 
 func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.Hub) (*apiclient.ApiClient, error) {
-	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-	if err != nil {
-		return nil, fmt.Errorf("loading list of installed hub scenarios: %w", err)
-	}
-
-	appsecRules, err := hub.GetInstalledNamesByType(cwhub.APPSEC_RULES)
-	if err != nil {
-		return nil, fmt.Errorf("loading list of installed hub appsec rules: %w", err)
-	}
-
-	installedScenariosAndAppsecRules := make([]string, 0, len(scenarios)+len(appsecRules))
-	installedScenariosAndAppsecRules = append(installedScenariosAndAppsecRules, scenarios...)
-	installedScenariosAndAppsecRules = append(installedScenariosAndAppsecRules, appsecRules...)
-
 	apiURL, err := url.Parse(credentials.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing api url ('%s'): %w", credentials.URL, err)
@@ -42,28 +28,18 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 
 	password := strfmt.Password(credentials.Password)
 
+	itemsForAPI := hub.GetInstalledListForAPI()
+
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     credentials.Login,
 		Password:      password,
-		Scenarios:     installedScenariosAndAppsecRules,
+		Scenarios:     itemsForAPI,
 		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		PapiURL:       papiURL,
 		VersionPrefix: "v1",
 		UpdateScenario: func() ([]string, error) {
-			scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-			if err != nil {
-				return nil, err
-			}
-			appsecRules, err := hub.GetInstalledNamesByType(cwhub.APPSEC_RULES)
-			if err != nil {
-				return nil, err
-			}
-			ret := make([]string, 0, len(scenarios)+len(appsecRules))
-			ret = append(ret, scenarios...)
-			ret = append(ret, appsecRules...)
-
-			return ret, nil
+			return itemsForAPI, nil
 		},
 	})
 	if err != nil {
@@ -73,7 +49,7 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 	authResp, _, err := client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &credentials.Login,
 		Password:  &password,
-		Scenarios: installedScenariosAndAppsecRules,
+		Scenarios: itemsForAPI,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("authenticate watcher (%s): %w", credentials.Login, err)

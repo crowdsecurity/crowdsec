@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -19,8 +20,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 var (
@@ -68,6 +71,10 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			if version.System == "docker" {
+				return errors.New("cscli dashboard is not supported whilst running CrowdSec within a container please see: https://github.com/crowdsecurity/example-docker-compose/tree/main/basic")
+			}
+
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
@@ -136,7 +143,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				isValid := passwordIsValid(metabasePassword)
 				for !isValid {
-					metabasePassword = generatePassword(16)
+					metabasePassword = idgen.GeneratePassword(16)
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}
@@ -277,7 +284,7 @@ cscli dashboard remove --force
 					return fmt.Errorf("unable to ask to force: %s", err)
 				}
 				if !answer {
-					return fmt.Errorf("user stated no to continue")
+					return errors.New("user stated no to continue")
 				}
 			}
 			if metabase.IsContainerExist(metabaseContainerID) {
@@ -289,7 +296,7 @@ cscli dashboard remove --force
 				if err == nil { // if group exist, remove it
 					groupDelCmd, err := exec.LookPath("groupdel")
 					if err != nil {
-						return fmt.Errorf("unable to find 'groupdel' command, can't continue")
+						return errors.New("unable to find 'groupdel' command, can't continue")
 					}
 
 					groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
@@ -366,7 +373,7 @@ func checkSystemMemory(forceYes *bool) error {
 		}
 
 		if !answer {
-			return fmt.Errorf("user stated no to continue")
+			return errors.New("user stated no to continue")
 		}
 
 		return nil
@@ -399,7 +406,7 @@ func disclaimer(forceYes *bool) error {
 		}
 
 		if !answer {
-			return fmt.Errorf("user stated no to responsibilities")
+			return errors.New("user stated no to responsibilities")
 		}
 
 		return nil
@@ -435,7 +442,7 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 
 	groupAddCmd, err := exec.LookPath("groupadd")
 	if err != nil {
-		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+		return dockerGroup, errors.New("unable to find 'groupadd' command, can't continue")
 	}
 
 	groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}

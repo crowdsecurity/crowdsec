@@ -12,6 +12,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
+type BouncerNotFoundError struct {
+	BouncerName string
+}
+
+func (e *BouncerNotFoundError) Error() string {
+	return fmt.Sprintf("'%s' does not exist", e.BouncerName)
+}
+
 func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string, baseMetrics models.BaseMetrics) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
@@ -88,7 +96,7 @@ func (c *Client) DeleteBouncer(name string) error {
 	}
 
 	if nbDeleted == 0 {
-		return errors.New("bouncer doesn't exist")
+		return &BouncerNotFoundError{BouncerName: name}
 	}
 
 	return nil

@@ -331,8 +331,9 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		originalHTTPRequest.Header.Set("User-Agent", userAgent)
 		r.Header.Set("User-Agent", userAgent) //Override the UA in the original request, as this is what will be used by the waf engine
 	} else {
-		//If we don't have a forwarded UA, delete the one that was set by the bouncer
+		//If we don't have a forwarded UA, delete the one that was set by the remediation in both original and incoming
 		originalHTTPRequest.Header.Del("User-Agent")
+		r.Header.Del("User-Agent")
 	}
 
 	parsedURL, err := url.Parse(clientURI)

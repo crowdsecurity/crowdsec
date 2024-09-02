@@ -9,11 +9,11 @@ import (
 func (i *Item) enable() error {
 	if i.State.Installed {
 		if i.State.Tainted {
-			return fmt.Errorf("%s is tainted, won't enable unless --force", i.Name)
+			return fmt.Errorf("%s is tainted, won't overwrite unless --force", i.Name)
 		}
 
 		if i.State.IsLocal() {
-			return fmt.Errorf("%s is local, won't enable", i.Name)
+			return fmt.Errorf("%s is local, won't overwrite", i.Name)
 		}
 
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date

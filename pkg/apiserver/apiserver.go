@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -235,6 +235,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		Log:                           clog,
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
+		AutoRegisterCfg:               config.AutoRegister,
 	}
 
 	var (

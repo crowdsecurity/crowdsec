@@ -3,6 +3,7 @@
 package csplugin
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -77,14 +78,14 @@ func CheckPerms(path string) error {
 		return fmt.Errorf("while getting owner security info: %w", err)
 	}
 	if !sd.IsValid() {
-		return fmt.Errorf("security descriptor is invalid")
+		return errors.New("security descriptor is invalid")
 	}
 	owner, _, err := sd.Owner()
 	if err != nil {
 		return fmt.Errorf("while getting owner: %w", err)
 	}
 	if !owner.IsValid() {
-		return fmt.Errorf("owner is invalid")
+		return errors.New("owner is invalid")
 	}
 
 	if !owner.Equals(systemSid) && !owner.Equals(currentUserSid) && !owner.Equals(adminSid) {
