@@ -2,12 +2,12 @@ package apiserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -142,8 +142,9 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 func TestAutoRegistration(t *testing.T) {
 	router, _ := NewAPITest(t)
 
+	//Invalid registration token / valid source IP
 	regReq := MachineTest
-	regReq.RegistrationToken = "vohl1feibechieG5coh8musheish2auj"
+	regReq.RegistrationToken = invalidRegistrationToken
 	b, err := json.Marshal(regReq)
 	require.NoError(t, err)
 
@@ -152,18 +153,72 @@ func TestAutoRegistration(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
+	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)
-
-	fmt.Printf("resp %v\n", w.Body.String())
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	/*body = CreateTestMachine(t, router, registrationToken)
+	//Invalid registration token / invalid source IP
+	regReq = MachineTest
+	regReq.RegistrationToken = invalidRegistrationToken
+	b, err = json.Marshal(regReq)
+	require.NoError(t, err)
+
+	body = string(b)
 
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
+	req.RemoteAddr = "42.42.42.42:4242"
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusAccepted, w.Code)*/
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	//valid registration token / invalid source IP
+	regReq = MachineTest
+	regReq.RegistrationToken = validRegistrationToken
+	b, err = json.Marshal(regReq)
+	require.NoError(t, err)
+
+	body = string(b)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	req.RemoteAddr = "42.42.42.42:4242"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	//Valid registration token / valid source IP
+	regReq = MachineTest
+	regReq.RegistrationToken = validRegistrationToken
+	b, err = json.Marshal(regReq)
+	require.NoError(t, err)
+
+	body = string(b)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	req.RemoteAddr = "127.0.0.1:4242"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusAccepted, w.Code)
+
+	//No token / valid source IP
+	regReq = MachineTest
+	regReq.MachineID = ptr.Of("test2")
+	b, err = json.Marshal(regReq)
+	require.NoError(t, err)
+
+	body = string(b)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	req.RemoteAddr = "127.0.0.1:4242"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
 }

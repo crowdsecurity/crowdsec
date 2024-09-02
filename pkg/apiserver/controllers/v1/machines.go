@@ -16,17 +16,13 @@ import (
 func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, error) {
 
 	if !*c.AutoRegisterCfg.Enable {
-		fmt.Printf("AutoRegisterCfg.Enable: %v\n", *c.AutoRegisterCfg.Enable)
 		return false, nil
 	}
-
-	fmt.Printf("client ip: %s", gctx.ClientIP())
 
 	clientIP := net.ParseIP(gctx.ClientIP())
 
 	//Can probaby happen if using unix socket ?
 	if clientIP == nil {
-		fmt.Printf("clientIP: %v\n", clientIP)
 		return false, nil
 	}
 
@@ -67,8 +63,6 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 	}
 
 	autoRegister, err := c.shouldAutoRegister(input.RegistrationToken, gctx)
-
-	fmt.Printf("autoRegister: %v | err: %s\n", autoRegister, err)
 
 	if err != nil {
 		log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": *input.MachineID}).Errorf("Auto-register failed: %s", err)

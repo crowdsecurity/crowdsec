@@ -29,7 +29,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const registrationToken = "igheethauCaeteSaiyee3LosohPhahze"
+const validRegistrationToken = "igheethauCaeteSaiyee3LosohPhahze"
+const invalidRegistrationToken = "vohl1feibechieG5coh8musheish2auj"
 
 var (
 	testMachineID = "test"
@@ -69,7 +70,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 		},
 		AutoRegister: &csconfig.LocalAPIAutoRegisterCfg{
 			Enable: ptr.Of(true),
-			Token:  registrationToken,
+			Token:  validRegistrationToken,
 			AllowedRanges: []string{
 				"127.0.0.1/8",
 				"::1/128",
