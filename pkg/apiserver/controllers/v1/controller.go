@@ -63,8 +63,8 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		TrustedIPs:         cfg.TrustedIPs,
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
 	}
-	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 
+	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 	if err != nil {
 		return v1, err
 	}

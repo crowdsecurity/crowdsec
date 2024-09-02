@@ -142,6 +142,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string, t
 	apiCfg := cfg.API.Client.Credentials
 	apiCfg.Login = lapiUser
 	apiCfg.Password = password.String()
+
 	if apiURL != "" {
 		apiCfg.URL = apiURL
 	}

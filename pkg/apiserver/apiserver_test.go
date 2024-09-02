@@ -29,8 +29,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const validRegistrationToken = "igheethauCaeteSaiyee3LosohPhahze"
-const invalidRegistrationToken = "vohl1feibechieG5coh8musheish2auj"
+const (
+	validRegistrationToken   = "igheethauCaeteSaiyee3LosohPhahze"
+	invalidRegistrationToken = "vohl1feibechieG5coh8musheish2auj"
+)
 
 var (
 	testMachineID = "test"

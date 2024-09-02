@@ -38,26 +38,26 @@ teardown() {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     rm -f "$LOCAL_API_CREDENTIALS"
     rune -1 cscli lapi status
-    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_stderr --partial "loading api client: while reading yaml file: open $LOCAL_API_CREDENTIALS: no such file or directory"
 
     rune -1 cscli alerts list
-    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_stderr --partial "loading api client: while reading yaml file: open $LOCAL_API_CREDENTIALS: no such file or directory"
 
     rune -1 cscli decisions list
-    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_stderr --partial "loading api client: while reading yaml file: open $LOCAL_API_CREDENTIALS: no such file or directory"
 }
 
 @test "cscli - empty LAPI credentials file" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     : > "$LOCAL_API_CREDENTIALS"
     rune -1 cscli lapi status
-    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+    assert_stderr --partial "no credentials or URL found in api client configuration '$LOCAL_API_CREDENTIALS'"
 
     rune -1 cscli alerts list
-    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+    assert_stderr --partial "no credentials or URL found in api client configuration '$LOCAL_API_CREDENTIALS'"
 
     rune -1 cscli decisions list
-    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+    assert_stderr --partial "no credentials or URL found in api client configuration '$LOCAL_API_CREDENTIALS'"
 }
 
 @test "cscli - LAPI credentials file can reference env variables" {

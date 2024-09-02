@@ -477,10 +477,11 @@ func (c *LocalApiServerCfg) LoadAutoRegister() error {
 		c.AutoRegister = &LocalAPIAutoRegisterCfg{
 			Enable: ptr.Of(false),
 		}
+
 		return nil
 	}
 
-	//Disable by default
+	// Disable by default
 	if c.AutoRegister.Enable == nil {
 		c.AutoRegister.Enable = ptr.Of(false)
 	}
@@ -508,6 +509,7 @@ func (c *LocalApiServerCfg) LoadAutoRegister() error {
 		if err != nil {
 			return fmt.Errorf("auto_register: failed to parse allowed range '%s': %w", ipRange, err)
 		}
+
 		c.AutoRegister.AllowedRangesParsed = append(c.AutoRegister.AllowedRangesParsed, ipNet)
 	}
 

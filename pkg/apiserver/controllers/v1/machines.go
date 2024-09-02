@@ -14,40 +14,35 @@ import (
 )
 
 func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, error) {
-
 	if !*c.AutoRegisterCfg.Enable {
 		return false, nil
 	}
 
 	clientIP := net.ParseIP(gctx.ClientIP())
 
-	//Can probaby happen if using unix socket ?
+	// Can probaby happen if using unix socket ?
 	if clientIP == nil {
 		log.Warnf("Failed to parse client IP for watcher self registration: %s", gctx.ClientIP())
 		return false, nil
 	}
 
-	//If we have a token, try to perform auto registration
-	if token != "" && c.AutoRegisterCfg != nil {
-		if token != c.AutoRegisterCfg.Token {
-			return false, errors.New("invalid token for auto registration")
-		}
+	if token == "" || c.AutoRegisterCfg == nil {
+		return false, nil
+	}
 
-		found := false
+	// Check the token
+	if token != c.AutoRegisterCfg.Token {
+		return false, errors.New("invalid token for auto registration")
+	}
 
-		for _, ipRange := range c.AutoRegisterCfg.AllowedRangesParsed {
-			if ipRange.Contains(clientIP) {
-				found = true
-				break
-			}
-		}
-
-		if found {
+	// Check the source IP
+	for _, ipRange := range c.AutoRegisterCfg.AllowedRangesParsed {
+		if ipRange.Contains(clientIP) {
 			return true, nil
 		}
-		return false, errors.New("IP not in allowed range for auto registration")
 	}
-	return false, nil
+
+	return false, errors.New("IP not in allowed range for auto registration")
 }
 
 func (c *Controller) CreateMachine(gctx *gin.Context) {
@@ -64,10 +59,10 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 	}
 
 	autoRegister, err := c.shouldAutoRegister(input.RegistrationToken, gctx)
-
 	if err != nil {
 		log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": *input.MachineID}).Errorf("Auto-register failed: %s", err)
 		gctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+
 		return
 	}
 

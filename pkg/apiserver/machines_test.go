@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestCreateMachine(t *testing.T) {
