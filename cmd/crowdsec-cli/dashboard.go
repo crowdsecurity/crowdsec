@@ -71,6 +71,10 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			if version.System == "docker" {
+				return errors.New("cscli dashboard is not supported whilst running CrowdSec within a container please see: https://github.com/crowdsecurity/example-docker-compose/tree/main/basic")
+			}
+
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
@@ -103,10 +107,6 @@ cscli dashboard remove
 			}
 
 			log.Warn("cscli dashboard will be deprecated in version 1.7.0, read more at https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
-
-			if version.System == "docker" {
-				return errors.New("cscli dashboard is not supported whilst running CrowdSec within a container please see: https://github.com/crowdsecurity/example-docker-compose/tree/main/basic")
-			}
 
 			return nil
 		},
