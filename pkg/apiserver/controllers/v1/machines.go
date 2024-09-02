@@ -23,6 +23,7 @@ func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, 
 
 	//Can probaby happen if using unix socket ?
 	if clientIP == nil {
+		log.Warnf("Failed to parse client IP for watcher self registration: %s", gctx.ClientIP())
 		return false, nil
 	}
 
