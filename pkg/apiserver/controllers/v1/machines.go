@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 
@@ -29,7 +29,7 @@ func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, 
 	//If we have a token, try to perform auto registration
 	if token != "" && c.AutoRegisterCfg != nil {
 		if token != c.AutoRegisterCfg.Token {
-			return false, fmt.Errorf("invalid token for auto registration")
+			return false, errors.New("invalid token for auto registration")
 		}
 
 		found := false
@@ -44,7 +44,7 @@ func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, 
 		if found {
 			return true, nil
 		}
-		return false, fmt.Errorf("IP not in allowed range for auto registration")
+		return false, errors.New("IP not in allowed range for auto registration")
 	}
 	return false, nil
 }
