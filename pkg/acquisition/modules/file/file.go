@@ -496,7 +496,8 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				f.logger.Errorf("unable to read %s : %s", event.Name, err)
 				continue
 			}
-			if err := fd.Close(); err != nil {
+
+			if err = fd.Close(); err != nil {
 				f.logger.Errorf("unable to close %s : %s", event.Name, err)
 				continue
 			}
@@ -509,14 +510,15 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				if err != nil {
 					f.logger.Warningf("Could not get fs type for %s : %s", event.Name, err)
 				}
+
 				f.logger.Debugf("fs for %s is network: %t (%s)", event.Name, networkFS, fsType)
+
 				if networkFS {
 					pollFile = true
 				}
 			}
 
 			filink, err := os.Lstat(event.Name)
-
 			if err != nil {
 				logger.Errorf("Could not lstat() new file %s, ignoring it : %s", event.Name, err)
 				continue
@@ -526,7 +528,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", event.Name)
 			}
 
-			//Slightly different parameters for Location, as we want to read the first lines of the newly created file
+			// Slightly different parameters for Location, as we want to read the first lines of the newly created file
 			tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: pollFile, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
 			if err != nil {
 				logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
@@ -573,8 +575,9 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 
 			return nil
 		case <-tail.Dying(): // our tailer is dying
-			err := tail.Err()
 			errMsg := fmt.Sprintf("file reader of %s died", tail.Filename)
+
+			err := tail.Err()
 			if err != nil {
 				errMsg = fmt.Sprintf(errMsg+" : %s", err)
 			}

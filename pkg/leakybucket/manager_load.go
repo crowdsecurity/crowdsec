@@ -512,6 +512,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 			if h.Name != v.Name {
 				continue
 			}
+
 			log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 			// check in which mode the bucket was
 			if v.Mode == types.TIMEMACHINE {

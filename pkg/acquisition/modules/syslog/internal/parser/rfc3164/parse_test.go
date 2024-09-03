@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
@@ -43,7 +44,6 @@ func TestPri(t *testing.T) {
 }
 
 func TestTimestamp(t *testing.T) {
-
 	tests := []struct {
 		input       string
 		expected    string
@@ -64,6 +64,7 @@ func TestTimestamp(t *testing.T) {
 			if test.currentYear {
 				opts = append(opts, WithCurrentYear())
 			}
+
 			r := NewRFC3164Parser(opts...)
 			r.buf = []byte(test.input)
 			r.len = len(r.buf)
@@ -110,6 +111,7 @@ func TestHostname(t *testing.T) {
 			if test.strictHostname {
 				opts = append(opts, WithStrictHostname())
 			}
+
 			r := NewRFC3164Parser(opts...)
 			r.buf = []byte(test.input)
 			r.len = len(r.buf)
@@ -200,6 +202,7 @@ func TestParse(t *testing.T) {
 		Message   string
 		PRI       int
 	}
+
 	tests := []struct {
 		input       string
 		expected    expected

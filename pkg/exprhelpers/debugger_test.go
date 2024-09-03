@@ -26,6 +26,7 @@ type ExprDbgTest struct {
 func UpperTwo(params ...any) (any, error) {
 	s := params[0].(string)
 	v := params[1].(string)
+
 	return strings.ToUpper(s) + strings.ToUpper(v), nil
 }
 
@@ -33,6 +34,7 @@ func UpperThree(params ...any) (any, error) {
 	s := params[0].(string)
 	v := params[1].(string)
 	x := params[2].(string)
+
 	return strings.ToUpper(s) + strings.ToUpper(v) + strings.ToUpper(x), nil
 }
 
@@ -41,6 +43,7 @@ func UpperN(params ...any) (any, error) {
 	v := params[1].(string)
 	x := params[2].(string)
 	y := params[3].(string)
+
 	return strings.ToUpper(s) + strings.ToUpper(v) + strings.ToUpper(x) + strings.ToUpper(y), nil
 }
 
@@ -76,9 +79,9 @@ func TestBaseDbg(t *testing.T) {
 	// use '%#v' to dump in golang syntax
 	// use regexp to clear empty/default fields:
 	// [a-z]+: (false|\[\]string\(nil\)|""),
-	//ConditionResult:(*bool)
+	// ConditionResult:(*bool)
 
-	//Missing multi parametes function
+	// Missing multi parametes function
 	tests := []ExprDbgTest{
 		{
 			Name:                "nil deref",
@@ -272,6 +275,7 @@ func TestBaseDbg(t *testing.T) {
 	}
 
 	logger := log.WithField("test", "exprhelpers")
+
 	for _, test := range tests {
 		if test.LogLevel != 0 {
 			log.SetLevel(test.LogLevel)
@@ -308,10 +312,13 @@ func TestBaseDbg(t *testing.T) {
 				t.Fatalf("test %s : unexpected compile error : %s", test.Name, err)
 			}
 		}
+
 		if test.Name == "nil deref" {
 			test.Env["nilvar"] = nil
 		}
+
 		outdbg, ret, err := RunWithDebug(prog, test.Env, logger)
+
 		if test.ExpectedFailRuntime {
 			if err == nil {
 				t.Fatalf("test %s : expected runtime error", test.Name)
@@ -321,22 +328,26 @@ func TestBaseDbg(t *testing.T) {
 				t.Fatalf("test %s : unexpected runtime error : %s", test.Name, err)
 			}
 		}
+
 		log.SetLevel(log.DebugLevel)
 		DisplayExprDebug(prog, outdbg, logger, ret)
+
 		if len(outdbg) != len(test.ExpectedOutputs) {
 			t.Errorf("failed test %s", test.Name)
 			t.Errorf("%#v", outdbg)
-			//out, _ := yaml.Marshal(outdbg)
-			//fmt.Printf("%s", string(out))
+			// out, _ := yaml.Marshal(outdbg)
+			// fmt.Printf("%s", string(out))
 			t.Fatalf("test %s : expected %d outputs, got %d", test.Name, len(test.ExpectedOutputs), len(outdbg))
-
 		}
+
 		for i, out := range outdbg {
 			if reflect.DeepEqual(out, test.ExpectedOutputs[i]) {
-				//DisplayExprDebug(prog, outdbg, logger, ret)
+				// DisplayExprDebug(prog, outdbg, logger, ret)
 				continue
 			}
+
 			spew.Config.DisableMethods = true
+
 			t.Errorf("failed test %s", test.Name)
 			t.Errorf("expected : %#v", test.ExpectedOutputs[i])
 			t.Errorf("got      : %#v", out)
