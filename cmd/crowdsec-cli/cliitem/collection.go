@@ -1,10 +1,10 @@
-package main
+package cliitem
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLICollection(cfg configGetter) *cliItem {
+func NewCollection(cfg configGetter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.COLLECTIONS,

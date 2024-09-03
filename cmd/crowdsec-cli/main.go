@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihubtest"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliitem"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
@@ -270,13 +271,13 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(clinotifications.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clisupport.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clipapi.New(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLICollection(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIParser(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIScenario(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIPostOverflow(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIContext(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIAppsecConfig(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIAppsecRule(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewCollection(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewParser(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewScenario(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewPostOverflow(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewContext(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
 		cmd.AddCommand(clisetup.New(cli.cfg).NewCommand())

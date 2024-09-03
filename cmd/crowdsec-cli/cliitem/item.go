@@ -1,4 +1,4 @@
-package main
+package cliitem
 
 import (
 	"cmp"
@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -29,6 +30,8 @@ type cliHelp struct {
 	long    string
 	example string
 }
+
+type configGetter func() *csconfig.Config
 
 type cliItem struct {
 	cfg           configGetter

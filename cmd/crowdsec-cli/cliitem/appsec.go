@@ -1,4 +1,4 @@
-package main
+package cliitem
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCLIAppsecConfig(cfg configGetter) *cliItem {
+func NewAppsecConfig(cfg configGetter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.APPSEC_CONFIGS,
@@ -47,7 +47,7 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 	}
 }
 
-func NewCLIAppsecRule(cfg configGetter) *cliItem {
+func NewAppsecRule(cfg configGetter) *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		// Only show the converted rules in human mode
 		if cfg().Cscli.Output != "human" {
