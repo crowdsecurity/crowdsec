@@ -31,12 +31,12 @@ import (
 type configGetter func() *csconfig.Config
 
 type cliConsole struct {
-	cfg           configGetter
+	cfg configGetter
 }
 
 func New(cfg configGetter) *cliConsole {
 	return &cliConsole{
-		cfg:           cfg,
+		cfg: cfg,
 	}
 }
 
@@ -88,23 +88,25 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 			}
 
 			for _, availableOpt := range csconfig.CONSOLE_CONFIGS {
-				if opt == availableOpt {
-					valid = true
-					enable := true
-
-					for _, enabledOpt := range enableOpts {
-						if opt == enabledOpt {
-							enable = false
-							continue
-						}
-					}
-
-					if enable {
-						enableOpts = append(enableOpts, opt)
-					}
-
-					break
+				if opt != availableOpt {
+					continue
 				}
+
+				valid = true
+				enable := true
+
+				for _, enabledOpt := range enableOpts {
+					if opt == enabledOpt {
+						enable = false
+						continue
+					}
+				}
+
+				if enable {
+					enableOpts = append(enableOpts, opt)
+				}
+
+				break
 			}
 
 			if !valid {
