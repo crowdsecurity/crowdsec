@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -124,21 +123,6 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
-func normalizeScope(scope string) string {
-	switch strings.ToLower(scope) {
-	case "ip":
-		return types.Ip
-	case "range":
-		return types.Range
-	case "as":
-		return types.AS
-	case "country":
-		return types.Country
-	default:
-		return scope
-	}
-}
-
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
@@ -160,12 +144,12 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	for _, alert := range input {
 		// normalize scope for alert.Source and decisions
 		if alert.Source.Scope != nil {
-			*alert.Source.Scope = normalizeScope(*alert.Source.Scope)
+			*alert.Source.Scope = types.NormalizeScope(*alert.Source.Scope)
 		}
 
 		for _, decision := range alert.Decisions {
 			if decision.Scope != nil {
-				*decision.Scope = normalizeScope(*decision.Scope)
+				*decision.Scope = types.NormalizeScope(*decision.Scope)
 			}
 		}
 
@@ -296,8 +280,8 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 // FindAlertByID returns the alert associated with the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	alertIDStr := gctx.Param("alert_id")
-	alertID, err := strconv.Atoi(alertIDStr)
 
+	alertID, err := strconv.Atoi(alertIDStr)
 	if err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
 		return

@@ -14,9 +14,11 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clidecision"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihubtest"
@@ -257,8 +259,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIDecisions(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIAlerts(cli.cfg).NewCommand())
+	cmd.AddCommand(clidecision.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clialert.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clisimulation.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clibouncer.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climachine.New(cli.cfg).NewCommand())

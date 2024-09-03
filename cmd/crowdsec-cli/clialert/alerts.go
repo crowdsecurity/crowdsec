@@ -1,4 +1,4 @@
-package main
+package clialert
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -183,12 +184,14 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	return nil
 }
 
+type configGetter func() *csconfig.Config
+
 type cliAlerts struct {
 	client *apiclient.ApiClient
 	cfg    configGetter
 }
 
-func NewCLIAlerts(getconfig configGetter) *cliAlerts {
+func New(getconfig configGetter) *cliAlerts {
 	return &cliAlerts{
 		cfg: getconfig,
 	}
@@ -235,8 +238,10 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 }
 
 func (cli *cliAlerts) list(alertListFilter apiclient.AlertsListOpts, limit *int, contained *bool, printMachine bool) error {
-	if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
-		alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
+	var err error
+
+	*alertListFilter.ScopeEquals, err = SanitizeScope(*alertListFilter.ScopeEquals, *alertListFilter.IPEquals, *alertListFilter.RangeEquals)
+	if err != nil {
 		return err
 	}
 
@@ -378,8 +383,8 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 	var err error
 
 	if !AlertDeleteAll {
-		if err = manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
-			alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
+		*alertDeleteFilter.ScopeEquals, err = SanitizeScope(*alertDeleteFilter.ScopeEquals, *alertDeleteFilter.IPEquals, *alertDeleteFilter.RangeEquals)
+		if err != nil {
 			return err
 		}
 

@@ -1,4 +1,4 @@
-package main
+package clidecision
 
 import (
 	"bufio"
@@ -122,8 +122,8 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	var (
-		content	[]byte
-		fin	*os.File
+		content []byte
+		fin     *os.File
 	)
 
 	// set format if the file has a json or csv extension
