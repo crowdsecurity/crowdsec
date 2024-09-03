@@ -280,8 +280,8 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 // FindAlertByID returns the alert associated with the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	alertIDStr := gctx.Param("alert_id")
-	alertID, err := strconv.Atoi(alertIDStr)
 
+	alertID, err := strconv.Atoi(alertIDStr)
 	if err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
 		return

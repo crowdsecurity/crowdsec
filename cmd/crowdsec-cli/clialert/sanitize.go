@@ -7,8 +7,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-// SanitizeScope validates ip and range and sets the scope accordingly if it's not already set.
-// The return value has consistent case.
+// SanitizeScope validates ip and range and sets the scope accordingly to our case convention.
 func SanitizeScope(scope, ip, ipRange string) (string, error) {
 	if ipRange != "" {
 		_, _, err := net.ParseCIDR(ipRange)
