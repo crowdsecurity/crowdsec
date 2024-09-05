@@ -97,6 +97,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	}
 
 	if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+		ht = ht.Clone()
 		ht.TLSClientConfig = &tlsconfig
 	}
 
@@ -124,6 +125,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 			client.Transport = transport
 		} else {
 			if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+				ht = ht.Clone()
 				tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 				tlsconfig.RootCAs = CaCertPool
 
@@ -165,7 +167,8 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 				tlsconfig.Certificates = []tls.Certificate{*Cert}
 			}
 
-			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
+			client.Transport = http.DefaultTransport.(*http.Transport).Clone()
+			client.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
 		}
 	} else if client.Transport == nil && transport != nil {
 		client.Transport = transport
