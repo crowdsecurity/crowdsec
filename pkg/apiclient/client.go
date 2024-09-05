@@ -86,7 +86,10 @@ func NewClient(config *Config) (*ApiClient, error) {
 	if transport != nil {
 		t.Transport = transport
 	} else {
-		t.Transport = http.DefaultTransport.(*http.Transport).Clone()
+		// can be httpmock.MockTransport
+		if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+			t.Transport = ht.Clone()
+		}
 	}
 
 	t.URL = baseURL
