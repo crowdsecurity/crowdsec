@@ -129,7 +129,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to marshal back interface: %w", err)
+		return nil, fmt.Errorf("unable to serialize back interface: %w", err)
 	}
 
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)

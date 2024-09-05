@@ -136,7 +136,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 	}
 
 	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		t.Fatalf("failed unmarshaling %s : %s", stagecfg, err)
+		t.Fatalf("failed to parse %s : %s", stagecfg, err)
 	}
 
 	files := []string{}
@@ -201,7 +201,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 		var ts time.Time
 
 		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
-			t.Fatalf("Failed to unmarshal time from input event : %s", err)
+			t.Fatalf("Failed to parse time from input event : %s", err)
 		}
 
 		if latest_ts.IsZero() {
