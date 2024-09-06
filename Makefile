@@ -115,6 +115,13 @@ STRIP_SYMBOLS := -s -w
 DISABLE_OPTIMIZATION :=
 endif
 
+# optionally exclude datasources from the build
+
+# Add the build tags if MINIMAL is enabled
+ifeq ($(call bool,$(MINIMAL)),1)
+    GO_TAGS := $(GO_TAGS),no_datasource_appsec,no_datasource_cloudwatch,no_datasource_docker,no_datasource_k8saudit,no_datasource_kafka,no_datasource_kinesis,no_datasource_loki,no_datasource_s3
+endif
+
 export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
 	-trimpath -tags $(GO_TAGS) $(DISABLE_OPTIMIZATION)
 
