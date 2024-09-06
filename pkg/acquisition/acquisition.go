@@ -89,6 +89,26 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 	return source()
 }
 
+// setupLogger creates a logger for the datasource to use at runtime.
+func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
+	clog := log.New()
+	if err := types.ConfigureLogger(clog); err != nil {
+		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
+	}
+	if level != nil {
+		clog.SetLevel(*level)
+	}
+	fields := log.Fields{
+		"type": source,
+	}
+	if name != "" {
+		fields["name"] = name
+	}
+	subLogger := clog.WithFields(fields)
+
+	return subLogger, nil
+}
+
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
@@ -101,21 +121,11 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 		return nil, fmt.Errorf("unable to marshal back interface: %w", err)
 	}
 	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
-		/* this logger will then be used by the datasource at runtime */
-		clog := log.New()
-		if err := types.ConfigureLogger(clog); err != nil {
-			return nil, fmt.Errorf("while configuring datasource logger: %w", err)
+		subLogger, err := setupLogger(commonConfig.Source, commonConfig.Name, commonConfig.LogLevel)
+		if err != nil {
+			return nil, err
 		}
-		if commonConfig.LogLevel != nil {
-			clog.SetLevel(*commonConfig.LogLevel)
-		}
-		customLog := log.Fields{
-			"type": commonConfig.Source,
-		}
-		if commonConfig.Name != "" {
-			customLog["name"] = commonConfig.Name
-		}
-		subLogger := clog.WithFields(customLog)
+
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
 			return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
@@ -154,12 +164,12 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	if dataSrc == nil {
 		return nil, fmt.Errorf("no acquisition for protocol %s://", frags[0])
 	}
-	/* this logger will then be used by the datasource at runtime */
-	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
+
+	subLogger, err := setupLogger(dsn, "", nil)
+	if err != nil {
+		return nil, err
 	}
-	subLogger := clog.WithField("type", dsn)
+
 	uniqueId := uuid.NewString()
 	if transformExpr != "" {
 		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
@@ -168,7 +178,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		}
 		transformRuntimes[uniqueId] = vm
 	}
-	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
+	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
 	if err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
