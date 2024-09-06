@@ -85,6 +85,11 @@ func NewClient(config *Config) (*ApiClient, error) {
 	transport, baseURL := createTransport(config.URL)
 	if transport != nil {
 		t.Transport = transport
+	} else {
+		// can be httpmock.MockTransport
+		if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+			t.Transport = ht.Clone()
+		}
 	}
 
 	t.URL = baseURL
@@ -96,8 +101,8 @@ func NewClient(config *Config) (*ApiClient, error) {
 		tlsconfig.Certificates = []tls.Certificate{*Cert}
 	}
 
-	if ht, ok := http.DefaultTransport.(*http.Transport); ok {
-		ht.TLSClientConfig = &tlsconfig
+	if t.Transport != nil {
+		t.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
 	}
 
 	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
@@ -124,6 +129,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 			client.Transport = transport
 		} else {
 			if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+				ht = ht.Clone()
 				tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 				tlsconfig.RootCAs = CaCertPool
 
@@ -165,7 +171,8 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 				tlsconfig.Certificates = []tls.Certificate{*Cert}
 			}
 
-			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
+			client.Transport = http.DefaultTransport.(*http.Transport).Clone()
+			client.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
 		}
 	} else if client.Transport == nil && transport != nil {
 		client.Transport = transport
