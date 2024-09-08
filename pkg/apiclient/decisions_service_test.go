@@ -401,7 +401,6 @@ func TestDeleteDecisions(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -501,7 +500,6 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 // 	client, err := NewClient(&Config{
 // 		MachineID:     "test_login",
 // 		Password:      "test_password",
-// 		UserAgent:     DefaultUserAgent(),
 // 		URL:           apiURL,
 // 		VersionPrefix: "v1",
 // 	})

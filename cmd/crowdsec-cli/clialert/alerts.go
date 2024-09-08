@@ -216,7 +216,6 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 			cli.client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
-				UserAgent:     apiclient.DefaultUserAgent(),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})

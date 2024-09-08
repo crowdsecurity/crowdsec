@@ -220,7 +220,6 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       password,
-		UserAgent:      apiclient.DefaultUserAgent(),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",

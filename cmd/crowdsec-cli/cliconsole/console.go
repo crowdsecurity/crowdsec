@@ -123,7 +123,6 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
 		Scenarios:     hub.GetInstalledListForAPI(),
-		UserAgent:     apiclient.DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v3",
 	})

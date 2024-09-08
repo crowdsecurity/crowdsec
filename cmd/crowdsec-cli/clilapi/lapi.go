@@ -52,7 +52,7 @@ func queryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 
 	client, err := apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
-		apiclient.DefaultUserAgent(),
+		"",
 		nil)
 	if err != nil {
 		return false, err
@@ -117,7 +117,6 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string, t
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:         lapiUser,
 		Password:          password,
-		UserAgent:         apiclient.DefaultUserAgent(),
 		RegistrationToken: token,
 		URL:               apiurl,
 		VersionPrefix:     LAPIURLPrefix,

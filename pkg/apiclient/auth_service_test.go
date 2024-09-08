@@ -86,7 +86,6 @@ func TestWatcherRegister(t *testing.T) {
 	clientconfig := Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}
@@ -124,7 +123,6 @@ func TestWatcherAuth(t *testing.T) {
 	clientConfig := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
@@ -205,7 +203,6 @@ func TestWatcherUnregister(t *testing.T) {
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
@@ -259,7 +256,6 @@ func TestWatcherEnroll(t *testing.T) {
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},

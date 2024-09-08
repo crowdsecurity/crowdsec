@@ -34,7 +34,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -213,7 +212,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -387,7 +385,6 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -429,7 +426,6 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})

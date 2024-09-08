@@ -69,7 +69,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			apiClient, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				apiclient.DefaultUserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)

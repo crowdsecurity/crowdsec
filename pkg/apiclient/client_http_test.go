@@ -23,7 +23,6 @@ func TestNewRequestInvalid(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -55,7 +54,6 @@ func TestNewRequestTimeout(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})

@@ -675,7 +675,7 @@ func TestAPICWhitelists(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		apiclient.DefaultUserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -816,7 +816,7 @@ func TestAPICPullTop(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		apiclient.DefaultUserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -904,7 +904,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		apiclient.DefaultUserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -996,7 +996,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		apiclient.DefaultUserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -1023,7 +1023,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		apiclient.DefaultUserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -1106,7 +1106,7 @@ func TestAPICPush(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				apiclient.DefaultUserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
@@ -1170,7 +1170,7 @@ func TestAPICPull(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				apiclient.DefaultUserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)

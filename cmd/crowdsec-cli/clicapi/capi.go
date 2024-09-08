@@ -76,7 +76,6 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     capiUser,
 		Password:      password,
-		UserAgent:     apiclient.DefaultUserAgent(),
 		URL:           apiurl,
 		VersionPrefix: "v3",
 	}, nil)
@@ -167,7 +166,6 @@ func queryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		MachineID: login,
 		Password:  passwd,
 		Scenarios: itemsForAPI,
-		UserAgent: apiclient.DefaultUserAgent(),
 		URL:       apiURL,
 		// I don't believe papi is neede to check enrollement
 		// PapiURL:       papiURL,
