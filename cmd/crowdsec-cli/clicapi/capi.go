@@ -20,7 +20,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -77,7 +76,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     capiUser,
 		Password:      password,
-		UserAgent:     cwversion.UserAgent(),
+		UserAgent:     apiclient.DefaultUserAgent(),
 		URL:           apiurl,
 		VersionPrefix: "v3",
 	}, nil)
@@ -168,7 +167,7 @@ func queryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		MachineID: login,
 		Password:  passwd,
 		Scenarios: itemsForAPI,
-		UserAgent: cwversion.UserAgent(),
+		UserAgent: apiclient.DefaultUserAgent(),
 		URL:       apiURL,
 		// I don't believe papi is neede to check enrollement
 		// PapiURL:       papiURL,

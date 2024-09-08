@@ -13,7 +13,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 )
@@ -402,7 +401,7 @@ func TestDeleteDecisions(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
+		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -502,7 +501,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 // 	client, err := NewClient(&Config{
 // 		MachineID:     "test_login",
 // 		Password:      "test_password",
-// 		UserAgent:     cwversion.UserAgent(),
+// 		UserAgent:     DefaultUserAgent(),
 // 		URL:           apiURL,
 // 		VersionPrefix: "v1",
 // 	})

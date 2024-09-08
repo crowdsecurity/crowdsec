@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -87,7 +86,7 @@ func TestWatcherRegister(t *testing.T) {
 	clientconfig := Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
+		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}
@@ -125,7 +124,7 @@ func TestWatcherAuth(t *testing.T) {
 	clientConfig := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
+		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
@@ -206,7 +205,7 @@ func TestWatcherUnregister(t *testing.T) {
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
+		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
@@ -260,7 +259,7 @@ func TestWatcherEnroll(t *testing.T) {
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
+		UserAgent:     DefaultUserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},

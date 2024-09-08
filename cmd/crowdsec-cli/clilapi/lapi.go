@@ -24,7 +24,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -53,7 +52,7 @@ func queryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 
 	client, err := apiclient.NewDefaultClient(apiURL,
 		LAPIURLPrefix,
-		cwversion.UserAgent(),
+		apiclient.DefaultUserAgent(),
 		nil)
 	if err != nil {
 		return false, err
@@ -118,7 +117,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string, t
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:         lapiUser,
 		Password:          password,
-		UserAgent:         cwversion.UserAgent(),
+		UserAgent:         apiclient.DefaultUserAgent(),
 		RegistrationToken: token,
 		URL:               apiurl,
 		VersionPrefix:     LAPIURLPrefix,

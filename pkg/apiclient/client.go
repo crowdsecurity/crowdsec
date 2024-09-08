@@ -66,11 +66,16 @@ type service struct {
 }
 
 func NewClient(config *Config) (*ApiClient, error) {
+	userAgent := config.UserAgent
+	if userAgent == "" {
+		userAgent = DefaultUserAgent()
+	}
+
 	t := &JWTTransport{
 		MachineID:      &config.MachineID,
 		Password:       &config.Password,
 		Scenarios:      config.Scenarios,
-		UserAgent:      config.UserAgent,
+		UserAgent:      userAgent,
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 		RetryConfig: NewRetryConfig(
@@ -105,7 +110,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 		t.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
 	}
 
-	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
+	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: userAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -143,6 +148,10 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 		}
 	}
 
+	if userAgent == "" {
+		userAgent = DefaultUserAgent()
+	}
+
 	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
@@ -178,7 +187,12 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 		client.Transport = transport
 	}
 
-	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	userAgent := config.UserAgent
+	if userAgent == "" {
+		userAgent = DefaultUserAgent()
+	}
+
+	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)

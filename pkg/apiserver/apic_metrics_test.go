@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 func TestAPICSendMetrics(t *testing.T) {
@@ -70,7 +69,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			apiClient, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				apiclient.DefaultUserAgent(),
 				nil,
 			)
 			require.NoError(t, err)
