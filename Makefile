@@ -159,7 +159,7 @@ endif
 COMPONENT_TAGS := $(foreach component,$(EXCLUDE_LIST),no_$(component))
 
 ifneq ($(COMPONENT_TAGS),)
-GO_TAGS := $(GO_TAGS),$((subst $(space),$(comma),$(COMPONENT_TAGS)))
+GO_TAGS := $(GO_TAGS),$(subst $(space),$(comma),$(COMPONENT_TAGS))
 endif
 
 #--------------------------------------
