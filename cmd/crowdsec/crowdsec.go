@@ -14,7 +14,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -47,8 +46,9 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 		return nil, nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
-	if err := appsec.LoadAppsecRules(hub); err != nil {
-		return nil, nil, fmt.Errorf("while loading appsec rules: %w", err)
+	// can be nerfed by a build flag
+	if err := LoadAppsecRules(hub); err != nil {
+		return nil, nil, err
 	}
 
 	datasources, err := LoadAcquisition(cConfig)

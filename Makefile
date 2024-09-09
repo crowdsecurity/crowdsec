@@ -115,12 +115,54 @@ STRIP_SYMBOLS := -s -w
 DISABLE_OPTIMIZATION :=
 endif
 
-# optionally exclude datasources from the build
+#--------------------------------------
 
-# Add the build tags if MINIMAL is enabled
-ifeq ($(call bool,$(MINIMAL)),1)
-    GO_TAGS := $(GO_TAGS),no_datasource_appsec,no_datasource_cloudwatch,no_datasource_docker,no_datasource_k8saudit,no_datasource_kafka,no_datasource_kinesis,no_datasource_loki,no_datasource_s3
+# Handle optional components and build profiles, to save space on the final binaries.
+
+# Keep it safe for now until we decide how to expand on the idea. Either choose a profile or exclude components manually.
+# For example if we want to disable some component by default, or have opt-in components (INCLUDE?).
+
+ifeq ($(and $(BUILD_PROFILE),$(EXCLUDE)),1)
+$(error "Cannot specify both BUILD_PROFILE and EXCLUDE")
 endif
+
+COMPONENTS := datasource_appsec datasource_cloudwatch datasource_docker datasource_k8saudit datasource_kafka datasource_kinesis datasource_loki datasource_s3
+
+comma := ,
+space := $(empty) $(empty)
+
+# Predefined profiles
+
+EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(COMPONENTS))
+EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
+
+BUILD_PROFILE ?= default
+
+# Set the EXCLUDE_LIST based on the chosen profile, unless EXCLUDE is already set
+ifeq ($(BUILD_PROFILE),minimal)
+EXCLUDE ?= $(EXCLUDE_MINIMAL)
+else ifeq ($(BUILD_PROFILE),medium)
+EXCLUDE ?= $(EXCLUDE_MEDIUM)
+else ifneq ($(BUILD_PROFILE),default)
+$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, medium, default)
+endif
+
+# Create list of excluded components from the EXCLUDE variable
+EXCLUDE_LIST := $(subst $(comma),$(space),$(EXCLUDE))
+
+INVALID_COMPONENTS := $(filter-out $(COMPONENTS),$(EXCLUDE_LIST))
+ifneq ($(INVALID_COMPONENTS),)
+$(error Invalid optional components specified in EXCLUDE: $(INVALID_COMPONENTS). Valid components are: $(COMPONENTS))
+endif
+
+# Convert the excluded components to "no_<component>" form
+COMPONENT_TAGS := $(foreach component,$(EXCLUDE_LIST),no_$(component))
+
+ifneq ($(COMPONENT_TAGS),)
+GO_TAGS := $(GO_TAGS),$((subst $(space),$(comma),$(COMPONENT_TAGS)))
+endif
+
+#--------------------------------------
 
 export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
 	-trimpath -tags $(GO_TAGS) $(DISABLE_OPTIMIZATION)
@@ -137,6 +179,7 @@ build: build-info crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 .PHONY: build-info
 build-info:  ## Print build information
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
+	$(info Excluded components: $(EXCLUDE_LIST))
 
 ifneq (,$(RE2_FAIL))
 	$(error $(RE2_FAIL))
