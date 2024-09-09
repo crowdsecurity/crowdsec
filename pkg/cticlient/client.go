@@ -47,7 +47,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 	}
 
 	req.Header.Set("X-Api-Key", c.apiKey)
-	req.Header.Set("User-Agent", useragent.DefaultUserAgent())
+	req.Header.Set("User-Agent", useragent.Default())
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

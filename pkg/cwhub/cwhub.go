@@ -16,7 +16,7 @@ type hubTransport struct {
 }
 
 func (t *hubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("User-Agent", useragent.DefaultUserAgent())
+	req.Header.Set("User-Agent", useragent.Default())
 	return t.RoundTripper.RoundTrip(req)
 }
 

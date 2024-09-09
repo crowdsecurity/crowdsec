@@ -4,6 +4,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
-func DefaultUserAgent() string {
+func Default() string {
 	return "crowdsec/" + version.String() + "-" + version.System
 }

@@ -38,7 +38,7 @@ var (
 func NewMBClient(url string) (*MBClient, error) {
 	httpClient := &http.Client{Timeout: 20 * time.Second}
 	return &MBClient{
-		CTX:    sling.New().Client(httpClient).Base(url).Set("User-Agent", useragent.DefaultUserAgent()),
+		CTX:    sling.New().Client(httpClient).Base(url).Set("User-Agent", useragent.Default()),
 		Client: httpClient,
 	}, nil
 }
