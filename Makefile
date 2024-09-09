@@ -126,14 +126,28 @@ ifeq ($(and $(BUILD_PROFILE),$(EXCLUDE)),1)
 $(error "Cannot specify both BUILD_PROFILE and EXCLUDE")
 endif
 
-COMPONENTS := datasource_appsec datasource_cloudwatch datasource_docker datasource_k8saudit datasource_kafka datasource_kinesis datasource_loki datasource_s3
+COMPONENTS := \
+	datasource_appsec \
+	datasource_cloudwatch \
+	datasource_docker \
+	datasource_file \
+	datasource_k8saudit \
+	datasource_kafka \
+	datasource_journalctl \
+	datasource_kinesis \
+	datasource_loki \
+	datasource_s3 \
+	datasource_syslog \
+	datasource_wineventlog
 
 comma := ,
 space := $(empty) $(empty)
 
 # Predefined profiles
 
-EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(COMPONENTS))
+# keep only datasource-file
+EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
+
 EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
 
 BUILD_PROFILE ?= default
