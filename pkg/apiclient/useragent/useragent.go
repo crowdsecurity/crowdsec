@@ -7,4 +7,3 @@ import (
 func DefaultUserAgent() string {
 	return "crowdsec/" + version.String() + "-" + version.System
 }
-

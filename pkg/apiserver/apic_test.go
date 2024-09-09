@@ -831,8 +831,7 @@ func TestAPICPullTop(t *testing.T) {
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background(),
-	)
+		AllX(context.Background())
 
 	decisionScenarioFreq := make(map[string]int)
 	alertScenario := make(map[string]int)

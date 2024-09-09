@@ -12,8 +12,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 var (
@@ -200,8 +200,8 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	c.Auth = (*AuthService)(&c.common)
 
 	resp, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password, RegistrationToken: config.RegistrationToken})
-	/*if we have http status, return it*/
 	if err != nil {
+		/*if we have http status, return it*/
 		if resp != nil && resp.Response != nil {
 			return nil, fmt.Errorf("api register (%s) http %s: %w", c.BaseURL, resp.Response.Status, err)
 		}

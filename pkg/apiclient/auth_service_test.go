@@ -35,11 +35,13 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
+
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 
 		var payload BasicMockPayload
+
 		err := json.Unmarshal([]byte(newStr), &payload)
 		if err != nil || payload.MachineID == "" || payload.Password == "" {
 			log.Printf("Bad payload")
@@ -47,8 +49,8 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 		}
 
 		var responseBody string
-		responseCode, hasFoundErrorMock := loginsForMockErrorCases[payload.MachineID]
 
+		responseCode, hasFoundErrorMock := loginsForMockErrorCases[payload.MachineID]
 		if !hasFoundErrorMock {
 			responseCode = http.StatusOK
 			responseBody = `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`
@@ -75,7 +77,7 @@ func TestWatcherRegister(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
 
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 	initBasicMuxMock(t, mux, "/watchers")
 	log.Printf("URL is %s", urlx)
 
@@ -111,7 +113,7 @@ func TestWatcherAuth(t *testing.T) {
 
 	mux, urlx, teardown := setup()
 	defer teardown()
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
 	initBasicMuxMock(t, mux, "/watchers/login")
 	log.Printf("URL is %s", urlx)
@@ -119,7 +121,7 @@ func TestWatcherAuth(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	//ok auth
+	// ok auth
 	clientConfig := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -171,7 +173,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 	mux, urlx, teardown := setup()
 	defer teardown()
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
@@ -181,6 +183,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
+
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(r.Body)
 
@@ -225,6 +228,7 @@ func TestWatcherEnroll(t *testing.T) {
 
 	mux.HandleFunc("/watchers/enroll", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
+
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
