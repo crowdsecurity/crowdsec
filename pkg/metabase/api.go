@@ -9,7 +9,7 @@ import (
 	"github.com/dghubble/sling"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 type MBClient struct {
@@ -38,7 +38,7 @@ var (
 func NewMBClient(url string) (*MBClient, error) {
 	httpClient := &http.Client{Timeout: 20 * time.Second}
 	return &MBClient{
-		CTX:    sling.New().Client(httpClient).Base(url).Set("User-Agent", cwversion.UserAgent()),
+		CTX:    sling.New().Client(httpClient).Base(url).Set("User-Agent", useragent.Default()),
 		Client: httpClient,
 	}, nil
 }

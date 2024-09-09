@@ -26,7 +26,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -676,7 +675,7 @@ func TestAPICWhitelists(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -817,7 +816,7 @@ func TestAPICPullTop(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -832,8 +831,7 @@ func TestAPICPullTop(t *testing.T) {
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background(),
-	)
+		AllX(context.Background())
 
 	decisionScenarioFreq := make(map[string]int)
 	alertScenario := make(map[string]int)
@@ -905,7 +903,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -997,7 +995,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -1024,7 +1022,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -1107,7 +1105,7 @@ func TestAPICPush(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
@@ -1171,7 +1169,7 @@ func TestAPICPull(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)

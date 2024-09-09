@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 /*this is a ripoff of google/go-github approach :
@@ -97,7 +95,6 @@ func TestNewClientOk(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -134,7 +131,6 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -172,7 +168,6 @@ func TestNewClientKo(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -250,7 +245,6 @@ func TestNewClientRegisterKO(t *testing.T) {
 	_, err = RegisterClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
@@ -281,7 +275,6 @@ func TestNewClientRegisterOK(t *testing.T) {
 	client, err := RegisterClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
@@ -314,7 +307,6 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	client, err := RegisterClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
@@ -344,7 +336,6 @@ func TestNewClientBadAnswer(t *testing.T) {
 	_, err = RegisterClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
