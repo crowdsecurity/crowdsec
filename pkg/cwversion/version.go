@@ -4,23 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	goversion "github.com/hashicorp/go-version"
-
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 )
 
 var (
 	Codename string // = "SoumSoum"
 	Libre2   = "WebAssembly"
-)
-
-const (
-	Constraint_parser   = ">= 1.0, <= 3.0"
-	Constraint_scenario = ">= 1.0, <= 3.0"
-	Constraint_api      = "v1"
-	Constraint_acquis   = ">= 1.0, < 2.0"
 )
 
 func FullString() string {
@@ -31,10 +25,11 @@ func FullString() string {
 	ret += fmt.Sprintf("Platform: %s\n", version.System)
 	ret += fmt.Sprintf("libre2: %s\n", Libre2)
 	ret += fmt.Sprintf("User-Agent: %s\n", useragent.Default())
-	ret += fmt.Sprintf("Constraint_parser: %s\n", Constraint_parser)
-	ret += fmt.Sprintf("Constraint_scenario: %s\n", Constraint_scenario)
-	ret += fmt.Sprintf("Constraint_api: %s\n", Constraint_api)
-	ret += fmt.Sprintf("Constraint_acquis: %s\n", Constraint_acquis)
+	ret += fmt.Sprintf("Constraint_parser: %s\n", constraint.Parser)
+	ret += fmt.Sprintf("Constraint_scenario: %s\n", constraint.Scenario)
+	ret += fmt.Sprintf("Constraint_api: %s\n", constraint.API)
+	ret += fmt.Sprintf("Constraint_acquis: %s\n", constraint.Acquis)
+	ret += fmt.Sprintf("Acquisition data sources: %s\n", strings.Join(maptools.SortedKeys(acquisition.AcquisitionSources), ", "))
 
 	return ret
 }
@@ -45,22 +40,4 @@ func VersionStrip() string {
 	ret = strings.Split(ret[0], "-")
 
 	return ret[0]
-}
-
-func Satisfies(strvers string, constraint string) (bool, error) {
-	vers, err := goversion.NewVersion(strvers)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse '%s': %w", strvers, err)
-	}
-
-	constraints, err := goversion.NewConstraint(constraint)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse constraint '%s'", constraint)
-	}
-
-	if !constraints.Check(vers) {
-		return false, nil
-	}
-
-	return true, nil
 }
