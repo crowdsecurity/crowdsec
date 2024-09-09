@@ -1,4 +1,4 @@
-package apiclient
+package useragent
 
 import (
 	"github.com/crowdsecurity/go-cs-lib/version"

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 // hubTransport wraps a Transport to set a custom User-Agent.
@@ -16,7 +16,7 @@ type hubTransport struct {
 }
 
 func (t *hubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("User-Agent", apiclient.DefaultUserAgent())
+	req.Header.Set("User-Agent", useragent.DefaultUserAgent())
 	return t.RoundTripper.RoundTrip(req)
 }
 

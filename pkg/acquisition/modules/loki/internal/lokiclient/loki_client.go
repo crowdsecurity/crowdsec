@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 type LokiClient struct {
@@ -319,6 +319,6 @@ func NewLokiClient(config Config) *LokiClient {
 	if config.Username != "" || config.Password != "" {
 		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(config.Username+":"+config.Password))
 	}
-	headers["User-Agent"] = apiclient.DefaultUserAgent()
+	headers["User-Agent"] = useragent.DefaultUserAgent()
 	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config, requestHeaders: headers}
 }

@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 const (
@@ -46,7 +47,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 	}
 
 	req.Header.Set("X-Api-Key", c.apiKey)
-	req.Header.Set("User-Agent", apiclient.DefaultUserAgent())
+	req.Header.Set("User-Agent", useragent.DefaultUserAgent())
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 var (
@@ -68,7 +69,7 @@ type service struct {
 func NewClient(config *Config) (*ApiClient, error) {
 	userAgent := config.UserAgent
 	if userAgent == "" {
-		userAgent = DefaultUserAgent()
+		userAgent = useragent.DefaultUserAgent()
 	}
 
 	t := &JWTTransport{
@@ -149,7 +150,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	}
 
 	if userAgent == "" {
-		userAgent = DefaultUserAgent()
+		userAgent = useragent.DefaultUserAgent()
 	}
 
 	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: prefix}
@@ -189,7 +190,7 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 
 	userAgent := config.UserAgent
 	if userAgent == "" {
-		userAgent = DefaultUserAgent()
+		userAgent = useragent.DefaultUserAgent()
 	}
 
 	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: config.VersionPrefix}
