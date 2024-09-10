@@ -81,13 +81,14 @@ func (cli *cliPapi) status(ctx context.Context, out io.Writer) error {
 	if err != nil {
 		lastTimestampStr = ptr.Of("never")
 	}
-	log.Infof("You can successfully interact with Polling API (PAPI)")
-	log.Infof("Console plan: %s", perms.Plan)
-	log.Infof("Last order received: %s", *lastTimestampStr)
 
-	log.Infof("PAPI subscriptions:")
+	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
+	fmt.Fprintf(out, "Console plan: %s\n", perms.Plan)
+	fmt.Fprintf(out, "Last order received: %s\n", *lastTimestampStr)
+
+	fmt.Fprint(out, "PAPI subscriptions:\n")
 	for _, sub := range perms.Categories {
-		log.Infof(" - %s", sub)
+		fmt.Fprintf(out, " - %s\n", sub)
 	}
 
 	return nil
