@@ -82,6 +82,11 @@ func (cli *cliPapi) status(ctx context.Context, out io.Writer) error {
 		lastTimestampStr = ptr.Of("never")
 	}
 
+	// both can and did happen
+	if lastTimestampStr == nil || *lastTimestampStr == "0001-01-01T00:00:00Z" {
+		lastTimestampStr = ptr.Of("never")
+	}
+
 	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
 	fmt.Fprintf(out, "Console plan: %s\n", perms.Plan)
 	fmt.Fprintf(out, "Last order received: %s\n", *lastTimestampStr)
