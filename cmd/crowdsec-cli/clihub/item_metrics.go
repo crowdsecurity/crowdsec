@@ -16,22 +16,22 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func ShowMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) error {
+func showMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
-		metrics := GetParserMetric(prometheusURL, hubItem.Name)
+		metrics := getParserMetric(prometheusURL, hubItem.Name)
 		parserMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
-		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
+		metrics := getScenarioMetric(prometheusURL, hubItem.Name)
 		scenarioMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, sub := range hubItem.SubItems() {
-			if err := ShowMetrics(prometheusURL, sub, wantColor); err != nil {
+			if err := showMetrics(prometheusURL, sub, wantColor); err != nil {
 				return err
 			}
 		}
 	case cwhub.APPSEC_RULES:
-		metrics := GetAppsecRuleMetric(prometheusURL, hubItem.Name)
+		metrics := getAppsecRuleMetric(prometheusURL, hubItem.Name)
 		appsecMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	default: // no metrics for this item type
 	}
@@ -39,11 +39,11 @@ func ShowMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) er
 	return nil
 }
 
-// GetParserMetric is a complete rip from prom2json
-func GetParserMetric(url string, itemName string) map[string]map[string]int {
+// getParserMetric is a complete rip from prom2json
+func getParserMetric(url string, itemName string) map[string]map[string]int {
 	stats := make(map[string]map[string]int)
 
-	result := GetPrometheusMetric(url)
+	result := getPrometheusMetric(url)
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -131,7 +131,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 	return stats
 }
 
-func GetScenarioMetric(url string, itemName string) map[string]int {
+func getScenarioMetric(url string, itemName string) map[string]int {
 	stats := make(map[string]int)
 
 	stats["instantiation"] = 0
@@ -140,7 +140,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 	stats["pour"] = 0
 	stats["underflow"] = 0
 
-	result := GetPrometheusMetric(url)
+	result := getPrometheusMetric(url)
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -195,13 +195,13 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 	return stats
 }
 
-func GetAppsecRuleMetric(url string, itemName string) map[string]int {
+func getAppsecRuleMetric(url string, itemName string) map[string]int {
 	stats := make(map[string]int)
 
 	stats["inband_hits"] = 0
 	stats["outband_hits"] = 0
 
-	results := GetPrometheusMetric(url)
+	results := getPrometheusMetric(url)
 	for idx, fam := range results {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -260,7 +260,7 @@ func GetAppsecRuleMetric(url string, itemName string) map[string]int {
 	return stats
 }
 
-func GetPrometheusMetric(url string) []*prom2json.Family {
+func getPrometheusMetric(url string) []*prom2json.Family {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
 	// Start with the DefaultTransport for sane defaults.

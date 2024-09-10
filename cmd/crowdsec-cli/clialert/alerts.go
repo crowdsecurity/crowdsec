@@ -29,7 +29,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func DecisionsFromAlert(alert *models.Alert) string {
+func decisionsFromAlert(alert *models.Alert) string {
 	ret := ""
 	decMap := make(map[string]int)
 
@@ -77,7 +77,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 				*alertItem.Scenario,
 				alertItem.Source.Cn,
 				alertItem.Source.GetAsNumberName(),
-				DecisionsFromAlert(alertItem),
+				decisionsFromAlert(alertItem),
 				*alertItem.StartAt,
 			}
 			if printMachine {

@@ -146,7 +146,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 	return nil
 }
 
-func InspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusURL string, wantColor string) error {
+func InspectItem(item *cwhub.Item, wantMetrics bool, output string, prometheusURL string, wantColor string) error {
 	switch output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
@@ -174,10 +174,10 @@ func InspectItem(item *cwhub.Item, showMetrics bool, output string, prometheusUR
 		fmt.Println()
 	}
 
-	if showMetrics {
+	if wantMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
 
-		if err := ShowMetrics(prometheusURL, item, wantColor); err != nil {
+		if err := showMetrics(prometheusURL, item, wantColor); err != nil {
 			return err
 		}
 	}

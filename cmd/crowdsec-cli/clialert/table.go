@@ -38,7 +38,7 @@ func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsRespon
 			*alertItem.Scenario,
 			alertItem.Source.Cn,
 			alertItem.Source.GetAsNumberName(),
-			DecisionsFromAlert(alertItem),
+			decisionsFromAlert(alertItem),
 			*alertItem.StartAt,
 		}
 
