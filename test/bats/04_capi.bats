@@ -46,12 +46,25 @@ setup() {
     assert_stderr --regexp "no configuration for Central API \(CAPI\) in '$(echo $CONFIG_YAML|sed s#//#/#g)'"
 }
 
-@test "cscli capi status" {
+@test "cscli {capi,papi} status" {
     ./instance-data load
     config_enable_capi
+
+    # should not panic with no credentials, but return an error
+    rune -1 cscli papi status
+    assert_stderr --partial "the Central API (CAPI) must be configured with 'cscli capi register'"
+
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     rune -1 cscli capi status
     assert_stderr --partial "no scenarios or appsec-rules installed, abort"
+
+    rune -1 cscli papi status
+    assert_stderr --partial "no PAPI URL in configuration"
+
+    rune -0 cscli console enable console_management
+    rune -1 cscli papi status
+    assert_stderr --partial "unable to get PAPI permissions"
+    assert_stderr --partial "Forbidden for plan"
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli capi status
