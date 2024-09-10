@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/fatih/color"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
 
@@ -72,8 +72,8 @@ func (cli *cliPapi) Status(out io.Writer, db *database.Client) error {
 	if err != nil {
 		return fmt.Errorf("unable to get PAPI permissions: %w", err)
 	}
-	var lastTimestampStr *string
-	lastTimestampStr, err = db.GetConfigItem(apiserver.PapiPullKey)
+
+	lastTimestampStr, err := db.GetConfigItem(apiserver.PapiPullKey)
 	if err != nil {
 		lastTimestampStr = ptr.Of("never")
 	}
@@ -86,8 +86,8 @@ func (cli *cliPapi) Status(out io.Writer, db *database.Client) error {
 	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
 	fmt.Fprintf(out, "Console plan: %s\n", perms.Plan)
 	fmt.Fprintf(out, "Last order received: %s\n", *lastTimestampStr)
-
 	fmt.Fprint(out, "PAPI subscriptions:\n")
+
 	for _, sub := range perms.Categories {
 		fmt.Fprintf(out, " - %s\n", sub)
 	}
@@ -107,6 +107,7 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			return cli.Status(color.Output, db)
 		},
 	}
@@ -159,6 +160,7 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			return cli.sync(color.Output, db)
 		},
 	}
