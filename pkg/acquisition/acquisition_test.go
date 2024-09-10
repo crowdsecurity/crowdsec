@@ -79,13 +79,8 @@ func (f *MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests
 func appendMockSource() {
-	if GetDataSourceIface("mock") == nil {
-		AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
-	}
-
-	if GetDataSourceIface("mock_cant_run") == nil {
-		AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
-	}
+	AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
+	AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
 }
 
 func TestDataSourceConfigure(t *testing.T) {
@@ -150,7 +145,7 @@ labels:
 log_level: debug
 source: tutu
 `,
-			ExpectedError: "cannot find source tutu",
+			ExpectedError: "unknown data source tutu",
 		},
 		{
 			TestName: "mismatch_config",
@@ -270,7 +265,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
 			},
-			ExpectedError: "unknown data source does_not_exist in test_files/bad_source.yaml",
+			ExpectedError: "in file test_files/bad_source.yaml (position: 0) - unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
@@ -542,9 +537,7 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	if GetDataSourceIface("mockdsn") == nil {
-		AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
-	}
+	AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
