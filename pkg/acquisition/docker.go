@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["docker"] = func() DataSource { return &dockeracquisition.DockerSource{} }
+	registerDataSource("docker", func() DataSource { return &dockeracquisition.DockerSource{}})
 }

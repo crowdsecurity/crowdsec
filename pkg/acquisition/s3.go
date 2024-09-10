@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["s3"] = func() DataSource { return &s3acquisition.S3Source{} }
+	registerDataSource("s3", func() DataSource { return &s3acquisition.S3Source{}})
 }

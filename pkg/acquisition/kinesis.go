@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["kinesis"] = func() DataSource { return &kinesisacquisition.KinesisSource{} }
+	registerDataSource("kinesis", func() DataSource { return &kinesisacquisition.KinesisSource{}})
 }

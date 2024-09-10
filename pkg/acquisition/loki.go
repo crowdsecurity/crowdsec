@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["loki"] = func() DataSource { return &loki.LokiSource{} }
+	registerDataSource("loki", func() DataSource { return &loki.LokiSource{}})
 }

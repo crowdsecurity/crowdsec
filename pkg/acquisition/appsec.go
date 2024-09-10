@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["appsec"] = func() DataSource { return &appsecacquisition.AppsecSource{} }
+	registerDataSource("appsec", func() DataSource { return &appsecacquisition.AppsecSource{}})
 }

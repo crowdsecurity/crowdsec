@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["syslog"] = func() DataSource { return &syslogacquisition.SyslogSource{} }
+	registerDataSource("syslog", func() DataSource { return &syslogacquisition.SyslogSource{}})
 }

@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["journalctl"] = func() DataSource { return &journalctlacquisition.JournalCtlSource{} }
+	registerDataSource("journalctl", func() DataSource { return &journalctlacquisition.JournalCtlSource{}})
 }

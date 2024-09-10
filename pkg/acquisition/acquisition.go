@@ -52,17 +52,47 @@ type DataSource interface {
 	Dump() interface{}
 }
 
-var AcquisitionSources = map[string]func() DataSource{}
-
-var transformRuntimes = map[string]*vm.Program{}
-
-func GetDataSourceIface(dataSourceType string) DataSource {
-	source := AcquisitionSources[dataSourceType]
-	if source == nil {
-		return nil
+var (
+	// We declare everything here so we can tell if they are unsupported, or excluded from the build
+	AcquisitionSources = map[string]func() DataSource{
+		"appsec": nil,
+		"cloudwatch": nil,
+		"docker": nil,
+		"file": nil,
+		"journalctl": nil,
+		"k8s-audit": nil,
+		"kafka": nil,
+		"kinesis": nil,
+		"loki": nil,
+		"s3": nil,
+		"syslog": nil,
+		"wineventlog": nil,
 	}
-	return source()
+	transformRuntimes = map[string]*vm.Program{}
+)
+
+func GetDataSourceIface(dataSourceType string) (DataSource, error) {
+	source, ok := AcquisitionSources[dataSourceType]
+	if !ok {
+		return nil, fmt.Errorf("unknown data source %s", dataSourceType)
+	}
+	if source == nil {
+		return nil, fmt.Errorf("data source %s is not built in this version of crowdsec", dataSourceType)
+	}
+	return source(), nil
 }
+
+// registerDataSource registers a datasource in the AcquisitionSources map.
+// It must be called in the init() function of the datasource package, and the datasource name
+// must be declared with a nil value in the map, to allow for conditional compilation.
+func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
+	_, ok := AcquisitionSources[dataSourceType]
+	if !ok {
+		panic("datasource must be declared in the map: " + dataSourceType)
+	}
+	AcquisitionSources[dataSourceType] = dsGetter
+}
+
 
 // setupLogger creates a logger for the datasource to use at runtime.
 func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
@@ -95,23 +125,25 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal back interface: %w", err)
 	}
-	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
-		subLogger, err := setupLogger(commonConfig.Source, commonConfig.Name, commonConfig.LogLevel)
-		if err != nil {
-			return nil, err
-		}
-
-		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
-		if err := dataSrc.CanRun(); err != nil {
-			return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
-		}
-		/* configure the actual datasource */
-		if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
-			return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
-		}
-		return &dataSrc, nil
+	dataSrc, err := GetDataSourceIface(commonConfig.Source)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("cannot find source %s", commonConfig.Source)
+
+	subLogger, err := setupLogger(commonConfig.Source, commonConfig.Name, commonConfig.LogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
+	if err := dataSrc.CanRun(); err != nil {
+		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
+	}
+	/* configure the actual datasource */
+	if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
+		return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
+	}
+	return &dataSrc, nil
 }
 
 // detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
@@ -135,9 +167,10 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
 	}
-	dataSrc := GetDataSourceIface(frags[0])
-	if dataSrc == nil {
-		return nil, fmt.Errorf("no acquisition for protocol %s://", frags[0])
+
+	dataSrc, err := GetDataSourceIface(frags[0])
+	if err != nil {
+		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
 	subLogger, err := setupLogger(dsn, "", nil)
@@ -222,9 +255,13 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			if sub.Source == "" {
 				return nil, fmt.Errorf("data source type is empty ('source') in %s (position: %d)", acquisFile, idx)
 			}
-			if GetDataSourceIface(sub.Source) == nil {
-				return nil, fmt.Errorf("unknown data source %s in %s (position: %d)", sub.Source, acquisFile, idx)
+
+			// pre-check that the source is valid
+			_, err := GetDataSourceIface(sub.Source)
+			if err != nil {
+				return nil, fmt.Errorf("in file %s (position: %d) - %w", acquisFile, idx, err)
 			}
+
 			uniqueId := uuid.NewString()
 			sub.UniqueId = uniqueId
 			src, err := DataSourceConfigure(sub, metrics_level)

@@ -18,6 +18,17 @@ var (
 )
 
 func FullString() string {
+	dsBuilt := []string{}
+	dsExcluded := []string{}
+
+	for _, ds := range maptools.SortedKeys(acquisition.AcquisitionSources) {
+		if acquisition.AcquisitionSources[ds] != nil {
+			dsBuilt = append(dsBuilt, ds)
+			continue
+		}
+		dsExcluded = append(dsExcluded, ds)
+	}
+
 	ret := fmt.Sprintf("version: %s\n", version.String())
 	ret += fmt.Sprintf("Codename: %s\n", Codename)
 	ret += fmt.Sprintf("BuildDate: %s\n", version.BuildDate)
@@ -29,7 +40,14 @@ func FullString() string {
 	ret += fmt.Sprintf("Constraint_scenario: %s\n", constraint.Scenario)
 	ret += fmt.Sprintf("Constraint_api: %s\n", constraint.API)
 	ret += fmt.Sprintf("Constraint_acquis: %s\n", constraint.Acquis)
-	ret += fmt.Sprintf("Acquisition data sources: %s\n", strings.Join(maptools.SortedKeys(acquisition.AcquisitionSources), ", "))
+
+	if len(dsBuilt) > 0 {
+		ret += fmt.Sprintf("Built data sources: %s\n", strings.Join(dsBuilt, ", "))
+	}
+
+	if len(dsExcluded) > 0 {
+		ret += fmt.Sprintf("Excluded data sources: %s\n", strings.Join(dsExcluded, ", "))
+	}
 
 	return ret
 }

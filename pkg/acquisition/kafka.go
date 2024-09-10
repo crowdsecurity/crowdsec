@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["kafka"] = func() DataSource { return &kafkaacquisition.KafkaSource{} }
+	registerDataSource("kafka", func() DataSource { return &kafkaacquisition.KafkaSource{}})
 }

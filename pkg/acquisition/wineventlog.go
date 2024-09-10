@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["wineventlog"] = func() DataSource { return &wineventlogacquisition.WinEventLogSource{} }
+	registerDataSource("wineventlog", func() DataSource { return &wineventlogacquisition.WinEventLogSource{}})
 }

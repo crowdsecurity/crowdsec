@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["file"] = func() DataSource { return &fileacquisition.FileSource{} }
+	registerDataSource("file", func() DataSource { return &fileacquisition.FileSource{}})
 }

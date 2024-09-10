@@ -73,9 +73,9 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 
 	// source must be known
 
-	ds := acquisition.GetDataSourceIface(commonDS.Source)
-	if ds == nil {
-		return fmt.Errorf("unknown source '%s'", commonDS.Source)
+	ds, err := acquisition.GetDataSourceIface(commonDS.Source)
+	if err != nil {
+		return err
 	}
 
 	// unmarshal and validate the rest with the specific implementation

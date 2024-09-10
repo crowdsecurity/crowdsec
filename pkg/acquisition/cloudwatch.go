@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["cloudwatch"] = func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} }
+	registerDataSource("cloudwatch", func() DataSource { return &cloudwatchacquisition.CloudwatchSource{}})
 }

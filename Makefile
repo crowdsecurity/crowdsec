@@ -148,17 +148,16 @@ space := $(empty) $(empty)
 # keep only datasource-file
 EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
 
-EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
+# example
+# EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
 
 BUILD_PROFILE ?= default
 
 # Set the EXCLUDE_LIST based on the chosen profile, unless EXCLUDE is already set
 ifeq ($(BUILD_PROFILE),minimal)
 EXCLUDE ?= $(EXCLUDE_MINIMAL)
-else ifeq ($(BUILD_PROFILE),medium)
-EXCLUDE ?= $(EXCLUDE_MEDIUM)
 else ifneq ($(BUILD_PROFILE),default)
-$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, medium, default)
+$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default)
 endif
 
 # Create list of excluded components from the EXCLUDE variable

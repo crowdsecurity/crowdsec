@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	AcquisitionSources["k8s-audit"] = func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} }
+	registerDataSource("k8s-audit", func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{}})
 }
