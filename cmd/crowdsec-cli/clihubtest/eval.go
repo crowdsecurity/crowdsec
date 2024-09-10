@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (cli *cliHubTest) NewEvalCmd() *cobra.Command {
+func (cli *cliHubTest) newEvalCmd() *cobra.Command {
 	var evalExpression string
 
 	cmd := &cobra.Command{

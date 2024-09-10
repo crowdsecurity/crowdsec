@@ -56,7 +56,7 @@ func (cli *cliHubTest) run(runAll bool, NucleiTargetHost string, AppSecHost stri
 	return nil
 }
 
-func (cli *cliHubTest) NewRunCmd() *cobra.Command {
+func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	var (
 		noClean          bool
 		runAll           bool

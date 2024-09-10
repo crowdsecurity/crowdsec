@@ -227,10 +227,10 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewInspectCmd())
-	cmd.AddCommand(cli.NewFlushCmd())
-	cmd.AddCommand(cli.NewDeleteCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newInspectCmd())
+	cmd.AddCommand(cli.newFlushCmd())
+	cmd.AddCommand(cli.newDeleteCmd())
 
 	return cmd
 }
@@ -323,7 +323,7 @@ func (cli *cliAlerts) list(alertListFilter apiclient.AlertsListOpts, limit *int,
 	return nil
 }
 
-func (cli *cliAlerts) NewListCmd() *cobra.Command {
+func (cli *cliAlerts) newListCmd() *cobra.Command {
 	alertListFilter := apiclient.AlertsListOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -439,7 +439,7 @@ func (cli *cliAlerts) delete(alertDeleteFilter apiclient.AlertsDeleteOpts, Activ
 	return nil
 }
 
-func (cli *cliAlerts) NewDeleteCmd() *cobra.Command {
+func (cli *cliAlerts) newDeleteCmd() *cobra.Command {
 	var (
 		ActiveDecision *bool
 		AlertDeleteAll bool
@@ -538,7 +538,7 @@ func (cli *cliAlerts) inspect(details bool, alertIDs ...string) error {
 	return nil
 }
 
-func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
+func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 	var details bool
 
 	cmd := &cobra.Command{
@@ -561,7 +561,7 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
+func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 	var (
 		maxItems int
 		maxAge   string

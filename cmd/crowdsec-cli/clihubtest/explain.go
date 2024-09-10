@@ -48,7 +48,7 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 }
 
 
-func (cli *cliHubTest) NewExplainCmd() *cobra.Command {
+func (cli *cliHubTest) newExplainCmd() *cobra.Command {
 	var (
 		details bool
 		skipOk  bool

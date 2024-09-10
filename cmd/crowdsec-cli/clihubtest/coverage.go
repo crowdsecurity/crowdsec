@@ -140,7 +140,7 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 	return nil
 }
 
-func (cli *cliHubTest) NewCoverageCmd() *cobra.Command {
+func (cli *cliHubTest) newCoverageCmd() *cobra.Command {
 	var (
 		showParserCov   bool
 		showScenarioCov bool

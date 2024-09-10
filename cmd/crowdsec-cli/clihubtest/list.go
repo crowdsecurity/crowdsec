@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (cli *cliHubTest) NewListCmd() *cobra.Command {
+func (cli *cliHubTest) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list",

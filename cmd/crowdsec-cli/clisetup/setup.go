@@ -39,10 +39,10 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 		DisableAutoGenTag: true,
 	}
 
-	cmd.AddCommand(cli.NewDetectCmd())
-	cmd.AddCommand(cli.NewInstallHubCmd())
-	cmd.AddCommand(cli.NewDataSourcesCmd())
-	cmd.AddCommand(cli.NewValidateCmd())
+	cmd.AddCommand(cli.newDetectCmd())
+	cmd.AddCommand(cli.newInstallHubCmd())
+	cmd.AddCommand(cli.newDataSourcesCmd())
+	cmd.AddCommand(cli.newValidateCmd())
 
 	return cmd
 }
@@ -76,7 +76,7 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.BoolVar(&f.outYaml, "yaml", false, "output yaml, not json")
 }
 
-func (cli *cliSetup) NewDetectCmd() *cobra.Command {
+func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	f := detectFlags{}
 
 	cmd := &cobra.Command{
@@ -92,7 +92,7 @@ func (cli *cliSetup) NewDetectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) NewInstallHubCmd() *cobra.Command {
+func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	var dryRun bool
 
 	cmd := &cobra.Command{
@@ -111,7 +111,7 @@ func (cli *cliSetup) NewInstallHubCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) NewDataSourcesCmd() *cobra.Command {
+func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 	var toDir string
 
 	cmd := &cobra.Command{
@@ -130,7 +130,7 @@ func (cli *cliSetup) NewDataSourcesCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) NewValidateCmd() *cobra.Command {
+func (cli *cliSetup) newValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "validate [setup_file]",
 		Short:             "validate a setup file",
