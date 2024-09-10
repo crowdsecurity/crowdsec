@@ -28,6 +28,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -47,6 +48,7 @@ const (
 	SUPPORT_CROWDSEC_CONFIG_PATH  = "config/crowdsec.yaml"
 	SUPPORT_LAPI_STATUS_PATH      = "lapi_status.txt"
 	SUPPORT_CAPI_STATUS_PATH      = "capi_status.txt"
+	SUPPORT_PAPI_STATUS_PATH      = "papi_status.txt"
 	SUPPORT_ACQUISITION_DIR       = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH = "config/profiles.yaml"
 	SUPPORT_CRASH_DIR             = "crash/"
@@ -195,9 +197,9 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	}
 
 	out := new(bytes.Buffer)
-	cm := clibouncer.New(cli.cfg)
+	cb := clibouncer.New(cli.cfg)
 
-	if err := cm.List(out, db); err != nil {
+	if err := cb.List(out, db); err != nil {
 		return err
 	}
 
@@ -261,6 +263,24 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	stripped := stripAnsiString(out.String())
 
 	cli.writeToZip(zw, SUPPORT_CAPI_STATUS_PATH, time.Now(), strings.NewReader(stripped))
+
+	return nil
+}
+
+func (cli *cliSupport) dumpPAPIStatus(zw *zip.Writer, db *database.Client) error {
+	log.Info("Collecting PAPI status")
+
+	out := new(bytes.Buffer)
+	cp := clipapi.New(cli.cfg)
+
+	err := cp.Status(out, db)
+	if err != nil {
+		fmt.Fprintf(out, "%s\n", err)
+	}
+
+	stripped := stripAnsiString(out.String())
+
+	cli.writeToZip(zw, SUPPORT_PAPI_STATUS_PATH, time.Now(), strings.NewReader(stripped))
 
 	return nil
 }
@@ -516,6 +536,10 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	if !skipCAPI {
 		if err = cli.dumpCAPIStatus(zipWriter, hub); err != nil {
 			log.Warnf("could not collect CAPI status: %s", err)
+		}
+
+		if err = cli.dumpPAPIStatus(zipWriter, db); err != nil {
+			log.Warnf("could not collect PAPI status: %s", err)
 		}
 	}
 

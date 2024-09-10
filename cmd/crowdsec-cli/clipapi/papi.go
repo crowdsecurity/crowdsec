@@ -1,7 +1,6 @@
 package clipapi
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"time"
@@ -16,9 +15,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
-type configGetter func() *csconfig.Config
+type configGetter = func() *csconfig.Config
 
 type cliPapi struct {
 	cfg configGetter
@@ -55,12 +55,8 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliPapi) status(ctx context.Context, out io.Writer) error {
+func (cli *cliPapi) Status(out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
-	db, err := require.DBClient(ctx, cfg.DbConfig)
-	if err != nil {
-		return err
-	}
 
 	apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
@@ -106,21 +102,21 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.status(cmd.Context(), color.Output)
+			cfg := cli.cfg()
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
+			if err != nil {
+				return err
+			}
+			return cli.Status(color.Output, db)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliPapi) sync(ctx context.Context, out io.Writer) error {
+func (cli *cliPapi) sync(out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 	t := tomb.Tomb{}
-
-	db, err := require.DBClient(ctx, cfg.DbConfig)
-	if err != nil {
-		return err
-	}
 
 	apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
@@ -158,7 +154,12 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.sync(cmd.Context(), color.Output)
+			cfg := cli.cfg()
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
+			if err != nil {
+				return err
+			}
+			return cli.sync(color.Output, db)
 		},
 	}
 
