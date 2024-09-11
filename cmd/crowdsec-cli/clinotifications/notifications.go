@@ -72,10 +72,10 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewInspectCmd())
-	cmd.AddCommand(cli.NewReinjectCmd())
-	cmd.AddCommand(cli.NewTestCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newInspectCmd())
+	cmd.AddCommand(cli.newReinjectCmd())
+	cmd.AddCommand(cli.newTestCmd())
 
 	return cmd
 }
@@ -152,7 +152,7 @@ func (cli *cliNotifications) getProfilesConfigs() (map[string]NotificationsCfg, 
 	return ncfgs, nil
 }
 
-func (cli *cliNotifications) NewListCmd() *cobra.Command {
+func (cli *cliNotifications) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list notifications plugins",
@@ -201,7 +201,7 @@ func (cli *cliNotifications) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
+func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect",
 		Short:             "Inspect notifications plugin",
@@ -260,7 +260,7 @@ func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args [
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli cliNotifications) NewTestCmd() *cobra.Command {
+func (cli cliNotifications) newTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
 		pluginTomb    tomb.Tomb
@@ -351,7 +351,7 @@ func (cli cliNotifications) NewTestCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliNotifications) NewReinjectCmd() *cobra.Command {
+func (cli *cliNotifications) newReinjectCmd() *cobra.Command {
 	var (
 		alertOverride string
 		alert         *models.Alert

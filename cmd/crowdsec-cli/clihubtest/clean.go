@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (cli *cliHubTest) NewCleanCmd() *cobra.Command {
+func (cli *cliHubTest) newCleanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",

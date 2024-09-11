@@ -68,14 +68,14 @@ func (cli *cliHubTest) NewCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
 	cmd.PersistentFlags().BoolVar(&isAppsecTest, "appsec", false, "Command relates to appsec tests")
 
-	cmd.AddCommand(cli.NewCreateCmd())
-	cmd.AddCommand(cli.NewRunCmd())
-	cmd.AddCommand(cli.NewCleanCmd())
-	cmd.AddCommand(cli.NewInfoCmd())
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewCoverageCmd())
-	cmd.AddCommand(cli.NewEvalCmd())
-	cmd.AddCommand(cli.NewExplainCmd())
+	cmd.AddCommand(cli.newCreateCmd())
+	cmd.AddCommand(cli.newRunCmd())
+	cmd.AddCommand(cli.newCleanCmd())
+	cmd.AddCommand(cli.newInfoCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newCoverageCmd())
+	cmd.AddCommand(cli.newEvalCmd())
+	cmd.AddCommand(cli.newExplainCmd())
 
 	return cmd
 }

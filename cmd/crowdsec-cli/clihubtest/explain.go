@@ -8,7 +8,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 )
 
-
 func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error {
 	test, err := HubTest.LoadTestItem(testName)
 	if err != nil {
@@ -39,7 +38,7 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 
 	opts := dumps.DumpOpts{
 		Details: details,
-		SkipOk: skipOk,
+		SkipOk:  skipOk,
 	}
 
 	dumps.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
@@ -47,8 +46,7 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 	return nil
 }
 
-
-func (cli *cliHubTest) NewExplainCmd() *cobra.Command {
+func (cli *cliHubTest) newExplainCmd() *cobra.Command {
 	var (
 		details bool
 		skipOk  bool

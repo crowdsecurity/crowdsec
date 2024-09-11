@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) NewCreateCmd() *cobra.Command {
+func (cli *cliHubTest) newCreateCmd() *cobra.Command {
 	var (
 		ignoreParsers bool
 		labels        map[string]string
