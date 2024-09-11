@@ -83,12 +83,13 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 		Use:               "detect",
 		Short:             "detect running services, generate a setup file",
 		DisableAutoGenTag: true,
-		RunE:              func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.detect(f)
 		},
 	}
 
 	f.bind(cmd)
+
 	return cmd
 }
 
@@ -100,7 +101,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 		Short:             "install items from a setup file",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.install(cmd.Context(), dryRun, args[0])
 		},
 	}
@@ -119,7 +120,7 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 		Short:             "generate datasource (acquisition) configuration from a setup file",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.dataSources(args[0], toDir)
 		},
 	}
@@ -136,7 +137,7 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 		Short:             "validate a setup file",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.validate(args[0])
 		},
 	}
@@ -165,7 +166,7 @@ func (cli *cliSetup) detect(f detectFlags) error {
 	}
 
 	if !f.snubSystemd {
-		_, err := exec.LookPath("systemctl")
+		_, err = exec.LookPath("systemctl")
 		if err != nil {
 			log.Debug("systemctl not available: snubbing systemd")
 
