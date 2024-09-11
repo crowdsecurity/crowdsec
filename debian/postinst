@@ -11,14 +11,6 @@ if [ "$1" = configure ]; then
         mkdir -p /var/lib/crowdsec/data
     fi
 
-    if [[ -d /var/lib/crowdsec/backup ]]; then
-        cscli config restore /var/lib/crowdsec/backup/backup.config
-        rm -rf /var/lib/crowdsec/backup
-        /usr/bin/cscli hub update
-        /usr/bin/cscli hub upgrade
-        systemctl start crowdsec
-    fi
-
     . /usr/share/crowdsec/wizard.sh -n
     if ! [[ -f /etc/crowdsec/acquis.yaml ]]; then
         echo Creating /etc/crowdsec/acquis.yaml
@@ -80,12 +72,6 @@ if [ "$1" = configure ]; then
         set +e
         CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
         set -e
-    fi
-
-
-    if [[ -f /var/lib/crowdsec/data/crowdsec.db.backup ]]; then
-        cp /var/lib/crowdsec/data/crowdsec.db.backup /var/lib/crowdsec/data/crowdsec.db
-        rm -f /var/lib/crowdsec/data/crowdsec.db.backup
     fi
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
