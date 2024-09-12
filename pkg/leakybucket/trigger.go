@@ -34,7 +34,7 @@ func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *type
 		}
 		l.Total_count = 1
 
-		l.logger.Infof("Bucket overflow")
+		l.logger.Debug("Bucket overflow")
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 
