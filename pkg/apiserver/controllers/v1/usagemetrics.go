@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -18,12 +19,12 @@ import (
 )
 
 // updateBaseMetrics updates the base metrics for a machine or bouncer
-func (c *Controller) updateBaseMetrics(machineID string, bouncer *ent.Bouncer, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
+func (c *Controller) updateBaseMetrics(ctx context.Context, machineID string, bouncer *ent.Bouncer, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	switch {
 	case machineID != "":
-		c.DBClient.MachineUpdateBaseMetrics(machineID, baseMetrics, hubItems, datasources)
+		c.DBClient.MachineUpdateBaseMetrics(ctx, machineID, baseMetrics, hubItems, datasources)
 	case bouncer != nil:
-		c.DBClient.BouncerUpdateBaseMetrics(bouncer.Name, bouncer.Type, baseMetrics)
+		c.DBClient.BouncerUpdateBaseMetrics(ctx, bouncer.Name, bouncer.Type, baseMetrics)
 	default:
 		return errors.New("no machineID or bouncerName set")
 	}
@@ -172,7 +173,9 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		}
 	}
 
-	err := c.updateBaseMetrics(machineID, bouncer, baseMetrics, hubItems, datasources)
+	ctx := gctx.Request.Context()
+
+	err := c.updateBaseMetrics(ctx, machineID, bouncer, baseMetrics, hubItems, datasources)
 	if err != nil {
 		logger.Errorf("Failed to update base metrics: %s", err)
 		c.HandleDBErrors(gctx, err)
@@ -190,7 +193,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	receivedAt := time.Now().UTC()
 
-	if _, err := c.DBClient.CreateMetric(generatedType, generatedBy, receivedAt, string(jsonPayload)); err != nil {
+	if _, err := c.DBClient.CreateMetric(ctx, generatedType, generatedBy, receivedAt, string(jsonPayload)); err != nil {
 		logger.Error(err)
 		c.HandleDBErrors(gctx, err)
 
