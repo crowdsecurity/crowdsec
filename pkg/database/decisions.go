@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -173,7 +174,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	return data, nil
 }
 
-func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) {
+func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*DecisionsByScenario, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
@@ -186,7 +187,7 @@ func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) 
 
 	var r []*DecisionsByScenario
 
-	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType).Aggregate(ent.Count()).Scan(c.CTX, &r)
+	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType).Aggregate(ent.Count()).Scan(ctx, &r)
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
 		return nil, errors.Wrap(QueryFail, "count all decisions with filters")
