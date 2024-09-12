@@ -148,7 +148,7 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 }
 
 // queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
-func queryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
+func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return false, false, err
@@ -186,7 +186,7 @@ func queryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 		Scenarios: itemsForAPI,
 	}
 
-	authResp, _, err := client.Auth.AuthenticateWatcher(context.Background(), t)
+	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, t)
 	if err != nil {
 		return false, false, err
 	}
@@ -200,7 +200,7 @@ func queryCAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 	return true, false, nil
 }
 
-func (cli *cliCapi) Status(out io.Writer, hub *cwhub.Hub) error {
+func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
 
 	if err := require.CAPIRegistered(cfg); err != nil {
@@ -212,7 +212,7 @@ func (cli *cliCapi) Status(out io.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
-	auth, enrolled, err := queryCAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	auth, enrolled, err := queryCAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
@@ -234,13 +234,13 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), nil, nil)
 			if err != nil {
 				return err
 			}
 
-			return cli.Status(color.Output, hub)
+			return cli.Status(cmd.Context(), color.Output, hub)
 		},
 	}
 

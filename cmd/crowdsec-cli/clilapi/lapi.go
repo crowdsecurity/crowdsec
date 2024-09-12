@@ -44,7 +44,7 @@ func New(cfg configGetter) *cliLapi {
 }
 
 // queryLAPIStatus checks if the Local API is reachable, and if the credentials are correct.
-func queryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password string) (bool, error) {
+func queryLAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login string, password string) (bool, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return false, err
@@ -76,7 +76,7 @@ func queryLAPIStatus(hub *cwhub.Hub, credURL string, login string, password stri
 	return true, nil
 }
 
-func (cli *cliLapi) Status(out io.Writer, hub *cwhub.Hub) error {
+func (cli *cliLapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
 
 	cred := cfg.API.Client.Credentials
@@ -84,7 +84,7 @@ func (cli *cliLapi) Status(out io.Writer, hub *cwhub.Hub) error {
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Client.CredentialsFilePath)
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
-	_, err := queryLAPIStatus(hub, cred.URL, cred.Login, cred.Password)
+	_, err := queryLAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
@@ -195,13 +195,13 @@ func (cli *cliLapi) newStatusCmd() *cobra.Command {
 		Short:             "Check authentication to Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), nil, nil)
 			if err != nil {
 				return err
 			}
 
-			return cli.Status(color.Output, hub)
+			return cli.Status(cmd.Context(), color.Output, hub)
 		},
 	}
 
