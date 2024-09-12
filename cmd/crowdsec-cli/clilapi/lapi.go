@@ -513,14 +513,14 @@ func detectStaticField(grokStatics []parser.ExtraField) []string {
 
 	for _, static := range grokStatics {
 		if static.Parsed != "" {
-			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
+			fieldName := "evt.Parsed." + static.Parsed
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
 
 		if static.Meta != "" {
-			fieldName := fmt.Sprintf("evt.Meta.%s", static.Meta)
+			fieldName := "evt.Meta." + static.Meta
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
@@ -546,7 +546,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 
 	if node.Grok.RunTimeRegexp != nil {
 		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
-			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+			fieldName := "evt.Parsed." + capturedField
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
@@ -558,7 +558,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		// ignore error (parser does not exist?)
 		if err == nil {
 			for _, capturedField := range grokCompiled.Names() {
-				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				fieldName := "evt.Parsed." + capturedField
 				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)
 				}
@@ -593,7 +593,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	for _, subnode := range node.LeavesNodes {
 		if subnode.Grok.RunTimeRegexp != nil {
 			for _, capturedField := range subnode.Grok.RunTimeRegexp.Names() {
-				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				fieldName := "evt.Parsed." + capturedField
 				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)
 				}
@@ -605,7 +605,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 			if err == nil {
 				// ignore error (parser does not exist?)
 				for _, capturedField := range grokCompiled.Names() {
-					fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+					fieldName := "evt.Parsed." + capturedField
 					if !slices.Contains(ret, fieldName) {
 						ret = append(ret, fieldName)
 					}
