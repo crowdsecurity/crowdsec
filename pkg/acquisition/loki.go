@@ -1,4 +1,4 @@
-// +build !no_datasource_loki
+//go:build !no_datasource_loki
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("loki", func() DataSource { return &loki.LokiSource{}})
+	registerDataSource("loki", func() DataSource { return &loki.LokiSource{} })
 }

@@ -1,4 +1,4 @@
-// +build !no_datasource_k8saudit
+//go:build !no_datasource_k8saudit
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("k8s-audit", func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{}})
+	registerDataSource("k8s-audit", func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} })
 }

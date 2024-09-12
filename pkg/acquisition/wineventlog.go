@@ -1,4 +1,4 @@
-// +build !no_datasource_wineventlog
+//go:build !no_datasource_wineventlog
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("wineventlog", func() DataSource { return &wineventlogacquisition.WinEventLogSource{}})
+	registerDataSource("wineventlog", func() DataSource { return &wineventlogacquisition.WinEventLogSource{} })
 }

@@ -179,6 +179,7 @@ wowo: ajsajasjas
 			yaml.Unmarshal([]byte(tc.String), &common)
 			ds, err := DataSourceConfigure(common, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
+
 			if tc.ExpectedError != "" {
 				return
 			}
@@ -279,6 +280,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 		t.Run(tc.TestName, func(t *testing.T) {
 			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
+
 			if tc.ExpectedError != "" {
 				return
 			}
@@ -324,6 +326,7 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 
 	return nil
 }
+
 func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
 	return errors.New("can't run in tail")
 }
@@ -362,12 +365,14 @@ func (f *MockTail) GetMode() string                  { return "tail" }
 func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
 	return errors.New("can't run in cat mode")
 }
+
 func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
 		out <- evt
 	}
+
 	<-t.Dying()
 
 	return nil
@@ -381,7 +386,7 @@ func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry, string)
 }
 func (f *MockTail) GetUuid() string { return "" }
 
-//func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+// func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 func TestStartAcquisitionCat(t *testing.T) {
 	sources := []DataSource{
@@ -451,6 +456,7 @@ func (f *MockTailError) StreamingAcquisition(out chan types.Event, t *tomb.Tomb)
 		evt.Line.Src = "test"
 		out <- evt
 	}
+
 	t.Kill(errors.New("got error (tomb)"))
 
 	return errors.New("got error")
@@ -480,7 +486,7 @@ READLOOP:
 		}
 	}
 	assert.Equal(t, 10, count)
-	//acquisTomb.Kill(nil)
+	// acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
 	cstest.RequireErrorContains(t, acquisTomb.Err(), "got error (tomb)")
 }

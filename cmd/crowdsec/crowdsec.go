@@ -42,12 +42,12 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 		return nil, nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
-	if err := LoadBuckets(cConfig, hub); err != nil {
+	if err = LoadBuckets(cConfig, hub); err != nil {
 		return nil, nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
 	// can be nerfed by a build flag
-	if err := LoadAppsecRules(hub); err != nil {
+	if err = LoadAppsecRules(hub); err != nil {
 		return nil, nil, err
 	}
 
@@ -82,6 +82,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 				return nil
 			})
 		}
+
 		parserWg.Done()
 
 		return nil
@@ -108,6 +109,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 				return runPour(inputEventChan, holders, buckets, cConfig)
 			})
 		}
+
 		bucketWg.Done()
 
 		return nil
@@ -134,6 +136,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 				return runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, apiClient)
 			})
 		}
+
 		outputWg.Done()
 
 		return nil

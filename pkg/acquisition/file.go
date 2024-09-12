@@ -1,4 +1,4 @@
-// +build !no_datasource_file
+//go:build !no_datasource_file
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("file", func() DataSource { return &fileacquisition.FileSource{}})
+	registerDataSource("file", func() DataSource { return &fileacquisition.FileSource{} })
 }

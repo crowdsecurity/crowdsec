@@ -1,4 +1,4 @@
-// +build !no_datasource_kinesis
+//go:build !no_datasource_kinesis
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("kinesis", func() DataSource { return &kinesisacquisition.KinesisSource{}})
+	registerDataSource("kinesis", func() DataSource { return &kinesisacquisition.KinesisSource{} })
 }

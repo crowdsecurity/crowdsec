@@ -1,4 +1,4 @@
-// +build !no_datasource_syslog
+//go:build !no_datasource_syslog
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("syslog", func() DataSource { return &syslogacquisition.SyslogSource{}})
+	registerDataSource("syslog", func() DataSource { return &syslogacquisition.SyslogSource{} })
 }

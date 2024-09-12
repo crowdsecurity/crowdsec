@@ -1,4 +1,4 @@
-// +build !no_datasource_cloudwatch
+//go:build !no_datasource_cloudwatch
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("cloudwatch", func() DataSource { return &cloudwatchacquisition.CloudwatchSource{}})
+	registerDataSource("cloudwatch", func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} })
 }

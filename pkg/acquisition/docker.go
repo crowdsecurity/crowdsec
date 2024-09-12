@@ -1,4 +1,4 @@
-// +build !no_datasource_docker
+//go:build !no_datasource_docker
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("docker", func() DataSource { return &dockeracquisition.DockerSource{}})
+	registerDataSource("docker", func() DataSource { return &dockeracquisition.DockerSource{} })
 }

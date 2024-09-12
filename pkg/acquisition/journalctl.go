@@ -1,4 +1,4 @@
-// +build !no_datasource_journalctl
+//go:build !no_datasource_journalctl
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("journalctl", func() DataSource { return &journalctlacquisition.JournalCtlSource{}})
+	registerDataSource("journalctl", func() DataSource { return &journalctlacquisition.JournalCtlSource{} })
 }

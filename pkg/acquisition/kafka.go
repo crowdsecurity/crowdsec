@@ -1,4 +1,4 @@
-// +build !no_datasource_kafka
+//go:build !no_datasource_kafka
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("kafka", func() DataSource { return &kafkaacquisition.KafkaSource{}})
+	registerDataSource("kafka", func() DataSource { return &kafkaacquisition.KafkaSource{} })
 }

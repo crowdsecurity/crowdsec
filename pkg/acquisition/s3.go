@@ -1,4 +1,4 @@
-// +build !no_datasource_s3
+//go:build !no_datasource_s3
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("s3", func() DataSource { return &s3acquisition.S3Source{}})
+	registerDataSource("s3", func() DataSource { return &s3acquisition.S3Source{} })
 }

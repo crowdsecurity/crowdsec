@@ -1,4 +1,4 @@
-// +build !no_datasource_appsec
+//go:build !no_datasource_appsec
 
 package acquisition
 
@@ -8,5 +8,5 @@ import (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("appsec", func() DataSource { return &appsecacquisition.AppsecSource{}})
+	registerDataSource("appsec", func() DataSource { return &appsecacquisition.AppsecSource{} })
 }
