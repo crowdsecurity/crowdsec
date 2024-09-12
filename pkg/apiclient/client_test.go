@@ -242,7 +242,9 @@ func TestNewClientRegisterKO(t *testing.T) {
 	apiURL, err := url.Parse("http://127.0.0.1:4242/")
 	require.NoError(t, err)
 
-	_, err = RegisterClient(&Config{
+	ctx := context.Background()
+
+	_, err = RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
@@ -272,7 +274,9 @@ func TestNewClientRegisterOK(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := RegisterClient(&Config{
+	ctx := context.Background()
+
+	client, err := RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
@@ -304,7 +308,9 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	client, err := RegisterClient(&Config{
+	ctx := context.Background()
+
+	client, err := RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
@@ -333,7 +339,9 @@ func TestNewClientBadAnswer(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	_, err = RegisterClient(&Config{
+	ctx := context.Background()
+
+	_, err = RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
