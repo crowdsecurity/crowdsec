@@ -23,7 +23,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -42,7 +41,7 @@ const (
 	metricsIntervalDefault    = time.Minute * 30
 	metricsIntervalDelta      = time.Minute * 15
 	usageMetricsInterval      = time.Minute * 30
-	usageMetricsIntervalFirst = time.Minute * 15
+	usageMetricsIntervalDelta = time.Minute * 15
 )
 
 type apic struct {
@@ -196,7 +195,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		metricsInterval:           metricsIntervalDefault,
 		metricsIntervalFirst:      randomDuration(metricsIntervalDefault, metricsIntervalDelta),
 		usageMetricsInterval:      usageMetricsInterval,
-		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalFirst),
+		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalDelta),
 		isPulling:                 make(chan bool, 1),
 		whitelists:                apicWhitelist,
 	}
@@ -221,7 +220,6 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       password,
-		UserAgent:      cwversion.UserAgent(),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",

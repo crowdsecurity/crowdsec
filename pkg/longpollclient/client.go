@@ -95,7 +95,7 @@ func (c *LongPollClient) poll() error {
 				logger.Errorf("failed to read response body: %s", err)
 				return err
 			}
-			logger.Errorf(string(bodyContent))
+			logger.Error(string(bodyContent))
 			return errUnauthorized
 		}
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)

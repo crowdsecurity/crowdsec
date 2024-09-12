@@ -74,7 +74,7 @@
 // Now you can use the hub object to access the existing items:
 //
 //	// list all the parsers
-//	for _, parser := range hub.GetItemMap(cwhub.PARSERS) {
+//	for _, parser := range hub.GetItemsByType(cwhub.PARSERS, false) {
 //		fmt.Printf("parser: %s\n", parser.Name)
 //	}
 //

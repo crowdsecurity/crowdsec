@@ -178,7 +178,7 @@ teardown() {
     echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
 
     rune -1 cscli scenarios install crowdsecurity/ssh-bf
-    assert_stderr --partial "error while installing 'crowdsecurity/ssh-bf': while enabling crowdsecurity/ssh-bf: crowdsecurity/ssh-bf is tainted, won't enable unless --force"
+    assert_stderr --partial "error while installing 'crowdsecurity/ssh-bf': while enabling crowdsecurity/ssh-bf: crowdsecurity/ssh-bf is tainted, won't overwrite unless --force"
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf --force
     assert_stderr --partial "Enabled crowdsecurity/ssh-bf"

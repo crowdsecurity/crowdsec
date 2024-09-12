@@ -29,15 +29,21 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var testMachineID = "test"
-var testPassword = strfmt.Password("test")
-var MachineTest = models.WatcherAuthRequest{
-	MachineID: &testMachineID,
-	Password:  &testPassword,
-}
+const (
+	validRegistrationToken   = "igheethauCaeteSaiyee3LosohPhahze"
+	invalidRegistrationToken = "vohl1feibechieG5coh8musheish2auj"
+)
 
-var UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
-var emptyBody = strings.NewReader("")
+var (
+	testMachineID = "test"
+	testPassword  = strfmt.Password("test")
+	MachineTest   = models.WatcherRegistrationRequest{
+		MachineID: &testMachineID,
+		Password:  &testPassword,
+	}
+	UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
+	emptyBody = strings.NewReader("")
+)
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
@@ -64,6 +70,14 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 			ShareTaintedScenarios: new(bool),
 			ShareCustomScenarios:  new(bool),
 		},
+		AutoRegister: &csconfig.LocalAPIAutoRegisterCfg{
+			Enable: ptr.Of(true),
+			Token:  validRegistrationToken,
+			AllowedRanges: []string{
+				"127.0.0.1/8",
+				"::1/128",
+			},
+		},
 	}
 
 	apiConfig := csconfig.APICfg{
@@ -72,6 +86,9 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 
 	config.API = &apiConfig
 	err := config.API.Server.LoadProfiles()
+	require.NoError(t, err)
+
+	err = config.API.Server.LoadAutoRegister()
 	require.NoError(t, err)
 
 	return config
@@ -110,6 +127,9 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	}
 	config.API = &apiConfig
 	err := config.API.Server.LoadProfiles()
+	require.NoError(t, err)
+
+	err = config.API.Server.LoadAutoRegister()
 	require.NoError(t, err)
 
 	return config
@@ -250,8 +270,10 @@ func readDecisionsStreamResp(t *testing.T, resp *httptest.ResponseRecorder) (map
 	return response, resp.Code
 }
 
-func CreateTestMachine(t *testing.T, router *gin.Engine) string {
-	b, err := json.Marshal(MachineTest)
+func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
+	regReq := MachineTest
+	regReq.RegistrationToken = token
+	b, err := json.Marshal(regReq)
 	require.NoError(t, err)
 
 	body := string(b)

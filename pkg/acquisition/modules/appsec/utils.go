@@ -40,14 +40,16 @@ func appendMeta(meta models.Meta, key string, value string) models.Meta {
 		Key:   key,
 		Value: value,
 	})
+
 	return meta
 }
 
 func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
-	//if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
+	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches {
 		return nil, nil
 	}
+
 	evt := types.Event{}
 	evt.Type = types.APPSEC
 	evt.Process = true
@@ -105,7 +107,6 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		evtRule.Meta = make(models.Meta, 0)
 
 		for _, key := range appsecMetaKeys {
-
 			if tmpAppsecContext[key] == nil {
 				tmpAppsecContext[key] = make([]string, 0)
 			}
@@ -113,18 +114,21 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 			switch value := matched_rule[key].(type) {
 			case string:
 				evtRule.Meta = appendMeta(evtRule.Meta, key, value)
+
 				if value != "" && !slices.Contains(tmpAppsecContext[key], value) {
 					tmpAppsecContext[key] = append(tmpAppsecContext[key], value)
 				}
 			case int:
 				val := strconv.Itoa(value)
 				evtRule.Meta = appendMeta(evtRule.Meta, key, val)
+
 				if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
 					tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
 				}
 			case []string:
 				for _, v := range value {
 					evtRule.Meta = appendMeta(evtRule.Meta, key, v)
+
 					if v != "" && !slices.Contains(tmpAppsecContext[key], v) {
 						tmpAppsecContext[key] = append(tmpAppsecContext[key], v)
 					}
@@ -133,20 +137,21 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 				for _, v := range value {
 					val := strconv.Itoa(v)
 					evtRule.Meta = appendMeta(evtRule.Meta, key, val)
+
 					if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
 						tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
 					}
-
 				}
 			default:
 				val := fmt.Sprintf("%v", value)
 				evtRule.Meta = appendMeta(evtRule.Meta, key, val)
+
 				if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
 					tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
 				}
-
 			}
 		}
+
 		alert.Events = append(alert.Events, &evtRule)
 	}
 
@@ -159,7 +164,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 		valueStr, err := alertcontext.TruncateContext(values, alertcontext.MaxContextValueLen)
 		if err != nil {
-			log.Warningf(err.Error())
+			log.Warning(err.Error())
 		}
 
 		meta := models.MetaItems0{
@@ -185,15 +190,16 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
 	evt.Overflow.APIAlerts = []models.Alert{alert}
 	evt.Overflow.Alert = &alert
+
 	return &evt, nil
 }
 
 func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.Event, error) {
 	evt := types.Event{}
-	//we might want to change this based on in-band vs out-of-band ?
+	// we might want to change this based on in-band vs out-of-band ?
 	evt.Type = types.LOG
 	evt.ExpectMode = types.LIVE
-	//def needs fixing
+	// def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{
 		"source_ip":           r.ClientIP,
@@ -203,19 +209,19 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		"req_uuid":            r.Tx.ID(),
 		"source":              "crowdsec-appsec",
 		"remediation_cmpt_ip": r.RemoteAddrNormalized,
-		//TBD:
-		//http_status
-		//user_agent
+		// TBD:
+		// http_status
+		// user_agent
 
 	}
 	evt.Line = types.Line{
 		Time: time.Now(),
-		//should we add some info like listen addr/port/path ?
+		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
 		Process: true,
 		Module:  "appsec",
 		Src:     "appsec",
-		Raw:     "dummy-appsec-data", //we discard empty Line.Raw items :)
+		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
 	evt.Appsec = types.AppsecEvent{}
 
@@ -247,29 +253,29 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 			"target_uri": req,
 		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	}
-
 }
 
 func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest) error {
-
 	if evt == nil {
-		//an error was already emitted, let's not spam the logs
+		// an error was already emitted, let's not spam the logs
 		return nil
 	}
 
 	if !req.Tx.IsInterrupted() {
-		//if the phase didn't generate an interruption, we don't have anything to add to the event
+		// if the phase didn't generate an interruption, we don't have anything to add to the event
 		return nil
 	}
-	//if one interruption was generated, event is good for processing :)
+	// if one interruption was generated, event is good for processing :)
 	evt.Process = true
 
 	if evt.Meta == nil {
 		evt.Meta = map[string]string{}
 	}
+
 	if evt.Parsed == nil {
 		evt.Parsed = map[string]string{}
 	}
+
 	if req.IsInBand {
 		evt.Meta["appsec_interrupted"] = "true"
 		evt.Meta["appsec_action"] = req.Tx.Interruption().Action
@@ -290,9 +296,11 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			if variable.Key() != "" {
 				key += "." + variable.Key()
 			}
+
 			if variable.Value() == "" {
 				continue
 			}
+
 			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
 				match := collectionToKeep.MatchString(key)
 				if match {
@@ -303,6 +311,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 				}
 			}
 		}
+
 		return true
 	})
 
@@ -325,11 +334,12 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
 		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
-			//Only set them for custom rules, not for rules written in seclang
+			// Only set them for custom rules, not for rules written in seclang
 			name = details.Name
 			version = details.Version
 			hash = details.Hash
 			ruleNameProm = details.Name
+
 			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
 		} else {
 			name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
@@ -338,12 +348,15 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
 		matchedZones := make([]string, 0)
+
 		for _, matchData := range rule.MatchedDatas() {
 			zone := matchData.Variable().Name()
+
 			varName := matchData.Key()
 			if varName != "" {
 				zone += "." + varName
 			}
+
 			matchedZones = append(matchedZones, zone)
 		}
 

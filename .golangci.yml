@@ -27,7 +27,7 @@ linters-settings:
 
   nestif:
     # lower this after refactoring
-    min-complexity: 24
+    min-complexity: 19
 
   nlreturn:
     block-size: 5
@@ -103,7 +103,7 @@ linters-settings:
         disabled: true
       - name: cyclomatic
         # lower this after refactoring
-        arguments: [42]
+        arguments: [41]
       - name: defer
         disabled: true
       - name: empty-block
@@ -271,7 +271,7 @@ linters:
     #
 
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occations, where the check for the returned error can be omitted.
+    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
     - exhaustive            # check exhaustiveness of enum switch statements
     - gci                   # Gci control golang package import order and make it always deterministic.
     - godot                 # Check if comments end in a period
@@ -387,10 +387,6 @@ issues:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
-    - linters:
-        - perfsprint
-      text: "fmt.Errorf can be replaced with errors.New"
-
     #
     # Will fix, easy but some neurons required
     #
@@ -486,12 +482,12 @@ issues:
 
     - linters:
         - revive
-      path: "cmd/crowdsec-cli/item_metrics.go"
+      path: "cmd/crowdsec-cli/clihub/item_metrics.go"
       text: "deep-exit: .*"
 
     - linters:
         - revive
-      path: "cmd/crowdsec-cli/machines.go"
+      path: "cmd/crowdsec-cli/idgen/password.go"
       text: "deep-exit: .*"
 
     - linters:

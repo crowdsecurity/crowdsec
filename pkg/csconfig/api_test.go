@@ -217,6 +217,12 @@ func TestLoadAPIServer(t *testing.T) {
 				ProfilesPath:           "./testdata/profiles.yaml",
 				UseForwardedForHeaders: false,
 				PapiLogLevel:           &logLevel,
+				AutoRegister: &LocalAPIAutoRegisterCfg{
+					Enable:              ptr.Of(false),
+					Token:               "",
+					AllowedRanges:       nil,
+					AllowedRangesParsed: nil,
+				},
 			},
 		},
 		{

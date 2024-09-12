@@ -62,6 +62,14 @@ teardown() {
     assert_output 1
 }
 
+@test "delete non-existent machine" {
+    # this is not a fatal error, won't halt a script with -e
+    rune -0 cscli machines delete something
+    assert_stderr --partial "unable to delete machine: 'something' does not exist"
+    rune -0 cscli machines delete something --ignore-missing
+    refute_stderr
+}
+
 @test "machines [delete|inspect] has autocompletion" {
     rune -0 cscli machines add -a -f /dev/null foo1
     rune -0 cscli machines add -a -f /dev/null foo2

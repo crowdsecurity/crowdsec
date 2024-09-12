@@ -26,7 +26,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -676,7 +675,7 @@ func TestAPICWhitelists(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -817,7 +816,7 @@ func TestAPICPullTop(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -832,8 +831,7 @@ func TestAPICPullTop(t *testing.T) {
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background(),
-	)
+		AllX(context.Background())
 
 	decisionScenarioFreq := make(map[string]int)
 	alertScenario := make(map[string]int)
@@ -905,7 +903,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -997,7 +995,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -1024,7 +1022,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
@@ -1107,18 +1105,22 @@ func TestAPICPush(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
 
 			api.apiClient = apic
+
 			httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", httpmock.NewBytesResponder(200, []byte{}))
+
 			go func() {
 				api.AlertsAddChan <- tc.alerts
+
 				time.Sleep(time.Second)
 				api.Shutdown()
 			}()
+
 			err = api.Push()
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedCalls, httpmock.GetTotalCallCount())
@@ -1161,15 +1163,19 @@ func TestAPICPull(t *testing.T) {
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 			require.NoError(t, err)
 			httpmock.Activate()
+
 			defer httpmock.DeactivateAndReset()
+
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
+
 			api.apiClient = apic
+
 			httpmock.RegisterNoResponder(httpmock.NewBytesResponder(200, jsonMarshalX(
 				modelscapi.GetDecisionsStreamResponse{
 					New: modelscapi.GetDecisionsStreamResponseNew{
@@ -1187,14 +1193,18 @@ func TestAPICPull(t *testing.T) {
 				},
 			)))
 			tc.setUp()
+
 			var buf bytes.Buffer
+
 			go func() {
 				logrus.SetOutput(&buf)
+
 				if err := api.Pull(); err != nil {
 					panic(err)
 				}
 			}()
-			//Slightly long because the CI runner for windows are slow, and this can lead to random failure
+
+			// Slightly long because the CI runner for windows are slow, and this can lead to random failure
 			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), tc.logContains)

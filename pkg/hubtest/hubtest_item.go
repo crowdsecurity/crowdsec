@@ -223,39 +223,30 @@ func (t *HubTestItem) InstallHub() error {
 	ctx := context.Background()
 
 	// install data for parsers if needed
-	ret := hub.GetItemMap(cwhub.PARSERS)
-	for parserName, item := range ret {
-		if item.State.Installed {
-			if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
-				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
-			}
-
-			log.Debugf("parser '%s' installed successfully in runtime environment", parserName)
+	for _, item := range hub.GetInstalledByType(cwhub.PARSERS, true) {
+		if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
+			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
+
+		log.Debugf("parser '%s' installed successfully in runtime environment", item.Name)
 	}
 
 	// install data for scenarios if needed
-	ret = hub.GetItemMap(cwhub.SCENARIOS)
-	for scenarioName, item := range ret {
-		if item.State.Installed {
-			if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
-				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
-			}
-
-			log.Debugf("scenario '%s' installed successfully in runtime environment", scenarioName)
+	for _, item := range hub.GetInstalledByType(cwhub.SCENARIOS, true) {
+		if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
+			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
+
+		log.Debugf("scenario '%s' installed successfully in runtime environment", item.Name)
 	}
 
 	// install data for postoverflows if needed
-	ret = hub.GetItemMap(cwhub.POSTOVERFLOWS)
-	for postoverflowName, item := range ret {
-		if item.State.Installed {
-			if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
-				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
-			}
-
-			log.Debugf("postoverflow '%s' installed successfully in runtime environment", postoverflowName)
+	for _, item := range hub.GetInstalledByType(cwhub.POSTOVERFLOWS, true) {
+		if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
+			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
+
+		log.Debugf("postoverflow '%s' installed successfully in runtime environment", item.Name)
 	}
 
 	return nil
