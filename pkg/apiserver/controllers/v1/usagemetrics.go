@@ -22,14 +22,12 @@ import (
 func (c *Controller) updateBaseMetrics(ctx context.Context, machineID string, bouncer *ent.Bouncer, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	switch {
 	case machineID != "":
-		c.DBClient.MachineUpdateBaseMetrics(ctx, machineID, baseMetrics, hubItems, datasources)
+		return c.DBClient.MachineUpdateBaseMetrics(ctx, machineID, baseMetrics, hubItems, datasources)
 	case bouncer != nil:
-		c.DBClient.BouncerUpdateBaseMetrics(ctx, bouncer.Name, bouncer.Type, baseMetrics)
+		return c.DBClient.BouncerUpdateBaseMetrics(ctx, bouncer.Name, bouncer.Type, baseMetrics)
 	default:
 		return errors.New("no machineID or bouncerName set")
 	}
-
-	return nil
 }
 
 // UsageMetrics receives metrics from log processors and remediation components
