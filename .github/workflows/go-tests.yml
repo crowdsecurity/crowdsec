@@ -142,6 +142,11 @@ jobs:
         make build BUILD_STATIC=1
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
+    # check if some component stubs are missing
+    - name: "Build profile: minimal"
+      run: |
+        make build BUILD_PROFILE=minimal
+
     - name: Run tests again, dynamic
       run: |
         make clean build

@@ -38,6 +38,7 @@ define ENV :=
 export TEST_DIR="$(TEST_DIR)"
 export LOCAL_DIR="$(LOCAL_DIR)"
 export BIN_DIR="$(BIN_DIR)"
+# append .min to the binary names to use the minimal profile
 export CROWDSEC="$(CROWDSEC)"
 export CSCLI="$(CSCLI)"
 export CONFIG_YAML="$(CONFIG_DIR)/config.yaml"
@@ -75,6 +76,11 @@ bats-update-tools:  ## Install/update tools required for functional tests
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment  ## Build binaries for functional tests
 	@$(MKDIR) $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(BATS_PLUGIN_DIR)
+	# minimal profile
+	@$(MAKE) build DEBUG=1 TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) BUILD_PROFILE=minimal
+	@install -m 0755 cmd/crowdsec/crowdsec $(BIN_DIR)/crowdsec.min
+	@install -m 0755 cmd/crowdsec-cli/cscli $(BIN_DIR)/cscli.min
+	# default profile
 	@$(MAKE) build DEBUG=1 TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR)
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 cmd/notification-*/notification-* $(BATS_PLUGIN_DIR)/
