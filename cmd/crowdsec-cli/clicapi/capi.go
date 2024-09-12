@@ -58,7 +58,7 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
+func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputFile string) error {
 	cfg := cli.cfg()
 
 	capiUser, err := idgen.GenerateMachineID(capiUserPrefix)
@@ -73,7 +73,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 		return fmt.Errorf("unable to parse api url %s: %w", types.CAPIBaseURL, err)
 	}
 
-	_, err = apiclient.RegisterClient(&apiclient.Config{
+	_, err = apiclient.RegisterClient(ctx, &apiclient.Config{
 		MachineID:     capiUser,
 		Password:      password,
 		URL:           apiurl,
@@ -134,8 +134,8 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.register(capiUserPrefix, outputFile)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.register(cmd.Context(), capiUserPrefix, outputFile)
 		},
 	}
 

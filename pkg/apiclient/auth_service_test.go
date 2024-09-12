@@ -92,7 +92,9 @@ func TestWatcherRegister(t *testing.T) {
 		VersionPrefix: "v1",
 	}
 
-	client, err := RegisterClient(&clientconfig, &http.Client{})
+	ctx := context.Background()
+
+	client, err := RegisterClient(ctx, &clientconfig, &http.Client{})
 	require.NoError(t, err)
 
 	log.Printf("->%T", client)
@@ -102,7 +104,7 @@ func TestWatcherRegister(t *testing.T) {
 	for _, errorCodeToTest := range errorCodesToTest {
 		clientconfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
 
-		client, err = RegisterClient(&clientconfig, &http.Client{})
+		client, err = RegisterClient(ctx, &clientconfig, &http.Client{})
 		require.Nil(t, client, "nil expected for the response code %d", errorCodeToTest)
 		require.Error(t, err, "error expected for the response code %d", errorCodeToTest)
 	}

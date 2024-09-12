@@ -94,7 +94,7 @@ func (cli *cliLapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 	return nil
 }
 
-func (cli *cliLapi) register(apiURL string, outputFile string, machine string, token string) error {
+func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile string, machine string, token string) error {
 	var err error
 
 	lapiUser := machine
@@ -114,7 +114,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string, t
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	_, err = apiclient.RegisterClient(&apiclient.Config{
+	_, err = apiclient.RegisterClient(ctx, &apiclient.Config{
 		MachineID:         lapiUser,
 		Password:          password,
 		RegistrationToken: token,
@@ -223,8 +223,8 @@ func (cli *cliLapi) newRegisterCmd() *cobra.Command {
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.register(apiURL, outputFile, machine, token)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.register(cmd.Context(), apiURL, outputFile, machine, token)
 		},
 	}
 

@@ -167,7 +167,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	return c, nil
 }
 
-func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
+func RegisterClient(ctx context.Context, config *Config, client *http.Client) (*ApiClient, error) {
 	transport, baseURL := createTransport(config.URL)
 
 	if client == nil {
@@ -199,7 +199,7 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 
-	resp, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password, RegistrationToken: config.RegistrationToken})
+	resp, err := c.Auth.RegisterWatcher(ctx, models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password, RegistrationToken: config.RegistrationToken})
 	if err != nil {
 		/*if we have http status, return it*/
 		if resp != nil && resp.Response != nil {
