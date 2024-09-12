@@ -30,7 +30,6 @@ require (
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v24.0.9+incompatible
-	github.com/docker/go-connections v0.4.0
 	github.com/expr-lang/expr v1.16.9
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
