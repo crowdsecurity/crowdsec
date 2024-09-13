@@ -278,8 +278,10 @@ func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
 
 	body := string(b)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -323,8 +325,10 @@ func TestWithWrongFlushConfig(t *testing.T) {
 func TestUnknownPath(t *testing.T) {
 	router, _ := NewAPITest(t)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -380,8 +384,10 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, api)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
@@ -430,8 +436,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, api)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)

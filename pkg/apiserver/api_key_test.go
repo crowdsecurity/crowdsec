@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,11 +13,13 @@ import (
 func TestAPIKey(t *testing.T) {
 	router, config := NewAPITest(t)
 
+	ctx := context.Background()
+
 	APIKey := CreateTestBouncer(t, config.API.Server.DbConfig)
 
 	// Login with empty token
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -25,7 +28,7 @@ func TestAPIKey(t *testing.T) {
 
 	// Login with invalid token
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", "a1b2c3d4e5f6")
 	router.ServeHTTP(w, req)
@@ -35,7 +38,7 @@ func TestAPIKey(t *testing.T) {
 
 	// Login with valid token
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)

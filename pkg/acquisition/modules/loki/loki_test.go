@@ -261,7 +261,7 @@ func TestConfigureDSN(t *testing.T) {
 	}
 }
 
-func feedLoki(logger *log.Entry, n int, title string) error {
+func feedLoki(ctx context.Context, logger *log.Entry, n int, title string) error {
 	streams := LogStreams{
 		Streams: []LogStream{
 			{
@@ -286,7 +286,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
 	if err != nil {
 		return err
 	}
@@ -349,7 +349,9 @@ since: 1h
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		err = feedLoki(subLogger, 20, title)
+		ctx := context.Background()
+
+		err = feedLoki(ctx, subLogger, 20, title)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -421,6 +423,8 @@ query: >
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
@@ -472,7 +476,7 @@ query: >
 				}
 			})
 
-			err = feedLoki(subLogger, ts.expectedLines, title)
+			err = feedLoki(ctx, subLogger, ts.expectedLines, title)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -525,7 +529,9 @@ query: >
 
 	time.Sleep(time.Second * 2)
 
-	err = feedLoki(subLogger, 1, title)
+	ctx := context.Background()
+
+	err = feedLoki(ctx, subLogger, 1, title)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
