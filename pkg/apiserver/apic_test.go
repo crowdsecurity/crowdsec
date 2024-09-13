@@ -230,6 +230,8 @@ func TestNewAPIC(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
@@ -246,7 +248,7 @@ func TestNewAPIC(t *testing.T) {
 				),
 			))
 			tc.action()
-			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
+			_, err := NewAPIC(ctx, testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}

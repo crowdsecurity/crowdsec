@@ -174,7 +174,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 	return signal
 }
 
-func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
+func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
 	var err error
 
 	ret := &apic{
@@ -237,7 +237,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		return ret, fmt.Errorf("get scenario in db: %w", err)
 	}
 
-	authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &config.Credentials.Login,
 		Password:  &password,
 		Scenarios: scenarios,
