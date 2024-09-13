@@ -3,14 +3,15 @@
 package types
 
 import (
-    "fmt"
-    "syscall"
+	"fmt"
+
+	"golang.org/x/sys/unix"
 )
 
 func GetFSType(path string) (string, error) {
-	var fsStat syscall.Statfs_t
+	var fsStat unix.Statfs_t
 
-	if err := syscall.Statfs(path, &fsStat); err != nil {
+	if err := unix.Statfs(path, &fsStat); err != nil {
 		return "", fmt.Errorf("failed to get filesystem type: %w", err)
 	}
 

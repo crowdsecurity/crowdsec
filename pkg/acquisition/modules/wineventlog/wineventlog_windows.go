@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/google/winops/winlog"
@@ -180,7 +179,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 				w.logger.Errorf("WaitForSingleObject failed: %s", err)
 				return err
 			}
-			if status == syscall.WAIT_OBJECT_0 {
+			if status == windows.WAIT_OBJECT_0 {
 				renderedEvents, err := w.getXMLEvents(w.evtConfig, publisherCache, subscription, 500)
 				if err == windows.ERROR_NO_MORE_ITEMS {
 					windows.ResetEvent(w.evtConfig.SignalEvent)
@@ -225,7 +224,7 @@ func (w *WinEventLogSource) generateConfig(query string) (*winlog.SubscribeConfi
 		return &config, fmt.Errorf("windows.CreateEvent failed: %v", err)
 	}
 	config.Flags = wevtapi.EvtSubscribeToFutureEvents
-	config.Query, err = syscall.UTF16PtrFromString(query)
+	config.Query, err = windows.UTF16PtrFromString(query)
 	if err != nil {
 		return &config, fmt.Errorf("syscall.UTF16PtrFromString failed: %v", err)
 	}
