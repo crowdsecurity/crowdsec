@@ -80,7 +80,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	github.com/wasilibs/go-re2 v1.6.1-0.20240913003142-160a9078acea
+	github.com/wasilibs/go-re2 v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.22.0
 	golang.org/x/mod v0.15.0

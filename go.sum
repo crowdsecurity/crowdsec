@@ -695,6 +695,8 @@ github.com/wasilibs/go-re2 v1.6.0 h1:CLlhDebt38wtl/zz4ww+hkXBMcxjrKFvTDXzFW2VOz8
 github.com/wasilibs/go-re2 v1.6.0/go.mod h1:prArCyErsypRBI/jFAFJEbzyHzjABKqkzlidF0SNA04=
 github.com/wasilibs/go-re2 v1.6.1-0.20240913003142-160a9078acea h1:4x9w+u08fCB0TdoMSqmlyY+CP+gNY9PbRaVR3g5p0QM=
 github.com/wasilibs/go-re2 v1.6.1-0.20240913003142-160a9078acea/go.mod h1:sUsZMLflgl+LNivDE229omtmvjICmOseT9xOy199VDU=
+github.com/wasilibs/go-re2 v1.7.0 h1:bYhl8gn+a9h01dxwotNycxkiFPTiSgwUrIz8KZJ90Lc=
+github.com/wasilibs/go-re2 v1.7.0/go.mod h1:sUsZMLflgl+LNivDE229omtmvjICmOseT9xOy199VDU=
 github.com/wasilibs/nottinygc v0.4.0 h1:h1TJMihMC4neN6Zq+WKpLxgd9xCFMw7O9ETLwY2exJQ=
 github.com/wasilibs/nottinygc v0.4.0/go.mod h1:oDcIotskuYNMpqMF23l7Z8uzD4TC0WXHK8jetlB3HIo=
 github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 h1:OvLBa8SqJnZ6P+mjlzc2K7PM22rRUPE1x32G9DTPrC4=
