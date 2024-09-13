@@ -111,7 +111,7 @@ ifeq ($(call bool,$(DEBUG)),1)
 STRIP_SYMBOLS :=
 DISABLE_OPTIMIZATION := -gcflags "-N -l"
 else
-STRIP_SYMBOLS := -s -w
+STRIP_SYMBOLS := -s
 DISABLE_OPTIMIZATION :=
 endif
 
