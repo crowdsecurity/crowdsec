@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -29,7 +30,7 @@ func (e *MachineNotFoundError) Error() string {
 	return fmt.Sprintf("'%s' does not exist", e.MachineID)
 }
 
-func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
+func (c *Client) MachineUpdateBaseMetrics(ctx context.Context, machineID string, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
@@ -63,7 +64,7 @@ func (c *Client) MachineUpdateBaseMetrics(machineID string, baseMetrics models.B
 		SetLastHeartbeat(heartbeat).
 		SetHubstate(hubState).
 		SetDatasources(datasources).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update base machine metrics in database: %w", err)
 	}

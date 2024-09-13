@@ -301,6 +301,72 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
+func (s *APIServer) apicPush() error {
+	if err := s.apic.Push(); err != nil {
+		log.Errorf("capi push: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) apicPull() error {
+	if err := s.apic.Pull(); err != nil {
+		log.Errorf("capi pull: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) papiPull() error {
+	if err := s.papi.Pull(); err != nil {
+		log.Errorf("papi pull: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) papiSync() error {
+	if err := s.papi.SyncDecisions(); err != nil {
+		log.Errorf("capi decisions sync: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) initAPIC() {
+	s.apic.pushTomb.Go(s.apicPush)
+	s.apic.pullTomb.Go(s.apicPull)
+
+	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+	if s.apic.apiClient.IsEnrolled() {
+		if s.consoleConfig.IsPAPIEnabled() {
+			if s.papi.URL != "" {
+				log.Info("Starting PAPI decision receiver")
+				s.papi.pullTomb.Go(s.papiPull)
+				s.papi.syncTomb.Go(s.papiSync)
+			} else {
+				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
+			}
+		} else {
+			log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+		}
+	}
+
+	s.apic.metricsTomb.Go(func() error {
+		s.apic.SendMetrics(make(chan bool))
+		return nil
+	})
+
+	s.apic.metricsTomb.Go(func() error {
+		s.apic.SendUsageMetrics()
+		return nil
+	})
+}
+
 func (s *APIServer) Run(apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
 
@@ -316,63 +382,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	}
 
 	if s.apic != nil {
-		s.apic.pushTomb.Go(func() error {
-			if err := s.apic.Push(); err != nil {
-				log.Errorf("capi push: %s", err)
-				return err
-			}
-
-			return nil
-		})
-
-		s.apic.pullTomb.Go(func() error {
-			if err := s.apic.Pull(); err != nil {
-				log.Errorf("capi pull: %s", err)
-				return err
-			}
-
-			return nil
-		})
-
-		// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
-		if s.apic.apiClient.IsEnrolled() {
-			if s.consoleConfig.IsPAPIEnabled() {
-				if s.papi.URL != "" {
-					log.Info("Starting PAPI decision receiver")
-					s.papi.pullTomb.Go(func() error {
-						if err := s.papi.Pull(); err != nil {
-							log.Errorf("papi pull: %s", err)
-							return err
-						}
-
-						return nil
-					})
-
-					s.papi.syncTomb.Go(func() error {
-						if err := s.papi.SyncDecisions(); err != nil {
-							log.Errorf("capi decisions sync: %s", err)
-							return err
-						}
-
-						return nil
-					})
-				} else {
-					log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
-				}
-			} else {
-				log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
-			}
-		}
-
-		s.apic.metricsTomb.Go(func() error {
-			s.apic.SendMetrics(make(chan bool))
-			return nil
-		})
-
-		s.apic.metricsTomb.Go(func() error {
-			s.apic.SendUsageMetrics()
-			return nil
-		})
+		s.initAPIC()
 	}
 
 	s.httpServerTomb.Go(func() error {

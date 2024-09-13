@@ -941,13 +941,11 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	return alerts.Where(preds...), nil
 }
 
-func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string]int, error) {
+func (c *Client) AlertsCountPerScenario(ctx context.Context, filters map[string][]string) (map[string]int, error) {
 	var res []struct {
 		Scenario string
 		Count    int
 	}
-
-	ctx := context.TODO()
 
 	query := c.Ent.Alert.Query()
 

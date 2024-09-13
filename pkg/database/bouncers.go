@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -20,7 +21,7 @@ func (e *BouncerNotFoundError) Error() string {
 	return fmt.Sprintf("'%s' does not exist", e.BouncerName)
 }
 
-func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string, baseMetrics models.BaseMetrics) error {
+func (c *Client) BouncerUpdateBaseMetrics(ctx context.Context, bouncerName string, bouncerType string, baseMetrics models.BaseMetrics) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
@@ -32,7 +33,7 @@ func (c *Client) BouncerUpdateBaseMetrics(bouncerName string, bouncerType string
 		SetOsversion(*os.Version).
 		SetFeatureflags(features).
 		SetType(bouncerType).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update base bouncer metrics in database: %w", err)
 	}

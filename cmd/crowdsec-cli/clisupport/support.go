@@ -231,13 +231,13 @@ func (cli *cliSupport) dumpAgents(zw *zip.Writer, db *database.Client) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
+func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub) error {
 	log.Info("Collecting LAPI status")
 
 	out := new(bytes.Buffer)
 	cl := clilapi.New(cli.cfg)
 
-	err := cl.Status(out, hub)
+	err := cl.Status(ctx, out, hub)
 	if err != nil {
 		fmt.Fprintf(out, "%s\n", err)
 	}
@@ -249,13 +249,13 @@ func (cli *cliSupport) dumpLAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
+func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub) error {
 	log.Info("Collecting CAPI status")
 
 	out := new(bytes.Buffer)
 	cc := clicapi.New(cli.cfg)
 
-	err := cc.Status(out, hub)
+	err := cc.Status(ctx, out, hub)
 	if err != nil {
 		fmt.Fprintf(out, "%s\n", err)
 	}
@@ -267,13 +267,13 @@ func (cli *cliSupport) dumpCAPIStatus(zw *zip.Writer, hub *cwhub.Hub) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpPAPIStatus(zw *zip.Writer, db *database.Client) error {
+func (cli *cliSupport) dumpPAPIStatus(ctx context.Context, zw *zip.Writer, db *database.Client) error {
 	log.Info("Collecting PAPI status")
 
 	out := new(bytes.Buffer)
 	cp := clipapi.New(cli.cfg)
 
-	err := cp.Status(out, db)
+	err := cp.Status(ctx, out, db)
 	if err != nil {
 		fmt.Fprintf(out, "%s\n", err)
 	}
@@ -534,17 +534,17 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	}
 
 	if !skipCAPI {
-		if err = cli.dumpCAPIStatus(zipWriter, hub); err != nil {
+		if err = cli.dumpCAPIStatus(ctx, zipWriter, hub); err != nil {
 			log.Warnf("could not collect CAPI status: %s", err)
 		}
 
-		if err = cli.dumpPAPIStatus(zipWriter, db); err != nil {
+		if err = cli.dumpPAPIStatus(ctx, zipWriter, db); err != nil {
 			log.Warnf("could not collect PAPI status: %s", err)
 		}
 	}
 
 	if !skipLAPI {
-		if err = cli.dumpLAPIStatus(zipWriter, hub); err != nil {
+		if err = cli.dumpLAPIStatus(ctx, zipWriter, hub); err != nil {
 			log.Warnf("could not collect LAPI status: %s", err)
 		}
 
