@@ -170,7 +170,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	if config.DbConfig.Flush != nil {
-		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
+		flushScheduler, err = dbClient.StartFlushScheduler(ctx, config.DbConfig.Flush)
 		if err != nil {
 			return nil, err
 		}
