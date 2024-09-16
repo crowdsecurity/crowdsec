@@ -456,14 +456,14 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
-			c.Log.Errorf("CreateAlertBulk: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
+			c.Log.Errorf("creating alert: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
 
 			startAtTime = time.Now().UTC()
 		}
 
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			c.Log.Errorf("CreateAlertBulk: Failed to parse stopAtTime '%s', defaulting to now: %s", *alertItem.StopAt, err)
+			c.Log.Errorf("creating alert: Failed to parse stopAtTime '%s', defaulting to now: %s", *alertItem.StopAt, err)
 
 			stopAtTime = time.Now().UTC()
 		}
@@ -483,7 +483,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			for i, eventItem := range alertItem.Events {
 				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
-					c.Log.Errorf("CreateAlertBulk: Failed to parse event timestamp '%s', defaulting to now: %s", *eventItem.Timestamp, err)
+					c.Log.Errorf("creating alert: Failed to parse event timestamp '%s', defaulting to now: %s", *eventItem.Timestamp, err)
 
 					ts = time.Now().UTC()
 				}
@@ -694,7 +694,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 				return nil, fmt.Errorf("machine '%s': %w", machineID, err)
 			}
 
-			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineID)
+			c.Log.Debugf("creating alert: machine %s doesn't exist", machineID)
 
 			owner = nil
 		}
