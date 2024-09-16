@@ -103,7 +103,7 @@ linters-settings:
         disabled: true
       - name: cyclomatic
         # lower this after refactoring
-        arguments: [41]
+        arguments: [39]
       - name: defer
         disabled: true
       - name: empty-block
