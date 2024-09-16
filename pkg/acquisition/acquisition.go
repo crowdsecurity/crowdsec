@@ -19,6 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -54,45 +55,34 @@ type DataSource interface {
 
 var (
 	// We declare everything here so we can tell if they are unsupported, or excluded from the build
-	AcquisitionSources = map[string]func() DataSource{
-		"appsec":      nil,
-		"cloudwatch":  nil,
-		"docker":      nil,
-		"file":        nil,
-		"journalctl":  nil,
-		"k8s-audit":   nil,
-		"kafka":       nil,
-		"kinesis":     nil,
-		"loki":        nil,
-		"s3":          nil,
-		"syslog":      nil,
-		"wineventlog": nil,
-	}
+	AcquisitionSources = map[string]func() DataSource{}
 	transformRuntimes = map[string]*vm.Program{}
 )
 
 func GetDataSourceIface(dataSourceType string) (DataSource, error) {
-	source, ok := AcquisitionSources[dataSourceType]
-	if !ok {
+	source, registered := AcquisitionSources[dataSourceType]
+	if registered {
+		return source(), nil
+	}
+
+	built, known := component.Built["datasource_"+dataSourceType]
+
+	if !known {
 		return nil, fmt.Errorf("unknown data source %s", dataSourceType)
 	}
 
-	if source == nil {
-		return nil, fmt.Errorf("data source %s is not built in this version of crowdsec", dataSourceType)
+	if built {
+		panic("datasource " + dataSourceType + " is built but not registered")
 	}
 
-	return source(), nil
+	return nil, fmt.Errorf("data source %s is not built in this version of crowdsec", dataSourceType)
 }
 
 // registerDataSource registers a datasource in the AcquisitionSources map.
 // It must be called in the init() function of the datasource package, and the datasource name
 // must be declared with a nil value in the map, to allow for conditional compilation.
 func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
-	_, ok := AcquisitionSources[dataSourceType]
-	if !ok {
-		panic("datasource must be declared in the map: " + dataSourceType)
-	}
-
+	component.Register("datasource_"+dataSourceType)
 	AcquisitionSources[dataSourceType] = dsGetter
 }
 
