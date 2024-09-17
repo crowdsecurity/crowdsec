@@ -103,7 +103,7 @@ You can read more about the [CrowdSec data model](https://www.crowdsec.net/our-d
 
 This repository contains the code for the two main components of CrowdSec:
 
-- **`crowdsec`**: The daemon, similar to fail2ban, that reads, parses, enriches, and applies heuristics to logs. This is the component responsible for "detecting" attacks.
+- **`crowdsec`**: The daemon that reads, parses, enriches, and applies heuristics to logs. This is the component responsible for "detecting" attacks.
 
 - **`cscli`**: The command-line tool used primarily to interact with CrowdSec. It allows you to ban/unban IPs, view current bans, and enable/disable parsers and scenarios.
 
