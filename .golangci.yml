@@ -197,6 +197,10 @@ linters:
     - funlen   # revive
     - gocognit # revive
 
+    # Disabled atm
+
+    - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
+
     #
     # Enabled
     #
@@ -228,7 +232,6 @@ linters:
     # - importas            # Enforces consistent import aliases
     # - ineffassign         # Detects when assignments to existing variables are not used
     # - interfacebloat      # A linter that checks the number of methods inside an interface.
-    # - intrange            # intrange is a linter to find places where for loops could make use of an integer range.
     # - loggercheck         # (logrlint): Checks key value pairs for common logger libraries (kitlog,klog,logr,zap).
     # - logrlint            # Check logr arguments.
     # - maintidx            # maintidx measures the maintainability index of each function.
@@ -483,11 +486,6 @@ issues:
     - linters:
         - revive
       path: "cmd/crowdsec-cli/idgen/password.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/utils.go"
       text: "deep-exit: .*"
 
     - linters:
