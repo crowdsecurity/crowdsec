@@ -134,7 +134,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 			data, err := yaml.Marshal(configFileData)
 			if err != nil {
-				return fmt.Errorf("marshal: %w", err)
+				return fmt.Errorf("serialize: %w", err)
 			}
 			_, err = fd.Write(data)
 			if err != nil {

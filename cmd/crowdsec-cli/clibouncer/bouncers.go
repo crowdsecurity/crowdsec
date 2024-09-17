@@ -181,7 +181,7 @@ func (cli *cliBouncers) List(out io.Writer, db *database.Client) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(info); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
@@ -234,7 +234,7 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 	case "json":
 		j, err := json.Marshal(key)
 		if err != nil {
-			return errors.New("unable to marshal api key")
+			return errors.New("unable to serialize api key")
 		}
 
 		fmt.Print(string(j))
@@ -458,7 +458,7 @@ func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(newBouncerInfo(bouncer)); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil

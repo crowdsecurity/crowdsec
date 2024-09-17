@@ -18,18 +18,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	appsecacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
-	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
-	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
-	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
-	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
-	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
-	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
-	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
-	lokiacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
-	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
-	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
-	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -64,29 +52,72 @@ type DataSource interface {
 	Dump() interface{}
 }
 
-var AcquisitionSources = map[string]func() DataSource{
-	"file":        func() DataSource { return &fileacquisition.FileSource{} },
-	"journalctl":  func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
-	"cloudwatch":  func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
-	"syslog":      func() DataSource { return &syslogacquisition.SyslogSource{} },
-	"docker":      func() DataSource { return &dockeracquisition.DockerSource{} },
-	"kinesis":     func() DataSource { return &kinesisacquisition.KinesisSource{} },
-	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
-	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
-	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
-	"loki":        func() DataSource { return &lokiacquisition.LokiSource{} },
-	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
-	"appsec":      func() DataSource { return &appsecacquisition.AppsecSource{} },
+var (
+	// We declare everything here so we can tell if they are unsupported, or excluded from the build
+	AcquisitionSources = map[string]func() DataSource{
+		"appsec":      nil,
+		"cloudwatch":  nil,
+		"docker":      nil,
+		"file":        nil,
+		"journalctl":  nil,
+		"k8s-audit":   nil,
+		"kafka":       nil,
+		"kinesis":     nil,
+		"loki":        nil,
+		"s3":          nil,
+		"syslog":      nil,
+		"wineventlog": nil,
+	}
+	transformRuntimes = map[string]*vm.Program{}
+)
+
+func GetDataSourceIface(dataSourceType string) (DataSource, error) {
+	source, ok := AcquisitionSources[dataSourceType]
+	if !ok {
+		return nil, fmt.Errorf("unknown data source %s", dataSourceType)
+	}
+
+	if source == nil {
+		return nil, fmt.Errorf("data source %s is not built in this version of crowdsec", dataSourceType)
+	}
+
+	return source(), nil
 }
 
-var transformRuntimes = map[string]*vm.Program{}
-
-func GetDataSourceIface(dataSourceType string) DataSource {
-	source := AcquisitionSources[dataSourceType]
-	if source == nil {
-		return nil
+// registerDataSource registers a datasource in the AcquisitionSources map.
+// It must be called in the init() function of the datasource package, and the datasource name
+// must be declared with a nil value in the map, to allow for conditional compilation.
+func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
+	_, ok := AcquisitionSources[dataSourceType]
+	if !ok {
+		panic("datasource must be declared in the map: " + dataSourceType)
 	}
-	return source()
+
+	AcquisitionSources[dataSourceType] = dsGetter
+}
+
+// setupLogger creates a logger for the datasource to use at runtime.
+func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
+	clog := log.New()
+	if err := types.ConfigureLogger(clog); err != nil {
+		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
+	}
+
+	if level != nil {
+		clog.SetLevel(*level)
+	}
+
+	fields := log.Fields{
+		"type": source,
+	}
+
+	if name != "" {
+		fields["name"] = name
+	}
+
+	subLogger := clog.WithFields(fields)
+
+	return subLogger, nil
 }
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
@@ -98,35 +129,29 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to marshal back interface: %w", err)
+		return nil, fmt.Errorf("unable to serialize back interface: %w", err)
 	}
-	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
-		/* this logger will then be used by the datasource at runtime */
-		clog := log.New()
-		if err := types.ConfigureLogger(clog); err != nil {
-			return nil, fmt.Errorf("while configuring datasource logger: %w", err)
-		}
-		if commonConfig.LogLevel != nil {
-			clog.SetLevel(*commonConfig.LogLevel)
-		}
-		customLog := log.Fields{
-			"type": commonConfig.Source,
-		}
-		if commonConfig.Name != "" {
-			customLog["name"] = commonConfig.Name
-		}
-		subLogger := clog.WithFields(customLog)
-		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
-		if err := dataSrc.CanRun(); err != nil {
-			return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
-		}
-		/* configure the actual datasource */
-		if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
-			return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
-		}
-		return &dataSrc, nil
+
+	dataSrc, err := GetDataSourceIface(commonConfig.Source)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("cannot find source %s", commonConfig.Source)
+
+	subLogger, err := setupLogger(commonConfig.Source, commonConfig.Name, commonConfig.LogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
+	if err := dataSrc.CanRun(); err != nil {
+		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
+	}
+	/* configure the actual datasource */
+	if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
+		return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
+	}
+
+	return &dataSrc, nil
 }
 
 // detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
@@ -134,12 +159,15 @@ func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 	if _, ok := sub.Config["filename"]; ok {
 		return "file"
 	}
+
 	if _, ok := sub.Config["filenames"]; ok {
 		return "file"
 	}
+
 	if _, ok := sub.Config["journalctl_filter"]; ok {
 		return "journalctl"
 	}
+
 	return ""
 }
 
@@ -150,29 +178,35 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
 	}
-	dataSrc := GetDataSourceIface(frags[0])
-	if dataSrc == nil {
-		return nil, fmt.Errorf("no acquisition for protocol %s://", frags[0])
+
+	dataSrc, err := GetDataSourceIface(frags[0])
+	if err != nil {
+		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
-	/* this logger will then be used by the datasource at runtime */
-	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
+
+	subLogger, err := setupLogger(dsn, "", nil)
+	if err != nil {
+		return nil, err
 	}
-	subLogger := clog.WithField("type", dsn)
+
 	uniqueId := uuid.NewString()
+
 	if transformExpr != "" {
 		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
+
 		transformRuntimes[uniqueId] = vm
 	}
-	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
+
+	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
 	if err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
+
 	sources = append(sources, dataSrc)
+
 	return sources, nil
 }
 
@@ -219,27 +253,31 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 				break
 			}
 
-			//for backward compat ('type' was not mandatory, detect it)
+			// for backward compat ('type' was not mandatory, detect it)
 			if guessType := detectBackwardCompatAcquis(sub); guessType != "" {
 				sub.Source = guessType
 			}
-			//it's an empty item, skip it
+			// it's an empty item, skip it
 			if len(sub.Labels) == 0 {
 				if sub.Source == "" {
 					log.Debugf("skipping empty item in %s", acquisFile)
 					continue
 				}
 				if sub.Source != "docker" {
-					//docker is the only source that can be empty
+					// docker is the only source that can be empty
 					return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
 				}
 			}
 			if sub.Source == "" {
 				return nil, fmt.Errorf("data source type is empty ('source') in %s (position: %d)", acquisFile, idx)
 			}
-			if GetDataSourceIface(sub.Source) == nil {
-				return nil, fmt.Errorf("unknown data source %s in %s (position: %d)", sub.Source, acquisFile, idx)
+
+			// pre-check that the source is valid
+			_, err := GetDataSourceIface(sub.Source)
+			if err != nil {
+				return nil, fmt.Errorf("in file %s (position: %d) - %w", acquisFile, idx, err)
 			}
+
 			uniqueId := uuid.NewString()
 			sub.UniqueId = uniqueId
 			src, err := DataSourceConfigure(sub, metrics_level)
@@ -341,7 +379,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 	}
 
 	for i := range len(sources) {
-		subsrc := sources[i] //ensure its a copy
+		subsrc := sources[i] // ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		AcquisTomb.Go(func() error {
@@ -369,7 +407,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 				err = subsrc.OneShotAcquisition(outChan, AcquisTomb)
 			}
 			if err != nil {
-				//if one of the acqusition returns an error, we kill the others to properly shutdown
+				// if one of the acqusition returns an error, we kill the others to properly shutdown
 				AcquisTomb.Kill(err)
 			}
 			return nil
@@ -378,5 +416,6 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 
 	/*return only when acquisition is over (cat) or never (tail)*/
 	err := AcquisTomb.Wait()
+
 	return err
 }

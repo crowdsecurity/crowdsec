@@ -142,6 +142,11 @@ jobs:
         make build BUILD_STATIC=1
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
+    # check if some component stubs are missing
+    - name: "Build profile: minimal"
+      run: |
+        make build BUILD_PROFILE=minimal
+
     - name: Run tests again, dynamic
       run: |
         make clean build
@@ -158,6 +163,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.60
+        version: v1.61
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

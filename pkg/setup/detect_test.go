@@ -870,7 +870,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: wombat`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
-			expectedErr: "invalid datasource for foobar: unknown source 'wombat'",
+			expectedErr: "invalid datasource for foobar: unknown data source wombat",
 		}, {
 			name: "source is misplaced",
 			config: `

@@ -210,7 +210,7 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
 
 	err = yaml.Unmarshal(itemContent, &itemName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 	}
 
 	if itemName.Name != "" {

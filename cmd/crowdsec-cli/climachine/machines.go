@@ -232,7 +232,7 @@ func (cli *cliMachines) List(out io.Writer, db *database.Client) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(info); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
@@ -378,7 +378,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
-		return fmt.Errorf("unable to marshal api credentials: %w", err)
+		return fmt.Errorf("unable to serialize api credentials: %w", err)
 	}
 
 	if dumpFile != "" && dumpFile != "-" {
@@ -626,7 +626,7 @@ func (cli *cliMachines) inspect(machine *ent.Machine) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(newMachineInfo(machine)); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
@@ -648,7 +648,7 @@ func (cli *cliMachines) inspectHub(machine *ent.Machine) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(machine.Hubstate); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil

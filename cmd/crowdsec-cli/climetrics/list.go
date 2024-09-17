@@ -68,7 +68,7 @@ func (cli *cliMetrics) list() error {
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal metric types: %w", err)
+			return fmt.Errorf("failed to serialize metric types: %w", err)
 		}
 
 		fmt.Println(string(x))

@@ -210,7 +210,7 @@ func (s *FilePlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	if err != nil {
-		logger.Error("Failed to unmarshal config", "error", err)
+		logger.Error("Failed to parse config", "error", err)
 		return &protobufs.Empty{}, err
 	}
 	FileWriteMutex = &sync.Mutex{}

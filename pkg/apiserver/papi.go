@@ -156,11 +156,11 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 	return nil
 }
 
-func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
+func (p *Papi) GetPermissions(ctx context.Context) (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
 	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
 
-	req, err := http.NewRequest(http.MethodGet, papiCheckUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, nil)
 	if err != nil {
 		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -245,7 +245,7 @@ func (p *Papi) Pull() error {
 	if lastTimestampStr == nil {
 		binTime, err := lastTimestamp.MarshalText()
 		if err != nil {
-			return fmt.Errorf("failed to marshal last timestamp: %w", err)
+			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
@@ -255,7 +255,7 @@ func (p *Papi) Pull() error {
 		}
 	} else {
 		if err := lastTimestamp.UnmarshalText([]byte(*lastTimestampStr)); err != nil {
-			return fmt.Errorf("failed to unmarshal last timestamp: %w", err)
+			return fmt.Errorf("failed to parse last timestamp: %w", err)
 		}
 	}
 
@@ -268,7 +268,7 @@ func (p *Papi) Pull() error {
 
 		binTime, err := newTime.MarshalText()
 		if err != nil {
-			return fmt.Errorf("failed to marshal last timestamp: %w", err)
+			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
 		err = p.handleEvent(event, false)

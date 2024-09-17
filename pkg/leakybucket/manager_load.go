@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -292,13 +292,13 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 				bucketFactory.FormatVersion = "1.0"
 			}
 
-			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+			ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to check version: %w", err)
 			}
 
 			if !ok {
-				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
 				continue
 			}
 
@@ -493,7 +493,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 	}
 
 	if err := json.Unmarshal(body, &state); err != nil {
-		return fmt.Errorf("can't unmarshal state file %s: %w", file, err)
+		return fmt.Errorf("can't parse state file %s: %w", file, err)
 	}
 
 	for k, v := range state {

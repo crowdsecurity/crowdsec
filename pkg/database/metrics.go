@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,14 +9,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 )
 
-func (c *Client) CreateMetric(generatedType metric.GeneratedType, generatedBy string, receivedAt time.Time, payload string) (*ent.Metric, error) {
+func (c *Client) CreateMetric(ctx context.Context, generatedType metric.GeneratedType, generatedBy string, receivedAt time.Time, payload string) (*ent.Metric, error) {
 	metric, err := c.Ent.Metric.
 		Create().
 		SetGeneratedType(generatedType).
 		SetGeneratedBy(generatedBy).
 		SetReceivedAt(receivedAt).
 		SetPayload(payload).
-		Save(c.CTX)
+		Save(ctx)
 	if  err != nil {
 		c.Log.Warningf("CreateMetric: %s", err)
 		return nil, fmt.Errorf("storing metrics snapshot for '%s' at %s: %w", generatedBy, receivedAt, InsertFail)

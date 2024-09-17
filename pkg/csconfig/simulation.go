@@ -52,7 +52,7 @@ func (c *Config) LoadSimulation() error {
 
 	if err := dec.Decode(&simCfg); err != nil {
 		if !errors.Is(err, io.EOF) {
-			return fmt.Errorf("while unmarshaling simulation file '%s': %w", c.ConfigPaths.SimulationFilePath, err)
+			return fmt.Errorf("while parsing simulation file '%s': %w", c.ConfigPaths.SimulationFilePath, err)
 		}
 	}
 
