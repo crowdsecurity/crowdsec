@@ -53,7 +53,6 @@ type OpOutput struct {
 }
 
 func (o *OpOutput) String() string {
-
 	ret := fmt.Sprintf("%*c", o.CodeDepth, ' ')
 	if o.Code != "" {
 		ret += fmt.Sprintf("[%s]", o.Code)

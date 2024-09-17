@@ -74,11 +74,9 @@ func (c *LongPollClient) doQuery() (*http.Response, error) {
 }
 
 func (c *LongPollClient) poll() error {
-
 	logger := c.logger.WithField("method", "poll")
 
 	resp, err := c.doQuery()
-
 	if err != nil {
 		return err
 	}

@@ -57,16 +57,16 @@ type CloudwatchSource struct {
 // CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
 type CloudwatchSourceConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	GroupName                         string         `yaml:"group_name"`              //the group name to be monitored
-	StreamRegexp                      *string        `yaml:"stream_regexp,omitempty"` //allow to filter specific streams
+	GroupName                         string         `yaml:"group_name"`              // the group name to be monitored
+	StreamRegexp                      *string        `yaml:"stream_regexp,omitempty"` // allow to filter specific streams
 	StreamName                        *string        `yaml:"stream_name,omitempty"`
 	StartTime, EndTime                *time.Time     `yaml:"-"`
-	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` //batch size for DescribeLogStreamsPagesWithContext
+	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` // batch size for DescribeLogStreamsPagesWithContext
 	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitempty"`
-	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` //frequency at which we poll for new streams within the log group
-	MaxStreamAge                      *time.Duration `yaml:"max_stream_age,omitempty"`           //monitor only streams that have been updated within $duration
-	PollStreamInterval                *time.Duration `yaml:"poll_stream_interval,omitempty"`     //frequency at which we poll each stream
-	StreamReadTimeout                 *time.Duration `yaml:"stream_read_timeout,omitempty"`      //stop monitoring streams that haven't been updated within $duration, might be reopened later tho
+	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` // frequency at which we poll for new streams within the log group
+	MaxStreamAge                      *time.Duration `yaml:"max_stream_age,omitempty"`           // monitor only streams that have been updated within $duration
+	PollStreamInterval                *time.Duration `yaml:"poll_stream_interval,omitempty"`     // frequency at which we poll each stream
+	StreamReadTimeout                 *time.Duration `yaml:"stream_read_timeout,omitempty"`      // stop monitoring streams that haven't been updated within $duration, might be reopened later tho
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
@@ -86,7 +86,7 @@ type LogStreamTailConfig struct {
 	logger                     *log.Entry
 	ExpectMode                 int
 	t                          tomb.Tomb
-	StartTime, EndTime         time.Time //only used for CatMode
+	StartTime, EndTime         time.Time // only used for CatMode
 }
 
 var (
@@ -357,7 +357,6 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 
 // LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
 func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
-
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
 	pollDeadStreamInterval := time.NewTicker(def_PollDeadStreamInterval)
 
@@ -638,7 +637,7 @@ func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 
 func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
-	var head = true
+	head := true
 	/*convert the times*/
 	startTime := cfg.StartTime.UTC().Unix() * 1000
 	endTime := cfg.EndTime.UTC().Unix() * 1000

@@ -93,10 +93,12 @@ type S3Event struct {
 	} `json:"detail"`
 }
 
-const PollMethodList = "list"
-const PollMethodSQS = "sqs"
-const SQSFormatEventBridge = "eventbridge"
-const SQSFormatS3Notification = "s3notification"
+const (
+	PollMethodList          = "list"
+	PollMethodSQS           = "sqs"
+	SQSFormatEventBridge    = "eventbridge"
+	SQSFormatS3Notification = "s3notification"
+)
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
@@ -467,6 +469,7 @@ func (s *S3Source) GetUuid() string {
 func (s *S3Source) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }
+
 func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }

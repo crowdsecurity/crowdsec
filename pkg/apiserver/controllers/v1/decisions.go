@@ -284,7 +284,6 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 		gctx.Writer.WriteString(`], "deleted": [`)
 
 		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
-
 		if err != nil {
 			log.Errorf("failed sending expired decisions for delta: %v", err)
 			gctx.Writer.WriteString("]}")

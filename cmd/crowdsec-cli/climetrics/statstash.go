@@ -52,8 +52,8 @@ func (s statStash) Table(out io.Writer, wantColor string, noUnit bool, showEmpty
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		io.WriteString(out, title + ":\n")
-		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, title+":\n")
+		io.WriteString(out, t.Render()+"\n")
 		io.WriteString(out, "\n")
 	}
 }

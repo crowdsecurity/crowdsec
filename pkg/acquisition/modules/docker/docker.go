@@ -404,7 +404,6 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) *Container
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 			}
 		}
-
 	}
 
 	for _, cont := range d.compiledContainerID {
@@ -419,7 +418,6 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) *Container
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 			}
 		}
-
 	}
 
 	if d.Config.UseContainerLabels {
