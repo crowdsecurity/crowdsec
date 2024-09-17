@@ -42,7 +42,7 @@ CrowdSec is a open-source, modern, and collaborative behavior detection engine t
 ## :tada: Benefits
 
 - **Fast assisted installation, no technical barrier**: The initial configuration is automated, giving you a ready-to-use setup for common services right out of the box.
-- **Crowdsourced protection**: Once you join the CrowdSec community, you are automatically protected by the **Community Blocklist**, which blocks known malicious IP addresses.
+- **Crowdsourced protection**: Once you join the CrowdSec community, you are automatically protected by the **Community Blocklist**, which contains known malicious IP addresses.
 - **Api driven architecture**: CrowdSec is built for high scalability and easy integration with existing infrastructures. If your systems are spread across multiple servers, you can deploy CrowdSec on each one, allowing them to share data and work together seamlessly.
 - **Observability**: CrowdSec offers a [SaaS console](https://app.crowdsec.net/signup) that lets you visualize your data and manage your deployments. Additionally, we provide a Prometheus metrics endpoint for monitoring.
 - **Compiled Code**: CrowdSec is written in Go and is compiled into a static binary. This eliminates the need for external runtime dependencies, ensuring quick performance and easy deployment across various environments.
