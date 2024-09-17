@@ -64,7 +64,7 @@ func (cli *cliMetrics) list() error {
 			t.AppendRow(table.Row{metric.Type, metric.Title, metric.Description})
 		}
 
-		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, t.Render()+"\n")
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {

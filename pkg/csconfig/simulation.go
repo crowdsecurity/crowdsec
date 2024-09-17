@@ -37,7 +37,7 @@ func (c *Config) LoadSimulation() error {
 	simCfg := SimulationConfig{}
 
 	if c.ConfigPaths.SimulationFilePath == "" {
-		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
+		c.ConfigPaths.SimulationFilePath = filepath.Join(c.ConfigPaths.ConfigDir, "simulation.yaml")
 	}
 
 	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")

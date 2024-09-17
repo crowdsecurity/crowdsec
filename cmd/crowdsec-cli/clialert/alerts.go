@@ -44,7 +44,7 @@ func decisionsFromAlert(alert *models.Alert) string {
 	}
 
 	for _, key := range maptools.SortedKeys(decMap) {
-		if len(ret) > 0 {
+		if ret != "" {
 			ret += " "
 		}
 
