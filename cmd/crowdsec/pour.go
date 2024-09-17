@@ -32,7 +32,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 					if parsed.MarshaledTime != "" {
 						z := &time.Time{}
 						if err := z.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-							log.Warningf("Failed to unmarshal time from event '%s' : %s", parsed.MarshaledTime, err)
+							log.Warningf("Failed to parse time from event '%s' : %s", parsed.MarshaledTime, err)
 						} else {
 							log.Warning("Starting buckets garbage collection ...")
 
@@ -61,7 +61,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 
 			if parsed.MarshaledTime != "" {
 				if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-					log.Warningf("failed to unmarshal time from event : %s", err)
+					log.Warningf("failed to parse time from event : %s", err)
 				}
 			}
 		}

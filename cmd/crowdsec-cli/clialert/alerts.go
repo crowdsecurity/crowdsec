@@ -521,14 +521,14 @@ func (cli *cliAlerts) inspect(details bool, alertIDs ...string) error {
 		case "json":
 			data, err := json.MarshalIndent(alert, "", "  ")
 			if err != nil {
-				return fmt.Errorf("unable to marshal alert with id %s: %w", alertID, err)
+				return fmt.Errorf("unable to serialize alert with id %s: %w", alertID, err)
 			}
 
 			fmt.Printf("%s\n", string(data))
 		case "raw":
 			data, err := yaml.Marshal(alert)
 			if err != nil {
-				return fmt.Errorf("unable to marshal alert with id %s: %w", alertID, err)
+				return fmt.Errorf("unable to serialize alert with id %s: %w", alertID, err)
 			}
 
 			fmt.Println(string(data))

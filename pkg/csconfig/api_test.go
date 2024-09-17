@@ -101,7 +101,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				CredentialsFilePath: "./testdata/bad_lapi-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
-			expectedErr: "failed unmarshaling api server credentials",
+			expectedErr: "failed to parse api server credentials",
 		},
 		{
 			name: "missing field configuration",

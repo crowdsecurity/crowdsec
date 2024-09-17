@@ -79,7 +79,7 @@ func (h *Hub) parseIndex() error {
 	}
 
 	if err := json.Unmarshal(bidx, &h.items); err != nil {
-		return fmt.Errorf("failed to unmarshal index: %w", err)
+		return fmt.Errorf("failed to parse index: %w", err)
 	}
 
 	h.logger.Debugf("%d item types in hub index", len(ItemTypes))

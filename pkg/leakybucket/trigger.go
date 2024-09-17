@@ -23,7 +23,7 @@ func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *type
 
 			err := d.UnmarshalText([]byte(msg.MarshaledTime))
 			if err != nil {
-				log.Warningf("Failed unmarshaling event time (%s) : %v", msg.MarshaledTime, err)
+				log.Warningf("Failed to parse event time (%s) : %v", msg.MarshaledTime, err)
 
 				d = now
 			}

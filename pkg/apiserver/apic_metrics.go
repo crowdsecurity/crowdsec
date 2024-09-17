@@ -70,7 +70,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
-				log.Errorf("unable to unmarshal bouncer metric (%s)", err)
+				log.Errorf("unable to parse bouncer metric (%s)", err)
 				continue
 			}
 
@@ -132,7 +132,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
-				log.Errorf("unable to unmarshal log processor metric (%s)", err)
+				log.Errorf("unable to parse log processor metric (%s)", err)
 				continue
 			}
 

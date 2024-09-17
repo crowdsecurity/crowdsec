@@ -260,7 +260,7 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal metrics: %w", err)
+			return fmt.Errorf("failed to serialize metrics: %w", err)
 		}
 		out.Write(x)
 	default:

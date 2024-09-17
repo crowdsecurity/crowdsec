@@ -216,6 +216,7 @@ linters:
     # DEPRECATED by golangi-lint
     #
     - execinquery
+    - exportloopref
 
     #
     # Redundant
@@ -248,7 +249,6 @@ linters:
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases
     # - errorlint           # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
-    # - exportloopref       # checks for pointers to enclosing loop variables
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
     # - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid.
     # - gochecknoinits      # Checks that no init functions are present in Go code
