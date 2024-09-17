@@ -196,7 +196,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		}
 		bytesEvent, err := json.Marshal(auditEvent)
 		if err != nil {
-			ka.logger.Errorf("Error marshaling audit event: %s", err)
+			ka.logger.Errorf("Error serializing audit event: %s", err)
 			continue
 		}
 		ka.logger.Tracef("Got audit event: %s", string(bytesEvent))

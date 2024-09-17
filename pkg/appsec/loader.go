@@ -28,7 +28,7 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 
 		err = yaml.UnmarshalStrict(content, &rule)
 		if err != nil {
-			log.Warnf("unable to unmarshal file %s : %s", hubAppsecRuleItem.State.LocalPath, err)
+			log.Warnf("unable to parse file %s : %s", hubAppsecRuleItem.State.LocalPath, err)
 			continue
 		}
 

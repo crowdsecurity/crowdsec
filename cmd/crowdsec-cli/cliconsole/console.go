@@ -280,7 +280,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 				}
 				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
-					return fmt.Errorf("failed to marshal configuration: %w", err)
+					return fmt.Errorf("failed to serialize configuration: %w", err)
 				}
 				fmt.Println(string(data))
 			case "raw":
@@ -318,7 +318,7 @@ func (cli *cliConsole) dumpConfig() error {
 
 	out, err := yaml.Marshal(serverCfg.ConsoleConfig)
 	if err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", serverCfg.ConsoleConfigPath, err)
+		return fmt.Errorf("while serializing ConsoleConfig (for %s): %w", serverCfg.ConsoleConfigPath, err)
 	}
 
 	if serverCfg.ConsoleConfigPath == "" {
@@ -361,7 +361,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				if changed {
 					fileContent, err := yaml.Marshal(cfg.API.Server.OnlineClient.Credentials)
 					if err != nil {
-						return fmt.Errorf("cannot marshal credentials: %w", err)
+						return fmt.Errorf("cannot serialize credentials: %w", err)
 					}
 
 					log.Infof("Updating credentials file: %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
