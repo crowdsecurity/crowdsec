@@ -1,8 +1,12 @@
 package component
 
-// a map of all the known components, and whether they are built-in or not.
-// This is populated as soon as possible by the respective init() functions
+// Package component provides functionality for managing the registration of
+// optional, compile-time components in the system. This is meant as a space
+// saving measure, separate from feature flags (package pkg/fflag) which are
+// only enabled/disabled at runtime.
 
+// Built is a map of all the known components, and whether they are built-in or not.
+// This is populated as soon as possible by the respective init() functions
 var Built = map[string]bool {
 	"datasource_appsec":     false,
 	"datasource_cloudwatch": false,
