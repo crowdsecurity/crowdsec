@@ -1127,10 +1127,10 @@ func (c *Client) DeleteAlertGraphBatch(ctx context.Context, alertItems []*ent.Al
 	return deleted, nil
 }
 
-func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
+func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) error {
 	// delete the associated events
 	_, err := c.Ent.Event.Delete().
-		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
@@ -1138,7 +1138,7 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 
 	// delete the associated meta
 	_, err = c.Ent.Meta.Delete().
-		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "meta with alert ID '%d'", alertItem.ID)
@@ -1146,14 +1146,14 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 
 	// delete the associated decisions
 	_, err = c.Ent.Decision.Delete().
-		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "decision with alert ID '%d'", alertItem.ID)
 	}
 
 	// delete the alert
-	err = c.Ent.Alert.DeleteOne(alertItem).Exec(c.CTX)
+	err = c.Ent.Alert.DeleteOne(alertItem).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "alert with ID '%d'", alertItem.ID)
@@ -1162,26 +1162,26 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	return nil
 }
 
-func (c *Client) DeleteAlertByID(id int) error {
-	alertItem, err := c.Ent.Alert.Query().Where(alert.IDEQ(id)).Only(c.CTX)
+func (c *Client) DeleteAlertByID(ctx context.Context, id int) error {
+	alertItem, err := c.Ent.Alert.Query().Where(alert.IDEQ(id)).Only(ctx)
 	if err != nil {
 		return err
 	}
 
-	return c.DeleteAlertGraph(alertItem)
+	return c.DeleteAlertGraph(ctx, alertItem)
 }
 
-func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) {
+func (c *Client) DeleteAlertWithFilter(ctx context.Context, filter map[string][]string) (int, error) {
 	preds, err := AlertPredicatesFromFilter(filter)
 	if err != nil {
 		return 0, err
 	}
 
-	return c.Ent.Alert.Delete().Where(preds...).Exec(c.CTX)
+	return c.Ent.Alert.Delete().Where(preds...).Exec(ctx)
 }
 
-func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
-	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(c.CTX)
+func (c *Client) GetAlertByID(ctx context.Context, alertID int) (*ent.Alert, error) {
+	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(ctx)
 	if err != nil {
 		/*record not found, 404*/
 		if ent.IsNotFound(err) {

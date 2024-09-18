@@ -252,7 +252,7 @@ func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) e
 			"created_before": {MaxAge},
 		}
 
-		nbDeleted, err := c.DeleteAlertWithFilter(filter)
+		nbDeleted, err := c.DeleteAlertWithFilter(ctx, filter)
 		if err != nil {
 			c.Log.Warningf("FlushAlerts (max age): %s", err)
 			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", MaxAge, err)
