@@ -371,7 +371,7 @@ func TestRCMetrics(t *testing.T) {
 			assert.Equal(t, tt.expectedStatusCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
-			bouncer, _ := dbClient.SelectBouncerByName("test")
+			bouncer, _ := dbClient.SelectBouncerByName(ctx, "test")
 			metrics, _ := dbClient.GetBouncerUsageMetricsByName(ctx, "test")
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
