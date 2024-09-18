@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -136,11 +137,13 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
-func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(map[string][]string) ([]*ent.Decision, error)) error {
+func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
 	// respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
 	lastId := 0
+
+	ctx := gctx.Request.Context()
 
 	limitStr := fmt.Sprintf("%d", limit)
 	filters["limit"] = []string{limitStr}
@@ -150,7 +153,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(filters)
+		data, err := dbFunc(ctx, filters)
 		if err != nil {
 			return err
 		}
@@ -305,13 +308,15 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	var data []*ent.Decision
 	var err error
 
+	ctx := gctx.Request.Context()
+
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
 
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err = c.DBClient.QueryAllDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryAllDecisionsWithFilters(ctx, filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -322,7 +327,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 			ret["new"] = FormatDecisions(data)
 
 			// getting expired decisions
-			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(ctx, filters)
 			if err != nil {
 				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
