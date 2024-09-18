@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -592,7 +593,10 @@ func GetDecisionsCount(params ...any) (any, error) {
 		return 0, nil
 
 	}
-	count, err := dbClient.CountDecisionsByValue(value)
+
+	ctx := context.TODO()
+
+	count, err := dbClient.CountDecisionsByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -613,8 +617,11 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
 		return 0, nil
 	}
+
+	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
-	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
+
+	count, err := dbClient.CountDecisionsSinceByValue(ctx, value, sinceTime)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -628,7 +635,8 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 		log.Error("No database config to call GetActiveDecisionsCount()")
 		return 0, nil
 	}
-	count, err := dbClient.CountActiveDecisionsByValue(value)
+	ctx := context.TODO()
+	count, err := dbClient.CountActiveDecisionsByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
@@ -642,7 +650,8 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 		log.Error("No database config to call GetActiveDecisionsTimeLeft()")
 		return 0, nil
 	}
-	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(value)
+	ctx := context.TODO()
+	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get active decisions time left from value '%s'", value)
 		return 0, err

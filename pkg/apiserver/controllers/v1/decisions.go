@@ -94,7 +94,9 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		return
 	}
 
-	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(decisionID)
+	ctx := gctx.Request.Context()
+
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(ctx, decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
@@ -116,7 +118,9 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
-	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(gctx.Request.URL.Query())
+	ctx := gctx.Request.Context()
+
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(ctx, gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 

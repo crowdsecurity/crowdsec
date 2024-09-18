@@ -426,6 +426,7 @@ func (a *apic) CAPIPullIsOld() (bool, error) {
 }
 
 func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, deleteCounters map[string]map[string]int) (int, error) {
+	ctx := context.TODO()
 	nbDeleted := 0
 
 	for _, decision := range deletedDecisions {
@@ -438,7 +439,7 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 			filter["scopes"] = []string{*decision.Scope}
 		}
 
-		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
+		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 		if err != nil {
 			return 0, fmt.Errorf("expiring decisions error: %w", err)
 		}
@@ -458,6 +459,8 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, deleteCounters map[string]map[string]int) (int, error) {
 	var nbDeleted int
 
+	ctx := context.TODO()
+
 	for _, decisions := range deletedDecisions {
 		scope := decisions.Scope
 
@@ -470,7 +473,7 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(filter)
+			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 			if err != nil {
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
 			}
