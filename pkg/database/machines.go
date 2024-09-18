@@ -167,11 +167,11 @@ func (c *Client) QueryPendingMachine(ctx context.Context) ([]*ent.Machine, error
 	return machines, nil
 }
 
-func (c *Client) DeleteWatcher(name string) error {
+func (c *Client) DeleteWatcher(ctx context.Context, name string) error {
 	nbDeleted, err := c.Ent.Machine.
 		Delete().
 		Where(machine.MachineIdEQ(name)).
-		Exec(c.CTX)
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
