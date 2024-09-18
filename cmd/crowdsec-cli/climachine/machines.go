@@ -473,7 +473,7 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force bool) error {
+func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notValidOnly bool, force bool) error {
 	if duration < 2*time.Minute && !notValidOnly {
 		if yes, err := ask.YesNo(
 			"The duration you provided is less than 2 minutes. "+
@@ -486,7 +486,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	}
 
 	machines := []*ent.Machine{}
-	if pending, err := cli.db.QueryPendingMachine(); err == nil {
+	if pending, err := cli.db.QueryPendingMachine(ctx); err == nil {
 		machines = append(machines, pending...)
 	}
 
@@ -542,8 +542,8 @@ cscli machines prune --duration 1h
 cscli machines prune --not-validated-only --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.prune(duration, notValidOnly, force)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.prune(cmd.Context(), duration, notValidOnly, force)
 		},
 	}
 

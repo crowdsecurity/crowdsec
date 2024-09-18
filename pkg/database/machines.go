@@ -157,8 +157,8 @@ func (c *Client) ValidateMachine(ctx context.Context, machineID string) error {
 	return nil
 }
 
-func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
-	machines, err := c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(c.CTX)
+func (c *Client) QueryPendingMachine(ctx context.Context) ([]*ent.Machine, error) {
+	machines, err := c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryPendingMachine : %s", err)
 		return nil, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
