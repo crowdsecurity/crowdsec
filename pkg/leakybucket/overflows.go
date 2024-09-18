@@ -231,7 +231,7 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 
 			raw, err := evt.Time.MarshalText()
 			if err != nil {
-				log.Warningf("while marshaling time '%s' : %s", evt.Time.String(), err)
+				log.Warningf("while serializing time '%s' : %s", evt.Time.String(), err)
 			} else {
 				*ovflwEvent.Timestamp = string(raw)
 			}
@@ -286,12 +286,12 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 	*/
 	start_at, err := leaky.First_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal start ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to serialize start ts %s : %s", leaky.First_ts.String(), err)
 	}
 
 	stop_at, err := leaky.Ovflw_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal ovflw ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to serialize ovflw ts %s : %s", leaky.First_ts.String(), err)
 	}
 
 	capacity := int32(leaky.Capacity)

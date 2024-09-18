@@ -220,7 +220,7 @@ func (cli *cliSimulation) dumpSimulationFile() error {
 
 	newConfigSim, err := yaml.Marshal(cfg.Cscli.SimulationConfig)
 	if err != nil {
-		return fmt.Errorf("unable to marshal simulation configuration: %w", err)
+		return fmt.Errorf("unable to serialize simulation configuration: %w", err)
 	}
 
 	err = os.WriteFile(cfg.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
@@ -242,7 +242,7 @@ func (cli *cliSimulation) disableGlobalSimulation() error {
 
 	newConfigSim, err := yaml.Marshal(cfg.Cscli.SimulationConfig)
 	if err != nil {
-		return fmt.Errorf("unable to marshal new simulation configuration: %w", err)
+		return fmt.Errorf("unable to serialize new simulation configuration: %w", err)
 	}
 
 	err = os.WriteFile(cfg.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)

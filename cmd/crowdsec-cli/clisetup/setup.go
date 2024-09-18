@@ -227,7 +227,7 @@ func setupAsString(cs setup.Setup, outYaml bool) (string, error) {
 	)
 
 	wrap := func(err error) error {
-		return fmt.Errorf("while marshaling setup: %w", err)
+		return fmt.Errorf("while serializing setup: %w", err)
 	}
 
 	indentLevel := 2

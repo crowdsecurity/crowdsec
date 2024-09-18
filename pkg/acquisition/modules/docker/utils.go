@@ -22,7 +22,7 @@ func parseKeyToMap(m map[string]interface{}, key string, value string) {
 		return
 	}
 
-	for i := range len(parts) {
+	for i := range parts {
 		if parts[i] == "" {
 			return
 		}

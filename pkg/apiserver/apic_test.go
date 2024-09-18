@@ -1093,7 +1093,6 @@ func TestAPICPush(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			api := getAPIC(t)
 			api.pushInterval = time.Millisecond
@@ -1116,8 +1115,10 @@ func TestAPICPush(t *testing.T) {
 
 			httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", httpmock.NewBytesResponder(200, []byte{}))
 
+			// capture the alerts to avoid datarace
+			alerts := tc.alerts
 			go func() {
-				api.AlertsAddChan <- tc.alerts
+				api.AlertsAddChan <- alerts
 
 				time.Sleep(time.Second)
 				api.Shutdown()

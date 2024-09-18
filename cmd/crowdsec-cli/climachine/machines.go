@@ -123,7 +123,7 @@ func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendHeader(table.Row{"Name", "Status", "Version"})
 		t.SetTitle(itemType)
 		t.AppendRows(rows)
-		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, t.Render()+"\n")
 	}
 }
 
@@ -145,7 +145,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, clientinfo.GetOSNameAndVersion(m), m.AuthType, hb})
 	}
 
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 // machineInfo contains only the data we want for inspect/list: no hub status, scenarios, edges, etc.
@@ -232,7 +232,7 @@ func (cli *cliMachines) List(out io.Writer, db *database.Client) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(info); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
@@ -378,7 +378,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
-		return fmt.Errorf("unable to marshal api credentials: %w", err)
+		return fmt.Errorf("unable to serialize api credentials: %w", err)
 	}
 
 	if dumpFile != "" && dumpFile != "-" {
@@ -611,7 +611,7 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Collections", coll.Name})
 	}
 
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 func (cli *cliMachines) inspect(machine *ent.Machine) error {
@@ -626,7 +626,7 @@ func (cli *cliMachines) inspect(machine *ent.Machine) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(newMachineInfo(machine)); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
@@ -648,7 +648,7 @@ func (cli *cliMachines) inspectHub(machine *ent.Machine) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(machine.Hubstate); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil

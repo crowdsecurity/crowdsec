@@ -40,7 +40,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 	dec2.KnownFields(true)
 
 	if err := dec2.Decode(&ret); err != nil {
-		return ret, fmt.Errorf("while unmarshaling setup file: %w", err)
+		return ret, fmt.Errorf("while parsing setup file: %w", err)
 	}
 
 	return ret, nil

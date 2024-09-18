@@ -63,7 +63,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		var Metas models.Meta
 
 		if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
-			log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
+			log.Errorf("unable to parse events meta '%s' : %s", eventItem.Serialized, err)
 		}
 
 		outputAlert.Events = append(outputAlert.Events, &models.Event{
