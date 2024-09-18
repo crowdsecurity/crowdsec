@@ -239,7 +239,7 @@ func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) e
 	c.FlushOrphans(ctx)
 	c.Log.Debug("Done flushing orphan alerts")
 
-	totalAlerts, err = c.TotalAlerts()
+	totalAlerts, err = c.TotalAlerts(ctx)
 	if err != nil {
 		c.Log.Warningf("FlushAlerts (max items count): %s", err)
 		return fmt.Errorf("unable to get alerts count: %w", err)
@@ -268,7 +268,7 @@ func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) e
 		// This gives us the oldest alert that we want to keep
 		// We then delete all the alerts with an id lower than this one
 		// We can do this because the id is auto-increment, and the database won't reuse the same id twice
-		lastAlert, err := c.QueryAlertWithFilter(map[string][]string{
+		lastAlert, err := c.QueryAlertWithFilter(ctx, map[string][]string{
 			"sort":  {"DESC"},
 			"limit": {"1"},
 			// we do not care about fetching the edges, we just want the id

@@ -996,11 +996,11 @@ func (c *Client) AlertsCountPerScenario(ctx context.Context, filters map[string]
 	return counts, nil
 }
 
-func (c *Client) TotalAlerts() (int, error) {
-	return c.Ent.Alert.Query().Count(c.CTX)
+func (c *Client) TotalAlerts(ctx context.Context) (int, error) {
+	return c.Ent.Alert.Query().Count(ctx)
 }
 
-func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
+func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]string) ([]*ent.Alert, error) {
 	sort := "DESC" // we sort by desc by default
 
 	if val, ok := filter["sort"]; ok {
@@ -1047,7 +1047,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			WithOwner()
 
 		if limit == 0 {
-			limit, err = alerts.Count(c.CTX)
+			limit, err = alerts.Count(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("unable to count nb alerts: %w", err)
 			}
@@ -1059,7 +1059,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt), ent.Desc(alert.FieldID))
 		}
 
-		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
+		result, err := alerts.Limit(paginationSize).Offset(offset).All(ctx)
 		if err != nil {
 			return nil, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
 		}
@@ -1088,35 +1088,35 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	return ret, nil
 }
 
-func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
+func (c *Client) DeleteAlertGraphBatch(ctx context.Context, alertItems []*ent.Alert) (int, error) {
 	idList := make([]int, 0)
 	for _, alert := range alertItems {
 		idList = append(idList, alert.ID)
 	}
 
 	_, err := c.Ent.Event.Delete().
-		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
 		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
 	}
 
 	_, err = c.Ent.Meta.Delete().
-		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
 		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
 	}
 
 	_, err = c.Ent.Decision.Delete().
-		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
 		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
-		Where(alert.IDIn(idList...)).Exec(c.CTX)
+		Where(alert.IDIn(idList...)).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
 		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")

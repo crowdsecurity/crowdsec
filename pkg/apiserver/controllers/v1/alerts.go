@@ -261,7 +261,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 // FindAlerts: returns alerts from the database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
-	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
+	ctx := gctx.Request.Context()
+
+	result, err := c.DBClient.QueryAlertWithFilter(ctx, gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
