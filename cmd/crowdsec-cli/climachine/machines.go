@@ -491,7 +491,7 @@ func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notVa
 	}
 
 	if !notValidOnly {
-		if pending, err := cli.db.QueryMachinesInactiveSince(time.Now().UTC().Add(-duration)); err == nil {
+		if pending, err := cli.db.QueryMachinesInactiveSince(ctx, time.Now().UTC().Add(-duration)); err == nil {
 			machines = append(machines, pending...)
 		}
 	}

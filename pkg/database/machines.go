@@ -197,8 +197,8 @@ func (c *Client) BulkDeleteWatchers(ctx context.Context, machines []*ent.Machine
 	return nbDeleted, nil
 }
 
-func (c *Client) UpdateMachineLastHeartBeat(machineID string) error {
-	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastHeartbeat(time.Now().UTC()).Save(c.CTX)
+func (c *Client) UpdateMachineLastHeartBeat(ctx context.Context, machineID string) error {
+	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastHeartbeat(time.Now().UTC()).Save(ctx)
 	if err != nil {
 		return errors.Wrapf(UpdateFail, "updating machine last_heartbeat: %s", err)
 	}
@@ -206,11 +206,11 @@ func (c *Client) UpdateMachineLastHeartBeat(machineID string) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineScenarios(scenarios string, id int) error {
+func (c *Client) UpdateMachineScenarios(ctx context.Context, scenarios string, id int) error {
 	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetUpdatedAt(time.Now().UTC()).
 		SetScenarios(scenarios).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine in database: %w", err)
 	}
@@ -218,10 +218,10 @@ func (c *Client) UpdateMachineScenarios(scenarios string, id int) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineIP(ipAddr string, id int) error {
+func (c *Client) UpdateMachineIP(ctx context.Context, ipAddr string, id int) error {
 	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetIpAddress(ipAddr).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine IP in database: %w", err)
 	}
@@ -229,10 +229,10 @@ func (c *Client) UpdateMachineIP(ipAddr string, id int) error {
 	return nil
 }
 
-func (c *Client) UpdateMachineVersion(ipAddr string, id int) error {
+func (c *Client) UpdateMachineVersion(ctx context.Context, ipAddr string, id int) error {
 	_, err := c.Ent.Machine.UpdateOneID(id).
 		SetVersion(ipAddr).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update machine version in database: %w", err)
 	}
@@ -240,8 +240,8 @@ func (c *Client) UpdateMachineVersion(ipAddr string, id int) error {
 	return nil
 }
 
-func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
-	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(c.CTX)
+func (c *Client) IsMachineRegistered(ctx context.Context, machineID string) (bool, error) {
+	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -257,11 +257,11 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) QueryMachinesInactiveSince(t time.Time) ([]*ent.Machine, error) {
+func (c *Client) QueryMachinesInactiveSince(ctx context.Context, t time.Time) ([]*ent.Machine, error) {
 	return c.Ent.Machine.Query().Where(
 		machine.Or(
 			machine.And(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)),
 			machine.And(machine.LastHeartbeatIsNil(), machine.CreatedAtLT(t)),
 		),
-	).All(c.CTX)
+	).All(ctx)
 }
