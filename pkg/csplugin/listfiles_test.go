@@ -21,7 +21,7 @@ func TestListFilesAtPath(t *testing.T) {
 	require.NoError(t, err)
 	_, err = os.Create(filepath.Join(dir, "slack"))
 	require.NoError(t, err)
-	err = os.Mkdir(filepath.Join(dir, "somedir"), 0755)
+	err = os.Mkdir(filepath.Join(dir, "somedir"), 0o755)
 	require.NoError(t, err)
 	_, err = os.Create(filepath.Join(dir, "somedir", "inner"))
 	require.NoError(t, err)

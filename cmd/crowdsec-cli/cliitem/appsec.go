@@ -62,7 +62,7 @@ func NewAppsecRule(cfg configGetter) *cliItem {
 		}
 
 		if err := yaml.Unmarshal(yamlContent, &appsecRule); err != nil {
-			return fmt.Errorf("unable to unmarshal yaml file %s: %w", item.State.LocalPath, err)
+			return fmt.Errorf("unable to parse yaml file %s: %w", item.State.LocalPath, err)
 		}
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {

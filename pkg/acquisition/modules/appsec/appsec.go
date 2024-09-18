@@ -393,7 +393,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(statusCode)
 	body, err := json.Marshal(appsecResponse)
 	if err != nil {
-		logger.Errorf("unable to marshal response: %s", err)
+		logger.Errorf("unable to serialize response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
 		rw.Write(body)

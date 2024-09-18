@@ -54,7 +54,6 @@ func (s *PluginSuite) TestBrokerInit() {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		s.Run(tc.name, func() {
 			t := s.T()
 			if tc.action != nil {

@@ -147,7 +147,7 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
-		return fmt.Errorf("unable to marshal api credentials: %w", err)
+		return fmt.Errorf("unable to serialize api credentials: %w", err)
 	}
 
 	if dumpFile != "" {

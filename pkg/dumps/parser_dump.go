@@ -259,7 +259,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 				}
 
 				if updated > 0 {
-					if len(changeStr) > 0 {
+					if changeStr != "" {
 						changeStr += " "
 					}
 
@@ -267,7 +267,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 				}
 
 				if deleted > 0 {
-					if len(changeStr) > 0 {
+					if changeStr != "" {
 						changeStr += " "
 					}
 
@@ -275,7 +275,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 				}
 
 				if whitelisted {
-					if len(changeStr) > 0 {
+					if changeStr != "" {
 						changeStr += " "
 					}
 

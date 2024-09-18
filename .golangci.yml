@@ -103,7 +103,7 @@ linters-settings:
         disabled: true
       - name: cyclomatic
         # lower this after refactoring
-        arguments: [41]
+        arguments: [39]
       - name: defer
         disabled: true
       - name: empty-block
@@ -178,6 +178,37 @@ linters-settings:
     # Allow blocks to end with comments
     allow-trailing-comment: true
 
+  gocritic:
+    enable-all: true
+    disabled-checks:
+      - typeDefFirst
+      - paramTypeCombine
+      - httpNoBody
+      - ifElseChain
+      - importShadow
+      - hugeParam
+      - rangeValCopy
+      - commentedOutCode
+      - commentedOutImport
+      - unnamedResult
+      - sloppyReassign
+      - appendCombine
+      - captLocal
+      - typeUnparen
+      - commentFormatting
+      - deferInLoop             #
+      - sprintfQuotedString     #
+      - whyNoLint
+      - equalFold               #
+      - unnecessaryBlock        #
+      - ptrToRefParam           #
+      - stringXbytes            #
+      - appendAssign            #
+      - tooManyResultsChecker
+      - unnecessaryDefer
+      - docStub
+      - preferFprint
+
 linters:
   enable-all: true
   disable:
@@ -185,6 +216,7 @@ linters:
     # DEPRECATED by golangi-lint
     #
     - execinquery
+    - exportloopref
 
     #
     # Redundant
@@ -196,12 +228,9 @@ linters:
     - funlen   # revive
     - gocognit # revive
 
-    #
-    # Disabled until fixed for go 1.22
-    #
+    # Disabled atm
 
-    - copyloopvar         # copyloopvar is a linter detects places where loop variables are copied
-    - intrange            # intrange is a linter to find places where for loops could make use of an integer range.
+    - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
 
     #
     # Enabled
@@ -211,13 +240,13 @@ linters:
     # - asciicheck          # checks that all code identifiers does not have non-ASCII symbols in the name
     # - bidichk             # Checks for dangerous unicode character sequences
     # - bodyclose           # checks whether HTTP response body is closed successfully
+    # - copyloopvar         # copyloopvar is a linter detects places where loop variables are copied
     # - decorder            # check declaration order and count of types, constants, variables and functions
     # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
     # - dupword             # checks for duplicate words in the source code
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases
     # - errorlint           # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
-    # - exportloopref       # checks for pointers to enclosing loop variables
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
     # - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid.
     # - gochecknoinits      # Checks that no init functions are present in Go code
@@ -365,22 +394,6 @@ issues:
         - errcheck
       text: "Error return value of `.*` is not checked"
 
-    - linters:
-        - gocritic
-      text: "ifElseChain: rewrite if-else to switch statement"
-
-    - linters:
-        - gocritic
-      text: "captLocal: `.*' should not be capitalized"
-
-    - linters:
-        - gocritic
-      text: "appendAssign: append result not assigned to the same slice"
-
-    - linters:
-        - gocritic
-      text: "commentFormatting: put a space between `//` and comment text"
-
     # Will fix, trivial - just beware of merge conflicts
 
     - linters:
@@ -488,11 +501,6 @@ issues:
     - linters:
         - revive
       path: "cmd/crowdsec-cli/idgen/password.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/utils.go"
       text: "deep-exit: .*"
 
     - linters:

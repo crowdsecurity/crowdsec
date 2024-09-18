@@ -38,7 +38,7 @@ func (s *PluginSuite) readconfig() PluginConfig {
 	require.NoError(t, err, "unable to read config file %s", s.pluginConfig)
 
 	err = yaml.Unmarshal(orig, &config)
-	require.NoError(t, err, "unable to unmarshal config file")
+	require.NoError(t, err, "unable to parse config file")
 
 	return config
 }
@@ -46,7 +46,7 @@ func (s *PluginSuite) readconfig() PluginConfig {
 func (s *PluginSuite) writeconfig(config PluginConfig) {
 	t := s.T()
 	data, err := yaml.Marshal(&config)
-	require.NoError(t, err, "unable to marshal config file")
+	require.NoError(t, err, "unable to serialize config file")
 
 	err = os.WriteFile(s.pluginConfig, data, 0o644)
 	require.NoError(t, err, "unable to write config file %s", s.pluginConfig)
