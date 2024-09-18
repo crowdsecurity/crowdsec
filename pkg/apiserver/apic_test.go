@@ -113,7 +113,9 @@ func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
 func TestAPICCAPIPullIsOld(t *testing.T) {
 	api := getAPIC(t)
 
-	isOld, err := api.CAPIPullIsOld()
+	ctx := context.Background()
+
+	isOld, err := api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
 	assert.True(t, isOld)
 
@@ -124,7 +126,7 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		SetScope("Country").
 		SetValue("Blah").
 		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	api.dbClient.Ent.Alert.Create().
 		SetCreatedAt(time.Now()).
@@ -132,9 +134,9 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		AddDecisions(
 			decision,
 		).
-		SaveX(context.Background())
+		SaveX(ctx)
 
-	isOld, err = api.CAPIPullIsOld()
+	isOld, err = api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
 
 	assert.False(t, isOld)
