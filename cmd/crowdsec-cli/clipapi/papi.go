@@ -74,7 +74,7 @@ func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Clie
 		return fmt.Errorf("unable to get PAPI permissions: %w", err)
 	}
 
-	lastTimestampStr, err := db.GetConfigItem(apiserver.PapiPullKey)
+	lastTimestampStr, err := db.GetConfigItem(ctx, apiserver.PapiPullKey)
 	if err != nil {
 		lastTimestampStr = ptr.Of("never")
 	}

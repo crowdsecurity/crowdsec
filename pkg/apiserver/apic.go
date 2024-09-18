@@ -614,7 +614,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 // we receive a list of decisions and links for blocklist and we need to create a list of alerts :
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
-func (a *apic) PullTop(forcePull bool) error {
+func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	var err error
 
 	// A mutex with TryLock would be a bit simpler
@@ -655,7 +655,7 @@ func (a *apic) PullTop(forcePull bool) error {
 
 	log.Infof("Starting community-blocklist update")
 
-	data, _, err := a.apiClient.Decisions.GetStreamV3(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
+	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup})
 	if err != nil {
 		return fmt.Errorf("get stream: %w", err)
 	}
@@ -700,7 +700,7 @@ func (a *apic) PullTop(forcePull bool) error {
 	}
 
 	// update blocklists
-	if err := a.UpdateBlocklists(data.Links, addCounters, forcePull); err != nil {
+	if err := a.UpdateBlocklists(ctx, data.Links, addCounters, forcePull); err != nil {
 		return fmt.Errorf("while updating blocklists: %w", err)
 	}
 
@@ -708,9 +708,9 @@ func (a *apic) PullTop(forcePull bool) error {
 }
 
 // we receive a link to a blocklist, we pull the content of the blocklist and we create one alert
-func (a *apic) PullBlocklist(blocklist *modelscapi.BlocklistLink, forcePull bool) error {
+func (a *apic) PullBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, forcePull bool) error {
 	addCounters, _ := makeAddAndDeleteCounters()
-	if err := a.UpdateBlocklists(&modelscapi.GetDecisionsStreamResponseLinks{
+	if err := a.UpdateBlocklists(ctx, &modelscapi.GetDecisionsStreamResponseLinks{
 		Blocklists: []*modelscapi.BlocklistLink{blocklist},
 	}, addCounters, forcePull); err != nil {
 		return fmt.Errorf("while pulling blocklist: %w", err)
@@ -820,7 +820,7 @@ func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bo
 	return false, nil
 }
 
-func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscapi.BlocklistLink, addCounters map[string]map[string]int, forcePull bool) error {
+func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient, blocklist *modelscapi.BlocklistLink, addCounters map[string]map[string]int, forcePull bool) error {
 	if blocklist.Scope == nil {
 		log.Warningf("blocklist has no scope")
 		return nil
@@ -848,13 +848,13 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 	)
 
 	if !forcePull {
-		lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
+		lastPullTimestamp, err = a.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 		if err != nil {
 			return fmt.Errorf("while getting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
 		}
 	}
 
-	decisions, hasChanged, err := client.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist, lastPullTimestamp)
+	decisions, hasChanged, err := client.Decisions.GetDecisionsFromBlocklist(ctx, blocklist, lastPullTimestamp)
 	if err != nil {
 		return fmt.Errorf("while getting decisions from blocklist %s: %w", *blocklist.Name, err)
 	}
@@ -869,7 +869,7 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 		return nil
 	}
 
-	err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
+	err = a.dbClient.SetConfigItem(ctx, blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
 	if err != nil {
 		return fmt.Errorf("while setting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
 	}
@@ -892,7 +892,7 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 	return nil
 }
 
-func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, addCounters map[string]map[string]int, forcePull bool) error {
+func (a *apic) UpdateBlocklists(ctx context.Context, links *modelscapi.GetDecisionsStreamResponseLinks, addCounters map[string]map[string]int, forcePull bool) error {
 	if links == nil {
 		return nil
 	}
@@ -908,7 +908,7 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 	}
 
 	for _, blocklist := range links.Blocklists {
-		if err := a.updateBlocklist(defaultClient, blocklist, addCounters, forcePull); err != nil {
+		if err := a.updateBlocklist(ctx, defaultClient, blocklist, addCounters, forcePull); err != nil {
 			return err
 		}
 	}
@@ -931,7 +931,7 @@ func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int
 	}
 }
 
-func (a *apic) Pull() error {
+func (a *apic) Pull(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/pullFromAPIC")
 
 	toldOnce := false
@@ -955,7 +955,7 @@ func (a *apic) Pull() error {
 		time.Sleep(1 * time.Second)
 	}
 
-	if err := a.PullTop(false); err != nil {
+	if err := a.PullTop(ctx, false); err != nil {
 		log.Errorf("capi pull top: %s", err)
 	}
 
@@ -967,7 +967,7 @@ func (a *apic) Pull() error {
 		case <-ticker.C:
 			ticker.Reset(a.pullInterval)
 
-			if err := a.PullTop(false); err != nil {
+			if err := a.PullTop(ctx, false); err != nil {
 				log.Errorf("capi pull top: %s", err)
 				continue
 			}
