@@ -391,7 +391,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
+func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
@@ -436,7 +436,7 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 		return nil, nil
 	}
 
-	ret, err := c.Ent.Decision.CreateBulk(decisionCreate...).Save(c.CTX)
+	ret, err := c.Ent.Decision.CreateBulk(decisionCreate...).Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +444,7 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 	return ret, nil
 }
 
-func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
+func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	alertBuilders := []*ent.AlertCreate{}
 	alertDecisions := [][]*ent.Decision{}
 
@@ -540,7 +540,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 				c.Log.Warningf("dropped 'serialized' field (machine %s / scenario %s)", machineID, *alertItem.Scenario)
 			}
 
-			events, err = c.Ent.Event.CreateBulk(eventBulk...).Save(c.CTX)
+			events, err = c.Ent.Event.CreateBulk(eventBulk...).Save(ctx)
 			if err != nil {
 				return nil, errors.Wrapf(BulkError, "creating alert events: %s", err)
 			}
@@ -568,7 +568,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 					SetValue(value)
 			}
 
-			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(c.CTX)
+			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(ctx)
 			if err != nil {
 				c.Log.Warningf("error creating alert meta: %s", err)
 			}
@@ -578,7 +578,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 		decisionChunks := slicetools.Chunks(alertItem.Decisions, c.decisionBulkSize)
 		for _, decisionChunk := range decisionChunks {
-			decisionRet, err := c.createDecisionChunk(*alertItem.Simulated, stopAtTime, decisionChunk)
+			decisionRet, err := c.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
 			if err != nil {
 				return nil, fmt.Errorf("creating alert decisions: %w", err)
 			}
@@ -636,7 +636,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 		return nil, nil
 	}
 
-	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(c.CTX)
+	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 	}
@@ -653,7 +653,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 			for retry < maxLockRetries {
 				// so much for the happy path... but sqlite3 errors work differently
-				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
 				if err == nil {
 					break
 				}
@@ -708,7 +708,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 	alertIDs := []string{}
 
 	for _, alertChunk := range alertChunks {
-		ids, err := c.createAlertChunk(machineID, owner, alertChunk)
+		ids, err := c.createAlertChunk(ctx, machineID, owner, alertChunk)
 		if err != nil {
 			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
 		}
@@ -717,7 +717,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 	}
 
 	if owner != nil {
-		err = owner.Update().SetLastPush(time.Now().UTC()).Exec(c.CTX)
+		err = owner.Update().SetLastPush(time.Now().UTC()).Exec(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
 		}
