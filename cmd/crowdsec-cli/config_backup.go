@@ -74,7 +74,7 @@ func (cli *cliConfig) backupHub(dirPath string) error {
 
 		upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed marshaling upstream parsers: %w", err)
+			return fmt.Errorf("failed to serialize upstream parsers: %w", err)
 		}
 
 		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0o644)

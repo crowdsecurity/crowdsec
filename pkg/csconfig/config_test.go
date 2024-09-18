@@ -42,5 +42,5 @@ func TestNewCrowdSecConfig(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	x := NewDefaultConfig()
 	_, err := yaml.Marshal(x)
-	require.NoError(t, err, "failed marshaling config: %s", err)
+	require.NoError(t, err, "failed to serialize config: %s", err)
 }

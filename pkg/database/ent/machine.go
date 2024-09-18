@@ -202,7 +202,7 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field hubstate", values[i])
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &m.Hubstate); err != nil {
-					return fmt.Errorf("unmarshal field hubstate: %w", err)
+					return fmt.Errorf("parsing field hubstate: %w", err)
 				}
 			}
 		case machine.FieldDatasources:
@@ -210,7 +210,7 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field datasources", values[i])
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &m.Datasources); err != nil {
-					return fmt.Errorf("unmarshal field datasources: %w", err)
+					return fmt.Errorf("parsing field datasources: %w", err)
 				}
 			}
 		default:

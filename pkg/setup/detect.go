@@ -545,7 +545,7 @@ func Detect(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 		//			}
 		//			err = yaml.Unmarshal(svc.AcquisYAML, svc.DataSource)
 		//			if err != nil {
-		//				return Setup{}, fmt.Errorf("while unmarshaling datasource for service %s: %w", name, err)
+		//				return Setup{}, fmt.Errorf("while parsing datasource for service %s: %w", name, err)
 		//			}
 		//		}
 

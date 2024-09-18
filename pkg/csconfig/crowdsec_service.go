@@ -143,14 +143,14 @@ func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
 	// XXX: MakeDirs
 	out, err := yaml.Marshal(c.ContextToSend)
 	if err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
+		return fmt.Errorf("while serializing ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
 	}
 
-	if err = os.MkdirAll(filepath.Dir(c.ConsoleContextPath), 0700); err != nil {
+	if err = os.MkdirAll(filepath.Dir(c.ConsoleContextPath), 0o700); err != nil {
 		return fmt.Errorf("while creating directories for %s: %w", c.ConsoleContextPath, err)
 	}
 
-	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {
+	if err := os.WriteFile(c.ConsoleContextPath, out, 0o600); err != nil {
 		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleContextPath, err)
 	}
 

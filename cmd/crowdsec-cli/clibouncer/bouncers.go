@@ -97,7 +97,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
 	}
 
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 // bouncerInfo contains only the data we want for inspect/list
@@ -181,7 +181,7 @@ func (cli *cliBouncers) List(out io.Writer, db *database.Client) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(info); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
@@ -234,7 +234,7 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 	case "json":
 		j, err := json.Marshal(key)
 		if err != nil {
-			return errors.New("unable to marshal api key")
+			return errors.New("unable to serialize api key")
 		}
 
 		fmt.Print(string(j))
@@ -443,7 +443,7 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {
@@ -458,7 +458,7 @@ func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(newBouncerInfo(bouncer)); err != nil {
-			return errors.New("failed to marshal")
+			return errors.New("failed to serialize")
 		}
 
 		return nil
