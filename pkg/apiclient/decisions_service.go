@@ -144,7 +144,7 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 		partialDecisions := make([]*models.Decision, len(decisionsGroup.Decisions))
 
 		for idx, decision := range decisionsGroup.Decisions {
-			decision := decision // fix exportloopref linter message
+			decision := decision //nolint:copyloopvar // fix exportloopref linter message
 			partialDecisions[idx] = &models.Decision{
 				Scenario: &scenarioDeleted,
 				Scope:    decisionsGroup.Scope,

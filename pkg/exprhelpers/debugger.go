@@ -53,9 +53,8 @@ type OpOutput struct {
 }
 
 func (o *OpOutput) String() string {
-
 	ret := fmt.Sprintf("%*c", o.CodeDepth, ' ')
-	if len(o.Code) != 0 {
+	if o.Code != "" {
 		ret += fmt.Sprintf("[%s]", o.Code)
 	}
 	ret += " "
@@ -70,7 +69,7 @@ func (o *OpOutput) String() string {
 			indent = 0
 		}
 		ret = fmt.Sprintf("%*cBLOCK_END [%s]", indent, ' ', o.Code)
-		if len(o.StrConditionResult) > 0 {
+		if o.StrConditionResult != "" {
 			ret += fmt.Sprintf(" -> %s", o.StrConditionResult)
 		}
 		return ret

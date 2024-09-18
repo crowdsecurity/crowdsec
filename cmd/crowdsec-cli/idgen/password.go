@@ -1,8 +1,8 @@
 package idgen
 
 import (
-	"math/big"
 	saferand "crypto/rand"
+	"math/big"
 
 	log "github.com/sirupsen/logrus"
 )

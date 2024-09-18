@@ -493,7 +493,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 	}
 
 	if err := json.Unmarshal(body, &state); err != nil {
-		return fmt.Errorf("can't unmarshal state file %s: %w", file, err)
+		return fmt.Errorf("can't parse state file %s: %w", file, err)
 	}
 
 	for k, v := range state {

@@ -149,7 +149,7 @@ func (w *WinEventLogSource) buildXpathQuery() (string, error) {
 	queryList := QueryList{Select: Select{Path: w.config.EventChannel, Query: query}}
 	xpathQuery, err := xml.Marshal(queryList)
 	if err != nil {
-		w.logger.Errorf("Marshal failed: %v", err)
+		w.logger.Errorf("Serialize failed: %v", err)
 		return "", err
 	}
 	w.logger.Debugf("xpathQuery: %s", xpathQuery)

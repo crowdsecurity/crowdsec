@@ -116,7 +116,7 @@ func CheckPerms(path string) error {
 	*/
 	aceCount := rs.Field(3).Uint()
 
-	for i := uint64(0); i < aceCount; i++ {
+	for i := range aceCount {
 		ace := &AccessAllowedAce{}
 		ret, _, _ := procGetAce.Call(uintptr(unsafe.Pointer(dacl)), uintptr(i), uintptr(unsafe.Pointer(&ace)))
 		if ret == 0 {

@@ -106,7 +106,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal: %w", err)
+			return fmt.Errorf("failed to parse: %w", err)
 		}
 
 		out.Write(x)
@@ -158,7 +158,7 @@ func InspectItem(item *cwhub.Item, wantMetrics bool, output string, prometheusUR
 	case "json":
 		b, err := json.MarshalIndent(*item, "", "  ")
 		if err != nil {
-			return fmt.Errorf("unable to marshal item: %w", err)
+			return fmt.Errorf("unable to serialize item: %w", err)
 		}
 
 		fmt.Print(string(b))

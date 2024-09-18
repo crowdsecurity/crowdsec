@@ -132,7 +132,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	})
 	bbuckets, err := json.MarshalIndent(serialized, "", " ")
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal buckets: %s", err)
+		return "", fmt.Errorf("failed to parse buckets: %s", err)
 	}
 	size, err := tmpFd.Write(bbuckets)
 	if err != nil {
@@ -203,7 +203,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
-					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					holder.logger.Warningf("Failed to parse event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
@@ -298,7 +298,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
 	//find the relevant holders (scenarios)
-	for idx := range len(holders) {
+	for idx := range holders {
 		//for idx, holder := range holders {
 
 		//evaluate bucket's condition

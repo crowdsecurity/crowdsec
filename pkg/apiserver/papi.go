@@ -245,7 +245,7 @@ func (p *Papi) Pull() error {
 	if lastTimestampStr == nil {
 		binTime, err := lastTimestamp.MarshalText()
 		if err != nil {
-			return fmt.Errorf("failed to marshal last timestamp: %w", err)
+			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
@@ -255,7 +255,7 @@ func (p *Papi) Pull() error {
 		}
 	} else {
 		if err := lastTimestamp.UnmarshalText([]byte(*lastTimestampStr)); err != nil {
-			return fmt.Errorf("failed to unmarshal last timestamp: %w", err)
+			return fmt.Errorf("failed to parse last timestamp: %w", err)
 		}
 	}
 
@@ -268,7 +268,7 @@ func (p *Papi) Pull() error {
 
 		binTime, err := newTime.MarshalText()
 		if err != nil {
-			return fmt.Errorf("failed to marshal last timestamp: %w", err)
+			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
 		err = p.handleEvent(event, false)

@@ -397,14 +397,13 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) *Container
 
 	for _, containerName := range d.Config.ContainerName {
 		for _, name := range container.Names {
-			if strings.HasPrefix(name, "/") && len(name) > 0 {
+			if strings.HasPrefix(name, "/") && name != "" {
 				name = name[1:]
 			}
 			if name == containerName {
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 			}
 		}
-
 	}
 
 	for _, cont := range d.compiledContainerID {
@@ -419,7 +418,6 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) *Container
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}
 			}
 		}
-
 	}
 
 	if d.Config.UseContainerLabels {

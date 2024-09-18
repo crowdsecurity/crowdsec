@@ -92,10 +92,12 @@ type S3Event struct {
 	} `json:"detail"`
 }
 
-const PollMethodList = "list"
-const PollMethodSQS = "sqs"
-const SQSFormatEventBridge = "eventbridge"
-const SQSFormatS3Notification = "s3notification"
+const (
+	PollMethodList          = "list"
+	PollMethodSQS           = "sqs"
+	SQSFormatEventBridge    = "eventbridge"
+	SQSFormatS3Notification = "s3notification"
+)
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
@@ -466,6 +468,7 @@ func (s *S3Source) GetUuid() string {
 func (s *S3Source) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }
+
 func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }
@@ -566,11 +569,11 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	})
 	dsn = strings.TrimPrefix(dsn, "s3://")
 	args := strings.Split(dsn, "?")
-	if len(args[0]) == 0 {
+	if args[0] == "" {
 		return errors.New("empty s3:// DSN")
 	}
 
-	if len(args) == 2 && len(args[1]) != 0 {
+	if len(args) == 2 && args[1] != "" {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
 			return fmt.Errorf("could not parse s3 args: %w", err)
