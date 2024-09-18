@@ -514,7 +514,7 @@ func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notVa
 		}
 	}
 
-	deleted, err := cli.db.BulkDeleteWatchers(machines)
+	deleted, err := cli.db.BulkDeleteWatchers(ctx, machines)
 	if err != nil {
 		return fmt.Errorf("unable to prune machines: %w", err)
 	}

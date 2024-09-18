@@ -183,13 +183,13 @@ func (c *Client) DeleteWatcher(ctx context.Context, name string) error {
 	return nil
 }
 
-func (c *Client) BulkDeleteWatchers(machines []*ent.Machine) (int, error) {
+func (c *Client) BulkDeleteWatchers(ctx context.Context, machines []*ent.Machine) (int, error) {
 	ids := make([]int, len(machines))
 	for i, b := range machines {
 		ids[i] = b.ID
 	}
 
-	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(c.CTX)
+	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(ctx)
 	if err != nil {
 		return nbDeleted, err
 	}
