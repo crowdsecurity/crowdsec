@@ -1,6 +1,7 @@
 package climachine
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -278,8 +279,8 @@ func (cli *cliMachines) newAddCmd() *cobra.Command {
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 cscli machines add -f- --auto > /tmp/mycreds.yaml`,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.add(args, string(password), dumpFile, apiURL, interactive, autoAdd, force)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.add(cmd.Context(), args, string(password), dumpFile, apiURL, interactive, autoAdd, force)
 		},
 	}
 
@@ -294,7 +295,7 @@ cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 	return cmd
 }
 
-func (cli *cliMachines) add(args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
+func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
 	var (
 		err       error
 		machineID string
@@ -353,7 +354,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 
 	password := strfmt.Password(machinePassword)
 
-	_, err = cli.db.CreateMachine(&machineID, &password, "", true, force, types.PasswordAuthType)
+	_, err = cli.db.CreateMachine(ctx, &machineID, &password, "", true, force, types.PasswordAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %w", err)
 	}

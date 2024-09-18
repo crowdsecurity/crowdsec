@@ -72,7 +72,7 @@ func (c *Client) MachineUpdateBaseMetrics(ctx context.Context, machineID string,
 	return nil
 }
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
+func (c *Client) CreateMachine(ctx context.Context, machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
 		c.Log.Warningf("CreateMachine: %s", err)
@@ -82,14 +82,14 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 	machineExist, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(*machineID)).
-		Select(machine.FieldMachineId).Strings(c.CTX)
+		Select(machine.FieldMachineId).Strings(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
 	}
 
 	if len(machineExist) > 0 {
 		if force {
-			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(c.CTX)
+			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(ctx)
 			if err != nil {
 				c.Log.Warningf("CreateMachine : %s", err)
 				return nil, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
@@ -113,7 +113,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		SetIpAddress(ipAddress).
 		SetIsValidated(isValidated).
 		SetAuthType(authType).
-		Save(c.CTX)
+		Save(ctx)
 	if err != nil {
 		c.Log.Warningf("CreateMachine : %s", err)
 		return nil, errors.Wrapf(InsertFail, "creating machine '%s'", *machineID)

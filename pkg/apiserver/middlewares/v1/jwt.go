@@ -55,6 +55,8 @@ type authInput struct {
 }
 
 func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
+	// XXX: should we pass ctx instead
+	ctx := c.Request.Context()
 	ret := authInput{}
 
 	if j.TlsAuth == nil {
@@ -76,7 +78,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
-		First(j.DbClient.CTX)
+		First(ctx)
 	if ent.IsNotFound(err) {
 		// Machine was not found, let's create it
 		logger.Infof("machine %s not found, create it", ret.machineID)
@@ -91,7 +93,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 
 		password := strfmt.Password(pwd)
 
-		ret.clientMachine, err = j.DbClient.CreateMachine(&ret.machineID, &password, "", true, true, types.TlsAuthType)
+		ret.clientMachine, err = j.DbClient.CreateMachine(ctx, &ret.machineID, &password, "", true, true, types.TlsAuthType)
 		if err != nil {
 			return nil, fmt.Errorf("while creating machine entry for %s: %w", ret.machineID, err)
 		}
