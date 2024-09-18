@@ -213,7 +213,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
 		}
-		if len(scanner.Text()) == 0 { //skip empty lines
+		if scanner.Text() == "" { //skip empty lines
 			continue
 		}
 
@@ -254,7 +254,6 @@ func Distinct(params ...any) (any, error) {
 		}
 	}
 	return ret, nil
-
 }
 
 func FlattenDistinct(params ...any) (any, error) {
@@ -280,6 +279,7 @@ func flatten(args []interface{}, v reflect.Value) []interface{} {
 
 	return args
 }
+
 func existsInFileMaps(filename string, ftype string) (bool, error) {
 	ok := false
 	var err error
@@ -765,7 +765,6 @@ func B64Decode(params ...any) (any, error) {
 }
 
 func ParseKV(params ...any) (any, error) {
-
 	blob := params[0].(string)
 	target := params[1].(map[string]interface{})
 	prefix := params[2].(string)

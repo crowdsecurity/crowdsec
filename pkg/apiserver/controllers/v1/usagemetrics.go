@@ -183,7 +183,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		logger.Errorf("Failed to marshal usage metrics: %s", err)
+		logger.Errorf("Failed to serialize usage metrics: %s", err)
 		c.HandleDBErrors(gctx, err)
 
 		return

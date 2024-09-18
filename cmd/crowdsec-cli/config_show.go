@@ -50,7 +50,7 @@ func (cli *cliConfig) showKey(key string) error {
 	case "json":
 		data, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal configuration: %w", err)
+			return fmt.Errorf("failed to serialize configuration: %w", err)
 		}
 
 		fmt.Println(string(data))
@@ -212,14 +212,14 @@ func (cli *cliConfig) show() error {
 	case "json":
 		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal configuration: %w", err)
+			return fmt.Errorf("failed to serialize configuration: %w", err)
 		}
 
 		fmt.Println(string(data))
 	case "raw":
 		data, err := yaml.Marshal(cfg)
 		if err != nil {
-			return fmt.Errorf("failed to marshal configuration: %w", err)
+			return fmt.Errorf("failed to serialize configuration: %w", err)
 		}
 
 		fmt.Println(string(data))

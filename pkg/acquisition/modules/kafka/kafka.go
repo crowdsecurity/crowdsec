@@ -82,7 +82,7 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 		k.Config.Mode = configuration.TAIL_MODE
 	}
 
-	k.logger.Debugf("successfully unmarshaled kafka configuration : %+v", k.Config)
+	k.logger.Debugf("successfully parsed kafka configuration : %+v", k.Config)
 
 	return err
 }

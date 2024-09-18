@@ -172,7 +172,7 @@ func (cli *cliNotifications) newListCmd() *cobra.Command {
 			} else if cfg.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {
-					return fmt.Errorf("failed to marshal notification configuration: %w", err)
+					return fmt.Errorf("failed to serialize notification configuration: %w", err)
 				}
 				fmt.Printf("%s", string(x))
 			} else if cfg.Cscli.Output == "raw" {
@@ -231,7 +231,7 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 			} else if cfg.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(cfg, "", " ")
 				if err != nil {
-					return fmt.Errorf("failed to marshal notification configuration: %w", err)
+					return fmt.Errorf("failed to serialize notification configuration: %w", err)
 				}
 				fmt.Printf("%s", string(x))
 			}
@@ -331,7 +331,7 @@ func (cli cliNotifications) newTestCmd() *cobra.Command {
 				CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			}
 			if err := yaml.Unmarshal([]byte(alertOverride), alert); err != nil {
-				return fmt.Errorf("failed to unmarshal alert override: %w", err)
+				return fmt.Errorf("failed to parse alert override: %w", err)
 			}
 
 			pluginBroker.PluginChannel <- csplugin.ProfileAlert{
@@ -387,7 +387,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 
 			if alertOverride != "" {
 				if err := json.Unmarshal([]byte(alertOverride), alert); err != nil {
-					return fmt.Errorf("can't unmarshal data in the alert flag: %w", err)
+					return fmt.Errorf("can't parse data in the alert flag: %w", err)
 				}
 			}
 

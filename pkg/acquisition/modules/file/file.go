@@ -73,7 +73,7 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 		f.logger.Tracef("FileAcquisition configuration: %+v", f.config)
 	}
 
-	if len(f.config.Filename) != 0 {
+	if f.config.Filename != "" {
 		f.config.Filenames = append(f.config.Filenames, f.config.Filename)
 	}
 
@@ -202,11 +202,11 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 
 	args := strings.Split(dsn, "?")
 
-	if len(args[0]) == 0 {
+	if args[0] == "" {
 		return errors.New("empty file:// DSN")
 	}
 
-	if len(args) == 2 && len(args[1]) != 0 {
+	if len(args) == 2 && args[1] != "" {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
 			return fmt.Errorf("could not parse file args: %w", err)

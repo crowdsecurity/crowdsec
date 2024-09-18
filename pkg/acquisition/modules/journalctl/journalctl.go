@@ -223,7 +223,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 	}
 
 	qs := strings.TrimPrefix(dsn, "journalctl://")
-	if len(qs) == 0 {
+	if qs == "" {
 		return errors.New("empty journalctl:// DSN")
 	}
 
@@ -267,7 +267,6 @@ func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb
 	err := j.runJournalCtl(out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
-
 }
 
 func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
@@ -277,11 +276,13 @@ func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.To
 	})
 	return nil
 }
+
 func (j *JournalCtlSource) CanRun() error {
-	//TODO: add a more precise check on version or something ?
+	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
+
 func (j *JournalCtlSource) Dump() interface{} {
 	return j
 }
