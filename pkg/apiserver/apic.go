@@ -640,7 +640,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Debug("Acquiring lock for pullCAPI")
 
-	err = a.dbClient.AcquirePullCAPILock()
+	err = a.dbClient.AcquirePullCAPILock(ctx)
 	if a.dbClient.IsLocked(err) {
 		log.Info("PullCAPI is already running, skipping")
 		return nil
@@ -650,7 +650,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	defer func() {
 		log.Debug("Releasing lock for pullCAPI")
 
-		if err := a.dbClient.ReleasePullCAPILock(); err != nil {
+		if err := a.dbClient.ReleasePullCAPILock(ctx); err != nil {
 			log.Errorf("while releasing lock: %v", err)
 		}
 	}()
