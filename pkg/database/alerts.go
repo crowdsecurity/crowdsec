@@ -191,7 +191,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 // it takes care of creating the new alert with the associated decisions, and it will as well deleted the "older" overlapping decisions:
 // 1st pull, you get decisions [1,2,3]. it inserts [1,2,3]
 // 2nd pull, you get decisions [1,2,3,4]. it inserts [1,2,3,4] and will try to delete [1,2,3,4] with a different alert ID and same origin
-func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
+func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models.Alert) (int, int, int, error) {
 	if alertItem == nil {
 		return 0, 0, 0, errors.New("nil alert")
 	}
@@ -244,7 +244,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		SetScenarioHash(*alertItem.ScenarioHash).
 		SetRemediation(true) // it's from CAPI, we always have decisions
 
-	alertRef, err := alertB.Save(c.CTX)
+	alertRef, err := alertB.Save(ctx)
 	if err != nil {
 		return 0, 0, 0, errors.Wrapf(BulkError, "error creating alert : %s", err)
 	}
@@ -253,7 +253,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		return alertRef.ID, 0, 0, nil
 	}
 
-	txClient, err := c.Ent.Tx(c.CTX)
+	txClient, err := c.Ent.Tx(ctx)
 	if err != nil {
 		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
 	}
@@ -347,7 +347,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 				decision.OriginEQ(DecOrigin),
 				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 				decision.ValueIn(deleteChunk...),
-			)).Exec(c.CTX)
+			)).Exec(ctx)
 		if err != nil {
 			rollbackErr := txClient.Rollback()
 			if rollbackErr != nil {
@@ -363,7 +363,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
 
 	for _, builderChunk := range builderChunks {
-		insertedDecisions, err := txClient.Decision.CreateBulk(builderChunk...).Save(c.CTX)
+		insertedDecisions, err := txClient.Decision.CreateBulk(builderChunk...).Save(ctx)
 		if err != nil {
 			rollbackErr := txClient.Rollback()
 			if rollbackErr != nil {
