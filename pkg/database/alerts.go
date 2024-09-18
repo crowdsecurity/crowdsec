@@ -35,12 +35,12 @@ const (
 // CreateOrUpdateAlert is specific to PAPI : It checks if alert already exists, otherwise inserts it
 // if alert already exists, it checks it associated decisions already exists
 // if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
-func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) (string, error) {
+func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, alertItem *models.Alert) (string, error) {
 	if alertItem.UUID == "" {
 		return "", errors.New("alert UUID is empty")
 	}
 
-	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(c.CTX)
+	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(ctx)
 
 	if err != nil && !ent.IsNotFound(err) {
 		return "", fmt.Errorf("unable to query alerts for uuid %s: %w", alertItem.UUID, err)
@@ -165,7 +165,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
 
 	for _, builderChunk := range builderChunks {
-		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(c.CTX)
+		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(ctx)
 		if err != nil {
 			return "", fmt.Errorf("creating alert decisions: %w", err)
 		}
@@ -178,7 +178,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	decisionChunks := slicetools.Chunks(decisions, c.decisionBulkSize)
 
 	for _, decisionChunk := range decisionChunks {
-		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisionChunk...).Exec(c.CTX)
+		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisionChunk...).Exec(ctx)
 		if err != nil {
 			return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
 		}
