@@ -144,8 +144,8 @@ func (c *Client) ListMachines(ctx context.Context) ([]*ent.Machine, error) {
 	return machines, nil
 }
 
-func (c *Client) ValidateMachine(machineID string) error {
-	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
+func (c *Client) ValidateMachine(ctx context.Context, machineID string) error {
+	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(ctx)
 	if err != nil {
 		return errors.Wrapf(UpdateFail, "validating machine: %s", err)
 	}

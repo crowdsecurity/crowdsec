@@ -182,12 +182,12 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCfg) {
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	err = dbClient.ValidateMachine(machineID)
+	err = dbClient.ValidateMachine(ctx, machineID)
 	require.NoError(t, err)
 }
 

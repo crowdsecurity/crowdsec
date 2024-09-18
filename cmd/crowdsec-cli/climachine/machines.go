@@ -555,8 +555,8 @@ cscli machines prune --not-validated-only --force`,
 	return cmd
 }
 
-func (cli *cliMachines) validate(machineID string) error {
-	if err := cli.db.ValidateMachine(machineID); err != nil {
+func (cli *cliMachines) validate(ctx context.Context, machineID string) error {
+	if err := cli.db.ValidateMachine(ctx, machineID); err != nil {
 		return fmt.Errorf("unable to validate machine '%s': %w", machineID, err)
 	}
 
@@ -573,8 +573,8 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.validate(args[0])
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.validate(cmd.Context(), args[0])
 		},
 	}
 
