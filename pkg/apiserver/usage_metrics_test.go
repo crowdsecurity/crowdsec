@@ -13,6 +13,8 @@ import (
 )
 
 func TestLPMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name                 string
 		body                 string
@@ -198,7 +200,7 @@ func TestLPMetrics(t *testing.T) {
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
 			machine, _ := dbClient.QueryMachineByID("test")
-			metrics, _ := dbClient.GetLPUsageMetricsByMachineID("test")
+			metrics, _ := dbClient.GetLPUsageMetricsByMachineID(ctx, "test")
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, machine.Osname)
@@ -214,6 +216,8 @@ func TestLPMetrics(t *testing.T) {
 }
 
 func TestRCMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name                 string
 		body                 string
@@ -368,7 +372,7 @@ func TestRCMetrics(t *testing.T) {
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
 			bouncer, _ := dbClient.SelectBouncerByName("test")
-			metrics, _ := dbClient.GetBouncerUsageMetricsByName("test")
+			metrics, _ := dbClient.GetBouncerUsageMetricsByName(ctx, "test")
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, bouncer.Osname)
