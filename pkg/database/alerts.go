@@ -687,8 +687,10 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 		err   error
 	)
 
+	ctx := context.TODO()
+
 	if machineID != "" {
-		owner, err = c.QueryMachineByID(machineID)
+		owner, err = c.QueryMachineByID(ctx, machineID)
 		if err != nil {
 			if !errors.Is(err, UserNotExists) {
 				return nil, fmt.Errorf("machine '%s': %w", machineID, err)

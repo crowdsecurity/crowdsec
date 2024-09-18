@@ -691,9 +691,11 @@ func (cli *cliMachines) newInspectCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validMachineID,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			machineID := args[0]
-			machine, err := cli.db.QueryMachineByID(machineID)
+
+			machine, err := cli.db.QueryMachineByID(ctx, machineID)
 			if err != nil {
 				return fmt.Errorf("unable to read machine data '%s': %w", machineID, err)
 			}

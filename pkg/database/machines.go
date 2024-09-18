@@ -95,7 +95,7 @@ func (c *Client) CreateMachine(ctx context.Context, machineID *string, password 
 				return nil, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
 			}
 
-			machine, err := c.QueryMachineByID(*machineID)
+			machine, err := c.QueryMachineByID(ctx, *machineID)
 			if err != nil {
 				return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
 			}
@@ -122,11 +122,11 @@ func (c *Client) CreateMachine(ctx context.Context, machineID *string, password 
 	return machine, nil
 }
 
-func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
+func (c *Client) QueryMachineByID(ctx context.Context, machineID string) (*ent.Machine, error) {
 	machine, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(machineID)).
-		Only(c.CTX)
+		Only(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryMachineByID : %s", err)
 		return &ent.Machine{}, errors.Wrapf(UserNotExists, "user '%s'", machineID)
