@@ -53,7 +53,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		return
 	}
 
-	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
+	data, err = c.DBClient.QueryDecisionWithFilter(ctx, gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 
@@ -191,11 +191,13 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 	return nil
 }
 
-func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull *time.Time, dbFunc func(*time.Time, map[string][]string) ([]*ent.Decision, error)) error {
+func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	//respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
 	lastId := 0
+
+	ctx := gctx.Request.Context()
 
 	limitStr := fmt.Sprintf("%d", limit)
 	filters["limit"] = []string{limitStr}
@@ -205,7 +207,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(lastPull, filters)
+		data, err := dbFunc(ctx, lastPull, filters)
 		if err != nil {
 			return err
 		}
@@ -344,7 +346,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	}
 
 	// getting new decisions
-	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(bouncerInfo.LastPull, filters)
+	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(ctx, bouncerInfo.LastPull, filters)
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -360,7 +362,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	}
 
 	// getting expired decisions
-	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(&since, filters) // do we want to give exactly lastPull time ?
+	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(ctx, &since, filters) // do we want to give exactly lastPull time ?
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

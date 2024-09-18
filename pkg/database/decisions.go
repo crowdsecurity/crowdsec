@@ -196,7 +196,7 @@ func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*Decisions
 	return r, nil
 }
 
-func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
 	var data []*ent.Decision
 	var err error
 
@@ -218,7 +218,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldValue,
 		decision.FieldScope,
 		decision.FieldOrigin,
-	).Scan(c.CTX, &data)
+	).Scan(ctx, &data)
 	if err != nil {
 		c.Log.Warningf("QueryDecisionWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "query decision failed")
@@ -255,7 +255,7 @@ func longestDecisionForScopeTypeValue(s *sql.Selector) {
 	)
 }
 
-func (c *Client) QueryExpiredDecisionsSinceWithFilters(since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
@@ -277,7 +277,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since *time.Time, filters
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
-	data, err := query.All(c.CTX)
+	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
@@ -286,7 +286,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since *time.Time, filters
 	return data, nil
 }
 
-func (c *Client) QueryNewDecisionsSinceWithFilters(since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
@@ -308,7 +308,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since *time.Time, filters map
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
-	data, err := query.All(c.CTX)
+	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
