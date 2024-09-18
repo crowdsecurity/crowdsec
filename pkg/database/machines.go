@@ -135,8 +135,8 @@ func (c *Client) QueryMachineByID(ctx context.Context, machineID string) (*ent.M
 	return machine, nil
 }
 
-func (c *Client) ListMachines() ([]*ent.Machine, error) {
-	machines, err := c.Ent.Machine.Query().All(c.CTX)
+func (c *Client) ListMachines(ctx context.Context) ([]*ent.Machine, error) {
+	machines, err := c.Ent.Machine.Query().All(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "listing machines: %s", err)
 	}

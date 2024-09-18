@@ -211,11 +211,11 @@ func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	return nil
 }
 
-func (cli *cliMachines) List(out io.Writer, db *database.Client) error {
+func (cli *cliMachines) List(ctx context.Context, out io.Writer, db *database.Client) error {
 	// XXX: must use the provided db object, the one in the struct might be nil
 	// (calling List directly skips the PersistentPreRunE)
 
-	machines, err := db.ListMachines()
+	machines, err := db.ListMachines(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %w", err)
 	}
@@ -252,8 +252,8 @@ func (cli *cliMachines) newListCmd() *cobra.Command {
 		Example:           `cscli machines list`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.List(color.Output, cli.db)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.List(cmd.Context(), color.Output, cli.db)
 		},
 	}
 
@@ -400,6 +400,7 @@ func (cli *cliMachines) validMachineID(cmd *cobra.Command, args []string, toComp
 	var err error
 
 	cfg := cli.cfg()
+	ctx := cmd.Context()
 
 	// need to load config and db because PersistentPreRunE is not called for completions
 
@@ -408,13 +409,13 @@ func (cli *cliMachines) validMachineID(cmd *cobra.Command, args []string, toComp
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+	cli.db, err = require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	machines, err := cli.db.ListMachines()
+	machines, err := cli.db.ListMachines(ctx)
 	if err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp

@@ -85,7 +85,9 @@ func randomDuration(d time.Duration, delta time.Duration) time.Duration {
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	scenarios := make([]string, 0)
 
-	machines, err := a.dbClient.ListMachines()
+	ctx := context.TODO()
+
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("while listing machines: %w", err)
 	}

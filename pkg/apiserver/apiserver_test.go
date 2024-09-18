@@ -197,7 +197,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	machines, err := dbClient.ListMachines()
+	machines, err := dbClient.ListMachines(ctx)
 	require.NoError(t, err)
 
 	for _, machine := range machines {

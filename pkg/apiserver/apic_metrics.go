@@ -27,7 +27,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	allMetrics := &models.AllMetrics{}
 	metricsIds := make([]int, 0)
 
-	lps, err := a.dbClient.ListMachines()
+	lps, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +186,7 @@ func (a *apic) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
 }
 
 func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
-	machines, err := a.dbClient.ListMachines()
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -230,8 +230,8 @@ func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
 	}, nil
 }
 
-func (a *apic) fetchMachineIDs() ([]string, error) {
-	machines, err := a.dbClient.ListMachines()
+func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	machineIDs := []string{}
 
 	reloadMachineIDs := func() {
-		ids, err := a.fetchMachineIDs()
+		ids, err := a.fetchMachineIDs(ctx)
 		if err != nil {
 			log.Debugf("unable to get machines (%s), will retry", err)
 
