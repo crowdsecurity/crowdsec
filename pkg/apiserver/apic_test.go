@@ -292,9 +292,11 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 }
 
 func TestAPICGetMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	cleanUp := func(api *apic) {
-		api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
-		api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
+		api.dbClient.Ent.Bouncer.Delete().ExecX(ctx)
+		api.dbClient.Ent.Machine.Delete().ExecX(ctx)
 	}
 	tests := []struct {
 		name           string
@@ -377,7 +379,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			foundMetrics, err := apiClient.GetMetrics()
+			foundMetrics, err := apiClient.GetMetrics(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)

@@ -23,7 +23,7 @@ type dbPayload struct {
 	Metrics []*models.DetailedMetrics `json:"metrics"`
 }
 
-func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
+func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, error) {
 	allMetrics := &models.AllMetrics{}
 	metricsIds := make([]int, 0)
 
@@ -32,7 +32,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 		return nil, nil, err
 	}
 
-	bouncers, err := a.dbClient.ListBouncers()
+	bouncers, err := a.dbClient.ListBouncers(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -185,7 +185,7 @@ func (a *apic) MarkUsageMetricsAsSent(ids []int) error {
 	return a.dbClient.MarkUsageMetricsAsSent(ids)
 }
 
-func (a *apic) GetMetrics() (*models.Metrics, error) {
+func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
 	machines, err := a.dbClient.ListMachines()
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 		}
 	}
 
-	bouncers, err := a.dbClient.ListBouncers()
+	bouncers, err := a.dbClient.ListBouncers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +253,8 @@ func (a *apic) fetchMachineIDs() ([]string, error) {
 // of machines, the next metrics are sent immediately.
 func (a *apic) SendMetrics(stop chan (bool)) {
 	defer trace.CatchPanic("lapi/metricsToAPIC")
+
+	ctx := context.TODO()
 
 	// verify the list of machines every <checkInt> interval
 	const checkInt = 20 * time.Second
@@ -311,7 +313,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		case <-metTicker.C:
 			metTicker.Stop()
 
-			metrics, err := a.GetMetrics()
+			metrics, err := a.GetMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get metrics (%s)", err)
 			}
@@ -340,6 +342,8 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 func (a *apic) SendUsageMetrics() {
 	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
 
+	ctx := context.TODO()
+
 	firstRun := true
 
 	log.Debugf("Start sending usage metrics to CrowdSec Central API (interval: %s once, then %s)", a.usageMetricsIntervalFirst, a.usageMetricsInterval)
@@ -358,7 +362,7 @@ func (a *apic) SendUsageMetrics() {
 				ticker.Reset(a.usageMetricsInterval)
 			}
 
-			metrics, metricsId, err := a.GetUsageMetrics()
+			metrics, metricsId, err := a.GetUsageMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
 				continue
