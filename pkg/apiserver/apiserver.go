@@ -310,8 +310,8 @@ func (s *APIServer) apicPush() error {
 	return nil
 }
 
-func (s *APIServer) apicPull() error {
-	if err := s.apic.Pull(); err != nil {
+func (s *APIServer) apicPull(ctx context.Context) error {
+	if err := s.apic.Pull(ctx); err != nil {
 		log.Errorf("capi pull: %s", err)
 		return err
 	}
@@ -319,8 +319,8 @@ func (s *APIServer) apicPull() error {
 	return nil
 }
 
-func (s *APIServer) papiPull() error {
-	if err := s.papi.Pull(); err != nil {
+func (s *APIServer) papiPull(ctx context.Context) error {
+	if err := s.papi.Pull(ctx); err != nil {
 		log.Errorf("papi pull: %s", err)
 		return err
 	}
@@ -337,16 +337,16 @@ func (s *APIServer) papiSync() error {
 	return nil
 }
 
-func (s *APIServer) initAPIC() {
+func (s *APIServer) initAPIC(ctx context.Context) {
 	s.apic.pushTomb.Go(s.apicPush)
-	s.apic.pullTomb.Go(s.apicPull)
+	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
 
 	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 	if s.apic.apiClient.IsEnrolled() {
 		if s.consoleConfig.IsPAPIEnabled() {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
-				s.papi.pullTomb.Go(s.papiPull)
+				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
 				s.papi.syncTomb.Go(s.papiSync)
 			} else {
 				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
@@ -381,8 +381,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		TLSConfig: tlsCfg,
 	}
 
+	ctx := context.TODO()
+
 	if s.apic != nil {
-		s.initAPIC()
+		s.initAPIC(ctx)
 	}
 
 	s.httpServerTomb.Go(func() error {
