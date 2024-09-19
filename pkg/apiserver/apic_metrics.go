@@ -38,7 +38,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	}
 
 	for _, bouncer := range bouncers {
-		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(bouncer.Name)
+		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(ctx, bouncer.Name)
 		if err != nil {
 			log.Errorf("unable to get bouncer usage metrics: %s", err)
 			continue
@@ -81,7 +81,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	}
 
 	for _, lp := range lps {
-		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(lp.MachineId)
+		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(ctx, lp.MachineId)
 		if err != nil {
 			log.Errorf("unable to get LP usage metrics: %s", err)
 			continue
@@ -181,8 +181,8 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	return allMetrics, metricsIds, nil
 }
 
-func (a *apic) MarkUsageMetricsAsSent(ids []int) error {
-	return a.dbClient.MarkUsageMetricsAsSent(ids)
+func (a *apic) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
+	return a.dbClient.MarkUsageMetricsAsSent(ctx, ids)
 }
 
 func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
@@ -379,7 +379,7 @@ func (a *apic) SendUsageMetrics() {
 				}
 			}
 
-			err = a.MarkUsageMetricsAsSent(metricsId)
+			err = a.MarkUsageMetricsAsSent(ctx, metricsId)
 			if err != nil {
 				log.Errorf("unable to mark usage metrics as sent: %s", err)
 				continue
