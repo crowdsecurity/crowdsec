@@ -39,6 +39,7 @@ type Config struct {
 	DBPath        string                `yaml:"metabase_db_path"`
 	DockerGroupID string                `yaml:"-"`
 	Image         string                `yaml:"image"`
+	Networks      []string              `yaml:"networks"`
 }
 
 var (
@@ -88,7 +89,7 @@ func (m *Metabase) Init(containerName string, image string) error {
 	if err != nil {
 		return err
 	}
-	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, image, DBConnectionURI, m.Config.DockerGroupID)
+	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, image, DBConnectionURI, m.Config.DockerGroupID, m.Config.Networks)
 	if err != nil {
 		return fmt.Errorf("container init: %w", err)
 	}
@@ -140,7 +141,7 @@ func (m *Metabase) LoadConfig(configPath string) error {
 
 }
 
-func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string, containerName string, image string) (*Metabase, error) {
+func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string, containerName string, image string, containerNetworks []string) (*Metabase, error) {
 	metabase := &Metabase{
 		Config: &Config{
 			Database:      dbConfig,
@@ -152,6 +153,7 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 			DBPath:        mbDBPath,
 			DockerGroupID: dockerGroupID,
 			Image:         image,
+			Networks:      containerNetworks,
 		},
 	}
 	if err := metabase.Init(containerName, image); err != nil {
