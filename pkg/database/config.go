@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -13,6 +14,7 @@ func (c *Client) GetConfigItem(ctx context.Context, key string) (*string, error)
 	if err != nil && ent.IsNotFound(err) {
 		return nil, nil
 	}
+
 	if err != nil {
 		return nil, errors.Wrapf(QueryFail, "select config item: %s", err)
 	}
@@ -22,7 +24,7 @@ func (c *Client) GetConfigItem(ctx context.Context, key string) (*string, error)
 
 func (c *Client) SetConfigItem(ctx context.Context, key string, value string) error {
 	nbUpdated, err := c.Ent.ConfigItem.Update().SetValue(value).Where(configitem.NameEQ(key)).Save(ctx)
-	if (err != nil && ent.IsNotFound(err)) || nbUpdated == 0 { //not found, create
+	if (err != nil && ent.IsNotFound(err)) || nbUpdated == 0 { // not found, create
 		err := c.Ent.ConfigItem.Create().SetName(key).SetValue(value).Exec(ctx)
 		if err != nil {
 			return errors.Wrapf(QueryFail, "insert config item: %s", err)
@@ -30,5 +32,6 @@ func (c *Client) SetConfigItem(ctx context.Context, key string, value string) er
 	} else if err != nil {
 		return errors.Wrapf(QueryFail, "update config item: %s", err)
 	}
+
 	return nil
 }
