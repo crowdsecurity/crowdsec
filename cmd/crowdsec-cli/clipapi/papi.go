@@ -59,7 +59,7 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 
-	apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
@@ -118,11 +118,11 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliPapi) sync(out io.Writer, db *database.Client) error {
+func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 	t := tomb.Tomb{}
 
-	apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
@@ -159,12 +159,14 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
-			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
+			ctx := cmd.Context()
+
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return cli.sync(color.Output, db)
+			return cli.sync(ctx, color.Output, db)
 		},
 	}
 
