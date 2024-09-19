@@ -95,7 +95,6 @@ query: >
 			delayFor:    1 * time.Second,
 		},
 		{
-
 			config: `
 mode: tail
 source: loki
@@ -111,7 +110,6 @@ query: >
 			testName:    "Correct config with password",
 		},
 		{
-
 			config: `
 mode: tail
 source: loki
@@ -344,7 +342,6 @@ since: 1h
 		subLogger := logger.WithField("type", "loki")
 		lokiSource := loki.LokiSource{}
 		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
-
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}

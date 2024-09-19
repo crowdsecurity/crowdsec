@@ -100,8 +100,8 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 
 	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
 
-	//For some reason, the IP is empty when running tests
-	//if no forwarded-for headers are present
+	// For some reason, the IP is empty when running tests
+	// if no forwarded-for headers are present
 	assert.Equal(t, "", ip)
 }
 
@@ -126,8 +126,8 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 
 	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
 
-	//For some reason, the IP is empty when running tests
-	//if no forwarded-for headers are present
+	// For some reason, the IP is empty when running tests
+	// if no forwarded-for headers are present
 	assert.Equal(t, "", ip)
 }
 
@@ -157,7 +157,7 @@ func TestAutoRegistration(t *testing.T) {
 
 	ctx := context.Background()
 
-	//Invalid registration token / valid source IP
+	// Invalid registration token / valid source IP
 	regReq := MachineTest
 	regReq.RegistrationToken = invalidRegistrationToken
 	b, err := json.Marshal(regReq)
@@ -173,7 +173,7 @@ func TestAutoRegistration(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	//Invalid registration token / invalid source IP
+	// Invalid registration token / invalid source IP
 	regReq = MachineTest
 	regReq.RegistrationToken = invalidRegistrationToken
 	b, err = json.Marshal(regReq)
@@ -189,7 +189,7 @@ func TestAutoRegistration(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	//valid registration token / invalid source IP
+	// valid registration token / invalid source IP
 	regReq = MachineTest
 	regReq.RegistrationToken = validRegistrationToken
 	b, err = json.Marshal(regReq)
@@ -205,7 +205,7 @@ func TestAutoRegistration(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	//Valid registration token / valid source IP
+	// Valid registration token / valid source IP
 	regReq = MachineTest
 	regReq.RegistrationToken = validRegistrationToken
 	b, err = json.Marshal(regReq)
@@ -221,7 +221,7 @@ func TestAutoRegistration(t *testing.T) {
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
 
-	//No token / valid source IP
+	// No token / valid source IP
 	regReq = MachineTest
 	regReq.MachineID = ptr.Of("test2")
 	b, err = json.Marshal(regReq)
