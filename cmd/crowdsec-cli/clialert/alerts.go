@@ -575,15 +575,17 @@ func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
+			ctx := cmd.Context()
+
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
-			err = db.FlushAlerts(maxAge, maxItems)
+			err = db.FlushAlerts(ctx, maxAge, maxItems)
 			if err != nil {
 				return fmt.Errorf("unable to flush alerts: %w", err)
 			}
