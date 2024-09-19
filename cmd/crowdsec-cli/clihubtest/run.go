@@ -63,12 +63,15 @@ func printParserFailures(test *hubtest.HubTestItem) {
 
 	fmt.Println()
 	log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
+
 	for _, fail := range test.ParserAssert.Fails {
 		fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
 		fmt.Printf("        Actual expression values:\n")
+
 		for key, value := range fail.Debug {
 			fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
 		}
+
 		fmt.Println()
 	}
 }
@@ -80,12 +83,15 @@ func printScenarioFailures(test *hubtest.HubTestItem) {
 
 	fmt.Println()
 	log.Errorf("Scenario test '%s' failed (%d errors)\n", test.Name, len(test.ScenarioAssert.Fails))
+
 	for _, fail := range test.ScenarioAssert.Fails {
 		fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
 		fmt.Printf("        Actual expression values:\n")
+
 		for key, value := range fail.Debug {
 			fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
 		}
+
 		fmt.Println()
 	}
 }
