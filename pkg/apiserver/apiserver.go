@@ -170,7 +170,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	if config.DbConfig.Flush != nil {
-		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
+		flushScheduler, err = dbClient.StartFlushScheduler(ctx, config.DbConfig.Flush)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +249,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI manager")
 
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
+		apiClient, err = NewAPIC(ctx, config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
 			return nil, err
 		}

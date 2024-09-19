@@ -189,7 +189,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
+func (cli *cliSupport) dumpBouncers(ctx context.Context, zw *zip.Writer, db *database.Client) error {
 	log.Info("Collecting bouncers")
 
 	if db == nil {
@@ -199,7 +199,7 @@ func (cli *cliSupport) dumpBouncers(zw *zip.Writer, db *database.Client) error {
 	out := new(bytes.Buffer)
 	cb := clibouncer.New(cli.cfg)
 
-	if err := cb.List(out, db); err != nil {
+	if err := cb.List(ctx, out, db); err != nil {
 		return err
 	}
 
@@ -525,7 +525,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		log.Warnf("could not collect hub information: %s", err)
 	}
 
-	if err = cli.dumpBouncers(zipWriter, db); err != nil {
+	if err = cli.dumpBouncers(ctx, zipWriter, db); err != nil {
 		log.Warnf("could not collect bouncers information: %s", err)
 	}
 

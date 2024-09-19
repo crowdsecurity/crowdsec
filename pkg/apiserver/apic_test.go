@@ -230,6 +230,8 @@ func TestNewAPIC(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
@@ -246,7 +248,7 @@ func TestNewAPIC(t *testing.T) {
 				),
 			))
 			tc.action()
-			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
+			_, err := NewAPIC(ctx, testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -290,9 +292,11 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 }
 
 func TestAPICGetMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	cleanUp := func(api *apic) {
-		api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
-		api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
+		api.dbClient.Ent.Bouncer.Delete().ExecX(ctx)
+		api.dbClient.Ent.Machine.Delete().ExecX(ctx)
 	}
 	tests := []struct {
 		name           string
@@ -375,7 +379,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			foundMetrics, err := apiClient.GetMetrics()
+			foundMetrics, err := apiClient.GetMetrics(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
