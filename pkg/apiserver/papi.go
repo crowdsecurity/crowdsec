@@ -230,13 +230,13 @@ func (p *Papi) PullOnce(since time.Time, sync bool) error {
 }
 
 // PullPAPI is the long polling client for real-time decisions from PAPI
-func (p *Papi) Pull() error {
+func (p *Papi) Pull(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/PullPAPI")
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
 
-	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
+	lastTimestampStr, err := p.DBClient.GetConfigItem(ctx, PapiPullKey)
 	if err != nil {
 		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
 	}
@@ -248,7 +248,7 @@ func (p *Papi) Pull() error {
 			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
-		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
 			p.Logger.Errorf("error setting papi pull last key: %s", err)
 		} else {
 			p.Logger.Debugf("config item '%s' set in database with value '%s'", PapiPullKey, string(binTime))
@@ -277,7 +277,7 @@ func (p *Papi) Pull() error {
 			continue
 		}
 
-		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
 			return fmt.Errorf("failed to update last timestamp: %w", err)
 		}
 

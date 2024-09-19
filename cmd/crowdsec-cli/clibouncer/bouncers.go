@@ -1,6 +1,7 @@
 package clibouncer
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -159,11 +160,11 @@ func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 	return nil
 }
 
-func (cli *cliBouncers) List(out io.Writer, db *database.Client) error {
+func (cli *cliBouncers) List(ctx context.Context, out io.Writer, db *database.Client) error {
 	// XXX: must use the provided db object, the one in the struct might be nil
 	// (calling List directly skips the PersistentPreRunE)
 
-	bouncers, err := db.ListBouncers()
+	bouncers, err := db.ListBouncers(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
 	}
@@ -199,8 +200,8 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.List(color.Output, cli.db)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.List(cmd.Context(), color.Output, cli.db)
 		},
 	}
 
@@ -271,6 +272,7 @@ func (cli *cliBouncers) validBouncerID(cmd *cobra.Command, args []string, toComp
 	var err error
 
 	cfg := cli.cfg()
+	ctx := cmd.Context()
 
 	// need to load config and db because PersistentPreRunE is not called for completions
 
@@ -279,13 +281,13 @@ func (cli *cliBouncers) validBouncerID(cmd *cobra.Command, args []string, toComp
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+	cli.db, err = require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	bouncers, err := cli.db.ListBouncers()
+	bouncers, err := cli.db.ListBouncers(ctx)
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp

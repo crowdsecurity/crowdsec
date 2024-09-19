@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -215,17 +216,19 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
 
+		ctx := context.TODO()
+
 		if forcePullMsg.Blocklist == nil {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
 
-			err = p.apic.PullTop(true)
+			err = p.apic.PullTop(ctx, true)
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
 		} else {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
 
-			err = p.apic.PullBlocklist(&modelscapi.BlocklistLink{
+			err = p.apic.PullBlocklist(ctx, &modelscapi.BlocklistLink{
 				Name:        &forcePullMsg.Blocklist.Name,
 				URL:         &forcePullMsg.Blocklist.Url,
 				Remediation: &forcePullMsg.Blocklist.Remediation,
