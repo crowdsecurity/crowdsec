@@ -55,7 +55,6 @@ type S3Source struct {
 	readerChan   chan S3Object
 	t            *tomb.Tomb
 	out          chan types.Event
-	ctx          aws.Context
 	cancel       context.CancelFunc
 }
 
@@ -184,7 +183,7 @@ func (s *S3Source) newSQSClient() error {
 	return nil
 }
 
-func (s *S3Source) readManager() {
+func (s *S3Source) readManager(ctx context.Context) {
 	logger := s.logger.WithField("method", "readManager")
 	for {
 		select {
@@ -194,7 +193,7 @@ func (s *S3Source) readManager() {
 			return
 		case s3Object := <-s.readerChan:
 			logger.Debugf("Reading file %s/%s", s3Object.Bucket, s3Object.Key)
-			err := s.readFile(s3Object.Bucket, s3Object.Key)
+			err := s.readFile(ctx, s3Object.Bucket, s3Object.Key)
 			if err != nil {
 				logger.Errorf("Error while reading file: %s", err)
 			}
@@ -202,13 +201,13 @@ func (s *S3Source) readManager() {
 	}
 }
 
-func (s *S3Source) getBucketContent() ([]*s3.Object, error) {
+func (s *S3Source) getBucketContent(ctx context.Context) ([]*s3.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
 	bucketObjects := make([]*s3.Object, 0)
 	var continuationToken *string
 	for {
-		out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
+		out, err := s.s3Client.ListObjectsV2WithContext(ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.Config.BucketName),
 			Prefix:            aws.String(s.Config.Prefix),
 			ContinuationToken: continuationToken,
@@ -229,7 +228,7 @@ func (s *S3Source) getBucketContent() ([]*s3.Object, error) {
 	return bucketObjects, nil
 }
 
-func (s *S3Source) listPoll() error {
+func (s *S3Source) listPoll(ctx context.Context) error {
 	logger := s.logger.WithField("method", "listPoll")
 	ticker := time.NewTicker(time.Duration(s.Config.PollingInterval) * time.Second)
 	lastObjectDate := time.Now()
@@ -243,7 +242,7 @@ func (s *S3Source) listPoll() error {
 			return nil
 		case <-ticker.C:
 			newObject := false
-			bucketObjects, err := s.getBucketContent()
+			bucketObjects, err := s.getBucketContent(ctx)
 			if err != nil {
 				logger.Errorf("Error while getting bucket content: %s", err)
 				continue
@@ -325,7 +324,7 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 	}
 }
 
-func (s *S3Source) sqsPoll() error {
+func (s *S3Source) sqsPoll(ctx context.Context) error {
 	logger := s.logger.WithField("method", "sqsPoll")
 	for {
 		select {
@@ -335,7 +334,7 @@ func (s *S3Source) sqsPoll() error {
 			return nil
 		default:
 			logger.Trace("Polling SQS queue")
-			out, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
+			out, err := s.sqsClient.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSName),
 				MaxNumberOfMessages: aws.Int64(10),
 				WaitTimeSeconds:     aws.Int64(20), //Probably no need to make it configurable ?
@@ -378,7 +377,7 @@ func (s *S3Source) sqsPoll() error {
 	}
 }
 
-func (s *S3Source) readFile(bucket string, key string) error {
+func (s *S3Source) readFile(ctx context.Context, bucket string, key string) error {
 	//TODO: Handle SSE-C
 	var scanner *bufio.Scanner
 
@@ -388,7 +387,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		"key":    key,
 	})
 
-	output, err := s.s3Client.GetObjectWithContext(s.ctx, &s3.GetObjectInput{
+	output, err := s.s3Client.GetObjectWithContext(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -645,24 +644,26 @@ func (s *S3Source) GetName() string {
 }
 
 func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	var ctx context.Context
+
 	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
 	s.out = out
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	ctx, s.cancel = context.WithCancel(context.Background())
 	s.Config.UseTimeMachine = true
 	s.t = t
 	if s.Config.Key != "" {
-		err := s.readFile(s.Config.BucketName, s.Config.Key)
+		err := s.readFile(ctx, s.Config.BucketName, s.Config.Key)
 		if err != nil {
 			return err
 		}
 	} else {
 		//No key, get everything in the bucket based on the prefix
-		objects, err := s.getBucketContent()
+		objects, err := s.getBucketContent(ctx)
 		if err != nil {
 			return err
 		}
 		for _, object := range objects {
-			err := s.readFile(s.Config.BucketName, *object.Key)
+			err := s.readFile(ctx, s.Config.BucketName, *object.Key)
 			if err != nil {
 				return err
 			}
@@ -673,18 +674,20 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 }
 
 func (s *S3Source) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	var ctx context.Context
+
 	s.t = t
 	s.out = out
 	s.readerChan = make(chan S3Object, 100) //FIXME: does this needs to be buffered?
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	ctx, s.cancel = context.WithCancel(context.Background())
 	s.logger.Infof("starting acquisition of %s/%s", s.Config.BucketName, s.Config.Prefix)
 	t.Go(func() error {
-		s.readManager()
+		s.readManager(ctx)
 		return nil
 	})
 	if s.Config.PollingMethod == PollMethodSQS {
 		t.Go(func() error {
-			err := s.sqsPoll()
+			err := s.sqsPoll(ctx)
 			if err != nil {
 				return err
 			}
@@ -692,7 +695,7 @@ func (s *S3Source) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		})
 	} else {
 		t.Go(func() error {
-			err := s.listPoll()
+			err := s.listPoll(ctx)
 			if err != nil {
 				return err
 			}
