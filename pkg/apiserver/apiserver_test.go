@@ -182,12 +182,12 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCfg) {
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	err = dbClient.ValidateMachine(machineID)
+	err = dbClient.ValidateMachine(ctx, machineID)
 	require.NoError(t, err)
 }
 
@@ -197,7 +197,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	machines, err := dbClient.ListMachines()
+	machines, err := dbClient.ListMachines(ctx)
 	require.NoError(t, err)
 
 	for _, machine := range machines {
@@ -332,7 +332,7 @@ func TestUnknownPath(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 404, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 /*
@@ -390,7 +390,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
-	assert.Equal(t, 404, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 

@@ -46,6 +46,8 @@ func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, 
 }
 
 func (c *Controller) CreateMachine(gctx *gin.Context) {
+	ctx := gctx.Request.Context()
+
 	var input models.WatcherRegistrationRequest
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
@@ -66,7 +68,7 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		return
 	}
 
-	if _, err := c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), autoRegister, false, types.PasswordAuthType); err != nil {
+	if _, err := c.DBClient.CreateMachine(ctx, input.MachineID, input.Password, gctx.ClientIP(), autoRegister, false, types.PasswordAuthType); err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
