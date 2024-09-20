@@ -27,7 +27,7 @@ func Register(name string) {
 	if _, ok := Built[name]; !ok {
 		// having a list of the disabled components is essential
 		// to debug users' issues
-		panic("cannot register unknown compile-time component: "+name)
+		panic("cannot register unknown compile-time component: " + name)
 	}
 
 	Built[name] = true
