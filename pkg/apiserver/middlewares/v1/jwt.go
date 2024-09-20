@@ -55,7 +55,6 @@ type authInput struct {
 }
 
 func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
-	// XXX: should we pass ctx instead
 	ctx := c.Request.Context()
 	ret := authInput{}
 

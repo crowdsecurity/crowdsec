@@ -30,7 +30,7 @@ func TestLPMetrics(t *testing.T) {
 			name: "empty metrics for LP",
 			body: `{
 			}`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing log processor data",
 			authType:           PASSWORD,
 		},
@@ -50,7 +50,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -74,7 +74,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -98,7 +98,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing remediation component data",
 			authType:           APIKEY,
 		},
@@ -117,7 +117,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedResponse:     "",
 			expectedMetricsCount: 1,
 			expectedFeatureFlags: "a,b,c",
@@ -138,7 +138,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 422,
+			expectedStatusCode: http.StatusUnprocessableEntity,
 			expectedResponse:   "log_processors.0.datasources in body is required",
 			authType:           PASSWORD,
 		},
@@ -157,7 +157,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedOSName:       "foo",
 			expectedOSVersion:    "42",
@@ -179,7 +179,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 422,
+			expectedStatusCode: http.StatusUnprocessableEntity,
 			expectedResponse:   "log_processors.0.os.name in body is required",
 			authType:           PASSWORD,
 		},
@@ -233,7 +233,7 @@ func TestRCMetrics(t *testing.T) {
 			name: "empty metrics for RC",
 			body: `{
 			}`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing remediation component data",
 			authType:           APIKEY,
 		},
@@ -251,7 +251,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -273,7 +273,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -295,7 +295,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing log processor data",
 			authType:           PASSWORD,
 		},
@@ -312,7 +312,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedResponse:     "",
 			expectedMetricsCount: 1,
 			expectedFeatureFlags: "a,b,c",
@@ -331,7 +331,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedOSName:       "foo",
 			expectedOSVersion:    "42",
@@ -351,7 +351,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 422,
+			expectedStatusCode: http.StatusUnprocessableEntity,
 			expectedResponse:   "remediation_components.0.os.name in body is required",
 			authType:           APIKEY,
 		},

@@ -332,7 +332,7 @@ func TestUnknownPath(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 404, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 /*
@@ -390,7 +390,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
-	assert.Equal(t, 404, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
