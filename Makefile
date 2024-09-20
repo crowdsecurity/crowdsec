@@ -138,7 +138,8 @@ COMPONENTS := \
 	datasource_loki \
 	datasource_s3 \
 	datasource_syslog \
-	datasource_wineventlog
+	datasource_wineventlog \
+	cscli_setup
 
 comma := ,
 space := $(empty) $(empty)

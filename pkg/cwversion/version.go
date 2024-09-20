@@ -7,8 +7,8 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 )
 
@@ -18,16 +18,16 @@ var (
 )
 
 func FullString() string {
-	dsBuilt := []string{}
-	dsExcluded := []string{}
+	dsBuilt := map[string]struct{}{}
+	dsExcluded := map[string]struct{}{}
 
-	for _, ds := range maptools.SortedKeys(acquisition.AcquisitionSources) {
-		if acquisition.AcquisitionSources[ds] != nil {
-			dsBuilt = append(dsBuilt, ds)
+	for ds, built := range component.Built {
+		if built {
+			dsBuilt[ds] = struct{}{}
 			continue
 		}
 
-		dsExcluded = append(dsExcluded, ds)
+		dsExcluded[ds] = struct{}{}
 	}
 
 	ret := fmt.Sprintf("version: %s\n", version.String())
@@ -42,12 +42,16 @@ func FullString() string {
 	ret += fmt.Sprintf("Constraint_api: %s\n", constraint.API)
 	ret += fmt.Sprintf("Constraint_acquis: %s\n", constraint.Acquis)
 
+	built := "(none)"
+
 	if len(dsBuilt) > 0 {
-		ret += fmt.Sprintf("Built data sources: %s\n", strings.Join(dsBuilt, ", "))
+		built = strings.Join(maptools.SortedKeys(dsBuilt), ", ")
 	}
 
+	ret += fmt.Sprintf("Built-in optional components: %s\n", built)
+
 	if len(dsExcluded) > 0 {
-		ret += fmt.Sprintf("Excluded data sources: %s\n", strings.Join(dsExcluded, ", "))
+		ret += fmt.Sprintf("Excluded components: %s\n", strings.Join(maptools.SortedKeys(dsExcluded), ", "))
 	}
 
 	return ret

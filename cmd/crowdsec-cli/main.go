@@ -28,7 +28,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clinotifications"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisimulation"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisupport"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -281,9 +280,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
 
-	if fflag.CscliSetup.IsEnabled() {
-		cmd.AddCommand(clisetup.New(cli.cfg).NewCommand())
-	}
+	cli.addSetup(cmd)
 
 	if len(os.Args) > 1 {
 		cobra.OnInitialize(
