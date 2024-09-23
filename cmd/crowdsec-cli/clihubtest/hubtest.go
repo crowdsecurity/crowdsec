@@ -39,7 +39,7 @@ func (cli *cliHubTest) NewCommand() *cobra.Command {
 		Use:               "hubtest",
 		Short:             "Run functional tests on hub configurations",
 		Long:              "Run functional tests on hub configurations (parsers, scenarios, collections...)",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error

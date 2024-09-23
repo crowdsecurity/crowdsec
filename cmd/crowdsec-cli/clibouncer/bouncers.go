@@ -198,7 +198,7 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "list all bouncers within the database",
 		Example:           `cscli bouncers list`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.List(cmd.Context(), color.Output, cli.db)
