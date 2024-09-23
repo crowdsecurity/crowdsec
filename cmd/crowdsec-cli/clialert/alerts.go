@@ -465,7 +465,7 @@ cscli alerts delete --range 1.2.3.0/24
 cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"remove"},
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			if deleteAll {
 				return nil

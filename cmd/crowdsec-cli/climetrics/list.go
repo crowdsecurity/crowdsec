@@ -84,7 +84,7 @@ func (cli *cliMetrics) newListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "List available types of metrics.",
 		Long:              `List available types of metrics.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.list()
