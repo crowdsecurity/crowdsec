@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -143,17 +142,18 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 
 func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
 	// respBuffer := bytes.NewBuffer([]byte{})
-	limit := 30000 //FIXME : make it configurable
+	limit := 30000 // FIXME : make it configurable
 	needComma := false
 	lastId := 0
 
 	ctx := gctx.Request.Context()
 
-	limitStr := fmt.Sprintf("%d", limit)
+	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
+
 	for {
 		if lastId > 0 {
-			lastIdStr := fmt.Sprintf("%d", lastId)
+			lastIdStr := strconv.Itoa(lastId)
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
@@ -161,14 +161,16 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 		if err != nil {
 			return err
 		}
+
 		if len(data) > 0 {
 			lastId = data[len(data)-1].ID
+
 			results := FormatDecisions(data)
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
 
 				if needComma {
-					//respBuffer.Write([]byte(","))
+					// respBuffer.Write([]byte(","))
 					gctx.Writer.WriteString(",")
 				} else {
 					needComma = true
@@ -181,10 +183,12 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 
 					return err
 				}
-				//respBuffer.Reset()
+				// respBuffer.Reset()
 			}
 		}
+
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
+
 		if len(data) < limit {
 			gctx.Writer.Flush()
 
@@ -196,18 +200,19 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 }
 
 func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
-	//respBuffer := bytes.NewBuffer([]byte{})
-	limit := 30000 //FIXME : make it configurable
+	// respBuffer := bytes.NewBuffer([]byte{})
+	limit := 30000 // FIXME : make it configurable
 	needComma := false
 	lastId := 0
 
 	ctx := gctx.Request.Context()
 
-	limitStr := fmt.Sprintf("%d", limit)
+	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
+
 	for {
 		if lastId > 0 {
-			lastIdStr := fmt.Sprintf("%d", lastId)
+			lastIdStr := strconv.Itoa(lastId)
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
@@ -215,14 +220,16 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 		if err != nil {
 			return err
 		}
+
 		if len(data) > 0 {
 			lastId = data[len(data)-1].ID
+
 			results := FormatDecisions(data)
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
 
 				if needComma {
-					//respBuffer.Write([]byte(","))
+					// respBuffer.Write([]byte(","))
 					gctx.Writer.WriteString(",")
 				} else {
 					needComma = true
@@ -235,10 +242,12 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 
 					return err
 				}
-				//respBuffer.Reset()
+				// respBuffer.Reset()
 			}
 		}
+
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
+
 		if len(data) < limit {
 			gctx.Writer.Flush()
 
@@ -270,7 +279,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 		}
 
 		gctx.Writer.WriteString(`], "deleted": [`)
-		//Expired decisions
+		// Expired decisions
 		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for startup: %v", err)
@@ -311,8 +320,10 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 }
 
 func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
-	var data []*ent.Decision
-	var err error
+	var (
+		data []*ent.Decision
+		err  error
+	)
 
 	ctx := gctx.Request.Context()
 
@@ -357,7 +368,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 
 		return err
 	}
-	//data = KeepLongestDecision(data)
+	// data = KeepLongestDecision(data)
 	ret["new"] = FormatDecisions(data)
 
 	since := time.Time{}
@@ -395,8 +406,8 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	if gctx.Request.Method == http.MethodHead {
-		//For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
-		//We also don't update the last pull time, as it would mess with the delta sent on the next request (if done without startup=true)
+		// For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
+		// We also don't update the last pull time, as it would mess with the delta sent on the next request (if done without startup=true)
 		gctx.String(http.StatusOK, "")
 
 		return
@@ -414,7 +425,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	if err == nil {
-		//Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
+		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
 		if err := c.DBClient.UpdateBouncerLastPull(ctx, streamStartTime, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}
