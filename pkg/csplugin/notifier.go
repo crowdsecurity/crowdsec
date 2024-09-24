@@ -40,9 +40,7 @@ func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notific
 }
 
 func (m *GRPCClient) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
-	_, err := m.client.Configure(
-		context.Background(), config,
-	)
+	_, err := m.client.Configure(ctx, config)
 	return &protobufs.Empty{}, err
 }
 

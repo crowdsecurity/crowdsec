@@ -357,12 +357,12 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 	}
 
 	s.apic.metricsTomb.Go(func() error {
-		s.apic.SendMetrics(make(chan bool))
+		s.apic.SendMetrics(ctx, make(chan bool))
 		return nil
 	})
 
 	s.apic.metricsTomb.Go(func() error {
-		s.apic.SendUsageMetrics()
+		s.apic.SendUsageMetrics(ctx)
 		return nil
 	})
 }
