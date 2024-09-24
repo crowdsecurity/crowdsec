@@ -427,7 +427,6 @@ definitions:
         type: "integer"
       context:
         type: "array"
-        nullable: true
         items:
           type: "object"
           properties:
