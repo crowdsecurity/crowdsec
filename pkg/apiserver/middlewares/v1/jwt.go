@@ -128,6 +128,8 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 		err        error
 	)
 
+	ctx := c.Request.Context()
+
 	ret := authInput{}
 
 	if err = c.ShouldBindJSON(&loginInput); err != nil {
@@ -144,7 +146,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
-		First(j.DbClient.CTX)
+		First(ctx)
 	if err != nil {
 		log.Infof("Error machine login for %s : %+v ", ret.machineID, err)
 		return nil, err

@@ -31,7 +31,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
-	var contains = true
+	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 
@@ -321,7 +321,7 @@ func (c *Client) DeleteDecisionsWithFilter(ctx context.Context, filter map[strin
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
-	var contains = true
+	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer) */
 
@@ -440,7 +440,7 @@ func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[strin
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
-	var contains = true
+	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 	decisions := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))

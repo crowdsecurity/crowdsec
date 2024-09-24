@@ -68,7 +68,7 @@ func queryLAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 		Scenarios: itemsForAPI,
 	}
 
-	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = client.Auth.AuthenticateWatcher(ctx, t)
 	if err != nil {
 		return false, err
 	}

@@ -406,13 +406,13 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 	}
 }
 
-func (a *apic) CAPIPullIsOld() (bool, error) {
+func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
 
-	count, err := alerts.Count(a.dbClient.CTX)
+	count, err := alerts.Count(ctx)
 	if err != nil {
 		return false, fmt.Errorf("while looking for CAPI alert: %w", err)
 	}
@@ -634,7 +634,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	}
 
 	if !forcePull {
-		if lastPullIsOld, err := a.CAPIPullIsOld(); err != nil {
+		if lastPullIsOld, err := a.CAPIPullIsOld(ctx); err != nil {
 			return err
 		} else if !lastPullIsOld {
 			return nil
@@ -769,6 +769,8 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 }
 
 func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, addCounters map[string]map[string]int, deleteCounters map[string]map[string]int) error {
+	ctx := context.TODO()
+
 	for _, alert := range alertsFromCapi {
 		setAlertScenario(alert, addCounters, deleteCounters)
 		log.Debugf("%s has %d decisions", *alert.Source.Scope, len(alert.Decisions))
@@ -777,7 +779,7 @@ func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, addCounters map[string
 			log.Warningf("sqlite is not using WAL mode, LAPI might become unresponsive when inserting the community blocklist")
 		}
 
-		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alert)
+		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(ctx, alert)
 		if err != nil {
 			return fmt.Errorf("while saving alert from %s: %w", *alert.Source.Scope, err)
 		}

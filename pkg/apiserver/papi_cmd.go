@@ -97,6 +97,8 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 }
 
 func AlertCmd(message *Message, p *Papi, sync bool) error {
+	ctx := context.TODO()
+
 	switch message.Header.OperationCmd {
 	case "add":
 		data, err := json.Marshal(message.Data)
@@ -155,7 +157,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		}
 
 		// use a different method: alert and/or decision might already be partially present in the database
-		_, err = p.DBClient.CreateOrUpdateAlert("", alert)
+		_, err = p.DBClient.CreateOrUpdateAlert(ctx, "", alert)
 		if err != nil {
 			log.Errorf("Failed to create alerts in DB: %s", err)
 		} else {

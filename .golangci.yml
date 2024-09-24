@@ -20,7 +20,7 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 16
+    under: 15
 
   misspell:
     locale: US
@@ -118,7 +118,7 @@ linters-settings:
         arguments: [6]
       - name: function-length
         # lower this after refactoring
-        arguments: [110, 235]
+        arguments: [110, 237]
       - name: get-return
         disabled: true
       - name: increment-decrement
