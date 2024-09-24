@@ -20,7 +20,7 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 16
+    under: 15
 
   misspell:
     locale: US

@@ -66,7 +66,7 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []string, opts []string) error {
+func (cli *cliConsole) enroll(ctx context.Context, key string, name string, overwrite bool, tags []string, opts []string) error {
 	cfg := cli.cfg()
 	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
 
@@ -127,7 +127,7 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		VersionPrefix: "v3",
 	})
 
-	resp, err := c.Auth.EnrollWatcher(context.Background(), key, name, tags, overwrite)
+	resp, err := c.Auth.EnrollWatcher(ctx, key, name, tags, overwrite)
 	if err != nil {
 		return fmt.Errorf("could not enroll instance: %w", err)
 	}
@@ -173,8 +173,8 @@ After running this command your will need to validate the enrollment in the weba
 		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.enroll(args[0], name, overwrite, tags, opts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, opts)
 		},
 	}
 

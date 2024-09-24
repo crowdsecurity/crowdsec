@@ -368,9 +368,9 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 `,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		PreRunE: func(_ *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			alert, err = cli.fetchAlertFromArgString(args[0])
+			alert, err = cli.fetchAlertFromArgString(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -447,7 +447,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 	return cmd
 }
 
-func (cli *cliNotifications) fetchAlertFromArgString(toParse string) (*models.Alert, error) {
+func (cli *cliNotifications) fetchAlertFromArgString(ctx context.Context, toParse string) (*models.Alert, error) {
 	cfg := cli.cfg()
 
 	id, err := strconv.Atoi(toParse)
@@ -470,7 +470,7 @@ func (cli *cliNotifications) fetchAlertFromArgString(toParse string) (*models.Al
 		return nil, fmt.Errorf("error creating the client for the API: %w", err)
 	}
 
-	alert, _, err := client.Alerts.GetByID(context.Background(), id)
+	alert, _, err := client.Alerts.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("can't find alert with id %d: %w", id, err)
 	}

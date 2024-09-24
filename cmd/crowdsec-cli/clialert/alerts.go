@@ -235,7 +235,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAlerts) list(alertListFilter apiclient.AlertsListOpts, limit *int, contained *bool, printMachine bool) error {
+func (cli *cliAlerts) list(ctx context.Context, alertListFilter apiclient.AlertsListOpts, limit *int, contained *bool, printMachine bool) error {
 	var err error
 
 	*alertListFilter.ScopeEquals, err = SanitizeScope(*alertListFilter.ScopeEquals, *alertListFilter.IPEquals, *alertListFilter.RangeEquals)
@@ -311,7 +311,7 @@ func (cli *cliAlerts) list(alertListFilter apiclient.AlertsListOpts, limit *int,
 		alertListFilter.Contains = new(bool)
 	}
 
-	alerts, _, err := cli.client.Alerts.List(context.Background(), alertListFilter)
+	alerts, _, err := cli.client.Alerts.List(ctx, alertListFilter)
 	if err != nil {
 		return fmt.Errorf("unable to list alerts: %w", err)
 	}
@@ -354,7 +354,7 @@ cscli alerts list --type ban`,
 		Long:              `List alerts with optional filters`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.list(alertListFilter, limit, contained, printMachine)
+			return cli.list(cmd.Context(), alertListFilter, limit, contained, printMachine)
 		},
 	}
 
@@ -377,7 +377,7 @@ cscli alerts list --type ban`,
 	return cmd
 }
 
-func (cli *cliAlerts) delete(delFilter apiclient.AlertsDeleteOpts, activeDecision *bool, deleteAll bool, delAlertByID string, contained *bool) error {
+func (cli *cliAlerts) delete(ctx context.Context, delFilter apiclient.AlertsDeleteOpts, activeDecision *bool, deleteAll bool, delAlertByID string, contained *bool) error {
 	var err error
 
 	if !deleteAll {
@@ -423,12 +423,12 @@ func (cli *cliAlerts) delete(delFilter apiclient.AlertsDeleteOpts, activeDecisio
 
 	var alerts *models.DeleteAlertsResponse
 	if delAlertByID == "" {
-		alerts, _, err = cli.client.Alerts.Delete(context.Background(), delFilter)
+		alerts, _, err = cli.client.Alerts.Delete(ctx, delFilter)
 		if err != nil {
 			return fmt.Errorf("unable to delete alerts: %w", err)
 		}
 	} else {
-		alerts, _, err = cli.client.Alerts.DeleteOne(context.Background(), delAlertByID)
+		alerts, _, err = cli.client.Alerts.DeleteOne(ctx, delAlertByID)
 		if err != nil {
 			return fmt.Errorf("unable to delete alert: %w", err)
 		}
@@ -480,7 +480,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.delete(delFilter, activeDecision, deleteAll, delAlertByID, contained)
+			return cli.delete(cmd.Context(), delFilter, activeDecision, deleteAll, delAlertByID, contained)
 		},
 	}
 
@@ -498,7 +498,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	return cmd
 }
 
-func (cli *cliAlerts) inspect(details bool, alertIDs ...string) error {
+func (cli *cliAlerts) inspect(ctx context.Context, details bool, alertIDs ...string) error {
 	cfg := cli.cfg()
 
 	for _, alertID := range alertIDs {
@@ -507,7 +507,7 @@ func (cli *cliAlerts) inspect(details bool, alertIDs ...string) error {
 			return fmt.Errorf("bad alert id %s", alertID)
 		}
 
-		alert, _, err := cli.client.Alerts.GetByID(context.Background(), id)
+		alert, _, err := cli.client.Alerts.GetByID(ctx, id)
 		if err != nil {
 			return fmt.Errorf("can't find alert with id %s: %w", alertID, err)
 		}
@@ -551,7 +551,7 @@ func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 				_ = cmd.Help()
 				return errors.New("missing alert_id")
 			}
-			return cli.inspect(details, args...)
+			return cli.inspect(cmd.Context(), details, args...)
 		},
 	}
 
