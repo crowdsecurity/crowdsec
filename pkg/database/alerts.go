@@ -554,12 +554,14 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 				value := metaItem.Value
 
 				if len(metaItem.Value) > 4095 {
-					c.Log.Warningf("truncated meta %s : value too long", metaItem.Key)
+					c.Log.Warningf("truncated meta %s: value too long", metaItem.Key)
+
 					value = value[:4095]
 				}
 
 				if len(metaItem.Key) > 255 {
-					c.Log.Warningf("truncated meta %s : key too long", metaItem.Key)
+					c.Log.Warningf("truncated meta %s: key too long", metaItem.Key)
+
 					key = key[:255]
 				}
 
@@ -678,6 +680,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			}
 		}
 	}
+
 	return ret, nil
 }
 
@@ -919,7 +922,6 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "since", "created_before", "until":
 			if err := handleTimeFilters(param, value[0], &predicates); err != nil {
 				return nil, err
-
 			}
 		case "decision_type":
 			predicates = append(predicates, alert.HasDecisionsWith(decision.TypeEQ(value[0])))
@@ -954,7 +956,6 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 
 	if err := handleIPPredicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, &predicates); err != nil {
 		return nil, err
-
 	}
 
 	return predicates, nil

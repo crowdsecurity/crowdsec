@@ -191,7 +191,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	// Create Valid Alert
 	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
 
-	//Have one alerts
+	// Have one alert
 	w := lapi.RecordResponse(t, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code := readDecisionsStreamResp(t, w)
 	assert.Equal(t, 200, code)
@@ -210,7 +210,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	errResp, _ = readDecisionsErrorResp(t, w)
 	assert.Equal(t, "decision with id '100' doesn't exist: unable to delete", errResp["message"])
 
-	//Have one alerts
+	// Have one alert
 	w = lapi.RecordResponse(t, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code = readDecisionsStreamResp(t, w)
 	assert.Equal(t, 200, code)
@@ -223,7 +223,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	resp, _ := readDecisionsDeleteResp(t, w)
 	assert.Equal(t, "1", resp.NbDeleted)
 
-	//Have one alert (because we delete an alert that has dup targets)
+	// Have one alert (because we delete an alert that has dup targets)
 	w = lapi.RecordResponse(t, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code = readDecisionsStreamResp(t, w)
 	assert.Equal(t, 200, code)
@@ -251,7 +251,7 @@ func TestDeleteDecision(t *testing.T) {
 }
 
 func TestStreamStartDecisionDedup(t *testing.T) {
-	//Ensure that at stream startup we only get the longest decision
+	// Ensure that at stream startup we only get the longest decision
 	lapi := SetupLAPITest(t)
 
 	// Create Valid Alert : 3 decisions for 127.0.0.1, longest has id=3
@@ -299,7 +299,7 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	w = lapi.RecordResponse(t, "DELETE", "/v1/decisions/1", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 
-	//and now we only get a deleted decision
+	// and now we only get a deleted decision
 	w = lapi.RecordResponse(t, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code = readDecisionsStreamResp(t, w)
 	assert.Equal(t, 200, code)

@@ -264,7 +264,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	gctx.Writer.WriteHeader(http.StatusOK)
-	gctx.Writer.WriteString(`{"new": [`) //No need to check for errors, the doc says it always returns nil
+	gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
 
 	// if the blocker just started, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
@@ -340,7 +340,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 
 				return err
 			}
-			//data = KeepLongestDecision(data)
+			// data = KeepLongestDecision(data)
 			ret["new"] = FormatDecisions(data)
 
 			// getting expired decisions

@@ -17,7 +17,7 @@ func (c *Client) CreateMetric(ctx context.Context, generatedType metric.Generate
 		SetReceivedAt(receivedAt).
 		SetPayload(payload).
 		Save(ctx)
-	if  err != nil {
+	if err != nil {
 		c.Log.Warningf("CreateMetric: %s", err)
 		return nil, fmt.Errorf("storing metrics snapshot for '%s' at %s: %w", generatedBy, receivedAt, InsertFail)
 	}

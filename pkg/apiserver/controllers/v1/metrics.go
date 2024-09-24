@@ -68,7 +68,8 @@ func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
 	bouncer, _ := getBouncerFromContext(c)
 	if bouncer != nil {
 		LapiNilDecisions.With(prometheus.Labels{
-			"bouncer": bouncer.Name}).Inc()
+			"bouncer": bouncer.Name,
+		}).Inc()
 	}
 }
 
@@ -76,7 +77,8 @@ func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
 	bouncer, _ := getBouncerFromContext(c)
 	if bouncer != nil {
 		LapiNonNilDecisions.With(prometheus.Labels{
-			"bouncer": bouncer.Name}).Inc()
+			"bouncer": bouncer.Name,
+		}).Inc()
 	}
 }
 
@@ -87,7 +89,8 @@ func PrometheusMachinesMiddleware() gin.HandlerFunc {
 			LapiMachineHits.With(prometheus.Labels{
 				"machine": machineID,
 				"route":   c.Request.URL.Path,
-				"method":  c.Request.Method}).Inc()
+				"method":  c.Request.Method,
+			}).Inc()
 		}
 
 		c.Next()
@@ -101,7 +104,8 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 			LapiBouncerHits.With(prometheus.Labels{
 				"bouncer": bouncer.Name,
 				"route":   c.Request.URL.Path,
-				"method":  c.Request.Method}).Inc()
+				"method":  c.Request.Method,
+			}).Inc()
 		}
 
 		c.Next()
@@ -114,7 +118,8 @@ func PrometheusMiddleware() gin.HandlerFunc {
 
 		LapiRouteHits.With(prometheus.Labels{
 			"route":  c.Request.URL.Path,
-			"method": c.Request.Method}).Inc()
+			"method": c.Request.Method,
+		}).Inc()
 		c.Next()
 
 		elapsed := time.Since(startTime)
