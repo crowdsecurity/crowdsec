@@ -1,0 +1,876 @@
+swagger: "2.0"
+info:
+  description:
+    "API to manage machines using [crowdsec](https://github.com/crowdsecurity/crowdsec)\
+    \ and bouncers.\n"
+  version: "2023-01-23T11:16:39Z"
+  title: "prod-capi-v3"
+  contact:
+    name: "Crowdsec team"
+    url: "https://github.com/crowdsecurity/crowdsec"
+    email: "support@crowdsec.net"
+host: "api.crowdsec.net"
+basePath: "/v3"
+tags:
+  - name: "watchers"
+    description: "Operations about watchers: crowdsec & cscli"
+  - name: "bouncers"
+    description: "Operations about decisions : bans, captcha, rate-limit etc."
+schemes:
+  - "https"
+paths:
+  /decisions/delete:
+    post:
+      tags:
+        - "watchers"
+      summary: "delete decisions"
+      description: "delete provided decisions"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "DecisionsDeleteRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/DecisionsDeleteRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+        - UserPoolAuthorizer: []
+  /decisions/stream:
+    get:
+      tags:
+        - "bouncers"
+        - "watchers"
+      summary: "returns list of top decisions"
+      description: "returns list of top decisions to add or delete"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/GetDecisionsStreamResponse"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "404":
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+        - UserPoolAuthorizer: []
+    options:
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
+  /decisions/sync:
+    post:
+      tags:
+        - "watchers"
+      summary: "sync decisions"
+      description: "sync provided decisions"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "DecisionsSyncRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/DecisionsSyncRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+        - UserPoolAuthorizer: []
+  /metrics:
+    post:
+      tags:
+        - "watchers"
+      summary: "receive metrics about enrolled machines and bouncers in APIL"
+      description: "receive metrics about enrolled machines and bouncers in APIL"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "MetricsRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/MetricsRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+        - UserPoolAuthorizer: []
+  /signals:
+    post:
+      tags:
+        - "watchers"
+      summary: "Push signals"
+      description: "to push signals"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "AddSignalsRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/AddSignalsRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+        - UserPoolAuthorizer: []
+  /watchers:
+    post:
+      tags:
+        - "watchers"
+      summary: "Register watcher"
+      description: "Register a watcher"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "RegisterRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/RegisterRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /watchers/enroll:
+    post:
+      tags:
+        - "watchers"
+      summary: "watcher enrollment"
+      description: "watcher enrollment : enroll watcher to crowdsec backoffice account"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "EnrollRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/EnrollRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "403":
+          description: "403 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+        - UserPoolAuthorizer: []
+  /watchers/login:
+    post:
+      tags:
+        - "watchers"
+      summary: "watcher login"
+      description: "Sign-in to get a valid token"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "LoginRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/LoginRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "403":
+          description: "403 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /watchers/reset:
+    post:
+      tags:
+        - "watchers"
+      summary: "Reset Password"
+      description: "to reset a watcher password"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "ResetPasswordRequest"
+          required: true
+          schema:
+            $ref: "#/definitions/ResetPasswordRequest"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+          headers:
+            Content-type:
+              type: "string"
+            Access-Control-Allow-Origin:
+              type: "string"
+        "400":
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          headers:
+            Content-type:
+              type: "string"
+            Access-Control-Allow-Origin:
+              type: "string"
+        "403":
+          description: "403 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "404":
+          description: "404 response"
+          headers:
+            Content-type:
+              type: "string"
+            Access-Control-Allow-Origin:
+              type: "string"
+    options:
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
+securityDefinitions:
+  UserPoolAuthorizer:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    x-amazon-apigateway-authtype: "cognito_user_pools"
+definitions:
+  DecisionsDeleteRequest:
+    title: "delete decisions"
+    type: "array"
+    description: "delete decision model"
+    items:
+      $ref: "#/definitions/DecisionsDeleteRequestItem"
+  DecisionsSyncRequestItem:
+    type: "object"
+    required:
+      - "message"
+      - "scenario"
+      - "scenario_hash"
+      - "scenario_version"
+      - "source"
+      - "start_at"
+      - "stop_at"
+    properties:
+      scenario_trust:
+        type: "string"
+      scenario_hash:
+        type: "string"
+      scenario:
+        type: "string"
+      alert_id:
+        type: "integer"
+      created_at:
+        type: "string"
+      machine_id:
+        type: "string"
+      decisions:
+        $ref: "#/definitions/DecisionsSyncRequestItemDecisions"
+      source:
+        $ref: "#/definitions/DecisionsSyncRequestItemSource"
+      scenario_version:
+        type: "string"
+      message:
+        type: "string"
+        description: "a human readable message"
+      start_at:
+        type: "string"
+      stop_at:
+        type: "string"
+    title: "Signal"
+  AddSignalsRequestItem:
+    type: "object"
+    required:
+      - "message"
+      - "scenario"
+      - "scenario_hash"
+      - "scenario_version"
+      - "source"
+      - "start_at"
+      - "stop_at"
+    properties:
+      created_at:
+        type: "string"
+      machine_id:
+        type: "string"
+      source:
+        $ref: "#/definitions/AddSignalsRequestItemSource"
+      scenario_version:
+        type: "string"
+      message:
+        type: "string"
+        description: "a human readable message"
+      uuid:
+        type: "string"
+        description: "UUID of the alert"
+      start_at:
+        type: "string"
+      scenario_trust:
+        type: "string"
+      scenario_hash:
+        type: "string"
+      scenario:
+        type: "string"
+      alert_id:
+        type: "integer"
+      context:
+        type: "array"
+        nullable: true
+        items:
+          type: "object"
+          properties:
+            value:
+              type: "string"
+            key:
+              type: "string"
+      decisions:
+        $ref: "#/definitions/AddSignalsRequestItemDecisions"
+      stop_at:
+        type: "string"
+    title: "Signal"
+  DecisionsSyncRequest:
+    title: "sync decisions request"
+    type: "array"
+    description: "sync decision model"
+    items:
+      $ref: "#/definitions/DecisionsSyncRequestItem"
+  LoginRequest:
+    type: "object"
+    required:
+      - "machine_id"
+      - "password"
+    properties:
+      password:
+        type: "string"
+        description: "Password, should respect the password policy (link to add)"
+      machine_id:
+        type: "string"
+        description: "machine_id is a (username) generated by crowdsec"
+        minLength: 48
+        maxLength: 48
+        pattern: "^[a-zA-Z0-9]+$"
+      scenarios:
+        type: "array"
+        description: "all scenarios installed"
+        items:
+          type: "string"
+    title: "login request"
+    description: "Login request model"
+  GetDecisionsStreamResponseNewItem:
+    type: "object"
+    required:
+      - "scenario"
+      - "scope"
+      - "decisions"
+    properties:
+      scenario:
+        type: "string"
+      scope:
+        type: "string"
+        description:
+          "the scope of decision : does it apply to an IP, a range, a username,\
+          \ etc"
+      decisions:
+        type: array
+        items:
+          type: object
+          required:
+            - value
+            - duration
+          properties:
+            duration:
+              type: "string"
+            value:
+              type: "string"
+              description:
+                "the value of the decision scope : an IP, a range, a username,\
+                \ etc"
+    title: "New Decisions"
+  GetDecisionsStreamResponseDeletedItem:
+    type: object
+    required:
+      - scope
+      - decisions
+    properties:
+      scope:
+        type: "string"
+        description:
+          "the scope of decision : does it apply to an IP, a range, a username,\
+          \ etc"
+      decisions:
+        type: array
+        items:
+          type: string
+  BlocklistLink:
+    type: object
+    required:
+      - name
+      - url
+      - remediation
+      - scope
+      - duration
+    properties:
+      name:
+        type: string
+        description: "the name of the blocklist"
+      url:
+        type: string
+        description: "the url from which the blocklist content can be downloaded"
+      remediation:
+        type: string
+        description: "the remediation that should be used for the blocklist"
+      scope:
+        type: string
+        description: "the scope of decisions in the blocklist"
+      duration:
+        type: string
+  AddSignalsRequestItemDecisionsItem:
+    type: "object"
+    required:
+      - "duration"
+      - "id"
+      - "origin"
+      - "scenario"
+      - "scope"
+      - "type"
+      - "value"
+    properties:
+      duration:
+        type: "string"
+      uuid:
+        type: "string"
+        description: "UUID of the decision"
+      scenario:
+        type: "string"
+      origin:
+        type: "string"
+        description: "the origin of the decision : cscli, crowdsec"
+      scope:
+        type: "string"
+        description:
+          "the scope of decision : does it apply to an IP, a range, a username,\
+          \ etc"
+      simulated:
+        type: "boolean"
+      until:
+        type: "string"
+      id:
+        type: "integer"
+        description: "(only relevant for GET ops) the unique id"
+      type:
+        type: "string"
+        description:
+          "the type of decision, might be 'ban', 'captcha' or something\
+          \ custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL."
+      value:
+        type: "string"
+        description:
+          "the value of the decision scope : an IP, a range, a username,\
+          \ etc"
+    title: "Decision"
+  EnrollRequest:
+    type: "object"
+    required:
+      - "attachment_key"
+    properties:
+      name:
+        type: "string"
+        description: "The name that will be display in the console for the instance"
+      overwrite:
+        type: "boolean"
+        description: "To force enroll the instance"
+      attachment_key:
+        type: "string"
+        description:
+          "attachment_key is generated in your crowdsec backoffice account\
+          \ and allows you to enroll your machines to your BO account"
+        pattern: "^[a-zA-Z0-9]+$"
+      tags:
+        type: "array"
+        description: "Tags to apply on the console for the instance"
+        items:
+          type: "string"
+    title: "enroll request"
+    description: "enroll request model"
+  ResetPasswordRequest:
+    type: "object"
+    required:
+      - "machine_id"
+      - "password"
+    properties:
+      password:
+        type: "string"
+        description: "Password, should respect the password policy (link to add)"
+      machine_id:
+        type: "string"
+        description: "machine_id is a (username) generated by crowdsec"
+        minLength: 48
+        maxLength: 48
+        pattern: "^[a-zA-Z0-9]+$"
+    title: "resetPassword"
+    description: "ResetPassword request model"
+  MetricsRequestBouncersItem:
+    type: "object"
+    properties:
+      last_pull:
+        type: "string"
+        description: "last bouncer pull date"
+      custom_name:
+        type: "string"
+        description: "bouncer name"
+      name:
+        type: "string"
+        description: "bouncer type (firewall, php...)"
+      version:
+        type: "string"
+        description: "bouncer version"
+    title: "MetricsBouncerInfo"
+  AddSignalsRequestItemSource:
+    type: "object"
+    required:
+      - "scope"
+      - "value"
+    properties:
+      scope:
+        type: "string"
+        description: "the scope of a source : ip,range,username,etc"
+      ip:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      latitude:
+        type: "number"
+        format: "float"
+      as_number:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      range:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      cn:
+        type: "string"
+      value:
+        type: "string"
+        description: "the value of a source : the ip, the range, the username,etc"
+      as_name:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      longitude:
+        type: "number"
+        format: "float"
+    title: "Source"
+  DecisionsSyncRequestItemDecisions:
+    title: "Decisions list"
+    type: "array"
+    items:
+      $ref: "#/definitions/DecisionsSyncRequestItemDecisionsItem"
+  RegisterRequest:
+    type: "object"
+    required:
+      - "machine_id"
+      - "password"
+    properties:
+      password:
+        type: "string"
+        description: "Password, should respect the password policy (link to add)"
+      machine_id:
+        type: "string"
+        description: "machine_id is a (username) generated by crowdsec"
+        pattern: "^[a-zA-Z0-9]+$"
+    title: "register request"
+    description: "Register request model"
+  SuccessResponse:
+    type: "object"
+    required:
+      - "message"
+    properties:
+      message:
+        type: "string"
+        description: "message"
+    title: "success response"
+    description: "success response return by the API"
+  LoginResponse:
+    type: "object"
+    properties:
+      code:
+        type: "integer"
+      expire:
+        type: "string"
+      token:
+        type: "string"
+    title: "login response"
+    description: "Login request model"
+  DecisionsSyncRequestItemDecisionsItem:
+    type: "object"
+    required:
+      - "duration"
+      - "id"
+      - "origin"
+      - "scenario"
+      - "scope"
+      - "type"
+      - "value"
+    properties:
+      duration:
+        type: "string"
+      scenario:
+        type: "string"
+      origin:
+        type: "string"
+        description: "the origin of the decision : cscli, crowdsec"
+      scope:
+        type: "string"
+        description:
+          "the scope of decision : does it apply to an IP, a range, a username,\
+          \ etc"
+      simulated:
+        type: "boolean"
+      until:
+        type: "string"
+      id:
+        type: "integer"
+        description: "(only relevant for GET ops) the unique id"
+      type:
+        type: "string"
+        description:
+          "the type of decision, might be 'ban', 'captcha' or something\
+          \ custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL."
+      value:
+        type: "string"
+        description:
+          "the value of the decision scope : an IP, a range, a username,\
+          \ etc"
+    title: "Decision"
+  GetDecisionsStreamResponse:
+    type: "object"
+    properties:
+      new:
+        $ref: "#/definitions/GetDecisionsStreamResponseNew"
+      deleted:
+        $ref: "#/definitions/GetDecisionsStreamResponseDeleted"
+      links:
+        $ref: "#/definitions/GetDecisionsStreamResponseLinks"
+    title: "get decisions stream response"
+    description: "get decision response model"
+  DecisionsSyncRequestItemSource:
+    type: "object"
+    required:
+      - "scope"
+      - "value"
+    properties:
+      scope:
+        type: "string"
+        description: "the scope of a source : ip,range,username,etc"
+      ip:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      latitude:
+        type: "number"
+        format: "float"
+      as_number:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      range:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      cn:
+        type: "string"
+      value:
+        type: "string"
+        description: "the value of a source : the ip, the range, the username,etc"
+      as_name:
+        type: "string"
+        description: "provided as a convenience when the source is an IP"
+      longitude:
+        type: "number"
+        format: "float"
+    title: "Source"
+  AddSignalsRequestItemDecisions:
+    title: "Decisions list"
+    type: "array"
+    items:
+      $ref: "#/definitions/AddSignalsRequestItemDecisionsItem"
+  MetricsRequestMachinesItem:
+    type: "object"
+    properties:
+      last_update:
+        type: "string"
+        description: "last agent update date"
+      name:
+        type: "string"
+        description: "agent name"
+      last_push:
+        type: "string"
+        description: "last agent push date"
+      version:
+        type: "string"
+        description: "agent version"
+    title: "MetricsAgentInfo"
+  MetricsRequest:
+    type: "object"
+    required:
+      - "bouncers"
+      - "machines"
+    properties:
+      bouncers:
+        type: "array"
+        items:
+          $ref: "#/definitions/MetricsRequestBouncersItem"
+      machines:
+        type: "array"
+        items:
+          $ref: "#/definitions/MetricsRequestMachinesItem"
+    title: "metrics"
+    description: "push metrics model"
+  ErrorResponse:
+    type: "object"
+    required:
+      - "message"
+    properties:
+      message:
+        type: "string"
+        description: "Error message"
+      errors:
+        type: "string"
+        description: "more detail on individual errors"
+    title: "error response"
+    description: "error response return by the API"
+  AddSignalsRequest:
+    title: "add signals request"
+    type: "array"
+    description: "All signals request model"
+    items:
+      $ref: "#/definitions/AddSignalsRequestItem"
+  DecisionsDeleteRequestItem:
+    type: "string"
+    title: "decisionsIDs"
+  GetDecisionsStreamResponseNew:
+    title: "Decisions list"
+    type: "array"
+    items:
+      $ref: "#/definitions/GetDecisionsStreamResponseNewItem"
+  GetDecisionsStreamResponseDeleted:
+    title: "Decisions list"
+    type: "array"
+    items:
+      $ref: "#/definitions/GetDecisionsStreamResponseDeletedItem"
+  GetDecisionsStreamResponseLinks:
+    title: "Decisions list"
+    type: "object"
+    properties:
+      blocklists:
+        type: array
+        items:
+          $ref: "#/definitions/BlocklistLink"
+
