@@ -36,7 +36,7 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 		URL:           apiURL,
 		PapiURL:       papiURL,
 		VersionPrefix: "v1",
-		UpdateScenario: func() ([]string, error) {
+		UpdateScenario: func(_ context.Context) ([]string, error) {
 			return itemsForAPI, nil
 		},
 	})

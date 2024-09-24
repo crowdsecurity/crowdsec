@@ -170,7 +170,7 @@ func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 		// I don't believe papi is neede to check enrollement
 		// PapiURL:       papiURL,
 		VersionPrefix: "v3",
-		UpdateScenario: func() ([]string, error) {
+		UpdateScenario: func(_ context.Context) ([]string, error) {
 			return itemsForAPI, nil
 		},
 	})

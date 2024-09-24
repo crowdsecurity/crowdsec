@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,15 +31,17 @@ type JWTTransport struct {
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
 	Transport         http.RoundTripper
-	UpdateScenario    func() ([]string, error)
+	UpdateScenario    func(context.Context) ([]string, error)
 	refreshTokenMutex sync.Mutex
 }
 
 func (t *JWTTransport) refreshJwtToken() error {
 	var err error
 
+	ctx := context.TODO()
+
 	if t.UpdateScenario != nil {
-		t.Scenarios, err = t.UpdateScenario()
+		t.Scenarios, err = t.UpdateScenario(ctx)
 		if err != nil {
 			return fmt.Errorf("can't update scenario list: %w", err)
 		}
