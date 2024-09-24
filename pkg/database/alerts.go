@@ -48,7 +48,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 
 	// alert wasn't found, insert it (expected hotpath)
 	if ent.IsNotFound(err) || len(alerts) == 0 {
-		alertIDs, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
+		alertIDs, err := c.CreateAlert(ctx, machineID, []*models.Alert{alertItem})
 		if err != nil {
 			return "", fmt.Errorf("unable to create alert: %w", err)
 		}
@@ -684,13 +684,11 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 	return ret, nil
 }
 
-func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
+func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []*models.Alert) ([]string, error) {
 	var (
 		owner *ent.Machine
 		err   error
 	)
-
-	ctx := context.TODO()
 
 	if machineID != "" {
 		owner, err = c.QueryMachineByID(ctx, machineID)

@@ -127,6 +127,7 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
 
+	ctx := gctx.Request.Context()
 	machineID, _ := getMachineIDFromContext(gctx)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
@@ -239,7 +240,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.DBClient.CanFlush = false
 	}
 
-	alerts, err := c.DBClient.CreateAlert(machineID, input)
+	alerts, err := c.DBClient.CreateAlert(ctx, machineID, input)
 	c.DBClient.CanFlush = true
 
 	if err != nil {
