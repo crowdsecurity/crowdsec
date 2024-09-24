@@ -1,13 +1,13 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.22
+go 1.23.0
 
 // Don't use the toolchain directive to avoid uncontrolled downloads during
 // a build, especially in sandboxed environments (freebsd, gentoo...).
 // toolchain go1.21.3
 
 require (
-	entgo.io/ent v0.13.1
+	entgo.io/ent v0.14.1
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3
@@ -82,10 +82,10 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	golang.org/x/crypto v0.22.0
-	golang.org/x/mod v0.15.0
+	golang.org/x/crypto v0.26.0
+	golang.org/x/mod v0.20.0
 	golang.org/x/sys v0.24.0
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.17.0
 	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -201,11 +201,11 @@ require (
 	go.mongodb.org/mongo-driver v1.9.4 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/term v0.19.0 // indirect
+	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/term v0.23.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/tools v0.24.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
