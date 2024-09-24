@@ -135,13 +135,9 @@ linters-settings:
         arguments: [7]
       - name: max-public-structs
         disabled: true
-      - name: optimize-operands-order
-        disabled: true
       - name: nested-structs
         disabled: true
       - name: package-comments
-        disabled: true
-      - name: struct-tag
         disabled: true
       - name: redundant-import-alias
         disabled: true
