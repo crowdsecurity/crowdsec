@@ -204,7 +204,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
+				return nil, err
 			}
 		case "since", "created_before", "until":
 			if err := handleTimeFilters(param, value[0], &predicates); err != nil {
