@@ -31,6 +31,14 @@ const (
 	maxLockRetries      = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
 )
 
+func rollbackOnError(tx *ent.Tx, err error, msg string) error {
+	if rbErr := tx.Rollback(); rbErr != nil {
+		log.Errorf("rollback error: %v", rbErr)
+	}
+
+	return fmt.Errorf("%s: %w", msg, err)
+}
+
 // CreateOrUpdateAlert is specific to PAPI : It checks if alert already exists, otherwise inserts it
 // if alert already exists, it checks it associated decisions already exists
 // if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
@@ -284,12 +292,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 		duration, err := time.ParseDuration(*decisionItem.Duration)
 		if err != nil {
-			rollbackErr := txClient.Rollback()
-			if rollbackErr != nil {
-				log.Errorf("rollback error: %s", rollbackErr)
-			}
-
-			return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
+			return 0,0,0, rollbackOnError(txClient, err, "parsing decision duration")
 		}
 
 		if decisionItem.Scope == nil {
@@ -301,12 +304,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 			if err != nil {
-				rollbackErr := txClient.Rollback()
-				if rollbackErr != nil {
-					log.Errorf("rollback error: %s", rollbackErr)
-				}
-
-				return 0, 0, 0, errors.Wrapf(InvalidIPOrRange, "invalid addr/range %s : %s", *decisionItem.Value, err)
+				return 0, 0, 0, rollbackOnError(txClient, err, "invalid ip addr/range")
 			}
 		}
 
@@ -348,12 +346,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 				decision.ValueIn(deleteChunk...),
 			)).Exec(ctx)
 		if err != nil {
-			rollbackErr := txClient.Rollback()
-			if rollbackErr != nil {
-				log.Errorf("rollback error: %s", rollbackErr)
-			}
-
-			return 0, 0, 0, fmt.Errorf("while deleting older community blocklist decisions: %w", err)
+			return 0, 0, 0, rollbackOnError(txClient, err, "deleting older community blocklist decisions")
 		}
 
 		deleted += deletedDecisions
@@ -364,12 +357,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	for _, builderChunk := range builderChunks {
 		insertedDecisions, err := txClient.Decision.CreateBulk(builderChunk...).Save(ctx)
 		if err != nil {
-			rollbackErr := txClient.Rollback()
-			if rollbackErr != nil {
-				log.Errorf("rollback error: %s", rollbackErr)
-			}
-
-			return 0, 0, 0, fmt.Errorf("while bulk creating decisions: %w", err)
+			return 0, 0, 0, rollbackOnError(txClient, err, "bulk creating decisions")
 		}
 
 		inserted += len(insertedDecisions)
@@ -379,12 +367,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	err = txClient.Commit()
 	if err != nil {
-		rollbackErr := txClient.Rollback()
-		if rollbackErr != nil {
-			log.Errorf("rollback error: %s", rollbackErr)
-		}
-
-		return 0, 0, 0, fmt.Errorf("error committing transaction: %w", err)
+		return 0, 0, 0, rollbackOnError(txClient, err, "error committing transaction")
 	}
 
 	return alertRef.ID, inserted, deleted, nil
