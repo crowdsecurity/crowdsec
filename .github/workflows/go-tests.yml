@@ -128,6 +128,18 @@ jobs:
       with:
         go-version: "1.22"
 
+    - name: Run "make generate" and check for changes
+      run: |
+        set -e
+        make generate 2>/dev/null
+        if [[ $(git status --porcelain) ]]; then
+          echo "Error: Uncommitted changes found after running 'make generate'. Please commit all generated code."
+          git diff
+          exit 1
+        else
+          echo "No changes detected after running 'make generate'."
+        fi
+
     - name: Create localstack streams
       run: |
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
