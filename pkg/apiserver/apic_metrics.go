@@ -251,10 +251,8 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 // Metrics are sent at start, then at the randomized metricsIntervalFirst,
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
-func (a *apic) SendMetrics(stop chan (bool)) {
+func (a *apic) SendMetrics(ctx context.Context, stop chan (bool)) {
 	defer trace.CatchPanic("lapi/metricsToAPIC")
-
-	ctx := context.TODO()
 
 	// verify the list of machines every <checkInt> interval
 	const checkInt = 20 * time.Second
@@ -321,7 +319,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			if metrics != nil {
 				log.Info("capi metrics: sending")
 
-				_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+				_, _, err = a.apiClient.Metrics.Add(ctx, metrics)
 				if err != nil {
 					log.Errorf("capi metrics: failed: %s", err)
 				}
@@ -339,10 +337,8 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	}
 }
 
-func (a *apic) SendUsageMetrics() {
+func (a *apic) SendUsageMetrics(ctx context.Context) {
 	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
-
-	ctx := context.TODO()
 
 	firstRun := true
 
@@ -368,7 +364,7 @@ func (a *apic) SendUsageMetrics() {
 				continue
 			}
 
-			_, resp, err := a.apiClient.UsageMetrics.Add(context.Background(), metrics)
+			_, resp, err := a.apiClient.UsageMetrics.Add(ctx, metrics)
 			if err != nil {
 				log.Errorf("unable to send usage metrics: %s", err)
 
