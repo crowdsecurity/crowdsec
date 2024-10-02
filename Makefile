@@ -267,6 +267,7 @@ crowdsec:  ## Build crowdsec
 generate:  ## Generate code for the database and APIs
 	$(GO) generate ./pkg/database/ent
 	$(GO) generate ./pkg/models
+	$(GO) generate ./pkg/modelscapi
 
 .PHONY: testclean
 testclean: bats-clean  ## Remove test artifacts
