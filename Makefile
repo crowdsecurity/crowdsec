@@ -268,6 +268,8 @@ generate:  ## Generate code for the database and APIs
 	$(GO) generate ./pkg/database/ent
 	$(GO) generate ./pkg/models
 	$(GO) generate ./pkg/modelscapi
+	# TODO: install the protoc-gen-go plugin in CI
+	# $(GO) generate ./pkg/protobufs
 
 .PHONY: testclean
 testclean: bats-clean  ## Remove test artifacts

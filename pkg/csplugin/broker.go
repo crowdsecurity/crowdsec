@@ -45,7 +45,7 @@ type PluginBroker struct {
 	pluginConfigByName              map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
 	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
-	notificationPluginByName        map[string]Notifier
+	notificationPluginByName        map[string]protobufs.NotifierServer
 	watcher                         PluginWatcher
 	pluginKillMethods               []func()
 	pluginProcConfig                *csconfig.PluginCfg
@@ -75,7 +75,7 @@ type ProfileAlert struct {
 func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan ProfileAlert)
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
-	pb.notificationPluginByName = make(map[string]Notifier)
+	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
 	pb.pluginMap = make(map[string]plugin.Plugin)
 	pb.pluginConfigByName = make(map[string]PluginConfig)
 	pb.alertsByPluginName = make(map[string][]*models.Alert)
@@ -276,7 +276,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 	return pb.verifyPluginBinaryWithProfile()
 }
 
-func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
+func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (protobufs.NotifierServer, error) {
 
 	handshake, err := getHandshake()
 	if err != nil {
@@ -313,7 +313,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 		return nil, err
 	}
 	pb.pluginKillMethods = append(pb.pluginKillMethods, c.Kill)
-	return raw.(Notifier), nil
+	return raw.(protobufs.NotifierServer), nil
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
