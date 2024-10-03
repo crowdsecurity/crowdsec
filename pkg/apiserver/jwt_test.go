@@ -11,9 +11,8 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	router, config := NewAPITest(t)
-
 	ctx := context.Background()
+	router, config := NewAPITest(t, ctx)
 
 	body := CreateTestMachine(t, router, "")
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -14,12 +15,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
+func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
 		log.Info("push and pull to Central API disabled")
 	}
 
-	apiServer, err := apiserver.NewServer(cConfig.API.Server)
+	apiServer, err := apiserver.NewServer(ctx, cConfig.API.Server)
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %w", err)
 	}

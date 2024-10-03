@@ -11,9 +11,8 @@ import (
 )
 
 func TestAPIKey(t *testing.T) {
-	router, config := NewAPITest(t)
-
 	ctx := context.Background()
+	router, config := NewAPITest(t, ctx)
 
 	APIKey := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 

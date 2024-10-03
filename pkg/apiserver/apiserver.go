@@ -159,10 +159,8 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
-
-	ctx := context.TODO()
 
 	dbClient, err := database.NewClient(ctx, config.DbConfig)
 	if err != nil {

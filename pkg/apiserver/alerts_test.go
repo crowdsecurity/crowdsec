@@ -65,7 +65,7 @@ func (l *LAPI) RecordResponse(t *testing.T, ctx context.Context, verb string, ur
 }
 
 func InitMachineTest(t *testing.T, ctx context.Context) (*gin.Engine, models.WatcherAuthResponse, csconfig.Config) {
-	router, config := NewAPITest(t)
+	router, config := NewAPITest(t, ctx)
 	loginResp := LoginToTestAPI(t, ctx, router, config)
 
 	return router, loginResp, config
@@ -137,7 +137,7 @@ func TestCreateAlert(t *testing.T) {
 
 func TestCreateAlertChannels(t *testing.T) {
 	ctx := context.Background()
-	apiServer, config := NewAPIServer(t)
+	apiServer, config := NewAPIServer(t, ctx)
 	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
 	apiServer.InitController()
 
@@ -437,7 +437,7 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}
 	cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24"}
 	cfg.API.Server.ListenURI = "::8080"
-	server, err := NewServer(cfg.API.Server)
+	server, err := NewServer(ctx, cfg.API.Server)
 	require.NoError(t, err)
 
 	err = server.InitController()
