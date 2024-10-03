@@ -269,15 +269,13 @@ func readDecisionsStreamResp(t *testing.T, resp *httptest.ResponseRecorder) (map
 	return response, resp.Code
 }
 
-func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
+func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, token string) string {
 	regReq := MachineTest
 	regReq.RegistrationToken = token
 	b, err := json.Marshal(regReq)
 	require.NoError(t, err)
 
 	body := string(b)
-
-	ctx := context.Background()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))

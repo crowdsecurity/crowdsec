@@ -40,7 +40,7 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 			return nil, errors.New("plugins are enabled, but config_paths.plugin_dir is not defined")
 		}
 
-		err = pluginBroker.Init(cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		err = pluginBroker.Init(ctx, cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
 		if err != nil {
 			return nil, fmt.Errorf("unable to run plugin broker: %w", err)
 		}

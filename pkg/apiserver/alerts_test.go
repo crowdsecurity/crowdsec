@@ -72,7 +72,7 @@ func InitMachineTest(t *testing.T, ctx context.Context) (*gin.Engine, models.Wat
 }
 
 func LoginToTestAPI(t *testing.T, ctx context.Context, router *gin.Engine, config csconfig.Config) models.WatcherAuthResponse {
-	body := CreateTestMachine(t, router, "")
+	body := CreateTestMachine(t, ctx, router, "")
 	ValidateMachine(t, "test", config.API.Server.DbConfig)
 
 	w := httptest.NewRecorder()

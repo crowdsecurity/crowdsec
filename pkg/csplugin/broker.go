@@ -72,7 +72,7 @@ type ProfileAlert struct {
 	Alert     *models.Alert
 }
 
-func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
+func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan ProfileAlert)
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
@@ -85,7 +85,7 @@ func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*cs
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
 		return fmt.Errorf("while loading plugin config: %w", err)
 	}
-	if err := pb.loadPlugins(configPaths.PluginDir); err != nil {
+	if err := pb.loadPlugins(ctx, configPaths.PluginDir); err != nil {
 		return fmt.Errorf("while loading plugin: %w", err)
 	}
 	pb.watcher = PluginWatcher{}
@@ -230,7 +230,7 @@ func (pb *PluginBroker) verifyPluginBinaryWithProfile() error {
 	return nil
 }
 
-func (pb *PluginBroker) loadPlugins(path string) error {
+func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 	binaryPaths, err := listFilesAtPath(path)
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 				return err
 			}
 			data = []byte(csstring.StrictExpand(string(data), os.LookupEnv))
-			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
+			_, err = pluginClient.Configure(ctx, &protobufs.Config{Config: data})
 			if err != nil {
 				return fmt.Errorf("while configuring %s: %w", pc.Name, err)
 			}

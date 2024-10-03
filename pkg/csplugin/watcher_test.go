@@ -15,8 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-var ctx = context.Background()
-
 func resetTestTomb(testTomb *tomb.Tomb, pw *PluginWatcher) {
 	testTomb.Kill(nil)
 	<-pw.PluginEvents
@@ -50,6 +48,7 @@ func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 }
 
 func TestPluginWatcherInterval(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows because timing is not reliable")
 	}
@@ -81,6 +80,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows because timing is not reliable")
 	}

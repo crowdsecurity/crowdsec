@@ -14,7 +14,7 @@ func TestLogin(t *testing.T) {
 	ctx := context.Background()
 	router, config := NewAPITest(t, ctx)
 
-	body := CreateTestMachine(t, router, "")
+	body := CreateTestMachine(t, ctx, router, "")
 
 	// Login with machine not validated yet
 	w := httptest.NewRecorder()

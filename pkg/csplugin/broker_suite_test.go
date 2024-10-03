@@ -1,6 +1,7 @@
 package csplugin
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -140,7 +141,7 @@ func (s *PluginSuite) TearDownSubTest() {
 	os.Remove("./out")
 }
 
-func (s *PluginSuite) InitBroker(procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
+func (s *PluginSuite) InitBroker(ctx context.Context, procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
 	pb := PluginBroker{}
 	if procCfg == nil {
 		procCfg = &csconfig.PluginCfg{}
@@ -149,7 +150,7 @@ func (s *PluginSuite) InitBroker(procCfg *csconfig.PluginCfg) (*PluginBroker, er
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	err := pb.Init(procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(ctx, procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       s.pluginDir,
 		NotificationDir: s.notifDir,
 	})
