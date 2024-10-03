@@ -69,6 +69,10 @@ type apic struct {
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
+
+	pullBlocklists bool
+	pullCommunity  bool
+	shareSignals   bool
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -200,6 +204,9 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalDelta),
 		isPulling:                 make(chan bool, 1),
 		whitelists:                apicWhitelist,
+		pullBlocklists:            *config.PullConfig.Blocklists,
+		pullCommunity:             *config.PullConfig.Community,
+		shareSignals:              *config.Sharing,
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -297,7 +304,7 @@ func (a *apic) Push() error {
 			var signals []*models.AddSignalsRequestItem
 
 			for _, alert := range alerts {
-				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
+				if ok := shouldShareAlert(alert, a.consoleConfig, a.shareSignals); ok {
 					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert), *a.consoleConfig.ShareContext))
 				}
 			}
@@ -326,7 +333,13 @@ func getScenarioTrustOfAlert(alert *models.Alert) string {
 	return scenarioTrust
 }
 
-func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig) bool {
+func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig, shareSignals bool) bool {
+
+	if !shareSignals {
+		log.Debugf("sharing signals is disabled")
+		return false
+	}
+
 	if *alert.Simulated {
 		log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
 		return false

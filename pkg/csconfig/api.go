@@ -38,10 +38,17 @@ type ApiCredentialsCfg struct {
 	CertPath   string `yaml:"cert_path,omitempty"`
 }
 
-/*global api config (for lapi->oapi)*/
+type CapiPullConfig struct {
+	Community  *bool `yaml:"community,omitempty"`
+	Blocklists *bool `yaml:"blocklists,omitempty"`
+}
+
+/*global api config (for lapi->capi)*/
 type OnlineApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
+	PullConfig          CapiPullConfig     `yaml:"pull,omitempty"`
+	Sharing             *bool              `yaml:"sharing,omitempty"`
 }
 
 /*local api config (for crowdsec/cscli->lapi)*/
@@ -342,6 +349,21 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 
 	if (c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil) && !inCli {
 		log.Printf("push and pull to Central API disabled")
+	}
+
+	//Set default values for CAPI push/pull
+	if c.API.Server.OnlineClient != nil {
+		if c.API.Server.OnlineClient.PullConfig.Community == nil {
+			c.API.Server.OnlineClient.PullConfig.Community = ptr.Of(true)
+		}
+
+		if c.API.Server.OnlineClient.PullConfig.Blocklists == nil {
+			c.API.Server.OnlineClient.PullConfig.Blocklists = ptr.Of(true)
+		}
+
+		if c.API.Server.OnlineClient.Sharing == nil {
+			c.API.Server.OnlineClient.Sharing = ptr.Of(true)
+		}
 	}
 
 	if err := c.LoadDBConfig(inCli); err != nil {
