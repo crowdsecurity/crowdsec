@@ -82,6 +82,11 @@ func (m *GetDecisionsStreamResponseLinks) contextValidateBlocklists(ctx context.
 	for i := 0; i < len(m.Blocklists); i++ {
 
 		if m.Blocklists[i] != nil {
+
+			if swag.IsZero(m.Blocklists[i]) { // not required
+				return nil
+			}
+
 			if err := m.Blocklists[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("blocklists" + "." + strconv.Itoa(i))

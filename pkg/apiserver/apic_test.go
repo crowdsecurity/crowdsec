@@ -146,6 +146,8 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 }
 
 func TestAPICFetchScenariosListFromDB(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name                    string
 		machineIDsWithScenarios map[string]string
@@ -177,10 +179,10 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 					SetPassword(testPassword.String()).
 					SetIpAddress("1.2.3.4").
 					SetScenarios(scenarios).
-					ExecX(context.Background())
+					ExecX(ctx)
 			}
 
-			scenarios, err := api.FetchScenariosListFromDB()
+			scenarios, err := api.FetchScenariosListFromDB(ctx)
 			require.NoError(t, err)
 
 			for machineID := range tc.machineIDsWithScenarios {

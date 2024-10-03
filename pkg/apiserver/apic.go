@@ -86,10 +86,8 @@ func randomDuration(d time.Duration, delta time.Duration) time.Duration {
 	return ret
 }
 
-func (a *apic) FetchScenariosListFromDB() ([]string, error) {
+func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	scenarios := make([]string, 0)
-
-	ctx := context.TODO()
 
 	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
@@ -221,7 +219,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.scenarioList, err = ret.FetchScenariosListFromDB()
+	ret.scenarioList, err = ret.FetchScenariosListFromDB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("while fetching scenarios from db: %w", err)
 	}
@@ -241,7 +239,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 
 	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
 	// Explicit authentication will provoke a useless supplementary call to CAPI
-	scenarios, err := ret.FetchScenariosListFromDB()
+	scenarios, err := ret.FetchScenariosListFromDB(ctx)
 	if err != nil {
 		return ret, fmt.Errorf("get scenario in db: %w", err)
 	}
@@ -957,7 +955,7 @@ func (a *apic) Pull(ctx context.Context) error {
 	toldOnce := false
 
 	for {
-		scenario, err := a.FetchScenariosListFromDB()
+		scenario, err := a.FetchScenariosListFromDB(ctx)
 		if err != nil {
 			log.Errorf("unable to fetch scenarios from db: %s", err)
 		}
