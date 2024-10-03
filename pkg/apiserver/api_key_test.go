@@ -15,7 +15,7 @@ func TestAPIKey(t *testing.T) {
 
 	ctx := context.Background()
 
-	APIKey := CreateTestBouncer(t, config.API.Server.DbConfig)
+	APIKey := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 
 	// Login with empty token
 	w := httptest.NewRecorder()
