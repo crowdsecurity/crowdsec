@@ -671,7 +671,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Infof("Starting community-blocklist update")
 
-	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup})
+	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup, CommunityPull: a.pullCommunity, AdditionalPull: a.pullBlocklists})
 	if err != nil {
 		return fmt.Errorf("get stream: %w", err)
 	}
@@ -696,23 +696,22 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
-	if len(data.New) == 0 {
+	if len(data.New) > 0 {
+		// create one alert for community blocklist using the first decision
+		decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
+		// apply APIC specific whitelists
+		decisions = a.ApplyApicWhitelists(decisions)
+
+		alert := createAlertForDecision(decisions[0])
+		alertsFromCapi := []*models.Alert{alert}
+		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
+
+		err = a.SaveAlerts(alertsFromCapi, addCounters, deleteCounters)
+		if err != nil {
+			return fmt.Errorf("while saving alerts: %w", err)
+		}
+	} else {
 		log.Infof("capi/community-blocklist : received 0 new entries (expected if you just installed crowdsec)")
-		return nil
-	}
-
-	// create one alert for community blocklist using the first decision
-	decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
-	// apply APIC specific whitelists
-	decisions = a.ApplyApicWhitelists(decisions)
-
-	alert := createAlertForDecision(decisions[0])
-	alertsFromCapi := []*models.Alert{alert}
-	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
-
-	err = a.SaveAlerts(alertsFromCapi, addCounters, deleteCounters)
-	if err != nil {
-		return fmt.Errorf("while saving alerts: %w", err)
 	}
 
 	// update blocklists
