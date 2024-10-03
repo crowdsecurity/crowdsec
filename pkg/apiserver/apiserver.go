@@ -300,8 +300,8 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
-func (s *APIServer) apicPush() error {
-	if err := s.apic.Push(); err != nil {
+func (s *APIServer) apicPush(ctx context.Context) error {
+	if err := s.apic.Push(ctx); err != nil {
 		log.Errorf("capi push: %s", err)
 		return err
 	}
@@ -337,7 +337,7 @@ func (s *APIServer) papiSync() error {
 }
 
 func (s *APIServer) initAPIC(ctx context.Context) {
-	s.apic.pushTomb.Go(s.apicPush)
+	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
 	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
 
 	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios

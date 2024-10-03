@@ -127,7 +127,7 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
 
-	t.Go(apic.Push)
+	t.Go(func() error { return apic.Push(ctx) })
 
 	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
 	if err != nil {
