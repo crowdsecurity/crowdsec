@@ -187,14 +187,14 @@ func TestLPMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lapi := SetupLAPITest(t)
+			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(context.Background(), lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}
 
-			w := lapi.RecordResponse(t, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
+			w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
 
 			assert.Equal(t, tt.expectedStatusCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
@@ -359,14 +359,14 @@ func TestRCMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lapi := SetupLAPITest(t)
+			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(context.Background(), lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}
 
-			w := lapi.RecordResponse(t, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
+			w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
 
 			assert.Equal(t, tt.expectedStatusCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
