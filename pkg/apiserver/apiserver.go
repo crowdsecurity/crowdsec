@@ -229,7 +229,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
-		Ectx:                          ctx,
 		Router:                        router,
 		Profiles:                      config.Profiles,
 		Log:                           clog,

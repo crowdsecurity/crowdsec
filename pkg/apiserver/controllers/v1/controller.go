@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -14,7 +13,6 @@ import (
 )
 
 type Controller struct {
-	Ectx         context.Context
 	DBClient     *database.Client
 	APIKeyHeader string
 	Middlewares  *middlewares.Middlewares
@@ -31,7 +29,6 @@ type Controller struct {
 
 type ControllerV1Config struct {
 	DbClient    *database.Client
-	Ctx         context.Context
 	ProfilesCfg []*csconfig.ProfileCfg
 
 	AlertsAddChan      chan []*models.Alert
@@ -52,7 +49,6 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 	}
 
 	v1 := &Controller{
-		Ectx:               cfg.Ctx,
 		DBClient:           cfg.DbClient,
 		APIKeyHeader:       middlewares.APIKeyHeader,
 		Profiles:           profiles,
