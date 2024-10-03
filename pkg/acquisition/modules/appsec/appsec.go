@@ -241,7 +241,7 @@ func (w *AppsecSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
-func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")

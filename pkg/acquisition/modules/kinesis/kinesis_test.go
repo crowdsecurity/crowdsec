@@ -3,6 +3,7 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -149,6 +150,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -176,7 +178,7 @@ stream_name: stream-1-shard`,
 		}
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
-		err = f.StreamingAcquisition(out, tomb)
+		err = f.StreamingAcquisition(ctx, out, tomb)
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
@@ -193,6 +195,7 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -220,7 +223,7 @@ stream_name: stream-2-shards`,
 		}
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
-		err = f.StreamingAcquisition(out, tomb)
+		err = f.StreamingAcquisition(ctx, out, tomb)
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
@@ -239,6 +242,7 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -267,7 +271,7 @@ from_subscription: true`,
 		}
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
-		err = f.StreamingAcquisition(out, tomb)
+		err = f.StreamingAcquisition(ctx, out, tomb)
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}

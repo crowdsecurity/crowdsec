@@ -3,6 +3,7 @@
 package wineventlogacquisition
 
 import (
+	"context"
 	"runtime"
 	"testing"
 	"time"
@@ -129,6 +130,7 @@ event_level: bla`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping test on non-windows OS")
 	}
@@ -190,7 +192,7 @@ event_ids:
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
 		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		f.StreamingAcquisition(c, to)
+		f.StreamingAcquisition(ctx, c, to)
 		time.Sleep(time.Second)
 		lines := test.expectedLines
 		go func() {

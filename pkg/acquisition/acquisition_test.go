@@ -1,6 +1,7 @@
 package acquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -58,7 +59,7 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) 
 }
 func (f *MockSource) GetMode() string                                         { return f.Mode }
 func (f *MockSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
-func (f *MockSource) StreamingAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
 func (f *MockSource) CanRun() error                                           { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector                      { return nil }
 func (f *MockSource) GetAggregMetrics() []prometheus.Collector                { return nil }
@@ -327,7 +328,7 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 	return nil
 }
 
-func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
+func (f *MockCat) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return errors.New("can't run in tail")
 }
 func (f *MockCat) CanRun() error                            { return nil }
@@ -366,7 +367,7 @@ func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) err
 	return errors.New("can't run in cat mode")
 }
 
-func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -389,6 +390,7 @@ func (f *MockTail) GetUuid() string { return "" }
 // func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 func TestStartAcquisitionCat(t *testing.T) {
+	ctx := context.Background()
 	sources := []DataSource{
 		&MockCat{},
 	}
@@ -396,7 +398,7 @@ func TestStartAcquisitionCat(t *testing.T) {
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
-		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
+		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
 			t.Errorf("unexpected error")
 		}
 	}()
@@ -416,6 +418,7 @@ READLOOP:
 }
 
 func TestStartAcquisitionTail(t *testing.T) {
+	ctx := context.Background()
 	sources := []DataSource{
 		&MockTail{},
 	}
@@ -423,7 +426,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
-		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
+		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
 			t.Errorf("unexpected error")
 		}
 	}()
@@ -450,7 +453,7 @@ type MockTailError struct {
 	MockTail
 }
 
-func (f *MockTailError) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *MockTailError) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -463,6 +466,7 @@ func (f *MockTailError) StreamingAcquisition(out chan types.Event, t *tomb.Tomb)
 }
 
 func TestStartAcquisitionTailError(t *testing.T) {
+	ctx := context.Background()
 	sources := []DataSource{
 		&MockTailError{},
 	}
@@ -470,7 +474,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
-		if err := StartAcquisition(sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
+		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
 			t.Errorf("expected error, got '%s'", err)
 		}
 	}()
@@ -503,7 +507,7 @@ func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel 
 }
 func (f *MockSourceByDSN) GetMode() string                                         { return f.Mode }
 func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
-func (f *MockSourceByDSN) StreamingAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
 func (f *MockSourceByDSN) CanRun() error                                           { return nil }
 func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                      { return nil }
 func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector                { return nil }

@@ -672,11 +672,11 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 	return nil
 }
 
-func (s *S3Source) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	s.t = t
 	s.out = out
 	s.readerChan = make(chan S3Object, 100) //FIXME: does this needs to be buffered?
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.logger.Infof("starting acquisition of %s/%s", s.Config.BucketName, s.Config.Prefix)
 	t.Go(func() error {
 		s.readManager()

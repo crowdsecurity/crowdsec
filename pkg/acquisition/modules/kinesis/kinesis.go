@@ -3,6 +3,7 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -520,7 +521,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 	}
 }
 
-func (k *KinesisSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
 		if k.Config.UseEnhancedFanOut {

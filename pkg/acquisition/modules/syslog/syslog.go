@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -135,7 +136,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	return nil
 }
 
-func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	c := make(chan syslogserver.SyslogMessage)
 	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal"), MaxMessageLen: s.config.MaxMessageLen}
 	s.server.SetChannel(c)
