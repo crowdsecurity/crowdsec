@@ -45,12 +45,12 @@ type BucketFactory struct {
 	Debug               bool                   `yaml:"debug"`               // Debug, when set to true, will enable debugging for _this_ scenario specifically
 	Labels              map[string]interface{} `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                 `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger              *log.Entry                                          // logger is bucket-specific logger (used by Debug as well)
-	Reprocess           bool                   `yaml:"reprocess"`           // Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize           int                    `yaml:"cache_size"`          // CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling           bool                   `yaml:"profiling"`           // Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter      string                 `yaml:"overflow_filter"`     // OverflowFilter if present, is a filter that must return true for the overflow to go through
-	ConditionalOverflow string                 `yaml:"condition"`           // condition if present, is an expression that must return true for the bucket to overflow
+	logger              *log.Entry             // logger is bucket-specific logger (used by Debug as well)
+	Reprocess           bool                   `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
+	CacheSize           int                    `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	Profiling           bool                   `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
+	OverflowFilter      string                 `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	ConditionalOverflow string                 `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
 	BayesianPrior       float32                `yaml:"bayesian_prior"`
 	BayesianThreshold   float32                `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
@@ -69,7 +69,7 @@ type BucketFactory struct {
 	output              bool                   // ??
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
 	hash                string
-	Simulated           bool                   `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
+	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb                *tomb.Tomb
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
