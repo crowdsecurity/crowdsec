@@ -454,10 +454,8 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 	return nbDeleted, nil
 }
 
-func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, deleteCounters map[string]map[string]int) (int, error) {
+func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, deleteCounters map[string]map[string]int) (int, error) {
 	var nbDeleted int
-
-	ctx := context.TODO()
 
 	for _, decisions := range deletedDecisions {
 		scope := decisions.Scope
@@ -676,7 +674,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	addCounters, deleteCounters := makeAddAndDeleteCounters()
 
 	// process deleted decisions
-	nbDeleted, err := a.HandleDeletedDecisionsV3(data.Deleted, deleteCounters)
+	nbDeleted, err := a.HandleDeletedDecisionsV3(ctx, data.Deleted, deleteCounters)
 	if err != nil {
 		return err
 	}
@@ -697,7 +695,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
-	err = a.SaveAlerts(alertsFromCapi, addCounters, deleteCounters)
+	err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, deleteCounters)
 	if err != nil {
 		return fmt.Errorf("while saving alerts: %w", err)
 	}
@@ -766,9 +764,7 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 	return decisions[:outIdx]
 }
 
-func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, addCounters map[string]map[string]int, deleteCounters map[string]map[string]int) error {
-	ctx := context.TODO()
-
+func (a *apic) SaveAlerts(ctx context.Context, alertsFromCapi []*models.Alert, addCounters map[string]map[string]int, deleteCounters map[string]map[string]int) error {
 	for _, alert := range alertsFromCapi {
 		setAlertScenario(alert, addCounters, deleteCounters)
 		log.Debugf("%s has %d decisions", *alert.Source.Scope, len(alert.Decisions))
@@ -788,13 +784,13 @@ func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, addCounters map[string
 	return nil
 }
 
-func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bool, error) {
+func (a *apic) ShouldForcePullBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink) (bool, error) {
 	// we should force pull if the blocklist decisions are about to expire or there's no decision in the db
 	alertQuery := a.dbClient.Ent.Alert.Query()
 	alertQuery.Where(alert.SourceScopeEQ(fmt.Sprintf("%s:%s", types.ListOrigin, *blocklist.Name)))
 	alertQuery.Order(ent.Desc(alert.FieldCreatedAt))
 
-	alertInstance, err := alertQuery.First(context.Background())
+	alertInstance, err := alertQuery.First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			log.Debugf("no alert found for %s, force refresh", *blocklist.Name)
@@ -807,7 +803,7 @@ func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bo
 	decisionQuery := a.dbClient.Ent.Decision.Query()
 	decisionQuery.Where(decision.HasOwnerWith(alert.IDEQ(alertInstance.ID)))
 
-	firstDecision, err := decisionQuery.First(context.Background())
+	firstDecision, err := decisionQuery.First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			log.Debugf("no decision found for %s, force refresh", *blocklist.Name)
@@ -837,7 +833,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	}
 
 	if !forcePull {
-		_forcePull, err := a.ShouldForcePullBlocklist(blocklist)
+		_forcePull, err := a.ShouldForcePullBlocklist(ctx, blocklist)
 		if err != nil {
 			return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
 		}
@@ -889,7 +885,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
-	err = a.SaveAlerts(alertsFromCapi, addCounters, nil)
+	err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, nil)
 	if err != nil {
 		return fmt.Errorf("while saving alert from blocklist %s: %w", *blocklist.Name, err)
 	}

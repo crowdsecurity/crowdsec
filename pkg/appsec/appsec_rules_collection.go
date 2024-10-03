@@ -29,11 +29,11 @@ type AppsecCollectionConfig struct {
 	SecLangRules      []string                 `yaml:"seclang_rules"`
 	Rules             []appsec_rule.CustomRule `yaml:"rules"`
 
-	Labels map[string]interface{} `yaml:"labels"` //Labels is K:V list aiming at providing context the overflow
+	Labels map[string]interface{} `yaml:"labels"` // Labels is K:V list aiming at providing context the overflow
 
-	Data    interface{} `yaml:"data"` //Ignore it
-	hash    string      `yaml:"-"`
-	version string      `yaml:"-"`
+	Data    interface{} `yaml:"data"` // Ignore it
+	hash    string
+	version string
 }
 
 type RulesDetails struct {
@@ -108,7 +108,7 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 				logger.Debugf("Adding rule %s", strRule)
 				appsecCol.Rules = append(appsecCol.Rules, strRule)
 
-				//We only take the first id, as it's the one of the "main" rule
+				// We only take the first id, as it's the one of the "main" rule
 				if _, ok := AppsecRulesDetails[int(rulesId[0])]; !ok {
 					AppsecRulesDetails[int(rulesId[0])] = RulesDetails{
 						LogLevel: log.InfoLevel,

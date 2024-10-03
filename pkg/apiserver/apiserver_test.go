@@ -288,9 +288,7 @@ func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
 	return body
 }
 
-func CreateTestBouncer(t *testing.T, config *csconfig.DatabaseCfg) string {
-	ctx := context.Background()
-
+func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) string {
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
