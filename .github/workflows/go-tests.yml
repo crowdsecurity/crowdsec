@@ -131,6 +131,9 @@ jobs:
     - name: Run "make generate" and check for changes
       run: |
         set -e
+        apt install protobuf-compiler
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
         make generate 2>/dev/null
         if [[ $(git status --porcelain) ]]; then
           echo "Error: Uncommitted changes found after running 'make generate'. Please commit all generated code."
