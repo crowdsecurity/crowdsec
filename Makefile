@@ -263,13 +263,6 @@ cscli:  ## Build cscli
 crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
-.PHONY: generate
-generate:  ## Generate code for the database and APIs
-	$(GO) generate ./pkg/database/ent
-	$(GO) generate ./pkg/models
-	$(GO) generate ./pkg/modelscapi
-	$(GO) generate ./pkg/protobufs
-
 .PHONY: testclean
 testclean: bats-clean  ## Remove test artifacts
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
