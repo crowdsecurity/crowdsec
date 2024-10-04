@@ -165,6 +165,10 @@ jobs:
         set -o pipefail
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
+    - name: Ignore-list of generated files for codecov
+      run: |
+          .github/codecov-ignore-generated.sh >> .github/codecov.yml
+
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
