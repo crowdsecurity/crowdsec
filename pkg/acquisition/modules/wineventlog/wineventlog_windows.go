@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/winops/winlog"
 	"github.com/google/winops/winlog/wevtapi"
 	"github.com/prometheus/client_golang/prometheus"
@@ -369,11 +368,9 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 		return fmt.Errorf("buildXpathQuery failed: %w", err)
 	}
 
-	fmt.Printf("query: %s\n", w.query)
+	w.logger.Debugf("query: %s\n", w.query)
 
 	w.evtConfig, err = w.generateConfig(w.query, false)
-
-	spew.Dump(w.evtConfig)
 
 	if err != nil {
 		return fmt.Errorf("generateConfig failed: %w", err)
@@ -415,7 +412,9 @@ func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 		} else if err != nil {
 			return fmt.Errorf("getXMLEvents failed: %v", err)
 		}
+		w.logger.Debugf("Got %d events", len(evts))
 		for _, evt := range evts {
+			w.logger.Tracef("Event: %s", evt)
 			if w.metricsLevel != configuration.METRICS_NONE {
 				linesRead.With(prometheus.Labels{"source": w.name}).Inc()
 			}
