@@ -270,7 +270,7 @@ journalctl_filter:
 		tomb.Wait()
 
 		output, _ := exec.Command("pgrep", "-x", "journalctl").CombinedOutput()
-		if string(output) != "" {
+		if len(output) != 0 {
 			t.Fatalf("Found a journalctl process after killing the tomb !")
 		}
 
