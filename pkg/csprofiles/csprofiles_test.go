@@ -132,7 +132,7 @@ func TestEvaluateProfile(t *testing.T) {
 			name: "simple pass single expr",
 			args: args{
 				profileCfg: &csconfig.ProfileCfg{
-					Filters: []string{fmt.Sprintf("Alert.GetScenario() == \"%s\"", scenario)},
+					Filters: []string{fmt.Sprintf("Alert.GetScenario() == %q", scenario)},
 					Debug:   &boolFalse,
 				},
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario},

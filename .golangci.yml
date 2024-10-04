@@ -193,7 +193,6 @@ linters-settings:
       - typeUnparen
       - commentFormatting
       - deferInLoop             #
-      - sprintfQuotedString     #
       - whyNoLint
       - equalFold               #
       - unnecessaryBlock        #

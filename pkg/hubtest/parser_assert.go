@@ -270,7 +270,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 						continue
 					}
 
-					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ukey)
+					base := fmt.Sprintf("results[%q][%q][%d].Evt.Unmarshaled[%q]", stage, parser, pidx, ukey)
 
 					for _, line := range p.buildUnmarshaledAssert(base, uval) {
 						ret += line
@@ -295,11 +295,11 @@ func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []s
 	switch val := eval.(type) {
 	case map[string]interface{}:
 		for k, v := range val {
-			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf("%s[%q]", ekey, k), v)...)
 		}
 	case map[interface{}]interface{}:
 		for k, v := range val {
-			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf("%s[%q]", ekey, k), v)...)
 		}
 	case []interface{}:
 	case string:
