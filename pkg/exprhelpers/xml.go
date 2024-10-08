@@ -15,14 +15,13 @@ var pathCache = make(map[string]etree.Path)
 var rwMutex = sync.RWMutex{}
 var xmlDocumentCache gcache.Cache
 
-func XMLCacheInit() error {
+func XMLCacheInit() {
 	gc := gcache.New(50)
 	// 	Short cache expiration because we each line we read is different, but we can call multiple times XML helpers on each of them
 	gc.Expiration(5 * time.Second)
 	gc = gc.LRU()
 
 	xmlDocumentCache = gc.Build()
-	return nil
 }
 
 // func XMLGetAttributeValue(xmlString string, path string, attributeName string) string {

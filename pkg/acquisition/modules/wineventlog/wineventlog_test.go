@@ -21,6 +21,9 @@ func TestBadConfiguration(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping test on non-windows OS")
 	}
+
+	exprhelpers.Init(nil)
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -66,6 +69,9 @@ func TestQueryBuilder(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping test on non-windows OS")
 	}
+
+	exprhelpers.Init(nil)
+
 	tests := []struct {
 		config        string
 		expectedQuery string
@@ -132,6 +138,8 @@ func TestLiveAcquisition(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping test on non-windows OS")
 	}
+
+	exprhelpers.Init(nil)
 
 	tests := []struct {
 		config        string
