@@ -110,10 +110,6 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 		}
 	}
 
-	if err != nil {
-		return fmt.Errorf("failed to init XML cache: %w", err)
-	}
-
 	return nil
 }
 
