@@ -404,28 +404,35 @@ func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 		}
 	}()
 
+OUTER_LOOP:
 	for {
-		evts, err := w.getXMLEvents(w.evtConfig, publisherCache, handle, 500)
-		if err == windows.ERROR_NO_MORE_ITEMS {
-			log.Info("No more items")
-			break
-		} else if err != nil {
-			return fmt.Errorf("getXMLEvents failed: %v", err)
-		}
-		w.logger.Debugf("Got %d events", len(evts))
-		for _, evt := range evts {
-			w.logger.Tracef("Event: %s", evt)
-			if w.metricsLevel != configuration.METRICS_NONE {
-				linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+		select {
+		case <-t.Dying():
+			w.logger.Infof("wineventlog is dying")
+			return nil
+		default:
+			evts, err := w.getXMLEvents(w.evtConfig, publisherCache, handle, 500)
+			if err == windows.ERROR_NO_MORE_ITEMS {
+				log.Info("No more items")
+				break OUTER_LOOP
+			} else if err != nil {
+				return fmt.Errorf("getXMLEvents failed: %v", err)
 			}
-			l := types.Line{}
-			l.Raw = evt
-			l.Module = w.GetName()
-			l.Labels = w.config.Labels
-			l.Time = time.Now()
-			l.Src = w.name
-			l.Process = true
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			w.logger.Debugf("Got %d events", len(evts))
+			for _, evt := range evts {
+				w.logger.Tracef("Event: %s", evt)
+				if w.metricsLevel != configuration.METRICS_NONE {
+					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+				}
+				l := types.Line{}
+				l.Raw = evt
+				l.Module = w.GetName()
+				l.Labels = w.config.Labels
+				l.Time = time.Now()
+				l.Src = w.name
+				l.Process = true
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			}
 		}
 	}
 	return nil

@@ -233,3 +233,62 @@ event_ids:
 		to.Wait()
 	}
 }
+
+func TestOneShotAcquisition(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Skipping test on non-windows OS")
+	}
+
+	tests := []struct {
+		name          string
+		dsn           string
+		expectedCount int
+		expectedErr   string
+	}{
+		{
+			name:          "non-existing file",
+			dsn:           `wineventlog://foo.evtx`,
+			expectedCount: 0,
+			expectedErr:   "The system cannot find the file specified.",
+		},
+		{
+			name:          "existing file",
+			dsn:           `wineventlog://test_files/Setup.evtx`,
+			expectedCount: 24,
+			expectedErr:   "",
+		},
+	}
+
+	exprhelpers.Init(nil)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lineCount := 0
+			to := &tomb.Tomb{}
+			c := make(chan types.Event)
+			f := WinEventLogSource{}
+			f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+
+			go func() {
+				for {
+					select {
+					case <-c:
+						lineCount++
+					case <-to.Dying():
+						return
+					}
+				}
+			}()
+
+			err := f.OneShotAcquisition(c, to)
+			if test.expectedErr != "" {
+				assert.Contains(t, err.Error(), test.expectedErr)
+			} else {
+				require.NoError(t, err)
+
+				time.Sleep(2 * time.Second)
+				assert.Equal(t, test.expectedCount, lineCount)
+			}
+		})
+	}
+}
