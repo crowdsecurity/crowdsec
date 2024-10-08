@@ -240,10 +240,11 @@ func TestOneShotAcquisition(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		dsn           string
-		expectedCount int
-		expectedErr   string
+		name                 string
+		dsn                  string
+		expectedCount        int
+		expectedErr          string
+		expectedConfigureErr string
 	}{
 		{
 			name:          "non-existing file",
@@ -252,10 +253,26 @@ func TestOneShotAcquisition(t *testing.T) {
 			expectedErr:   "The system cannot find the file specified.",
 		},
 		{
+			name:                 "empty DSN",
+			dsn:                  `wineventlog://`,
+			expectedCount:        0,
+			expectedConfigureErr: "empty wineventlog:// DSN",
+		},
+		{
 			name:          "existing file",
 			dsn:           `wineventlog://test_files/Setup.evtx`,
 			expectedCount: 24,
 			expectedErr:   "",
+		},
+		{
+			name:          "filter on event_id",
+			dsn:           `wineventlog://test_files/Setup.evtx?event_id=2`,
+			expectedCount: 1,
+		},
+		{
+			name:          "filter on event_id",
+			dsn:           `wineventlog://test_files/Setup.evtx?event_id=2&event_id=3`,
+			expectedCount: 24,
 		},
 	}
 
@@ -267,7 +284,14 @@ func TestOneShotAcquisition(t *testing.T) {
 			to := &tomb.Tomb{}
 			c := make(chan types.Event)
 			f := WinEventLogSource{}
-			f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+
+			if test.expectedConfigureErr != "" {
+				assert.Contains(t, err.Error(), test.expectedConfigureErr)
+				return
+			}
+
+			require.NoError(t, err)
 
 			go func() {
 				for {
@@ -280,7 +304,7 @@ func TestOneShotAcquisition(t *testing.T) {
 				}
 			}()
 
-			err := f.OneShotAcquisition(c, to)
+			err = f.OneShotAcquisition(c, to)
 			if test.expectedErr != "" {
 				assert.Contains(t, err.Error(), test.expectedErr)
 			} else {
