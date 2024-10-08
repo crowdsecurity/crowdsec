@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -108,6 +109,13 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 		for holderIndex := range holders {
 			holders[holderIndex].Profiling = true
 		}
+	}
+
+	//Always init the XML parser cache, is that a good idea ?
+	err = exprhelpers.XMLCacheInit()
+
+	if err != nil {
+		return fmt.Errorf("failed to init XML cache: %w", err)
 	}
 
 	return nil
