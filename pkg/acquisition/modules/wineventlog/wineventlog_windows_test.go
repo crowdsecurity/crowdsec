@@ -3,7 +3,6 @@
 package wineventlogacquisition
 
 import (
-	"runtime"
 	"testing"
 	"time"
 
@@ -18,10 +17,6 @@ import (
 )
 
 func TestBadConfiguration(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
-
 	exprhelpers.Init(nil)
 
 	tests := []struct {
@@ -66,10 +61,6 @@ xpath_query: test`,
 }
 
 func TestQueryBuilder(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
-
 	exprhelpers.Init(nil)
 
 	tests := []struct {
@@ -135,10 +126,6 @@ event_level: bla`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
-
 	exprhelpers.Init(nil)
 
 	tests := []struct {
@@ -235,10 +222,6 @@ event_ids:
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
-
 	tests := []struct {
 		name                 string
 		dsn                  string
