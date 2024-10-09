@@ -256,7 +256,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
-func (a *apic) Push() error {
+func (a *apic) Push(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/pushToAPIC")
 
 	var cache models.AddSignalsRequest
@@ -276,7 +276,7 @@ func (a *apic) Push() error {
 				return nil
 			}
 
-			go a.Send(&cache)
+			go a.Send(ctx, &cache)
 
 			return nil
 		case <-ticker.C:
@@ -289,7 +289,7 @@ func (a *apic) Push() error {
 				a.mu.Unlock()
 				log.Infof("Signal push: %d signals to push", len(cacheCopy))
 
-				go a.Send(&cacheCopy)
+				go a.Send(ctx, &cacheCopy)
 			}
 		case alerts := <-a.AlertsAddChan:
 			var signals []*models.AddSignalsRequestItem
@@ -351,7 +351,7 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
-func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
+func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
 	This chan is filled by Controller.CreateAlert
@@ -375,7 +375,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 	for {
 		if pageEnd >= len(cache) {
 			send = cache[pageStart:]
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
 			defer cancel()
 
@@ -389,7 +389,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 		}
 
 		send = cache[pageStart:pageEnd]
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
 		defer cancel()
 
