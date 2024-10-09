@@ -3,7 +3,6 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,7 +40,7 @@ var (
 		MachineID: &testMachineID,
 		Password:  &testPassword,
 	}
-	UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
+	UserAgent = "crowdsec-test/" + version.Version
 	emptyBody = strings.NewReader("")
 )
 
@@ -373,7 +372,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
-	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
+	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
 	expectedLines := []string{"/test42"}
 	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
@@ -426,7 +425,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
-	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
+	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
 	cfg.LogLevel = ptr.Of(log.ErrorLevel)
 
 	// Configure logging

@@ -59,11 +59,14 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 
 func serveAPIServer(apiServer *apiserver.APIServer) {
 	apiReady := make(chan bool, 1)
+
 	apiTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveAPIServer")
+
 		go func() {
 			defer trace.CatchPanic("crowdsec/runAPIServer")
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
+
 			if err := apiServer.Run(apiReady); err != nil {
 				log.Fatal(err)
 			}
@@ -77,6 +80,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		<-apiTomb.Dying() // lock until go routine is dying
 		pluginTomb.Kill(nil)
 		log.Infof("serve: shutting down api server")
+
 		return apiServer.Shutdown()
 	})
 	<-apiReady
@@ -88,5 +92,6 @@ func hasPlugins(profiles []*csconfig.ProfileCfg) bool {
 			return true
 		}
 	}
+
 	return false
 }

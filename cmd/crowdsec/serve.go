@@ -90,7 +90,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, err
 		}
 
-		if err := hub.Load(); err != nil {
+		if err = hub.Load(); err != nil {
 			return nil, err
 		}
 
@@ -392,7 +392,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			return err
 		}
 
-		if err := hub.Load(); err != nil {
+		if err = hub.Load(); err != nil {
 			return err
 		}
 
