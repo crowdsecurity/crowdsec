@@ -11,11 +11,10 @@ import (
 )
 
 func TestAPIKey(t *testing.T) {
-	router, config := NewAPITest(t)
-
 	ctx := context.Background()
+	router, config := NewAPITest(t, ctx)
 
-	APIKey := CreateTestBouncer(t, config.API.Server.DbConfig)
+	APIKey := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 
 	// Login with empty token
 	w := httptest.NewRecorder()

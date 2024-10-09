@@ -20,10 +20,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/version"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
-	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 var (

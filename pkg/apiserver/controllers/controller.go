@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"net"
 	"net/http"
 	"strings"
@@ -18,7 +17,6 @@ import (
 )
 
 type Controller struct {
-	Ectx                          context.Context
 	DBClient                      *database.Client
 	Router                        *gin.Engine
 	Profiles                      []*csconfig.ProfileCfg
@@ -83,7 +81,6 @@ func (c *Controller) NewV1() error {
 
 	v1Config := v1.ControllerV1Config{
 		DbClient:           c.DBClient,
-		Ctx:                c.Ectx,
 		ProfilesCfg:        c.Profiles,
 		DecisionDeleteChan: c.DecisionDeleteChan,
 		AlertsAddChan:      c.AlertsAddChan,

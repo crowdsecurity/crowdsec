@@ -34,10 +34,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func getDBClient(t *testing.T) *database.Client {
+func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 	t.Helper()
-
-	ctx := context.Background()
 
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	require.NoError(t, err)
@@ -51,9 +49,9 @@ func getDBClient(t *testing.T) *database.Client {
 	return dbClient
 }
 
-func getAPIC(t *testing.T) *apic {
+func getAPIC(t *testing.T, ctx context.Context) *apic {
 	t.Helper()
-	dbClient := getDBClient(t)
+	dbClient := getDBClient(t, ctx)
 
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
@@ -87,8 +85,8 @@ func absDiff(a int, b int) int {
 	return c
 }
 
-func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int) {
-	d := dbClient.Ent.Decision.Query().AllX(context.Background())
+func assertTotalDecisionCount(t *testing.T, ctx context.Context, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Decision.Query().AllX(ctx)
 	assert.Len(t, d, count)
 }
 
@@ -114,9 +112,8 @@ func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
 }
 
 func TestAPICCAPIPullIsOld(t *testing.T) {
-	api := getAPIC(t)
-
 	ctx := context.Background()
+	api := getAPIC(t, ctx)
 
 	isOld, err := api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
@@ -172,7 +169,7 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			api := getAPIC(t)
+			api := getAPIC(t, ctx)
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
@@ -186,7 +183,7 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 			require.NoError(t, err)
 
 			for machineID := range tc.machineIDsWithScenarios {
-				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(context.Background())
+				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(ctx)
 			}
 
 			assert.ElementsMatch(t, tc.expectedScenarios, scenarios)
@@ -195,6 +192,8 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 }
 
 func TestNewAPIC(t *testing.T) {
+	ctx := context.Background()
+
 	var testConfig *csconfig.OnlineApiClientCfg
 
 	setConfig := func() {
@@ -227,7 +226,7 @@ func TestNewAPIC(t *testing.T) {
 			name:   "simple",
 			action: func() {},
 			args: args{
-				dbClient:      getDBClient(t),
+				dbClient:      getDBClient(t, ctx),
 				consoleConfig: LoadTestConfig(t).API.Server.ConsoleConfig,
 			},
 		},
@@ -235,14 +234,12 @@ func TestNewAPIC(t *testing.T) {
 			name:   "error in parsing URL",
 			action: func() { testConfig.Credentials.URL = "foobar http://" },
 			args: args{
-				dbClient:      getDBClient(t),
+				dbClient:      getDBClient(t, ctx),
 				consoleConfig: LoadTestConfig(t).API.Server.ConsoleConfig,
 			},
 			expectedErr: "first path segment in URL cannot contain colon",
 		},
 	}
-
-	ctx := context.Background()
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -267,7 +264,8 @@ func TestNewAPIC(t *testing.T) {
 }
 
 func TestAPICHandleDeletedDecisions(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 	_, deleteCounters := makeAddAndDeleteCounters()
 
 	decision1 := api.dbClient.Ent.Decision.Create().
@@ -288,7 +286,7 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 		SetOrigin(types.CAPIOrigin).
 		SaveX(context.Background())
 
-	assertTotalDecisionCount(t, api.dbClient, 2)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 2)
 
 	nbDeleted, err := api.HandleDeletedDecisions([]*models.Decision{{
 		Value:    ptr.Of("1.2.3.4"),
@@ -367,7 +365,7 @@ func TestAPICGetMetrics(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			apiClient := getAPIC(t)
+			apiClient := getAPIC(t, ctx)
 			cleanUp(apiClient)
 
 			for i, machineID := range tc.machineIDs {
@@ -378,7 +376,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					SetScenarios("crowdsecurity/test").
 					SetLastPush(time.Time{}).
 					SetUpdatedAt(time.Time{}).
-					ExecX(context.Background())
+					ExecX(ctx)
 			}
 
 			for i, bouncerName := range tc.bouncers {
@@ -388,7 +386,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					SetAPIKey("foobar").
 					SetRevoked(false).
 					SetLastPull(time.Time{}).
-					ExecX(context.Background())
+					ExecX(ctx)
 			}
 
 			foundMetrics, err := apiClient.GetMetrics(ctx)
@@ -563,7 +561,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 
 func TestAPICWhitelists(t *testing.T) {
 	ctx := context.Background()
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
 	api.whitelists.Ips = append(api.whitelists.Ips, net.ParseIP("9.2.3.4"), net.ParseIP("7.2.3.4"))
@@ -586,7 +584,7 @@ func TestAPICWhitelists(t *testing.T) {
 		SetScenario("crowdsecurity/ssh-bf").
 		SetUntil(time.Now().Add(time.Hour)).
 		ExecX(context.Background())
-	assertTotalDecisionCount(t, api.dbClient, 1)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
 
@@ -701,7 +699,7 @@ func TestAPICWhitelists(t *testing.T) {
 	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
-	assertTotalDecisionCount(t, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
+	assertTotalDecisionCount(t, ctx, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
@@ -750,7 +748,7 @@ func TestAPICWhitelists(t *testing.T) {
 
 func TestAPICPullTop(t *testing.T) {
 	ctx := context.Background()
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(types.CAPIOrigin).
 		SetType("ban").
@@ -758,8 +756,8 @@ func TestAPICPullTop(t *testing.T) {
 		SetScope("Ip").
 		SetScenario("crowdsecurity/ssh-bf").
 		SetUntil(time.Now().Add(time.Hour)).
-		ExecX(context.Background())
-	assertTotalDecisionCount(t, api.dbClient, 1)
+		ExecX(ctx)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
 
@@ -843,7 +841,7 @@ func TestAPICPullTop(t *testing.T) {
 	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
-	assertTotalDecisionCount(t, api.dbClient, 5)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 5)
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
@@ -876,7 +874,7 @@ func TestAPICPullTop(t *testing.T) {
 func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	ctx := context.Background()
 	// no decision in db, no last modified parameter.
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -951,7 +949,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 
 func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	ctx := context.Background()
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -1027,7 +1025,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 
 func TestAPICPullBlocklistCall(t *testing.T) {
 	ctx := context.Background()
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -1060,6 +1058,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 }
 
 func TestAPICPush(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name          string
 		alerts        []*models.Alert
@@ -1113,7 +1112,7 @@ func TestAPICPush(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			api := getAPIC(t)
+			api := getAPIC(t, ctx)
 			api.pushInterval = time.Millisecond
 			api.pushIntervalFirst = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -1143,7 +1142,7 @@ func TestAPICPush(t *testing.T) {
 				api.Shutdown()
 			}()
 
-			err = api.Push()
+			err = api.Push(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedCalls, httpmock.GetTotalCallCount())
 		})
@@ -1152,7 +1151,7 @@ func TestAPICPush(t *testing.T) {
 
 func TestAPICPull(t *testing.T) {
 	ctx := context.Background()
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 	tests := []struct {
 		name                  string
 		setUp                 func()
@@ -1180,7 +1179,7 @@ func TestAPICPull(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			api = getAPIC(t)
+			api = getAPIC(t, ctx)
 			api.pullInterval = time.Millisecond
 			api.pullIntervalFirst = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -1231,7 +1230,7 @@ func TestAPICPull(t *testing.T) {
 			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), tc.logContains)
-			assertTotalDecisionCount(t, api.dbClient, tc.expectedDecisionCount)
+			assertTotalDecisionCount(t, ctx, api.dbClient, tc.expectedDecisionCount)
 		})
 	}
 }

@@ -3,7 +3,6 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,7 +40,7 @@ var (
 		MachineID: &testMachineID,
 		Password:  &testPassword,
 	}
-	UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
+	UserAgent = "crowdsec-test/" + version.Version
 	emptyBody = strings.NewReader("")
 )
 
@@ -135,12 +134,12 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	return config
 }
 
-func NewAPIServer(t *testing.T) (*APIServer, csconfig.Config) {
+func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Config) {
 	config := LoadTestConfig(t)
 
 	os.Remove("./ent")
 
-	apiServer, err := NewServer(config.API.Server)
+	apiServer, err := NewServer(ctx, config.API.Server)
 	require.NoError(t, err)
 
 	log.Printf("Creating new API server")
@@ -149,8 +148,8 @@ func NewAPIServer(t *testing.T) (*APIServer, csconfig.Config) {
 	return apiServer, config
 }
 
-func NewAPITest(t *testing.T) (*gin.Engine, csconfig.Config) {
-	apiServer, config := NewAPIServer(t)
+func NewAPITest(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
+	apiServer, config := NewAPIServer(t, ctx)
 
 	err := apiServer.InitController()
 	require.NoError(t, err)
@@ -161,12 +160,12 @@ func NewAPITest(t *testing.T) (*gin.Engine, csconfig.Config) {
 	return router, config
 }
 
-func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
+func NewAPITestForwardedFor(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
 	config := LoadTestConfigForwardedFor(t)
 
 	os.Remove("./ent")
 
-	apiServer, err := NewServer(config.API.Server)
+	apiServer, err := NewServer(ctx, config.API.Server)
 	require.NoError(t, err)
 
 	err = apiServer.InitController()
@@ -288,9 +287,7 @@ func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
 	return body
 }
 
-func CreateTestBouncer(t *testing.T, config *csconfig.DatabaseCfg) string {
-	ctx := context.Background()
-
+func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) string {
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
@@ -304,28 +301,29 @@ func CreateTestBouncer(t *testing.T, config *csconfig.DatabaseCfg) string {
 }
 
 func TestWithWrongDBConfig(t *testing.T) {
+	ctx := context.Background()
 	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
-	apiServer, err := NewServer(config.API.Server)
+	apiServer, err := NewServer(ctx, config.API.Server)
 
 	cstest.RequireErrorContains(t, err, "unable to init database client: unknown database type 'test'")
 	assert.Nil(t, apiServer)
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {
+	ctx := context.Background()
 	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
-	apiServer, err := NewServer(config.API.Server)
+	apiServer, err := NewServer(ctx, config.API.Server)
 
 	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative")
 	assert.Nil(t, apiServer)
 }
 
 func TestUnknownPath(t *testing.T) {
-	router, _ := NewAPITest(t)
-
 	ctx := context.Background()
+	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
@@ -351,6 +349,8 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 */
 
 func TestLoggingDebugToFileConfig(t *testing.T) {
+	ctx := context.Background()
+
 	/*declare settings*/
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
@@ -372,7 +372,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
-	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
+	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
 	expectedLines := []string{"/test42"}
 	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
@@ -380,11 +380,9 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
 	require.NoError(t, err)
 
-	api, err := NewServer(&cfg)
+	api, err := NewServer(ctx, &cfg)
 	require.NoError(t, err)
 	require.NotNil(t, api)
-
-	ctx := context.Background()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
@@ -404,6 +402,8 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 }
 
 func TestLoggingErrorToFileConfig(t *testing.T) {
+	ctx := context.Background()
+
 	/*declare settings*/
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
@@ -425,18 +425,16 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
-	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
+	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
 	cfg.LogLevel = ptr.Of(log.ErrorLevel)
 
 	// Configure logging
 	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
 	require.NoError(t, err)
 
-	api, err := NewServer(&cfg)
+	api, err := NewServer(ctx, &cfg)
 	require.NoError(t, err)
 	require.NotNil(t, api)
-
-	ctx := context.Background()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)

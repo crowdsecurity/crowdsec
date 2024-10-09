@@ -26,11 +26,11 @@ type LAPI struct {
 	DBConfig   *csconfig.DatabaseCfg
 }
 
-func SetupLAPITest(t *testing.T) LAPI {
+func SetupLAPITest(t *testing.T, ctx context.Context) LAPI {
 	t.Helper()
-	router, loginResp, config := InitMachineTest(t)
+	router, loginResp, config := InitMachineTest(t, ctx)
 
-	APIKey := CreateTestBouncer(t, config.API.Server.DbConfig)
+	APIKey := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 
 	return LAPI{
 		router:     router,
@@ -40,13 +40,12 @@ func SetupLAPITest(t *testing.T) LAPI {
 	}
 }
 
-func (l *LAPI) InsertAlertFromFile(t *testing.T, path string) *httptest.ResponseRecorder {
+func (l *LAPI) InsertAlertFromFile(t *testing.T, ctx context.Context, path string) *httptest.ResponseRecorder {
 	alertReader := GetAlertReaderFromFile(t, path)
-	return l.RecordResponse(t, http.MethodPost, "/v1/alerts", alertReader, "password")
+	return l.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertReader, "password")
 }
 
-func (l *LAPI) RecordResponse(t *testing.T, verb string, url string, body *strings.Reader, authType string) *httptest.ResponseRecorder {
-	ctx := context.Background()
+func (l *LAPI) RecordResponse(t *testing.T, ctx context.Context, verb string, url string, body *strings.Reader, authType string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
 	req, err := http.NewRequestWithContext(ctx, verb, url, body)
 	require.NoError(t, err)
@@ -65,18 +64,17 @@ func (l *LAPI) RecordResponse(t *testing.T, verb string, url string, body *strin
 	return w
 }
 
-func InitMachineTest(t *testing.T) (*gin.Engine, models.WatcherAuthResponse, csconfig.Config) {
-	router, config := NewAPITest(t)
-	loginResp := LoginToTestAPI(t, router, config)
+func InitMachineTest(t *testing.T, ctx context.Context) (*gin.Engine, models.WatcherAuthResponse, csconfig.Config) {
+	router, config := NewAPITest(t, ctx)
+	loginResp := LoginToTestAPI(t, ctx, router, config)
 
 	return router, loginResp, config
 }
 
-func LoginToTestAPI(t *testing.T, router *gin.Engine, config csconfig.Config) models.WatcherAuthResponse {
+func LoginToTestAPI(t *testing.T, ctx context.Context, router *gin.Engine, config csconfig.Config) models.WatcherAuthResponse {
 	body := CreateTestMachine(t, router, "")
 	ValidateMachine(t, "test", config.API.Server.DbConfig)
 
-	ctx := context.Background()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
@@ -95,52 +93,55 @@ func AddAuthHeaders(request *http.Request, authResponse models.WatcherAuthRespon
 }
 
 func TestSimulatedAlert(t *testing.T) {
-	lapi := SetupLAPITest(t)
-	lapi.InsertAlertFromFile(t, "./tests/alert_minibulk+simul.json")
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_minibulk+simul.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_minibulk+simul.json")
 	// exclude decision in simulation mode
 
-	w := lapi.RecordResponse(t, "GET", "/v1/alerts?simulated=false", alertContent, "password")
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?simulated=false", alertContent, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.178 performed crowdsecurity/ssh-bf (6 events over `)
 	assert.NotContains(t, w.Body.String(), `"message":"Ip 91.121.79.179 performed crowdsecurity/ssh-bf (6 events over `)
 	// include decision in simulation mode
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?simulated=true", alertContent, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?simulated=true", alertContent, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.178 performed crowdsecurity/ssh-bf (6 events over `)
 	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.179 performed crowdsecurity/ssh-bf (6 events over `)
 }
 
 func TestCreateAlert(t *testing.T) {
-	lapi := SetupLAPITest(t)
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
 	// Create Alert with invalid format
 
-	w := lapi.RecordResponse(t, http.MethodPost, "/v1/alerts", strings.NewReader("test"), "password")
+	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", strings.NewReader("test"), "password")
 	assert.Equal(t, 400, w.Code)
 	assert.Equal(t, `{"message":"invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
 
 	// Create Alert with invalid input
 	alertContent := GetAlertReaderFromFile(t, "./tests/invalidAlert_sample.json")
 
-	w = lapi.RecordResponse(t, http.MethodPost, "/v1/alerts", alertContent, "password")
+	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t,
 		`{"message":"validation failure list:\n0.scenario in body is required\n0.scenario_hash in body is required\n0.scenario_version in body is required\n0.simulated in body is required\n0.source in body is required"}`,
 		w.Body.String())
 
 	// Create Valid Alert
-	w = lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	w = lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, `["1"]`, w.Body.String())
 }
 
 func TestCreateAlertChannels(t *testing.T) {
-	apiServer, config := NewAPIServer(t)
+	ctx := context.Background()
+	apiServer, config := NewAPIServer(t, ctx)
 	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
 	apiServer.InitController()
 
-	loginResp := LoginToTestAPI(t, apiServer.router, config)
+	loginResp := LoginToTestAPI(t, ctx, apiServer.router, config)
 	lapi := LAPI{router: apiServer.router, loginResp: loginResp}
 
 	var (
@@ -156,26 +157,27 @@ func TestCreateAlertChannels(t *testing.T) {
 		wg.Done()
 	}()
 
-	lapi.InsertAlertFromFile(t, "./tests/alert_ssh-bf.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_ssh-bf.json")
 	wg.Wait()
 	assert.Len(t, pd.Alert.Decisions, 1)
 	apiServer.Close()
 }
 
 func TestAlertListFilters(t *testing.T) {
-	lapi := SetupLAPITest(t)
-	lapi.InsertAlertFromFile(t, "./tests/alert_ssh-bf.json")
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_ssh-bf.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_ssh-bf.json")
 
 	// bad filter
 
-	w := lapi.RecordResponse(t, "GET", "/v1/alerts?test=test", alertContent, "password")
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", alertContent, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// get without filters
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	// check alert and decision
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -183,184 +185,185 @@ func TestAlertListFilters(t *testing.T) {
 
 	// test decision_type filter (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?decision_type=ban", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?decision_type=ban", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test decision_type filter (bad value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?decision_type=ratata", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?decision_type=ratata", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test scope (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?scope=Ip", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?scope=Ip", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test scope (bad value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?scope=rarara", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?scope=rarara", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test scenario (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?scenario=crowdsecurity/ssh-bf", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?scenario=crowdsecurity/ssh-bf", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test scenario (bad value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?scenario=crowdsecurity/nope", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?scenario=crowdsecurity/nope", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test ip (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?ip=91.121.79.195", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=91.121.79.195", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test ip (bad value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?ip=99.122.77.195", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=99.122.77.195", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test ip (invalid value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?ip=gruueq", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=gruueq", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"unable to convert 'gruueq' to int: invalid address: invalid ip address / range"}`, w.Body.String())
 
 	// test range (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?range=91.121.79.0/24&contains=false", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?range=91.121.79.0/24&contains=false", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test range
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?range=99.122.77.0/24&contains=false", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?range=99.122.77.0/24&contains=false", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test range (invalid value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?range=ratata", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?range=ratata", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"unable to convert 'ratata' to int: invalid address: invalid ip address / range"}`, w.Body.String())
 
 	// test since (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?since=1h", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?since=1h", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test since (ok but yields no results)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?since=1ns", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?since=1ns", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test since (invalid value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?since=1zuzu", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?since=1zuzu", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Contains(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit`)
 
 	// test until (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?until=1ns", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?until=1ns", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test until (ok but no return)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?until=1m", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?until=1m", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test until (invalid value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?until=1zuzu", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?until=1zuzu", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Contains(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit`)
 
 	// test simulated (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?simulated=true", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?simulated=true", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test simulated (ok)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?simulated=false", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?simulated=false", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test has active decision
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?has_active_decision=true", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?has_active_decision=true", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
 	// test has active decision
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?has_active_decision=false", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?has_active_decision=false", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// test has active decision (invalid value)
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts?has_active_decision=ratatqata", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?has_active_decision=ratatqata", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`, w.Body.String())
 }
 
 func TestAlertBulkInsert(t *testing.T) {
-	lapi := SetupLAPITest(t)
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
 	// insert a bulk of 20 alerts to trigger bulk insert
-	lapi.InsertAlertFromFile(t, "./tests/alert_bulk.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_bulk.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_bulk.json")
 
-	w := lapi.RecordResponse(t, "GET", "/v1/alerts", alertContent, "password")
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", alertContent, "password")
 	assert.Equal(t, 200, w.Code)
 }
 
 func TestListAlert(t *testing.T) {
-	lapi := SetupLAPITest(t)
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	// List Alert with invalid filter
 
-	w := lapi.RecordResponse(t, "GET", "/v1/alerts?test=test", emptyBody, "password")
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// List Alert
 
-	w = lapi.RecordResponse(t, "GET", "/v1/alerts", emptyBody, "password")
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "crowdsecurity/test")
 }
 
 func TestCreateAlertErrors(t *testing.T) {
-	lapi := SetupLAPITest(t)
-	alertContent := GetAlertReaderFromFile(t, "./tests/alert_sample.json")
-
 	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+	alertContent := GetAlertReaderFromFile(t, "./tests/alert_sample.json")
 
 	// test invalid bearer
 	w := httptest.NewRecorder()
@@ -380,10 +383,9 @@ func TestCreateAlertErrors(t *testing.T) {
 }
 
 func TestDeleteAlert(t *testing.T) {
-	lapi := SetupLAPITest(t)
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
-
 	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 
 	// Fail Delete Alert
 	w := httptest.NewRecorder()
@@ -405,10 +407,9 @@ func TestDeleteAlert(t *testing.T) {
 }
 
 func TestDeleteAlertByID(t *testing.T) {
-	lapi := SetupLAPITest(t)
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
-
 	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 
 	// Fail Delete Alert
 	w := httptest.NewRecorder()
@@ -430,12 +431,13 @@ func TestDeleteAlertByID(t *testing.T) {
 }
 
 func TestDeleteAlertTrustedIPS(t *testing.T) {
+	ctx := context.Background()
 	cfg := LoadTestConfig(t)
 	// IPv6 mocking doesn't seem to work.
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}
 	cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24"}
 	cfg.API.Server.ListenURI = "::8080"
-	server, err := NewServer(cfg.API.Server)
+	server, err := NewServer(ctx, cfg.API.Server)
 	require.NoError(t, err)
 
 	err = server.InitController()
@@ -444,13 +446,11 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 	router, err := server.Router()
 	require.NoError(t, err)
 
-	loginResp := LoginToTestAPI(t, router, cfg)
+	loginResp := LoginToTestAPI(t, ctx, router, cfg)
 	lapi := LAPI{
 		router:    router,
 		loginResp: loginResp,
 	}
-
-	ctx := context.Background()
 
 	assertAlertDeleteFailedFromIP := func(ip string) {
 		w := httptest.NewRecorder()
@@ -475,17 +475,17 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 		assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 	}
 
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assertAlertDeleteFailedFromIP("4.3.2.1")
 	assertAlertDeletedFromIP("1.2.3.4")
 
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assertAlertDeletedFromIP("1.2.4.0")
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assertAlertDeletedFromIP("1.2.4.1")
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assertAlertDeletedFromIP("1.2.4.255")
 
-	lapi.InsertAlertFromFile(t, "./tests/alert_sample.json")
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assertAlertDeletedFromIP("127.0.0.1")
 }

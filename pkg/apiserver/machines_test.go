@@ -15,9 +15,8 @@ import (
 )
 
 func TestCreateMachine(t *testing.T) {
-	router, _ := NewAPITest(t)
-
 	ctx := context.Background()
+	router, _ := NewAPITest(t, ctx)
 
 	// Create machine with invalid format
 	w := httptest.NewRecorder()
@@ -53,10 +52,9 @@ func TestCreateMachine(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
-	router, config := NewAPITestForwardedFor(t)
-	router.TrustedPlatform = "X-Real-IP"
-
 	ctx := context.Background()
+	router, config := NewAPITestForwardedFor(t, ctx)
+	router.TrustedPlatform = "X-Real-IP"
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
@@ -79,9 +77,8 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
-	router, config := NewAPITest(t)
-
 	ctx := context.Background()
+	router, config := NewAPITest(t, ctx)
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
@@ -106,9 +103,8 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 }
 
 func TestCreateMachineWithoutForwardedFor(t *testing.T) {
-	router, config := NewAPITestForwardedFor(t)
-
 	ctx := context.Background()
+	router, config := NewAPITestForwardedFor(t, ctx)
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
@@ -132,9 +128,8 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {
-	router, _ := NewAPITest(t)
-
 	ctx := context.Background()
+	router, _ := NewAPITest(t, ctx)
 
 	body := CreateTestMachine(t, router, "")
 
@@ -153,9 +148,8 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 }
 
 func TestAutoRegistration(t *testing.T) {
-	router, _ := NewAPITest(t)
-
 	ctx := context.Background()
+	router, _ := NewAPITest(t, ctx)
 
 	// Invalid registration token / valid source IP
 	regReq := MachineTest

@@ -79,6 +79,10 @@ jobs:
       run: for file in $(find ./test/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
+    - name: Ignore-list of generated files for codecov
+      run: |
+          .github/codecov-ignore-generated.sh >> .github/codecov.yml
+
     - name: Upload bats coverage to codecov
       uses: codecov/codecov-action@v4
       with:

@@ -76,7 +76,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			api := getAPIC(t)
+			api := getAPIC(t, ctx)
 			api.pushInterval = time.Millisecond
 			api.pushIntervalFirst = time.Millisecond
 			api.apiClient = apiClient
