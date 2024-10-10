@@ -69,6 +69,10 @@ type apic struct {
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
+
+	pullBlocklists bool
+	pullCommunity  bool
+	shareSignals   bool
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -198,6 +202,9 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalDelta),
 		isPulling:                 make(chan bool, 1),
 		whitelists:                apicWhitelist,
+		pullBlocklists:            *config.PullConfig.Blocklists,
+		pullCommunity:             *config.PullConfig.Community,
+		shareSignals:              *config.Sharing,
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -295,7 +302,7 @@ func (a *apic) Push(ctx context.Context) error {
 			var signals []*models.AddSignalsRequestItem
 
 			for _, alert := range alerts {
-				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
+				if ok := shouldShareAlert(alert, a.consoleConfig, a.shareSignals); ok {
 					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert), *a.consoleConfig.ShareContext))
 				}
 			}
@@ -324,7 +331,13 @@ func getScenarioTrustOfAlert(alert *models.Alert) string {
 	return scenarioTrust
 }
 
-func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig) bool {
+func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig, shareSignals bool) bool {
+
+	if !shareSignals {
+		log.Debugf("sharing signals is disabled")
+		return false
+	}
+
 	if *alert.Simulated {
 		log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
 		return false
@@ -656,7 +669,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Infof("Starting community-blocklist update")
 
-	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup})
+	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup, CommunityPull: a.pullCommunity, AdditionalPull: a.pullBlocklists})
 	if err != nil {
 		return fmt.Errorf("get stream: %w", err)
 	}
@@ -681,23 +694,22 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
-	if len(data.New) == 0 {
+	if len(data.New) > 0 {
+		// create one alert for community blocklist using the first decision
+		decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
+		// apply APIC specific whitelists
+		decisions = a.ApplyApicWhitelists(decisions)
+
+		alert := createAlertForDecision(decisions[0])
+		alertsFromCapi := []*models.Alert{alert}
+		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
+
+		err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, deleteCounters)
+		if err != nil {
+			return fmt.Errorf("while saving alerts: %w", err)
+		}
+	} else {
 		log.Infof("capi/community-blocklist : received 0 new entries (expected if you just installed crowdsec)")
-		return nil
-	}
-
-	// create one alert for community blocklist using the first decision
-	decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
-	// apply APIC specific whitelists
-	decisions = a.ApplyApicWhitelists(decisions)
-
-	alert := createAlertForDecision(decisions[0])
-	alertsFromCapi := []*models.Alert{alert}
-	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
-
-	err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, deleteCounters)
-	if err != nil {
-		return fmt.Errorf("while saving alerts: %w", err)
 	}
 
 	// update blocklists

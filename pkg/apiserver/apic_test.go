@@ -69,7 +69,10 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 			ShareCustomScenarios:  ptr.Of(false),
 			ShareContext:          ptr.Of(false),
 		},
-		isPulling: make(chan bool, 1),
+		isPulling:      make(chan bool, 1),
+		shareSignals:   true,
+		pullBlocklists: true,
+		pullCommunity:  true,
 	}
 }
 
@@ -199,6 +202,11 @@ func TestNewAPIC(t *testing.T) {
 				URL:      "http://foobar/",
 				Login:    "foo",
 				Password: "bar",
+			},
+			Sharing: ptr.Of(true),
+			PullConfig: csconfig.CapiPullConfig{
+				Community:  ptr.Of(true),
+				Blocklists: ptr.Of(true),
 			},
 		}
 	}
@@ -1231,6 +1239,7 @@ func TestShouldShareAlert(t *testing.T) {
 	tests := []struct {
 		name          string
 		consoleConfig *csconfig.ConsoleConfig
+		shareSignals  bool
 		alert         *models.Alert
 		expectedRet   bool
 		expectedTrust string
@@ -1241,6 +1250,7 @@ func TestShouldShareAlert(t *testing.T) {
 				ShareCustomScenarios: ptr.Of(true),
 			},
 			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			shareSignals:  true,
 			expectedRet:   true,
 			expectedTrust: "custom",
 		},
@@ -1250,6 +1260,7 @@ func TestShouldShareAlert(t *testing.T) {
 				ShareCustomScenarios: ptr.Of(false),
 			},
 			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			shareSignals:  true,
 			expectedRet:   false,
 			expectedTrust: "custom",
 		},
@@ -1258,6 +1269,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: ptr.Of(true),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
@@ -1270,6 +1282,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: ptr.Of(false),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
@@ -1282,6 +1295,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: ptr.Of(true),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
@@ -1294,6 +1308,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: ptr.Of(false),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
@@ -1301,11 +1316,24 @@ func TestShouldShareAlert(t *testing.T) {
 			expectedRet:   false,
 			expectedTrust: "tainted",
 		},
+		{
+			name: "manual alert should not be shared if global sharing is disabled",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareManualDecisions: ptr.Of(true),
+			},
+			shareSignals: false,
+			alert: &models.Alert{
+				Simulated:    ptr.Of(false),
+				ScenarioHash: ptr.Of("whateverHash"),
+			},
+			expectedRet:   false,
+			expectedTrust: "manual",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ret := shouldShareAlert(tc.alert, tc.consoleConfig)
+			ret := shouldShareAlert(tc.alert, tc.consoleConfig, tc.shareSignals)
 			assert.Equal(t, tc.expectedRet, ret)
 		})
 	}

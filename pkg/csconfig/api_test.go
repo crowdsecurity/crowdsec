@@ -212,6 +212,11 @@ func TestLoadAPIServer(t *testing.T) {
 						Login:    "test",
 						Password: "testpassword",
 					},
+					Sharing: ptr.Of(true),
+					PullConfig: CapiPullConfig{
+						Community:  ptr.Of(true),
+						Blocklists: ptr.Of(true),
+					},
 				},
 				Profiles:               tmpLAPI.Profiles,
 				ProfilesPath:           "./testdata/profiles.yaml",
