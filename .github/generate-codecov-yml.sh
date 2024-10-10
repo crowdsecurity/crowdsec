@@ -2,7 +2,7 @@
 
 # Run this from the repository root:
 #
-# .github/codecov-ignore-generated.sh >> .github/codecov.yml
+# .github/generate-codecov-yml.sh >> .github/codecov.yml
 
 cat <<EOT
 # we measure coverage but don't enforce it

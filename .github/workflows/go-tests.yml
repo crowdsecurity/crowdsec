@@ -145,6 +145,10 @@ jobs:
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
 
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
+
     - name: Build and run tests, static
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
@@ -165,9 +169,9 @@ jobs:
         set -o pipefail
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
-    - name: Ignore-list of generated files for codecov
+    - name: Generate codecov configuration
       run: |
-          .github/codecov-ignore-generated.sh >> .github/codecov.yml
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
