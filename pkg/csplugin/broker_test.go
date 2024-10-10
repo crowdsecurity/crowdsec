@@ -4,6 +4,7 @@ package csplugin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -53,6 +54,7 @@ func (s *PluginSuite) writeconfig(config PluginConfig) {
 }
 
 func (s *PluginSuite) TestBrokerInit() {
+	ctx := context.Background()
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -135,20 +137,22 @@ func (s *PluginSuite) TestBrokerInit() {
 				tc.action(t)
 			}
 
-			_, err := s.InitBroker(&tc.procCfg)
+			_, err := s.InitBroker(ctx, &tc.procCfg)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
 
 func (s *PluginSuite) TestBrokerNoThreshold() {
+	ctx := context.Background()
+
 	var alerts []models.Alert
 
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
 
-	pb, err := s.InitBroker(nil)
+	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
@@ -187,6 +191,8 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
+	ctx := context.Background()
+
 	// test grouping by "time"
 	DefaultEmptyTicker = 50 * time.Millisecond
 
@@ -198,7 +204,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	cfg.GroupWait = 1 * time.Second
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
+	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
@@ -224,6 +230,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 }
 
 func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
+	ctx := context.Background()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -234,7 +241,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	cfg.GroupWait = 4 * time.Second
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
+	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
@@ -264,6 +271,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 }
 
 func (s *PluginSuite) TestBrokerRunGroupThreshold() {
+	ctx := context.Background()
 	// test grouping by "size"
 	DefaultEmptyTicker = 50 * time.Millisecond
 
@@ -274,7 +282,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	cfg.GroupThreshold = 4
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
+	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
@@ -318,6 +326,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunTimeThreshold() {
+	ctx := context.Background()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -327,7 +336,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	cfg.GroupWait = 1 * time.Second
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
+	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
@@ -353,11 +362,12 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunSimple() {
+	ctx := context.Background()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
 
-	pb, err := s.InitBroker(nil)
+	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}

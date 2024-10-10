@@ -131,7 +131,7 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	ctx := context.Background()
 	router, _ := NewAPITest(t, ctx)
 
-	body := CreateTestMachine(t, router, "")
+	body := CreateTestMachine(t, ctx, router, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))

@@ -180,9 +180,7 @@ func NewAPITestForwardedFor(t *testing.T, ctx context.Context) (*gin.Engine, csc
 	return router, config
 }
 
-func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCfg) {
-	ctx := context.TODO()
-
+func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config *csconfig.DatabaseCfg) {
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
@@ -269,15 +267,13 @@ func readDecisionsStreamResp(t *testing.T, resp *httptest.ResponseRecorder) (map
 	return response, resp.Code
 }
 
-func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
+func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, token string) string {
 	regReq := MachineTest
 	regReq.RegistrationToken = token
 	b, err := json.Marshal(regReq)
 	require.NoError(t, err)
 
 	body := string(b)
-
-	ctx := context.Background()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
