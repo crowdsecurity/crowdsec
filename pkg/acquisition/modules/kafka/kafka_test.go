@@ -80,9 +80,9 @@ group_id: crowdsec`,
 	}
 }
 
-func writeToKafka(w *kafka.Writer, logs []string) {
+func writeToKafka(ctx context.Context, w *kafka.Writer, logs []string) {
 	for idx, log := range logs {
-		err := w.WriteMessages(context.Background(), kafka.Message{
+		err := w.WriteMessages(ctx, kafka.Message{
 			Key: []byte(strconv.Itoa(idx)),
 			// create an arbitrary message payload for the value
 			Value: []byte(log),
@@ -128,6 +128,7 @@ func createTopic(topic string, broker string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -176,12 +177,12 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err = k.StreamingAcquisition(out, &tomb)
+			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 			actualLines := 0
 
-			go writeToKafka(w, ts.logs)
+			go writeToKafka(ctx, w, ts.logs)
 		READLOOP:
 			for {
 				select {
@@ -199,6 +200,7 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -252,12 +254,12 @@ tls:
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err = k.StreamingAcquisition(out, &tomb)
+			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 			actualLines := 0
 
-			go writeToKafka(w2, ts.logs)
+			go writeToKafka(ctx, w2, ts.logs)
 		READLOOP:
 			for {
 				select {

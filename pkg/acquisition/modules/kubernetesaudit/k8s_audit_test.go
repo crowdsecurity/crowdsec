@@ -1,6 +1,7 @@
 package kubernetesauditacquisition
 
 import (
+	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -52,6 +53,7 @@ listen_addr: 0.0.0.0`,
 }
 
 func TestInvalidConfig(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name        string
 		config      string
@@ -83,7 +85,7 @@ webhook_path: /k8s-audit`,
 			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 
 			require.NoError(t, err)
-			f.StreamingAcquisition(out, tb)
+			f.StreamingAcquisition(ctx, out, tb)
 
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
@@ -98,6 +100,7 @@ webhook_path: /k8s-audit`,
 }
 
 func TestHandler(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name               string
 		config             string
@@ -257,7 +260,7 @@ webhook_path: /k8s-audit`,
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))
 			w := httptest.NewRecorder()
 
-			f.StreamingAcquisition(out, tb)
+			f.StreamingAcquisition(ctx, out, tb)
 
 			f.webhookHandler(w, req)
 

@@ -1,6 +1,7 @@
 package cloudwatchacquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -74,6 +75,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestWatchLogGroupForStreams(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -447,7 +449,7 @@ stream_name: test_stream`),
 			dbgLogger.Infof("running StreamingAcquisition")
 			actmb := tomb.Tomb{}
 			actmb.Go(func() error {
-				err := cw.StreamingAcquisition(out, &actmb)
+				err := cw.StreamingAcquisition(ctx, out, &actmb)
 				dbgLogger.Infof("acquis done")
 				cstest.RequireErrorContains(t, err, tc.expectedStartErr)
 				return nil
@@ -513,6 +515,7 @@ stream_name: test_stream`),
 }
 
 func TestConfiguration(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -571,7 +574,7 @@ stream_name: test_stream`),
 
 			switch cw.GetMode() {
 			case "tail":
-				err = cw.StreamingAcquisition(out, &tmb)
+				err = cw.StreamingAcquisition(ctx, out, &tmb)
 			case "cat":
 				err = cw.OneShotAcquisition(out, &tmb)
 			}

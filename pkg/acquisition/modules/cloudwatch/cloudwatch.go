@@ -243,7 +243,7 @@ func (cw *CloudwatchSource) newClient() error {
 	return nil
 }
 
-func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (cw *CloudwatchSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	cw.t = t
 	monitChan := make(chan LogStreamTailConfig)
 	t.Go(func() error {

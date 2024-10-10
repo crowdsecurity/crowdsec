@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -80,6 +81,7 @@ func writeToSyslog(logs []string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name          string
 		config        string
@@ -139,7 +141,7 @@ listen_addr: 127.0.0.1`,
 			}
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err = s.StreamingAcquisition(out, &tomb)
+			err = s.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 			if ts.expectedErr != "" {
 				return

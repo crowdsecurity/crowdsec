@@ -1,6 +1,7 @@
 package journalctlacquisition
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -187,6 +188,7 @@ journalctl_filter:
 }
 
 func TestStreaming(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -250,7 +252,7 @@ journalctl_filter:
 			}()
 		}
 
-		err = j.StreamingAcquisition(out, &tomb)
+		err = j.StreamingAcquisition(ctx, out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if err != nil {

@@ -518,7 +518,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 	}
 }
 
-func (d *DockerSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	d.t = t
 	monitChan := make(chan *ContainerConfig)
 	deleteChan := make(chan *ContainerConfig)

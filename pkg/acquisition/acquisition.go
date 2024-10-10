@@ -1,6 +1,7 @@
 package acquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -47,7 +48,7 @@ type DataSource interface {
 	GetMode() string                                                    // Get the mode (TAIL, CAT or SERVER)
 	GetName() string                                                    // Get the name of the module
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error              // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(chan types.Event, *tomb.Tomb) error            // Start live acquisition (eg, tail a file)
+	StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error  // Start live acquisition (eg, tail a file)
 	CanRun() error                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	GetUuid() string                                                    // Get the unique identifier of the datasource
 	Dump() interface{}
@@ -375,7 +376,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 	}
 }
 
-func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+func StartAcquisition(ctx context.Context, sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 	// Don't wait if we have no sources, as it will hang forever
 	if len(sources) == 0 {
 		return nil
@@ -405,7 +406,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 				})
 			}
 			if subsrc.GetMode() == configuration.TAIL_MODE {
-				err = subsrc.StreamingAcquisition(outChan, AcquisTomb)
+				err = subsrc.StreamingAcquisition(ctx, outChan, AcquisTomb)
 			} else {
 				err = subsrc.OneShotAcquisition(outChan, AcquisTomb)
 			}

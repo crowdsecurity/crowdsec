@@ -135,7 +135,7 @@ func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tom
 	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
-func (ka *KubernetesAuditSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	ka.outChan = out
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/k8s-audit/live")

@@ -1,6 +1,7 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -243,6 +244,7 @@ filename: test_files/test_delete.log`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
+	ctx := context.Background()
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
 	testPattern := "test_files/*.log"
@@ -394,7 +396,7 @@ force_inotify: true`, testPattern),
 				}()
 			}
 
-			err = f.StreamingAcquisition(out, &tomb)
+			err = f.StreamingAcquisition(ctx, out, &tomb)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {

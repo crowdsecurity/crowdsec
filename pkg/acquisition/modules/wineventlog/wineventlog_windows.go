@@ -1,6 +1,7 @@
 package wineventlogacquisition
 
 import (
+	"context"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -325,7 +326,7 @@ func (w *WinEventLogSource) CanRun() error {
 	return nil
 }
 
-func (w *WinEventLogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/wineventlog/streaming")
 		return w.getEvents(out, t)

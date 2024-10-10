@@ -204,7 +204,7 @@ func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (k *KafkaSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (k *KafkaSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	k.logger.Infof("start reader on brokers '%+v' with topic '%s'", k.Config.Brokers, k.Config.Topic)
 
 	t.Go(func() error {
