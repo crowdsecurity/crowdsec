@@ -15,6 +15,7 @@ import (
 	plugin "github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -52,6 +53,7 @@ type LogRotate struct {
 }
 
 type FilePlugin struct {
+	protobufs.UnimplementedNotifierServer
 	PluginConfigByName map[string]PluginConfig
 }
 
@@ -241,7 +243,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"file": &protobufs.NotifierPlugin{
+			"file": &csplugin.NotifierPlugin{
 				Impl: sp,
 			},
 		},
