@@ -294,7 +294,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 		w.logger.Info("Shutting down Appsec server")
 		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
-		w.server.Shutdown(context.TODO())
+		w.server.Shutdown(ctx)
 		return nil
 	})
 	return nil
