@@ -579,7 +579,7 @@ stream_name: test_stream`),
 			case "tail":
 				err = cw.StreamingAcquisition(ctx, out, &tmb)
 			case "cat":
-				err = cw.OneShotAcquisition(out, &tmb)
+				err = cw.OneShotAcquisition(ctx, out, &tmb)
 			}
 
 			cstest.RequireErrorContains(t, err, tc.expectedStartErr)
@@ -637,6 +637,8 @@ func TestConfigureByDSN(t *testing.T) {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -768,7 +770,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			var rcvdEvts []types.Event
 
 			dbgLogger.Infof("running StreamingAcquisition")
-			err = cw.OneShotAcquisition(out, &tmb)
+			err = cw.OneShotAcquisition(ctx, out, &tmb)
 			dbgLogger.Infof("acquis done")
 			cstest.RequireErrorContains(t, err, tc.expectedStartErr)
 			close(out)

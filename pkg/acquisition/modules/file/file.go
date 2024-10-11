@@ -280,7 +280,7 @@ func (f *FileSource) SupportedModes() []string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 
 	for _, file := range f.files {

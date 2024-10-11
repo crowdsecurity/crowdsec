@@ -84,7 +84,7 @@ func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
-func (s *SyslogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("syslog datasource does not support one shot acquisition")
 }
 

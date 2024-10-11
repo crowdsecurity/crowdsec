@@ -58,7 +58,7 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) 
 	return nil
 }
 func (f *MockSource) GetMode() string                                       { return f.Mode }
-func (f *MockSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSource) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
 func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return nil
 }
@@ -320,7 +320,7 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel int) err
 func (f *MockCat) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockCat) GetName() string                  { return "mock_cat" }
 func (f *MockCat) GetMode() string                  { return "cat" }
-func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
+func (f *MockCat) OneShotAcquisition(ctx context.Context, out chan types.Event, tomb *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -365,7 +365,7 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel int) er
 func (f *MockTail) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockTail) GetName() string                  { return "mock_tail" }
 func (f *MockTail) GetMode() string                  { return "tail" }
-func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
+func (f *MockTail) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("can't run in cat mode")
 }
 
@@ -508,7 +508,7 @@ func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel 
 	return nil
 }
 func (f *MockSourceByDSN) GetMode() string                                       { return f.Mode }
-func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSourceByDSN) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
 func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return nil
 }

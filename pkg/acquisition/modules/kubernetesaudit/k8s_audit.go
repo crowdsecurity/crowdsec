@@ -131,7 +131,7 @@ func (ka *KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
 }
 
-func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (ka *KubernetesAuditSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
