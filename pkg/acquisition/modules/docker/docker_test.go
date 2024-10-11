@@ -267,6 +267,8 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	log.Infof("Test 'TestOneShot'")
 
 	tests := []struct {
@@ -321,7 +323,7 @@ func TestOneShot(t *testing.T) {
 		dockerClient.Client = new(mockDockerCli)
 		out := make(chan types.Event, 100)
 		tomb := tomb.Tomb{}
-		err := dockerClient.OneShotAcquisition(out, &tomb)
+		err := dockerClient.OneShotAcquisition(ctx, out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		// else we do the check before actualLines is incremented ...

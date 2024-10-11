@@ -303,7 +303,7 @@ func (w *WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return nil
 }
 

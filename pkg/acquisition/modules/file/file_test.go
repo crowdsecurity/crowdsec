@@ -101,6 +101,8 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
 
@@ -224,7 +226,7 @@ filename: test_files/test_delete.log`,
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
-			err = f.OneShotAcquisition(out, &tomb)
+			err = f.OneShotAcquisition(ctx, out, &tomb)
 			actualLines := len(out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
