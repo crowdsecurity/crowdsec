@@ -388,8 +388,7 @@ func (w *WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-
+func (w *WinEventLogSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	handle, err := wevtapi.EvtQuery(localMachine, w.evtConfig.ChannelPath, w.evtConfig.Query, w.evtConfig.Flags)
 
 	if err != nil {
@@ -436,6 +435,7 @@ OUTER_LOOP:
 			}
 		}
 	}
+
 	return nil
 }
 

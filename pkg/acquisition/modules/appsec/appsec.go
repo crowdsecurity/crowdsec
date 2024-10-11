@@ -237,7 +237,7 @@ func (w *AppsecSource) GetName() string {
 	return "appsec"
 }
 
-func (w *AppsecSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("AppSec datasource does not support command line acquisition")
 }
 

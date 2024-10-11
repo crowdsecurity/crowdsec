@@ -224,6 +224,7 @@ event_ids:
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name                 string
 		dsn                  string
@@ -289,7 +290,7 @@ func TestOneShotAcquisition(t *testing.T) {
 				}
 			}()
 
-			err = f.OneShotAcquisition(c, to)
+			err = f.OneShotAcquisition(ctx, c, to)
 			if test.expectedErr != "" {
 				assert.Contains(t, err.Error(), test.expectedErr)
 			} else {

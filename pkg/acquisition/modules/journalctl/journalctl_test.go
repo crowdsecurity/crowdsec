@@ -107,6 +107,8 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -165,7 +167,7 @@ journalctl_filter:
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		err = j.OneShotAcquisition(out, &tomb)
+		err = j.OneShotAcquisition(ctx, out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if err != nil {

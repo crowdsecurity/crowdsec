@@ -286,8 +286,7 @@ func (d *DockerSource) SupportedModes() []string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	ctx := context.TODO()
+func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
 	runningContainer, err := d.Client.ContainerList(ctx, dockerTypes.ContainerListOptions{})
 	if err != nil {

@@ -47,7 +47,7 @@ type DataSource interface {
 	ConfigureByDSN(string, map[string]string, *log.Entry, string) error       // Configure the datasource
 	GetMode() string                                                          // Get the mode (TAIL, CAT or SERVER)
 	GetName() string                                                          // Get the name of the module
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error                    // Start one shot acquisition(eg, cat a file)
+	OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
 	StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
 	CanRun() error                                                            // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	GetUuid() string                                                          // Get the unique identifier of the datasource
@@ -433,7 +433,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(ctx, outChan, AcquisTomb)
 			} else {
-				err = subsrc.OneShotAcquisition(outChan, AcquisTomb)
+				err = subsrc.OneShotAcquisition(ctx, outChan, AcquisTomb)
 			}
 
 			if err != nil {
