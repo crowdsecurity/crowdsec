@@ -7,8 +7,8 @@
 cat <<EOT
 # we measure coverage but don't enforce it
 # https://docs.codecov.com/docs/codecov-yaml
-codecov
-  require_ci_to_pass: no
+codecov:
+  require_ci_to_pass: false
 
 coverage:
   status:
