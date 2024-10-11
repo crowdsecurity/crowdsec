@@ -350,10 +350,6 @@ issues:
       text: "type switch on error will fail on wrapped errors. Use errors.As to check for specific errors"
 
     - linters:
-        - errorlint
-      text: "comparing with .* will fail on wrapped errors. Use errors.Is to check for a specific error"
-
-    - linters:
         - nosprintfhostport
       text: "host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf"
 
