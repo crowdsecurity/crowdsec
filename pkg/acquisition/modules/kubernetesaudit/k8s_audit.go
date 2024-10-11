@@ -164,7 +164,6 @@ func (ka *KubernetesAuditSource) Dump() interface{} {
 }
 
 func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.Request) {
-
 	if ka.metricsLevel != configuration.METRICS_NONE {
 		requestCount.WithLabelValues(ka.addr).Inc()
 	}

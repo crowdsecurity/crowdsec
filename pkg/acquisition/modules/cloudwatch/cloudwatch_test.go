@@ -35,6 +35,7 @@ func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
 	input := &cloudwatchlogs.DescribeLogGroupsInput{}
 	result, err := cw.cwClient.DescribeLogGroups(input)
 	require.NoError(t, err)
+
 	for _, group := range result.LogGroups {
 		_, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 			LogGroupName: group.LogGroupName,
@@ -63,14 +64,17 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		os.Exit(0)
 	}
+
 	if err := checkForLocalStackAvailability(); err != nil {
 		log.Fatalf("local stack error : %s", err)
 	}
+
 	def_PollNewStreamInterval = 1 * time.Second
 	def_PollStreamInterval = 1 * time.Second
 	def_StreamReadTimeout = 10 * time.Second
 	def_MaxStreamAge = 5 * time.Second
 	def_PollDeadStreamInterval = 5 * time.Second
+
 	os.Exit(m.Run())
 }
 
@@ -505,7 +509,6 @@ stream_name: test_stream`),
 				if len(res) != 0 {
 					t.Fatalf("leftover unmatched results : %v", res)
 				}
-
 			}
 			if tc.teardown != nil {
 				tc.teardown(t, &cw)
@@ -801,7 +804,6 @@ func TestOneShotAcquisition(t *testing.T) {
 				if len(res) != 0 {
 					t.Fatalf("leftover unmatched results : %v", res)
 				}
-
 			}
 			if tc.teardown != nil {
 				tc.teardown(t, &cw)

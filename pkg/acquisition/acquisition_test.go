@@ -57,14 +57,16 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) 
 
 	return nil
 }
-func (f *MockSource) GetMode() string                                         { return f.Mode }
-func (f *MockSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
-func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
-func (f *MockSource) CanRun() error                                           { return nil }
-func (f *MockSource) GetMetrics() []prometheus.Collector                      { return nil }
-func (f *MockSource) GetAggregMetrics() []prometheus.Collector                { return nil }
-func (f *MockSource) Dump() interface{}                                       { return f }
-func (f *MockSource) GetName() string                                         { return "mock" }
+func (f *MockSource) GetMode() string                                       { return f.Mode }
+func (f *MockSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
+	return nil
+}
+func (f *MockSource) CanRun() error                            { return nil }
+func (f *MockSource) GetMetrics() []prometheus.Collector       { return nil }
+func (f *MockSource) GetAggregMetrics() []prometheus.Collector { return nil }
+func (f *MockSource) Dump() interface{}                        { return f }
+func (f *MockSource) GetName() string                          { return "mock" }
 func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
 }
@@ -505,14 +507,16 @@ func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
 	return nil
 }
-func (f *MockSourceByDSN) GetMode() string                                         { return f.Mode }
-func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
-func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
-func (f *MockSourceByDSN) CanRun() error                                           { return nil }
-func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                      { return nil }
-func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector                { return nil }
-func (f *MockSourceByDSN) Dump() interface{}                                       { return f }
-func (f *MockSourceByDSN) GetName() string                                         { return "mockdsn" }
+func (f *MockSourceByDSN) GetMode() string                                       { return f.Mode }
+func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
+	return nil
+}
+func (f *MockSourceByDSN) CanRun() error                            { return nil }
+func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector       { return nil }
+func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector { return nil }
+func (f *MockSourceByDSN) Dump() interface{}                        { return f }
+func (f *MockSourceByDSN) GetName() string                          { return "mockdsn" }
 func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {

@@ -59,7 +59,7 @@ type AppsecSource struct {
 	AppsecConfigs map[string]appsec.AppsecConfig
 	lapiURL       string
 	AuthCache     AuthCache
-	AppsecRunners []AppsecRunner //one for each go-routine
+	AppsecRunners []AppsecRunner // one for each go-routine
 }
 
 // Struct to handle cache of authentication
@@ -172,7 +172,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
-	//let's load the associated appsec_config:
+	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
 		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
 		if err != nil {
@@ -201,7 +201,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		//we copy AppsecRutime for each runner
+		// we copy AppsecRutime for each runner
 		wrt := *w.AppsecRuntime
 		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
@@ -220,7 +220,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	w.logger.Infof("Created %d appsec runners", len(w.AppsecRunners))
 
-	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
+	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
 	return nil
 }
@@ -292,7 +292,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 		})
 		<-t.Dying()
 		w.logger.Info("Shutting down Appsec server")
-		//xx let's clean up the appsec runners :)
+		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
 		w.server.Shutdown(context.TODO())
 		return nil

@@ -113,7 +113,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		return readLine(stdoutscanner, stdoutChan, errChan)
 	})
 	t.Go(func() error {
-		//looks like journalctl closes stderr quite early, so ignore its status (but not its output)
+		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
 		return readLine(stderrScanner, stderrChan, nil)
 	})
 
@@ -122,7 +122,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() //avoid zombie process
+			cmd.Wait() // avoid zombie process
 			return nil
 		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
@@ -217,7 +217,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 	j.config.Labels = labels
 	j.config.UniqueId = uuid
 
-	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
+	// format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {
 		return fmt.Errorf("invalid DSN %s for journalctl source, must start with journalctl://", dsn)
 	}

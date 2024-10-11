@@ -267,7 +267,7 @@ webhook_path: /k8s-audit`,
 			res := w.Result()
 
 			assert.Equal(t, test.expectedStatusCode, res.StatusCode)
-			//time.Sleep(1 * time.Second)
+			// time.Sleep(1 * time.Second)
 			require.NoError(t, err)
 
 			tb.Kill(nil)

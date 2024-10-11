@@ -23,9 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var (
-	dataSourceName = "kafka"
-)
+var dataSourceName = "kafka"
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{

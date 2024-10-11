@@ -40,17 +40,17 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig([]byte) error                                       // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure([]byte, *log.Entry, int) error                            // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(string, map[string]string, *log.Entry, string) error // Configure the datasource
-	GetMode() string                                                    // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                                    // Get the name of the module
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error              // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error  // Start live acquisition (eg, tail a file)
-	CanRun() error                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
-	GetUuid() string                                                    // Get the unique identifier of the datasource
+	GetMetrics() []prometheus.Collector                                       // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	UnmarshalConfig([]byte) error                                             // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure([]byte, *log.Entry, int) error                                  // Complete the YAML datasource configuration and perform runtime checks.
+	ConfigureByDSN(string, map[string]string, *log.Entry, string) error       // Configure the datasource
+	GetMode() string                                                          // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                                          // Get the name of the module
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error                    // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
+	CanRun() error                                                            // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetUuid() string                                                          // Get the unique identifier of the datasource
 	Dump() interface{}
 }
 
@@ -243,8 +243,10 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 
 		for {
 			var sub configuration.DataSourceCommonCfg
-			err = dec.Decode(&sub)
+
 			idx += 1
+
+			err = dec.Decode(&sub)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					return nil, fmt.Errorf("failed to yaml decode %s: %w", acquisFile, err)
@@ -284,6 +286,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 
 			uniqueId := uuid.NewString()
 			sub.UniqueId = uniqueId
+
 			src, err := DataSourceConfigure(sub, metrics_level)
 			if err != nil {
 				var dserr *DataSourceUnavailableError
@@ -291,29 +294,36 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 					log.Error(err)
 					continue
 				}
+
 				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
 			}
+
 			if sub.TransformExpr != "" {
 				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 				if err != nil {
 					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position: %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 				}
+
 				transformRuntimes[uniqueId] = vm
 			}
+
 			sources = append(sources, *src)
 		}
 	}
+
 	return sources, nil
 }
 
 func GetMetrics(sources []DataSource, aggregated bool) error {
 	var metrics []prometheus.Collector
+
 	for i := range sources {
 		if aggregated {
 			metrics = sources[i].GetMetrics()
 		} else {
 			metrics = sources[i].GetAggregMetrics()
 		}
+
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
 				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
@@ -323,12 +333,14 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 			}
 		}
 	}
+
 	return nil
 }
 
 func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
 	logger.Infof("transformer started")
+
 	for {
 		select {
 		case <-AcquisTomb.Dying():
@@ -336,15 +348,18 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 			return
 		case evt := <-transformChan:
 			logger.Tracef("Received event %s", evt.Line.Raw)
+
 			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
 			if err != nil {
 				logger.Errorf("while running transform expression: %s, sending event as-is", err)
 				output <- evt
 			}
+
 			if out == nil {
 				logger.Errorf("transform expression returned nil, sending event as-is")
 				output <- evt
 			}
+
 			switch v := out.(type) {
 			case string:
 				logger.Tracef("transform expression returned %s", v)
@@ -352,18 +367,22 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 				output <- evt
 			case []interface{}:
 				logger.Tracef("transform expression returned %v", v) //nolint:asasalint // We actually want to log the slice content
+
 				for _, line := range v {
 					l, ok := line.(string)
 					if !ok {
 						logger.Errorf("transform expression returned []interface{}, but cannot assert an element to string")
 						output <- evt
+
 						continue
 					}
+
 					evt.Line.Raw = l
 					output <- evt
 				}
 			case []string:
 				logger.Tracef("transform expression returned %v", v)
+
 				for _, line := range v {
 					evt.Line.Raw = line
 					output <- evt
@@ -388,32 +407,40 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 
 		AcquisTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/acquis")
+
 			var err error
 
 			outChan := output
+
 			log.Debugf("datasource %s UUID: %s", subsrc.GetName(), subsrc.GetUuid())
+
 			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
+
 				transformChan := make(chan types.Event)
 				outChan = transformChan
 				transformLogger := log.WithFields(log.Fields{
 					"component":  "transform",
 					"datasource": subsrc.GetName(),
 				})
+
 				AcquisTomb.Go(func() error {
 					transform(outChan, output, AcquisTomb, transformRuntime, transformLogger)
 					return nil
 				})
 			}
+
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(ctx, outChan, AcquisTomb)
 			} else {
 				err = subsrc.OneShotAcquisition(outChan, AcquisTomb)
 			}
+
 			if err != nil {
 				// if one of the acqusition returns an error, we kill the others to properly shutdown
 				AcquisTomb.Kill(err)
 			}
+
 			return nil
 		})
 	}
