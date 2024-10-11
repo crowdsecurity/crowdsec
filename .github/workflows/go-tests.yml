@@ -180,10 +180,6 @@ jobs:
         set -o pipefail
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
-    - name: Generate codecov configuration
-      run: |
-          .github/generate-codecov-yml.sh >> .github/codecov.yml
-
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
