@@ -120,6 +120,7 @@ type mockDockerCli struct {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := context.Background()
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
@@ -185,7 +186,7 @@ container_name_regexp:
 		readerTomb := &tomb.Tomb{}
 		streamTomb := tomb.Tomb{}
 		streamTomb.Go(func() error {
-			return dockerSource.StreamingAcquisition(out, &dockerTomb)
+			return dockerSource.StreamingAcquisition(ctx, out, &dockerTomb)
 		})
 		readerTomb.Go(func() error {
 			time.Sleep(1 * time.Second)
@@ -245,7 +246,7 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 
 	for _, line := range data {
 		startLineByte := make([]byte, 8)
-		binary.LittleEndian.PutUint32(startLineByte, 1) //stdout stream
+		binary.LittleEndian.PutUint32(startLineByte, 1) // stdout stream
 		binary.BigEndian.PutUint32(startLineByte[4:], uint32(len(line)))
 		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}

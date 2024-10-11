@@ -38,7 +38,7 @@ type S3Configuration struct {
 	AwsEndpoint                       string  `yaml:"aws_endpoint"`
 	BucketName                        string  `yaml:"bucket_name"`
 	Prefix                            string  `yaml:"prefix"`
-	Key                               string  `yaml:"-"` //Only for DSN acquisition
+	Key                               string  `yaml:"-"` // Only for DSN acquisition
 	PollingMethod                     string  `yaml:"polling_method"`
 	PollingInterval                   int     `yaml:"polling_interval"`
 	SQSName                           string  `yaml:"sqs_name"`
@@ -338,7 +338,7 @@ func (s *S3Source) sqsPoll() error {
 			out, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSName),
 				MaxNumberOfMessages: aws.Int64(10),
-				WaitTimeSeconds:     aws.Int64(20), //Probably no need to make it configurable ?
+				WaitTimeSeconds:     aws.Int64(20), // Probably no need to make it configurable ?
 			})
 			if err != nil {
 				logger.Errorf("Error while polling SQS: %s", err)
@@ -353,7 +353,7 @@ func (s *S3Source) sqsPoll() error {
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
 					logger.Errorf("Error while parsing SQS message: %s", err)
-					//Always delete the message to avoid infinite loop
+					// Always delete the message to avoid infinite loop
 					_, err = s.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
 						QueueUrl:      aws.String(s.Config.SQSName),
 						ReceiptHandle: message.ReceiptHandle,
@@ -379,7 +379,7 @@ func (s *S3Source) sqsPoll() error {
 }
 
 func (s *S3Source) readFile(bucket string, key string) error {
-	//TODO: Handle SSE-C
+	// TODO: Handle SSE-C
 	var scanner *bufio.Scanner
 
 	logger := s.logger.WithFields(log.Fields{
@@ -392,14 +392,13 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to get object %s/%s: %w", bucket, key, err)
 	}
 	defer output.Body.Close()
 
 	if strings.HasSuffix(key, ".gz") {
-		//This *might* be a gzipped file, but sometimes the SDK will decompress the data for us (it's not clear when it happens, only had the issue with cloudtrail logs)
+		// This *might* be a gzipped file, but sometimes the SDK will decompress the data for us (it's not clear when it happens, only had the issue with cloudtrail logs)
 		header := make([]byte, 2)
 		_, err := output.Body.Read(header)
 		if err != nil {
@@ -613,7 +612,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	pathParts := strings.Split(args[0], "/")
 	s.logger.Debugf("pathParts: %v", pathParts)
 
-	//FIXME: handle s3://bucket/
+	// FIXME: handle s3://bucket/
 	if len(pathParts) == 1 {
 		s.Config.BucketName = pathParts[0]
 		s.Config.Prefix = ""
@@ -656,7 +655,7 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 			return err
 		}
 	} else {
-		//No key, get everything in the bucket based on the prefix
+		// No key, get everything in the bucket based on the prefix
 		objects, err := s.getBucketContent()
 		if err != nil {
 			return err
@@ -672,11 +671,11 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 	return nil
 }
 
-func (s *S3Source) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	s.t = t
 	s.out = out
-	s.readerChan = make(chan S3Object, 100) //FIXME: does this needs to be buffered?
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.readerChan = make(chan S3Object, 100) // FIXME: does this needs to be buffered?
+	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.logger.Infof("starting acquisition of %s/%s", s.Config.BucketName, s.Config.Prefix)
 	t.Go(func() error {
 		s.readManager()

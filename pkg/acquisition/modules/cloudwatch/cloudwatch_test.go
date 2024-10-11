@@ -1,6 +1,7 @@
 package cloudwatchacquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -34,6 +35,7 @@ func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
 	input := &cloudwatchlogs.DescribeLogGroupsInput{}
 	result, err := cw.cwClient.DescribeLogGroups(input)
 	require.NoError(t, err)
+
 	for _, group := range result.LogGroups {
 		_, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 			LogGroupName: group.LogGroupName,
@@ -62,18 +64,22 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		os.Exit(0)
 	}
+
 	if err := checkForLocalStackAvailability(); err != nil {
 		log.Fatalf("local stack error : %s", err)
 	}
+
 	def_PollNewStreamInterval = 1 * time.Second
 	def_PollStreamInterval = 1 * time.Second
 	def_StreamReadTimeout = 10 * time.Second
 	def_MaxStreamAge = 5 * time.Second
 	def_PollDeadStreamInterval = 5 * time.Second
+
 	os.Exit(m.Run())
 }
 
 func TestWatchLogGroupForStreams(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -447,7 +453,7 @@ stream_name: test_stream`),
 			dbgLogger.Infof("running StreamingAcquisition")
 			actmb := tomb.Tomb{}
 			actmb.Go(func() error {
-				err := cw.StreamingAcquisition(out, &actmb)
+				err := cw.StreamingAcquisition(ctx, out, &actmb)
 				dbgLogger.Infof("acquis done")
 				cstest.RequireErrorContains(t, err, tc.expectedStartErr)
 				return nil
@@ -503,7 +509,6 @@ stream_name: test_stream`),
 				if len(res) != 0 {
 					t.Fatalf("leftover unmatched results : %v", res)
 				}
-
 			}
 			if tc.teardown != nil {
 				tc.teardown(t, &cw)
@@ -513,6 +518,7 @@ stream_name: test_stream`),
 }
 
 func TestConfiguration(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -571,7 +577,7 @@ stream_name: test_stream`),
 
 			switch cw.GetMode() {
 			case "tail":
-				err = cw.StreamingAcquisition(out, &tmb)
+				err = cw.StreamingAcquisition(ctx, out, &tmb)
 			case "cat":
 				err = cw.OneShotAcquisition(out, &tmb)
 			}
@@ -798,7 +804,6 @@ func TestOneShotAcquisition(t *testing.T) {
 				if len(res) != 0 {
 					t.Fatalf("leftover unmatched results : %v", res)
 				}
-
 			}
 			if tc.teardown != nil {
 				tc.teardown(t, &cw)
