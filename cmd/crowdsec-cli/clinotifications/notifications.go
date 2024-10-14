@@ -275,7 +275,8 @@ func (cli cliNotifications) newTestCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.notificationConfigFilter,
-		PreRunE: func(_ *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			cfg := cli.cfg()
 			pconfigs, err := cli.getPluginConfigs()
 			if err != nil {
@@ -286,7 +287,7 @@ func (cli cliNotifications) newTestCmd() *cobra.Command {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
 			// Create a single profile with plugin name as notification name
-			return pluginBroker.Init(cfg.PluginConfig, []*csconfig.ProfileCfg{
+			return pluginBroker.Init(ctx, cfg.PluginConfig, []*csconfig.ProfileCfg{
 				{
 					Notifications: []string{
 						pcfg.Name,
@@ -377,12 +378,13 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 
 			return nil
 		},
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			var (
 				pluginBroker csplugin.PluginBroker
 				pluginTomb   tomb.Tomb
 			)
 
+			ctx := cmd.Context()
 			cfg := cli.cfg()
 
 			if alertOverride != "" {
@@ -391,7 +393,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				}
 			}
 
-			err := pluginBroker.Init(cfg.PluginConfig, cfg.API.Server.Profiles, cfg.ConfigPaths)
+			err := pluginBroker.Init(ctx, cfg.PluginConfig, cfg.API.Server.Profiles, cfg.ConfigPaths)
 			if err != nil {
 				return fmt.Errorf("can't initialize plugins: %w", err)
 			}

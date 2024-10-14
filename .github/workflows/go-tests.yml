@@ -128,10 +128,21 @@ jobs:
       with:
         go-version: "1.22"
 
-    - name: Run "make generate" and check for changes
+    - name: Run "go generate" and check for changes
       run: |
         set -e
-        make generate 2>/dev/null
+        # ensure the version of 'protoc' matches the one that generated the files
+        PROTOBUF_VERSION="21.12"
+        # don't pollute the repo
+        pushd $HOME
+        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
+        unzip protoc-${PROTOBUF_VERSION}-linux-x86_64.zip -d $HOME/.protoc
+        popd
+        export PATH="$HOME/.protoc/bin:$PATH"
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+        go generate ./...
+        protoc --version
         if [[ $(git status --porcelain) ]]; then
           echo "Error: Uncommitted changes found after running 'make generate'. Please commit all generated code."
           git diff
@@ -144,6 +155,10 @@ jobs:
       run: |
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
+
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
 
     - name: Build and run tests, static
       run: |
@@ -164,10 +179,6 @@ jobs:
         make clean build
         set -o pipefail
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
-
-    - name: Ignore-list of generated files for codecov
-      run: |
-          .github/codecov-ignore-generated.sh >> .github/codecov.yml
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4

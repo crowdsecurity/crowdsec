@@ -321,7 +321,7 @@ issues:
     # `err` is often shadowed, we may continue to do it
     - linters:
         - govet
-      text: "shadow: declaration of \"err\" shadows declaration"
+      text: "shadow: declaration of \"(err|ctx)\" shadows declaration"
 
     - linters:
         - errcheck

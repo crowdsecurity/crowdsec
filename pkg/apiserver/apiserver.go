@@ -159,10 +159,8 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
-
-	ctx := context.TODO()
 
 	dbClient, err := database.NewClient(ctx, config.DbConfig)
 	if err != nil {
@@ -300,8 +298,8 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
-func (s *APIServer) apicPush() error {
-	if err := s.apic.Push(); err != nil {
+func (s *APIServer) apicPush(ctx context.Context) error {
+	if err := s.apic.Push(ctx); err != nil {
 		log.Errorf("capi push: %s", err)
 		return err
 	}
@@ -337,7 +335,7 @@ func (s *APIServer) papiSync() error {
 }
 
 func (s *APIServer) initAPIC(ctx context.Context) {
-	s.apic.pushTomb.Go(s.apicPush)
+	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
 	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
 
 	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios

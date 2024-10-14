@@ -12,6 +12,7 @@ import (
 	mail "github.com/xhit/go-simple-mail/v2"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -55,6 +56,7 @@ type PluginConfig struct {
 }
 
 type EmailPlugin struct {
+	protobufs.UnimplementedNotifierServer
 	ConfigByName map[string]PluginConfig
 }
 
@@ -170,7 +172,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"email": &protobufs.NotifierPlugin{
+			"email": &csplugin.NotifierPlugin{
 				Impl: &EmailPlugin{ConfigByName: make(map[string]PluginConfig)},
 			},
 		},

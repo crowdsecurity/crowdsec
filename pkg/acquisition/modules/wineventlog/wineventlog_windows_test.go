@@ -3,6 +3,7 @@
 package wineventlogacquisition
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -127,6 +128,7 @@ event_level: bla`,
 
 func TestLiveAcquisition(t *testing.T) {
 	exprhelpers.Init(nil)
+	ctx := context.Background()
 
 	tests := []struct {
 		config        string
@@ -185,7 +187,7 @@ event_ids:
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
 		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		f.StreamingAcquisition(c, to)
+		f.StreamingAcquisition(ctx, c, to)
 		time.Sleep(time.Second)
 		lines := test.expectedLines
 		go func() {

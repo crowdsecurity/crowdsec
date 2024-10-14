@@ -10,17 +10,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
-type Notifier interface {
-	Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error)
-	Configure(ctx context.Context, cfg *protobufs.Config) (*protobufs.Empty, error)
-}
-
 type NotifierPlugin struct {
 	plugin.Plugin
-	Impl Notifier
+	Impl protobufs.NotifierServer
 }
 
-type GRPCClient struct{ client protobufs.NotifierClient }
+type GRPCClient struct{
+	protobufs.UnimplementedNotifierServer
+	client protobufs.NotifierClient 
+}
 
 func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	done := make(chan error)
@@ -45,7 +43,7 @@ func (m *GRPCClient) Configure(ctx context.Context, config *protobufs.Config) (*
 }
 
 type GRPCServer struct {
-	Impl Notifier
+	Impl protobufs.NotifierServer
 }
 
 func (p *NotifierPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {

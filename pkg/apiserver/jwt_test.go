@@ -11,11 +11,10 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	router, config := NewAPITest(t)
-
 	ctx := context.Background()
+	router, config := NewAPITest(t, ctx)
 
-	body := CreateTestMachine(t, router, "")
+	body := CreateTestMachine(t, ctx, router, "")
 
 	// Login with machine not validated yet
 	w := httptest.NewRecorder()
@@ -54,7 +53,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, `{"code":401,"message":"validation failure list:\npassword in body is required"}`, w.Body.String())
 
 	// Validate machine
-	ValidateMachine(t, "test", config.API.Server.DbConfig)
+	ValidateMachine(t, ctx, "test", config.API.Server.DbConfig)
 
 	// Login with invalid password
 	w = httptest.NewRecorder()
