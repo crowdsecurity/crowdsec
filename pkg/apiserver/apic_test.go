@@ -1134,7 +1134,7 @@ func TestAPICPush(t *testing.T) {
 				api.Shutdown()
 			}()
 
-			err = api.Push()
+			err = api.Push(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedCalls, httpmock.GetTotalCallCount())
 		})

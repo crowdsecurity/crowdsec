@@ -40,6 +40,10 @@ jobs:
       run: |
         make build BUILD_RE2_WASM=1
 
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
+
     - name: Run tests
       run: |
         go install github.com/kyoh86/richgo@v0.3.10

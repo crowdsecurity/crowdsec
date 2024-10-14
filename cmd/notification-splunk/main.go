@@ -14,6 +14,7 @@ import (
 	plugin "github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -32,6 +33,7 @@ type PluginConfig struct {
 }
 
 type Splunk struct {
+	protobufs.UnimplementedNotifierServer
 	PluginConfigByName map[string]PluginConfig
 	Client             http.Client
 }
@@ -117,7 +119,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"splunk": &protobufs.NotifierPlugin{
+			"splunk": &csplugin.NotifierPlugin{
 				Impl: sp,
 			},
 		},

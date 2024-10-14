@@ -319,9 +319,9 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	}
 }
 
-func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	l.Client.SetTomb(t)
-	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
+	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 	defer cancel()
 	err := l.Client.Ready(readyCtx)
 	if err != nil {
@@ -329,7 +329,7 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 	}
 	ll := l.logger.WithField("websocket_url", l.lokiWebsocket)
 	t.Go(func() error {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		respChan := l.Client.QueryRange(ctx, true)
 		if err != nil {

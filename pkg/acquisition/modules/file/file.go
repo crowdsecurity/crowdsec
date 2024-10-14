@@ -3,6 +3,7 @@ package fileacquisition
 import (
 	"bufio"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -320,7 +321,7 @@ func (f *FileSource) CanRun() error {
 	return nil
 }
 
-func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("Starting live acquisition")
 	t.Go(func() error {
 		return f.monitorNewFiles(out, t)
