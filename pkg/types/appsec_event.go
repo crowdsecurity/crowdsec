@@ -18,7 +18,9 @@ len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
 
 */
 
-type MatchedRules []map[string]interface{}
+type MatchedRules []MatchedRule
+
+type MatchedRule map[string]interface{}
 
 type AppsecEvent struct {
 	HasInBandMatches, HasOutBandMatches bool
