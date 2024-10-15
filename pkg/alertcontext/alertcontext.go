@@ -30,7 +30,7 @@ type Context struct {
 
 func ValidateContextExpr(key string, expressions []string) error {
 	for _, expression := range expressions {
-		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}, "match": types.MatchedRule{}})...)
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %w", expression, err)
 		}
@@ -72,7 +72,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		}
 
 		for _, value := range values {
-			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}, "match": types.MatchedRule{}})...)
 			if err != nil {
 				return fmt.Errorf("compilation of '%s' context value failed: %w", value, err)
 			}
@@ -116,42 +116,52 @@ func TruncateContext(values []string, contextValueLen int) (string, error) {
 	return ret, nil
 }
 
-func EventToContext(events []types.Event) (models.Meta, []error) {
+func EvalAlertContextRules(evt *types.Event, match *types.MatchedRule, tmpContext map[string][]string) []error {
+
+	var errors []error
+
+	for key, values := range alertContext.ContextToSendCompiled {
+		if _, ok := tmpContext[key]; !ok {
+			tmpContext[key] = make([]string, 0)
+		}
+
+		for _, value := range values {
+			var val string
+
+			output, err := expr.Run(value, map[string]interface{}{"match": match, "expr": evt})
+			if err != nil {
+				errors = append(errors, fmt.Errorf("failed to get value for %s: %w", key, err))
+				continue
+			}
+			//Need to support back []int and []string
+			switch out := output.(type) {
+			case string:
+				val = out
+			case int:
+				val = strconv.Itoa(out)
+			default:
+				errors = append(errors, fmt.Errorf("unexpected return type for %s: %T", key, output))
+				continue
+			}
+
+			if val != "" && !slices.Contains(tmpContext[key], val) {
+				tmpContext[key] = append(tmpContext[key], val)
+			}
+		}
+	}
+	return errors
+}
+
+// Iterate over the individual appsec matched rules to create the needed alert context.
+func AppsecEventToContext(event types.AppsecEvent) (models.Meta, []error) {
 	var errors []error
 
 	metas := make([]*models.MetaItems0, 0)
 	tmpContext := make(map[string][]string)
 
-	for _, evt := range events {
-		for key, values := range alertContext.ContextToSendCompiled {
-			if _, ok := tmpContext[key]; !ok {
-				tmpContext[key] = make([]string, 0)
-			}
-
-			for _, value := range values {
-				var val string
-
-				output, err := expr.Run(value, map[string]interface{}{"evt": evt})
-				if err != nil {
-					errors = append(errors, fmt.Errorf("failed to get value for %s: %w", key, err))
-					continue
-				}
-
-				switch out := output.(type) {
-				case string:
-					val = out
-				case int:
-					val = strconv.Itoa(out)
-				default:
-					errors = append(errors, fmt.Errorf("unexpected return type for %s: %T", key, output))
-					continue
-				}
-
-				if val != "" && !slices.Contains(tmpContext[key], val) {
-					tmpContext[key] = append(tmpContext[key], val)
-				}
-			}
-		}
+	for _, matched_rule := range event.MatchedRules {
+		tmpErrors := EvalAlertContextRules(&types.Event{}, &matched_rule, tmpContext)
+		errors = append(errors, tmpErrors...)
 	}
 
 	for key, values := range tmpContext {
@@ -174,4 +184,51 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 	ret := models.Meta(metas)
 
 	return ret, errors
+}
+
+// Iterate over the individual events to create the needed alert context.
+func EventToContext(events []types.Event) (models.Meta, []error) {
+	var errors []error
+
+	metas := make([]*models.MetaItems0, 0)
+	tmpContext := make(map[string][]string)
+
+	for _, evt := range events {
+		tmpErrors := EvalAlertContextRules(&evt, &types.MatchedRule{}, tmpContext)
+		errors = append(errors, tmpErrors...)
+	}
+
+	for key, values := range tmpContext {
+		if len(values) == 0 {
+			continue
+		}
+
+		valueStr, err := TruncateContext(values, alertContext.ContextValueLen)
+		if err != nil {
+			log.Warning(err.Error())
+		}
+
+		meta := models.MetaItems0{
+			Key:   key,
+			Value: valueStr,
+		}
+		metas = append(metas, &meta)
+	}
+
+	ret := models.Meta(metas)
+
+	return ret, errors
+}
+
+func appendMeta(meta models.Meta, key string, value string) models.Meta {
+	if value == "" {
+		return meta
+	}
+
+	meta = append(meta, &models.MetaItems0{
+		Key:   key,
+		Value: value,
+	})
+
+	return meta
 }
