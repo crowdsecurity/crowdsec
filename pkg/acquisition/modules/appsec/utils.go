@@ -3,8 +3,6 @@ package appsecacquisition
 import (
 	"fmt"
 	"net"
-	"slices"
-	"strconv"
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
@@ -22,27 +20,27 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var appsecMetaKeys = []string{
-	"id",
-	"name",
-	"method",
-	"uri",
-	"matched_zones",
-	"msg",
-}
+// var appsecMetaKeys = []string{
+// 	"id",
+// 	"name",
+// 	"method",
+// 	"uri",
+// 	"matched_zones",
+// 	"msg",
+// }
 
-func appendMeta(meta models.Meta, key string, value string) models.Meta {
-	if value == "" {
-		return meta
-	}
+// func appendMeta(meta models.Meta, key string, value string) models.Meta {
+// 	if value == "" {
+// 		return meta
+// 	}
 
-	meta = append(meta, &models.MetaItems0{
-		Key:   key,
-		Value: value,
-	})
+// 	meta = append(meta, &models.MetaItems0{
+// 		Key:   key,
+// 		Value: value,
+// 	})
 
-	return meta
-}
+// 	return meta
+// }
 
 func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
@@ -60,6 +58,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		Scope: ptr.Of(types.Ip),
 	}
 
+	//GeoIP enrich
 	asndata, err := exprhelpers.GeoIPASNEnrich(sourceIP)
 
 	if err != nil {
@@ -88,6 +87,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		source.Range = record.String()
 	}
 
+	// Build overflow
 	evt.Overflow.Sources = make(map[string]models.Source)
 	evt.Overflow.Sources[sourceIP] = source
 
@@ -95,83 +95,11 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.Capacity = ptr.Of(int32(1))
 	alert.Events = make([]*models.Event, len(evt.Appsec.GetRuleIDs()))
 
-	now := ptr.Of(time.Now().UTC().Format(time.RFC3339))
-
-	tmpAppsecContext := make(map[string][]string)
-
-	for _, matched_rule := range inEvt.Appsec.MatchedRules {
-		evtRule := models.Event{}
-
-		evtRule.Timestamp = now
-
-		evtRule.Meta = make(models.Meta, 0)
-
-		for _, key := range appsecMetaKeys {
-			if tmpAppsecContext[key] == nil {
-				tmpAppsecContext[key] = make([]string, 0)
-			}
-
-			switch value := matched_rule[key].(type) {
-			case string:
-				evtRule.Meta = appendMeta(evtRule.Meta, key, value)
-
-				if value != "" && !slices.Contains(tmpAppsecContext[key], value) {
-					tmpAppsecContext[key] = append(tmpAppsecContext[key], value)
-				}
-			case int:
-				val := strconv.Itoa(value)
-				evtRule.Meta = appendMeta(evtRule.Meta, key, val)
-
-				if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
-					tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
-				}
-			case []string:
-				for _, v := range value {
-					evtRule.Meta = appendMeta(evtRule.Meta, key, v)
-
-					if v != "" && !slices.Contains(tmpAppsecContext[key], v) {
-						tmpAppsecContext[key] = append(tmpAppsecContext[key], v)
-					}
-				}
-			case []int:
-				for _, v := range value {
-					val := strconv.Itoa(v)
-					evtRule.Meta = appendMeta(evtRule.Meta, key, val)
-
-					if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
-						tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
-					}
-				}
-			default:
-				val := fmt.Sprintf("%v", value)
-				evtRule.Meta = appendMeta(evtRule.Meta, key, val)
-
-				if val != "" && !slices.Contains(tmpAppsecContext[key], val) {
-					tmpAppsecContext[key] = append(tmpAppsecContext[key], val)
-				}
-			}
+	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec)
+	if len(errors) > 0 {
+		for _, err := range errors {
+			log.Errorf("failed to generate appsec context: %s", err)
 		}
-
-		alert.Events = append(alert.Events, &evtRule)
-	}
-
-	metas := make([]*models.MetaItems0, 0)
-
-	for key, values := range tmpAppsecContext {
-		if len(values) == 0 {
-			continue
-		}
-
-		valueStr, err := alertcontext.TruncateContext(values, alertcontext.MaxContextValueLen)
-		if err != nil {
-			log.Warning(err.Error())
-		}
-
-		meta := models.MetaItems0{
-			Key:   key,
-			Value: valueStr,
-		}
-		metas = append(metas, &meta)
 	}
 
 	alert.Meta = metas
