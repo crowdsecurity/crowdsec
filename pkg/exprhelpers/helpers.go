@@ -129,7 +129,7 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
-
+	XMLCacheInit()
 	return nil
 }
 
