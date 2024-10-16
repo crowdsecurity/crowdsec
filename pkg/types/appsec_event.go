@@ -47,6 +47,10 @@ const (
 	Kind       Field = "kind"
 )
 
+func EmptyMatchedRule() *MatchedRule {
+	return &MatchedRule{}
+}
+
 func (w AppsecEvent) GetVar(varName string) string {
 	if w.Vars == nil {
 		return ""
