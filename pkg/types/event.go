@@ -47,6 +47,13 @@ type Event struct {
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
 
+func EmptyEvent() *Event {
+	return &Event{Type: LOG,
+		Parsed:   make(map[string]string),
+		Enriched: make(map[string]string),
+		Meta:     make(map[string]string)}
+}
+
 func (e *Event) SetMeta(key string, value string) bool {
 	if e.Meta == nil {
 		e.Meta = make(map[string]string)
