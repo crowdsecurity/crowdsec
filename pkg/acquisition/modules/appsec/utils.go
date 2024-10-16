@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
@@ -20,29 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-// var appsecMetaKeys = []string{
-// 	"id",
-// 	"name",
-// 	"method",
-// 	"uri",
-// 	"matched_zones",
-// 	"msg",
-// }
-
-// func appendMeta(meta models.Meta, key string, value string) models.Meta {
-// 	if value == "" {
-// 		return meta
-// 	}
-
-// 	meta = append(meta, &models.MetaItems0{
-// 		Key:   key,
-// 		Value: value,
-// 	})
-
-// 	return meta
-// }
-
-func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
+func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
 	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches {
 		return nil, nil
@@ -95,7 +74,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.Capacity = ptr.Of(int32(1))
 	alert.Events = make([]*models.Event, len(evt.Appsec.GetRuleIDs()))
 
-	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec)
+	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec, request)
 	if len(errors) > 0 {
 		for _, err := range errors {
 			log.Errorf("failed to generate appsec context: %s", err)
