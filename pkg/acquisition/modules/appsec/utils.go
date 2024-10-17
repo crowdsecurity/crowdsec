@@ -21,6 +21,43 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
+
+	if src == nil || src.Scope == nil || *src.Scope != types.Ip {
+		return fmt.Errorf("source is nil or not an IP")
+	}
+
+	//GeoIP enrich
+	asndata, err := exprhelpers.GeoIPASNEnrich(src.IP)
+
+	if err != nil {
+		return err
+	} else if asndata != nil {
+		record := asndata.(*geoip2.ASN)
+		src.AsName = record.AutonomousSystemOrganization
+		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	}
+
+	cityData, err := exprhelpers.GeoIPEnrich(src.IP)
+	if err != nil {
+		return err
+	} else if cityData != nil {
+		record := cityData.(*geoip2.City)
+		src.Cn = record.Country.IsoCode
+		src.Latitude = float32(record.Location.Latitude)
+		src.Longitude = float32(record.Location.Longitude)
+	}
+
+	rangeData, err := exprhelpers.GeoIPRangeEnrich(src.IP)
+	if err != nil {
+		return err
+	} else if rangeData != nil {
+		record := rangeData.(*net.IPNet)
+		src.Range = record.String()
+	}
+	return nil
+}
+
 func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
 	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches {
@@ -37,33 +74,9 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 		Scope: ptr.Of(types.Ip),
 	}
 
-	//GeoIP enrich
-	asndata, err := exprhelpers.GeoIPASNEnrich(sourceIP)
-
-	if err != nil {
-		log.Errorf("Unable to enrich ip '%s' for ASN: %s", sourceIP, err)
-	} else if asndata != nil {
-		record := asndata.(*geoip2.ASN)
-		source.AsName = record.AutonomousSystemOrganization
-		source.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	}
-
-	cityData, err := exprhelpers.GeoIPEnrich(sourceIP)
-	if err != nil {
-		log.Errorf("Unable to enrich ip '%s' for geo data: %s", sourceIP, err)
-	} else if cityData != nil {
-		record := cityData.(*geoip2.City)
-		source.Cn = record.Country.IsoCode
-		source.Latitude = float32(record.Location.Latitude)
-		source.Longitude = float32(record.Location.Longitude)
-	}
-
-	rangeData, err := exprhelpers.GeoIPRangeEnrich(sourceIP)
-	if err != nil {
-		log.Errorf("Unable to enrich ip '%s' for range: %s", sourceIP, err)
-	} else if rangeData != nil {
-		record := rangeData.(*net.IPNet)
-		source.Range = record.String()
+	// Enrich source with GeoIP data
+	if err := AppsecEventGenerationGeoIPEnrich(&source); err != nil {
+		log.Errorf("unable to enrich source with GeoIP data : %s", err)
 	}
 
 	// Build overflow
