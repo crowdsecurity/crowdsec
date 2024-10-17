@@ -1,6 +1,7 @@
 package appsecacquisition
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -24,7 +25,7 @@ import (
 func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 
 	if src == nil || src.Scope == nil || *src.Scope != types.Ip {
-		return fmt.Errorf("source is nil or not an IP")
+		return errors.New("source is nil or not an IP")
 	}
 
 	//GeoIP enrich
