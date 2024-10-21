@@ -249,7 +249,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 
 		// Should the in band match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
@@ -293,7 +293,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 
 		// Should the match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
