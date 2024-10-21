@@ -143,18 +143,15 @@ rm -rf %{buildroot}
 
 #systemctl stop crowdsec || true
 
-if [ $1 == 2 ];then  
-    if [[ ! -d /var/lib/crowdsec/backup ]]; then
-        cscli config backup /var/lib/crowdsec/backup
-    fi
-fi
+#if [ $1 == 2 ]; then
+#    upgrade pre-install here
+#fi
 
 
 %post -p /bin/bash
 
 #install
 if [ $1 == 1 ]; then
-
     if [ ! -f "/var/lib/crowdsec/data/crowdsec.db" ] ; then
         touch /var/lib/crowdsec/data/crowdsec.db
     fi
@@ -185,21 +182,6 @@ if [ $1 == 1 ]; then
     echo " * Detailed guides are available in our documentation: https://docs.crowdsec.net"
     echo " * Configuration items created by the community can be found at the Hub: https://hub.crowdsec.net"
     echo " * Gain insights into your use of CrowdSec with the help of the console https://app.crowdsec.net"
-
-#upgrade
-elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
-    cscli config restore /var/lib/crowdsec/backup
-    if [ $? == 0 ]; then
-       rm -rf /var/lib/crowdsec/backup
-    fi
-
-    if [[ -f %{_sysconfdir}/crowdsec/online_api_credentials.yaml ]] ; then
-        chmod 600 %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-    fi
-    
-    if [[ -f %{_sysconfdir}/crowdsec/local_api_credentials.yaml ]] ; then
-        chmod 600 %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-    fi
 fi
 
 %systemd_post %{name}.service
