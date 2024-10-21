@@ -14,7 +14,6 @@ var (
 	ParseTimeFail     = errors.New("unable to parse time")
 	ParseDurationFail = errors.New("unable to parse duration")
 	MarshalFail       = errors.New("unable to serialize")
-	UnmarshalFail     = errors.New("unable to parse")
 	BulkError         = errors.New("unable to insert bulk")
 	ParseType         = errors.New("unable to parse type")
 	InvalidIPOrRange  = errors.New("invalid ip address / range")
