@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -359,7 +358,6 @@ func TestAppsecEventToContext(t *testing.T) {
 		//run
 
 		metas, errors := AppsecEventToContext(test.match, test.req)
-		fmt.Printf(spew.Sdump(metas))
 		assert.Len(t, errors, test.expectedErrLen)
 		assert.ElementsMatch(t, test.expectedResult, metas)
 	}
