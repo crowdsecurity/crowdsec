@@ -2,13 +2,16 @@ package alertcontext
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestNewAlertContext(t *testing.T) {
@@ -197,6 +200,167 @@ func TestEventToContext(t *testing.T) {
 		require.NoError(t, err)
 
 		metas, _ := EventToContext(test.events)
+		assert.ElementsMatch(t, test.expectedResult, metas)
+	}
+}
+
+func TestValidateContextExpr(t *testing.T) {
+	tests := []struct {
+		name        string
+		key         string
+		exprs       []string
+		expectedErr *string
+	}{
+		{
+			name: "basic config",
+			key:  "source_ip",
+			exprs: []string{
+				"evt.Parsed.source_ip",
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "basic config with non existent field",
+			key:  "source_ip",
+			exprs: []string{
+				"evt.invalid.source_ip",
+			},
+			expectedErr: ptr.Of("compilation of 'evt.invalid.source_ip' failed: type types.Event has no field invalid"),
+		},
+	}
+	for _, test := range tests {
+		fmt.Printf("Running test '%s'\n", test.name)
+		err := ValidateContextExpr(test.key, test.exprs)
+		if test.expectedErr == nil {
+			require.NoError(t, err)
+		} else {
+			require.ErrorContains(t, err, *test.expectedErr)
+		}
+	}
+}
+
+func TestAppsecEventToContext(t *testing.T) {
+
+	tests := []struct {
+		name           string
+		contextToSend  map[string][]string
+		match          types.AppsecEvent
+		req            *http.Request
+		expectedResult models.Meta
+		expectedErrLen int
+	}{
+		{
+			name: "basic test on match",
+			contextToSend: map[string][]string{
+				"id": {"match.id"},
+			},
+			match: types.AppsecEvent{
+				MatchedRules: types.MatchedRules{
+					{
+						"id": "test",
+					},
+				},
+			},
+			req: &http.Request{},
+			expectedResult: []*models.MetaItems0{
+				{
+					Key:   "id",
+					Value: "[\"test\"]",
+				},
+			},
+			expectedErrLen: 0,
+		},
+		{
+			name: "basic test on req",
+			contextToSend: map[string][]string{
+				"ua": {"req.UserAgent()"},
+			},
+			match: types.AppsecEvent{
+				MatchedRules: types.MatchedRules{
+					{
+						"id": "test",
+					},
+				},
+			},
+			req: &http.Request{
+				Header: map[string][]string{
+					"User-Agent": {"test"},
+				},
+			},
+			expectedResult: []*models.MetaItems0{
+				{
+					Key:   "ua",
+					Value: "[\"test\"]",
+				},
+			},
+			expectedErrLen: 0,
+		},
+		{
+			name: "test on req -> []string",
+			contextToSend: map[string][]string{
+				"foobarxx": {"req.Header.Values('Foobar')"},
+			},
+			match: types.AppsecEvent{
+				MatchedRules: types.MatchedRules{
+					{
+						"id": "test",
+					},
+				},
+			},
+			req: &http.Request{
+				Header: map[string][]string{
+					"User-Agent": {"test"},
+					"Foobar":     {"test1", "test2"},
+				},
+			},
+			expectedResult: []*models.MetaItems0{
+				{
+					Key:   "foobarxx",
+					Value: "[\"test1\",\"test2\"]",
+				},
+			},
+			expectedErrLen: 0,
+		},
+		{
+			name: "test on type int",
+			contextToSend: map[string][]string{
+				"foobarxx": {"len(req.Header.Values('Foobar'))"},
+			},
+			match: types.AppsecEvent{
+				MatchedRules: types.MatchedRules{
+					{
+						"id": "test",
+					},
+				},
+			},
+			req: &http.Request{
+				Header: map[string][]string{
+					"User-Agent": {"test"},
+					"Foobar":     {"test1", "test2"},
+				},
+			},
+			expectedResult: []*models.MetaItems0{
+				{
+					Key:   "foobarxx",
+					Value: "[\"2\"]",
+				},
+			},
+			expectedErrLen: 0,
+		},
+	}
+
+	for _, test := range tests {
+		//reset cache
+		alertContext = Context{}
+		//compile
+		if err := NewAlertContext(test.contextToSend, 100); err != nil {
+			t.Fatalf("failed to compile %s: %s", test.name, err)
+		}
+		//run
+
+		metas, errors := AppsecEventToContext(test.match, test.req)
+		fmt.Printf(spew.Sdump(metas))
+		assert.Len(t, errors, test.expectedErrLen)
 		assert.ElementsMatch(t, test.expectedResult, metas)
 	}
 }
