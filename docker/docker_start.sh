@@ -456,7 +456,7 @@ fi
 shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
-    NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
+    NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f3-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         register_bouncer "$NAME" "$KEY"
     fi
