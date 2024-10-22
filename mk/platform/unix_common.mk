@@ -17,7 +17,7 @@ BUILD_TIMESTAMP=$(shell date +%F"_"%T)
 DEFAULT_CONFIGDIR?=/etc/crowdsec
 DEFAULT_DATADIR?=/var/lib/crowdsec/data
 
-PKG_CONFIG:=$(shell command -v pkg-config 2>/dev/null)
+export PKG_CONFIG:=$(CURDIR)/mk/pkg-config-wrapper
 
 # See if we have libre2-dev installed for C++ optimizations.
 # In fedora and other distros, we need to tell where to find re2.pc

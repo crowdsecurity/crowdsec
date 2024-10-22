@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# remove unsupported flags to prevent build failure under ubuntu 24.10
+
+pkg-config "$@" | sed 's/-Wl,--push-state,--as-needed//g'
