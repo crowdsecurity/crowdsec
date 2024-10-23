@@ -344,7 +344,6 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 					return nil
 				})
 			}
-			log.Tracef("Mode is %s", subsrc.GetMode())
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(outChan, AcquisTomb)
 			} else {
