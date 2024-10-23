@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	// import gin for http server
-
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -133,7 +131,6 @@ func (hc *HttpConfiguration) Validate() error {
 		return fmt.Errorf("chunk_size must be positive")
 	}
 
-	// validate custom status code
 	if hc.CustomStatusCode != nil {
 		statusText := http.StatusText(*hc.CustomStatusCode)
 		if statusText == "" {
