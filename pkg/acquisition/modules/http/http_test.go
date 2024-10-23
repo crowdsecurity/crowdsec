@@ -1,6 +1,7 @@
 package httpacquisition
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
@@ -184,7 +185,7 @@ custom_status_code: 999`,
 
 	for _, test := range tests {
 		h := HTTPSource{}
-		err := h.Configure([]byte(test.config), subLogger)
+		err := h.Configure([]byte(test.config), subLogger, 0)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -235,16 +236,17 @@ func TestGetName(t *testing.T) {
 }
 
 func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte) (chan types.Event, *tomb.Tomb) {
+	ctx := context.Background()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
 	})
-	err := h.Configure(config, subLogger)
+	err := h.Configure(config, subLogger, 0)
 	if err != nil {
 		t.Fatalf("unable to configure http source: %s", err)
 	}
 	tomb := tomb.Tomb{}
 	out := make(chan types.Event)
-	err = h.StreamingAcquisition(out, &tomb)
+	err = h.StreamingAcquisition(ctx, out, &tomb)
 	if err != nil {
 		t.Fatalf("unable to start streaming acquisition: %s", err)
 	}

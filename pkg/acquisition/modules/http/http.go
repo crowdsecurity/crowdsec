@@ -1,6 +1,7 @@
 package httpacquisition
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -61,9 +62,10 @@ type TLSConfig struct {
 }
 
 type HTTPSource struct {
-	Config HttpConfiguration
-	logger *log.Entry
-	Server *http.Server
+	metricsLevel int
+	Config       HttpConfiguration
+	logger       *log.Entry
+	Server       *http.Server
 }
 
 func (h *HTTPSource) GetUuid() string {
@@ -144,8 +146,9 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	h.logger = logger
+	h.metricsLevel = MetricsLevel
 	err := h.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -260,12 +263,21 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			Module:  h.GetName(),
 		}
 
+		if h.metricsLevel == configuration.METRICS_AGGREGATE {
+			line.Src = hc.Path
+		}
+
 		evt := types.Event{
 			Line:       line,
 			Process:    true,
 			Type:       types.LOG,
 			ExpectMode: types.LIVE,
 		}
+
+		if h.metricsLevel != configuration.METRICS_NONE {
+			linesRead.With(prometheus.Labels{"path": hc.Path}).Inc()
+		}
+
 		out <- evt
 		return nil
 	})
@@ -355,7 +367,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (h *HTTPSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	h.logger.Debugf("start http server on port %d", h.Config.Port)
 
 	t.Go(func() error {
