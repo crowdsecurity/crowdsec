@@ -27,6 +27,11 @@ type WatcherRegistrationRequest struct {
 	// Required: true
 	// Format: password
 	Password *strfmt.Password `json:"password"`
+
+	// registration token
+	// Max Length: 255
+	// Min Length: 32
+	RegistrationToken string `json:"registration_token,omitempty"`
 }
 
 // Validate validates this watcher registration request
@@ -38,6 +43,10 @@ func (m *WatcherRegistrationRequest) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validatePassword(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRegistrationToken(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -63,6 +72,22 @@ func (m *WatcherRegistrationRequest) validatePassword(formats strfmt.Registry) e
 	}
 
 	if err := validate.FormatOf("password", "body", "password", m.Password.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *WatcherRegistrationRequest) validateRegistrationToken(formats strfmt.Registry) error {
+	if swag.IsZero(m.RegistrationToken) { // not required
+		return nil
+	}
+
+	if err := validate.MinLength("registration_token", "body", m.RegistrationToken, 32); err != nil {
+		return err
+	}
+
+	if err := validate.MaxLength("registration_token", "body", m.RegistrationToken, 255); err != nil {
 		return err
 	}
 

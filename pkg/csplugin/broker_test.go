@@ -4,6 +4,7 @@ package csplugin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -14,9 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -31,13 +32,14 @@ func (s *PluginSuite) permissionSetter(perm os.FileMode) func(*testing.T) {
 
 func (s *PluginSuite) readconfig() PluginConfig {
 	var config PluginConfig
+
 	t := s.T()
 
 	orig, err := os.ReadFile(s.pluginConfig)
 	require.NoError(t, err, "unable to read config file %s", s.pluginConfig)
 
 	err = yaml.Unmarshal(orig, &config)
-	require.NoError(t, err, "unable to unmarshal config file")
+	require.NoError(t, err, "unable to parse config file")
 
 	return config
 }
@@ -45,13 +47,14 @@ func (s *PluginSuite) readconfig() PluginConfig {
 func (s *PluginSuite) writeconfig(config PluginConfig) {
 	t := s.T()
 	data, err := yaml.Marshal(&config)
-	require.NoError(t, err, "unable to marshal config file")
+	require.NoError(t, err, "unable to serialize config file")
 
-	err = os.WriteFile(s.pluginConfig, data, 0644)
+	err = os.WriteFile(s.pluginConfig, data, 0o644)
 	require.NoError(t, err, "unable to write config file %s", s.pluginConfig)
 }
 
 func (s *PluginSuite) TestBrokerInit() {
+	ctx := context.Background()
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -111,7 +114,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "Invalid user and group",
-			expectedErr: "unknown user toto1234",
+			expectedErr: "toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "toto1234",
 				Group: "toto1234",
@@ -119,7 +122,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "Valid user and invalid group",
-			expectedErr: "unknown group toto1234",
+			expectedErr: "toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "nobody",
 				Group: "toto1234",
@@ -128,32 +131,36 @@ func (s *PluginSuite) TestBrokerInit() {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		s.Run(tc.name, func() {
 			t := s.T()
 			if tc.action != nil {
 				tc.action(t)
 			}
-			_, err := s.InitBroker(&tc.procCfg)
+
+			_, err := s.InitBroker(ctx, &tc.procCfg)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
 
 func (s *PluginSuite) TestBrokerNoThreshold() {
+	ctx := context.Background()
+
 	var alerts []models.Alert
+
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 
 	// send one item, it should be processed right now
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one now
@@ -170,6 +177,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	// and another one
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one again, as we cleaned the file
@@ -178,11 +186,13 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 
 	err = json.Unmarshal(content, &alerts)
 	log.Printf("content-> %s", content)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 }
 
 func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
+	ctx := context.Background()
+
 	// test grouping by "time"
 	DefaultEmptyTicker = 50 * time.Millisecond
 
@@ -194,8 +204,8 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	cfg.GroupWait = 1 * time.Second
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -204,21 +214,23 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(500 * time.Millisecond)
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	time.Sleep(1 * time.Second)
 	// after 1 seconds, we should have data
 	content, err := os.ReadFile("./out")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 3)
 }
 
 func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
+	ctx := context.Background()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -229,8 +241,8 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	cfg.GroupWait = 4 * time.Second
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -239,11 +251,13 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(100 * time.Millisecond)
 
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(100 * time.Millisecond)
 
 	// and now we should
@@ -252,11 +266,12 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
 }
 
 func (s *PluginSuite) TestBrokerRunGroupThreshold() {
+	ctx := context.Background()
 	// test grouping by "size"
 	DefaultEmptyTicker = 50 * time.Millisecond
 
@@ -267,8 +282,8 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	cfg.GroupThreshold = 4
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -277,6 +292,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(time.Second)
 
 	// because of group threshold, we shouldn't have data yet
@@ -284,6 +300,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(time.Second)
 
 	// and now we should
@@ -297,11 +314,11 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	// two notifications, one with 4 alerts, one with 2 alerts
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 2)
 
 	err = decoder.Decode(&alerts)
@@ -309,6 +326,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunTimeThreshold() {
+	ctx := context.Background()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -318,14 +336,15 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	cfg.GroupWait = 1 * time.Second
 	s.writeconfig(cfg)
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we shouldn't have data yet
@@ -338,17 +357,18 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 }
 
 func (s *PluginSuite) TestBrokerRunSimple() {
+	ctx := context.Background()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -372,11 +392,11 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	// two notifications, one alert each
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)

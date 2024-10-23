@@ -23,38 +23,49 @@ teardown() {
 #----------
 
 @test "with agent: test without -no-cs flag" {
-    rune -124 timeout 2s "${CROWDSEC}"
-    # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
+    config_set '.common.log_media="stdout"'
+    rune -0 wait-for \
+        --err "Starting processing data" \
+        "$CROWDSEC"
 }
 
 @test "no agent: crowdsec LAPI should run (-no-cs flag)" {
-    rune -124 timeout 2s "${CROWDSEC}" -no-cs
+    config_set '.common.log_media="stdout"'
+    rune -0 wait-for \
+        --err "CrowdSec Local API listening" \
+        "$CROWDSEC" -no-cs
 }
 
 @test "no agent: crowdsec LAPI should run (no crowdsec_service in configuration file)" {
     config_disable_agent
     config_log_stderr
-    rune -124 timeout 2s "${CROWDSEC}"
-
-    assert_stderr --partial "crowdsec agent is disabled"
+    rune -0 wait-for \
+        --err "crowdsec agent is disabled" \
+        "$CROWDSEC"
 }
 
 @test "no agent: cscli config show" {
-    config_disable_agent
+    config_set '.crowdsec_service.enable=false'
     rune -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "cscli:"
     assert_output --partial "Local API Server:"
+    assert_output --partial "Crowdsec (disabled):"
 
-    refute_output --partial "Crowdsec:"
+    config_set 'del(.crowdsec_service)'
+    rune -0 cscli config show -o human
+    assert_output --partial "Global:"
+    assert_output --partial "cscli:"
+    assert_output --partial "Local API Server:"
+    refute_output --partial "Crowdsec"
 }
 
 @test "no agent: cscli config backup" {
     config_disable_agent
-    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
-    rune -0 cscli config backup "${backupdir}"
+    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
+    rune -0 cscli config backup "$backupdir"
     assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "${backupdir}"
+    rune -1 cscli config backup "$backupdir"
 
     assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
@@ -65,7 +76,7 @@ teardown() {
     config_disable_agent
     ./instance-crowdsec start
     rune -0 cscli lapi status
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --partial "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli metrics" {

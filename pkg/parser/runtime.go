@@ -14,11 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -41,8 +42,8 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 
 	iter := reflect.ValueOf(evt).Elem()
 	if (iter == reflect.Value{}) || iter.IsZero() {
-		log.Tracef("event is nill")
-		//event is nill
+		log.Tracef("event is nil")
+		//event is nil
 		return false
 	}
 	for _, f := range strings.Split(target, ".") {
@@ -117,7 +118,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, map[string]interface{}{"evt": event})
+			output, err := exprhelpers.Run(static.RunTimeValue, map[string]interface{}{"evt": event}, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -127,6 +128,8 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 				value = out
 			case int:
 				value = strconv.Itoa(out)
+			case float64, float32:
+				value = fmt.Sprintf("%f", out)
 			case map[string]interface{}:
 				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case []interface{}:
@@ -134,7 +137,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			case nil:
 				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
 			default:
-				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
+				clog.Errorf("unexpected return type for '%s' : %T", static.ExpValue, output)
 				return errors.New("unexpected return type for RunTimeValue")
 			}
 		}
@@ -152,7 +155,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
 				clog.Tracef("Found method '%s'", static.Method)
-				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx, n.Logger)
+				ret, err := enricherPlugin.EnrichFunc(value, event, n.Logger.WithField("method", static.Method))
 				if err != nil {
 					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
 				}
@@ -218,6 +221,24 @@ var NodesHitsKo = prometheus.NewCounterVec(
 	[]string{"source", "type", "name"},
 )
 
+//
+
+var NodesWlHitsOk = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_node_wl_hits_ok_total",
+		Help: "Total events successfully whitelisted by node.",
+	},
+	[]string{"source", "type", "name", "reason"},
+)
+
+var NodesWlHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_node_wl_hits_total",
+		Help: "Total events processed by whitelist node.",
+	},
+	[]string{"source", "type", "name", "reason"},
+)
+
 func stageidx(stage string, stages []string) int {
 	for i, v := range stages {
 		if stage == v {
@@ -227,14 +248,10 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-type ParserResult struct {
-	Evt     types.Event
-	Success bool
-}
-
 var ParseDump bool
 var DumpFolder string
-var StageParseCache map[string]map[string][]ParserResult
+
+var StageParseCache dumps.ParserResults
 var StageParseMutex sync.Mutex
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
@@ -269,9 +286,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	if ParseDump {
 		if StageParseCache == nil {
 			StageParseMutex.Lock()
-			StageParseCache = make(map[string]map[string][]ParserResult)
-			StageParseCache["success"] = make(map[string][]ParserResult)
-			StageParseCache["success"][""] = make([]ParserResult, 0)
+			StageParseCache = make(dumps.ParserResults)
+			StageParseCache["success"] = make(map[string][]dumps.ParserResult)
+			StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
 			StageParseMutex.Unlock()
 		}
 	}
@@ -280,7 +297,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		if ParseDump {
 			StageParseMutex.Lock()
 			if _, ok := StageParseCache[stage]; !ok {
-				StageParseCache[stage] = make(map[string][]ParserResult)
+				StageParseCache[stage] = make(map[string][]dumps.ParserResult)
 			}
 			StageParseMutex.Unlock()
 		}
@@ -320,13 +337,18 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
+				var parserIdxInStage int
 				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
-					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
+					StageParseCache[stage][node.Name] = make([]dumps.ParserResult, 0)
+					parserIdxInStage = len(StageParseCache[stage])
+				} else {
+					parserIdxInStage = StageParseCache[stage][node.Name][0].Idx
 				}
 				StageParseMutex.Unlock()
+
 				evtcopy := deepcopy.Copy(event)
-				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
+				parserInfo := dumps.ParserResult{Evt: evtcopy.(types.Event), Success: ret, Idx: parserIdxInStage}
 				StageParseMutex.Lock()
 				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
 				StageParseMutex.Unlock()

@@ -1,7 +1,7 @@
 param (
     $version
 )
-$env:Path += ";C:\Program Files (x86)\WiX Toolset v3.11\bin"
+$env:Path += ";C:\Program Files (x86)\WiX Toolset v3.14\bin"
 if ($version.StartsWith("v"))
 {
     $version = $version.Substring(1)

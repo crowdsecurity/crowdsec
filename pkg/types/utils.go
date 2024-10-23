@@ -1,11 +1,8 @@
 package types
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -50,7 +47,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true, ForceColors: forceColors}
+	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
 	log.SetFormatter(logFormatter)
 	return nil
 }
@@ -68,40 +65,15 @@ func ConfigureLogger(clog *log.Logger) error {
 	return nil
 }
 
-func ParseDuration(d string) (time.Duration, error) {
-	durationStr := d
-	if strings.HasSuffix(d, "d") {
-		days := strings.Split(d, "d")[0]
-		if len(days) == 0 {
-			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
-		}
-		daysInt, err := strconv.Atoi(days)
-		if err != nil {
-			return 0, err
-		}
-		durationStr = strconv.Itoa(daysInt*24) + "h"
-	}
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		return 0, err
-	}
-	return duration, nil
-}
-
 func UtcNow() time.Time {
 	return time.Now().UTC()
 }
 
-func GetLineCountForFile(filepath string) int {
-	f, err := os.Open(filepath)
+func IsNetworkFS(path string) (bool, string, error) {
+	fsType, err := GetFSType(path)
 	if err != nil {
-		log.Fatalf("unable to open log file %s : %s", filepath, err)
+		return false, "", err
 	}
-	defer f.Close()
-	lc := 0
-	fs := bufio.NewScanner(f)
-	for fs.Scan() {
-		lc++
-	}
-	return lc
+	fsType = strings.ToLower(fsType)
+	return fsType == "nfs" || fsType == "cifs" || fsType == "smb" || fsType == "smb2", fsType, nil
 }

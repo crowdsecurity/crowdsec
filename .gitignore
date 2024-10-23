@@ -6,7 +6,10 @@
 *.dylib
 *~
 .pc
+
+# IDEs
 .vscode
+.idea
 
 # If vendor is included, allow prebuilt (wasm?) libraries.
 !vendor/**/*.so
@@ -34,18 +37,14 @@ test/coverage/*
 *.swo
 
 # Dependencies are not vendored by default, but a tarball is created by "make vendor"
-# and provided in the release. Used by freebsd, gentoo, etc.
+# and provided in the release. Used by gentoo, etc.
 vendor/
 vendor.tgz
 
 # crowdsec binaries
 cmd/crowdsec-cli/cscli
 cmd/crowdsec/crowdsec
-plugins/notifications/http/notification-http
-plugins/notifications/slack/notification-slack
-plugins/notifications/splunk/notification-splunk
-plugins/notifications/email/notification-email
-plugins/notifications/dummy/notification-dummy
+cmd/notification-*/notification-*
 
 # Test cache (downloaded files)
 .cache
@@ -61,3 +60,6 @@ msi
 __pycache__
 *.py[cod]
 *.egg-info
+
+# automatically generated before running codecov
+.github/codecov.yml

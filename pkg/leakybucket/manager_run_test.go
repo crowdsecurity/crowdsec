@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func expectBucketCount(buckets *Buckets, expected int) error {
@@ -20,7 +21,6 @@ func expectBucketCount(buckets *Buckets, expected int) error {
 		return fmt.Errorf("expected %d live buckets, got %d", expected, count)
 	}
 	return nil
-
 }
 
 func TestGCandDump(t *testing.T) {
@@ -29,7 +29,7 @@ func TestGCandDump(t *testing.T) {
 		tomb    = &tomb.Tomb{}
 	)
 
-	var Holders = []BucketFactory{
+	Holders := []BucketFactory{
 		//one overflowing soon + bh
 		{
 			Name:        "test_counter_fast",
@@ -80,7 +80,7 @@ func TestGCandDump(t *testing.T) {
 
 	log.Printf("Pouring to bucket")
 
-	var in = types.Event{Parsed: map[string]string{"something": "something"}}
+	in := types.Event{Parsed: map[string]string{"something": "something"}}
 	//pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
@@ -156,7 +156,7 @@ func TestShutdownBuckets(t *testing.T) {
 
 	log.Printf("Pouring to bucket")
 
-	var in = types.Event{Parsed: map[string]string{"something": "something"}}
+	in := types.Event{Parsed: map[string]string{"something": "something"}}
 	//pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
@@ -178,5 +178,4 @@ func TestShutdownBuckets(t *testing.T) {
 	if err := expectBucketCount(buckets, 2); err != nil {
 		t.Fatal(err)
 	}
-
 }

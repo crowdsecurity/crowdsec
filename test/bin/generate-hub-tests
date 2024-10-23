@@ -7,44 +7,13 @@ THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck disable=SC1091
 . "${THIS_DIR}/../.environment.sh"
 
-cscli() {
-    "${CSCLI}" "$@"
-}
-
 "${TEST_DIR}/instance-data" load
 
 hubdir="${LOCAL_DIR}/hub-tests"
 git clone --depth 1 https://github.com/crowdsecurity/hub.git "${hubdir}" >/dev/null 2>&1 || (cd "${hubdir}"; git pull)
 
-HUBTESTS_BATS="${TEST_DIR}/dyn-bats/hub.bats"
-
-cat << EOT > "${HUBTESTS_BATS}"
-set -u
-
-setup_file() {
-    load "../lib/setup_file.sh"
-}
-
-teardown_file() {
-    load "../lib/teardown_file.sh"
-}
-
-setup() {
-    load "../lib/setup.sh"
-}
-
-EOT
-
 echo "Generating hub tests..."
 
-for testname in $("${CSCLI}" --crowdsec "${CROWDSEC}" --cscli "${CSCLI}" hubtest --hub "${hubdir}" list -o json | jq -r '.[] | .Name'); do
-    cat << EOT >> "${HUBTESTS_BATS}"
-
-@test "${testname}" {
-    run "\${CSCLI}" --crowdsec "\${CROWDSEC}" --cscli "\${CSCLI}" --hub "${hubdir}" hubtest run "${testname}" --clean
-    # in case of error, need to see what went wrong
-    echo "\$output"
-    assert_success
-}
-EOT
-done
+python3 "$THIS_DIR/generate-hub-tests.py" \
+    <("${CSCLI}" --crowdsec "${CROWDSEC}" --cscli "${CSCLI}" hubtest --hub "${hubdir}" list -o json) \
+    "${TEST_DIR}/dyn-bats/"

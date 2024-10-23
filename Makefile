@@ -23,22 +23,18 @@ BUILD_RE2_WASM ?= 0
 BUILD_STATIC ?= 0
 
 # List of plugins to build
-PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
-
-# Can be overriden, if you can deal with the consequences
-BUILD_REQUIRE_GO_MAJOR ?= 1
-BUILD_REQUIRE_GO_MINOR ?= 20
+PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 
 #--------------------------------------
 
-GOCMD = go
-GOTEST = $(GOCMD) test
+GO = go
+GOTEST = $(GO) test
 
 BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
-PLUGINS_DIR = ./plugins/notifications
+PLUGINS_DIR_PREFIX = ./cmd/notification-
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
@@ -64,24 +60,25 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
-# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/ and plugins/
+# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/
 #
 
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 LD_OPTS_VARS= \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.BuildDate=$(BUILD_TIMESTAMP)' \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Tag=$(BUILD_TAG)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.Tag=$(BUILD_TAG)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
 ifneq (,$(DOCKER_BUILD))
-LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
+LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
-GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+#expr_debug tag is required to enable the debug mode in expr
+GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
 # this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
@@ -92,7 +89,6 @@ ifeq ($(PKG_CONFIG),)
 endif
 
 ifeq ($(RE2_CHECK),)
-# we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
 else
 # += adds a space that we don't want
@@ -101,6 +97,7 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
 endif
 
+# Build static to avoid the runtime dependency on libre2.so
 ifeq ($(call bool,$(BUILD_STATIC)),1)
 BUILD_TYPE = static
 EXTLDFLAGS := -extldflags '-static'
@@ -109,22 +106,94 @@ BUILD_TYPE = dynamic
 EXTLDFLAGS :=
 endif
 
-export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
-	-trimpath -tags $(GO_TAGS)
+# Build with debug symbols, and disable optimizations + inlining, to use Delve
+ifeq ($(call bool,$(DEBUG)),1)
+STRIP_SYMBOLS :=
+DISABLE_OPTIMIZATION := -gcflags "-N -l"
+else
+STRIP_SYMBOLS := -s -w
+DISABLE_OPTIMIZATION :=
+endif
 
-ifneq (,$(TEST_COVERAGE))
+#--------------------------------------
+
+# Handle optional components and build profiles, to save space on the final binaries.
+
+# Keep it safe for now until we decide how to expand on the idea. Either choose a profile or exclude components manually.
+# For example if we want to disable some component by default, or have opt-in components (INCLUDE?).
+
+ifeq ($(and $(BUILD_PROFILE),$(EXCLUDE)),1)
+$(error "Cannot specify both BUILD_PROFILE and EXCLUDE")
+endif
+
+COMPONENTS := \
+	datasource_appsec \
+	datasource_cloudwatch \
+	datasource_docker \
+	datasource_file \
+	datasource_k8saudit \
+	datasource_kafka \
+	datasource_journalctl \
+	datasource_kinesis \
+	datasource_loki \
+	datasource_s3 \
+	datasource_syslog \
+	datasource_wineventlog \
+	cscli_setup
+
+comma := ,
+space := $(empty) $(empty)
+
+# Predefined profiles
+
+# keep only datasource-file
+EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
+
+# example
+# EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
+
+BUILD_PROFILE ?= default
+
+# Set the EXCLUDE_LIST based on the chosen profile, unless EXCLUDE is already set
+ifeq ($(BUILD_PROFILE),minimal)
+EXCLUDE ?= $(EXCLUDE_MINIMAL)
+else ifneq ($(BUILD_PROFILE),default)
+$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default)
+endif
+
+# Create list of excluded components from the EXCLUDE variable
+EXCLUDE_LIST := $(subst $(comma),$(space),$(EXCLUDE))
+
+INVALID_COMPONENTS := $(filter-out $(COMPONENTS),$(EXCLUDE_LIST))
+ifneq ($(INVALID_COMPONENTS),)
+$(error Invalid optional components specified in EXCLUDE: $(INVALID_COMPONENTS). Valid components are: $(COMPONENTS))
+endif
+
+# Convert the excluded components to "no_<component>" form
+COMPONENT_TAGS := $(foreach component,$(EXCLUDE_LIST),no_$(component))
+
+ifneq ($(COMPONENT_TAGS),)
+GO_TAGS := $(GO_TAGS),$(subst $(space),$(comma),$(COMPONENT_TAGS))
+endif
+
+#--------------------------------------
+
+export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
+	-trimpath -tags $(GO_TAGS) $(DISABLE_OPTIMIZATION)
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
 LD_OPTS += -cover
 endif
 
 #--------------------------------------
 
 .PHONY: build
-build: pre-build goversion crowdsec cscli plugins
+build: build-info crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 
-# Sanity checks and build information
-.PHONY: pre-build
-pre-build:
+.PHONY: build-info
+build-info:  ## Print build information
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
+	$(info Excluded components: $(EXCLUDE_LIST))
 
 ifneq (,$(RE2_FAIL))
 	$(error $(RE2_FAIL))
@@ -135,19 +204,47 @@ ifneq (,$(RE2_CHECK))
 else
 	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
 endif
+
+ifeq ($(call bool,$(DEBUG)),1)
+	$(info Building with debug symbols and disabled optimizations)
+endif
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
+	$(info Test coverage collection enabled)
+endif
+
+# intentional, empty line
 	$(info )
 
 .PHONY: all
-all: clean test build
+all: clean test build  ## Clean, test and build (requires localstack)
 
 .PHONY: plugins
-plugins:
+plugins:  ## Build notification plugins
 	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) build $(MAKE_FLAGS); \
+		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) build $(MAKE_FLAGS); \
 	)
 
+# same as "$(MAKE) -f debian/rules clean" but without the dependency on debhelper
+.PHONY: clean-debian
+clean-debian:
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/files
+	@$(RM) -r debian/.debhelper
+	@$(RM) -r debian/*.substvars
+	@$(RM) -r debian/*-stamp
+
+.PHONY: clean-rpm
+clean-rpm:
+	@$(RM) -r rpm/BUILD
+	@$(RM) -r rpm/BUILDROOT
+	@$(RM) -r rpm/RPMS
+	@$(RM) -r rpm/SOURCES/*.tar.gz
+	@$(RM) -r rpm/SRPMS
+
 .PHONY: clean
-clean: testclean
+clean: clean-debian clean-rpm testclean  ## Remove build artifacts
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
@@ -155,19 +252,19 @@ clean: testclean
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
 	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
+		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) clean $(MAKE_FLAGS); \
 	)
 
 .PHONY: cscli
-cscli: goversion
+cscli:  ## Build cscli
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: crowdsec
-crowdsec: goversion
+crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: testclean
-testclean: bats-clean
+testclean: bats-clean  ## Remove test artifacts
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
@@ -175,53 +272,45 @@ testclean: bats-clean
 
 # for the tests with localstack
 export AWS_ENDPOINT_FORCE=http://localhost:4566
-export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
 
 testenv:
-	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
+	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it'
 
-# run the tests with localstack
 .PHONY: test
-test: testenv goversion
-	$(GOTEST) $(LD_OPTS) ./...
+test: testenv  ## Run unit tests with localstack
+	$(GOTEST) --tags=$(GO_TAGS) $(LD_OPTS) ./...
 
-# run the tests with localstack and coverage
 .PHONY: go-acc
-go-acc: testenv goversion
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
-		sed 's/ *coverage:.*of statements in.*//'
+go-acc: testenv  ## Run unit tests with localstack + coverage
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models --tags $(GO_TAGS) -- $(LD_OPTS)
+
+check_docker:
+	@if ! docker info > /dev/null 2>&1; then \
+		echo "Could not run 'docker info': check that docker is running, and if you need to run this command with sudo."; \
+	fi
 
 # mock AWS services
 .PHONY: localstack
-localstack:
-	docker-compose -f test/localstack/docker-compose.yml up
+localstack: check_docker  ## Run localstack containers (required for unit testing)
+	docker compose -f test/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
-localstack-stop:
-	docker-compose -f test/localstack/docker-compose.yml down
-
-# list of plugins that contain go.mod
-PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
+localstack-stop: check_docker  ## Stop localstack containers
+	docker compose -f test/localstack/docker-compose.yml down
 
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor
-vendor:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		cd $(plugin_dir) >/dev/null && \
-		$(GOCMD) mod vendor && \
-		cd - >/dev/null; \
-	)
-	$(GOCMD) mod vendor
-	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+vendor: vendor-remove  ## CI only - vendor dependencies and archive them for packaging
+	$(GO) mod vendor
+	tar czf vendor.tgz vendor
+	tar --create --auto-compress --file=$(RELDIR)-vendor.tar.xz vendor
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
-vendor-remove:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		$(RM) $(plugin_dir)/vendor; \
-	)
-	$(RM) vendor vendor.tgz
+vendor-remove:  ## Remove vendor dependencies and archives
+	$(RM) vendor vendor.tgz *-vendor.tar.xz
 
 .PHONY: package
 package:
@@ -232,9 +321,9 @@ package:
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
 	@$(foreach plugin,$(PLUGINS), \
-		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR)/$(plugin)/; \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin)/; \
 	)
 
 	@$(CPR) ./config $(RELDIR)
@@ -252,18 +341,15 @@ else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
 endif
 
-# build a release tarball
 .PHONY: release
-release: check_release build package
+release: check_release build package  ## Build a release tarball
 
-# build the windows installer
 .PHONY: windows_installer
-windows_installer: build
+windows_installer: build  ## Windows - build the installer
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
 
-# build the chocolatey package
 .PHONY: chocolatey
-chocolatey: windows_installer
+chocolatey: windows_installer  ## Windows - build the chocolatey package
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
 # Include test/bats.mk only if it exists
@@ -275,4 +361,4 @@ else
 include test/bats.mk
 endif
 
-include mk/goversion.mk
+include mk/help.mk

@@ -1,10 +1,11 @@
 package csplugin
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -43,13 +44,13 @@ func (s *PluginSuite) SetupSuite() {
 	s.buildDir, err = os.MkdirTemp("", "cs_plugin_test_build")
 	require.NoError(t, err)
 
-	s.builtBinary = path.Join(s.buildDir, "notification-dummy")
+	s.builtBinary = filepath.Join(s.buildDir, "notification-dummy")
 
 	if runtime.GOOS == "windows" {
 		s.builtBinary += ".exe"
 	}
 
-	cmd := exec.Command("go", "build", "-o", s.builtBinary, "../../plugins/notifications/dummy/")
+	cmd := exec.Command("go", "build", "-o", s.builtBinary, "../../cmd/notification-dummy/")
 	err = cmd.Run()
 	require.NoError(t, err, "while building dummy plugin")
 }
@@ -96,20 +97,21 @@ func (s *PluginSuite) TearDownTest() {
 
 func (s *PluginSuite) SetupSubTest() {
 	var err error
+
 	t := s.T()
 
 	s.runDir, err = os.MkdirTemp("", "cs_plugin_test")
 	require.NoError(t, err)
 
-	s.pluginDir = path.Join(s.runDir, "bin")
-	err = os.MkdirAll(path.Join(s.runDir, "bin"), 0o755)
+	s.pluginDir = filepath.Join(s.runDir, "bin")
+	err = os.MkdirAll(filepath.Join(s.runDir, "bin"), 0o755)
 	require.NoError(t, err, "while creating bin dir")
 
-	s.notifDir = path.Join(s.runDir, "config")
+	s.notifDir = filepath.Join(s.runDir, "config")
 	err = os.MkdirAll(s.notifDir, 0o755)
 	require.NoError(t, err, "while creating config dir")
 
-	s.pluginBinary = path.Join(s.pluginDir, "notification-dummy")
+	s.pluginBinary = filepath.Join(s.pluginDir, "notification-dummy")
 
 	if runtime.GOOS == "windows" {
 		s.pluginBinary += ".exe"
@@ -120,13 +122,14 @@ func (s *PluginSuite) SetupSubTest() {
 	err = os.Chmod(s.pluginBinary, 0o744)
 	require.NoError(t, err, "chmod 0744 %s", s.pluginBinary)
 
-	s.pluginConfig = path.Join(s.notifDir, "dummy.yaml")
+	s.pluginConfig = filepath.Join(s.notifDir, "dummy.yaml")
 	err = copyFile("testdata/dummy.yaml", s.pluginConfig)
 	require.NoError(t, err, "while copying plugin config")
 }
 
 func (s *PluginSuite) TearDownSubTest() {
 	t := s.T()
+
 	if s.pluginBroker != nil {
 		s.pluginBroker.Kill()
 		s.pluginBroker = nil
@@ -140,19 +143,24 @@ func (s *PluginSuite) TearDownSubTest() {
 	os.Remove("./out")
 }
 
-func (s *PluginSuite) InitBroker(procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
+func (s *PluginSuite) InitBroker(ctx context.Context, procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
 	pb := PluginBroker{}
+
 	if procCfg == nil {
 		procCfg = &csconfig.PluginCfg{}
 	}
+
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	err := pb.Init(procCfg, profiles, &csconfig.ConfigurationPaths{
+
+	err := pb.Init(ctx, procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       s.pluginDir,
 		NotificationDir: s.notifDir,
 	})
+
 	s.pluginBroker = &pb
+
 	return s.pluginBroker, err
 }

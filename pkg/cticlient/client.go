@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 const (
@@ -43,7 +45,10 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("x-api-key", c.apiKey)
+
+	req.Header.Set("X-Api-Key", c.apiKey)
+	req.Header.Set("User-Agent", useragent.Default())
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -71,7 +76,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 func (c *CrowdsecCTIClient) GetIPInfo(ip string) (*SmokeItem, error) {
 	body, err := c.doRequest(http.MethodGet, smokeEndpoint+"/"+ip, nil)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			return &SmokeItem{}, nil
 		}
 		return nil, err

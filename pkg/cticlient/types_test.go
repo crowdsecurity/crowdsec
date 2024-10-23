@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 //func (c *SmokeItem) GetAttackDetails() []string {
@@ -88,27 +88,28 @@ func getSampleSmokeItem() SmokeItem {
 			},
 		},
 	}
+
 	return emptyItem
 }
 
 func TestBasicSmokeItem(t *testing.T) {
 	item := getSampleSmokeItem()
-	assert.Equal(t, item.GetAttackDetails(), []string{"ssh:bruteforce"})
-	assert.Equal(t, item.GetBehaviors(), []string{"ssh:bruteforce"})
-	assert.Equal(t, item.GetMaliciousnessScore(), float32(0.1))
-	assert.Equal(t, item.IsPartOfCommunityBlocklist(), false)
-	assert.Equal(t, item.GetBackgroundNoiseScore(), int(3))
-	assert.Equal(t, item.GetFalsePositives(), []string{})
-	assert.Equal(t, item.IsFalsePositive(), false)
+	assert.Equal(t, []string{"ssh:bruteforce"}, item.GetAttackDetails())
+	assert.Equal(t, []string{"ssh:bruteforce"}, item.GetBehaviors())
+	assert.InDelta(t, 0.1, item.GetMaliciousnessScore(), 0.000001)
+	assert.False(t, item.IsPartOfCommunityBlocklist())
+	assert.Equal(t, 3, item.GetBackgroundNoiseScore())
+	assert.Equal(t, []string{}, item.GetFalsePositives())
+	assert.False(t, item.IsFalsePositive())
 }
 
 func TestEmptySmokeItem(t *testing.T) {
 	item := SmokeItem{}
-	assert.Equal(t, item.GetAttackDetails(), []string{})
-	assert.Equal(t, item.GetBehaviors(), []string{})
-	assert.Equal(t, item.GetMaliciousnessScore(), float32(0.0))
-	assert.Equal(t, item.IsPartOfCommunityBlocklist(), false)
-	assert.Equal(t, item.GetBackgroundNoiseScore(), int(0))
-	assert.Equal(t, item.GetFalsePositives(), []string{})
-	assert.Equal(t, item.IsFalsePositive(), false)
+	assert.Equal(t, []string{}, item.GetAttackDetails())
+	assert.Equal(t, []string{}, item.GetBehaviors())
+	assert.InDelta(t, 0.0, item.GetMaliciousnessScore(), 0)
+	assert.False(t, item.IsPartOfCommunityBlocklist())
+	assert.Equal(t, 0, item.GetBackgroundNoiseScore())
+	assert.Equal(t, []string{}, item.GetFalsePositives())
+	assert.False(t, item.IsFalsePositive())
 }

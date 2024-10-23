@@ -1,0 +1,36 @@
+common:
+  daemonize: false
+  log_media: stdout
+  log_level: info
+prometheus:
+  enabled: true
+  level: full
+crowdsec_service:
+  acquisition_path: ./testdata/acquis.yaml
+  parser_routines: 1
+cscli:
+  output: human
+db_config:
+  user: ""
+  password: ""
+  db_name: ""
+  host: ""
+  port: 0
+  db_path: ./crowdsec.db
+  type: sqlite
+api:
+  client:
+    credentials_path: ./testdata/lapi-secrets.yaml
+  server:
+    profiles_path: ./testdata/profiles.yaml
+    listen_uri: 127.0.0.1:8080
+    tls: null
+    online_client:
+      credentials_path: ./testdata/online-api-secrets.yaml
+config_paths:
+  config_dir: ./testdata
+  data_dir: .
+  simulation_path: ./testdata/simulation.yaml
+  index_path: ./testdata/hub/.index.json
+  hub_dir: ./testdata/hub
+

@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -25,31 +25,28 @@ func TestAlertsListAsMachine(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
+
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-
-	if err != nil {
-		log.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer teardown()
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
-
 		if r.URL.RawQuery == "ip=1.2.3.4" {
 			testMethod(t, r, "GET")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, `null`)
+
 			return
 		}
 
@@ -105,36 +102,26 @@ func TestAlertsListAsMachine(t *testing.T) {
 		]`)
 	})
 
-	tcapacity := int32(5)
-	tduration := "59m49.264032632s"
-	torigin := "crowdsec"
 	tscenario := "crowdsecurity/ssh-bf"
 	tscope := "Ip"
-	ttype := "ban"
 	tvalue := "1.1.1.172"
 	ttimestamp := "2020-11-28 10:20:46 +0000 UTC"
-	teventscount := int32(6)
-	tleakspeed := "10s"
 	tmessage := "Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 2.920062ms) at 2020-11-28 10:20:46.845619968 +0100 CET m=+5.903899761"
-	tscenariohash := "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"
-	tscenarioversion := "0.1"
-	tstartat := "2020-11-28 10:20:46.842701127 +0100 +0100"
-	tstopat := "2020-11-28 10:20:46.845621385 +0100 +0100"
 
 	expected := models.GetAlertsResponse{
 		&models.Alert{
-			Capacity:  &tcapacity,
+			Capacity:  ptr.Of(int32(5)),
 			CreatedAt: "2020-11-28T10:20:47+01:00",
 			Decisions: []*models.Decision{
 				{
-					Duration: &tduration,
+					Duration: ptr.Of("59m49.264032632s"),
 					ID:       1,
-					Origin:   &torigin,
+					Origin:   ptr.Of("crowdsec"),
 					Scenario: &tscenario,
 
 					Scope:     &tscope,
-					Simulated: new(bool), //false,
-					Type:      &ttype,
+					Simulated: ptr.Of(false),
+					Type:      ptr.Of("ban"),
 					Value:     &tvalue,
 				},
 			},
@@ -165,16 +152,16 @@ func TestAlertsListAsMachine(t *testing.T) {
 					Timestamp: &ttimestamp,
 				},
 			},
-			EventsCount:     &teventscount,
+			EventsCount:     ptr.Of(int32(6)),
 			ID:              1,
-			Leakspeed:       &tleakspeed,
+			Leakspeed:       ptr.Of("10s"),
 			MachineID:       "test",
 			Message:         &tmessage,
 			Remediation:     false,
 			Scenario:        &tscenario,
-			ScenarioHash:    &tscenariohash,
-			ScenarioVersion: &tscenarioversion,
-			Simulated:       new(bool), //(false),
+			ScenarioHash:    ptr.Of("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
+			ScenarioVersion: ptr.Of("0.1"),
+			Simulated:       ptr.Of(false),
 			Source: &models.Source{
 				AsName:    "Cloudflare Inc",
 				AsNumber:  "",
@@ -186,37 +173,27 @@ func TestAlertsListAsMachine(t *testing.T) {
 				Scope:     &tscope,
 				Value:     &tvalue,
 			},
-			StartAt: &tstartat,
-			StopAt:  &tstopat,
+			StartAt: ptr.Of("2020-11-28 10:20:46.842701127 +0100 +0100"),
+			StopAt:  ptr.Of("2020-11-28 10:20:46.845621385 +0100 +0100"),
 		},
 	}
 
-	//log.Debugf("data : -> %s", spew.Sdump(alerts))
-	//log.Debugf("resp : -> %s", spew.Sdump(resp))
-	//log.Debugf("expected : -> %s", spew.Sdump(expected))
-	//first one returns data
+	// log.Debugf("data : -> %s", spew.Sdump(alerts))
+	// log.Debugf("resp : -> %s", spew.Sdump(resp))
+	// log.Debugf("expected : -> %s", spew.Sdump(expected))
+	// first one returns data
 	alerts, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
-	if err != nil {
-		log.Errorf("test Unable to list alerts : %+v", err)
-	}
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, expected, *alerts)
 
-	if !reflect.DeepEqual(*alerts, expected) {
-		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
-	}
-	//this one doesn't
-	filter := AlertsListOpts{IPEquals: new(string)}
-	*filter.IPEquals = "1.2.3.4"
+	// this one doesn't
+	filter := AlertsListOpts{IPEquals: ptr.Of("1.2.3.4")}
+
 	alerts, resp, err = client.Alerts.List(context.Background(), filter)
-	if err != nil {
-		log.Errorf("test Unable to list alerts : %+v", err)
-	}
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-	assert.Equal(t, 0, len(*alerts))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Empty(t, *alerts)
 }
 
 func TestAlertsGetAsMachine(t *testing.T) {
@@ -228,23 +205,20 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-
-	if err != nil {
-		log.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer teardown()
+
 	mux.HandleFunc("/alerts/2", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		w.WriteHeader(http.StatusNotFound)
@@ -304,34 +278,24 @@ func TestAlertsGetAsMachine(t *testing.T) {
 			}`)
 	})
 
-	tcapacity := int32(5)
-	tduration := "59m49.264032632s"
-	torigin := "crowdsec"
 	tscenario := "crowdsecurity/ssh-bf"
 	tscope := "Ip"
 	ttype := "ban"
 	tvalue := "1.1.1.172"
 	ttimestamp := "2020-11-28 10:20:46 +0000 UTC"
-	teventscount := int32(6)
-	tleakspeed := "10s"
-	tmessage := "Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 2.920062ms) at 2020-11-28 10:20:46.845619968 +0100 CET m=+5.903899761"
-	tscenariohash := "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"
-	tscenarioversion := "0.1"
-	tstartat := "2020-11-28 10:20:46.842701127 +0100 +0100"
-	tstopat := "2020-11-28 10:20:46.845621385 +0100 +0100"
 
 	expected := &models.Alert{
-		Capacity:  &tcapacity,
+		Capacity:  ptr.Of(int32(5)),
 		CreatedAt: "2020-11-28T10:20:47+01:00",
 		Decisions: []*models.Decision{
 			{
-				Duration: &tduration,
+				Duration: ptr.Of("59m49.264032632s"),
 				ID:       1,
-				Origin:   &torigin,
+				Origin:   ptr.Of("crowdsec"),
 				Scenario: &tscenario,
 
 				Scope:     &tscope,
-				Simulated: new(bool), //false,
+				Simulated: ptr.Of(false),
 				Type:      &ttype,
 				Value:     &tvalue,
 			},
@@ -363,16 +327,16 @@ func TestAlertsGetAsMachine(t *testing.T) {
 				Timestamp: &ttimestamp,
 			},
 		},
-		EventsCount:     &teventscount,
+		EventsCount:     ptr.Of(int32(6)),
 		ID:              1,
-		Leakspeed:       &tleakspeed,
+		Leakspeed:       ptr.Of("10s"),
 		MachineID:       "test",
-		Message:         &tmessage,
+		Message:         ptr.Of("Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 2.920062ms) at 2020-11-28 10:20:46.845619968 +0100 CET m=+5.903899761"),
 		Remediation:     false,
 		Scenario:        &tscenario,
-		ScenarioHash:    &tscenariohash,
-		ScenarioVersion: &tscenarioversion,
-		Simulated:       new(bool), //(false),
+		ScenarioHash:    ptr.Of("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
+		ScenarioVersion: ptr.Of("0.1"),
+		Simulated:       ptr.Of(false),
 		Source: &models.Source{
 			AsName:    "Cloudflare Inc",
 			AsNumber:  "",
@@ -384,24 +348,18 @@ func TestAlertsGetAsMachine(t *testing.T) {
 			Scope:     &tscope,
 			Value:     &tvalue,
 		},
-		StartAt: &tstartat,
-		StopAt:  &tstopat,
+		StartAt: ptr.Of("2020-11-28 10:20:46.842701127 +0100 +0100"),
+		StopAt:  ptr.Of("2020-11-28 10:20:46.845621385 +0100 +0100"),
 	}
 
 	alerts, resp, err := client.Alerts.GetByID(context.Background(), 1)
 	require.NoError(t, err)
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *alerts)
 
-	if !reflect.DeepEqual(*alerts, *expected) {
-		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
-	}
-
-	//fail
+	// fail
 	_, _, err = client.Alerts.GetByID(context.Background(), 2)
-	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
-
+	cstest.RequireErrorMessage(t, err, "API error: object not found")
 }
 
 func TestAlertsCreateAsMachine(t *testing.T) {
@@ -412,39 +370,36 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
+
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`["3"]`))
 	})
+
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-
-	if err != nil {
-		log.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer teardown()
+
 	alert := models.AddAlertsRequest{}
 	alerts, resp, err := client.Alerts.Add(context.Background(), alert)
 	require.NoError(t, err)
+
 	expected := &models.AddAlertsResponse{"3"}
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-	if !reflect.DeepEqual(*alerts, *expected) {
-		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
-	}
+
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *alerts)
 }
 
 func TestAlertsDeleteAsMachine(t *testing.T) {
@@ -455,40 +410,35 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
+
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"message":"0 deleted alerts"}`))
 	})
+
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-
-	if err != nil {
-		log.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer teardown()
-	alert := AlertsDeleteOpts{IPEquals: new(string)}
-	*alert.IPEquals = "1.2.3.4"
+
+	alert := AlertsDeleteOpts{IPEquals: ptr.Of("1.2.3.4")}
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
 	require.NoError(t, err)
 
 	expected := &models.DeleteAlertsResponse{NbDeleted: ""}
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-	if !reflect.DeepEqual(*alerts, *expected) {
-		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
-	}
+
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *alerts)
 }

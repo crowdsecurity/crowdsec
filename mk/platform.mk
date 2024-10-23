@@ -1,7 +1,7 @@
 
 BUILD_CODENAME ?= alphaga
 GOARCH ?= $(shell go env GOARCH)
-BUILD_TAG ?= $(shell git rev-parse HEAD)
+BUILD_TAG ?= $(shell git rev-parse --short HEAD)
 
 ifeq ($(OS), Windows_NT)
 	SHELL := pwsh.exe

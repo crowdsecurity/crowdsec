@@ -11,1128 +11,910 @@ import (
 
 // ID filters vertices based on their ID field.
 func ID(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
 func IDEQ(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
 func IDNEQ(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
 func IDIn(ids ...int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		v := make([]any, len(ids))
-		for i := range v {
-			v[i] = ids[i]
-		}
-		s.Where(sql.In(s.C(FieldID), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
 func IDNotIn(ids ...int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		v := make([]any, len(ids))
-		for i := range v {
-			v[i] = ids[i]
-		}
-		s.Where(sql.NotIn(s.C(FieldID), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
 func IDGT(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
 func IDGTE(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
 func IDLT(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
 func IDLTE(id int) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldID), id))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldID, id))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldCreatedAt, v))
 }
 
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
 func Name(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldName, v))
 }
 
 // APIKey applies equality check predicate on the "api_key" field. It's identical to APIKeyEQ.
 func APIKey(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldAPIKey, v))
 }
 
 // Revoked applies equality check predicate on the "revoked" field. It's identical to RevokedEQ.
 func Revoked(v bool) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldRevoked), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldRevoked, v))
 }
 
 // IPAddress applies equality check predicate on the "ip_address" field. It's identical to IPAddressEQ.
 func IPAddress(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldIPAddress, v))
 }
 
 // Type applies equality check predicate on the "type" field. It's identical to TypeEQ.
 func Type(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldType, v))
 }
 
 // Version applies equality check predicate on the "version" field. It's identical to VersionEQ.
 func Version(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldVersion), v))
-	})
-}
-
-// Until applies equality check predicate on the "until" field. It's identical to UntilEQ.
-func Until(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUntil), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldVersion, v))
 }
 
 // LastPull applies equality check predicate on the "last_pull" field. It's identical to LastPullEQ.
 func LastPull(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldLastPull, v))
 }
 
 // AuthType applies equality check predicate on the "auth_type" field. It's identical to AuthTypeEQ.
 func AuthType(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldAuthType, v))
+}
+
+// Osname applies equality check predicate on the "osname" field. It's identical to OsnameEQ.
+func Osname(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsname, v))
+}
+
+// Osversion applies equality check predicate on the "osversion" field. It's identical to OsversionEQ.
+func Osversion(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsversion, v))
+}
+
+// Featureflags applies equality check predicate on the "featureflags" field. It's identical to FeatureflagsEQ.
+func Featureflags(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldFeatureflags, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldCreatedAt, v))
 }
 
 // CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
 func CreatedAtNEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldCreatedAt, v))
 }
 
 // CreatedAtIn applies the In predicate on the "created_at" field.
 func CreatedAtIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldCreatedAt), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldCreatedAt, vs...))
 }
 
 // CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
 func CreatedAtNotIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldCreatedAt), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldCreatedAt, vs...))
 }
 
 // CreatedAtGT applies the GT predicate on the "created_at" field.
 func CreatedAtGT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldCreatedAt, v))
 }
 
 // CreatedAtGTE applies the GTE predicate on the "created_at" field.
 func CreatedAtGTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldCreatedAt, v))
 }
 
 // CreatedAtLT applies the LT predicate on the "created_at" field.
 func CreatedAtLT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldCreatedAt, v))
 }
 
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldCreatedAt), v))
-	})
-}
-
-// CreatedAtIsNil applies the IsNil predicate on the "created_at" field.
-func CreatedAtIsNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldCreatedAt)))
-	})
-}
-
-// CreatedAtNotNil applies the NotNil predicate on the "created_at" field.
-func CreatedAtNotNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldCreatedAt)))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldCreatedAt, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
 func UpdatedAtEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
 func UpdatedAtNEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldUpdatedAt, v))
 }
 
 // UpdatedAtIn applies the In predicate on the "updated_at" field.
 func UpdatedAtIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldUpdatedAt), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldUpdatedAt, vs...))
 }
 
 // UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
 func UpdatedAtNotIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldUpdatedAt), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldUpdatedAt, vs...))
 }
 
 // UpdatedAtGT applies the GT predicate on the "updated_at" field.
 func UpdatedAtGT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldUpdatedAt, v))
 }
 
 // UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
 func UpdatedAtGTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldUpdatedAt, v))
 }
 
 // UpdatedAtLT applies the LT predicate on the "updated_at" field.
 func UpdatedAtLT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldUpdatedAt, v))
 }
 
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUpdatedAt), v))
-	})
-}
-
-// UpdatedAtIsNil applies the IsNil predicate on the "updated_at" field.
-func UpdatedAtIsNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldUpdatedAt)))
-	})
-}
-
-// UpdatedAtNotNil applies the NotNil predicate on the "updated_at" field.
-func UpdatedAtNotNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldUpdatedAt)))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldName, v))
 }
 
 // NameNEQ applies the NEQ predicate on the "name" field.
 func NameNEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldName, v))
 }
 
 // NameIn applies the In predicate on the "name" field.
 func NameIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldName), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldName, vs...))
 }
 
 // NameNotIn applies the NotIn predicate on the "name" field.
 func NameNotIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldName), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldName, vs...))
 }
 
 // NameGT applies the GT predicate on the "name" field.
 func NameGT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldName, v))
 }
 
 // NameGTE applies the GTE predicate on the "name" field.
 func NameGTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldName, v))
 }
 
 // NameLT applies the LT predicate on the "name" field.
 func NameLT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldName, v))
 }
 
 // NameLTE applies the LTE predicate on the "name" field.
 func NameLTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldName, v))
 }
 
 // NameContains applies the Contains predicate on the "name" field.
 func NameContains(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldContains(FieldName, v))
 }
 
 // NameHasPrefix applies the HasPrefix predicate on the "name" field.
 func NameHasPrefix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldName, v))
 }
 
 // NameHasSuffix applies the HasSuffix predicate on the "name" field.
 func NameHasSuffix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldName, v))
 }
 
 // NameEqualFold applies the EqualFold predicate on the "name" field.
 func NameEqualFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldEqualFold(FieldName, v))
 }
 
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldName), v))
-	})
+	return predicate.Bouncer(sql.FieldContainsFold(FieldName, v))
 }
 
 // APIKeyEQ applies the EQ predicate on the "api_key" field.
 func APIKeyEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldAPIKey, v))
 }
 
 // APIKeyNEQ applies the NEQ predicate on the "api_key" field.
 func APIKeyNEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldAPIKey, v))
 }
 
 // APIKeyIn applies the In predicate on the "api_key" field.
 func APIKeyIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldAPIKey), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldAPIKey, vs...))
 }
 
 // APIKeyNotIn applies the NotIn predicate on the "api_key" field.
 func APIKeyNotIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldAPIKey), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldAPIKey, vs...))
 }
 
 // APIKeyGT applies the GT predicate on the "api_key" field.
 func APIKeyGT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldAPIKey, v))
 }
 
 // APIKeyGTE applies the GTE predicate on the "api_key" field.
 func APIKeyGTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldAPIKey, v))
 }
 
 // APIKeyLT applies the LT predicate on the "api_key" field.
 func APIKeyLT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldAPIKey, v))
 }
 
 // APIKeyLTE applies the LTE predicate on the "api_key" field.
 func APIKeyLTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldAPIKey, v))
 }
 
 // APIKeyContains applies the Contains predicate on the "api_key" field.
 func APIKeyContains(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldContains(FieldAPIKey, v))
 }
 
 // APIKeyHasPrefix applies the HasPrefix predicate on the "api_key" field.
 func APIKeyHasPrefix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldAPIKey, v))
 }
 
 // APIKeyHasSuffix applies the HasSuffix predicate on the "api_key" field.
 func APIKeyHasSuffix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldAPIKey, v))
 }
 
 // APIKeyEqualFold applies the EqualFold predicate on the "api_key" field.
 func APIKeyEqualFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldEqualFold(FieldAPIKey, v))
 }
 
 // APIKeyContainsFold applies the ContainsFold predicate on the "api_key" field.
 func APIKeyContainsFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldAPIKey), v))
-	})
+	return predicate.Bouncer(sql.FieldContainsFold(FieldAPIKey, v))
 }
 
 // RevokedEQ applies the EQ predicate on the "revoked" field.
 func RevokedEQ(v bool) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldRevoked), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldRevoked, v))
 }
 
 // RevokedNEQ applies the NEQ predicate on the "revoked" field.
 func RevokedNEQ(v bool) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldRevoked), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldRevoked, v))
 }
 
 // IPAddressEQ applies the EQ predicate on the "ip_address" field.
 func IPAddressEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldIPAddress, v))
 }
 
 // IPAddressNEQ applies the NEQ predicate on the "ip_address" field.
 func IPAddressNEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldIPAddress, v))
 }
 
 // IPAddressIn applies the In predicate on the "ip_address" field.
 func IPAddressIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldIPAddress), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldIPAddress, vs...))
 }
 
 // IPAddressNotIn applies the NotIn predicate on the "ip_address" field.
 func IPAddressNotIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldIPAddress), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldIPAddress, vs...))
 }
 
 // IPAddressGT applies the GT predicate on the "ip_address" field.
 func IPAddressGT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldIPAddress, v))
 }
 
 // IPAddressGTE applies the GTE predicate on the "ip_address" field.
 func IPAddressGTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldIPAddress, v))
 }
 
 // IPAddressLT applies the LT predicate on the "ip_address" field.
 func IPAddressLT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldIPAddress, v))
 }
 
 // IPAddressLTE applies the LTE predicate on the "ip_address" field.
 func IPAddressLTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldIPAddress, v))
 }
 
 // IPAddressContains applies the Contains predicate on the "ip_address" field.
 func IPAddressContains(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldContains(FieldIPAddress, v))
 }
 
 // IPAddressHasPrefix applies the HasPrefix predicate on the "ip_address" field.
 func IPAddressHasPrefix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldIPAddress, v))
 }
 
 // IPAddressHasSuffix applies the HasSuffix predicate on the "ip_address" field.
 func IPAddressHasSuffix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldIPAddress, v))
 }
 
 // IPAddressIsNil applies the IsNil predicate on the "ip_address" field.
 func IPAddressIsNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldIPAddress)))
-	})
+	return predicate.Bouncer(sql.FieldIsNull(FieldIPAddress))
 }
 
 // IPAddressNotNil applies the NotNil predicate on the "ip_address" field.
 func IPAddressNotNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldIPAddress)))
-	})
+	return predicate.Bouncer(sql.FieldNotNull(FieldIPAddress))
 }
 
 // IPAddressEqualFold applies the EqualFold predicate on the "ip_address" field.
 func IPAddressEqualFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldEqualFold(FieldIPAddress, v))
 }
 
 // IPAddressContainsFold applies the ContainsFold predicate on the "ip_address" field.
 func IPAddressContainsFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldIPAddress), v))
-	})
+	return predicate.Bouncer(sql.FieldContainsFold(FieldIPAddress, v))
 }
 
 // TypeEQ applies the EQ predicate on the "type" field.
 func TypeEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldType, v))
 }
 
 // TypeNEQ applies the NEQ predicate on the "type" field.
 func TypeNEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldType, v))
 }
 
 // TypeIn applies the In predicate on the "type" field.
 func TypeIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldType), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldType, vs...))
 }
 
 // TypeNotIn applies the NotIn predicate on the "type" field.
 func TypeNotIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldType), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldType, vs...))
 }
 
 // TypeGT applies the GT predicate on the "type" field.
 func TypeGT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldType, v))
 }
 
 // TypeGTE applies the GTE predicate on the "type" field.
 func TypeGTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldType, v))
 }
 
 // TypeLT applies the LT predicate on the "type" field.
 func TypeLT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldType, v))
 }
 
 // TypeLTE applies the LTE predicate on the "type" field.
 func TypeLTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldType, v))
 }
 
 // TypeContains applies the Contains predicate on the "type" field.
 func TypeContains(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldContains(FieldType, v))
 }
 
 // TypeHasPrefix applies the HasPrefix predicate on the "type" field.
 func TypeHasPrefix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldType, v))
 }
 
 // TypeHasSuffix applies the HasSuffix predicate on the "type" field.
 func TypeHasSuffix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldType, v))
 }
 
 // TypeIsNil applies the IsNil predicate on the "type" field.
 func TypeIsNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldType)))
-	})
+	return predicate.Bouncer(sql.FieldIsNull(FieldType))
 }
 
 // TypeNotNil applies the NotNil predicate on the "type" field.
 func TypeNotNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldType)))
-	})
+	return predicate.Bouncer(sql.FieldNotNull(FieldType))
 }
 
 // TypeEqualFold applies the EqualFold predicate on the "type" field.
 func TypeEqualFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldEqualFold(FieldType, v))
 }
 
 // TypeContainsFold applies the ContainsFold predicate on the "type" field.
 func TypeContainsFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldType), v))
-	})
+	return predicate.Bouncer(sql.FieldContainsFold(FieldType, v))
 }
 
 // VersionEQ applies the EQ predicate on the "version" field.
 func VersionEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldVersion, v))
 }
 
 // VersionNEQ applies the NEQ predicate on the "version" field.
 func VersionNEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldVersion, v))
 }
 
 // VersionIn applies the In predicate on the "version" field.
 func VersionIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldVersion), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldVersion, vs...))
 }
 
 // VersionNotIn applies the NotIn predicate on the "version" field.
 func VersionNotIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldVersion), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldVersion, vs...))
 }
 
 // VersionGT applies the GT predicate on the "version" field.
 func VersionGT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldVersion, v))
 }
 
 // VersionGTE applies the GTE predicate on the "version" field.
 func VersionGTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldVersion, v))
 }
 
 // VersionLT applies the LT predicate on the "version" field.
 func VersionLT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldVersion, v))
 }
 
 // VersionLTE applies the LTE predicate on the "version" field.
 func VersionLTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldVersion, v))
 }
 
 // VersionContains applies the Contains predicate on the "version" field.
 func VersionContains(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldContains(FieldVersion, v))
 }
 
 // VersionHasPrefix applies the HasPrefix predicate on the "version" field.
 func VersionHasPrefix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldVersion, v))
 }
 
 // VersionHasSuffix applies the HasSuffix predicate on the "version" field.
 func VersionHasSuffix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldVersion, v))
 }
 
 // VersionIsNil applies the IsNil predicate on the "version" field.
 func VersionIsNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldVersion)))
-	})
+	return predicate.Bouncer(sql.FieldIsNull(FieldVersion))
 }
 
 // VersionNotNil applies the NotNil predicate on the "version" field.
 func VersionNotNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldVersion)))
-	})
+	return predicate.Bouncer(sql.FieldNotNull(FieldVersion))
 }
 
 // VersionEqualFold applies the EqualFold predicate on the "version" field.
 func VersionEqualFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldVersion), v))
-	})
+	return predicate.Bouncer(sql.FieldEqualFold(FieldVersion, v))
 }
 
 // VersionContainsFold applies the ContainsFold predicate on the "version" field.
 func VersionContainsFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldVersion), v))
-	})
-}
-
-// UntilEQ applies the EQ predicate on the "until" field.
-func UntilEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUntil), v))
-	})
-}
-
-// UntilNEQ applies the NEQ predicate on the "until" field.
-func UntilNEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUntil), v))
-	})
-}
-
-// UntilIn applies the In predicate on the "until" field.
-func UntilIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldUntil), v...))
-	})
-}
-
-// UntilNotIn applies the NotIn predicate on the "until" field.
-func UntilNotIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldUntil), v...))
-	})
-}
-
-// UntilGT applies the GT predicate on the "until" field.
-func UntilGT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUntil), v))
-	})
-}
-
-// UntilGTE applies the GTE predicate on the "until" field.
-func UntilGTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUntil), v))
-	})
-}
-
-// UntilLT applies the LT predicate on the "until" field.
-func UntilLT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUntil), v))
-	})
-}
-
-// UntilLTE applies the LTE predicate on the "until" field.
-func UntilLTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUntil), v))
-	})
-}
-
-// UntilIsNil applies the IsNil predicate on the "until" field.
-func UntilIsNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldUntil)))
-	})
-}
-
-// UntilNotNil applies the NotNil predicate on the "until" field.
-func UntilNotNil() predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldUntil)))
-	})
+	return predicate.Bouncer(sql.FieldContainsFold(FieldVersion, v))
 }
 
 // LastPullEQ applies the EQ predicate on the "last_pull" field.
 func LastPullEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldLastPull, v))
 }
 
 // LastPullNEQ applies the NEQ predicate on the "last_pull" field.
 func LastPullNEQ(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldLastPull, v))
 }
 
 // LastPullIn applies the In predicate on the "last_pull" field.
 func LastPullIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldLastPull), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldLastPull, vs...))
 }
 
 // LastPullNotIn applies the NotIn predicate on the "last_pull" field.
 func LastPullNotIn(vs ...time.Time) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldLastPull), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldLastPull, vs...))
 }
 
 // LastPullGT applies the GT predicate on the "last_pull" field.
 func LastPullGT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldLastPull, v))
 }
 
 // LastPullGTE applies the GTE predicate on the "last_pull" field.
 func LastPullGTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldLastPull, v))
 }
 
 // LastPullLT applies the LT predicate on the "last_pull" field.
 func LastPullLT(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldLastPull, v))
 }
 
 // LastPullLTE applies the LTE predicate on the "last_pull" field.
 func LastPullLTE(v time.Time) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldLastPull), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldLastPull, v))
+}
+
+// LastPullIsNil applies the IsNil predicate on the "last_pull" field.
+func LastPullIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldLastPull))
+}
+
+// LastPullNotNil applies the NotNil predicate on the "last_pull" field.
+func LastPullNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldLastPull))
 }
 
 // AuthTypeEQ applies the EQ predicate on the "auth_type" field.
 func AuthTypeEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldEQ(FieldAuthType, v))
 }
 
 // AuthTypeNEQ applies the NEQ predicate on the "auth_type" field.
 func AuthTypeNEQ(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldNEQ(FieldAuthType, v))
 }
 
 // AuthTypeIn applies the In predicate on the "auth_type" field.
 func AuthTypeIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldAuthType), v...))
-	})
+	return predicate.Bouncer(sql.FieldIn(FieldAuthType, vs...))
 }
 
 // AuthTypeNotIn applies the NotIn predicate on the "auth_type" field.
 func AuthTypeNotIn(vs ...string) predicate.Bouncer {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldAuthType), v...))
-	})
+	return predicate.Bouncer(sql.FieldNotIn(FieldAuthType, vs...))
 }
 
 // AuthTypeGT applies the GT predicate on the "auth_type" field.
 func AuthTypeGT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldGT(FieldAuthType, v))
 }
 
 // AuthTypeGTE applies the GTE predicate on the "auth_type" field.
 func AuthTypeGTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldGTE(FieldAuthType, v))
 }
 
 // AuthTypeLT applies the LT predicate on the "auth_type" field.
 func AuthTypeLT(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldLT(FieldAuthType, v))
 }
 
 // AuthTypeLTE applies the LTE predicate on the "auth_type" field.
 func AuthTypeLTE(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldLTE(FieldAuthType, v))
 }
 
 // AuthTypeContains applies the Contains predicate on the "auth_type" field.
 func AuthTypeContains(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldContains(FieldAuthType, v))
 }
 
 // AuthTypeHasPrefix applies the HasPrefix predicate on the "auth_type" field.
 func AuthTypeHasPrefix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldAuthType, v))
 }
 
 // AuthTypeHasSuffix applies the HasSuffix predicate on the "auth_type" field.
 func AuthTypeHasSuffix(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldAuthType, v))
 }
 
 // AuthTypeEqualFold applies the EqualFold predicate on the "auth_type" field.
 func AuthTypeEqualFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldEqualFold(FieldAuthType, v))
 }
 
 // AuthTypeContainsFold applies the ContainsFold predicate on the "auth_type" field.
 func AuthTypeContainsFold(v string) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldAuthType), v))
-	})
+	return predicate.Bouncer(sql.FieldContainsFold(FieldAuthType, v))
+}
+
+// OsnameEQ applies the EQ predicate on the "osname" field.
+func OsnameEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsname, v))
+}
+
+// OsnameNEQ applies the NEQ predicate on the "osname" field.
+func OsnameNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldOsname, v))
+}
+
+// OsnameIn applies the In predicate on the "osname" field.
+func OsnameIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldOsname, vs...))
+}
+
+// OsnameNotIn applies the NotIn predicate on the "osname" field.
+func OsnameNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldOsname, vs...))
+}
+
+// OsnameGT applies the GT predicate on the "osname" field.
+func OsnameGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldOsname, v))
+}
+
+// OsnameGTE applies the GTE predicate on the "osname" field.
+func OsnameGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldOsname, v))
+}
+
+// OsnameLT applies the LT predicate on the "osname" field.
+func OsnameLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldOsname, v))
+}
+
+// OsnameLTE applies the LTE predicate on the "osname" field.
+func OsnameLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldOsname, v))
+}
+
+// OsnameContains applies the Contains predicate on the "osname" field.
+func OsnameContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldOsname, v))
+}
+
+// OsnameHasPrefix applies the HasPrefix predicate on the "osname" field.
+func OsnameHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldOsname, v))
+}
+
+// OsnameHasSuffix applies the HasSuffix predicate on the "osname" field.
+func OsnameHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldOsname, v))
+}
+
+// OsnameIsNil applies the IsNil predicate on the "osname" field.
+func OsnameIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldOsname))
+}
+
+// OsnameNotNil applies the NotNil predicate on the "osname" field.
+func OsnameNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldOsname))
+}
+
+// OsnameEqualFold applies the EqualFold predicate on the "osname" field.
+func OsnameEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldOsname, v))
+}
+
+// OsnameContainsFold applies the ContainsFold predicate on the "osname" field.
+func OsnameContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldOsname, v))
+}
+
+// OsversionEQ applies the EQ predicate on the "osversion" field.
+func OsversionEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsversion, v))
+}
+
+// OsversionNEQ applies the NEQ predicate on the "osversion" field.
+func OsversionNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldOsversion, v))
+}
+
+// OsversionIn applies the In predicate on the "osversion" field.
+func OsversionIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldOsversion, vs...))
+}
+
+// OsversionNotIn applies the NotIn predicate on the "osversion" field.
+func OsversionNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldOsversion, vs...))
+}
+
+// OsversionGT applies the GT predicate on the "osversion" field.
+func OsversionGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldOsversion, v))
+}
+
+// OsversionGTE applies the GTE predicate on the "osversion" field.
+func OsversionGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldOsversion, v))
+}
+
+// OsversionLT applies the LT predicate on the "osversion" field.
+func OsversionLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldOsversion, v))
+}
+
+// OsversionLTE applies the LTE predicate on the "osversion" field.
+func OsversionLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldOsversion, v))
+}
+
+// OsversionContains applies the Contains predicate on the "osversion" field.
+func OsversionContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldOsversion, v))
+}
+
+// OsversionHasPrefix applies the HasPrefix predicate on the "osversion" field.
+func OsversionHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldOsversion, v))
+}
+
+// OsversionHasSuffix applies the HasSuffix predicate on the "osversion" field.
+func OsversionHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldOsversion, v))
+}
+
+// OsversionIsNil applies the IsNil predicate on the "osversion" field.
+func OsversionIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldOsversion))
+}
+
+// OsversionNotNil applies the NotNil predicate on the "osversion" field.
+func OsversionNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldOsversion))
+}
+
+// OsversionEqualFold applies the EqualFold predicate on the "osversion" field.
+func OsversionEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldOsversion, v))
+}
+
+// OsversionContainsFold applies the ContainsFold predicate on the "osversion" field.
+func OsversionContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldOsversion, v))
+}
+
+// FeatureflagsEQ applies the EQ predicate on the "featureflags" field.
+func FeatureflagsEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldFeatureflags, v))
+}
+
+// FeatureflagsNEQ applies the NEQ predicate on the "featureflags" field.
+func FeatureflagsNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldFeatureflags, v))
+}
+
+// FeatureflagsIn applies the In predicate on the "featureflags" field.
+func FeatureflagsIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldFeatureflags, vs...))
+}
+
+// FeatureflagsNotIn applies the NotIn predicate on the "featureflags" field.
+func FeatureflagsNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldFeatureflags, vs...))
+}
+
+// FeatureflagsGT applies the GT predicate on the "featureflags" field.
+func FeatureflagsGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldFeatureflags, v))
+}
+
+// FeatureflagsGTE applies the GTE predicate on the "featureflags" field.
+func FeatureflagsGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldFeatureflags, v))
+}
+
+// FeatureflagsLT applies the LT predicate on the "featureflags" field.
+func FeatureflagsLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldFeatureflags, v))
+}
+
+// FeatureflagsLTE applies the LTE predicate on the "featureflags" field.
+func FeatureflagsLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldFeatureflags, v))
+}
+
+// FeatureflagsContains applies the Contains predicate on the "featureflags" field.
+func FeatureflagsContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldFeatureflags, v))
+}
+
+// FeatureflagsHasPrefix applies the HasPrefix predicate on the "featureflags" field.
+func FeatureflagsHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldFeatureflags, v))
+}
+
+// FeatureflagsHasSuffix applies the HasSuffix predicate on the "featureflags" field.
+func FeatureflagsHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldFeatureflags, v))
+}
+
+// FeatureflagsIsNil applies the IsNil predicate on the "featureflags" field.
+func FeatureflagsIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldFeatureflags))
+}
+
+// FeatureflagsNotNil applies the NotNil predicate on the "featureflags" field.
+func FeatureflagsNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldFeatureflags))
+}
+
+// FeatureflagsEqualFold applies the EqualFold predicate on the "featureflags" field.
+func FeatureflagsEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldFeatureflags, v))
+}
+
+// FeatureflagsContainsFold applies the ContainsFold predicate on the "featureflags" field.
+func FeatureflagsContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldFeatureflags, v))
 }
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Bouncer) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.Bouncer(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.Bouncer) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.Bouncer(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.Bouncer) predicate.Bouncer {
-	return predicate.Bouncer(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.Bouncer(sql.NotPredicates(p))
 }

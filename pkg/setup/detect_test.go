@@ -10,8 +10,7 @@ import (
 	"github.com/lithammer/dedent"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
@@ -58,7 +57,7 @@ func TestSetupHelperProcess(t *testing.T) {
 	os.Exit(0)
 }
 
-func tempYAML(t *testing.T, content string) string {
+func tempYAML(t *testing.T, content string) os.File {
 	t.Helper()
 	require := require.New(t)
 	file, err := os.CreateTemp("", "")
@@ -70,7 +69,10 @@ func tempYAML(t *testing.T, content string) string {
 	err = file.Close()
 	require.NoError(err)
 
-	return file.Name()
+	file, err = os.Open(file.Name())
+	require.NoError(err)
+
+	return *file
 }
 
 func TestPathExists(t *testing.T) {
@@ -92,11 +94,11 @@ func TestPathExists(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		env := setup.NewExprEnvironment(setup.DetectOptions{}, setup.ExprOS{})
 
 		t.Run(tc.path, func(t *testing.T) {
 			t.Parallel()
+
 			actual := env.PathExists(tc.path)
 			require.Equal(t, tc.expected, actual)
 		})
@@ -145,11 +147,11 @@ func TestVersionCheck(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		e := setup.ExprOS{RawVersion: tc.version}
 
 		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
 			t.Parallel()
+
 			actual, err := e.VersionCheck(tc.constraint)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(t, tc.expected, actual)
@@ -182,7 +184,6 @@ func TestNormalizeVersion(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.version, func(t *testing.T) {
 			t.Parallel()
 			actual := setup.NormalizeVersion(tc.version)
@@ -239,17 +240,18 @@ func TestListSupported(t *testing.T) {
 			"invalid yaml: bad version",
 			"version: 2.0",
 			nil,
-			"unsupported version tag '2.0' (must be 1.0)",
+			"invalid version tag '2.0' (must be 1.0)",
 		},
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			f := tempYAML(t, tc.yml)
-			defer os.Remove(f)
-			supported, err := setup.ListSupported(f)
+			defer os.Remove(f.Name())
+
+			supported, err := setup.ListSupported(&f)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.ElementsMatch(t, tc.expected, supported)
 		})
@@ -327,9 +329,9 @@ func TestApplyRules(t *testing.T) {
 	env := setup.ExprEnvironment{}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			svc := setup.Service{When: tc.rules}
 			_, actualOk, err := setup.ApplyRules(svc, env) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -351,7 +353,7 @@ func TestUnitFound(t *testing.T) {
 	installed, err := env.UnitFound("crowdsec-setup-detect.service")
 	require.NoError(err)
 
-	require.Equal(true, installed)
+	require.True(installed)
 }
 
 // TODO apply rules to filter a list of Service structs
@@ -373,9 +375,9 @@ func TestDetectSimpleRule(t *testing.T) {
 	      - false
 	  ugly:
 	`)
-	defer os.Remove(f)
+	defer os.Remove(f.Name())
 
-	detected, err := setup.Detect(f, setup.DetectOptions{})
+	detected, err := setup.Detect(&f, setup.DetectOptions{})
 	require.NoError(err)
 
 	expected := []setup.ServiceSetup{
@@ -417,12 +419,11 @@ detect:
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f)
+			defer os.Remove(f.Name())
 
-			detected, err := setup.Detect(f, setup.DetectOptions{})
+			detected, err := setup.Detect(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(tc.expected, detected)
 		})
@@ -511,12 +512,11 @@ detect:
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f)
+			defer os.Remove(f.Name())
 
-			detected, err := setup.Detect(f, setup.DetectOptions{})
+			detected, err := setup.Detect(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(tc.expected, detected)
 		})
@@ -542,9 +542,9 @@ func TestDetectForcedUnit(t *testing.T) {
 	      journalctl_filter:
 	        - _SYSTEMD_UNIT=crowdsec-setup-forced.service
 	`)
-	defer os.Remove(f)
+	defer os.Remove(f.Name())
 
-	detected, err := setup.Detect(f, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
+	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
 	require.NoError(err)
 
 	expected := setup.Setup{
@@ -564,8 +564,8 @@ func TestDetectForcedUnit(t *testing.T) {
 
 func TestDetectForcedProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
 		// while looking for service wizard: rule 'ProcessRunning("foobar")': while looking up running processes: could not get Name: A device attached to the system is not functioning.
+		t.Skip("skipping on windows")
 	}
 
 	require := require.New(t)
@@ -580,9 +580,9 @@ func TestDetectForcedProcess(t *testing.T) {
 	    when:
 	      - ProcessRunning("foobar")
 	`)
-	defer os.Remove(f)
+	defer os.Remove(f.Name())
 
-	detected, err := setup.Detect(f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
+	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
 	require.NoError(err)
 
 	expected := setup.Setup{
@@ -610,9 +610,9 @@ func TestDetectSkipService(t *testing.T) {
 	    when:
 	      - ProcessRunning("foobar")
 	`)
-	defer os.Remove(f)
+	defer os.Remove(f.Name())
 
-	detected, err := setup.Detect(f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
+	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
 	require.NoError(err)
 
 	expected := setup.Setup{[]setup.ServiceSetup{}}
@@ -823,12 +823,11 @@ func TestDetectForcedOS(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f)
+			defer os.Remove(f.Name())
 
-			detected, err := setup.Detect(f, setup.DetectOptions{ForcedOS: tc.forced})
+			detected, err := setup.Detect(&f, setup.DetectOptions{ForcedOS: tc.forced})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(tc.expected, detected)
 		})
@@ -838,7 +837,6 @@ func TestDetectForcedOS(t *testing.T) {
 func TestDetectDatasourceValidation(t *testing.T) {
 	// It could be a good idea to test UnmarshalConfig() separately in addition
 	// to Configure(), in each datasource. For now, we test these here.
-
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
@@ -872,7 +870,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: wombat`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
-			expectedErr: "invalid datasource for foobar: unknown source 'wombat'",
+			expectedErr: "invalid datasource for foobar: unknown data source wombat",
 		}, {
 			name: "source is misplaced",
 			config: `
@@ -882,7 +880,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				    source: file`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
-			expectedErr: "while parsing {{.DetectYaml}}: yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
+			expectedErr: "yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
 		}, {
 			name: "source is mismatched",
 			config: `
@@ -981,6 +979,16 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				      source: kafka`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
+		}, {
+			name: "source loki: required fields",
+			config: `
+				version: 1.0
+				detect:
+				  foobar:
+				    datasource:
+				      source: loki`,
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
+			expectedErr: "invalid datasource for foobar: loki query is mandatory",
 		},
 	}
 
@@ -999,20 +1007,11 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			detectYaml := tempYAML(t, tc.config)
-			defer os.Remove(detectYaml)
-
-			data := map[string]string{
-				"DetectYaml": detectYaml,
-			}
-
-			expectedErr, err := csstring.Interpolate(tc.expectedErr, data)
-			require.NoError(err)
-
-			detected, err := setup.Detect(detectYaml, setup.DetectOptions{})
-			cstest.RequireErrorContains(t, err, expectedErr)
+			f := tempYAML(t, tc.config)
+			defer os.Remove(f.Name())
+			detected, err := setup.Detect(&f, setup.DetectOptions{})
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(tc.expected, detected)
 		})
 	}

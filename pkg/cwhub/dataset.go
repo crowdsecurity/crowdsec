@@ -1,68 +1,70 @@
 package cwhub
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"os"
-	"path"
+	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/go-cs-lib/downloader"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+// The DataSet is a list of data sources required by an item (built from the data: section in the yaml).
 type DataSet struct {
-	Data []*types.DataSource `yaml:"data,omitempty"`
+	Data []types.DataSource `yaml:"data,omitempty"`
 }
 
-func downloadFile(url string, destPath string) error {
-	log.Debugf("downloading %s in %s", url, destPath)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
+// downloadDataSet downloads all the data files for an item.
+func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader io.Reader, logger *logrus.Logger) error {
+	dec := yaml.NewDecoder(reader)
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	for {
+		data := &DataSet{}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+		if err := dec.Decode(data); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
-	}
+			return fmt.Errorf("while reading file: %w", err)
+		}
 
-	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
+		for _, dataS := range data.Data {
+			destPath, err := safePath(dataFolder, dataS.DestPath)
+			if err != nil {
+				return err
+			}
 
-	_, err = file.WriteString(string(body))
-	if err != nil {
-		return err
-	}
+			d := downloader.
+				New().
+				WithHTTPClient(hubClient).
+				ToFile(destPath).
+				CompareContent().
+				WithLogger(logrus.WithField("url", dataS.SourceURL))
 
-	err = file.Sync()
-	if err != nil {
-		return err
-	}
+			if !force {
+				d = d.WithLastModified().
+					WithShelfLife(7 * 24 * time.Hour)
+			}
 
-	return nil
-}
+			downloaded, err := d.Download(ctx, dataS.SourceURL)
+			if err != nil {
+				return fmt.Errorf("while getting data: %w", err)
+			}
 
-func GetData(data []*types.DataSource, dataDir string) error {
-	for _, dataS := range data {
-		destPath := path.Join(dataDir, dataS.DestPath)
-		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
-		err := downloadFile(dataS.SourceURL, destPath)
-		if err != nil {
-			return err
+			if downloaded {
+				logger.Infof("Downloaded %s", destPath)
+				// a check on stdout is used while scripting to know if the hub has been upgraded
+				// and a configuration reload is required
+				// TODO: use a better way to communicate this
+				fmt.Printf("updated %s\n", destPath)
+			}
 		}
 	}
 

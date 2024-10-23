@@ -20,6 +20,9 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     ./instance-data load
+    cscli collections install crowdsecurity/sshd --error
+    cscli parsers install crowdsecurity/syslog-logs --error
+    cscli parsers install crowdsecurity/dateparse-enrich --error
 }
 
 teardown() {
@@ -29,8 +32,8 @@ teardown() {
 #----------
 
 @test "$FILE 1.1.1.172 has context" {
-    tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
-    touch "${tmpfile}"
+    tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    touch "$tmpfile"
 
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
 
@@ -40,7 +43,12 @@ teardown() {
 	  type: syslog
 	EOT
 
-    CONTEXT_YAML=$(config_get '.crowdsec_service.console_context_path')
+    # we set the path here because the default is empty
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    CONTEXT_YAML="$CONFIG_DIR/console/context.yaml"
+    export CONTEXT_YAML
+    config_set '.crowdsec_service.console_context_path=strenv(CONTEXT_YAML)'
+    mkdir -p "$CONFIG_DIR/console"
 
     cat <<-EOT >"${CONTEXT_YAML}"
 	target_user:
@@ -53,9 +61,9 @@ teardown() {
 
     ./instance-crowdsec start
     sleep 2
-    fake_log >>"${tmpfile}"
+    fake_log >>"$tmpfile"
     sleep 2
-    rm -f -- "${tmpfile}"
+    rm -f -- "$tmpfile"
 
     rune -0 cscli alerts list -o json
     rune -0 jq '.[0].id' <(output)

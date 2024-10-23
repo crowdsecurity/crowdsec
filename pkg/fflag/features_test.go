@@ -9,7 +9,7 @@ import (
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -50,8 +50,6 @@ func TestRegisterFeature(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
-
 		t.Run("", func(t *testing.T) {
 			fr := fflag.FeatureRegister{EnvPrefix: "FFLAG_TEST_"}
 			err := fr.RegisterFeature(&tc.feature)
@@ -112,7 +110,6 @@ func TestGetFeature(t *testing.T) {
 	fr := setUp(t)
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := fr.GetFeature(tc.feature)
 			cstest.RequireErrorMessage(t, err, tc.expectedErr)
@@ -145,7 +142,6 @@ func TestIsEnabled(t *testing.T) {
 	fr := setUp(t)
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			feat, err := fr.GetFeature(tc.feature)
 			require.NoError(t, err)
@@ -204,7 +200,6 @@ func TestFeatureSet(t *testing.T) {
 	fr := setUp(t)
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			feat, err := fr.GetFeature(tc.feature)
 			cstest.RequireErrorMessage(t, err, tc.expectedGetErr)
@@ -284,7 +279,6 @@ func TestSetFromEnv(t *testing.T) {
 	fr := setUp(t)
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := logtest.NewNullLogger()
 			logger.SetLevel(logrus.DebugLevel)
@@ -344,7 +338,6 @@ func TestSetFromYaml(t *testing.T) {
 	fr := setUp(t)
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := logtest.NewNullLogger()
 			logger.SetLevel(logrus.DebugLevel)
@@ -364,7 +357,7 @@ func TestSetFromYamlFile(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// write the config file
-	_, err = tmpfile.Write([]byte("- experimental1"))
+	_, err = tmpfile.WriteString("- experimental1")
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close())
 

@@ -8,8 +8,7 @@ License:        MIT
 URL:            https://crowdsec.net
 Source0:        https://github.com/crowdsecurity/%{name}/archive/v%(echo $VERSION).tar.gz
 Source1:        80-%{name}.preset
-Patch0:         crowdsec.unit.patch
-Patch1:         user.patch
+Patch0:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  systemd
@@ -32,13 +31,13 @@ Requires: crontabs
 %setup -q -T -b 0
 
 %patch0
-%patch1
 
 %build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
 
 %install
 rm -rf %{buildroot}
+mkdir -p %{buildroot}/etc/crowdsec/acquis.d
 mkdir -p %{buildroot}/etc/crowdsec/hub
 mkdir -p %{buildroot}/etc/crowdsec/patterns
 mkdir -p %{buildroot}/etc/crowdsec/console/
@@ -53,7 +52,7 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
 install -m 755 -D wizard.sh %{buildroot}/usr/share/crowdsec/wizard.sh
-install -m 644 -D config/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
+install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
 install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
@@ -63,15 +62,19 @@ install -m 644 -D config/context.yaml %{buildroot}%{_sysconfdir}/crowdsec/consol
 install -m 750 -D config/%{name}.cron.daily %{buildroot}%{_sysconfdir}/cron.daily/%{name}
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
-install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-sentinel/notification-sentinel %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-file/notification-file %{buildroot}%{_libdir}/%{name}/plugins/
 
-install -m 600 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-sentinel/sentinel.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-file/file.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
 %clean
 rm -rf %{buildroot}
@@ -85,6 +88,8 @@ rm -rf %{buildroot}
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
 %{_libdir}/%{name}/plugins/notification-email
+%{_libdir}/%{name}/plugins/notification-sentinel
+%{_libdir}/%{name}/plugins/notification-file
 %{_sysconfdir}/%{name}/patterns/linux-syslog
 %{_sysconfdir}/%{name}/patterns/ruby
 %{_sysconfdir}/%{name}/patterns/nginx
@@ -119,6 +124,8 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/sentinel.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/file.yaml
 %config(noreplace) %{_sysconfdir}/cron.daily/%{name}
 
 %{_unitdir}/%{name}.service
@@ -126,6 +133,7 @@ rm -rf %{buildroot}
 %ghost %{_sysconfdir}/%{name}/hub/.index.json
 %ghost %{_localstatedir}/log/%{name}.log
 %dir /var/lib/%{name}/data/
+%dir %{_sysconfdir}/%{name}/hub
 
 %ghost %{_sysconfdir}/crowdsec/local_api_credentials.yaml
 %ghost %{_sysconfdir}/crowdsec/online_api_credentials.yaml
@@ -161,23 +169,22 @@ if [ $1 == 1 ]; then
         SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
         set +e
     fi
-    if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] && [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then
-        install -m 600 /dev/null %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-        install -m 600 /dev/null %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-        cscli capi register
-        cscli machines add -a
-    fi
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] ; then
-        touch %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-        cscli capi register
+        install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
+        cscli capi register --error
     fi
     if [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then
-        touch %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-        cscli machines add -a
+        install -m 600 /dev/null  /etc/crowdsec/local_api_credentials.yaml
+        cscli machines add -a --force --error
     fi
 
     cscli hub update
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
+
+    echo "Get started with CrowdSec:"
+    echo " * Detailed guides are available in our documentation: https://docs.crowdsec.net"
+    echo " * Configuration items created by the community can be found at the Hub: https://hub.crowdsec.net"
+    echo " * Gain insights into your use of CrowdSec with the help of the console https://app.crowdsec.net"
 
 #upgrade
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
@@ -199,7 +206,7 @@ fi
 
 if [ $1 == 1 ]; then
     API=$(cscli config show --key "Config.API.Server")
-    if [ "$API" = "<nil>" ] ; then
+    if [ "$API" = "nil" ] ; then
         LAPI=false
     else
         PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)

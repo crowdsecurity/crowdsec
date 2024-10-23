@@ -17,11 +17,9 @@ import (
 // ConfigItemQuery is the builder for querying ConfigItem entities.
 type ConfigItemQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
+	ctx        *QueryContext
+	order      []configitem.OrderOption
+	inters     []Interceptor
 	predicates []predicate.ConfigItem
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -34,27 +32,27 @@ func (ciq *ConfigItemQuery) Where(ps ...predicate.ConfigItem) *ConfigItemQuery {
 	return ciq
 }
 
-// Limit adds a limit step to the query.
+// Limit the number of records to be returned by this query.
 func (ciq *ConfigItemQuery) Limit(limit int) *ConfigItemQuery {
-	ciq.limit = &limit
+	ciq.ctx.Limit = &limit
 	return ciq
 }
 
-// Offset adds an offset step to the query.
+// Offset to start from.
 func (ciq *ConfigItemQuery) Offset(offset int) *ConfigItemQuery {
-	ciq.offset = &offset
+	ciq.ctx.Offset = &offset
 	return ciq
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
 func (ciq *ConfigItemQuery) Unique(unique bool) *ConfigItemQuery {
-	ciq.unique = &unique
+	ciq.ctx.Unique = &unique
 	return ciq
 }
 
-// Order adds an order step to the query.
-func (ciq *ConfigItemQuery) Order(o ...OrderFunc) *ConfigItemQuery {
+// Order specifies how the records should be ordered.
+func (ciq *ConfigItemQuery) Order(o ...configitem.OrderOption) *ConfigItemQuery {
 	ciq.order = append(ciq.order, o...)
 	return ciq
 }
@@ -62,7 +60,7 @@ func (ciq *ConfigItemQuery) Order(o ...OrderFunc) *ConfigItemQuery {
 // First returns the first ConfigItem entity from the query.
 // Returns a *NotFoundError when no ConfigItem was found.
 func (ciq *ConfigItemQuery) First(ctx context.Context) (*ConfigItem, error) {
-	nodes, err := ciq.Limit(1).All(ctx)
+	nodes, err := ciq.Limit(1).All(setContextOp(ctx, ciq.ctx, "First"))
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +83,7 @@ func (ciq *ConfigItemQuery) FirstX(ctx context.Context) *ConfigItem {
 // Returns a *NotFoundError when no ConfigItem ID was found.
 func (ciq *ConfigItemQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = ciq.Limit(1).IDs(ctx); err != nil {
+	if ids, err = ciq.Limit(1).IDs(setContextOp(ctx, ciq.ctx, "FirstID")); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -108,7 +106,7 @@ func (ciq *ConfigItemQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one ConfigItem entity is found.
 // Returns a *NotFoundError when no ConfigItem entities are found.
 func (ciq *ConfigItemQuery) Only(ctx context.Context) (*ConfigItem, error) {
-	nodes, err := ciq.Limit(2).All(ctx)
+	nodes, err := ciq.Limit(2).All(setContextOp(ctx, ciq.ctx, "Only"))
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +134,7 @@ func (ciq *ConfigItemQuery) OnlyX(ctx context.Context) *ConfigItem {
 // Returns a *NotFoundError when no entities are found.
 func (ciq *ConfigItemQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = ciq.Limit(2).IDs(ctx); err != nil {
+	if ids, err = ciq.Limit(2).IDs(setContextOp(ctx, ciq.ctx, "OnlyID")); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -161,10 +159,12 @@ func (ciq *ConfigItemQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of ConfigItems.
 func (ciq *ConfigItemQuery) All(ctx context.Context) ([]*ConfigItem, error) {
+	ctx = setContextOp(ctx, ciq.ctx, "All")
 	if err := ciq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	return ciq.sqlAll(ctx)
+	qr := querierAll[[]*ConfigItem, *ConfigItemQuery]()
+	return withInterceptors[[]*ConfigItem](ctx, ciq, qr, ciq.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
@@ -177,9 +177,12 @@ func (ciq *ConfigItemQuery) AllX(ctx context.Context) []*ConfigItem {
 }
 
 // IDs executes the query and returns a list of ConfigItem IDs.
-func (ciq *ConfigItemQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
-	if err := ciq.Select(configitem.FieldID).Scan(ctx, &ids); err != nil {
+func (ciq *ConfigItemQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if ciq.ctx.Unique == nil && ciq.path != nil {
+		ciq.Unique(true)
+	}
+	ctx = setContextOp(ctx, ciq.ctx, "IDs")
+	if err = ciq.Select(configitem.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
@@ -196,10 +199,11 @@ func (ciq *ConfigItemQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (ciq *ConfigItemQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, ciq.ctx, "Count")
 	if err := ciq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return ciq.sqlCount(ctx)
+	return withInterceptors[int](ctx, ciq, querierCount[*ConfigItemQuery](), ciq.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
@@ -213,10 +217,15 @@ func (ciq *ConfigItemQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (ciq *ConfigItemQuery) Exist(ctx context.Context) (bool, error) {
-	if err := ciq.prepareQuery(ctx); err != nil {
-		return false, err
+	ctx = setContextOp(ctx, ciq.ctx, "Exist")
+	switch _, err := ciq.FirstID(ctx); {
+	case IsNotFound(err):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("ent: check existence: %w", err)
+	default:
+		return true, nil
 	}
-	return ciq.sqlExist(ctx)
 }
 
 // ExistX is like Exist, but panics if an error occurs.
@@ -236,14 +245,13 @@ func (ciq *ConfigItemQuery) Clone() *ConfigItemQuery {
 	}
 	return &ConfigItemQuery{
 		config:     ciq.config,
-		limit:      ciq.limit,
-		offset:     ciq.offset,
-		order:      append([]OrderFunc{}, ciq.order...),
+		ctx:        ciq.ctx.Clone(),
+		order:      append([]configitem.OrderOption{}, ciq.order...),
+		inters:     append([]Interceptor{}, ciq.inters...),
 		predicates: append([]predicate.ConfigItem{}, ciq.predicates...),
 		// clone intermediate query.
-		sql:    ciq.sql.Clone(),
-		path:   ciq.path,
-		unique: ciq.unique,
+		sql:  ciq.sql.Clone(),
+		path: ciq.path,
 	}
 }
 
@@ -262,16 +270,11 @@ func (ciq *ConfigItemQuery) Clone() *ConfigItemQuery {
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (ciq *ConfigItemQuery) GroupBy(field string, fields ...string) *ConfigItemGroupBy {
-	grbuild := &ConfigItemGroupBy{config: ciq.config}
-	grbuild.fields = append([]string{field}, fields...)
-	grbuild.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := ciq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return ciq.sqlQuery(ctx), nil
-	}
+	ciq.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &ConfigItemGroupBy{build: ciq}
+	grbuild.flds = &ciq.ctx.Fields
 	grbuild.label = configitem.Label
-	grbuild.flds, grbuild.scan = &grbuild.fields, grbuild.Scan
+	grbuild.scan = grbuild.Scan
 	return grbuild
 }
 
@@ -288,15 +291,30 @@ func (ciq *ConfigItemQuery) GroupBy(field string, fields ...string) *ConfigItemG
 //		Select(configitem.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (ciq *ConfigItemQuery) Select(fields ...string) *ConfigItemSelect {
-	ciq.fields = append(ciq.fields, fields...)
-	selbuild := &ConfigItemSelect{ConfigItemQuery: ciq}
-	selbuild.label = configitem.Label
-	selbuild.flds, selbuild.scan = &ciq.fields, selbuild.Scan
-	return selbuild
+	ciq.ctx.Fields = append(ciq.ctx.Fields, fields...)
+	sbuild := &ConfigItemSelect{ConfigItemQuery: ciq}
+	sbuild.label = configitem.Label
+	sbuild.flds, sbuild.scan = &ciq.ctx.Fields, sbuild.Scan
+	return sbuild
+}
+
+// Aggregate returns a ConfigItemSelect configured with the given aggregations.
+func (ciq *ConfigItemQuery) Aggregate(fns ...AggregateFunc) *ConfigItemSelect {
+	return ciq.Select().Aggregate(fns...)
 }
 
 func (ciq *ConfigItemQuery) prepareQuery(ctx context.Context) error {
-	for _, f := range ciq.fields {
+	for _, inter := range ciq.inters {
+		if inter == nil {
+			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
+		}
+		if trv, ok := inter.(Traverser); ok {
+			if err := trv.Traverse(ctx, ciq); err != nil {
+				return err
+			}
+		}
+	}
+	for _, f := range ciq.ctx.Fields {
 		if !configitem.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
@@ -338,41 +356,22 @@ func (ciq *ConfigItemQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 
 func (ciq *ConfigItemQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := ciq.querySpec()
-	_spec.Node.Columns = ciq.fields
-	if len(ciq.fields) > 0 {
-		_spec.Unique = ciq.unique != nil && *ciq.unique
+	_spec.Node.Columns = ciq.ctx.Fields
+	if len(ciq.ctx.Fields) > 0 {
+		_spec.Unique = ciq.ctx.Unique != nil && *ciq.ctx.Unique
 	}
 	return sqlgraph.CountNodes(ctx, ciq.driver, _spec)
 }
 
-func (ciq *ConfigItemQuery) sqlExist(ctx context.Context) (bool, error) {
-	switch _, err := ciq.FirstID(ctx); {
-	case IsNotFound(err):
-		return false, nil
-	case err != nil:
-		return false, fmt.Errorf("ent: check existence: %w", err)
-	default:
-		return true, nil
-	}
-}
-
 func (ciq *ConfigItemQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := &sqlgraph.QuerySpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   configitem.Table,
-			Columns: configitem.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: configitem.FieldID,
-			},
-		},
-		From:   ciq.sql,
-		Unique: true,
-	}
-	if unique := ciq.unique; unique != nil {
+	_spec := sqlgraph.NewQuerySpec(configitem.Table, configitem.Columns, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
+	_spec.From = ciq.sql
+	if unique := ciq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
+	} else if ciq.path != nil {
+		_spec.Unique = true
 	}
-	if fields := ciq.fields; len(fields) > 0 {
+	if fields := ciq.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, configitem.FieldID)
 		for i := range fields {
@@ -388,10 +387,10 @@ func (ciq *ConfigItemQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if limit := ciq.limit; limit != nil {
+	if limit := ciq.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := ciq.offset; offset != nil {
+	if offset := ciq.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
 	if ps := ciq.order; len(ps) > 0 {
@@ -407,7 +406,7 @@ func (ciq *ConfigItemQuery) querySpec() *sqlgraph.QuerySpec {
 func (ciq *ConfigItemQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(ciq.driver.Dialect())
 	t1 := builder.Table(configitem.Table)
-	columns := ciq.fields
+	columns := ciq.ctx.Fields
 	if len(columns) == 0 {
 		columns = configitem.Columns
 	}
@@ -416,7 +415,7 @@ func (ciq *ConfigItemQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = ciq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if ciq.unique != nil && *ciq.unique {
+	if ciq.ctx.Unique != nil && *ciq.ctx.Unique {
 		selector.Distinct()
 	}
 	for _, p := range ciq.predicates {
@@ -425,12 +424,12 @@ func (ciq *ConfigItemQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	for _, p := range ciq.order {
 		p(selector)
 	}
-	if offset := ciq.offset; offset != nil {
+	if offset := ciq.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := ciq.limit; limit != nil {
+	if limit := ciq.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -438,13 +437,8 @@ func (ciq *ConfigItemQuery) sqlQuery(ctx context.Context) *sql.Selector {
 
 // ConfigItemGroupBy is the group-by builder for ConfigItem entities.
 type ConfigItemGroupBy struct {
-	config
 	selector
-	fields []string
-	fns    []AggregateFunc
-	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	build *ConfigItemQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
@@ -453,74 +447,77 @@ func (cigb *ConfigItemGroupBy) Aggregate(fns ...AggregateFunc) *ConfigItemGroupB
 	return cigb
 }
 
-// Scan applies the group-by query and scans the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (cigb *ConfigItemGroupBy) Scan(ctx context.Context, v any) error {
-	query, err := cigb.path(ctx)
-	if err != nil {
+	ctx = setContextOp(ctx, cigb.build.ctx, "GroupBy")
+	if err := cigb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	cigb.sql = query
-	return cigb.sqlScan(ctx, v)
+	return scanWithInterceptors[*ConfigItemQuery, *ConfigItemGroupBy](ctx, cigb.build, cigb, cigb.build.inters, v)
 }
 
-func (cigb *ConfigItemGroupBy) sqlScan(ctx context.Context, v any) error {
-	for _, f := range cigb.fields {
-		if !configitem.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
+func (cigb *ConfigItemGroupBy) sqlScan(ctx context.Context, root *ConfigItemQuery, v any) error {
+	selector := root.sqlQuery(ctx).Select()
+	aggregation := make([]string, 0, len(cigb.fns))
+	for _, fn := range cigb.fns {
+		aggregation = append(aggregation, fn(selector))
 	}
-	selector := cigb.sqlQuery()
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(*cigb.flds)+len(cigb.fns))
+		for _, f := range *cigb.flds {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	selector.GroupBy(selector.Columns(*cigb.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := cigb.driver.Query(ctx, query, args, rows); err != nil {
+	if err := cigb.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
 }
 
-func (cigb *ConfigItemGroupBy) sqlQuery() *sql.Selector {
-	selector := cigb.sql.Select()
-	aggregation := make([]string, 0, len(cigb.fns))
-	for _, fn := range cigb.fns {
-		aggregation = append(aggregation, fn(selector))
-	}
-	// If no columns were selected in a custom aggregation function, the default
-	// selection is the fields used for "group-by", and the aggregation functions.
-	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(cigb.fields)+len(cigb.fns))
-		for _, f := range cigb.fields {
-			columns = append(columns, selector.C(f))
-		}
-		columns = append(columns, aggregation...)
-		selector.Select(columns...)
-	}
-	return selector.GroupBy(selector.Columns(cigb.fields...)...)
-}
-
 // ConfigItemSelect is the builder for selecting fields of ConfigItem entities.
 type ConfigItemSelect struct {
 	*ConfigItemQuery
 	selector
-	// intermediate query (i.e. traversal path).
-	sql *sql.Selector
+}
+
+// Aggregate adds the given aggregation functions to the selector query.
+func (cis *ConfigItemSelect) Aggregate(fns ...AggregateFunc) *ConfigItemSelect {
+	cis.fns = append(cis.fns, fns...)
+	return cis
 }
 
 // Scan applies the selector query and scans the result into the given value.
 func (cis *ConfigItemSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, cis.ctx, "Select")
 	if err := cis.prepareQuery(ctx); err != nil {
 		return err
 	}
-	cis.sql = cis.ConfigItemQuery.sqlQuery(ctx)
-	return cis.sqlScan(ctx, v)
+	return scanWithInterceptors[*ConfigItemQuery, *ConfigItemSelect](ctx, cis.ConfigItemQuery, cis, cis.inters, v)
 }
 
-func (cis *ConfigItemSelect) sqlScan(ctx context.Context, v any) error {
+func (cis *ConfigItemSelect) sqlScan(ctx context.Context, root *ConfigItemQuery, v any) error {
+	selector := root.sqlQuery(ctx)
+	aggregation := make([]string, 0, len(cis.fns))
+	for _, fn := range cis.fns {
+		aggregation = append(aggregation, fn(selector))
+	}
+	switch n := len(*cis.selector.flds); {
+	case n == 0 && len(aggregation) > 0:
+		selector.Select(aggregation...)
+	case n != 0 && len(aggregation) > 0:
+		selector.AppendSelect(aggregation...)
+	}
 	rows := &sql.Rows{}
-	query, args := cis.sql.Query()
+	query, args := selector.Query()
 	if err := cis.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}

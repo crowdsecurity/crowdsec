@@ -3,6 +3,7 @@ package journalctlacquisition
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -14,7 +15,7 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -26,10 +27,11 @@ type JournalCtlConfiguration struct {
 }
 
 type JournalCtlSource struct {
-	config JournalCtlConfiguration
-	logger *log.Entry
-	src    string
-	args   []string
+	metricsLevel int
+	config       JournalCtlConfiguration
+	logger       *log.Entry
+	src          string
+	args         []string
 }
 
 const journalctlCmd string = "journalctl"
@@ -97,7 +99,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	if stdoutscanner == nil {
 		cancel()
 		cmd.Wait()
-		return fmt.Errorf("failed to create stdout scanner")
+		return errors.New("failed to create stdout scanner")
 	}
 
 	stderrScanner := bufio.NewScanner(stderr)
@@ -105,13 +107,13 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	if stderrScanner == nil {
 		cancel()
 		cmd.Wait()
-		return fmt.Errorf("failed to create stderr scanner")
+		return errors.New("failed to create stderr scanner")
 	}
 	t.Go(func() error {
 		return readLine(stdoutscanner, stdoutChan, errChan)
 	})
 	t.Go(func() error {
-		//looks like journalctl closes stderr quite early, so ignore its status (but not its output)
+		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
 		return readLine(stderrScanner, stderrChan, nil)
 	})
 
@@ -120,7 +122,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() //avoid zombie process
+			cmd.Wait() // avoid zombie process
 			return nil
 		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
@@ -131,7 +133,9 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Src = j.src
 			l.Process = true
 			l.Module = j.GetName()
-			linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			if j.metricsLevel != configuration.METRICS_NONE {
+				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			}
 			var evt types.Event
 			if !j.config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
@@ -186,7 +190,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if len(j.config.Filters) == 0 {
-		return fmt.Errorf("journalctl_filter is required")
+		return errors.New("journalctl_filter is required")
 	}
 	j.args = append(args, j.config.Filters...)
 	j.src = fmt.Sprintf("journalctl-%s", strings.Join(j.config.Filters, "."))
@@ -194,8 +198,9 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	j.logger = logger
+	j.metricsLevel = MetricsLevel
 
 	err := j.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -212,14 +217,14 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 	j.config.Labels = labels
 	j.config.UniqueId = uuid
 
-	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
+	// format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {
 		return fmt.Errorf("invalid DSN %s for journalctl source, must start with journalctl://", dsn)
 	}
 
 	qs := strings.TrimPrefix(dsn, "journalctl://")
-	if len(qs) == 0 {
-		return fmt.Errorf("empty journalctl:// DSN")
+	if qs == "" {
+		return errors.New("empty journalctl:// DSN")
 	}
 
 	params, err := url.ParseQuery(qs)
@@ -232,7 +237,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 			j.config.Filters = append(j.config.Filters, value...)
 		case "log_level":
 			if len(value) != 1 {
-				return fmt.Errorf("expected zero or one value for 'log_level'")
+				return errors.New("expected zero or one value for 'log_level'")
 			}
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
@@ -262,21 +267,22 @@ func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb
 	err := j.runJournalCtl(out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
-
 }
 
-func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
 		return j.runJournalCtl(out, t)
 	})
 	return nil
 }
+
 func (j *JournalCtlSource) CanRun() error {
-	//TODO: add a more precise check on version or something ?
+	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
+
 func (j *JournalCtlSource) Dump() interface{} {
 	return j
 }

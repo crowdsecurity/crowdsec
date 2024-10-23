@@ -52,7 +52,7 @@
         # daemonize -> /usr/bin or /usr/local/sbin
         # pidof -> /usr/sbin
         # bash -> /opt/bash/bin
-        PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:/usr/sbin:/usr/local/sbin"
+        PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:{{ golang_install_dir }}/bin/:/usr/sbin:/usr/local/sbin"
   rescue:
     - name: "Read crowdsec.log"
       ansible.builtin.slurp:

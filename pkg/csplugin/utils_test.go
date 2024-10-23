@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestGetPluginNameAndTypeFromPath(t *testing.T) {
@@ -37,7 +37,6 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got, got1, err := getPluginTypeAndSubtypeFromPath(tc.path)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)

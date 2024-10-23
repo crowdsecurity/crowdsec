@@ -21,7 +21,7 @@ Vagrant.configure('2') do |config|
     end
   end
 
-  config.vm.provision 'shell', path: 'bootstrap' if File.exists?('bootstrap')
+  config.vm.provision 'shell', path: 'bootstrap' if File.exist?('bootstrap')
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   config.vm.provider :libvirt do |libvirt|

@@ -1,0 +1,40 @@
+# .github/workflows/build-docker-image.yml
+name: Release
+
+on:
+  release:
+    types:
+      - prereleased
+
+permissions:
+  # Use write for: hub release edit
+  contents: write
+
+jobs:
+  build:
+    name: Build and upload binary package
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: "Set up Go"
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build the binaries
+        run: |
+          sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
+          make vendor release BUILD_STATIC=1
+
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag_name="${GITHUB_REF##*/}"
+          gh release upload "$tag_name" crowdsec-release.tgz vendor.tgz *-vendor.tar.xz

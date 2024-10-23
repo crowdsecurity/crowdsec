@@ -1,8 +1,8 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,31 +11,38 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
-
-	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/gin-gonic/gin"
-
+	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/version"
+
+	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var testMachineID = "test"
-var testPassword = strfmt.Password("test")
-var MachineTest = models.WatcherAuthRequest{
-	MachineID: &testMachineID,
-	Password:  &testPassword,
-}
+const (
+	validRegistrationToken   = "igheethauCaeteSaiyee3LosohPhahze"
+	invalidRegistrationToken = "vohl1feibechieG5coh8musheish2auj"
+)
 
-var UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
-var emptyBody = strings.NewReader("")
+var (
+	testMachineID = "test"
+	testPassword  = strfmt.Password("test")
+	MachineTest   = models.WatcherRegistrationRequest{
+		MachineID: &testMachineID,
+		Password:  &testPassword,
+	}
+	UserAgent = "crowdsec-test/" + version.Version
+	emptyBody = strings.NewReader("")
+)
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
@@ -45,6 +52,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -61,14 +69,27 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 			ShareTaintedScenarios: new(bool),
 			ShareCustomScenarios:  new(bool),
 		},
+		AutoRegister: &csconfig.LocalAPIAutoRegisterCfg{
+			Enable: ptr.Of(true),
+			Token:  validRegistrationToken,
+			AllowedRanges: []string{
+				"127.0.0.1/8",
+				"::1/128",
+			},
+		},
 	}
+
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
 	}
+
 	config.API = &apiConfig
-	if err := config.API.Server.LoadProfiles(); err != nil {
-		log.Fatalf("failed to load profiles: %s", err)
-	}
+	err := config.API.Server.LoadProfiles()
+	require.NoError(t, err)
+
+	err = config.API.Server.LoadAutoRegister()
+	require.NoError(t, err)
+
 	return config
 }
 
@@ -80,6 +101,7 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -103,100 +125,94 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 		Server: &apiServerConfig,
 	}
 	config.API = &apiConfig
-	if err := config.API.Server.LoadProfiles(); err != nil {
-		log.Fatalf("failed to load profiles: %s", err)
-	}
+	err := config.API.Server.LoadProfiles()
+	require.NoError(t, err)
+
+	err = config.API.Server.LoadAutoRegister()
+	require.NoError(t, err)
+
 	return config
 }
 
-func NewAPIServer(t *testing.T) (*APIServer, csconfig.Config, error) {
+func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Config) {
 	config := LoadTestConfig(t)
+
 	os.Remove("./ent")
-	apiServer, err := NewServer(config.API.Server)
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
+
+	apiServer, err := NewServer(ctx, config.API.Server)
+	require.NoError(t, err)
+
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
-	return apiServer, config, nil
+
+	return apiServer, config
 }
 
-func NewAPITest(t *testing.T) (*gin.Engine, csconfig.Config, error) {
-	apiServer, config, err := NewAPIServer(t)
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
-	err = apiServer.InitController()
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
+func NewAPITest(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
+	apiServer, config := NewAPIServer(t, ctx)
+
+	err := apiServer.InitController()
+	require.NoError(t, err)
+
 	router, err := apiServer.Router()
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
-	return router, config, nil
+	require.NoError(t, err)
+
+	return router, config
 }
 
-func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config, error) {
+func NewAPITestForwardedFor(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
 	config := LoadTestConfigForwardedFor(t)
 
 	os.Remove("./ent")
-	apiServer, err := NewServer(config.API.Server)
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
+
+	apiServer, err := NewServer(ctx, config.API.Server)
+	require.NoError(t, err)
+
 	err = apiServer.InitController()
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
+	require.NoError(t, err)
+
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
+
 	router, err := apiServer.Router()
-	if err != nil {
-		return nil, config, fmt.Errorf("unable to run local API: %s", err)
-	}
-	return router, config, nil
+	require.NoError(t, err)
+
+	return router, config
 }
 
-func ValidateMachine(machineID string, config *csconfig.DatabaseCfg) error {
-	dbClient, err := database.NewClient(config)
-	if err != nil {
-		return fmt.Errorf("unable to create new database client: %s", err)
-	}
-	if err := dbClient.ValidateMachine(machineID); err != nil {
-		return fmt.Errorf("unable to validate machine: %s", err)
-	}
-	return nil
+func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config *csconfig.DatabaseCfg) {
+	dbClient, err := database.NewClient(ctx, config)
+	require.NoError(t, err)
+
+	err = dbClient.ValidateMachine(ctx, machineID)
+	require.NoError(t, err)
 }
 
-func GetMachineIP(machineID string, config *csconfig.DatabaseCfg) (string, error) {
-	dbClient, err := database.NewClient(config)
-	if err != nil {
-		return "", fmt.Errorf("unable to create new database client: %s", err)
-	}
-	machines, err := dbClient.ListMachines()
-	if err != nil {
-		return "", fmt.Errorf("Unable to list machines: %s", err)
-	}
+func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
+	require.NoError(t, err)
+
+	machines, err := dbClient.ListMachines(ctx)
+	require.NoError(t, err)
+
 	for _, machine := range machines {
 		if machine.MachineId == machineID {
-			return machine.IpAddress, nil
+			return machine.IpAddress
 		}
 	}
-	return "", nil
+
+	return ""
 }
 
-func GetAlertReaderFromFile(path string) *strings.Reader {
-
+func GetAlertReaderFromFile(t *testing.T, path string) *strings.Reader {
 	alertContentBytes, err := os.ReadFile(path)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
+	err = json.Unmarshal(alertContentBytes, &alerts)
+	require.NoError(t, err)
 
 	for _, alert := range alerts {
 		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
@@ -204,124 +220,113 @@ func GetAlertReaderFromFile(path string) *strings.Reader {
 	}
 
 	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	return strings.NewReader(string(alertContent))
-
 }
 
-func readDecisionsGetResp(resp *httptest.ResponseRecorder) ([]*models.Decision, int, error) {
+func readDecisionsGetResp(t *testing.T, resp *httptest.ResponseRecorder) ([]*models.Decision, int) {
 	var response []*models.Decision
-	if resp == nil {
-		return nil, 0, errors.New("response is nil")
-	}
+
+	require.NotNil(t, resp)
+
 	err := json.Unmarshal(resp.Body.Bytes(), &response)
-	if err != nil {
-		return nil, resp.Code, err
-	}
-	return response, resp.Code, nil
+	require.NoError(t, err)
+
+	return response, resp.Code
 }
 
-func readDecisionsErrorResp(resp *httptest.ResponseRecorder) (map[string]string, int, error) {
+func readDecisionsErrorResp(t *testing.T, resp *httptest.ResponseRecorder) (map[string]string, int) {
 	var response map[string]string
-	if resp == nil {
-		return nil, 0, errors.New("response is nil")
-	}
+
+	require.NotNil(t, resp)
+
 	err := json.Unmarshal(resp.Body.Bytes(), &response)
-	if err != nil {
-		return nil, resp.Code, err
-	}
-	return response, resp.Code, nil
+	require.NoError(t, err)
+
+	return response, resp.Code
 }
 
-func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDecisionResponse, int, error) {
+func readDecisionsDeleteResp(t *testing.T, resp *httptest.ResponseRecorder) (*models.DeleteDecisionResponse, int) {
 	var response models.DeleteDecisionResponse
-	if resp == nil {
-		return nil, 0, errors.New("response is nil")
-	}
+
+	require.NotNil(t, resp)
 	err := json.Unmarshal(resp.Body.Bytes(), &response)
-	if err != nil {
-		return nil, resp.Code, err
-	}
-	return &response, resp.Code, nil
+	require.NoError(t, err)
+
+	return &response, resp.Code
 }
 
-func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
+func readDecisionsStreamResp(t *testing.T, resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int) {
 	response := make(map[string][]*models.Decision)
-	if resp == nil {
-		return nil, 0, errors.New("response is nil")
-	}
+
+	require.NotNil(t, resp)
 	err := json.Unmarshal(resp.Body.Bytes(), &response)
-	if err != nil {
-		return nil, resp.Code, err
-	}
-	return response, resp.Code, nil
+	require.NoError(t, err)
+
+	return response, resp.Code
 }
 
-func CreateTestMachine(router *gin.Engine) (string, error) {
-	b, err := json.Marshal(MachineTest)
-	if err != nil {
-		return "", fmt.Errorf("unable to marshal MachineTest")
-	}
+func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, token string) string {
+	regReq := MachineTest
+	regReq.RegistrationToken = token
+	b, err := json.Marshal(regReq)
+	require.NoError(t, err)
+
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
-	return body, nil
+
+	return body
 }
 
-func CreateTestBouncer(config *csconfig.DatabaseCfg) (string, error) {
-	dbClient, err := database.NewClient(config)
-	if err != nil {
-		log.Fatalf("unable to create new database client: %s", err)
-	}
-	apiKey, err := middlewares.GenerateAPIKey(keyLength)
-	if err != nil {
-		return "", fmt.Errorf("unable to generate api key: %s", err)
-	}
-	_, err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
-	if err != nil {
-		return "", fmt.Errorf("unable to create blocker: %s", err)
-	}
+func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) string {
+	dbClient, err := database.NewClient(ctx, config)
+	require.NoError(t, err)
 
-	return apiKey, nil
+	apiKey, err := middlewares.GenerateAPIKey(keyLength)
+	require.NoError(t, err)
+
+	_, err = dbClient.CreateBouncer(ctx, "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
+	require.NoError(t, err)
+
+	return apiKey
 }
 
 func TestWithWrongDBConfig(t *testing.T) {
+	ctx := context.Background()
 	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
-	apiServer, err := NewServer(config.API.Server)
+	apiServer, err := NewServer(ctx, config.API.Server)
 
-	assert.Equal(t, apiServer, &APIServer{})
-	assert.Equal(t, "unable to init database client: unknown database type 'test'", err.Error())
+	cstest.RequireErrorContains(t, err, "unable to init database client: unknown database type 'test'")
+	assert.Nil(t, apiServer)
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {
+	ctx := context.Background()
 	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
-	apiServer, err := NewServer(config.API.Server)
+	apiServer, err := NewServer(ctx, config.API.Server)
 
-	assert.Equal(t, apiServer, &APIServer{})
-	assert.Equal(t, "max_items can't be zero or negative number", err.Error())
+	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative")
+	assert.Nil(t, apiServer)
 }
 
 func TestUnknownPath(t *testing.T) {
-	router, _, err := NewAPITest(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	ctx := context.Background()
+	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 404, w.Code)
-
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 /*
@@ -340,6 +345,8 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 */
 
 func TestLoggingDebugToFileConfig(t *testing.T) {
+	ctx := context.Background()
+
 	/*declare settings*/
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
@@ -347,6 +354,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -360,46 +368,37 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
-	lvl := log.DebugLevel
-	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
+	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
 	expectedLines := []string{"/test42"}
-	cfg.LogLevel = &lvl
+	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
-		t.Fatal(err)
-	}
-	api, err := NewServer(&cfg)
-	if err != nil {
-		t.Fatalf("failed to create api : %s", err)
-	}
-	if api == nil {
-		t.Fatalf("failed to create api #2 is nbill")
-	}
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
+	require.NoError(t, err)
+
+	api, err := NewServer(ctx, &cfg)
+	require.NoError(t, err)
+	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
-	assert.Equal(t, 404, w.Code)
-	//wait for the request to happen
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	data, err := os.ReadFile(expectedFile)
-	if err != nil {
-		t.Fatalf("failed to read file : %s", err)
-	}
+	require.NoError(t, err)
 
 	for _, expectedStr := range expectedLines {
-		if !strings.Contains(string(data), expectedStr) {
-			t.Fatalf("expected %s in %s", expectedStr, string(data))
-		}
+		assert.Contains(t, string(data), expectedStr)
 	}
-
 }
 
 func TestLoggingErrorToFileConfig(t *testing.T) {
+	ctx := context.Background()
 
 	/*declare settings*/
 	maxAge := "1h"
@@ -408,6 +407,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -421,34 +421,29 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
-	lvl := log.ErrorLevel
-	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
-	cfg.LogLevel = &lvl
+	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
+	cfg.LogLevel = ptr.Of(log.ErrorLevel)
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
-		t.Fatal(err)
-	}
-	api, err := NewServer(&cfg)
-	if err != nil {
-		t.Fatalf("failed to create api : %s", err)
-	}
-	if api == nil {
-		t.Fatalf("failed to create api #2 is nbill")
-	}
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
+	require.NoError(t, err)
+
+	api, err := NewServer(ctx, &cfg)
+	require.NoError(t, err)
+	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
-	assert.Equal(t, 404, w.Code)
-	//wait for the request to happen
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	x, err := os.ReadFile(expectedFile)
-	if err == nil && len(x) > 0 {
-		t.Fatalf("file should be empty, got '%s'", x)
+	if err == nil {
+		require.Empty(t, x)
 	}
 
 	os.Remove("./crowdsec.log")

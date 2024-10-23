@@ -19,11 +19,7 @@ All the following images are available on Docker Hub for the architectures
 
  - `crowdsecurity/crowdsec:{version}`
 
-Recommended for production usage. Also available on GitHub (ghcr.io).
-
- - `crowdsecurity/crowdsec:dev`
-
-The latest stable release.
+Latest stable release recommended for production usage. Also available on GitHub (ghcr.io).
 
  - `crowdsecurity/crowdsec:dev`
 
@@ -190,6 +186,14 @@ It is not recommended anymore to bind-mount the full config.yaml file and you sh
 
 If you want to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you have to use the full image (not slim) and mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 
+```shell
+docker run -d \
+    -v ./profiles.yaml:/etc/crowdsec/profiles.yaml \
+    -v ./http_notification.yaml:/etc/crowdsec/notifications/http_notification.yaml \
+    -p 8080:8080 -p 6060:6060 \
+    --name crowdsec crowdsecurity/crowdsec
+```
+
 # Deployment use cases
 
 Crowdsec is composed of an `agent` that parses logs and creates `alerts`, and a
@@ -312,16 +316,26 @@ config.yaml) each time the container is run.
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
 | __Hub management__      | | |
+| `NO_HUB_UPGRADE`        | false | Skip hub update / upgrade when the container starts |
 | `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
 | `PARSERS`               | | Parsers to install, separated by space |
 | `SCENARIOS`             | | Scenarios to install, separated by space |
 | `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
+| `CONTEXTS`              | | Context files to install, separated by space |
+| `APPSEC_CONFIGS`        | | Appsec configs files to install, separated by space |
+| `APPSEC_RULES`          | | Appsec rules files to install, separated by space |
 | `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
 | `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
 | `DISABLE_SCENARIOS`     | | Scenarios to remove, separated by space |
 | `DISABLE_POSTOVERFLOWS` | | Postoverflows to remove, separated by space |
+| `DISABLE_CONTEXTS`      | | Context files to remove, separated by space |
+| `DISABLE_APPSEC_CONFIGS`| | Appsec configs files to remove, separated by space |
+| `DISABLE_APPSEC_RULES`  | | Appsec rules files to remove, separated by space |
 |                         | | |
 | __Log verbosity__       | | |
+| `LEVEL_FATAL`           | false | Force FATAL level for the container log |
+| `LEVEL_ERROR`           | false | Force ERROR level for the container log |
+| `LEVEL_WARN`            | false | Force WARN level for the container log |
 | `LEVEL_INFO`            | false | Force INFO level for the container log |
 | `LEVEL_DEBUG`           | false | Force DEBUG level for the container log |
 | `LEVEL_TRACE`           | false | Force TRACE level (VERY verbose) for the container log |

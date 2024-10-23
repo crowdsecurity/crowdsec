@@ -61,9 +61,6 @@ architectures.
  - `curl`
  - `daemonize`
  - `jq`
- - `nc`
- - `openssl`
- - `openbsd-netcat`
  - `python3`
 
 ## Running all tests
@@ -242,6 +239,11 @@ according to the specific needs of the group of tests in the file.
    crowdsec instance. Crowdsec must not be running while this operation is
    performed.
 
+ - instance-data lock/unlock
+
+When playing around with a local crowdsec installation, you can run "instance-data lock"
+to prevent the bats suite from running, so it won't overwrite your configuration or data.
+
  - `instance-crowdsec [ start | stop ]`
 
    Runs (or stops) crowdsec as a background process. PID and lockfiles are
@@ -412,11 +414,4 @@ different syntax.
  - I get "while parsing /tmp/....: yaml: line 5: mapping values are not allowed in this context"
 Check the heredocs (the <<EOT blocks). Each line must start with a hard TAB
 followed by spaces. You are probably missing some tabs.
-
-## gotchas
-
- - Testing with Postgres or MySQL/MariaDB leads to (unpredictably) failing
-   tests in the GitHub workflows, so we had to disable them by default. We do
-   run these in a separate environment before doing releases. They should always
-   pass if you run them in a development machine.
 

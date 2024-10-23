@@ -25,7 +25,7 @@ def test_capi_whitelists(crowdsec, tmp_path_factory, flavor,):
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
         cs.wait_for_log("*Starting processing data*")
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
-        res = cs.cont.exec_run(f'cscli config show-yaml')
+        res = cs.cont.exec_run('cscli config show-yaml')
         assert res.exit_code == 0
         stdout = res.output.decode()
         y = yaml.safe_load(stdout)

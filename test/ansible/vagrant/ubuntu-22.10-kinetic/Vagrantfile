@@ -3,6 +3,7 @@
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/ubuntu2210'
   config.vm.provision "shell", inline: <<-SHELL
+    sudo apt install -y kitty-terminfo
   SHELL
 end
 

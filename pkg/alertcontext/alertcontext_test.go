@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewAlertContext(t *testing.T) {
@@ -29,8 +31,7 @@ func TestNewAlertContext(t *testing.T) {
 	for _, test := range tests {
 		fmt.Printf("Running test '%s'\n", test.name)
 		err := NewAlertContext(test.contextToSend, test.valueLength)
-		assert.ErrorIs(t, err, test.expectedErr)
-
+		require.ErrorIs(t, err, test.expectedErr)
 	}
 }
 
@@ -193,7 +194,7 @@ func TestEventToContext(t *testing.T) {
 	for _, test := range tests {
 		fmt.Printf("Running test '%s'\n", test.name)
 		err := NewAlertContext(test.contextToSend, test.valueLength)
-		assert.ErrorIs(t, err, nil)
+		require.NoError(t, err)
 
 		metas, _ := EventToContext(test.events)
 		assert.ElementsMatch(t, test.expectedResult, metas)

@@ -9,8 +9,6 @@ setup_file() {
     ./instance-crowdsec start
     API_KEY=$(cscli bouncers add testbouncer -o raw)
     export API_KEY
-    CROWDSEC_API_URL="http://localhost:8080"
-    export CROWDSEC_API_URL
 }
 
 teardown_file() {
@@ -22,18 +20,13 @@ setup() {
     if is_db_mysql; then sleep 0.3; fi
 }
 
-api() {
-    URI="$1"
-    curl -s -H "X-Api-Key: ${API_KEY}" "${CROWDSEC_API_URL}${URI}"
-}
-
 #----------
 
 @test "cli - first decisions list: must be empty" {
     # delete community pull
     rune -0 cscli decisions delete --all
     rune -0 cscli decisions list -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "adding decision for range aaaa:2222:3333:4444::/64" {
@@ -48,7 +41,7 @@ api() {
 }
 
 @test "API - all decisions (2)" {
-    rune -0 api '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     rune -0 jq -r '.[].value' <(output)
     assert_output 'aaaa:2222:3333:4444::/64'
 }
@@ -62,28 +55,28 @@ api() {
 }
 
 @test "API - decisions for ip aaaa:2222:3333:4444:5555:6666:7777:8888" {
-    rune -0 api '/v1/decisions?ip=aaaa:2222:3333:4444:5555:6666:7777:8888'
+    rune -0 curl-with-key '/v1/decisions?ip=aaaa:2222:3333:4444:5555:6666:7777:8888'
     rune -0 jq -r '.[].value' <(output)
     assert_output 'aaaa:2222:3333:4444::/64'
 }
 
 @test "CLI - decisions for ip aaaa:2222:3333:4445:5555:6666:7777:8888" {
     rune -0 cscli decisions list -i 'aaaa:2222:3333:4445:5555:6666:7777:8888' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip aaaa:2222:3333:4445:5555:6666:7777:8888" {
-    rune -0 api '/v1/decisions?ip=aaaa:2222:3333:4445:5555:6666:7777:8888'
+    rune -0 curl-with-key '/v1/decisions?ip=aaaa:2222:3333:4445:5555:6666:7777:8888'
     assert_output 'null'
 }
 
 @test "CLI - decisions for ip aaa1:2222:3333:4444:5555:6666:7777:8887" {
     rune -0 cscli decisions list -i 'aaa1:2222:3333:4444:5555:6666:7777:8887' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip aaa1:2222:3333:4444:5555:6666:7777:8887" {
-    rune -0 api '/v1/decisions?ip=aaa1:2222:3333:4444:5555:6666:7777:8887'
+    rune -0 curl-with-key '/v1/decisions?ip=aaa1:2222:3333:4444:5555:6666:7777:8887'
     assert_output 'null'
 }
 
@@ -96,29 +89,29 @@ api() {
 }
 
 @test "API - decisions for range aaaa:2222:3333:4444:5555::/80" {
-    rune -0 api '/v1/decisions?range=aaaa:2222:3333:4444:5555::/80'
+    rune -0 curl-with-key '/v1/decisions?range=aaaa:2222:3333:4444:5555::/80'
     rune -0 jq -r '.[].value' <(output)
     assert_output 'aaaa:2222:3333:4444::/64'
 }
 
 @test "CLI - decisions for range aaaa:2222:3333:4441:5555::/80" {
     rune -0 cscli decisions list -r 'aaaa:2222:3333:4441:5555::/80' -o json
-    assert_output 'null'
+    assert_json '[]'
 
 }
 
 @test "API - decisions for range aaaa:2222:3333:4441:5555::/80" {
-    rune -0 api '/v1/decisions?range=aaaa:2222:3333:4441:5555::/80'
+    rune -0 curl-with-key '/v1/decisions?range=aaaa:2222:3333:4441:5555::/80'
     assert_output 'null'
 }
 
 @test "CLI - decisions for range aaa1:2222:3333:4444:5555::/80" {
     rune -0 cscli decisions list -r 'aaa1:2222:3333:4444:5555::/80' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range aaa1:2222:3333:4444:5555::/80" {
-    rune -0 api '/v1/decisions?range=aaa1:2222:3333:4444:5555::/80'
+    rune -0 curl-with-key '/v1/decisions?range=aaa1:2222:3333:4444:5555::/80'
     assert_output 'null'
 }
 
@@ -126,11 +119,11 @@ api() {
 
 @test "CLI - decisions for range aaaa:2222:3333:4444:5555:6666:7777:8888/48" {
     rune -0 cscli decisions list -r 'aaaa:2222:3333:4444:5555:6666:7777:8888/48' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range aaaa:2222:3333:4444:5555:6666:7777:8888/48" {
-    rune -0 api '/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48'
+    rune -0 curl-with-key '/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48'
     assert_output 'null'
 }
 
@@ -141,18 +134,18 @@ api() {
 }
 
 @test "API - decisions for ip/range in aaaa:2222:3333:4444:5555:6666:7777:8888/48" {
-    rune -0 api '/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48&contains=false'
+    rune -0 curl-with-key '/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48&contains=false'
     rune -0 jq -r '.[].value' <(output)
     assert_output 'aaaa:2222:3333:4444::/64'
 }
 
 @test "CLI - decisions for ip/range in aaaa:2222:3333:4445:5555:6666:7777:8888/48" {
     rune -0 cscli decisions list -r 'aaaa:2222:3333:4445:5555:6666:7777:8888/48' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip/range in aaaa:2222:3333:4445:5555:6666:7777:8888/48" {
-    rune -0 api '/v1/decisions?range=aaaa:2222:3333:4445:5555:6666:7777:8888/48'
+    rune -0 curl-with-key '/v1/decisions?range=aaaa:2222:3333:4445:5555:6666:7777:8888/48'
     assert_output 'null'
 }
 
@@ -170,18 +163,18 @@ api() {
 }
 
 @test "API - decisions for ip in bbbb:db8:0000:0000:0000:6fff:ffff:ffff" {
-    rune -0 api '/v1/decisions?ip=bbbb:db8:0000:0000:0000:6fff:ffff:ffff'
+    rune -0 curl-with-key '/v1/decisions?ip=bbbb:db8:0000:0000:0000:6fff:ffff:ffff'
     rune -0 jq -r '.[].value' <(output)
     assert_output 'bbbb:db8::/81'
 }
 
 @test "CLI - decisions for ip bbbb:db8:0000:0000:0000:8fff:ffff:ffff" {
     rune -0 cscli decisions list -o json -i 'bbbb:db8:0000:0000:0000:8fff:ffff:ffff'
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip in bbbb:db8:0000:0000:0000:8fff:ffff:ffff" {
-    rune -0 api '/v1/decisions?ip=bbbb:db8:0000:0000:0000:8fff:ffff:ffff'
+    rune -0 curl-with-key '/v1/decisions?ip=bbbb:db8:0000:0000:0000:8fff:ffff:ffff'
     assert_output 'null'
 }
 
@@ -192,7 +185,7 @@ api() {
 
 @test "CLI - decisions for range aaaa:2222:3333:4444::/64 after delete" {
     rune -0 cscli decisions list -o json -r 'aaaa:2222:3333:4444::/64'
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "adding decision for ip bbbb:db8:0000:0000:0000:8fff:ffff:ffff" {

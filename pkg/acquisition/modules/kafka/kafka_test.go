@@ -13,8 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -58,22 +59,30 @@ brokers:
 topic: crowdsec`,
 			expectedErr: "",
 		},
+		{
+			config: `
+source: kafka
+brokers:
+  - localhost:9092
+topic: crowdsec
+partition: 1
+group_id: crowdsec`,
+			expectedErr: "cannote create kafka reader: cannot specify both group_id and partition",
+		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kafka",
-	})
+	subLogger := log.WithField("type", "kafka")
+
 	for _, test := range tests {
 		k := KafkaSource{}
-		err := k.Configure([]byte(test.config), subLogger)
+		err := k.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
-func writeToKafka(w *kafka.Writer, logs []string) {
-
+func writeToKafka(ctx context.Context, w *kafka.Writer, logs []string) {
 	for idx, log := range logs {
-		err := w.WriteMessages(context.Background(), kafka.Message{
+		err := w.WriteMessages(ctx, kafka.Message{
 			Key: []byte(strconv.Itoa(idx)),
 			// create an arbitrary message payload for the value
 			Value: []byte(log),
@@ -95,7 +104,9 @@ func createTopic(topic string, broker string) {
 	if err != nil {
 		panic(err)
 	}
+
 	var controllerConn *kafka.Conn
+
 	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
 		panic(err)
@@ -117,9 +128,11 @@ func createTopic(topic string, broker string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		name          string
 		logs          []string
@@ -137,9 +150,7 @@ func TestStreamingAcquisition(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kafka",
-	})
+	subLogger := log.WithField("type", "kafka")
 
 	createTopic("crowdsecplaintext", "localhost:9092")
 
@@ -148,28 +159,30 @@ func TestStreamingAcquisition(t *testing.T) {
 		Topic:   "crowdsecplaintext",
 	})
 	if w == nil {
-		log.Fatalf("Unable to setup a kafka producer")
+		t.Fatal("Unable to setup a kafka producer")
 	}
 
 	for _, ts := range tests {
-		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
+
 			err := k.Configure([]byte(`
 source: kafka
 brokers:
   - localhost:9092
-topic: crowdsecplaintext`), subLogger)
+topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("could not configure kafka source : %s", err)
 			}
+
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err = k.StreamingAcquisition(out, &tomb)
+			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 			actualLines := 0
-			go writeToKafka(w, ts.logs)
+
+			go writeToKafka(ctx, w, ts.logs)
 		READLOOP:
 			for {
 				select {
@@ -184,13 +197,14 @@ topic: crowdsecplaintext`), subLogger)
 			tomb.Wait()
 		})
 	}
-
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		name          string
 		logs          []string
@@ -207,9 +221,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "kafka",
-	})
+	subLogger := log.WithField("type", "kafka")
 
 	createTopic("crowdsecssl", "localhost:9092")
 
@@ -218,13 +230,13 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		Topic:   "crowdsecssl",
 	})
 	if w2 == nil {
-		log.Fatalf("Unable to setup a kafka producer")
+		t.Fatal("Unable to setup a kafka producer")
 	}
 
 	for _, ts := range tests {
-		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
+
 			err := k.Configure([]byte(`
 source: kafka
 brokers:
@@ -235,17 +247,19 @@ tls:
   client_cert: ./testdata/kafkaClient.certificate.pem
   client_key: ./testdata/kafkaClient.key
   ca_cert: ./testdata/snakeoil-ca-1.crt
-  `), subLogger)
+  `), subLogger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("could not configure kafka source : %s", err)
 			}
+
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err = k.StreamingAcquisition(out, &tomb)
+			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 			actualLines := 0
-			go writeToKafka(w2, ts.logs)
+
+			go writeToKafka(ctx, w2, ts.logs)
 		READLOOP:
 			for {
 				select {
@@ -260,5 +274,4 @@ tls:
 			tomb.Wait()
 		})
 	}
-
 }

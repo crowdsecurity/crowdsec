@@ -4,6 +4,9 @@ package machine
 
 import (
 	"time"
+
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -31,10 +34,18 @@ const (
 	FieldVersion = "version"
 	// FieldIsValidated holds the string denoting the isvalidated field in the database.
 	FieldIsValidated = "is_validated"
-	// FieldStatus holds the string denoting the status field in the database.
-	FieldStatus = "status"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
+	// FieldOsname holds the string denoting the osname field in the database.
+	FieldOsname = "osname"
+	// FieldOsversion holds the string denoting the osversion field in the database.
+	FieldOsversion = "osversion"
+	// FieldFeatureflags holds the string denoting the featureflags field in the database.
+	FieldFeatureflags = "featureflags"
+	// FieldHubstate holds the string denoting the hubstate field in the database.
+	FieldHubstate = "hubstate"
+	// FieldDatasources holds the string denoting the datasources field in the database.
+	FieldDatasources = "datasources"
 	// EdgeAlerts holds the string denoting the alerts edge name in mutations.
 	EdgeAlerts = "alerts"
 	// Table holds the table name of the machine in the database.
@@ -61,8 +72,12 @@ var Columns = []string{
 	FieldScenarios,
 	FieldVersion,
 	FieldIsValidated,
-	FieldStatus,
 	FieldAuthType,
+	FieldOsname,
+	FieldOsversion,
+	FieldFeatureflags,
+	FieldHubstate,
+	FieldDatasources,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -78,20 +93,12 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
-	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultLastPush holds the default value on creation for the "last_push" field.
 	DefaultLastPush func() time.Time
-	// UpdateDefaultLastPush holds the default value on update for the "last_push" field.
-	UpdateDefaultLastPush func() time.Time
-	// DefaultLastHeartbeat holds the default value on creation for the "last_heartbeat" field.
-	DefaultLastHeartbeat func() time.Time
-	// UpdateDefaultLastHeartbeat holds the default value on update for the "last_heartbeat" field.
-	UpdateDefaultLastHeartbeat func() time.Time
 	// ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
 	ScenariosValidator func(string) error
 	// DefaultIsValidated holds the default value on creation for the "isValidated" field.
@@ -99,3 +106,102 @@ var (
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
 )
+
+// OrderOption defines the ordering options for the Machine queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByLastPush orders the results by the last_push field.
+func ByLastPush(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastPush, opts...).ToFunc()
+}
+
+// ByLastHeartbeat orders the results by the last_heartbeat field.
+func ByLastHeartbeat(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastHeartbeat, opts...).ToFunc()
+}
+
+// ByMachineId orders the results by the machineId field.
+func ByMachineId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMachineId, opts...).ToFunc()
+}
+
+// ByPassword orders the results by the password field.
+func ByPassword(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPassword, opts...).ToFunc()
+}
+
+// ByIpAddress orders the results by the ipAddress field.
+func ByIpAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIpAddress, opts...).ToFunc()
+}
+
+// ByScenarios orders the results by the scenarios field.
+func ByScenarios(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldScenarios, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
+}
+
+// ByIsValidated orders the results by the isValidated field.
+func ByIsValidated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIsValidated, opts...).ToFunc()
+}
+
+// ByAuthType orders the results by the auth_type field.
+func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAuthType, opts...).ToFunc()
+}
+
+// ByOsname orders the results by the osname field.
+func ByOsname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsname, opts...).ToFunc()
+}
+
+// ByOsversion orders the results by the osversion field.
+func ByOsversion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsversion, opts...).ToFunc()
+}
+
+// ByFeatureflags orders the results by the featureflags field.
+func ByFeatureflags(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFeatureflags, opts...).ToFunc()
+}
+
+// ByAlertsCount orders the results by alerts count.
+func ByAlertsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAlertsStep(), opts...)
+	}
+}
+
+// ByAlerts orders the results by alerts terms.
+func ByAlerts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAlertsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newAlertsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AlertsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, AlertsTable, AlertsColumn),
+	)
+}

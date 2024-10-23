@@ -3,8 +3,9 @@ package leakybucket
 import (
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TimeMachinePour(l *Leaky, msg types.Event) {
@@ -23,7 +24,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 
 	err = d.UnmarshalText([]byte(msg.MarshaledTime))
 	if err != nil {
-		log.Warningf("Failed unmarshaling event time (%s) : %v", msg.MarshaledTime, err)
+		log.Warningf("Failed to parse event time (%s) : %v", msg.MarshaledTime, err)
 		return
 	}
 
@@ -35,7 +36,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 	l.Last_ts = d
 	l.mutex.Unlock()
-	if l.Limiter.AllowN(d, 1) {
+	if l.Limiter.AllowN(d, 1) || l.conditionalOverflow {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
 	} else {

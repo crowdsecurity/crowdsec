@@ -8,19 +8,23 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/tomb.v2"
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
-	yaml "gopkg.in/yaml.v2"
 )
 
 type TestFile struct {
@@ -33,33 +37,57 @@ func TestBucket(t *testing.T) {
 		envSetting = os.Getenv("TEST_ONLY")
 		tomb       = &tomb.Tomb{}
 	)
-	err := exprhelpers.Init(nil)
+
+	testdata := "./tests"
+
+	hubCfg := &csconfig.LocalHubCfg{
+		HubDir:         filepath.Join(testdata, "hub"),
+		HubIndexFile:   filepath.Join(testdata, "hub", "index.json"),
+		InstallDataDir: testdata,
+	}
+
+	hub, err := cwhub.NewHub(hubCfg, nil, nil)
+	require.NoError(t, err)
+
+	err = hub.Load()
+	require.NoError(t, err)
+
+	err = exprhelpers.Init(nil)
 	if err != nil {
-		log.Fatalf("exprhelpers init failed: %s", err)
+		t.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	if envSetting != "" {
-		if err := testOneBucket(t, envSetting, tomb); err != nil {
+		if err := testOneBucket(t, hub, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
 		wg := new(sync.WaitGroup)
-		fds, err := os.ReadDir("./tests/")
+
+		fds, err := os.ReadDir(testdata)
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
+
 		for _, fd := range fds {
-			fname := "./tests/" + fd.Name()
+			if fd.Name() == "hub" {
+				continue
+			}
+
+			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
 			tomb.Go(func() error {
 				wg.Add(1)
 				defer wg.Done()
-				if err := testOneBucket(t, fname, tomb); err != nil {
+
+				if err := testOneBucket(t, hub, fname, tomb); err != nil {
 					t.Fatalf("Test '%s' failed : %s", fname, err)
 				}
+
 				return nil
 			})
 		}
+
 		wg.Wait()
 	}
 }
@@ -68,16 +96,16 @@ func TestBucket(t *testing.T) {
 // we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
-		if tomb.Alive() == false {
+		if !tomb.Alive() {
 			log.Warning("Tomb is dead")
 			break
 		}
+
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
-
+func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) error {
 	var (
 		holders []BucketFactory
 
@@ -85,9 +113,9 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 		stagecfg   string
 		stages     []parser.Stagefile
 		err        error
-		buckets    *Buckets
 	)
-	buckets = NewBuckets()
+
+	buckets := NewBuckets()
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
@@ -97,53 +125,59 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 
 	tmpl, err := template.New("test").Parse(string(stagefiles))
 	if err != nil {
-		return fmt.Errorf("failed to parse template %s : %s", stagefiles, err)
+		return fmt.Errorf("failed to parse template %s: %w", stagefiles, err)
 	}
+
 	var out bytes.Buffer
+
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
 	if err != nil {
 		panic(err)
 	}
+
 	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		log.Fatalf("failed unmarshaling %s : %s", stagecfg, err)
+		t.Fatalf("failed to parse %s : %s", stagecfg, err)
 	}
+
 	files := []string{}
 	for _, x := range stages {
 		files = append(files, x.Filename)
 	}
 
-	cscfg := &csconfig.CrowdsecServiceCfg{
-		DataDir: "tests",
-	}
-	holders, response, err := LoadBuckets(cscfg, files, tomb, buckets, false)
+	cscfg := &csconfig.CrowdsecServiceCfg{}
+
+	holders, response, err := LoadBuckets(cscfg, hub, files, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
+
 	tomb.Go(func() error {
 		watchTomb(tomb)
 		return nil
 	})
-	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
+
+	if !testFile(t, filepath.Join(dir, "test.json"), filepath.Join(dir, "in-buckets_state.json"), holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
+
 	return nil
 }
 
 func testFile(t *testing.T, file string, bs string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
-
 	var results []types.Event
 	var dump bool
 
-	//should we restore
+	// should we restore
 	if _, err := os.Stat(bs); err == nil {
 		dump = true
+
 		if err := LoadBucketsState(bs, buckets, holders); err != nil {
 			t.Fatalf("Failed to load bucket state : %s", err)
 		}
 	}
 
 	/* now we can load the test files */
-	//process the yaml
+	// process the yaml
 	yamlFile, err := os.Open(file)
 	if err != nil {
 		t.Errorf("yamlFile.Get err   #%v ", err)
@@ -165,9 +199,11 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 		//just to avoid any race during ingestion of funny scenarios
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
+
 		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
-			t.Fatalf("Failed to unmarshal time from input event : %s", err)
+			t.Fatalf("Failed to parse time from input event : %s", err)
 		}
+
 		if latest_ts.IsZero() {
 			latest_ts = ts
 		} else if ts.After(latest_ts) {
@@ -176,10 +212,12 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 
 		in.ExpectMode = types.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
+
 		ok, err := PourItemToHolders(in, holders, buckets)
 		if err != nil {
 			t.Fatalf("Failed to pour : %s", err)
 		}
+
 		if !ok {
 			log.Warning("Event wasn't poured")
 		}

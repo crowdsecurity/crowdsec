@@ -1,0 +1,42 @@
+type: slack           # Don't change
+name: slack_default   # Must match the registered plugin in the profile
+
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
+
+# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
+# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
+# max_retry:          # Number of attempts to relay messages to plugins in case of error
+# timeout:            # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the slack message
+format: |
+  {{range . -}}
+  {{$alert := . -}}
+  {{range .Decisions -}}
+  {{if $alert.Source.Cn -}}
+  :flag-{{$alert.Source.Cn}}: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for triggering {{.Scenario}} on machine '{{$alert.MachineID}}'. <https://app.crowdsec.net/cti/{{.Value}}|CrowdSec CTI>{{end}}
+  {{if not $alert.Source.Cn -}}
+  :pirate_flag: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for triggering {{.Scenario}} on machine '{{$alert.MachineID}}'.  <https://app.crowdsec.net/cti/{{.Value}}|CrowdSec CTI>{{end}}
+  {{end -}}
+  {{end -}}
+
+
+webhook: <WEBHOOK_URL>
+
+# API request data as defined by the Slack webhook API.
+#channel: <CHANNEL_NAME>
+#username: <USERNAME>
+#icon_emoji: <ICON_EMOJI>
+#icon_url: <ICON_URL>
+
+---
+
+# type: slack
+# name: slack_second_notification
+# ...
+

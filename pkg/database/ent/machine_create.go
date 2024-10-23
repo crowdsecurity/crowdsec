@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
 // MachineCreate is the builder for creating a Machine entity.
@@ -137,20 +138,6 @@ func (mc *MachineCreate) SetNillableIsValidated(b *bool) *MachineCreate {
 	return mc
 }
 
-// SetStatus sets the "status" field.
-func (mc *MachineCreate) SetStatus(s string) *MachineCreate {
-	mc.mutation.SetStatus(s)
-	return mc
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (mc *MachineCreate) SetNillableStatus(s *string) *MachineCreate {
-	if s != nil {
-		mc.SetStatus(*s)
-	}
-	return mc
-}
-
 // SetAuthType sets the "auth_type" field.
 func (mc *MachineCreate) SetAuthType(s string) *MachineCreate {
 	mc.mutation.SetAuthType(s)
@@ -162,6 +149,60 @@ func (mc *MachineCreate) SetNillableAuthType(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetAuthType(*s)
 	}
+	return mc
+}
+
+// SetOsname sets the "osname" field.
+func (mc *MachineCreate) SetOsname(s string) *MachineCreate {
+	mc.mutation.SetOsname(s)
+	return mc
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableOsname(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetOsname(*s)
+	}
+	return mc
+}
+
+// SetOsversion sets the "osversion" field.
+func (mc *MachineCreate) SetOsversion(s string) *MachineCreate {
+	mc.mutation.SetOsversion(s)
+	return mc
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableOsversion(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetOsversion(*s)
+	}
+	return mc
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (mc *MachineCreate) SetFeatureflags(s string) *MachineCreate {
+	mc.mutation.SetFeatureflags(s)
+	return mc
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableFeatureflags(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetFeatureflags(*s)
+	}
+	return mc
+}
+
+// SetHubstate sets the "hubstate" field.
+func (mc *MachineCreate) SetHubstate(ms map[string][]schema.ItemState) *MachineCreate {
+	mc.mutation.SetHubstate(ms)
+	return mc
+}
+
+// SetDatasources sets the "datasources" field.
+func (mc *MachineCreate) SetDatasources(m map[string]int64) *MachineCreate {
+	mc.mutation.SetDatasources(m)
 	return mc
 }
 
@@ -187,50 +228,8 @@ func (mc *MachineCreate) Mutation() *MachineMutation {
 
 // Save creates the Machine in the database.
 func (mc *MachineCreate) Save(ctx context.Context) (*Machine, error) {
-	var (
-		err  error
-		node *Machine
-	)
 	mc.defaults()
-	if len(mc.hooks) == 0 {
-		if err = mc.check(); err != nil {
-			return nil, err
-		}
-		node, err = mc.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*MachineMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = mc.check(); err != nil {
-				return nil, err
-			}
-			mc.mutation = mutation
-			if node, err = mc.sqlSave(ctx); err != nil {
-				return nil, err
-			}
-			mutation.id = &node.ID
-			mutation.done = true
-			return node, err
-		})
-		for i := len(mc.hooks) - 1; i >= 0; i-- {
-			if mc.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = mc.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, mc.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Machine)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from MachineMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, mc.sqlSave, mc.mutation, mc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -269,10 +268,6 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultLastPush()
 		mc.mutation.SetLastPush(v)
 	}
-	if _, ok := mc.mutation.LastHeartbeat(); !ok {
-		v := machine.DefaultLastHeartbeat()
-		mc.mutation.SetLastHeartbeat(v)
-	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)
@@ -285,6 +280,12 @@ func (mc *MachineCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MachineCreate) check() error {
+	if _, ok := mc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Machine.created_at"`)}
+	}
+	if _, ok := mc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Machine.updated_at"`)}
+	}
 	if _, ok := mc.mutation.MachineId(); !ok {
 		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "Machine.machineId"`)}
 	}
@@ -309,6 +310,9 @@ func (mc *MachineCreate) check() error {
 }
 
 func (mc *MachineCreate) sqlSave(ctx context.Context) (*Machine, error) {
+	if err := mc.check(); err != nil {
+		return nil, err
+	}
 	_node, _spec := mc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, mc.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
@@ -318,115 +322,79 @@ func (mc *MachineCreate) sqlSave(ctx context.Context) (*Machine, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
+	mc.mutation.id = &_node.ID
+	mc.mutation.done = true
 	return _node, nil
 }
 
 func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Machine{config: mc.config}
-		_spec = &sqlgraph.CreateSpec{
-			Table: machine.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: machine.FieldID,
-			},
-		}
+		_spec = sqlgraph.NewCreateSpec(machine.Table, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
 	)
 	if value, ok := mc.mutation.CreatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldCreatedAt,
-		})
-		_node.CreatedAt = &value
+		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldUpdatedAt,
-		})
-		_node.UpdatedAt = &value
+		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if value, ok := mc.mutation.LastPush(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldLastPush,
-		})
+		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
 		_node.LastPush = &value
 	}
 	if value, ok := mc.mutation.LastHeartbeat(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldLastHeartbeat,
-		})
+		_spec.SetField(machine.FieldLastHeartbeat, field.TypeTime, value)
 		_node.LastHeartbeat = &value
 	}
 	if value, ok := mc.mutation.MachineId(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldMachineId,
-		})
+		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 		_node.MachineId = value
 	}
 	if value, ok := mc.mutation.Password(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldPassword,
-		})
+		_spec.SetField(machine.FieldPassword, field.TypeString, value)
 		_node.Password = value
 	}
 	if value, ok := mc.mutation.IpAddress(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldIpAddress,
-		})
+		_spec.SetField(machine.FieldIpAddress, field.TypeString, value)
 		_node.IpAddress = value
 	}
 	if value, ok := mc.mutation.Scenarios(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldScenarios,
-		})
+		_spec.SetField(machine.FieldScenarios, field.TypeString, value)
 		_node.Scenarios = value
 	}
 	if value, ok := mc.mutation.Version(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldVersion,
-		})
+		_spec.SetField(machine.FieldVersion, field.TypeString, value)
 		_node.Version = value
 	}
 	if value, ok := mc.mutation.IsValidated(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: machine.FieldIsValidated,
-		})
+		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 		_node.IsValidated = value
 	}
-	if value, ok := mc.mutation.Status(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldStatus,
-		})
-		_node.Status = value
-	}
 	if value, ok := mc.mutation.AuthType(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldAuthType,
-		})
+		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 		_node.AuthType = value
+	}
+	if value, ok := mc.mutation.Osname(); ok {
+		_spec.SetField(machine.FieldOsname, field.TypeString, value)
+		_node.Osname = value
+	}
+	if value, ok := mc.mutation.Osversion(); ok {
+		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
+		_node.Osversion = value
+	}
+	if value, ok := mc.mutation.Featureflags(); ok {
+		_spec.SetField(machine.FieldFeatureflags, field.TypeString, value)
+		_node.Featureflags = value
+	}
+	if value, ok := mc.mutation.Hubstate(); ok {
+		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
+		_node.Hubstate = value
+	}
+	if value, ok := mc.mutation.Datasources(); ok {
+		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
+		_node.Datasources = value
 	}
 	if nodes := mc.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -436,10 +404,7 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -453,11 +418,15 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 // MachineCreateBulk is the builder for creating many Machine entities in bulk.
 type MachineCreateBulk struct {
 	config
+	err      error
 	builders []*MachineCreate
 }
 
 // Save creates the Machine entities in the database.
 func (mcb *MachineCreateBulk) Save(ctx context.Context) ([]*Machine, error) {
+	if mcb.err != nil {
+		return nil, mcb.err
+	}
 	specs := make([]*sqlgraph.CreateSpec, len(mcb.builders))
 	nodes := make([]*Machine, len(mcb.builders))
 	mutators := make([]Mutator, len(mcb.builders))
@@ -474,8 +443,8 @@ func (mcb *MachineCreateBulk) Save(ctx context.Context) ([]*Machine, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
 				} else {
