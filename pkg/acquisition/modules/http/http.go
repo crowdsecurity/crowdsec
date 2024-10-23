@@ -76,6 +76,11 @@ func (h *HTTPSource) UnmarshalConfig(yamlConfig []byte) error {
 	if err != nil {
 		return fmt.Errorf("cannot parse %s datasource configuration: %w", dataSourceName, err)
 	}
+
+	if h.Config.Mode == "" {
+		h.Config.Mode = configuration.TAIL_MODE
+	}
+
 	return nil
 }
 
@@ -319,21 +324,35 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		h.Server.TLSConfig = tlsConfig
 	}
 
-	if h.Config.TLS != nil {
-		h.logger.Infof("start https server on port %d", h.Config.Port)
-		err := h.Server.ListenAndServeTLS(h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
-		if err != nil && err != http.ErrServerClosed {
-			return fmt.Errorf("https server failed: %w", err)
+	t.Go(func() error {
+		defer trace.CatchPanic("crowdsec/acquis/http/server")
+		if h.Config.TLS != nil {
+			h.logger.Infof("start https server on port %d", h.Config.Port)
+			err := h.Server.ListenAndServeTLS(h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
+			if err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("https server failed: %w", err)
+			}
+		} else {
+			h.logger.Infof("start http server on port %d", h.Config.Port)
+			err := h.Server.ListenAndServe()
+			if err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("http server failed: %w", err)
+			}
 		}
-	} else {
-		h.logger.Infof("start http server on port %d", h.Config.Port)
-		err := h.Server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			return fmt.Errorf("http server failed: %w", err)
+		return nil
+	})
+
+	//nolint //fp
+	for {
+		select {
+		case <-t.Dying():
+			h.logger.Infof("%s datasource stopping", dataSourceName)
+			if err := h.Server.Close(); err != nil {
+				return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
+			}
+			return nil
 		}
 	}
-
-	return nil
 }
 
 func (h *HTTPSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {

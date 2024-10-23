@@ -21,6 +21,7 @@ import (
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	httpacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/http"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
@@ -36,7 +37,7 @@ import (
 
 type DataSourceUnavailableError struct {
 	Name string
-	Err error
+	Err  error
 }
 
 func (e *DataSourceUnavailableError) Error() string {
@@ -46,7 +47,6 @@ func (e *DataSourceUnavailableError) Error() string {
 func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
-
 
 // The interface each datasource must implement
 type DataSource interface {
@@ -75,6 +75,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
 	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
+	"http":        func() DataSource { return &httpacquisition.HTTPSource{} },
 }
 
 var transformRuntimes = map[string]*vm.Program{}
@@ -343,6 +344,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 					return nil
 				})
 			}
+			log.Tracef("Mode is %s", subsrc.GetMode())
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(outChan, AcquisTomb)
 			} else {
