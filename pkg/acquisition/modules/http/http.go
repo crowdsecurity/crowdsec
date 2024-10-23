@@ -32,8 +32,6 @@ var linesRead = prometheus.NewCounterVec(
 	},
 	[]string{"path"})
 
-const ()
-
 type HttpConfiguration struct {
 	//IPFilter                        []string          `yaml:"ip_filter"`
 	Port                              int                `yaml:"port"`
