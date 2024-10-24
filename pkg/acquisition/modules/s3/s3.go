@@ -444,6 +444,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 				l.Src = bucket
 			}
 			var evt types.Event
+			evt.Unmarshaled = make(map[string]interface{})
 			if !s.Config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 			} else {

@@ -137,6 +137,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			}
 			var evt types.Event
+			evt.Unmarshaled = make(map[string]interface{})
 			if !j.config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 			} else {

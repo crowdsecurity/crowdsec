@@ -732,6 +732,7 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	evt.Process = true
 	evt.Type = types.LOG
 	evt.ExpectMode = cfg.ExpectMode
+	evt.Unmarshaled = make(map[string]interface{})
 	cfg.logger.Debugf("returned event labels : %+v", evt.Line.Labels)
 	return evt, nil
 }
