@@ -1,6 +1,7 @@
 package httpacquisition
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -241,12 +242,26 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 	return nil
 }
 
+func ReadBody(r *http.Request) ([]byte, error) {
+	if r.Header.Get("Content-Encoding") == "gzip" {
+		body, err := gzip.NewReader(r.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer body.Close()
+		return io.ReadAll(body)
+	}
+
+	return io.ReadAll(r.Body)
+}
+
 func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *HttpConfiguration, out chan types.Event, t *tomb.Tomb) error {
 	if hc.MaxBodySize != nil && r.ContentLength > *hc.MaxBodySize {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return fmt.Errorf("body size exceeds max body size: %d > %d", r.ContentLength, *hc.MaxBodySize)
 	}
-	body, err := io.ReadAll(r.Body)
+
+	body, err := ReadBody(r)
 	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

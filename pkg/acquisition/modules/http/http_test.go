@@ -1,6 +1,7 @@
 package httpacquisition
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -205,7 +206,7 @@ source: http
 port: 8080
 path: 15
 	auth_type: headers`))
-	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 5: found a tab character that violates indentation")
+	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 4: found a tab character that violates indentation")
 }
 
 func TestConfigureByDSN(t *testing.T) {
@@ -692,6 +693,56 @@ tls:
 		t.Fatalf("unable to post http request: %s", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+
+	assertEvents(out, t, rawEvt)
+
+	h.Server.Close()
+	tomb.Kill(nil)
+	tomb.Wait()
+}
+
+func TestStreamingAcquisitionGzipData(t *testing.T) {
+	h := &HTTPSource{}
+	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+source: http
+port: 8080
+path: /test
+auth_type: headers
+headers:
+  key: test`))
+
+	time.Sleep(1 * time.Second)
+
+	rawEvt := `{"test": "test"}`
+
+	// send gzipped compressed data
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	if err != nil {
+		t.Fatalf("unable to create http request: %s", err)
+	}
+	req.Header.Add("Key", "test")
+	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Content-Type", "application/json")
+
+	var b strings.Builder
+	gz := gzip.NewWriter(&b)
+	if _, err := gz.Write([]byte(rawEvt)); err != nil {
+		t.Fatalf("unable to write gzipped data: %s", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("unable to close gzip writer: %s", err)
+	}
+	req.Body = io.NopCloser(strings.NewReader(b.String()))
+	req.ContentLength = int64(b.Len())
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("unable to post http request: %s", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
