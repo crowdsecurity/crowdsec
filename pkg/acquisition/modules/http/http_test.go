@@ -478,7 +478,7 @@ custom_headers:
 	}
 
 	if resp.Header.Get("Success") != "true" {
-		t.Fatalf("expected header 'success' to be 'true', got '%s'", resp.Header.Get("success"))
+		t.Fatalf("expected header 'success' to be 'true', got '%s'", resp.Header.Get("Success"))
 	}
 
 	assertEvents(out, t, rawEvt)
