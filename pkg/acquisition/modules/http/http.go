@@ -96,6 +96,9 @@ func (hc *HttpConfiguration) Validate() error {
 	if hc.Path == "" {
 		return errors.New("path is required")
 	}
+	if hc.Path[0] != '/' {
+		return errors.New("path must start with /")
+	}
 
 	switch hc.AuthType {
 	case "basic_auth":
@@ -245,12 +248,12 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 
 func ReadBody(r *http.Request) ([]byte, error) {
 	if r.Header.Get("Content-Encoding") == "gzip" {
-		body, err := gzip.NewReader(r.Body)
+		gReader, err := gzip.NewReader(r.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 		}
-		defer body.Close()
-		return io.ReadAll(body)
+		defer gReader.Close()
+		return io.ReadAll(gReader)
 	}
 
 	return io.ReadAll(r.Body)

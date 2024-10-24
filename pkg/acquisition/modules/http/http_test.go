@@ -50,6 +50,13 @@ port: 8080`,
 			config: `
 source: http
 port: 8080
+path: wrongpath`,
+			expectedErr: "invalid configuration: path must start with /",
+		},
+		{
+			config: `
+source: http
+port: 8080
 path: /test
 auth_type: basic_auth`,
 			expectedErr: "invalid configuration: basic_auth is required",
