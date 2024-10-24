@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -269,10 +270,15 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 	}
 	h.logger.Tracef("body received: %+v", string(body))
 
+	srcHost, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return err
+	}
+
 	t.Go(func() error {
 		line := types.Line{
 			Raw:     string(body),
-			Src:     r.RemoteAddr,
+			Src:     srcHost,
 			Time:    time.Now().UTC(),
 			Labels:  hc.Labels,
 			Process: true,

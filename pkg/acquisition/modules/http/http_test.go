@@ -440,7 +440,7 @@ headers:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertEvents(out, t, rawEvt)
+	assertFirstEvent(out, t, rawEvt)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -481,7 +481,7 @@ custom_headers:
 		t.Fatalf("expected header 'success' to be 'true', got '%s'", resp.Header.Get("Success"))
 	}
 
-	assertEvents(out, t, rawEvt)
+	assertFirstEvent(out, t, rawEvt)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -504,7 +504,7 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func assertEvents(out chan types.Event, t *testing.T, expected string) {
+func assertFirstEvent(out chan types.Event, t *testing.T, expected string) {
 	readLines := []types.Event{}
 
 	select {
@@ -519,6 +519,12 @@ func assertEvents(out chan types.Event, t *testing.T, expected string) {
 	}
 	if readLines[0].Line.Raw != expected {
 		t.Fatalf(`expected %s, got '%+v'`, expected, readLines[0].Line)
+	}
+	if readLines[0].Line.Src != "127.0.0.1" {
+		t.Fatalf("expected '127.0.0.1', got '%s'", readLines[0].Line.Src)
+	}
+	if readLines[0].Line.Module != "http" {
+		t.Fatalf("expected 'http', got '%s'", readLines[0].Line.Module)
 	}
 }
 
@@ -636,7 +642,7 @@ tls:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertEvents(out, t, rawEvt)
+	assertFirstEvent(out, t, rawEvt)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -697,7 +703,7 @@ tls:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertEvents(out, t, rawEvt)
+	assertFirstEvent(out, t, rawEvt)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -747,7 +753,7 @@ headers:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertEvents(out, t, rawEvt)
+	assertFirstEvent(out, t, rawEvt)
 
 	h.Server.Close()
 	tomb.Kill(nil)
