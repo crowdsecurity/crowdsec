@@ -55,6 +55,19 @@ paths:
       description: "returns list of top decisions to add or delete"
       produces:
         - "application/json"
+      parameters:
+        - in: query
+          name: "community_pull"
+          type: "boolean"
+          default: true
+          required: false
+          description: "Fetch the community blocklist content"
+        - in: query
+          name: "additional_pull"
+          type: "boolean"
+          default: true
+          required: false
+          description: "Fetch additional blocklists content"
       responses:
         "200":
           description: "200 response"

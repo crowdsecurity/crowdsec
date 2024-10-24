@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -87,7 +88,7 @@ func TestDecisionsStream(t *testing.T) {
 		testMethod(t, r, http.MethodGet)
 
 		if r.Method == http.MethodGet {
-			if r.URL.RawQuery == "startup=true" {
+			if strings.Contains(r.URL.RawQuery, "startup=true") {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"deleted":null,"new":[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]}`))
 			} else {
@@ -160,7 +161,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 		testMethod(t, r, http.MethodGet)
 
 		if r.Method == http.MethodGet {
-			if r.URL.RawQuery == "startup=true" {
+			if strings.Contains(r.URL.RawQuery, "startup=true") {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],"new":[{"scope":"ip", "scenario": "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'", "decisions":[{"duration":"3h59m55.756182786s","value":"1.2.3.4"}]}]}`))
 			} else {
@@ -429,6 +430,8 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 		Scopes                 string
 		ScenariosContaining    string
 		ScenariosNotContaining string
+		CommunityPull          bool
+		AdditionalPull         bool
 	}
 
 	tests := []struct {
@@ -440,11 +443,17 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 		{
 			name:     "no filter",
 			expected: baseURLString + "?",
+			fields: fields{
+				CommunityPull:  true,
+				AdditionalPull: true,
+			},
 		},
 		{
 			name: "startup=true",
 			fields: fields{
-				Startup: true,
+				Startup:        true,
+				CommunityPull:  true,
+				AdditionalPull: true,
 			},
 			expected: baseURLString + "?startup=true",
 		},
@@ -455,8 +464,18 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				Scopes:                 "ip,range",
 				ScenariosContaining:    "ssh",
 				ScenariosNotContaining: "bf",
+				CommunityPull:          true,
+				AdditionalPull:         true,
 			},
 			expected: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
+		},
+		{
+			name: "pull options",
+			fields: fields{
+				CommunityPull:  false,
+				AdditionalPull: false,
+			},
+			expected: baseURLString + "?additional_pull=false&community_pull=false",
 		},
 	}
 
@@ -467,6 +486,8 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				Scopes:                 tt.fields.Scopes,
 				ScenariosContaining:    tt.fields.ScenariosContaining,
 				ScenariosNotContaining: tt.fields.ScenariosNotContaining,
+				CommunityPull:          tt.fields.CommunityPull,
+				AdditionalPull:         tt.fields.AdditionalPull,
 			}
 
 			got, err := o.addQueryParamsToURL(baseURLString)
