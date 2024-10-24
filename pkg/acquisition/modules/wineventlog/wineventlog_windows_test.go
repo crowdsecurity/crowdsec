@@ -3,7 +3,7 @@
 package wineventlogacquisition
 
 import (
-	"runtime"
+	"context"
 	"testing"
 	"time"
 
@@ -18,9 +18,8 @@ import (
 )
 
 func TestBadConfiguration(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
+	exprhelpers.Init(nil)
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -63,9 +62,8 @@ xpath_query: test`,
 }
 
 func TestQueryBuilder(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
+	exprhelpers.Init(nil)
+
 	tests := []struct {
 		config        string
 		expectedQuery string
@@ -129,9 +127,8 @@ event_level: bla`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping test on non-windows OS")
-	}
+	exprhelpers.Init(nil)
+	ctx := context.Background()
 
 	tests := []struct {
 		config        string
@@ -190,7 +187,7 @@ event_ids:
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
 		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		f.StreamingAcquisition(c, to)
+		f.StreamingAcquisition(ctx, c, to)
 		time.Sleep(time.Second)
 		lines := test.expectedLines
 		go func() {
@@ -223,5 +220,84 @@ event_ids:
 		}
 		to.Kill(nil)
 		to.Wait()
+	}
+}
+
+func TestOneShotAcquisition(t *testing.T) {
+	tests := []struct {
+		name                 string
+		dsn                  string
+		expectedCount        int
+		expectedErr          string
+		expectedConfigureErr string
+	}{
+		{
+			name:          "non-existing file",
+			dsn:           `wineventlog://foo.evtx`,
+			expectedCount: 0,
+			expectedErr:   "The system cannot find the file specified.",
+		},
+		{
+			name:                 "empty DSN",
+			dsn:                  `wineventlog://`,
+			expectedCount:        0,
+			expectedConfigureErr: "empty wineventlog:// DSN",
+		},
+		{
+			name:          "existing file",
+			dsn:           `wineventlog://test_files/Setup.evtx`,
+			expectedCount: 24,
+			expectedErr:   "",
+		},
+		{
+			name:          "filter on event_id",
+			dsn:           `wineventlog://test_files/Setup.evtx?event_id=2`,
+			expectedCount: 1,
+		},
+		{
+			name:          "filter on event_id",
+			dsn:           `wineventlog://test_files/Setup.evtx?event_id=2&event_id=3`,
+			expectedCount: 24,
+		},
+	}
+
+	exprhelpers.Init(nil)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lineCount := 0
+			to := &tomb.Tomb{}
+			c := make(chan types.Event)
+			f := WinEventLogSource{}
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+
+			if test.expectedConfigureErr != "" {
+				assert.Contains(t, err.Error(), test.expectedConfigureErr)
+				return
+			}
+
+			require.NoError(t, err)
+
+			go func() {
+				for {
+					select {
+					case <-c:
+						lineCount++
+					case <-to.Dying():
+						return
+					}
+				}
+			}()
+
+			err = f.OneShotAcquisition(c, to)
+			if test.expectedErr != "" {
+				assert.Contains(t, err.Error(), test.expectedErr)
+			} else {
+				require.NoError(t, err)
+
+				time.Sleep(2 * time.Second)
+				assert.Equal(t, test.expectedCount, lineCount)
+			}
+		})
 	}
 }

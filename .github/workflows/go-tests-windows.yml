@@ -40,16 +40,16 @@ jobs:
       run: |
         make build BUILD_RE2_WASM=1
 
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
+
     - name: Run tests
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
         go test -tags expr_debug -coverprofile coverage.out -covermode=atomic ./... > out.txt
         if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
         cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
-
-    - name: Ignore-list of generated files for codecov
-      run: |
-          .github/codecov-ignore-generated.sh >> .github/codecov.yml
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
