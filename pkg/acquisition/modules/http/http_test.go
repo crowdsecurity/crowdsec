@@ -366,7 +366,7 @@ headers:
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
 	}
-	req.Header.Add("key", "wrong")
+	req.Header.Add("Key", "wrong")
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unable to post http request: %s", err)
@@ -398,7 +398,7 @@ max_body_size: 5`))
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
 	}
-	req.Header.Add("key", "test")
+	req.Header.Add("Key", "test")
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unable to post http request: %s", err)
@@ -430,7 +430,7 @@ headers:
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
 	}
-	req.Header.Add("key", "test")
+	req.Header.Add("Key", "test")
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unable to post http request: %s", err)
@@ -466,7 +466,7 @@ custom_headers:
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
 	}
-	req.Header.Add("key", "test")
+	req.Header.Add("Key", "test")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("unable to post http request: %s", err)
@@ -476,7 +476,7 @@ custom_headers:
 		t.Fatalf("expected status code %d, got %d", http.StatusCreated, resp.StatusCode)
 	}
 
-	if resp.Header.Get("success") != "true" {
+	if resp.Header.Get("Success") != "true" {
 		t.Fatalf("expected header 'success' to be 'true', got '%s'", resp.Header.Get("success"))
 	}
 
@@ -539,11 +539,11 @@ timeout: 1s`))
 		body:  []byte(`{"test": "delayed_payload"}`),
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
 	if err != nil {
 		t.Fatalf("Error creating request: %v", err)
 	}
-	req.Header.Add("key", "test")
+	req.Header.Add("Key", "test")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -626,7 +626,7 @@ tls:
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
 	}
-	req.Header.Add("key", "test")
+	req.Header.Add("Key", "test")
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("unable to post http request: %s", err)

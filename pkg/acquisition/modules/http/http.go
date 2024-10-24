@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -173,7 +173,7 @@ func (h *HTTPSource) GetName() string {
 	return dataSourceName
 }
 
-func (k *HTTPSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
@@ -185,7 +185,7 @@ func (h *HTTPSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
-func (k *HTTPSource) GetAggregMetrics() []prometheus.Collector {
+func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
