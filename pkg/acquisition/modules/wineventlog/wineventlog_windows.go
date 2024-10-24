@@ -206,9 +206,9 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					l.Src = w.name
 					l.Process = true
 					if !w.config.UseTimeMachine {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE, Unmarshaled: make(map[string]interface{})}
 					} else {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 					}
 				}
 			}
@@ -432,7 +432,7 @@ OUTER_LOOP:
 				l.Time = time.Now()
 				l.Src = w.name
 				l.Process = true
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 			}
 		}
 	}

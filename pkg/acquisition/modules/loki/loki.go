@@ -312,10 +312,11 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 		expectMode = types.TIMEMACHINE
 	}
 	out <- types.Event{
-		Line:       ll,
-		Process:    true,
-		Type:       types.LOG,
-		ExpectMode: expectMode,
+		Line:        ll,
+		Process:     true,
+		Type:        types.LOG,
+		ExpectMode:  expectMode,
+		Unmarshaled: make(map[string]interface{}),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,58 +89,58 @@ func (h *HTTPSource) UnmarshalConfig(yamlConfig []byte) error {
 
 func (hc *HttpConfiguration) Validate() error {
 	if hc.Port == 0 {
-		return fmt.Errorf("port is required")
+		return errors.New("port is required")
 	}
 	if hc.Path == "" {
-		return fmt.Errorf("path is required")
+		return errors.New("path is required")
 	}
 
 	switch hc.AuthType {
 	case "basic_auth":
 		if hc.BasicAuth == nil {
-			return fmt.Errorf("basic_auth is required")
+			return errors.New("basic_auth is required")
 		}
 		if hc.BasicAuth.Username == "" {
-			return fmt.Errorf("username is required")
+			return errors.New("username is required")
 		}
 		if hc.BasicAuth.Password == "" {
-			return fmt.Errorf("password is required")
+			return errors.New("password is required")
 		}
 	case "headers":
 		if hc.Headers == nil {
-			return fmt.Errorf("headers is required")
+			return errors.New("headers is required")
 		}
 	case "mtls":
 		if hc.TLS == nil || hc.TLS != nil && hc.TLS.CaCert == "" {
-			return fmt.Errorf("ca_cert is required")
+			return errors.New("ca_cert is required")
 		}
 	default:
 		if hc.TLS == nil {
-			return fmt.Errorf("at least one of tls or auth_type is required")
+			return errors.New("at least one of tls or auth_type is required")
 		}
 	}
 
 	if hc.TLS != nil {
 		if hc.TLS.ServerCert == "" {
-			return fmt.Errorf("server_cert is required")
+			return errors.New("server_cert is required")
 		}
 		if hc.TLS.ServerKey == "" {
-			return fmt.Errorf("server_key is required")
+			return errors.New("server_key is required")
 		}
 	}
 
 	if hc.MaxBodySize != nil && *hc.MaxBodySize <= 0 {
-		return fmt.Errorf("max_body_size must be positive")
+		return errors.New("max_body_size must be positive")
 	}
 
 	if hc.ChunkSize != nil && *hc.ChunkSize <= 0 {
-		return fmt.Errorf("chunk_size must be positive")
+		return errors.New("chunk_size must be positive")
 	}
 
 	if hc.CustomStatusCode != nil {
 		statusText := http.StatusText(*hc.CustomStatusCode)
 		if statusText == "" {
-			return fmt.Errorf("invalid HTTP status code")
+			return errors.New("invalid HTTP status code")
 		}
 	}
 
@@ -224,16 +225,16 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 	if hc.AuthType == "basic_auth" {
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			return fmt.Errorf("missing basic auth")
+			return errors.New("missing basic auth")
 		}
 		if username != hc.BasicAuth.Username || password != hc.BasicAuth.Password {
-			return fmt.Errorf("invalid basic auth")
+			return errors.New("invalid basic auth")
 		}
 	}
 	if hc.AuthType == "headers" {
 		for key, value := range *hc.Headers {
 			if r.Header.Get(key) != value {
-				return fmt.Errorf("invalid headers")
+				return errors.New("invalid headers")
 			}
 		}
 	}
@@ -268,10 +269,11 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 		}
 
 		evt := types.Event{
-			Line:       line,
-			Process:    true,
-			Type:       types.LOG,
-			ExpectMode: types.LIVE,
+			Line:        line,
+			Process:     true,
+			Type:        types.LOG,
+			ExpectMode:  types.LIVE,
+			Unmarshaled: make(map[string]interface{}),
 		}
 
 		if h.metricsLevel != configuration.METRICS_NONE {

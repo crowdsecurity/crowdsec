@@ -174,7 +174,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		}
 		var evt types.Event
-
+		evt.Unmarshaled = make(map[string]interface{})
 		if !k.Config.UseTimeMachine {
 			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 		} else {

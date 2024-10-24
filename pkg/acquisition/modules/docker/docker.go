@@ -334,7 +334,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 					if d.metricsLevel != configuration.METRICS_NONE {
 						linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 					}
-					evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+					evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 					out <- evt
 					d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 				}
@@ -580,6 +580,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			l.Process = true
 			l.Module = d.GetName()
 			var evt types.Event
+			evt.Unmarshaled = make(map[string]interface{})
 			if !d.Config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 			} else {
