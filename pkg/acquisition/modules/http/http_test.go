@@ -422,6 +422,9 @@ headers:
 	time.Sleep(1 * time.Second)
 	rawEvt := `{"test": "test"}`
 
+	errChan := make(chan error)
+	go assertEvent(out, rawEvt, errChan)
+
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	if err != nil {
@@ -436,7 +439,10 @@ headers:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertFirstEvent(out, t, rawEvt)
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -459,6 +465,9 @@ custom_headers:
 	time.Sleep(1 * time.Second)
 
 	rawEvt := `{"test": "test"}`
+	errChan := make(chan error)
+	go assertEvent(out, rawEvt, errChan)
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
@@ -477,7 +486,10 @@ custom_headers:
 		t.Fatalf("expected header 'success' to be 'true', got '%s'", resp.Header.Get("Success"))
 	}
 
-	assertFirstEvent(out, t, rawEvt)
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -500,28 +512,34 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func assertFirstEvent(out chan types.Event, t *testing.T, expected string) {
+func assertEvent(out chan types.Event, expected string, errChan chan error) {
 	readLines := []types.Event{}
 
 	select {
 	case event := <-out:
 		readLines = append(readLines, event)
 	case <-time.After(2 * time.Second):
-		break
+		errChan <- fmt.Errorf("timeout waiting for event")
+		return
 	}
 
 	if len(readLines) != 1 {
-		t.Fatalf("expected 1 line, got %d", len(readLines))
+		errChan <- fmt.Errorf("expected 1 line, got %d", len(readLines))
+		return
 	}
 	if readLines[0].Line.Raw != expected {
-		t.Fatalf(`expected %s, got '%+v'`, expected, readLines[0].Line)
+		errChan <- fmt.Errorf(`expected %s, got '%+v'`, expected, readLines[0].Line.Raw)
+		return
 	}
 	if readLines[0].Line.Src != "127.0.0.1" {
-		t.Fatalf("expected '127.0.0.1', got '%s'", readLines[0].Line.Src)
+		errChan <- fmt.Errorf("expected '127.0.0.1', got '%s'", readLines[0].Line.Src)
+		return
 	}
 	if readLines[0].Line.Module != "http" {
-		t.Fatalf("expected 'http', got '%s'", readLines[0].Line.Module)
+		errChan <- fmt.Errorf("expected 'http', got '%s'", readLines[0].Line.Module)
+		return
 	}
+	errChan <- nil
 }
 
 func TestStreamingAcquisitionTimeout(t *testing.T) {
@@ -624,6 +642,8 @@ tls:
 	}
 
 	rawEvt := `{"test": "test"}`
+	errChan := make(chan error)
+	go assertEvent(out, rawEvt, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	if err != nil {
@@ -638,7 +658,10 @@ tls:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertFirstEvent(out, t, rawEvt)
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -685,6 +708,9 @@ tls:
 	}
 
 	rawEvt := `{"test": "test"}`
+	errChan := make(chan error)
+	go assertEvent(out, rawEvt, errChan)
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
@@ -699,7 +725,10 @@ tls:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertFirstEvent(out, t, rawEvt)
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -719,10 +748,13 @@ headers:
 	time.Sleep(1 * time.Second)
 
 	rawEvt := `{"test": "test"}`
+	errChan := make(chan error)
+	go assertEvent(out, rawEvt, errChan)
+	go assertEvent(out, rawEvt, errChan)
 
 	// send gzipped compressed data
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s", rawEvt, rawEvt)))
 	if err != nil {
 		t.Fatalf("unable to create http request: %s", err)
 	}
@@ -749,7 +781,55 @@ headers:
 		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	assertFirstEvent(out, t, rawEvt)
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+
+	h.Server.Close()
+	tomb.Kill(nil)
+	tomb.Wait()
+}
+
+func TestStreamingAcquisitionNDJson(t *testing.T) {
+	h := &HTTPSource{}
+	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+source: http
+port: 8080
+path: /test
+auth_type: headers
+headers:
+  key: test`))
+
+	time.Sleep(1 * time.Second)
+	rawEvt := `{"test": "test"}`
+
+	errChan := make(chan error)
+	go assertEvent(out, rawEvt, errChan)
+	go assertEvent(out, rawEvt, errChan)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
+
+	if err != nil {
+		t.Fatalf("unable to create http request: %s", err)
+	}
+
+	req.Header.Add("Key", "test")
+	req.Header.Add("Content-Type", "application/x-ndjson")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("unable to post http request: %s", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
 
 	h.Server.Close()
 	tomb.Kill(nil)
