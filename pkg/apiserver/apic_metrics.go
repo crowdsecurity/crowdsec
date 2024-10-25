@@ -368,9 +368,10 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 			if err != nil {
 				log.Errorf("unable to send usage metrics: %s", err)
 
-				if resp.Response.StatusCode >= http.StatusBadRequest && resp.Response.StatusCode != http.StatusUnprocessableEntity {
+				if resp == nil || resp.Response.StatusCode >= http.StatusBadRequest && resp.Response.StatusCode != http.StatusUnprocessableEntity {
 					// In case of 422, mark the metrics as sent anyway, the API did not like what we sent,
 					// and it's unlikely we'll be able to fix it
+					// also if resp is nil, we should'nt mark the metrics as sent could be network issue
 					continue
 				}
 			}
