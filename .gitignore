@@ -60,6 +60,3 @@ msi
 __pycache__
 *.py[cod]
 *.egg-info
-
-# automatically generated before running codecov
-.github/codecov.yml
