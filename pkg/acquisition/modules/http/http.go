@@ -274,7 +274,7 @@ func ReadBody(r *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *HttpConfiguration, out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *HttpConfiguration, out chan types.Event) error {
 	if hc.MaxBodySize != nil && r.ContentLength > *hc.MaxBodySize {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return fmt.Errorf("body size exceeds max body size: %d > %d", r.ContentLength, *hc.MaxBodySize)
@@ -366,7 +366,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		err := h.processRequest(w, r, &h.Config, out, t)
+		err := h.processRequest(w, r, &h.Config, out)
 		if err != nil {
 			h.logger.Errorf("failed to process request: %s", err)
 			return
