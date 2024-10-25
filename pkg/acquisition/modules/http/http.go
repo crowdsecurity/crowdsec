@@ -38,6 +38,7 @@ var linesRead = prometheus.NewCounterVec(
 
 type HttpConfiguration struct {
 	//IPFilter                        []string          `yaml:"ip_filter"`
+	//ChunkSize                         *int64             `yaml:"chunk_size"`
 	Port                              int                `yaml:"port"`
 	Path                              string             `yaml:"path"`
 	AuthType                          string             `yaml:"auth_type"`
@@ -47,7 +48,6 @@ type HttpConfiguration struct {
 	CustomStatusCode                  *int               `yaml:"custom_status_code"`
 	CustomHeaders                     *map[string]string `yaml:"custom_headers"`
 	MaxBodySize                       *int64             `yaml:"max_body_size"`
-	ChunkSize                         *int64             `yaml:"chunk_size"`
 	Timeout                           *time.Duration     `yaml:"timeout"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
@@ -138,9 +138,11 @@ func (hc *HttpConfiguration) Validate() error {
 		return errors.New("max_body_size must be positive")
 	}
 
-	if hc.ChunkSize != nil && *hc.ChunkSize <= 0 {
-		return errors.New("chunk_size must be positive")
-	}
+	/*
+		if hc.ChunkSize != nil && *hc.ChunkSize <= 0 {
+			return errors.New("chunk_size must be positive")
+		}
+	*/
 
 	if hc.CustomStatusCode != nil {
 		statusText := http.StatusText(*hc.CustomStatusCode)

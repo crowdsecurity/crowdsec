@@ -160,17 +160,6 @@ path: /test
 auth_type: headers
 headers:
   key: value
-chunk_size: 0`,
-			expectedErr: "invalid configuration: chunk_size must be positive",
-		},
-		{
-			config: `
-source: http
-port: 8080
-path: /test
-auth_type: headers
-headers:
-  key: value
 timeout: toto`,
 			expectedErr: "cannot parse http datasource configuration: yaml: unmarshal errors:\n  line 8: cannot unmarshal !!str `toto` into time.Duration",
 		},
