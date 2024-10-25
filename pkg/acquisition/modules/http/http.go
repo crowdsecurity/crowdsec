@@ -40,7 +40,7 @@ var linesRead = prometheus.NewCounterVec(
 type HttpConfiguration struct {
 	//IPFilter                        []string          `yaml:"ip_filter"`
 	//ChunkSize                         *int64             `yaml:"chunk_size"`
-	Port                              int                `yaml:"port"`
+	ListenAddr                        string             `yaml:"listen_addr"`
 	Path                              string             `yaml:"path"`
 	AuthType                          string             `yaml:"auth_type"`
 	BasicAuth                         *BasicAuthConfig   `yaml:"basic_auth"`
@@ -91,11 +91,12 @@ func (h *HTTPSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (hc *HttpConfiguration) Validate() error {
-	if hc.Port == 0 {
-		return errors.New("port is required")
+	if hc.ListenAddr == "" {
+		return errors.New("listen_addr is required")
 	}
+
 	if hc.Path == "" {
-		return errors.New("path is required")
+		hc.Path = "/"
 	}
 	if hc.Path[0] != '/' {
 		return errors.New("path must start with /")
@@ -121,9 +122,7 @@ func (hc *HttpConfiguration) Validate() error {
 			return errors.New("ca_cert is required")
 		}
 	default:
-		if hc.TLS == nil {
-			return errors.New("at least one of tls or auth_type is required")
-		}
+		return errors.New("invalid auth_type: must be one of basic_auth, headers, mtls")
 	}
 
 	if hc.TLS != nil {
@@ -362,13 +361,13 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 			return
 		}
 		if err := authorizeRequest(r, &h.Config); err != nil {
-			h.logger.Errorf("failed to authorize request: %s", err)
+			h.logger.Errorf("failed to authorize request from '%s': %s", r.RemoteAddr, err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		err := h.processRequest(w, r, &h.Config, out)
 		if err != nil {
-			h.logger.Errorf("failed to process request: %s", err)
+			h.logger.Errorf("failed to process request from '%s': %s", r.RemoteAddr, err)
 			return
 		}
 
@@ -387,7 +386,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	})
 
 	h.Server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", h.Config.Port),
+		Addr:    h.Config.ListenAddr,
 		Handler: mux,
 	}
 
@@ -407,13 +406,13 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/server")
 		if h.Config.TLS != nil {
-			h.logger.Infof("start https server on port %d", h.Config.Port)
+			h.logger.Infof("start https server on %s", h.Config.ListenAddr)
 			err := h.Server.ListenAndServeTLS(h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
 				return fmt.Errorf("https server failed: %w", err)
 			}
 		} else {
-			h.logger.Infof("start http server on port %d", h.Config.Port)
+			h.logger.Infof("start http server on %s", h.Config.ListenAddr)
 			err := h.Server.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
 				return fmt.Errorf("http server failed: %w", err)
@@ -436,7 +435,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	h.logger.Debugf("start http server on port %d", h.Config.Port)
+	h.logger.Debugf("start http server on %s", h.Config.ListenAddr)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/live")

@@ -32,31 +32,19 @@ func TestConfigure(t *testing.T) {
 		{
 			config: `
 foobar: bla`,
-			expectedErr: "invalid configuration: port is required",
+			expectedErr: "invalid configuration: listen_addr is required",
 		},
 		{
 			config: `
 source: http
-port: aa`,
-			expectedErr: "cannot parse http datasource configuration: yaml: unmarshal errors:\n  line 3: cannot unmarshal !!str `aa` into int",
-		},
-		{
-			config: `
-source: http
-port: 8080`,
-			expectedErr: "invalid configuration: path is required",
-		},
-		{
-			config: `
-source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: wrongpath`,
 			expectedErr: "invalid configuration: path must start with /",
 		},
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth`,
 			expectedErr: "invalid configuration: basic_auth is required",
@@ -64,7 +52,7 @@ auth_type: basic_auth`,
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers`,
 			expectedErr: "invalid configuration: headers is required",
@@ -72,7 +60,7 @@ auth_type: headers`,
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth
 basic_auth:
@@ -82,7 +70,7 @@ basic_auth:
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth
 basic_auth:
@@ -92,7 +80,7 @@ basic_auth:
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:`,
@@ -101,15 +89,15 @@ headers:`,
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: toto`,
-			expectedErr: "invalid configuration: at least one of tls or auth_type is required",
+			expectedErr: "invalid configuration: invalid auth_type: must be one of basic_auth, headers, mtls",
 		},
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -121,7 +109,7 @@ tls:
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -133,7 +121,7 @@ tls:
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: mtls
 tls:
@@ -144,7 +132,7 @@ tls:
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -155,7 +143,7 @@ max_body_size: 0`,
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -166,7 +154,7 @@ timeout: toto`,
 		{
 			config: `
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -199,7 +187,7 @@ func TestUnmarshalConfig(t *testing.T) {
 	h := HTTPSource{}
 	err := h.UnmarshalConfig([]byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: 15
 	auth_type: headers`))
 	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 4: found a tab character that violates indentation")
@@ -254,7 +242,7 @@ func TestStreamingAcquisitionWrongHTTPMethod(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth
 basic_auth:
@@ -281,7 +269,7 @@ func TestStreamingAcquisitionUnknownPath(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth
 basic_auth:
@@ -308,7 +296,7 @@ func TestStreamingAcquisitionBasicAuth(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth
 basic_auth:
@@ -349,7 +337,7 @@ func TestStreamingAcquisitionBadHeaders(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -381,7 +369,7 @@ func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -413,7 +401,7 @@ func TestStreamingAcquisitionSuccess(t *testing.T) {
 	h := &HTTPSource{}
 	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -453,7 +441,7 @@ func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
 	h := &HTTPSource{}
 	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -546,7 +534,7 @@ func TestStreamingAcquisitionTimeout(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -585,7 +573,8 @@ func TestStreamingAcquisitionTLSHTTPRequest(t *testing.T) {
 	h := &HTTPSource{}
 	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
+auth_type: mtls
 path: /test
 tls:
   server_cert: testdata/server.crt
@@ -612,7 +601,7 @@ func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
 	h := &HTTPSource{}
 	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -672,7 +661,7 @@ func TestStreamingAcquisitionMTLS(t *testing.T) {
 	h := &HTTPSource{}
 	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: mtls
 tls:
@@ -739,7 +728,7 @@ func TestStreamingAcquisitionGzipData(t *testing.T) {
 	h := &HTTPSource{}
 	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
@@ -795,7 +784,7 @@ func TestStreamingAcquisitionNDJson(t *testing.T) {
 	h := &HTTPSource{}
 	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-port: 8080
+listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
