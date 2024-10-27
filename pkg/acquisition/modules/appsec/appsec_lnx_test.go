@@ -19,7 +19,6 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "normalizepath",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -43,7 +42,6 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 		},
 		{
 			name:             "normalizepath #2",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",

@@ -18,7 +18,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "no rule : check return code",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -46,7 +45,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: change return code",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -77,7 +75,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: change action to a non standard one (log)",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -108,7 +105,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: change action to another standard one (allow)",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -137,7 +133,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: change action to another standard one (ban)",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -164,7 +159,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: change action to another standard one (captcha)",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -191,7 +185,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: change action to a non standard one",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -220,7 +213,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: cancel alert",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -248,7 +240,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: cancel event",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -276,7 +267,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: on_success break",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -305,7 +295,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: on_success continue",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -345,7 +334,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic pre_eval hook to disable inband rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -373,7 +361,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "Basic pre_eval fails to disable rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -408,7 +395,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : disable inband by tag",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -436,7 +422,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : disable inband by ID",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -464,7 +449,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : disable inband by name",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -492,7 +476,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : outofband default behavior",
-			expected_load_ok: true,
 			outofband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -523,7 +506,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : set remediation by tag",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -550,7 +532,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : set remediation by name",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -577,7 +558,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : set remediation by ID",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -606,7 +586,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : on_success continue",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -634,7 +613,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 		{
 			name:             "pre_eval : on_success break",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rulez",
@@ -674,7 +652,6 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -699,7 +676,6 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		},
 		{
 			name:             "SetRemediation",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -726,7 +702,6 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		},
 		{
 			name:             "SetRemediation",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -763,7 +738,6 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "set remediation to allow with on_match hook",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -789,7 +763,6 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 		},
 		{
 			name:             "set remediation to captcha + custom user code with on_match hook",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -821,7 +794,6 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: on_success break",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -854,7 +826,6 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 		},
 		{
 			name:             "on_match: on_success continue",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",

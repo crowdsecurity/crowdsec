@@ -16,7 +16,6 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic non-matching rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -41,7 +40,6 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 		},
 		{
 			name:             "DefaultPassAction: pass",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -67,7 +65,6 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 		},
 		{
 			name:             "DefaultPassAction: captcha",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -93,7 +90,6 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 		},
 		{
 			name:             "DefaultPassHTTPCode: 200",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -119,7 +115,6 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 		},
 		{
 			name:             "DefaultPassHTTPCode: 200",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -155,7 +150,6 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -180,7 +174,6 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 		},
 		{
 			name:             "default remediation to ban (default)",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -206,7 +199,6 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 		},
 		{
 			name:             "default remediation to allow",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -232,7 +224,6 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 		},
 		{
 			name:             "default remediation to captcha",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -258,7 +249,6 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 		},
 		{
 			name:             "custom user HTTP code",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -284,7 +274,6 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 		},
 		{
 			name:             "custom remediation + HTTP code",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",

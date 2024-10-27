@@ -17,7 +17,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -49,7 +48,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "Basic non-matching rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -75,7 +73,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "default remediation to allow",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -102,7 +99,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "default remediation to captcha",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -129,7 +125,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "no default remediation / custom user HTTP code",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -156,7 +151,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "no match but try to set remediation to captcha with on_match hook",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -184,7 +178,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "no match but try to set user HTTP code with on_match hook",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -212,7 +205,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "no match but try to set  remediation with pre_eval hook",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule42",
@@ -240,7 +232,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "Basic matching in cookies",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -272,7 +263,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "Basic matching in all cookies",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -303,7 +293,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "Basic matching in cookie name",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -334,7 +323,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 		},
 		{
 			name:             "Basic matching in multipart file name",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -372,7 +360,6 @@ toto
 		},
 		{
 			name:             "Basic matching IP address",
-			expected_load_ok: true,
 			inband_native_rules: []string{
 				"SecRule REMOTE_ADDR \"@ipMatch 1.2.3.4\" \"id:1,phase:1,log,deny,msg: 'block ip'\"",
 			},
@@ -410,7 +397,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -433,7 +419,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "lowercase",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -457,7 +442,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "uppercase",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -481,7 +465,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "b64decode",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -506,7 +489,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "b64decode with extra padding",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -531,7 +513,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "length",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -556,7 +537,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "urldecode",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -581,7 +561,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 		},
 		{
 			name:             "trim",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:      "rule1",
@@ -617,7 +596,6 @@ func TestAppsecRuleZones(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "rule: ARGS",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -645,7 +623,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: ARGS_NAMES",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -673,7 +650,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: BODY_ARGS",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -703,7 +679,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: BODY_ARGS_NAMES",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -733,7 +708,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: HEADERS",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -762,7 +736,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: HEADERS_NAMES",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -791,7 +764,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: METHOD",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -814,7 +786,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: PROTOCOL",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -838,7 +809,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: URI",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -861,7 +831,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: URI_FULL",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -884,7 +853,6 @@ func TestAppsecRuleZones(t *testing.T) {
 		},
 		{
 			name:             "rule: RAW_BODY",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",

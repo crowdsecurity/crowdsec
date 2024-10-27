@@ -13,7 +13,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
 			name:             "simple rule load",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -27,7 +26,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 		},
 		{
 			name:             "simple native rule load",
-			expected_load_ok: true,
 			inband_native_rules: []string{
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
 			},
@@ -37,7 +35,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 		},
 		{
 			name:             "simple native rule load (2)",
-			expected_load_ok: true,
 			inband_native_rules: []string{
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^multipart/form-data" "id:101,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=MULTIPART"`,
@@ -48,7 +45,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 		},
 		{
 			name:             "simple native rule load + dedup",
-			expected_load_ok: true,
 			inband_native_rules: []string{
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^multipart/form-data" "id:101,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=MULTIPART"`,
@@ -60,7 +56,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 		},
 		{
 			name:             "multi simple rule load",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -79,7 +74,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 		},
 		{
 			name:             "multi simple rule load",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name:  "rule1",
@@ -98,7 +92,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 		},
 		{
 			name:             "imbricated rule load",
-			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
 					Name: "rule1",
