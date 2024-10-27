@@ -31,16 +31,12 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.wgDumpState.Add(1)
 	defer buckets.wgDumpState.Done()
 
-	total := 0
-	discard := 0
 	toflush := []string{}
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		total += 1
 		//bucket already overflowed, we can kill it
 		if !val.Ovflw_ts.IsZero() {
-			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
@@ -95,12 +91,10 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	tmpFileName := tmpFd.Name()
 	serialized = make(map[string]Leaky)
 	log.Printf("Dumping buckets state at %s", deadline)
-	total := 0
 	discard := 0
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		total += 1
 		if !val.Ovflw_ts.IsZero() {
 			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
