@@ -57,8 +57,10 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) 
 
 	return nil
 }
-func (f *MockSource) GetMode() string                                       { return f.Mode }
-func (f *MockSource) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSource) GetMode() string { return f.Mode }
+func (f *MockSource) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
+	return nil
+}
 func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return nil
 }
@@ -507,8 +509,10 @@ func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
 	return nil
 }
-func (f *MockSourceByDSN) GetMode() string                                       { return f.Mode }
-func (f *MockSourceByDSN) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSourceByDSN) GetMode() string { return f.Mode }
+func (f *MockSourceByDSN) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
+	return nil
+}
 func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return nil
 }
