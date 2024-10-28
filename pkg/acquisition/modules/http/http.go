@@ -181,7 +181,7 @@ func (h *HTTPSource) GetName() string {
 	return dataSourceName
 }
 
-func (h *HTTPSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
