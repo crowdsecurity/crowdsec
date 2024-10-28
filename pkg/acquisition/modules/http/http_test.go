@@ -16,6 +16,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
@@ -221,12 +222,12 @@ func TestGetName(t *testing.T) {
 	}
 }
 
-func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte) (chan types.Event, *tomb.Tomb) {
+func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel int) (chan types.Event, *tomb.Tomb) {
 	ctx := context.Background()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
 	})
-	err := h.Configure(config, subLogger, 0)
+	err := h.Configure(config, subLogger, metricLevel)
 	if err != nil {
 		t.Fatalf("unable to configure http source: %s", err)
 	}
@@ -236,6 +237,11 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte) (chan typ
 	if err != nil {
 		t.Fatalf("unable to start streaming acquisition: %s", err)
 	}
+
+	for _, metric := range h.GetMetrics() {
+		prometheus.Register(metric)
+	}
+
 	return out, &tomb
 }
 
@@ -248,7 +254,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   username: test
-  password: test`))
+  password: test`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -275,7 +281,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   username: test
-  password: test`))
+  password: test`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -302,7 +308,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   username: test
-  password: test`))
+  password: test`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -342,7 +348,7 @@ listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
-  key: test`))
+  key: test`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -375,7 +381,7 @@ path: /test
 auth_type: headers
 headers:
   key: test
-max_body_size: 5`))
+max_body_size: 5`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -406,13 +412,13 @@ listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
-  key: test`))
+  key: test`), 2)
 
 	time.Sleep(1 * time.Second)
 	rawEvt := `{"test": "test"}`
 
 	errChan := make(chan error)
-	go assertEvent(out, rawEvt, errChan)
+	go assertEvents(out, []string{rawEvt}, errChan)
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
@@ -433,6 +439,8 @@ headers:
 		t.Fatalf("error: %s", err)
 	}
 
+	assertMetrics(t, h.GetMetrics(), 1)
+
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
@@ -449,13 +457,13 @@ headers:
   key: test
 custom_status_code: 201
 custom_headers:
-  success: true`))
+  success: true`), 2)
 
 	time.Sleep(1 * time.Second)
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
-	go assertEvent(out, rawEvt, errChan)
+	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	if err != nil {
@@ -480,6 +488,8 @@ custom_headers:
 		t.Fatalf("error: %s", err)
 	}
 
+	assertMetrics(t, h.GetMetrics(), 1)
+
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
@@ -501,32 +511,37 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func assertEvent(out chan types.Event, expected string, errChan chan error) {
+func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 	readLines := []types.Event{}
 
-	select {
-	case event := <-out:
-		readLines = append(readLines, event)
-	case <-time.After(2 * time.Second):
-		errChan <- errors.New("timeout waiting for event")
+	for i := 0; i < len(expected); i++ {
+		select {
+		case event := <-out:
+			readLines = append(readLines, event)
+		case <-time.After(2 * time.Second):
+			errChan <- errors.New("timeout waiting for event")
+			return
+		}
+	}
+
+	if len(readLines) != len(expected) {
+		errChan <- fmt.Errorf("expected %d lines, got %d", len(expected), len(readLines))
 		return
 	}
 
-	if len(readLines) != 1 {
-		errChan <- fmt.Errorf("expected 1 line, got %d", len(readLines))
-		return
-	}
-	if readLines[0].Line.Raw != expected {
-		errChan <- fmt.Errorf(`expected %s, got '%+v'`, expected, readLines[0].Line.Raw)
-		return
-	}
-	if readLines[0].Line.Src != "127.0.0.1" {
-		errChan <- fmt.Errorf("expected '127.0.0.1', got '%s'", readLines[0].Line.Src)
-		return
-	}
-	if readLines[0].Line.Module != "http" {
-		errChan <- fmt.Errorf("expected 'http', got '%s'", readLines[0].Line.Module)
-		return
+	for i, evt := range readLines {
+		if evt.Line.Raw != expected[i] {
+			errChan <- fmt.Errorf(`expected %s, got '%+v'`, expected, evt.Line.Raw)
+			return
+		}
+		if evt.Line.Src != "127.0.0.1" {
+			errChan <- fmt.Errorf("expected '127.0.0.1', got '%s'", evt.Line.Src)
+			return
+		}
+		if evt.Line.Module != "http" {
+			errChan <- fmt.Errorf("expected 'http', got '%s'", evt.Line.Module)
+			return
+		}
 	}
 	errChan <- nil
 }
@@ -540,7 +555,7 @@ path: /test
 auth_type: headers
 headers:
   key: test
-timeout: 1s`))
+timeout: 1s`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -580,7 +595,7 @@ path: /test
 tls:
   server_cert: testdata/server.crt
   server_key: testdata/server.key
-  ca_cert: testdata/ca.crt`))
+  ca_cert: testdata/ca.crt`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -610,7 +625,7 @@ headers:
 tls:
   server_cert: testdata/server.crt
   server_key: testdata/server.key
-`))
+`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -633,7 +648,7 @@ tls:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
-	go assertEvent(out, rawEvt, errChan)
+	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	if err != nil {
@@ -653,6 +668,8 @@ tls:
 		t.Fatalf("error: %s", err)
 	}
 
+	assertMetrics(t, h.GetMetrics(), 0)
+
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
@@ -668,7 +685,7 @@ auth_type: mtls
 tls:
   server_cert: testdata/server.crt
   server_key: testdata/server.key
-  ca_cert: testdata/ca.crt`))
+  ca_cert: testdata/ca.crt`), 0)
 
 	time.Sleep(1 * time.Second)
 
@@ -699,7 +716,7 @@ tls:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
-	go assertEvent(out, rawEvt, errChan)
+	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	if err != nil {
@@ -720,6 +737,8 @@ tls:
 		t.Fatalf("error: %s", err)
 	}
 
+	assertMetrics(t, h.GetMetrics(), 0)
+
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
@@ -733,35 +752,35 @@ listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
-  key: test`))
+  key: test`), 2)
 
 	time.Sleep(1 * time.Second)
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
-	go assertEvent(out, rawEvt, errChan)
-	go assertEvent(out, rawEvt, errChan)
-
-	// send gzipped compressed data
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s", rawEvt, rawEvt)))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
-	req.Header.Add("Key", "test")
-	req.Header.Add("Content-Encoding", "gzip")
-	req.Header.Add("Content-Type", "application/json")
+	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	var b strings.Builder
 	gz := gzip.NewWriter(&b)
 	if _, err := gz.Write([]byte(rawEvt)); err != nil {
 		t.Fatalf("unable to write gzipped data: %s", err)
 	}
+	if _, err := gz.Write([]byte(rawEvt)); err != nil {
+		t.Fatalf("unable to write gzipped data: %s", err)
+	}
 	if err := gz.Close(); err != nil {
 		t.Fatalf("unable to close gzip writer: %s", err)
 	}
-	req.Body = io.NopCloser(strings.NewReader(b.String()))
-	req.ContentLength = int64(b.Len())
+
+	// send gzipped compressed data
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
+	if err != nil {
+		t.Fatalf("unable to create http request: %s", err)
+	}
+	req.Header.Add("Key", "test")
+	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -776,6 +795,8 @@ headers:
 		t.Fatalf("error: %s", err)
 	}
 
+	assertMetrics(t, h.GetMetrics(), 2)
+
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
@@ -789,14 +810,13 @@ listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:
-  key: test`))
+  key: test`), 2)
 
 	time.Sleep(1 * time.Second)
 	rawEvt := `{"test": "test"}`
 
 	errChan := make(chan error)
-	go assertEvent(out, rawEvt, errChan)
-	go assertEvent(out, rawEvt, errChan)
+	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
@@ -821,7 +841,47 @@ headers:
 		t.Fatalf("error: %s", err)
 	}
 
+	assertMetrics(t, h.GetMetrics(), 2)
+
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
+}
+
+func assertMetrics(t *testing.T, metrics []prometheus.Collector, expected int) {
+	promMetrics, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		t.Fatalf("unable to gather metrics: %s", err)
+	}
+	isExist := false
+	for _, metricFamily := range promMetrics {
+		if metricFamily.GetName() == "cs_httpsource_hits_total" {
+			isExist = true
+			if len(metricFamily.GetMetric()) != 1 {
+				t.Fatalf("expected 1 metricFamily, got %d", len(metricFamily.GetMetric()))
+			}
+			for _, metric := range metricFamily.GetMetric() {
+				if metric.GetCounter().GetValue() != float64(expected) {
+					t.Fatalf("expected %d, got %f", expected, metric.GetCounter().GetValue())
+				}
+				labels := metric.GetLabel()
+				if len(labels) != 2 {
+					t.Fatalf("expected 2 label, got %d", len(labels))
+				}
+				if labels[0].GetName() != "path" || labels[0].GetValue() != "/test" {
+					t.Fatalf("expected label path:/test, got %s:%s", labels[0].GetName(), labels[0].GetValue())
+				}
+				if labels[1].GetName() != "src" || labels[1].GetValue() != "127.0.0.1" {
+					t.Fatalf("expected label src:127.0.0.1, got %s:%s", labels[1].GetName(), labels[1].GetValue())
+				}
+			}
+		}
+	}
+	if !isExist && expected > 0 {
+		t.Fatalf("expected metric cs_httpsource_hits_total not found")
+	}
+
+	for _, metric := range metrics {
+		metric.(*prometheus.CounterVec).Reset()
+	}
 }

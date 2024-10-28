@@ -35,7 +35,7 @@ var linesRead = prometheus.NewCounterVec(
 		Name: "cs_httpsource_hits_total",
 		Help: "Total lines that were read from http source",
 	},
-	[]string{"path"})
+	[]string{"path", "src"})
 
 type HttpConfiguration struct {
 	//IPFilter                        []string          `yaml:"ip_filter"`
@@ -248,31 +248,6 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 	return nil
 }
 
-func ReadBody(r *http.Request) ([]byte, error) {
-	if r.Header.Get("Content-Encoding") == "gzip" {
-		gReader, err := gzip.NewReader(r.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
-		}
-		defer gReader.Close()
-		return io.ReadAll(gReader)
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	var body []byte
-	for {
-		var message json.RawMessage
-		if err := decoder.Decode(&message); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("failed to decode: %w", err)
-		}
-		body = append(body, message...)
-	}
-	return body, nil
-}
-
 func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *HttpConfiguration, out chan types.Event) error {
 	if hc.MaxBodySize != nil && r.ContentLength > *hc.MaxBodySize {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
@@ -300,6 +275,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 	decoder := json.NewDecoder(reader)
 	for {
 		var message json.RawMessage
+
 		if err := decoder.Decode(&message); err != nil {
 			if err == io.EOF {
 				break
@@ -329,25 +305,15 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			Unmarshaled: make(map[string]interface{}),
 		}
 
-		if h.metricsLevel != configuration.METRICS_NONE {
-			linesRead.With(prometheus.Labels{"path": hc.Path}).Inc()
+		if h.metricsLevel == configuration.METRICS_AGGREGATE {
+			linesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
+		} else if h.metricsLevel == configuration.METRICS_FULL {
+			linesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
 		out <- evt
 	}
-
-	//body, err := ReadBody(r)
-	//defer r.Body.Close()
-	//if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	return fmt.Errorf("failed to read body: %w", err)
-	//}
-	//h.logger.Tracef("body received: %+v", string(body))
-	//
-	//t.Go(func() error {
-	//	return nil
-	//})
 
 	return nil
 }
