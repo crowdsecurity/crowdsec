@@ -83,7 +83,7 @@ func logLevelToInt(logLevel string) ([]string, error) {
 
 // This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
 func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int) ([]string, error) {
-	var events = make([]windows.Handle, maxEvents)
+	events := make([]windows.Handle, maxEvents)
 	var returned uint32
 
 	// Get handles to events from the result set.
@@ -362,7 +362,7 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 
 	var err error
 
-	//FIXME: handle custom xpath query
+	// FIXME: handle custom xpath query
 	w.query, err = w.buildXpathQuery()
 
 	if err != nil {
@@ -388,10 +388,8 @@ func (w *WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-
+func (w *WinEventLogSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	handle, err := wevtapi.EvtQuery(localMachine, w.evtConfig.ChannelPath, w.evtConfig.Query, w.evtConfig.Flags)
-
 	if err != nil {
 		return fmt.Errorf("EvtQuery failed: %v", err)
 	}
@@ -436,6 +434,7 @@ OUTER_LOOP:
 			}
 		}
 	}
+
 	return nil
 }
 

@@ -127,7 +127,7 @@ func (k *KafkaSource) GetName() string {
 	return dataSourceName
 }
 
-func (k *KafkaSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (k *KafkaSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
@@ -147,12 +147,12 @@ func (k *KafkaSource) Dump() interface{} {
 	return k
 }
 
-func (k *KafkaSource) ReadMessage(out chan types.Event) error {
+func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) error {
 	// Start processing from latest Offset
-	k.Reader.SetOffsetAt(context.Background(), time.Now())
+	k.Reader.SetOffsetAt(ctx, time.Now())
 	for {
 		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
-		m, err := k.Reader.ReadMessage(context.Background())
+		m, err := k.Reader.ReadMessage(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -184,10 +184,10 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 	}
 }
 
-func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
+func (k *KafkaSource) RunReader(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	k.logger.Debugf("starting %s datasource reader goroutine with configuration %+v", dataSourceName, k.Config)
 	t.Go(func() error {
-		return k.ReadMessage(out)
+		return k.ReadMessage(ctx, out)
 	})
 	//nolint //fp
 	for {
@@ -207,7 +207,7 @@ func (k *KafkaSource) StreamingAcquisition(ctx context.Context, out chan types.E
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/kafka/live")
-		return k.RunReader(out, t)
+		return k.RunReader(ctx, out, t)
 	})
 
 	return nil

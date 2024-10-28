@@ -182,7 +182,7 @@ func (k *KinesisSource) GetName() string {
 	return "kinesis"
 }
 
-func (k *KinesisSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("kinesis datasource does not support one-shot acquisition")
 }
 
