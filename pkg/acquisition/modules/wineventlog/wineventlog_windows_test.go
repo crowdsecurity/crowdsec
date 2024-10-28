@@ -177,7 +177,6 @@ event_ids:
 	subLogger := log.WithField("type", "windowseventlog")
 
 	evthandler, err := eventlog.Open("Application")
-
 	if err != nil {
 		t.Fatalf("failed to open event log: %s", err)
 	}
