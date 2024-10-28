@@ -47,12 +47,14 @@ type Event struct {
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
 
-func MakeEvent(timeMachine bool) Event {
+func MakeEvent(timeMachine bool, evtType int, process bool) Event {
 	evt := Event{
 		Parsed:      make(map[string]string),
 		Meta:        make(map[string]string),
 		Unmarshaled: make(map[string]interface{}),
 		ExpectMode:  LIVE,
+		Process:     process,
+		Type:        evtType,
 	}
 	if timeMachine {
 		evt.ExpectMode = TIMEMACHINE

@@ -334,7 +334,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					if d.metricsLevel != configuration.METRICS_NONE {
 						linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 					}
-					evt := types.MakeEvent(true)
+					evt := types.MakeEvent(true, types.LOG, true)
 					evt.Line = l
 					evt.Process = true
 					evt.Type = types.LOG
@@ -582,10 +582,8 @@ func (d *DockerSource) TailDocker(ctx context.Context, container *ContainerConfi
 			l.Src = container.Name
 			l.Process = true
 			l.Module = d.GetName()
-			evt := types.MakeEvent(d.Config.UseTimeMachine)
+			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			evt.Process = true
-			evt.Type = types.LOG
 			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)

@@ -322,10 +322,8 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 			} else {
 				l.Src = k.Config.StreamName
 			}
-			evt := types.MakeEvent(k.Config.UseTimeMachine)
+			evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			evt.Process = true
-			evt.Type = types.LOG
 			out <- evt
 		}
 	}

@@ -710,7 +710,7 @@ func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTail
 
 func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) (types.Event, error) {
 	l := types.Line{}
-	evt := types.MakeEvent(cfg.ExpectMode == types.TIMEMACHINE)
+	evt := types.MakeEvent(cfg.ExpectMode == types.TIMEMACHINE, types.LOG, true)
 	if log.Message == nil {
 		return evt, errors.New("nil message")
 	}
@@ -726,8 +726,6 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	l.Process = true
 	l.Module = "cloudwatch"
 	evt.Line = l
-	evt.Process = true
-	evt.Type = types.LOG
 	cfg.logger.Debugf("returned event labels : %+v", evt.Line.Labels)
 	return evt, nil
 }

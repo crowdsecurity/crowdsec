@@ -430,10 +430,8 @@ OUTER_LOOP:
 				l.Time = time.Now()
 				l.Src = w.name
 				l.Process = true
-				csevt := types.MakeEvent(w.config.UseTimeMachine)
+				csevt := types.MakeEvent(w.config.UseTimeMachine, types.LOG, true)
 				csevt.Line = l
-				csevt.Process = true
-				csevt.Type = types.LOG
 				out <- csevt
 			}
 		}

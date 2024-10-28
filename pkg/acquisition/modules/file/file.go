@@ -621,10 +621,8 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			// we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
-			evt := types.MakeEvent(f.config.UseTimeMachine)
+			evt := types.MakeEvent(f.config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			evt.Process = true
-			evt.Type = types.LOG
 			out <- evt
 		}
 	}

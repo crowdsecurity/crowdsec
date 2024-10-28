@@ -195,10 +195,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 }
 
 func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.Event, error) {
-	evt := types.Event{}
-	// we might want to change this based on in-band vs out-of-band ?
-	evt.Type = types.LOG
-	evt.ExpectMode = types.LIVE
+	evt := types.MakeEvent(false, types.LOG, true)
 	// def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{

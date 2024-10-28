@@ -307,10 +307,8 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	if l.metricsLevel != configuration.METRICS_NONE {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
-	evt := types.MakeEvent(l.Config.UseTimeMachine)
+	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
 	evt.Line = ll
-	evt.Process = true
-	evt.Type = types.LOG
 	out <- evt
 }
 

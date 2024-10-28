@@ -443,10 +443,8 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			} else if s.MetricsLevel == configuration.METRICS_AGGREGATE {
 				l.Src = bucket
 			}
-			evt := types.MakeEvent(s.Config.UseTimeMachine)
+			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			evt.Process = true
-			evt.Type = types.LOG
 			s.out <- evt
 		}
 	}

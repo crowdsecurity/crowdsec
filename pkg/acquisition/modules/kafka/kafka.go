@@ -173,10 +173,8 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 		if k.metricsLevel != configuration.METRICS_NONE {
 			linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		}
-		evt := types.MakeEvent(k.Config.UseTimeMachine)
+		evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
 		evt.Line = l
-		evt.Process = true
-		evt.Type = types.LOG
 		out <- evt
 	}
 }
