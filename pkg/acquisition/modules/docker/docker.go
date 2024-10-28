@@ -147,18 +147,19 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	d.logger.Tracef("Actual DockerAcquisition configuration %+v", d.Config)
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
+	opts := []client.Opt{
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
 	}
 
 	if d.Config.DockerHost != "" {
-		err = client.WithHost(d.Config.DockerHost)(dockerClient)
-		if err != nil {
-			return err
-		}
+		opts = append(opts, client.WithHost(d.Config.DockerHost))
 	}
-	d.Client = dockerClient
+
+	d.Client, err = client.NewClientWithOpts(opts...)
+	if err != nil {
+		return err
+	}
 
 	_, err = d.Client.Info(context.Background())
 	if err != nil {
@@ -268,7 +269,12 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			if len(v) != 1 {
 				return errors.New("only one 'docker_host' parameters is required, not many")
 			}
-			if err := client.WithHost(v[0])(dockerClient); err != nil {
+			dockerClient, err = client.NewClientWithOpts(
+				client.FromEnv,
+				client.WithAPIVersionNegotiation(),
+				client.WithHost(v[0]),
+			)
+			if err != nil {
 				return err
 			}
 		}

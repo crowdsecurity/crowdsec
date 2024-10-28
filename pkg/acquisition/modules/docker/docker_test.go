@@ -109,9 +109,11 @@ func TestConfigureDSN(t *testing.T) {
 	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
-		f := DockerSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+		t.Run(test.name, func(t *testing.T) {
+			f := DockerSource{}
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+		})
 	}
 }
 
