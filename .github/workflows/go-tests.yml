@@ -42,7 +42,7 @@ jobs:
           DEBUG: ""
           LAMBDA_EXECUTOR: ""
           KINESIS_ERROR_PROBABILITY: ""
-          DOCKER_HOST: unix:///var/run/docker.sock
+          BUILDKIT_HOST: unix:///var/run/docker.sock
           KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
           LOCALSTACK_HOST: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
           # e.g sqs url will get localhost if we don't set this env to map our service
