@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -507,7 +508,7 @@ func assertEvent(out chan types.Event, expected string, errChan chan error) {
 	case event := <-out:
 		readLines = append(readLines, event)
 	case <-time.After(2 * time.Second):
-		errChan <- fmt.Errorf("timeout waiting for event")
+		errChan <- errors.New("timeout waiting for event")
 		return
 	}
 
