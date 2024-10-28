@@ -307,17 +307,11 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	if l.metricsLevel != configuration.METRICS_NONE {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
-	expectMode := types.LIVE
-	if l.Config.UseTimeMachine {
-		expectMode = types.TIMEMACHINE
-	}
-	out <- types.Event{
-		Line:        ll,
-		Process:     true,
-		Type:        types.LOG,
-		ExpectMode:  expectMode,
-		Unmarshaled: make(map[string]interface{}),
-	}
+	evt := types.MakeEvent(l.Config.UseTimeMachine)
+	evt.Line = ll
+	evt.Process = true
+	evt.Type = types.LOG
+	out <- evt
 }
 
 func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {

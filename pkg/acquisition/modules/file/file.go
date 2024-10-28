@@ -621,11 +621,11 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			// we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
-			expectMode := types.LIVE
-			if f.config.UseTimeMachine {
-				expectMode = types.TIMEMACHINE
-			}
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: expectMode, Unmarshaled: make(map[string]interface{})}
+			evt := types.MakeEvent(f.config.UseTimeMachine)
+			evt.Line = l
+			evt.Process = true
+			evt.Type = types.LOG
+			out <- evt
 		}
 	}
 }

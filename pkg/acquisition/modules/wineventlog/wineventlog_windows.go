@@ -430,7 +430,11 @@ OUTER_LOOP:
 				l.Time = time.Now()
 				l.Src = w.name
 				l.Process = true
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
+				csevt := types.MakeEvent(w.config.UseTimeMachine)
+				csevt.Line = l
+				csevt.Process = true
+				csevt.Type = types.LOG
+				out <- csevt
 			}
 		}
 	}

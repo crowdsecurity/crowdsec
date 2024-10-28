@@ -305,13 +305,10 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			line.Src = hc.Path
 		}
 
-		evt := types.Event{
-			Line:        line,
-			Process:     true,
-			Type:        types.LOG,
-			ExpectMode:  types.LIVE,
-			Unmarshaled: make(map[string]interface{}),
-		}
+		evt := types.MakeEvent(h.Config.UseTimeMachine)
+		evt.Line = line
+		evt.Process = true
+		evt.Type = types.LOG
 
 		if h.metricsLevel == configuration.METRICS_AGGREGATE {
 			linesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
