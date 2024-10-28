@@ -118,7 +118,7 @@ func (hc *HttpConfiguration) Validate() error {
 			return errors.New("headers is required")
 		}
 	case "mtls":
-		if hc.TLS == nil || hc.TLS != nil && hc.TLS.CaCert == "" {
+		if hc.TLS == nil || hc.TLS.CaCert == "" {
 			return errors.New("ca_cert is required")
 		}
 	default:
@@ -219,7 +219,15 @@ func (hc *HttpConfiguration) NewTLSConfig() (*tls.Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read ca cert: %w", err)
 		}
-		caCertPool := x509.NewCertPool()
+
+		caCertPool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load system cert pool: %w", err)
+		}
+
+		if caCertPool == nil {
+			caCertPool = x509.NewCertPool()
+		}
 		caCertPool.AppendCertsFromPEM(caCert)
 		tlsConfig.ClientCAs = caCertPool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
