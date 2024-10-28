@@ -643,10 +643,10 @@ func (s *S3Source) GetName() string {
 	return "s3"
 }
 
-func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
 	s.out = out
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.Config.UseTimeMachine = true
 	s.t = t
 	if s.Config.Key != "" {

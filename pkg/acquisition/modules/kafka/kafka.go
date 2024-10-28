@@ -127,7 +127,7 @@ func (k *KafkaSource) GetName() string {
 	return dataSourceName
 }
 
-func (k *KafkaSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (k *KafkaSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
