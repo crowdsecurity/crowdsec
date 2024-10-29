@@ -104,22 +104,23 @@ func (hc *HttpConfiguration) Validate() error {
 
 	switch hc.AuthType {
 	case "basic_auth":
+		baseErr := "basic_auth is selected, but"
 		if hc.BasicAuth == nil {
-			return errors.New("basic_auth is required")
+			return errors.New(baseErr + " basic_auth is not provided")
 		}
 		if hc.BasicAuth.Username == "" {
-			return errors.New("username is required")
+			return errors.New(baseErr + " username is required")
 		}
 		if hc.BasicAuth.Password == "" {
-			return errors.New("password is required")
+			return errors.New(baseErr + " password is required")
 		}
 	case "headers":
 		if hc.Headers == nil {
-			return errors.New("headers is required")
+			return errors.New("headers is selected, but headers is not provided")
 		}
 	case "mtls":
 		if hc.TLS == nil || hc.TLS.CaCert == "" {
-			return errors.New("ca_cert is required")
+			return errors.New("mtls is selected, but ca_cert is not provided")
 		}
 	default:
 		return errors.New("invalid auth_type: must be one of basic_auth, headers, mtls")
