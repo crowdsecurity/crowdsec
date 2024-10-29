@@ -52,6 +52,7 @@ func MakeEvent(timeMachine bool, evtType int, process bool) Event {
 		Parsed:      make(map[string]string),
 		Meta:        make(map[string]string),
 		Unmarshaled: make(map[string]interface{}),
+		Enriched:    make(map[string]string),
 		ExpectMode:  LIVE,
 		Process:     process,
 		Type:        evtType,
