@@ -49,7 +49,7 @@ source: http
 listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth`,
-			expectedErr: "invalid configuration: basic_auth is required",
+			expectedErr: "invalid configuration: basic_auth is selected, but basic_auth is not provided",
 		},
 		{
 			config: `
@@ -57,7 +57,7 @@ source: http
 listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers`,
-			expectedErr: "invalid configuration: headers is required",
+			expectedErr: "invalid configuration: headers is selected, but headers is not provided",
 		},
 		{
 			config: `
@@ -67,7 +67,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   username: 132`,
-			expectedErr: "invalid configuration: password is required",
+			expectedErr: "invalid configuration: basic_auth is selected, but password is not provided",
 		},
 		{
 			config: `
@@ -77,7 +77,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   password: 132`,
-			expectedErr: "invalid configuration: username is required",
+			expectedErr: "invalid configuration: basic_auth is selected, but username is not provided",
 		},
 		{
 			config: `
@@ -86,7 +86,7 @@ listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:`,
-			expectedErr: "invalid configuration: headers is required",
+			expectedErr: "invalid configuration: headers is selected, but headers is not provided",
 		},
 		{
 			config: `
@@ -129,7 +129,7 @@ auth_type: mtls
 tls:
   server_cert: cert
   server_key: key`,
-			expectedErr: "invalid configuration: ca_cert is required",
+			expectedErr: "invalid configuration: mtls is selected, but ca_cert is not provided",
 		},
 		{
 			config: `

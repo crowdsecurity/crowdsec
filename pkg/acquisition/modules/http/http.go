@@ -109,10 +109,10 @@ func (hc *HttpConfiguration) Validate() error {
 			return errors.New(baseErr + " basic_auth is not provided")
 		}
 		if hc.BasicAuth.Username == "" {
-			return errors.New(baseErr + " username is required")
+			return errors.New(baseErr + " username is not provided")
 		}
 		if hc.BasicAuth.Password == "" {
-			return errors.New(baseErr + " password is required")
+			return errors.New(baseErr + " password is not provided")
 		}
 	case "headers":
 		if hc.Headers == nil {
