@@ -51,7 +51,7 @@ func TestTokenize(t *testing.T) {
 		},
 	}
 
-	tokenizer, err := NewTokenizer("tests/small-champion-model")
+	tokenizer, err := NewTokenizer("tests/anomaly_detection_bundle_test")
 	if err != nil {
 		t.Errorf("NewTokenizer returned error: %v", err)
 		return
@@ -82,7 +82,7 @@ func TestTokenizeLongString(t *testing.T) {
 	}
 	longString := builder.String()
 
-	tokenizer, err := NewTokenizer("tests/small-champion-model")
+	tokenizer, err := NewTokenizer("tests/anomaly_detection_bundle_test")
 	if err != nil {
 		t.Errorf("NewTokenizer returned error: %v", err)
 		return
