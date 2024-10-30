@@ -494,8 +494,8 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
-		name:     "SeemsMalicious",
-		function: AnomalyDetection,
+		name:     "IsAnomalous",
+		function: IsAnomalous,
 		signature: []interface{}{
 			new(func(string, string) (bool, error)),
 		},
