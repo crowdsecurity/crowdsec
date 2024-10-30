@@ -115,6 +115,17 @@ jobs:
           --health-retries 5
           --health-start-period 30s
 
+      victorialogs:
+        image: victoriametrics/victoria-logs:v0.39.0-victorialogs
+        ports:
+          - "9428:9428"
+        options: >-
+          --name=victorialogs1
+          --health-cmd "wget -q -O - http://localhost:9428/"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 30s
     steps:
 
     - name: Check out CrowdSec repository
