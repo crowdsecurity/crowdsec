@@ -10,20 +10,23 @@ import (
 
 var robertaInferencePipeline *ml.RobertaClassificationInferencePipeline
 
-func InitRobertaInferencePipeline(datadir string) error {
+func InitRobertaInferencePipeline(modelBundleFilename string, datadir string) error {
 	var err error
 
 	fmt.Println("Initializing Roberta Inference Pipeline")
 
-	robertaInferencePipeline, err = ml.NewRobertaInferencePipeline(datadir)
+	robertaInferencePipeline, err = ml.NewRobertaInferencePipeline(modelBundleFilename, datadir)
 	if err != nil {
 		return err
+	}
+	if robertaInferencePipeline == nil {
+		fmt.Println("Failed to initialize Roberta Inference Pipeline")
 	}
 
 	return nil
 }
 
-func AnomalyDetection(params ...any) (any, error) {
+func IsAnomalous(params ...any) (any, error) {
 	verb, ok1 := params[0].(string)
 	httpPath, ok2 := params[1].(string)
 
@@ -35,6 +38,10 @@ func AnomalyDetection(params ...any) (any, error) {
 	log.Println("Verb : ", verb)
 	log.Println("HTTP Path : ", httpPath)
 	log.Println("Text to analyze for Anomaly: ", text)
+
+	if robertaInferencePipeline == nil {
+		return nil, errors.New("Roberta Inference Pipeline not properly initialized")
+	}
 
 	result, err := robertaInferencePipeline.PredictLabel(text)
 	boolean_label := result == 1

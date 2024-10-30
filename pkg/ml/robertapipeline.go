@@ -1,9 +1,12 @@
 package ml
 
 import (
+	"archive/tar"
 	"fmt"
-	"log"
+	"io"
+	"os"
 	"path/filepath"
+	"strings"
 
 	onnxruntime "github.com/crowdsecurity/go-onnxruntime"
 )
@@ -14,18 +17,35 @@ type RobertaClassificationInferencePipeline struct {
 	ortSession *OrtSession
 }
 
-func NewRobertaInferencePipeline(datadir string) (*RobertaClassificationInferencePipeline, error) {
+func NewRobertaInferencePipeline(modelBundleFilename string, datadir string) (*RobertaClassificationInferencePipeline, error) {
 	var err error
 
 	fmt.Println("Initializing Roberta Inference Pipeline")
 
-	// ortSession, err := NewOrtSession(filepath.Join(datadir, "roberta-torch-export.onnx"))
-	ortSession, err := NewOrtSession(filepath.Join(datadir, "model.onnx"))
+	bundleFilePath := filepath.Join(datadir, modelBundleFilename)
+	bundleDirectory := filepath.Clean(strings.TrimSuffix(bundleFilePath, ".tar"))
+	fmt.Printf("Extracting model bundle %s to %s\n", bundleFilePath, bundleDirectory)
+
+	err = extractTarFile(bundleFilePath, datadir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract tar file: %v", err)
+	}
+
+	requiredFiles := []string{"model.onnx", "tokenizer.json", "tokenizer_config.json"}
+	for _, file := range requiredFiles {
+		if _, err := os.Stat(filepath.Join(bundleDirectory, file)); os.IsNotExist(err) {
+			return nil, fmt.Errorf("missing required file: %s", file)
+		}
+	}
+
+	// Initialize OrtSession
+	ortSession, err := NewOrtSession(filepath.Join(bundleDirectory, "model.onnx"))
 	if err != nil {
 		return nil, err
 	}
 
-	tokenizer, err := NewTokenizer(datadir)
+	// Initialize Tokenizer
+	tokenizer, err := NewTokenizer(bundleDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -45,16 +65,19 @@ func (r *RobertaClassificationInferencePipeline) Close() {
 }
 
 func (pipeline *RobertaClassificationInferencePipeline) PredictLabel(text string) (int, error) {
-	ids, _, attentionMask, err := pipeline.tokenizer.Encode(text, true, true, true)
-	// fmt.Println("RobertaClassificationInferencePipeline: ids: ", ids)
-	// fmt.Println("RobertaClassificationInferencePipeline: attentionMask: ", attentionMask)
+	options := EncodeOptions{
+		AddSpecialTokens:    true,
+		PadToMaxLength:      true, // TODO:= ONNX Input formats leads to segfault without this
+		ReturnAttentionMask: true,
+		Truncate:            true,
+	}
+
+	ids, _, attentionMask, err := pipeline.tokenizer.Encode(text, options)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("Error encoding text")
 		return 0, err
 	}
-
-	// fmt.Println("Running ONNX prediction")
 
 	label, err := pipeline.ortSession.PredictLabel([]onnxruntime.TensorValue{
 		GetTensorValue(ids, pipeline.inputShape),
@@ -68,21 +91,49 @@ func (pipeline *RobertaClassificationInferencePipeline) PredictLabel(text string
 	return label, nil
 }
 
-func HelloWorld() {
-	text := "POST /"
-	// text := "GET /kajakzeug/wattpaddler/favicon.ico"
-	// text := "POST / <rp onmouseup=\"prompt(1)\">test</rp>"
-	// text := "POST /cgi-bin/luci"
-
-	fmt.Println("Text to analyze for Anomaly: ", text)
-
-	pipeline, err := NewRobertaInferencePipeline("/Users/davidlequin/models")
+func extractTarFile(tarFilePath, outputDir string) error {
+	file, err := os.Open(tarFilePath)
 	if err != nil {
-		log.Fatalf("Failed to initialize pipeline: %v", err)
+		return fmt.Errorf("could not open tar file: %v", err)
 	}
-	defer pipeline.Close()
+	defer file.Close()
 
-	label, _ := pipeline.PredictLabel(text)
+	tarReader := tar.NewReader(file)
 
-	log.Println("Anomaly detection result:", label == 1)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading tar file: %v", err)
+		}
+
+		targetPath := filepath.Join(outputDir, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetPath, 0755); err != nil {
+				return fmt.Errorf("could not create directory %s: %v", targetPath, err)
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return fmt.Errorf("could not create directory %s: %v", filepath.Dir(targetPath), err)
+			}
+
+			outFile, err := os.Create(targetPath)
+			if err != nil {
+				return fmt.Errorf("could not create file %s: %v", targetPath, err)
+			}
+
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
+				return fmt.Errorf("could not copy data to file %s: %v", targetPath, err)
+			}
+			outFile.Close()
+		default:
+			fmt.Printf("Unsupported file type in tar: %s\n", header.Name)
+		}
+	}
+	return nil
 }

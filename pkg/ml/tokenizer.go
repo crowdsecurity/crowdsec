@@ -57,7 +57,13 @@ func NewTokenizer(datadir string) (*Tokenizer, error) {
 	defaultPadTokenID := 1
 	defaultTokenizerClass := "RobertaTokenizer"
 
-	tk, err := tokenizers.FromFile(filepath.Join(datadir, "tokenizer.json"))
+	// check if tokenizer.json exists
+	tokenizerPath := filepath.Join(datadir, "tokenizer.json")
+	if _, err := os.Stat(tokenizerPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("tokenizer.json not found in %s", datadir)
+	}
+
+	tk, err := tokenizers.FromFile(tokenizerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -99,15 +105,22 @@ func NewTokenizer(datadir string) (*Tokenizer, error) {
 	}, nil
 }
 
-func (t *Tokenizer) Encode(text string, addSpecialTokens, padToMaxLength, returnAttentionMask bool) ([]int64, []string, []int64, error) {
+type EncodeOptions struct {
+	AddSpecialTokens    bool
+	PadToMaxLength      bool
+	ReturnAttentionMask bool
+	Truncate            bool
+}
+
+func (t *Tokenizer) Encode(text string, options EncodeOptions) ([]int64, []string, []int64, error) {
 	if t.tk == nil {
 		return nil, nil, nil, fmt.Errorf("tokenizer is not initialized")
 	}
 
-	ids, tokens := t.tk.Encode(text, addSpecialTokens)
+	ids, tokens := t.tk.Encode(text, options.AddSpecialTokens)
 
 	// Truncate to max length (right truncation)
-	if len(ids) > t.modelMaxLength {
+	if len(ids) > t.modelMaxLength && options.Truncate {
 		ids = ids[:t.modelMaxLength]
 		tokens = tokens[:t.modelMaxLength]
 	}
@@ -119,7 +132,7 @@ func (t *Tokenizer) Encode(text string, addSpecialTokens, padToMaxLength, return
 	}
 
 	// Padding to max length
-	if padToMaxLength && len(int64Ids) < t.modelMaxLength {
+	if options.PadToMaxLength && len(int64Ids) < t.modelMaxLength {
 		paddingLength := t.modelMaxLength - len(int64Ids)
 		for i := 0; i < paddingLength; i++ {
 			int64Ids = append(int64Ids, int64(t.padTokenID))
@@ -129,7 +142,7 @@ func (t *Tokenizer) Encode(text string, addSpecialTokens, padToMaxLength, return
 
 	// Creating attention mask
 	var attentionMask []int64
-	if returnAttentionMask {
+	if options.ReturnAttentionMask {
 		attentionMask = make([]int64, len(int64Ids))
 		for i := range attentionMask {
 			if int64Ids[i] != int64(t.padTokenID) {
@@ -145,17 +158,4 @@ func (t *Tokenizer) Encode(text string, addSpecialTokens, padToMaxLength, return
 
 func (t *Tokenizer) Close() {
 	t.tk.Close()
-}
-
-func BpeTesting() {
-	// tk, _ := NewTokenizer("/Users/davidlequin/models")
-	// defer tk.Close()
-	// ids, _ := tk.tk.Encode("hello world", true)
-	// fmt.Println(ids)
-	// ids, _, attentionMask, _ := tk.Encode("hello world", false, true, true)
-	// fmt.Println("Token IDs:", ids)
-	// fmt.Println("Attention Mask:", attentionMask)
-	// // config, _ := loadTokenizerConfig("tests/tokenizer_config.json")
-	// // fmt.Println(config)
-	// fmt.Println(tk)
 }

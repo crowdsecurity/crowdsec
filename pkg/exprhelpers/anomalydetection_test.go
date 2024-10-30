@@ -15,35 +15,37 @@ func TestAnomalyDetection(t *testing.T) {
 	}{
 		{
 			name:         "Empty verb and path",
-			params:       []any{"", ""},
-			expectResult: 1,
+			params:       []any{"", "hello"},
+			expectResult: false,
 			err:          nil,
 		},
 		{
 			name:         "Empty verb",
 			params:       []any{"", "/somepath"},
-			expectResult: 0,
+			expectResult: false,
 			err:          nil,
 		},
 		{
 			name:         "Empty path",
 			params:       []any{"GET", ""},
-			expectResult: 0,
+			expectResult: true,
 			err:          nil,
 		},
 		{
 			name:         "Valid verb and path",
 			params:       []any{"GET", "/somepath"},
-			expectResult: 0,
+			expectResult: false,
 			err:          nil,
 		},
 	}
 
-	InitRobertaInferencePipeline("/var/models")
+	if err := InitRobertaInferencePipeline("anomaly_detection_bundle_test.tar", "tests"); err != nil {
+		t.Fatalf("failed to initialize RobertaInferencePipeline: %v", err)
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, _ := AnomalyDetection(tt.params...)
+			result, _ := IsAnomalous(tt.params...)
 			assert.Equal(t, tt.expectResult, result)
 		})
 	}
