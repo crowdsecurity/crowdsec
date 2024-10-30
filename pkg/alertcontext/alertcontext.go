@@ -156,10 +156,10 @@ func EvalAlertContextRules(evt *types.Event, match *types.MatchedRule, request *
 	//if we're evaluating context for appsec event, match and request will be present.
 	//otherwise, only evt will be.
 	if evt == nil {
-		evt = types.EmptyEvent()
+		evt = types.NewEvent()
 	}
 	if match == nil {
-		match = types.EmptyMatchedRule()
+		match = types.NewMatchedRule()
 	}
 	if request == nil {
 		request = &http.Request{}

@@ -47,11 +47,13 @@ type Event struct {
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
 
-func EmptyEvent() *Event {
+func NewEvent() *Event {
 	return &Event{Type: LOG,
-		Parsed:   make(map[string]string),
-		Enriched: make(map[string]string),
-		Meta:     make(map[string]string)}
+		Parsed:      make(map[string]string),
+		Enriched:    make(map[string]string),
+		Meta:        make(map[string]string),
+		Unmarshaled: make(map[string]interface{}),
+	}
 }
 
 func (e *Event) SetMeta(key string, value string) bool {

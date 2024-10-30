@@ -47,7 +47,7 @@ const (
 	Kind       Field = "kind"
 )
 
-func EmptyMatchedRule() *MatchedRule {
+func NewMatchedRule() *MatchedRule {
 	return &MatchedRule{}
 }
 
