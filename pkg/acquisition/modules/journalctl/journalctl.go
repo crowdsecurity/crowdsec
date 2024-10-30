@@ -65,8 +65,8 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	return nil
 }
 
-func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+	ctx, cancel := context.WithCancel(ctx)
 
 	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
 	stdout, err := cmd.StdoutPipe()
@@ -113,7 +113,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		return readLine(stdoutscanner, stdoutChan, errChan)
 	})
 	t.Go(func() error {
-		//looks like journalctl closes stderr quite early, so ignore its status (but not its output)
+		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
 		return readLine(stderrScanner, stderrChan, nil)
 	})
 
@@ -122,7 +122,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() //avoid zombie process
+			cmd.Wait() // avoid zombie process
 			return nil
 		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
@@ -217,13 +217,13 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 	j.config.Labels = labels
 	j.config.UniqueId = uuid
 
-	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
+	// format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {
 		return fmt.Errorf("invalid DSN %s for journalctl source, must start with journalctl://", dsn)
 	}
 
 	qs := strings.TrimPrefix(dsn, "journalctl://")
-	if len(qs) == 0 {
+	if qs == "" {
 		return errors.New("empty journalctl:// DSN")
 	}
 
@@ -262,26 +262,27 @@ func (j *JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
-func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
-	err := j.runJournalCtl(out, t)
+	err := j.runJournalCtl(ctx, out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
-
 }
 
-func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
-		return j.runJournalCtl(out, t)
+		return j.runJournalCtl(ctx, out, t)
 	})
 	return nil
 }
+
 func (j *JournalCtlSource) CanRun() error {
-	//TODO: add a more precise check on version or something ?
+	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
+
 func (j *JournalCtlSource) Dump() interface{} {
 	return j
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -46,10 +45,8 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 
 	for _, itemType := range cwhub.ItemTypes {
 		ret[itemType] = []models.HubItem{}
-		items, _ := hub.GetInstalledItemsByType(itemType)
-		cwhub.SortItemSlice(items)
 
-		for _, item := range items {
+		for _, item := range hub.GetInstalledByType(itemType, true) {
 			status := "official"
 			if item.State.IsLocal() {
 				status = "custom"
@@ -90,7 +87,8 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 }
 
 func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
-	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) *MetricsProvider {
+	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
+) *MetricsProvider {
 	return &MetricsProvider{
 		apic:     apic,
 		interval: interval,

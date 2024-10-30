@@ -95,7 +95,6 @@ query: >
 			delayFor:    1 * time.Second,
 		},
 		{
-
 			config: `
 mode: tail
 source: loki
@@ -111,7 +110,6 @@ query: >
 			testName:    "Correct config with password",
 		},
 		{
-
 			config: `
 mode: tail
 source: loki
@@ -261,7 +259,7 @@ func TestConfigureDSN(t *testing.T) {
 	}
 }
 
-func feedLoki(logger *log.Entry, n int, title string) error {
+func feedLoki(ctx context.Context, logger *log.Entry, n int, title string) error {
 	streams := LogStreams{
 		Streams: []LogStream{
 			{
@@ -286,7 +284,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
 	if err != nil {
 		return err
 	}
@@ -314,6 +312,8 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -344,12 +344,11 @@ since: 1h
 		subLogger := logger.WithField("type", "loki")
 		lokiSource := loki.LokiSource{}
 		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
-
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		err = feedLoki(subLogger, 20, title)
+		err = feedLoki(ctx, subLogger, 20, title)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -367,7 +366,7 @@ since: 1h
 
 		lokiTomb := tomb.Tomb{}
 
-		err = lokiSource.OneShotAcquisition(out, &lokiTomb)
+		err = lokiSource.OneShotAcquisition(ctx, out, &lokiTomb)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -421,6 +420,8 @@ query: >
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
@@ -438,7 +439,7 @@ query: >
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = lokiSource.StreamingAcquisition(out, &lokiTomb)
+			err = lokiSource.StreamingAcquisition(ctx, out, &lokiTomb)
 			cstest.AssertErrorContains(t, err, ts.streamErr)
 
 			if ts.streamErr != "" {
@@ -448,7 +449,7 @@ query: >
 			time.Sleep(time.Second * 2) // We need to give time to start reading from the WS
 
 			readTomb := tomb.Tomb{}
-			readCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			readCtx, cancel := context.WithTimeout(ctx, time.Second*10)
 			count := 0
 
 			readTomb.Go(func() error {
@@ -472,7 +473,7 @@ query: >
 				}
 			})
 
-			err = feedLoki(subLogger, ts.expectedLines, title)
+			err = feedLoki(ctx, subLogger, ts.expectedLines, title)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -491,6 +492,7 @@ query: >
 }
 
 func TestStopStreaming(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -518,14 +520,14 @@ query: >
 
 	lokiTomb := &tomb.Tomb{}
 
-	err = lokiSource.StreamingAcquisition(out, lokiTomb)
+	err = lokiSource.StreamingAcquisition(ctx, out, lokiTomb)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
 	time.Sleep(time.Second * 2)
 
-	err = feedLoki(subLogger, 1, title)
+	err = feedLoki(ctx, subLogger, 1, title)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}

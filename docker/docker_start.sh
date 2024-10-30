@@ -57,7 +57,7 @@ run_hub_update() {
     index_modification_time=$(stat -c %Y /etc/crowdsec/hub/.index.json 2>/dev/null)
     # Run cscli hub update if no date or if the index file is older than 24h
     if [ -z "$index_modification_time" ] || [ $(( $(date +%s) - index_modification_time )) -gt 86400 ]; then
-        cscli hub update
+        cscli hub update --with-content
     else
         echo "Skipping hub update, index file is recent"
     fi

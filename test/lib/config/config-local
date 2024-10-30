@@ -114,7 +114,7 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "$CSCLI" --warning hub update
+    "$CSCLI" --warning hub update --with-content
 
     # preload some content and data files
     "$CSCLI" collections install crowdsecurity/linux --download-only

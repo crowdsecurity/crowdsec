@@ -160,6 +160,8 @@ paths:
           description: "400 response"
           schema:
             $ref: "#/definitions/ErrorResponse"
+      security:
+      - APIKeyAuthorizer: []
     head:
       description: Returns information about existing decisions
       summary: GetDecisions
@@ -309,6 +311,9 @@ paths:
       responses:
         '201':
           description: Watcher Created
+          headers: {}
+        '202':
+          description: Watcher Validated
           headers: {}
         '400':
           description: "400 response"
@@ -724,6 +729,10 @@ definitions:
       password:
         type: string
         format: password
+      registration_token:
+        type: string
+        minLength: 32
+        maxLength: 255
     required:
       - machine_id
       - password

@@ -1,10 +1,13 @@
 package wineventlogacquisition
 
 import (
+	"context"
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"net/url"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,7 +32,7 @@ type WinEventLogConfiguration struct {
 	EventLevel                        string `yaml:"event_level"`
 	EventIDs                          []int  `yaml:"event_ids"`
 	XPathQuery                        string `yaml:"xpath_query"`
-	EventFile                         string `yaml:"event_file"`
+	EventFile                         string
 	PrettyName                        string `yaml:"pretty_name"`
 }
 
@@ -47,9 +50,12 @@ type QueryList struct {
 }
 
 type Select struct {
-	Path  string `xml:"Path,attr"`
+	Path  string `xml:"Path,attr,omitempty"`
 	Query string `xml:",chardata"`
 }
+
+// 0 identifies the local machine in windows APIs
+const localMachine = 0
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
@@ -77,7 +83,7 @@ func logLevelToInt(logLevel string) ([]string, error) {
 
 // This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
 func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int) ([]string, error) {
-	var events = make([]windows.Handle, maxEvents)
+	events := make([]windows.Handle, maxEvents)
 	var returned uint32
 
 	// Get handles to events from the result set.
@@ -149,7 +155,7 @@ func (w *WinEventLogSource) buildXpathQuery() (string, error) {
 	queryList := QueryList{Select: Select{Path: w.config.EventChannel, Query: query}}
 	xpathQuery, err := xml.Marshal(queryList)
 	if err != nil {
-		w.logger.Errorf("Marshal failed: %v", err)
+		w.logger.Errorf("Serialize failed: %v", err)
 		return "", err
 	}
 	w.logger.Debugf("xpathQuery: %s", xpathQuery)
@@ -211,20 +217,28 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 	}
 }
 
-func (w *WinEventLogSource) generateConfig(query string) (*winlog.SubscribeConfig, error) {
+func (w *WinEventLogSource) generateConfig(query string, live bool) (*winlog.SubscribeConfig, error) {
 	var config winlog.SubscribeConfig
 	var err error
 
-	// Create a subscription signaler.
-	config.SignalEvent, err = windows.CreateEvent(
-		nil, // Default security descriptor.
-		1,   // Manual reset.
-		1,   // Initial state is signaled.
-		nil) // Optional name.
-	if err != nil {
-		return &config, fmt.Errorf("windows.CreateEvent failed: %v", err)
+	if live {
+		// Create a subscription signaler.
+		config.SignalEvent, err = windows.CreateEvent(
+			nil, // Default security descriptor.
+			1,   // Manual reset.
+			1,   // Initial state is signaled.
+			nil) // Optional name.
+		if err != nil {
+			return &config, fmt.Errorf("windows.CreateEvent failed: %v", err)
+		}
+		config.Flags = wevtapi.EvtSubscribeToFutureEvents
+	} else {
+		config.ChannelPath, err = syscall.UTF16PtrFromString(w.config.EventFile)
+		if err != nil {
+			return &config, fmt.Errorf("syscall.UTF16PtrFromString failed: %v", err)
+		}
+		config.Flags = wevtapi.EvtQueryFilePath | wevtapi.EvtQueryForwardDirection
 	}
-	config.Flags = wevtapi.EvtSubscribeToFutureEvents
 	config.Query, err = syscall.UTF16PtrFromString(query)
 	if err != nil {
 		return &config, fmt.Errorf("syscall.UTF16PtrFromString failed: %v", err)
@@ -282,7 +296,7 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, Metr
 		return err
 	}
 
-	w.evtConfig, err = w.generateConfig(w.query)
+	w.evtConfig, err = w.generateConfig(w.query, true)
 	if err != nil {
 		return err
 	}
@@ -291,6 +305,78 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, Metr
 }
 
 func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+	if !strings.HasPrefix(dsn, "wineventlog://") {
+		return fmt.Errorf("invalid DSN %s for wineventlog source, must start with wineventlog://", dsn)
+	}
+
+	w.logger = logger
+	w.config = WinEventLogConfiguration{}
+
+	dsn = strings.TrimPrefix(dsn, "wineventlog://")
+
+	args := strings.Split(dsn, "?")
+
+	if args[0] == "" {
+		return errors.New("empty wineventlog:// DSN")
+	}
+
+	if len(args) > 2 {
+		return errors.New("too many arguments in DSN")
+	}
+
+	w.config.EventFile = args[0]
+
+	if len(args) == 2 && args[1] != "" {
+		params, err := url.ParseQuery(args[1])
+		if err != nil {
+			return fmt.Errorf("failed to parse DSN parameters: %w", err)
+		}
+
+		for key, value := range params {
+			switch key {
+			case "log_level":
+				if len(value) != 1 {
+					return errors.New("log_level must be a single value")
+				}
+				lvl, err := log.ParseLevel(value[0])
+				if err != nil {
+					return fmt.Errorf("failed to parse log_level: %s", err)
+				}
+				w.logger.Logger.SetLevel(lvl)
+			case "event_id":
+				for _, id := range value {
+					evtid, err := strconv.Atoi(id)
+					if err != nil {
+						return fmt.Errorf("failed to parse event_id: %s", err)
+					}
+					w.config.EventIDs = append(w.config.EventIDs, evtid)
+				}
+			case "event_level":
+				if len(value) != 1 {
+					return errors.New("event_level must be a single value")
+				}
+				w.config.EventLevel = value[0]
+			}
+		}
+	}
+
+	var err error
+
+	// FIXME: handle custom xpath query
+	w.query, err = w.buildXpathQuery()
+
+	if err != nil {
+		return fmt.Errorf("buildXpathQuery failed: %w", err)
+	}
+
+	w.logger.Debugf("query: %s\n", w.query)
+
+	w.evtConfig, err = w.generateConfig(w.query, false)
+
+	if err != nil {
+		return fmt.Errorf("generateConfig failed: %w", err)
+	}
+
 	return nil
 }
 
@@ -299,10 +385,56 @@ func (w *WinEventLogSource) GetMode() string {
 }
 
 func (w *WinEventLogSource) SupportedModes() []string {
-	return []string{configuration.TAIL_MODE}
+	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+	handle, err := wevtapi.EvtQuery(localMachine, w.evtConfig.ChannelPath, w.evtConfig.Query, w.evtConfig.Flags)
+	if err != nil {
+		return fmt.Errorf("EvtQuery failed: %v", err)
+	}
+
+	defer winlog.Close(handle)
+
+	publisherCache := make(map[string]windows.Handle)
+	defer func() {
+		for _, h := range publisherCache {
+			winlog.Close(h)
+		}
+	}()
+
+OUTER_LOOP:
+	for {
+		select {
+		case <-t.Dying():
+			w.logger.Infof("wineventlog is dying")
+			return nil
+		default:
+			evts, err := w.getXMLEvents(w.evtConfig, publisherCache, handle, 500)
+			if err == windows.ERROR_NO_MORE_ITEMS {
+				log.Info("No more items")
+				break OUTER_LOOP
+			} else if err != nil {
+				return fmt.Errorf("getXMLEvents failed: %v", err)
+			}
+			w.logger.Debugf("Got %d events", len(evts))
+			for _, evt := range evts {
+				w.logger.Tracef("Event: %s", evt)
+				if w.metricsLevel != configuration.METRICS_NONE {
+					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+				}
+				l := types.Line{}
+				l.Raw = evt
+				l.Module = w.GetName()
+				l.Labels = w.config.Labels
+				l.Time = time.Now()
+				l.Src = w.name
+				l.Process = true
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -325,7 +457,7 @@ func (w *WinEventLogSource) CanRun() error {
 	return nil
 }
 
-func (w *WinEventLogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/wineventlog/streaming")
 		return w.getEvents(out, t)

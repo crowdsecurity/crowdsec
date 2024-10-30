@@ -52,6 +52,8 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	var tmpFile string
 
+	ctx := context.TODO()
+
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -74,7 +76,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			cConfig.API.Server.OnlineClient = nil
 		}
 
-		apiServer, err := initAPIServer(cConfig)
+		apiServer, err := initAPIServer(ctx, cConfig)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init api server: %w", err)
 		}
@@ -88,7 +90,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, err
 		}
 
-		if err := hub.Load(); err != nil {
+		if err = hub.Load(); err != nil {
 			return nil, err
 		}
 
@@ -379,7 +381,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			cConfig.API.Server.OnlineClient = nil
 		}
 
-		apiServer, err := initAPIServer(cConfig)
+		apiServer, err := initAPIServer(ctx, cConfig)
 		if err != nil {
 			return fmt.Errorf("api server init: %w", err)
 		}
@@ -395,7 +397,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			return err
 		}
 
-		if err := hub.Load(); err != nil {
+		if err = hub.Load(); err != nil {
 			return err
 		}
 

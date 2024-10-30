@@ -35,7 +35,7 @@ func systemdUnitList() ([]string, error) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) == 0 {
+		if line == "" {
 			break // the rest of the output is footer
 		}
 

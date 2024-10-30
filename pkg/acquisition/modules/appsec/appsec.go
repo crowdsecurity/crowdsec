@@ -59,7 +59,7 @@ type AppsecSource struct {
 	AppsecConfigs map[string]appsec.AppsecConfig
 	lapiURL       string
 	AuthCache     AuthCache
-	AppsecRunners []AppsecRunner //one for each go-routine
+	AppsecRunners []AppsecRunner // one for each go-routine
 }
 
 // Struct to handle cache of authentication
@@ -172,7 +172,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
-	//let's load the associated appsec_config:
+	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
 		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
 		if err != nil {
@@ -201,7 +201,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		//we copy AppsecRutime for each runner
+		// we copy AppsecRutime for each runner
 		wrt := *w.AppsecRuntime
 		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
@@ -220,7 +220,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	w.logger.Infof("Created %d appsec runners", len(w.AppsecRunners))
 
-	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
+	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
 	return nil
 }
@@ -237,11 +237,11 @@ func (w *AppsecSource) GetName() string {
 	return "appsec"
 }
 
-func (w *AppsecSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
-func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
@@ -292,9 +292,9 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 		})
 		<-t.Dying()
 		w.logger.Info("Shutting down Appsec server")
-		//xx let's clean up the appsec runners :)
+		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
-		w.server.Shutdown(context.TODO())
+		w.server.Shutdown(ctx)
 		return nil
 	})
 	return nil
@@ -393,7 +393,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(statusCode)
 	body, err := json.Marshal(appsecResponse)
 	if err != nil {
-		logger.Errorf("unable to marshal response: %s", err)
+		logger.Errorf("unable to serialize response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
 		rw.Write(body)

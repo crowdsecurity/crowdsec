@@ -74,11 +74,9 @@ func (c *LongPollClient) doQuery() (*http.Response, error) {
 }
 
 func (c *LongPollClient) poll() error {
-
 	logger := c.logger.WithField("method", "poll")
 
 	resp, err := c.doQuery()
-
 	if err != nil {
 		return err
 	}
@@ -95,7 +93,7 @@ func (c *LongPollClient) poll() error {
 				logger.Errorf("failed to read response body: %s", err)
 				return err
 			}
-			logger.Errorf(string(bodyContent))
+			logger.Error(string(bodyContent))
 			return errUnauthorized
 		}
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -122,7 +120,7 @@ func (c *LongPollClient) poll() error {
 
 			logger.Tracef("got response: %+v", pollResp)
 
-			if len(pollResp.ErrorMessage) > 0 {
+			if pollResp.ErrorMessage != "" {
 				if pollResp.ErrorMessage == timeoutMessage {
 					logger.Debugf("got timeout message")
 					return nil
@@ -209,7 +207,7 @@ func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
 
 		c.logger.Tracef("got response: %+v", pollResp)
 
-		if len(pollResp.ErrorMessage) > 0 {
+		if pollResp.ErrorMessage != "" {
 			if pollResp.ErrorMessage == timeoutMessage {
 				c.logger.Debugf("got timeout message")
 				break

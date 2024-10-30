@@ -1,6 +1,6 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.22
+go 1.23
 
 // Don't use the toolchain directive to avoid uncontrolled downloads during
 // a build, especially in sandboxed environments (freebsd, gentoo...).
@@ -16,17 +16,17 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.9.2
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.52.0
-	github.com/beevik/etree v1.3.0
+	github.com/beevik/etree v1.4.1
 	github.com/blackfireio/osinfo v1.0.5
 	github.com/bluele/gcache v0.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.8
-	github.com/cespare/xxhash/v2 v2.2.0
+	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/corazawaf/libinjection-go v0.1.2
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20240108124027-a62b8d8e5607
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
-	github.com/crowdsecurity/go-cs-lib v0.0.13
-	github.com/crowdsecurity/grokky v0.2.1
+	github.com/crowdsecurity/go-cs-lib v0.0.15
+	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/daulet/tokenizers v0.8.0
 	github.com/davecgh/go-spew v1.1.1
@@ -80,16 +80,16 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/slack-go/slack v0.12.2
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	github.com/wasilibs/go-re2 v1.3.0
+	github.com/wasilibs/go-re2 v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	golang.org/x/crypto v0.24.0
+	golang.org/x/crypto v0.26.0
 	golang.org/x/mod v0.17.0
-	golang.org/x/sys v0.21.0
-	golang.org/x/text v0.16.0
-	google.golang.org/grpc v1.56.3
-	google.golang.org/protobuf v1.33.0
+	golang.org/x/sys v0.24.0
+	golang.org/x/text v0.17.0
+	google.golang.org/grpc v1.67.1
+	google.golang.org/protobuf v1.34.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.4.0
@@ -132,7 +132,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.1.0 // indirect
+	github.com/golang/glog v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -156,7 +156,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/leodido/go-urn v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/magefile/mage v1.15.0 // indirect
+	github.com/magefile/mage v1.15.1-0.20230912152418-9f54e0f83e2a // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
@@ -189,7 +189,7 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tetratelabs/wazero v1.2.1 // indirect
+	github.com/tetratelabs/wazero v1.8.0 // indirect
 	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -199,20 +199,20 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
+	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.mongodb.org/mongo-driver v1.9.4 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/perf v0.0.0-20240604174448-3b48cf0e0164 // indirect
-	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/term v0.23.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gotest.tools/v3 v3.5.0 // indirect

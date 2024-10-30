@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -83,7 +84,7 @@ func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
-func (s *SyslogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
@@ -105,7 +106,7 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if s.config.Addr == "" {
-		s.config.Addr = "127.0.0.1" //do we want a usable or secure default ?
+		s.config.Addr = "127.0.0.1" // do we want a usable or secure default ?
 	}
 	if s.config.Port == 0 {
 		s.config.Port = 514
@@ -135,7 +136,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	return nil
 }
 
-func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	c := make(chan syslogserver.SyslogMessage)
 	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal"), MaxMessageLen: s.config.MaxMessageLen}
 	s.server.SetChannel(c)
@@ -152,7 +153,8 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 }
 
 func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
-	appname string, pid string, msg string) string {
+	appname string, pid string, msg string,
+) string {
 	ret := ""
 	if !ts.IsZero() {
 		ret += ts.Format("Jan 2 15:04:05")
@@ -178,7 +180,6 @@ func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
 		ret += msg
 	}
 	return ret
-
 }
 
 func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {

@@ -55,6 +55,7 @@ type authInput struct {
 }
 
 func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
+	ctx := c.Request.Context()
 	ret := authInput{}
 
 	if j.TlsAuth == nil {
@@ -76,7 +77,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
-		First(j.DbClient.CTX)
+		First(ctx)
 	if ent.IsNotFound(err) {
 		// Machine was not found, let's create it
 		logger.Infof("machine %s not found, create it", ret.machineID)
@@ -91,7 +92,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 
 		password := strfmt.Password(pwd)
 
-		ret.clientMachine, err = j.DbClient.CreateMachine(&ret.machineID, &password, "", true, true, types.TlsAuthType)
+		ret.clientMachine, err = j.DbClient.CreateMachine(ctx, &ret.machineID, &password, "", true, true, types.TlsAuthType)
 		if err != nil {
 			return nil, fmt.Errorf("while creating machine entry for %s: %w", ret.machineID, err)
 		}
@@ -127,6 +128,8 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 		err        error
 	)
 
+	ctx := c.Request.Context()
+
 	ret := authInput{}
 
 	if err = c.ShouldBindJSON(&loginInput); err != nil {
@@ -143,7 +146,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
-		First(j.DbClient.CTX)
+		First(ctx)
 	if err != nil {
 		log.Infof("Error machine login for %s : %+v ", ret.machineID, err)
 		return nil, err
@@ -175,6 +178,8 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		auth *authInput
 	)
 
+	ctx := c.Request.Context()
+
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 		auth, err = j.authTLS(c)
 		if err != nil {
@@ -198,7 +203,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			}
 		}
 
-		err = j.DbClient.UpdateMachineScenarios(scenarios, auth.clientMachine.ID)
+		err = j.DbClient.UpdateMachineScenarios(ctx, scenarios, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update scenarios list for '%s': %s\n", auth.machineID, err)
 			return nil, jwt.ErrFailedAuthentication
@@ -208,7 +213,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	clientIP := c.ClientIP()
 
 	if auth.clientMachine.IpAddress == "" {
-		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
+		err = j.DbClient.UpdateMachineIP(ctx, clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.machineID, err)
 			return nil, jwt.ErrFailedAuthentication
@@ -218,7 +223,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	if auth.clientMachine.IpAddress != clientIP && auth.clientMachine.IpAddress != "" {
 		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, clientIP, auth.clientMachine.IpAddress)
 
-		err = j.DbClient.UpdateMachineIP(clientIP, auth.clientMachine.ID)
+		err = j.DbClient.UpdateMachineIP(ctx, clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.MachineId, err)
 			return nil, jwt.ErrFailedAuthentication
@@ -231,7 +236,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if err := j.DbClient.UpdateMachineVersion(useragent[1], auth.clientMachine.ID); err != nil {
+	if err := j.DbClient.UpdateMachineVersion(ctx, useragent[1], auth.clientMachine.ID); err != nil {
 		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
 		log.Errorf("bad user agent from : %s", clientIP)
 

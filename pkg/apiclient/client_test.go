@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 /*this is a ripoff of google/go-github approach :
@@ -97,7 +95,6 @@ func TestNewClientOk(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -134,7 +131,6 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -172,7 +168,6 @@ func TestNewClientKo(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -247,10 +242,11 @@ func TestNewClientRegisterKO(t *testing.T) {
 	apiURL, err := url.Parse("http://127.0.0.1:4242/")
 	require.NoError(t, err)
 
-	_, err = RegisterClient(&Config{
+	ctx := context.Background()
+
+	_, err = RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
@@ -278,10 +274,11 @@ func TestNewClientRegisterOK(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := RegisterClient(&Config{
+	ctx := context.Background()
+
+	client, err := RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
@@ -311,10 +308,11 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	client, err := RegisterClient(&Config{
+	ctx := context.Background()
+
+	client, err := RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
@@ -341,12 +339,13 @@ func TestNewClientBadAnswer(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	_, err = RegisterClient(&Config{
+	ctx := context.Background()
+
+	_, err = RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
-	cstest.RequireErrorContains(t, err, "invalid body: bad")
+	cstest.RequireErrorContains(t, err, "API error: http code 401, response: bad")
 }

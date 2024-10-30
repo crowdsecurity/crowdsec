@@ -45,7 +45,7 @@ type PluginBroker struct {
 	pluginConfigByName              map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
 	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
-	notificationPluginByName        map[string]Notifier
+	notificationPluginByName        map[string]protobufs.NotifierServer
 	watcher                         PluginWatcher
 	pluginKillMethods               []func()
 	pluginProcConfig                *csconfig.PluginCfg
@@ -72,10 +72,10 @@ type ProfileAlert struct {
 	Alert     *models.Alert
 }
 
-func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
+func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan ProfileAlert)
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
-	pb.notificationPluginByName = make(map[string]Notifier)
+	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
 	pb.pluginMap = make(map[string]plugin.Plugin)
 	pb.pluginConfigByName = make(map[string]PluginConfig)
 	pb.alertsByPluginName = make(map[string][]*models.Alert)
@@ -85,7 +85,7 @@ func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*cs
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
 		return fmt.Errorf("while loading plugin config: %w", err)
 	}
-	if err := pb.loadPlugins(configPaths.PluginDir); err != nil {
+	if err := pb.loadPlugins(ctx, configPaths.PluginDir); err != nil {
 		return fmt.Errorf("while loading plugin: %w", err)
 	}
 	pb.watcher = PluginWatcher{}
@@ -230,7 +230,7 @@ func (pb *PluginBroker) verifyPluginBinaryWithProfile() error {
 	return nil
 }
 
-func (pb *PluginBroker) loadPlugins(path string) error {
+func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 	binaryPaths, err := listFilesAtPath(path)
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 				return err
 			}
 			data = []byte(csstring.StrictExpand(string(data), os.LookupEnv))
-			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
+			_, err = pluginClient.Configure(ctx, &protobufs.Config{Config: data})
 			if err != nil {
 				return fmt.Errorf("while configuring %s: %w", pc.Name, err)
 			}
@@ -276,7 +276,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 	return pb.verifyPluginBinaryWithProfile()
 }
 
-func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
+func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (protobufs.NotifierServer, error) {
 
 	handshake, err := getHandshake()
 	if err != nil {
@@ -313,7 +313,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 		return nil, err
 	}
 	pb.pluginKillMethods = append(pb.pluginKillMethods, c.Kill)
-	return raw.(Notifier), nil
+	return raw.(protobufs.NotifierServer), nil
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
