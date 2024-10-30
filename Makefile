@@ -80,6 +80,9 @@ endif
 #expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
+# Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
+export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
+
 # this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
 
