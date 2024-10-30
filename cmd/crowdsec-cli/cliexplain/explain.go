@@ -197,7 +197,7 @@ func (cli *cliExplain) run() error {
 			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
 
-		dsn = fmt.Sprintf("file://%s", absolutePath)
+		dsn = "file://" + absolutePath
 
 		lineCount, err := getLineCountForFile(absolutePath)
 		if err != nil {

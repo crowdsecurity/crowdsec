@@ -1,7 +1,6 @@
 package clidecision
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 
@@ -23,7 +22,7 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 	for _, alertItem := range *alerts {
 		for _, decisionItem := range alertItem.Decisions {
 			if *alertItem.Simulated {
-				*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
+				*decisionItem.Type = "(simul)" + *decisionItem.Type
 			}
 
 			row := []string{

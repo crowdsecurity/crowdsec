@@ -36,7 +36,7 @@ func decisionsFromAlert(alert *models.Alert) string {
 	for _, decision := range alert.Decisions {
 		k := *decision.Type
 		if *decision.Simulated {
-			k = fmt.Sprintf("(simul)%s", k)
+			k = "(simul)" + k
 		}
 
 		v := decMap[k]
