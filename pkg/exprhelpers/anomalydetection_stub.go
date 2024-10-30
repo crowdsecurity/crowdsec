@@ -23,6 +23,7 @@ func IsAnomalous(params ...any) (any, error) {
 	if !ok1 || !ok2 {
 		return nil, errors.New("parameters must be strings")
 	}
+	fmt.Println("IsAnomalous: InitRobertaInferencePipeline called with no ML support")
 
 	return false, nil
 }
