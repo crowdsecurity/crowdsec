@@ -1,3 +1,5 @@
+//go:build !no_datasource_ml
+
 package exprhelpers
 
 import (
