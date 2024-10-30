@@ -26,6 +26,7 @@ require (
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20240108124027-a62b8d8e5607
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/go-cs-lib v0.0.15
+	github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4
 	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/daulet/tokenizers v0.8.0
@@ -56,7 +57,6 @@ require (
 	github.com/hashicorp/go-version v1.2.1
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/ivanpirog/coloredcobra v1.0.1
-	github.com/ivansuteja96/go-onnxruntime v0.0.0-20230926105850-5904c1132f06
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
@@ -101,7 +101,6 @@ require (
 	ariga.io/atlas v0.19.1-0.20240203083654-5948b60a8e43 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/aclements/go-moremath v0.0.0-20210112150236-f10218a38794 // indirect
 	github.com/ahmetalpbalkan/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
@@ -112,7 +111,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/creack/pty v1.1.18 // indirect
-	github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
