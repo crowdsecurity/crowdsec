@@ -17,40 +17,48 @@ type RobertaClassificationInferencePipeline struct {
 	ortSession *OrtSession
 }
 
-func NewRobertaInferencePipeline(modelBundleFilename string, datadir string) (*RobertaClassificationInferencePipeline, error) {
-	var err error
-
-	fmt.Println("Initializing Roberta Inference Pipeline")
-
+func NewRobertaInferencePipeline(modelBundleFilename, datadir string) (*RobertaClassificationInferencePipeline, error) {
 	bundleFilePath := filepath.Join(datadir, modelBundleFilename)
-	bundleDirectory := filepath.Clean(strings.TrimSuffix(bundleFilePath, ".tar"))
-	fmt.Printf("Extracting model bundle %s to %s\n", bundleFilePath, bundleDirectory)
-
-	err = extractTarFile(bundleFilePath, datadir)
+	tempDir, err := os.MkdirTemp("", "crowdsec_roberta_model_assets")
 	if err != nil {
+		return nil, fmt.Errorf("could not create temp directory: %v", err)
+	}
+
+	outputDirName := filepath.Base(strings.TrimSuffix(bundleFilePath, ".tar"))
+	outputDir := filepath.Join(tempDir, outputDirName)
+
+	if err := extractTarFile(bundleFilePath, tempDir); err != nil {
+		os.RemoveAll(tempDir)
 		return nil, fmt.Errorf("failed to extract tar file: %v", err)
 	}
 
-	requiredFiles := []string{"model.onnx", "tokenizer.json", "tokenizer_config.json"}
-	for _, file := range requiredFiles {
-		if _, err := os.Stat(filepath.Join(bundleDirectory, file)); os.IsNotExist(err) {
+	for _, file := range []string{"model.onnx", "tokenizer.json", "tokenizer_config.json"} {
+		if _, err := os.Stat(filepath.Join(outputDir, file)); os.IsNotExist(err) {
+			os.RemoveAll(tempDir)
 			return nil, fmt.Errorf("missing required file: %s", file)
 		}
 	}
 
-	// Initialize OrtSession
-	ortSession, err := NewOrtSession(filepath.Join(bundleDirectory, "model.onnx"))
+	ortSession, err := NewOrtSession(filepath.Join(outputDir, "model.onnx"))
 	if err != nil {
+		os.RemoveAll(tempDir)
 		return nil, err
 	}
 
-	// Initialize Tokenizer
-	tokenizer, err := NewTokenizer(bundleDirectory)
+	tokenizer, err := NewTokenizer(outputDir)
 	if err != nil {
+		ortSession.Close()
+		os.RemoveAll(tempDir)
 		return nil, err
 	}
 
 	inputShape := []int64{1, int64(tokenizer.modelMaxLength)}
+
+	if err := os.RemoveAll(tempDir); err != nil {
+		ortSession.Close()
+		tokenizer.Close()
+		return nil, fmt.Errorf("could not remove temp directory: %v", err)
+	}
 
 	return &RobertaClassificationInferencePipeline{
 		inputShape: inputShape,
