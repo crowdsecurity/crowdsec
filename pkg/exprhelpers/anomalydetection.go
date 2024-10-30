@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/ml"
 )
 
@@ -16,6 +17,8 @@ func InitRobertaInferencePipeline(modelBundleFilename string, datadir string) er
 	var err error
 
 	fmt.Println("Initializing Roberta Inference Pipeline")
+
+	component.Register("datasource_ml")
 
 	robertaInferencePipeline, err = ml.NewRobertaInferencePipeline(modelBundleFilename, datadir)
 	if err != nil {
