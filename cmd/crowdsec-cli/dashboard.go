@@ -129,7 +129,7 @@ func (cli *cliDashboard) newSetupCmd() *cobra.Command {
 		Use:               "setup",
 		Short:             "Setup a metabase container.",
 		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
@@ -198,7 +198,7 @@ func (cli *cliDashboard) newStartCmd() *cobra.Command {
 		Use:               "start",
 		Short:             "Start the metabase container.",
 		Long:              `Stats the metabase container using docker.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
@@ -229,7 +229,7 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 		Use:               "stop",
 		Short:             "Stops the metabase container.",
 		Long:              `Stops the metabase container using docker.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := metabase.StopContainer(metabaseContainerID); err != nil {
@@ -245,7 +245,7 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "show-password",
 		Short:             "displays password of metabase.",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			m := metabase.Metabase{}
@@ -268,7 +268,7 @@ func (cli *cliDashboard) newRemoveCmd() *cobra.Command {
 		Use:               "remove",
 		Short:             "removes the metabase container.",
 		Long:              `removes the metabase container using docker.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard remove

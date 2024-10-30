@@ -158,7 +158,7 @@ func (cli *cliNotifications) newListCmd() *cobra.Command {
 		Short:             "list notifications plugins",
 		Long:              `list notifications plugins and their status (active or not)`,
 		Example:           `cscli notifications list`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
