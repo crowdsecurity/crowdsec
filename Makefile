@@ -134,6 +134,7 @@ COMPONENTS := \
 	datasource_cloudwatch \
 	datasource_docker \
 	datasource_file \
+	datasource_http \
 	datasource_k8saudit \
 	datasource_kafka \
 	datasource_journalctl \
