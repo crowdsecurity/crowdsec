@@ -255,44 +255,6 @@ func TestNewAPIC(t *testing.T) {
 	}
 }
 
-func TestAPICHandleDeletedDecisions(t *testing.T) {
-	ctx := context.Background()
-	api := getAPIC(t, ctx)
-	_, deleteCounters := makeAddAndDeleteCounters()
-
-	decision1 := api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("ban").
-		SetScope("IP").
-		SetValue("1.2.3.4").
-		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
-
-	api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("ban").
-		SetScope("IP").
-		SetValue("1.2.3.4").
-		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
-
-	assertTotalDecisionCount(t, ctx, api.dbClient, 2)
-
-	nbDeleted, err := api.HandleDeletedDecisions([]*models.Decision{{
-		Value:    ptr.Of("1.2.3.4"),
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Type:     &decision1.Type,
-		Scenario: ptr.Of("crowdsec/test"),
-		Scope:    ptr.Of("IP"),
-	}}, deleteCounters)
-
-	require.NoError(t, err)
-	assert.Equal(t, 2, nbDeleted)
-	assert.Equal(t, 2, deleteCounters[types.CAPIOrigin]["all"])
-}
-
 func TestAPICGetMetrics(t *testing.T) {
 	ctx := context.Background()
 
