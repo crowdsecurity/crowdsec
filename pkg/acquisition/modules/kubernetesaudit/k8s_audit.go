@@ -189,11 +189,11 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 	}
 
 	remoteIP := strings.Split(r.RemoteAddr, ":")[0]
-	for _, auditEvent := range auditEvents.Items {
+	for idx := range auditEvents.Items {
 		if ka.metricsLevel != configuration.METRICS_NONE {
 			eventCount.WithLabelValues(ka.addr).Inc()
 		}
-		bytesEvent, err := json.Marshal(auditEvent)
+		bytesEvent, err := json.Marshal(auditEvents.Items[idx])
 		if err != nil {
 			ka.logger.Errorf("Error serializing audit event: %s", err)
 			continue
@@ -202,7 +202,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		l := types.Line{
 			Raw:     string(bytesEvent),
 			Labels:  ka.config.Labels,
-			Time:    auditEvent.StageTimestamp.Time,
+			Time:    auditEvents.Items[idx].StageTimestamp.Time,
 			Src:     remoteIP,
 			Process: true,
 			Module:  ka.GetName(),
