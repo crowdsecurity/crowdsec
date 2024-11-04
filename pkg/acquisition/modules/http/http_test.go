@@ -765,7 +765,7 @@ func assertMetrics(t *testing.T, metrics []prometheus.Collector, expected int) {
 			isExist = true
 			assert.Len(t, metricFamily.GetMetric(), 1)
 			for _, metric := range metricFamily.GetMetric() {
-				assert.Equal(t, float64(expected), metric.GetCounter().GetValue())
+				assert.InDelta(t, float64(expected), metric.GetCounter().GetValue(), 0.000001)
 				labels := metric.GetLabel()
 				assert.Len(t, labels, 2)
 				assert.Equal(t, "path", labels[0].GetName())
