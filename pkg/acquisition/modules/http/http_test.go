@@ -19,6 +19,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -180,9 +182,7 @@ custom_status_code: 999`,
 func TestGetUuid(t *testing.T) {
 	h := HTTPSource{}
 	h.Config.UniqueId = "test"
-	if h.GetUuid() != "test" {
-		t.Fatalf("expected 'test', got '%s'", h.GetUuid())
-	}
+	assert.Equal(t, "test", h.GetUuid())
 }
 
 func TestUnmarshalConfig(t *testing.T) {
@@ -210,16 +210,12 @@ func TestConfigureByDSN(t *testing.T) {
 func TestGetMode(t *testing.T) {
 	h := HTTPSource{}
 	h.Config.Mode = "test"
-	if h.GetMode() != "test" {
-		t.Fatalf("expected 'test', got '%s'", h.GetMode())
-	}
+	assert.Equal(t, "test", h.GetMode())
 }
 
 func TestGetName(t *testing.T) {
 	h := HTTPSource{}
-	if h.GetName() != "http" {
-		t.Fatalf("expected 'http', got '%s'", h.GetName())
-	}
+	assert.Equal(t, "http", h.GetName())
 }
 
 func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel int) (chan types.Event, *tomb.Tomb) {
@@ -228,15 +224,11 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 		"type": "http",
 	})
 	err := h.Configure(config, subLogger, metricLevel)
-	if err != nil {
-		t.Fatalf("unable to configure http source: %s", err)
-	}
+	require.NoError(t, err)
 	tomb := tomb.Tomb{}
 	out := make(chan types.Event)
 	err = h.StreamingAcquisition(ctx, out, &tomb)
-	if err != nil {
-		t.Fatalf("unable to start streaming acquisition: %s", err)
-	}
+	require.NoError(t, err)
 
 	for _, metric := range h.GetMetrics() {
 		prometheus.Register(metric)
@@ -259,12 +251,8 @@ basic_auth:
 	time.Sleep(1 * time.Second)
 
 	res, err := http.Get(fmt.Sprintf("%s/test", testHTTPServerAddr))
-	if err != nil {
-		t.Fatalf("unable to get http response: %s", err)
-	}
-	if res.StatusCode != http.StatusMethodNotAllowed {
-		t.Fatalf("expected status code %d, got %d", http.StatusMethodNotAllowed, res.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusMethodNotAllowed, res.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -286,13 +274,8 @@ basic_auth:
 	time.Sleep(1 * time.Second)
 
 	res, err := http.Get(fmt.Sprintf("%s/unknown", testHTTPServerAddr))
-	if err != nil {
-		t.Fatalf("unable to get http response: %s", err)
-	}
-
-	if res.StatusCode != http.StatusNotFound {
-		t.Fatalf("expected status code %d, got %d", http.StatusNotFound, res.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -315,25 +298,16 @@ basic_auth:
 	client := &http.Client{}
 
 	resp, err := http.Post(fmt.Sprintf("%s/test", testHTTPServerAddr), "application/json", strings.NewReader("test"))
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected status code %d, got %d", http.StatusUnauthorized, resp.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
 	req.SetBasicAuth("test", "WrongPassword")
+
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected status code %d, got %d", http.StatusUnauthorized, resp.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -355,17 +329,12 @@ headers:
 	client := &http.Client{}
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "wrong")
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected status code %d, got %d", http.StatusUnauthorized, resp.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -387,17 +356,13 @@ max_body_size: 5`), 0)
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("testtest"))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "test")
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusRequestEntityTooLarge {
-		t.Fatalf("expected status code %d, got %d", http.StatusRequestEntityTooLarge, resp.StatusCode)
-	}
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, resp.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -422,22 +387,15 @@ headers:
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "test")
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	err = <-errChan
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertMetrics(t, h.GetMetrics(), 1)
 
@@ -466,27 +424,17 @@ custom_headers:
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "test")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
+	require.NoError(t, err)
 
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected status code %d, got %d", http.StatusCreated, resp.StatusCode)
-	}
-
-	if resp.Header.Get("Success") != "true" {
-		t.Fatalf("expected header 'success' to be 'true', got '%s'", resp.Header.Get("Success"))
-	}
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, "true", resp.Header.Get("Success"))
 
 	err = <-errChan
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertMetrics(t, h.GetMetrics(), 1)
 
@@ -565,20 +513,16 @@ timeout: 1s`), 0)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
-	if err != nil {
-		t.Fatalf("Error creating request: %v", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "test")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("Error sending request: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
-	}
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -600,13 +544,9 @@ tls:
 	time.Sleep(1 * time.Second)
 
 	resp, err := http.Post(fmt.Sprintf("%s/test", testHTTPServerAddr), "application/json", strings.NewReader("test"))
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
+	require.NoError(t, err)
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -630,9 +570,8 @@ tls:
 	time.Sleep(1 * time.Second)
 
 	caCert, err := os.ReadFile("testdata/server.crt")
-	if err != nil {
-		t.Fatalf("unable to read ca cert: %s", err)
-	}
+	require.NoError(t, err)
+
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
@@ -651,22 +590,16 @@ tls:
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "test")
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
-	}
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	err = <-errChan
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertMetrics(t, h.GetMetrics(), 0)
 
@@ -691,14 +624,10 @@ tls:
 
 	// init client cert
 	cert, err := tls.LoadX509KeyPair("testdata/client.crt", "testdata/client.key")
-	if err != nil {
-		t.Fatalf("unable to load client cert: %s", err)
-	}
+	require.NoError(t, err)
 
 	caCert, err := os.ReadFile("testdata/ca.crt")
-	if err != nil {
-		t.Fatalf("unable to read ca cert: %s", err)
-	}
+	require.NoError(t, err)
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
@@ -719,23 +648,15 @@ tls:
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
+	require.NoError(t, err)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	err = <-errChan
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertMetrics(t, h.GetMetrics(), 0)
 
@@ -762,38 +683,32 @@ headers:
 
 	var b strings.Builder
 	gz := gzip.NewWriter(&b)
-	if _, err := gz.Write([]byte(rawEvt)); err != nil {
-		t.Fatalf("unable to write gzipped data: %s", err)
-	}
-	if _, err := gz.Write([]byte(rawEvt)); err != nil {
-		t.Fatalf("unable to write gzipped data: %s", err)
-	}
-	if err := gz.Close(); err != nil {
-		t.Fatalf("unable to close gzip writer: %s", err)
-	}
+
+	_, err := gz.Write([]byte(rawEvt))
+	require.NoError(t, err)
+
+	_, err = gz.Write([]byte(rawEvt))
+	require.NoError(t, err)
+
+	err = gz.Close()
+	require.NoError(t, err)
 
 	// send gzipped compressed data
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("Key", "test")
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
-	}
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	err = <-errChan
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertMetrics(t, h.GetMetrics(), 2)
 
@@ -821,25 +736,17 @@ headers:
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
 
-	if err != nil {
-		t.Fatalf("unable to create http request: %s", err)
-	}
+	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
 	req.Header.Add("Content-Type", "application/x-ndjson")
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("unable to post http request: %s", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	err = <-errChan
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assertMetrics(t, h.GetMetrics(), 2)
 
@@ -850,30 +757,21 @@ headers:
 
 func assertMetrics(t *testing.T, metrics []prometheus.Collector, expected int) {
 	promMetrics, err := prometheus.DefaultGatherer.Gather()
-	if err != nil {
-		t.Fatalf("unable to gather metrics: %s", err)
-	}
+	require.NoError(t, err)
+
 	isExist := false
 	for _, metricFamily := range promMetrics {
 		if metricFamily.GetName() == "cs_httpsource_hits_total" {
 			isExist = true
-			if len(metricFamily.GetMetric()) != 1 {
-				t.Fatalf("expected 1 metricFamily, got %d", len(metricFamily.GetMetric()))
-			}
+			assert.Len(t, metricFamily.GetMetric(), 1)
 			for _, metric := range metricFamily.GetMetric() {
-				if metric.GetCounter().GetValue() != float64(expected) {
-					t.Fatalf("expected %d, got %f", expected, metric.GetCounter().GetValue())
-				}
+				assert.Equal(t, float64(expected), metric.GetCounter().GetValue())
 				labels := metric.GetLabel()
-				if len(labels) != 2 {
-					t.Fatalf("expected 2 label, got %d", len(labels))
-				}
-				if labels[0].GetName() != "path" || labels[0].GetValue() != "/test" {
-					t.Fatalf("expected label path:/test, got %s:%s", labels[0].GetName(), labels[0].GetValue())
-				}
-				if labels[1].GetName() != "src" || labels[1].GetValue() != "127.0.0.1" {
-					t.Fatalf("expected label src:127.0.0.1, got %s:%s", labels[1].GetName(), labels[1].GetValue())
-				}
+				assert.Len(t, labels, 2)
+				assert.Equal(t, "path", labels[0].GetName())
+				assert.Equal(t, "/test", labels[0].GetValue())
+				assert.Equal(t, "src", labels[1].GetName())
+				assert.Equal(t, "127.0.0.1", labels[1].GetValue())
 			}
 		}
 	}
