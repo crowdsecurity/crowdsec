@@ -198,22 +198,24 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 func EventsFromQueue(queue *types.Queue) []*models.Event {
 	events := []*models.Event{}
 
-	for _, evt := range queue.Queue {
-		if evt.Meta == nil {
+	qEvents := queue.GetQueue()
+
+	for idx := range qEvents {
+		if qEvents[idx].Meta == nil {
 			continue
 		}
 
 		meta := models.Meta{}
 		// we want consistence
-		skeys := make([]string, 0, len(evt.Meta))
-		for k := range evt.Meta {
+		skeys := make([]string, 0, len(qEvents[idx].Meta))
+		for k := range qEvents[idx].Meta {
 			skeys = append(skeys, k)
 		}
 
 		sort.Strings(skeys)
 
 		for _, k := range skeys {
-			v := evt.Meta[k]
+			v := qEvents[idx].Meta[k]
 			subMeta := models.MetaItems0{Key: k, Value: v}
 			meta = append(meta, &subMeta)
 		}
@@ -223,15 +225,15 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 			Meta: meta,
 		}
 		// either MarshaledTime is present and is extracted from log
-		if evt.MarshaledTime != "" {
-			tmpTimeStamp := evt.MarshaledTime
+		if qEvents[idx].MarshaledTime != "" {
+			tmpTimeStamp := qEvents[idx].MarshaledTime
 			ovflwEvent.Timestamp = &tmpTimeStamp
-		} else if !evt.Time.IsZero() { // or .Time has been set during parse as time.Now().UTC()
+		} else if !qEvents[idx].Time.IsZero() { // or .Time has been set during parse as time.Now().UTC()
 			ovflwEvent.Timestamp = new(string)
 
-			raw, err := evt.Time.MarshalText()
+			raw, err := qEvents[idx].Time.MarshalText()
 			if err != nil {
-				log.Warningf("while serializing time '%s' : %s", evt.Time.String(), err)
+				log.Warningf("while serializing time '%s' : %s", qEvents[idx].Time.String(), err)
 			} else {
 				*ovflwEvent.Timestamp = string(raw)
 			}
@@ -253,8 +255,9 @@ func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Sour
 
 	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
 
-	for _, evt := range queue.Queue {
-		srcs, err := SourceFromEvent(evt, leaky)
+	qEvents := queue.GetQueue()
+	for idx := range qEvents {
+		srcs, err := SourceFromEvent(qEvents[idx], leaky)
 		if err != nil {
 			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Name, err)
 		}
