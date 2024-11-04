@@ -357,16 +357,17 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	// Iterate on leafs
-	for _, leaf := range n.LeavesNodes {
-		ret, err := leaf.process(p, ctx, cachedExprEnv)
+	leaves := n.LeavesNodes
+	for idx := range leaves {
+		ret, err := leaves[idx].process(p, ctx, cachedExprEnv)
 		if err != nil {
-			clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
+			clog.Tracef("\tNode (%s) failed : %v", leaves[idx].rn, err)
 			clog.Debugf("Event leaving node : ko")
 
 			return false, err
 		}
 
-		clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
+		clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaves[idx].rn, ret, n.OnSuccess)
 
 		if ret {
 			NodeState = true
