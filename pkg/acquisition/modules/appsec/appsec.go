@@ -85,6 +85,7 @@ func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
 	ac.mu.RLock()
 	expiration, exists := ac.APIKeys[apiKey]
 	ac.mu.RUnlock()
+
 	return expiration, exists
 }
 
@@ -128,6 +129,7 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		if w.config.ListenSocket != "" && w.config.ListenAddr == "" {
 			w.config.Name = w.config.ListenSocket
 		}
+
 		if w.config.ListenSocket == "" {
 			w.config.Name = fmt.Sprintf("%s%s", w.config.ListenAddr, w.config.Path)
 		}
@@ -153,6 +155,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
+
 	w.logger = logger
 	w.metricsLevel = MetricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
@@ -211,10 +214,12 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 			AppsecRuntime: &wrt,
 			Labels:        w.config.Labels,
 		}
+
 		err := runner.Init(appsecCfg.GetDataDir())
 		if err != nil {
 			return fmt.Errorf("unable to initialize runner: %w", err)
 		}
+
 		w.AppsecRunners[nbRoutine] = runner
 	}
 
@@ -222,6 +227,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
+
 	return nil
 }
 
@@ -243,10 +249,12 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
+
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
 
 		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
+
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
 			t.Go(func() error {
@@ -254,6 +262,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 				return runner.Run(t)
 			})
 		}
+
 		t.Go(func() error {
 			if w.config.ListenSocket != "" {
 				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
@@ -268,10 +277,11 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 				} else {
 					err = w.server.Serve(listener)
 				}
-				if err != nil && err != http.ErrServerClosed {
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
+
 			return nil
 		})
 		t.Go(func() error {
@@ -288,6 +298,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
+
 			return nil
 		})
 		<-t.Dying()
@@ -297,6 +308,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 		w.server.Shutdown(ctx)
 		return nil
 	})
+
 	return nil
 }
 
@@ -391,6 +403,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	logger.Debugf("Response: %+v", appsecResponse)
 
 	rw.WriteHeader(statusCode)
+
 	body, err := json.Marshal(appsecResponse)
 	if err != nil {
 		logger.Errorf("unable to serialize response: %s", err)
