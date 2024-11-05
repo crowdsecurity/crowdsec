@@ -149,15 +149,12 @@ func TruncateContext(values []string, contextValueLen int) (string, error) {
 	return ret, nil
 }
 
-func EvalAlertContextRules(evt *types.Event, match *types.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
+func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
 
 	var errors []error
 
 	//if we're evaluating context for appsec event, match and request will be present.
 	//otherwise, only evt will be.
-	if evt == nil {
-		evt = types.NewEvent()
-	}
 	if match == nil {
 		match = types.NewMatchedRule()
 	}
@@ -220,8 +217,9 @@ func AppsecEventToContext(event types.AppsecEvent, request *http.Request) (model
 
 	tmpContext := make(map[string][]string)
 
+	evt := types.MakeEvent(false, types.LOG, false)
 	for _, matched_rule := range event.MatchedRules {
-		tmpErrors := EvalAlertContextRules(nil, &matched_rule, request, tmpContext)
+		tmpErrors := EvalAlertContextRules(evt, &matched_rule, request, tmpContext)
 		errors = append(errors, tmpErrors...)
 	}
 
@@ -240,7 +238,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 	tmpContext := make(map[string][]string)
 
 	for _, evt := range events {
-		tmpErrors := EvalAlertContextRules(&evt, nil, nil, tmpContext)
+		tmpErrors := EvalAlertContextRules(evt, nil, nil, tmpContext)
 		errors = append(errors, tmpErrors...)
 	}
 

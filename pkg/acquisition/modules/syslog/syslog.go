@@ -235,11 +235,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			l.Time = ts
 			l.Src = syslogLine.Client
 			l.Process = true
-			if !s.config.UseTimeMachine {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+			evt := types.MakeEvent(s.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
+			out <- evt
 		}
 	}
 }

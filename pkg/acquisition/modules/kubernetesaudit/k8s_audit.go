@@ -207,11 +207,8 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Process: true,
 			Module:  ka.GetName(),
 		}
-		ka.outChan <- types.Event{
-			Line:       l,
-			Process:    true,
-			Type:       types.LOG,
-			ExpectMode: types.LIVE,
-		}
+		evt := types.MakeEvent(ka.config.UseTimeMachine, types.LOG, true)
+		evt.Line = l
+		ka.outChan <- evt
 	}
 }

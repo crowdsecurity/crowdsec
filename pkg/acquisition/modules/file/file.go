@@ -621,11 +621,9 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			// we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
-			expectMode := types.LIVE
-			if f.config.UseTimeMachine {
-				expectMode = types.TIMEMACHINE
-			}
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: expectMode}
+			evt := types.MakeEvent(f.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
+			out <- evt
 		}
 	}
 }
@@ -684,7 +682,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 			linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 		}
 	}
 
