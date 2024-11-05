@@ -83,7 +83,7 @@ func logLevelToInt(logLevel string) ([]string, error) {
 
 // This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
 func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int) ([]string, error) {
-	var events = make([]windows.Handle, maxEvents)
+	events := make([]windows.Handle, maxEvents)
 	var returned uint32
 
 	// Get handles to events from the result set.
@@ -94,7 +94,7 @@ func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publish
 		2000,                // Timeout in milliseconds to wait.
 		0,                   // Reserved. Must be zero.
 		&returned)           // The number of handles in the array that are set by the API.
-	if err == windows.ERROR_NO_MORE_ITEMS {
+	if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 		return nil, err
 	} else if err != nil {
 		return nil, fmt.Errorf("wevtapi.EvtNext failed: %v", err)
@@ -188,7 +188,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 			}
 			if status == syscall.WAIT_OBJECT_0 {
 				renderedEvents, err := w.getXMLEvents(w.evtConfig, publisherCache, subscription, 500)
-				if err == windows.ERROR_NO_MORE_ITEMS {
+				if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 					windows.ResetEvent(w.evtConfig.SignalEvent)
 				} else if err != nil {
 					w.logger.Errorf("getXMLEvents failed: %v", err)
@@ -206,9 +206,9 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					l.Src = w.name
 					l.Process = true
 					if !w.config.UseTimeMachine {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE, Unmarshaled: make(map[string]interface{})}
 					} else {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 					}
 				}
 			}
@@ -362,7 +362,7 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 
 	var err error
 
-	//FIXME: handle custom xpath query
+	// FIXME: handle custom xpath query
 	w.query, err = w.buildXpathQuery()
 
 	if err != nil {
@@ -388,10 +388,8 @@ func (w *WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-
+func (w *WinEventLogSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	handle, err := wevtapi.EvtQuery(localMachine, w.evtConfig.ChannelPath, w.evtConfig.Query, w.evtConfig.Flags)
-
 	if err != nil {
 		return fmt.Errorf("EvtQuery failed: %v", err)
 	}
@@ -413,7 +411,7 @@ OUTER_LOOP:
 			return nil
 		default:
 			evts, err := w.getXMLEvents(w.evtConfig, publisherCache, handle, 500)
-			if err == windows.ERROR_NO_MORE_ITEMS {
+			if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 				log.Info("No more items")
 				break OUTER_LOOP
 			} else if err != nil {
@@ -432,10 +430,13 @@ OUTER_LOOP:
 				l.Time = time.Now()
 				l.Src = w.name
 				l.Process = true
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+				csevt := types.MakeEvent(w.config.UseTimeMachine, types.LOG, true)
+				csevt.Line = l
+				out <- csevt
 			}
 		}
 	}
+
 	return nil
 }
 

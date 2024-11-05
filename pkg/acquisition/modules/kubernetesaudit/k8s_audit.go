@@ -131,7 +131,7 @@ func (ka *KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
 }
 
-func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (ka *KubernetesAuditSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
@@ -149,7 +149,7 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 		})
 		<-t.Dying()
 		ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
-		ka.server.Shutdown(context.TODO())
+		ka.server.Shutdown(ctx)
 		return nil
 	})
 	return nil
@@ -207,11 +207,8 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Process: true,
 			Module:  ka.GetName(),
 		}
-		ka.outChan <- types.Event{
-			Line:       l,
-			Process:    true,
-			Type:       types.LOG,
-			ExpectMode: types.LIVE,
-		}
+		evt := types.MakeEvent(ka.config.UseTimeMachine, types.LOG, true)
+		evt.Line = l
+		ka.outChan <- evt
 	}
 }

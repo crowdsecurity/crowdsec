@@ -78,13 +78,13 @@ teardown() {
 
     # invalid defaults
     rune -1 cscli decisions import --duration "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--duration cannot be empty"
+    assert_stderr --partial "default duration cannot be empty"
     rune -1 cscli decisions import --scope "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--scope cannot be empty"
+    assert_stderr --partial "default scope cannot be empty"
     rune -1 cscli decisions import --reason "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--reason cannot be empty"
+    assert_stderr --partial "default reason cannot be empty"
     rune -1 cscli decisions import --type "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--type cannot be empty"
+    assert_stderr --partial "default type cannot be empty"
 
     #----------
     # JSON

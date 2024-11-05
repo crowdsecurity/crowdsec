@@ -254,7 +254,6 @@ linters:
     #
 
     - containedctx          # containedctx is a linter that detects struct contained context.Context field
-    - contextcheck          # check whether the function uses a non-inherited context
     - errname               # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - ireturn               # Accept Interfaces, Return Concrete Types
     - mnd                   # An analyzer to detect magic numbers.
@@ -348,10 +347,6 @@ issues:
     - linters:
         - errorlint
       text: "type switch on error will fail on wrapped errors. Use errors.As to check for specific errors"
-
-    - linters:
-        - errorlint
-      text: "comparing with .* will fail on wrapped errors. Use errors.Is to check for a specific error"
 
     - linters:
         - nosprintfhostport

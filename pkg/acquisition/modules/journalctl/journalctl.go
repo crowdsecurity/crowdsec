@@ -65,8 +65,8 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	return nil
 }
 
-func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+	ctx, cancel := context.WithCancel(ctx)
 
 	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
 	stdout, err := cmd.StdoutPipe()
@@ -136,12 +136,9 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			if j.metricsLevel != configuration.METRICS_NONE {
 				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			}
-			var evt types.Event
-			if !j.config.UseTimeMachine {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+
+			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)
@@ -262,9 +259,9 @@ func (j *JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
-func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
-	err := j.runJournalCtl(out, t)
+	err := j.runJournalCtl(ctx, out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
 }
@@ -272,7 +269,7 @@ func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb
 func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
-		return j.runJournalCtl(out, t)
+		return j.runJournalCtl(ctx, out, t)
 	})
 	return nil
 }

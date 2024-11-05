@@ -259,10 +259,10 @@ func (cw *CloudwatchSource) StreamingAcquisition(ctx context.Context, out chan t
 	monitChan := make(chan LogStreamTailConfig)
 
 	t.Go(func() error {
-		return cw.LogStreamManager(monitChan, out)
+		return cw.LogStreamManager(ctx, monitChan, out)
 	})
 
-	return cw.WatchLogGroupForStreams(monitChan)
+	return cw.WatchLogGroupForStreams(ctx, monitChan)
 }
 
 func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
@@ -289,7 +289,7 @@ func (cw *CloudwatchSource) Dump() interface{} {
 	return cw
 }
 
-func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig) error {
+func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out chan LogStreamTailConfig) error {
 	cw.logger.Debugf("Starting to watch group (interval:%s)", cw.Config.PollNewStreamInterval)
 	ticker := time.NewTicker(*cw.Config.PollNewStreamInterval)
 
@@ -307,7 +307,6 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 			for hasMoreStreams {
 				cw.logger.Tracef("doing the call to DescribeLogStreamsPagesWithContext")
 
-				ctx := context.Background()
 				// there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
 				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
 					ctx,
@@ -372,7 +371,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 }
 
 // LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
-func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
+func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStreamTailConfig, outChan chan types.Event) error {
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
 	pollDeadStreamInterval := time.NewTicker(def_PollDeadStreamInterval)
 
@@ -422,7 +421,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 				newStream.logger = cw.logger.WithField("stream", newStream.StreamName)
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
 				newStream.t.Go(func() error {
-					return cw.TailLogStream(&newStream, outChan)
+					return cw.TailLogStream(ctx, &newStream, outChan)
 				})
 				cw.monitoredStreams = append(cw.monitoredStreams, &newStream)
 			}
@@ -457,7 +456,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 	}
 }
 
-func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
+func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
 	lastReadMessage := time.Now().UTC()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
@@ -479,7 +478,6 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 			for hasMorePages {
 				/*for the first call, we only consume the last item*/
 				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
-				ctx := context.Background()
 				err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
 					&cloudwatchlogs.GetLogEventsInput{
 						Limit:         aws.Int64(cfg.GetLogEventsPagesLimit),
@@ -633,7 +631,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 	return nil
 }
 
-func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (cw *CloudwatchSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	// StreamName string, Start time.Time, End time.Time
 	config := LogStreamTailConfig{
 		GroupName:              cw.Config.GroupName,
@@ -648,10 +646,10 @@ func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 		Labels:     cw.Config.Labels,
 		ExpectMode: types.TIMEMACHINE,
 	}
-	return cw.CatLogStream(&config, out)
+	return cw.CatLogStream(ctx, &config, out)
 }
 
-func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
+func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
 	head := true
 	/*convert the times*/
@@ -667,7 +665,6 @@ func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan 
 			if startFrom != nil {
 				cfg.logger.Tracef("next_token: %s", *startFrom)
 			}
-			ctx := context.Background()
 			err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
 				&cloudwatchlogs.GetLogEventsInput{
 					Limit:         aws.Int64(10),
@@ -713,7 +710,7 @@ func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan 
 
 func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) (types.Event, error) {
 	l := types.Line{}
-	evt := types.Event{}
+	evt := types.MakeEvent(cfg.ExpectMode == types.TIMEMACHINE, types.LOG, true)
 	if log.Message == nil {
 		return evt, errors.New("nil message")
 	}
@@ -729,9 +726,6 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	l.Process = true
 	l.Module = "cloudwatch"
 	evt.Line = l
-	evt.Process = true
-	evt.Type = types.LOG
-	evt.ExpectMode = cfg.ExpectMode
 	cfg.logger.Debugf("returned event labels : %+v", evt.Line.Labels)
 	return evt, nil
 }

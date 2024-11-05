@@ -80,6 +80,9 @@ endif
 #expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
+# Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
+export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
+
 # this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
 
@@ -111,7 +114,7 @@ ifeq ($(call bool,$(DEBUG)),1)
 STRIP_SYMBOLS :=
 DISABLE_OPTIMIZATION := -gcflags "-N -l"
 else
-STRIP_SYMBOLS := -s -w
+STRIP_SYMBOLS := -s
 DISABLE_OPTIMIZATION :=
 endif
 
@@ -131,6 +134,7 @@ COMPONENTS := \
 	datasource_cloudwatch \
 	datasource_docker \
 	datasource_file \
+	datasource_http \
 	datasource_k8saudit \
 	datasource_kafka \
 	datasource_journalctl \

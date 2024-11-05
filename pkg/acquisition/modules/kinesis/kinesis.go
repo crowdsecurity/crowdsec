@@ -182,7 +182,7 @@ func (k *KinesisSource) GetName() string {
 	return "kinesis"
 }
 
-func (k *KinesisSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("kinesis datasource does not support one-shot acquisition")
 }
 
@@ -322,12 +322,8 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 			} else {
 				l.Src = k.Config.StreamName
 			}
-			var evt types.Event
-			if !k.Config.UseTimeMachine {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+			evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
 			out <- evt
 		}
 	}

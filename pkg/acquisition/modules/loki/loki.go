@@ -261,17 +261,17 @@ func (l *LokiSource) GetName() string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (l *LokiSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	l.logger.Debug("Loki one shot acquisition")
 	l.Client.SetTomb(t)
-	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
+	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 	defer cancel()
 	err := l.Client.Ready(readyCtx)
 	if err != nil {
 		return fmt.Errorf("loki is not ready: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel = context.WithCancel(ctx)
 	c := l.Client.QueryRange(ctx, false)
 
 	for {
@@ -307,16 +307,9 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	if l.metricsLevel != configuration.METRICS_NONE {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
-	expectMode := types.LIVE
-	if l.Config.UseTimeMachine {
-		expectMode = types.TIMEMACHINE
-	}
-	out <- types.Event{
-		Line:       ll,
-		Process:    true,
-		Type:       types.LOG,
-		ExpectMode: expectMode,
-	}
+	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
+	evt.Line = ll
+	out <- evt
 }
 
 func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {

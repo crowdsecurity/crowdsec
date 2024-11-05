@@ -436,37 +436,6 @@ func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, deleteCounters map[string]map[string]int) (int, error) {
-	ctx := context.TODO()
-	nbDeleted := 0
-
-	for _, decision := range deletedDecisions {
-		filter := map[string][]string{
-			"value":  {*decision.Value},
-			"origin": {*decision.Origin},
-		}
-		if strings.ToLower(*decision.Scope) != "ip" {
-			filter["type"] = []string{*decision.Type}
-			filter["scopes"] = []string{*decision.Scope}
-		}
-
-		dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
-		if err != nil {
-			return 0, fmt.Errorf("expiring decisions error: %w", err)
-		}
-
-		dbCliDel, err := strconv.Atoi(dbCliRet)
-		if err != nil {
-			return 0, fmt.Errorf("converting db ret %d: %w", dbCliDel, err)
-		}
-
-		updateCounterForDecision(deleteCounters, decision.Origin, decision.Scenario, dbCliDel)
-		nbDeleted += dbCliDel
-	}
-
-	return nbDeleted, nil
-}
-
 func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, deleteCounters map[string]map[string]int) (int, error) {
 	var nbDeleted int
 

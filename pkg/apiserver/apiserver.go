@@ -46,20 +46,11 @@ type APIServer struct {
 	consoleConfig  *csconfig.ConsoleConfig
 }
 
-func recoverFromPanic(c *gin.Context) {
-	err := recover()
-	if err == nil {
-		return
-	}
-
-	// Check for a broken connection, as it is not really a
-	// condition that warrants a panic stack trace.
-	brokenPipe := false
-
+func isBrokenConnection(err any) bool {
 	if ne, ok := err.(*net.OpError); ok {
 		if se, ok := ne.Err.(*os.SyscallError); ok {
 			if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
-				brokenPipe = true
+				return true
 			}
 		}
 	}
@@ -79,11 +70,22 @@ func recoverFromPanic(c *gin.Context) {
 			errors.Is(strErr, errClosedBody) ||
 			errors.Is(strErr, errHandlerComplete) ||
 			errors.Is(strErr, errStreamClosed) {
-			brokenPipe = true
+			return true
 		}
 	}
 
-	if brokenPipe {
+	return false
+}
+
+func recoverFromPanic(c *gin.Context) {
+	err := recover()
+	if err == nil {
+		return
+	}
+
+	// Check for a broken connection, as it is not really a
+	// condition that warrants a panic stack trace.
+	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
 	} else {
