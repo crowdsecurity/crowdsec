@@ -20,14 +20,14 @@ func (t *hubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.RoundTripper.RoundTrip(req)
 }
 
-// hubClient is the HTTP client used to communicate with the CrowdSec Hub.
-var hubClient = &http.Client{
+// HubClient is the HTTP client used to communicate with the CrowdSec Hub.
+var HubClient = &http.Client{
 	Timeout:   120 * time.Second,
 	Transport: &hubTransport{http.DefaultTransport},
 }
 
-// safePath returns a joined path and ensures that it does not escape the base directory.
-func safePath(dir, filePath string) (string, error) {
+// SafePath returns a joined path and ensures that it does not escape the base directory.
+func SafePath(dir, filePath string) (string, error) {
 	absBaseDir, err := filepath.Abs(filepath.Clean(dir))
 	if err != nil {
 		return "", err
