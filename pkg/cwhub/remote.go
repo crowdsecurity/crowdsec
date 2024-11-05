@@ -3,6 +3,7 @@ package cwhub
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/sirupsen/logrus"
@@ -70,11 +71,14 @@ func (r *RemoteHubCfg) fetchIndex(ctx context.Context, destPath string) (bool, e
 
 	downloaded, err := downloader.
 		New().
-		WithHTTPClient(hubClient).
+		WithHTTPClient(HubClient).
 		ToFile(destPath).
 		WithETagFn(downloader.SHA256).
 		CompareContent().
 		WithLogger(logrus.WithField("url", url)).
+		BeforeRequest(func(_ *http.Request) {
+			fmt.Println("Downloading "+destPath)
+		}).
 		Download(ctx, url)
 	if err != nil {
 		return false, err

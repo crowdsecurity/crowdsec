@@ -11,9 +11,11 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
 type configGetter = func() *csconfig.Config
@@ -153,36 +155,43 @@ Fetches the .index.json file from the hub, containing the list of available conf
 	return cmd
 }
 
-func (cli *cliHub) upgrade(ctx context.Context, force bool) error {
-	hub, err := require.Hub(cli.cfg(), require.RemoteHub(ctx, cli.cfg()), log.StandardLogger())
+func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force bool) error {
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
+	plan := hubops.NewActionPlan(hub)
+
 	for _, itemType := range cwhub.ItemTypes {
-		updated := 0
-
-		log.Infof("Upgrading %s", itemType)
-
 		for _, item := range hub.GetInstalledByType(itemType, true) {
-			didUpdate, err := item.Upgrade(ctx, force)
-			if err != nil {
-				return err
-			}
-
-			if didUpdate {
-				updated++
-			}
+			plan.AddCommand(hubops.NewDownloadCommand(item, force))
 		}
+	}
 
-		log.Infof("Upgraded %d %s", updated, itemType)
+	plan.AddCommand(hubops.NewDataRefreshCommand(force))
+
+	verbose := (cfg.Cscli.Output == "raw")
+
+	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+		return err
+	}
+
+	if plan.ReloadNeeded {
+		fmt.Println("\n" + reload.Message)
 	}
 
 	return nil
 }
 
 func (cli *cliHub) newUpgradeCmd() *cobra.Command {
-	var force bool
+	var (
+		yes bool
+		dryRun bool
+		force bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "upgrade",
@@ -193,12 +202,15 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.upgrade(cmd.Context(), force)
+			return cli.upgrade(cmd.Context(), yes, dryRun, force)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated files")
+	flags.BoolVar(&yes, "yes", false, "Confirm execution without prompt")
+	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
+	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated items; always update data files")
+	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
 
 	return cmd
 }
