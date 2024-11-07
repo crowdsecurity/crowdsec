@@ -124,7 +124,7 @@ func (e *crzLogEvent) Stringer(key string, val fmt.Stringer) dbg.Event {
 	return e
 }
 
-func (e crzLogEvent) IsEnabled() bool {
+func (e *crzLogEvent) IsEnabled() bool {
 	return !e.muted
 }
 

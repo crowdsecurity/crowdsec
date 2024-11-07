@@ -48,7 +48,6 @@ func WithStrictHostname() RFC5424Option {
 }
 
 func (r *RFC5424) parsePRI() error {
-
 	pri := 0
 
 	if r.buf[r.position] != '<' {
@@ -94,7 +93,6 @@ func (r *RFC5424) parseVersion() error {
 }
 
 func (r *RFC5424) parseTimestamp() error {
-
 	timestamp := []byte{}
 
 	if r.buf[r.position] == NIL_VALUE {
@@ -121,7 +119,6 @@ func (r *RFC5424) parseTimestamp() error {
 	}
 
 	date, err := time.Parse(VALID_TIMESTAMP, string(timestamp))
-
 	if err != nil {
 		return errors.New("timestamp is not valid")
 	}

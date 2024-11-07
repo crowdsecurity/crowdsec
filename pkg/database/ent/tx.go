@@ -14,6 +14,10 @@ type Tx struct {
 	config
 	// Alert is the client for interacting with the Alert builders.
 	Alert *AlertClient
+	// AllowList is the client for interacting with the AllowList builders.
+	AllowList *AllowListClient
+	// AllowListItem is the client for interacting with the AllowListItem builders.
+	AllowListItem *AllowListItemClient
 	// Bouncer is the client for interacting with the Bouncer builders.
 	Bouncer *BouncerClient
 	// ConfigItem is the client for interacting with the ConfigItem builders.
@@ -162,6 +166,8 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Alert = NewAlertClient(tx.config)
+	tx.AllowList = NewAllowListClient(tx.config)
+	tx.AllowListItem = NewAllowListItemClient(tx.config)
 	tx.Bouncer = NewBouncerClient(tx.config)
 	tx.ConfigItem = NewConfigItemClient(tx.config)
 	tx.Decision = NewDecisionClient(tx.config)

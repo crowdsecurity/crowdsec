@@ -183,7 +183,6 @@ linters-settings:
       - ifElseChain
       - importShadow
       - hugeParam
-      - rangeValCopy
       - commentedOutCode
       - commentedOutImport
       - unnamedResult
@@ -211,9 +210,7 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - execinquery
     - exportloopref
-    - gomnd
 
     #
     # Redundant
@@ -349,10 +346,6 @@ issues:
       text: "type switch on error will fail on wrapped errors. Use errors.As to check for specific errors"
 
     - linters:
-        - errorlint
-      text: "comparing with .* will fail on wrapped errors. Use errors.Is to check for a specific error"
-
-    - linters:
         - nosprintfhostport
       text: "host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf"
 
@@ -460,3 +453,34 @@ issues:
         - revive
       path: "cmd/crowdsec/win_service.go"
       text: "deep-exit: .*"
+
+    - linters:
+        - recvcheck
+      path: "pkg/csplugin/hclog_adapter.go"
+      text: 'the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.'
+
+    # encoding to json/yaml requires value receivers
+    - linters:
+        - recvcheck
+      path: "pkg/cwhub/item.go"
+      text: 'the methods of "Item" use pointer receiver and non-pointer receiver.'
+
+    - linters:
+        - gocritic
+      path: "cmd/crowdsec-cli"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(cticlient|hubtest)"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "(.+)_test.go"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
+      text: "rangeValCopy: .*"

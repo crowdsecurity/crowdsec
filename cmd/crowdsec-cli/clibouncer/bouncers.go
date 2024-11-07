@@ -77,6 +77,7 @@ type bouncerInfo struct {
 	AuthType     string     `json:"auth_type"`
 	OS           string     `json:"os,omitempty"`
 	Featureflags []string   `json:"featureflags,omitempty"`
+	AutoCreated  bool       `json:"auto_created"`
 }
 
 func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
@@ -92,6 +93,7 @@ func newBouncerInfo(b *ent.Bouncer) bouncerInfo {
 		AuthType:     b.AuthType,
 		OS:           clientinfo.GetOSNameAndVersion(b),
 		Featureflags: clientinfo.GetFeatureFlagList(b),
+		AutoCreated:  b.AutoCreated,
 	}
 }
 

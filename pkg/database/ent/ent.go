@@ -13,6 +13,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -81,15 +83,17 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			alert.Table:      alert.ValidColumn,
-			bouncer.Table:    bouncer.ValidColumn,
-			configitem.Table: configitem.ValidColumn,
-			decision.Table:   decision.ValidColumn,
-			event.Table:      event.ValidColumn,
-			lock.Table:       lock.ValidColumn,
-			machine.Table:    machine.ValidColumn,
-			meta.Table:       meta.ValidColumn,
-			metric.Table:     metric.ValidColumn,
+			alert.Table:         alert.ValidColumn,
+			allowlist.Table:     allowlist.ValidColumn,
+			allowlistitem.Table: allowlistitem.ValidColumn,
+			bouncer.Table:       bouncer.ValidColumn,
+			configitem.Table:    configitem.ValidColumn,
+			decision.Table:      decision.ValidColumn,
+			event.Table:         event.ValidColumn,
+			lock.Table:          lock.ValidColumn,
+			machine.Table:       machine.ValidColumn,
+			meta.Table:          meta.ValidColumn,
+			metric.Table:        metric.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

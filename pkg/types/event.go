@@ -47,6 +47,23 @@ type Event struct {
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
 
+func MakeEvent(timeMachine bool, evtType int, process bool) Event {
+	evt := Event{
+		Parsed:      make(map[string]string),
+		Meta:        make(map[string]string),
+		Unmarshaled: make(map[string]interface{}),
+		Enriched:    make(map[string]string),
+		ExpectMode:  LIVE,
+		Process:     process,
+		Type:        evtType,
+	}
+	if timeMachine {
+		evt.ExpectMode = TIMEMACHINE
+	}
+
+	return evt
+}
+
 func (e *Event) SetMeta(key string, value string) bool {
 	if e.Meta == nil {
 		e.Meta = make(map[string]string)
@@ -81,8 +98,9 @@ func (e *Event) GetType() string {
 
 func (e *Event) GetMeta(key string) string {
 	if e.Type == OVFLW {
-		for _, alert := range e.Overflow.APIAlerts {
-			for _, event := range alert.Events {
+		alerts := e.Overflow.APIAlerts
+		for idx := range alerts {
+			for _, event := range alerts[idx].Events {
 				if event.GetMeta(key) != "" {
 					return event.GetMeta(key)
 				}

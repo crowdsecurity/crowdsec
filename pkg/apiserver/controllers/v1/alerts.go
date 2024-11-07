@@ -141,6 +141,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	stopFlush := false
+	alertsToSave := make([]*models.Alert, 0)
 
 	for _, alert := range input {
 		// normalize scope for alert.Source and decisions
@@ -151,6 +152,19 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		for _, decision := range alert.Decisions {
 			if decision.Scope != nil {
 				*decision.Scope = types.NormalizeScope(*decision.Scope)
+			}
+		}
+
+		if alert.Source.Scope != nil && (*alert.Source.Scope == types.Ip || *alert.Source.Scope == types.Range) && // Allowlist only works for IP/range
+			alert.Source.Value != nil && // Is this possible ?
+			len(alert.Decisions) == 0 { // If there's no decisions, means it's coming from crowdsec (not cscli), so we can apply allowlist
+			isAllowlisted, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
+			if err == nil && isAllowlisted {
+				log.Infof("alert source %s is allowlisted, skipping", *alert.Source.Value)
+				continue
+			} else if err != nil {
+				//FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
+				log.Errorf("error while checking allowlist: %s", err)
 			}
 		}
 
@@ -189,6 +203,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				stopFlush = true
 			}
 
+			alertsToSave = append(alertsToSave, alert)
 			continue
 		}
 
@@ -234,13 +249,15 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				break
 			}
 		}
+
+		alertsToSave = append(alertsToSave, alert)
 	}
 
 	if stopFlush {
 		c.DBClient.CanFlush = false
 	}
 
-	alerts, err := c.DBClient.CreateAlert(ctx, machineID, input)
+	alerts, err := c.DBClient.CreateAlert(ctx, machineID, alertsToSave)
 	c.DBClient.CanFlush = true
 
 	if err != nil {
@@ -250,7 +267,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	if c.AlertsAddChan != nil {
 		select {
-		case c.AlertsAddChan <- input:
+		case c.AlertsAddChan <- alertsToSave:
 			log.Debug("alert sent to CAPI channel")
 		default:
 			log.Warning("Cannot send alert to Central API channel")

@@ -119,7 +119,7 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 		case <-lc.t.Dying():
 			return lc.t.Err()
 		case <-ticker.C:
-			resp, err := lc.Get(uri)
+			resp, err := lc.Get(ctx, uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
 					return fmt.Errorf("error querying range: %w", err)
@@ -205,6 +205,7 @@ func (lc *LokiClient) getURLFor(endpoint string, params map[string]string) strin
 func (lc *LokiClient) Ready(ctx context.Context) error {
 	tick := time.NewTicker(500 * time.Millisecond)
 	url := lc.getURLFor("ready", nil)
+	lc.Logger.Debugf("Using url: %s for ready check", url)
 	for {
 		select {
 		case <-ctx.Done():
@@ -215,7 +216,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 			return lc.t.Err()
 		case <-tick.C:
 			lc.Logger.Debug("Checking if Loki is ready")
-			resp, err := lc.Get(url)
+			resp, err := lc.Get(ctx, url)
 			if err != nil {
 				lc.Logger.Warnf("Error checking if Loki is ready: %s", err)
 				continue
@@ -300,8 +301,8 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 }
 
 // Create a wrapper for http.Get to be able to set headers and auth
-func (lc *LokiClient) Get(url string) (*http.Response, error) {
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+func (lc *LokiClient) Get(ctx context.Context, url string) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
