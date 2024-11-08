@@ -41,8 +41,19 @@ func (c *Client) BouncerUpdateBaseMetrics(ctx context.Context, bouncerName strin
 	return nil
 }
 
-func (c *Client) SelectBouncer(ctx context.Context, apiKeyHash string) (*ent.Bouncer, error) {
-	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).First(ctx)
+func (c *Client) SelectBouncer(ctx context.Context, apiKeyHash string) ([]*ent.Bouncer, error) {
+	//Order by ID so manually created bouncer will be first in the list to use as the base name
+	//when automatically creating a new entry if API keys are shared
+	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).Order(ent.Asc(bouncer.FieldID)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (c *Client) SelectBouncerWithIP(ctx context.Context, apiKeyHash string, clientIP string) (*ent.Bouncer, error) {
+	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash), bouncer.IPAddressEQ(clientIP)).First(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +86,7 @@ func (c *Client) CreateBouncer(ctx context.Context, name string, ipAddr string, 
 		SetAPIKey(apiKey).
 		SetRevoked(false).
 		SetAuthType(authType).
+		SetIPAddress(ipAddr).
 		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {

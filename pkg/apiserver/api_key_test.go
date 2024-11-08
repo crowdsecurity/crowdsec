@@ -20,6 +20,7 @@ func TestAPIKey(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
+	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 403, w.Code)
@@ -30,6 +31,7 @@ func TestAPIKey(t *testing.T) {
 	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", "a1b2c3d4e5f6")
+	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 403, w.Code)
@@ -40,8 +42,28 @@ func TestAPIKey(t *testing.T) {
 	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
+	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
+
+	// Login with valid token from another IP
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	req.RemoteAddr = "4.3.2.1:1234"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "null", w.Body.String())
+
+	// Check if our second bouncer was properly created
+	bouncers := GetBouncers(t, config.API.Server.DbConfig)
+
+	assert.Equal(t, 2, len(bouncers))
+	assert.Equal(t, "test@4.3.2.1", bouncers[1].Name)
+	assert.Equal(t, bouncers[0].APIKey, bouncers[1].APIKey)
+	assert.Equal(t, bouncers[0].AuthType, bouncers[1].AuthType)
 }

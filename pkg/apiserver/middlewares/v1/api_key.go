@@ -114,18 +114,67 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 		return nil
 	}
 
+	clientIP := c.ClientIP()
+
 	ctx := c.Request.Context()
 
 	hashStr := HashSHA512(val[0])
 
-	bouncer, err := a.DbClient.SelectBouncer(ctx, hashStr)
+	// Appsec case, we only care if the key is valid
+	// No content is returned, no last_pull update or anything
+	if c.Request.Method == http.MethodHead {
+		bouncer, err := a.DbClient.SelectBouncer(ctx, hashStr)
+		if err != nil {
+			logger.Errorf("while fetching bouncer info: %s", err)
+			return nil
+		}
+		return bouncer[0]
+	}
+
+	// most common case, check if this specific bouncer exists
+	bouncer, err := a.DbClient.SelectBouncerWithIP(ctx, hashStr, clientIP)
+	if err != nil && !ent.IsNotFound(err) {
+		logger.Errorf("while fetching bouncer info: %s", err)
+		return nil
+	}
+
+	// We found the bouncer with key and IP, we can use it
+	if bouncer != nil {
+		if bouncer.AuthType != types.ApiKeyAuthType {
+			logger.Errorf("bouncer %s attempted to login using an API key but it is configured to auth with %s", bouncer.Name, bouncer.AuthType)
+			return nil
+		}
+		return bouncer
+	}
+
+	// We didn't find the bouncer with key and IP, let's try to find it with the key only
+	bouncers, err := a.DbClient.SelectBouncer(ctx, hashStr)
 	if err != nil {
 		logger.Errorf("while fetching bouncer info: %s", err)
 		return nil
 	}
 
-	if bouncer.AuthType != types.ApiKeyAuthType {
-		logger.Errorf("bouncer %s attempted to login using an API key but it is configured to auth with %s", bouncer.Name, bouncer.AuthType)
+	if len(bouncers) == 0 {
+		logger.Debugf("no bouncer found with this key")
+		return nil
+	}
+
+	logger.Debugf("found %d bouncers with this key", len(bouncers))
+
+	// We only have one bouncer with this key and no IP
+	// This is the first request made by this bouncer, keep this one
+	if len(bouncers) == 1 && bouncers[0].IPAddress == "" {
+		return bouncers[0]
+	}
+
+	// Bouncers are ordered by ID, first one *should* be the manually created one
+	// Can probably get a bit weird if the user deletes the manually created one
+	bouncerName := fmt.Sprintf("%s@%s", bouncers[0].Name, clientIP)
+
+	bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, clientIP, hashStr, types.ApiKeyAuthType)
+
+	if err != nil {
+		logger.Errorf("while creating bouncer db entry: %s", err)
 		return nil
 	}
 
@@ -156,22 +205,16 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			return
 		}
 
-		logger = logger.WithField("name", bouncer.Name)
-
-		if bouncer.IPAddress == "" {
-			if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
-				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-				c.Abort()
-
-				return
-			}
+		// Appsec request, return immediately if we found something
+		if c.Request.Method == http.MethodHead {
+			c.Set(BouncerContextKey, bouncer)
+			return
 		}
 
-		// Don't update IP on HEAD request, as it's used by the appsec to check the validity of the API key provided
-		if bouncer.IPAddress != clientIP && bouncer.IPAddress != "" && c.Request.Method != http.MethodHead {
-			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, clientIP, bouncer.IPAddress)
+		logger = logger.WithField("name", bouncer.Name)
 
+		// 1st time we see this bouncer, we update its IP
+		if bouncer.IPAddress == "" {
 			if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
