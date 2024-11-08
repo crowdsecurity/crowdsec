@@ -638,6 +638,8 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Infof("Starting community-blocklist update")
 
+	log.Debugf("Community pull: %t | Blocklist pull: %t", a.pullCommunity, a.pullBlocklists)
+
 	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup, CommunityPull: a.pullCommunity, AdditionalPull: a.pullBlocklists})
 	if err != nil {
 		return fmt.Errorf("get stream: %w", err)
@@ -678,7 +680,11 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 			return fmt.Errorf("while saving alerts: %w", err)
 		}
 	} else {
-		log.Infof("capi/community-blocklist : received 0 new entries (expected if you just installed crowdsec)")
+		if a.pullCommunity {
+			log.Info("capi/community-blocklist : received 0 new entries (expected if you just installed crowdsec)")
+		} else {
+			log.Debug("capi/community-blocklist : community blocklist pull is disabled")
+		}
 	}
 
 	// update blocklists
