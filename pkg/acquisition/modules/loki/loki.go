@@ -283,19 +283,18 @@ func (l *LokiSource) OneShotAcquisition(ctx context.Context, out chan types.Even
 		}
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	c := l.Client.QueryRange(ctx, false)
+	lokiCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c := l.Client.QueryRange(lokiCtx, false)
 
 	for {
 		select {
 		case <-t.Dying():
 			l.logger.Debug("Loki one shot acquisition stopped")
-			cancel()
 			return nil
 		case resp, ok := <-c:
 			if !ok {
 				l.logger.Info("Loki acquisition done, chan closed")
-				cancel()
 				return nil
 			}
 			for _, stream := range resp.Data.Result {
