@@ -344,7 +344,7 @@ func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 			case resp, ok := <-respChan:
 				if !ok {
 					ll.Warnf("loki channel closed")
-					return fmt.Errorf("loki channel closed")
+					return errors.New("loki channel closed")
 				}
 				for _, stream := range resp.Data.Result {
 					for _, entry := range stream.Entries {
