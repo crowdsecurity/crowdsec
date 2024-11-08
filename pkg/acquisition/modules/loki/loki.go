@@ -324,8 +324,6 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 }
 
 func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	var err error
-
 	l.Client.SetTomb(t)
 
 	if !l.Config.NoReadyCheck {
@@ -341,16 +339,12 @@ func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		respChan := l.Client.QueryRange(ctx, true)
-		if err != nil {
-			ll.Errorf("could not start loki tail: %s", err)
-			return fmt.Errorf("while starting loki tail: %w", err)
-		}
 		for {
 			select {
 			case resp, ok := <-respChan:
 				if !ok {
 					ll.Warnf("loki channel closed")
-					return err
+					return fmt.Errorf("loki channel closed")
 				}
 				for _, stream := range resp.Data.Result {
 					for _, entry := range stream.Entries {
