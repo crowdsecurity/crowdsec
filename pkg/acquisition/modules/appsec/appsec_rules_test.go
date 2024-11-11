@@ -370,6 +370,32 @@ toto
 				require.True(t, responses[0].InBandInterrupt)
 			},
 		},
+		{
+			name:             "Basic matching IP address",
+			expected_load_ok: true,
+			seclang_rules: []string{
+				"SecRule REMOTE_ADDR \"@ipMatch 1.2.3.4\" \"id:1,phase:1,log,deny,msg: 'block ip'\"",
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "block ip", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
 	}
 
 	for _, test := range tests {

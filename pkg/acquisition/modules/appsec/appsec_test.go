@@ -18,6 +18,7 @@ type appsecRuleTest struct {
 	expected_load_ok       bool
 	inband_rules           []appsec_rule.CustomRule
 	outofband_rules        []appsec_rule.CustomRule
+	seclang_rules          []string
 	on_load                []appsec.Hook
 	pre_eval               []appsec.Hook
 	post_eval              []appsec.Hook
@@ -59,6 +60,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 			t.Fatalf("failed compilation of rule %d/%d of %s : %s", ridx, len(test.outofband_rules), test.name, err)
 		}
 		outofbandRules = append(outofbandRules, strRule)
+	}
+	for _, rule := range test.seclang_rules {
+		inbandRules = append(inbandRules, rule)
 	}
 
 	appsecCfg := appsec.AppsecConfig{Logger: logger,
