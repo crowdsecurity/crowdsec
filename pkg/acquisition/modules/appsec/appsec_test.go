@@ -61,9 +61,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		}
 		outofbandRules = append(outofbandRules, strRule)
 	}
-	for _, rule := range test.seclang_rules {
-		inbandRules = append(inbandRules, rule)
-	}
+
+	inbandRules = append(inbandRules, test.seclang_rules...)
 
 	appsecCfg := appsec.AppsecConfig{Logger: logger,
 		OnLoad:                 test.on_load,
