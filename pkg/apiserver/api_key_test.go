@@ -23,8 +23,8 @@ func TestAPIKey(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, `{"message":"access forbidden"}`, w.Body.String())
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.JSONEq(t, `{"message":"access forbidden"}`, w.Body.String())
 
 	// Login with invalid token
 	w = httptest.NewRecorder()
@@ -34,8 +34,8 @@ func TestAPIKey(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, `{"message":"access forbidden"}`, w.Body.String())
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.JSONEq(t, `{"message":"access forbidden"}`, w.Body.String())
 
 	// Login with valid token
 	w = httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestAPIKey(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// Login with valid token from another IP
@@ -56,13 +56,13 @@ func TestAPIKey(t *testing.T) {
 	req.RemoteAddr = "4.3.2.1:1234"
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
 	// Check if our second bouncer was properly created
 	bouncers := GetBouncers(t, config.API.Server.DbConfig)
 
-	assert.Equal(t, 2, len(bouncers))
+	assert.Len(t, len(bouncers), 2)
 	assert.Equal(t, "test@4.3.2.1", bouncers[1].Name)
 	assert.Equal(t, bouncers[0].APIKey, bouncers[1].APIKey)
 	assert.Equal(t, bouncers[0].AuthType, bouncers[1].AuthType)
