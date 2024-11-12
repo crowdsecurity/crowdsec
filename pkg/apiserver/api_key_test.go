@@ -59,10 +59,32 @@ func TestAPIKey(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
+	// Make the requests multiple times to make sure we only create one
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	req.RemoteAddr = "4.3.2.1:1234"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "null", w.Body.String())
+
+	// Use the original bouncer again
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	req.RemoteAddr = "127.0.0.1:1234"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "null", w.Body.String())
+
 	// Check if our second bouncer was properly created
 	bouncers := GetBouncers(t, config.API.Server.DbConfig)
 
-	assert.Len(t, len(bouncers), 2)
+	assert.Len(t, bouncers, 2)
 	assert.Equal(t, "test@4.3.2.1", bouncers[1].Name)
 	assert.Equal(t, bouncers[0].APIKey, bouncers[1].APIKey)
 	assert.Equal(t, bouncers[0].AuthType, bouncers[1].AuthType)
