@@ -59,6 +59,9 @@ func (l *LAPI) RecordResponse(t *testing.T, ctx context.Context, verb string, ur
 		t.Fatal("auth type not supported")
 	}
 
+	// Port is required for gin to properly parse the client IP
+	req.RemoteAddr = "127.0.0.1:1234"
+
 	l.router.ServeHTTP(w, req)
 
 	return w
