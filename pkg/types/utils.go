@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -46,7 +47,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true, ForceColors: forceColors}
+	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
 	log.SetFormatter(logFormatter)
 	return nil
 }
@@ -66,4 +67,13 @@ func ConfigureLogger(clog *log.Logger) error {
 
 func UtcNow() time.Time {
 	return time.Now().UTC()
+}
+
+func IsNetworkFS(path string) (bool, string, error) {
+	fsType, err := GetFSType(path)
+	if err != nil {
+		return false, "", err
+	}
+	fsType = strings.ToLower(fsType)
+	return fsType == "nfs" || fsType == "cifs" || fsType == "smb" || fsType == "smb2", fsType, nil
 }

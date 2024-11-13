@@ -1,6 +1,8 @@
 package syslogacquisition
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -29,10 +31,11 @@ type SyslogConfiguration struct {
 }
 
 type SyslogSource struct {
-	config     SyslogConfiguration
-	logger     *log.Entry
-	server     *syslogserver.SyslogServer
-	serverTomb *tomb.Tomb
+	metricsLevel int
+	config       SyslogConfiguration
+	logger       *log.Entry
+	server       *syslogserver.SyslogServer
+	serverTomb   *tomb.Tomb
 }
 
 var linesReceived = prometheus.NewCounterVec(
@@ -78,11 +81,11 @@ func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
 }
 
 func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return fmt.Errorf("syslog datasource does not support one shot acquisition")
+	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
-func (s *SyslogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("syslog datasource does not support one shot acquisition")
+func (s *SyslogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
 func validatePort(port int) bool {
@@ -103,7 +106,7 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if s.config.Addr == "" {
-		s.config.Addr = "127.0.0.1" //do we want a usable or secure default ?
+		s.config.Addr = "127.0.0.1" // do we want a usable or secure default ?
 	}
 	if s.config.Port == 0 {
 		s.config.Port = 514
@@ -121,10 +124,10 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
-
+	s.metricsLevel = MetricsLevel
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -133,7 +136,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	c := make(chan syslogserver.SyslogMessage)
 	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal"), MaxMessageLen: s.config.MaxMessageLen}
 	s.server.SetChannel(c)
@@ -150,7 +153,8 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 }
 
 func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
-	appname string, pid string, msg string) string {
+	appname string, pid string, msg string,
+) string {
 	ret := ""
 	if !ts.IsZero() {
 		ret += ts.Format("Jan 2 15:04:05")
@@ -176,7 +180,6 @@ func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
 		ret += msg
 	}
 	return ret
-
 }
 
 func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {
@@ -198,7 +201,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 
 			logger := s.logger.WithField("client", syslogLine.Client)
 			logger.Tracef("raw: %s", syslogLine)
-			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+			if s.metricsLevel != configuration.METRICS_NONE {
+				linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+			}
 			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
 			err := p.Parse(syslogLine.Message)
 			if err != nil {
@@ -211,8 +216,14 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 					continue
 				}
 				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
+				if s.metricsLevel != configuration.METRICS_NONE {
+					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+				}
 			} else {
 				line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
+				if s.metricsLevel != configuration.METRICS_NONE {
+					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+				}
 			}
 
 			line = strings.TrimSuffix(line, "\n")
@@ -224,11 +235,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			l.Time = ts
 			l.Src = syslogLine.Client
 			l.Process = true
-			if !s.config.UseTimeMachine {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+			evt := types.MakeEvent(s.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
+			out <- evt
 		}
 	}
 }

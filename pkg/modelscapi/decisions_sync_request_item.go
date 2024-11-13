@@ -231,6 +231,7 @@ func (m *DecisionsSyncRequestItem) contextValidateDecisions(ctx context.Context,
 func (m *DecisionsSyncRequestItem) contextValidateSource(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Source != nil {
+
 		if err := m.Source.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("source")

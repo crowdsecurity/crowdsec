@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -34,14 +35,14 @@ func systemdUnitList() ([]string, error) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) == 0 {
+		if line == "" {
 			break // the rest of the output is footer
 		}
 
 		if !header {
 			spaceIdx := strings.IndexRune(line, ' ')
 			if spaceIdx == -1 {
-				return ret, fmt.Errorf("can't parse systemctl output")
+				return ret, errors.New("can't parse systemctl output")
 			}
 
 			line = line[:spaceIdx]

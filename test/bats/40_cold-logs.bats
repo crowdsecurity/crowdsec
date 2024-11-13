@@ -11,9 +11,13 @@ fake_log() {
 
 setup_file() {
     load "../lib/setup_file.sh"
-
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
+
+    cscli collections install crowdsecurity/sshd --error >/dev/null
+    cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+    cscli parsers install crowdsecurity/dateparse-enrich --error >/dev/null
+
     ./instance-crowdsec start
 }
 
@@ -28,14 +32,14 @@ setup() {
 #----------
 
 @test "-type and -dsn are required together" {
-    rune -1 "${CROWDSEC}" -no-api -type syslog
+    rune -1 "$CROWDSEC" -no-api -type syslog
     assert_stderr --partial "-type requires a -dsn argument"
-    rune -1 "${CROWDSEC}" -no-api -dsn file:///dev/fd/0
+    rune -1 "$CROWDSEC" -no-api -dsn file:///dev/fd/0
     assert_stderr --partial "-dsn requires a -type argument"
 }
 
 @test "the one-shot mode works" {
-    rune -0 "${CROWDSEC}" -dsn file://<(fake_log) -type syslog -no-api
+    rune -0 "$CROWDSEC" -dsn file://<(fake_log) -type syslog -no-api
     refute_output
     assert_stderr --partial "single file mode : log_media=stdout daemonize=false"
     assert_stderr --regexp "Adding file .* to filelist"

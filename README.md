@@ -12,6 +12,7 @@
   <img src="https://codecov.io/gh/crowdsecurity/crowdsec/branch/master/graph/badge.svg?token=CQGSPNY3PT"/>
 </a>
 <img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
+<a href="https://pkg.go.dev/github.com/crowdsecurity/crowdsec"><img src="https://pkg.go.dev/badge/github.com/crowdsecurity/crowdsec.svg" alt="Go Reference"></a>
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_parsers_badge.json">
 <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_scenarios_badge.json">
@@ -83,7 +84,7 @@ The architecture is as follows :
  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_architecture.png" alt="CrowdSec" title="CrowdSec"/>
 </p>
 
-Once an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers). The aggressive IP, scenario triggered and timestamp are sent for curation, to avoid poisoning & false positives. (This can be disabled). If verified, this IP is then redistributed to all CrowdSec users running the same scenario.
+Once an unwanted behavior is detected, deal with it through a [bouncer](https://app.crowdsec.net/hub/remediation-components). The aggressive IP, scenario triggered and timestamp are sent for curation, to avoid poisoning & false positives. (This can be disabled). If verified, this IP is then redistributed to all CrowdSec users running the same scenario.
 
 ## Outnumbering hackers all together
 

@@ -4,6 +4,7 @@ package csplugin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -26,6 +27,7 @@ not if it will actually reject plugins with invalid permissions
 */
 
 func (s *PluginSuite) TestBrokerInit() {
+	ctx := context.Background()
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -54,23 +56,23 @@ func (s *PluginSuite) TestBrokerInit() {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		s.Run(tc.name, func() {
 			t := s.T()
 			if tc.action != nil {
 				tc.action(t)
 			}
-			_, err := s.InitBroker(&tc.procCfg)
+			_, err := s.InitBroker(ctx, &tc.procCfg)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
 
 func (s *PluginSuite) TestBrokerRun() {
+	ctx := context.Background()
 	t := s.T()
 
-	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -94,11 +96,11 @@ func (s *PluginSuite) TestBrokerRun() {
 	// two notifications, one alert each
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)

@@ -1,7 +1,10 @@
 package exprhelpers
 
 import (
+	"net"
 	"time"
+
+	"github.com/oschwald/geoip2-golang"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
@@ -19,6 +22,21 @@ var exprFuncs = []exprCustomFunc{
 		signature: []interface{}{
 			new(func(string) (*cticlient.SmokeItem, error)),
 		},
+	},
+	{
+		name:      "Flatten",
+		function:  Flatten,
+		signature: []interface{}{},
+	},
+	{
+		name:      "Distinct",
+		function:  Distinct,
+		signature: []interface{}{},
+	},
+	{
+		name:      "FlattenDistinct",
+		function:  FlattenDistinct,
+		signature: []interface{}{},
 	},
 	{
 		name:     "Distance",
@@ -214,6 +232,20 @@ var exprFuncs = []exprCustomFunc{
 		function: GetDecisionsCount,
 		signature: []interface{}{
 			new(func(string) int),
+		},
+	},
+	{
+		name:     "GetActiveDecisionsCount",
+		function: GetActiveDecisionsCount,
+		signature: []interface{}{
+			new(func(string) int),
+		},
+	},
+	{
+		name:     "GetActiveDecisionsTimeLeft",
+		function: GetActiveDecisionsTimeLeft,
+		signature: []interface{}{
+			new(func(string) time.Duration),
 		},
 	},
 	{
@@ -417,6 +449,48 @@ var exprFuncs = []exprCustomFunc{
 		function: Hostname,
 		signature: []interface{}{
 			new(func() (string, error)),
+		},
+	},
+	{
+		name:     "FloatApproxEqual",
+		function: FloatApproxEqual,
+		signature: []interface{}{
+			new(func(float64, float64) bool),
+		},
+	},
+	{
+		name:     "LibInjectionIsSQLI",
+		function: LibInjectionIsSQLI,
+		signature: []interface{}{
+			new(func(string) bool),
+		},
+	},
+	{
+		name:     "LibInjectionIsXSS",
+		function: LibInjectionIsXSS,
+		signature: []interface{}{
+			new(func(string) bool),
+		},
+	},
+	{
+		name:     "GeoIPEnrich",
+		function: GeoIPEnrich,
+		signature: []interface{}{
+			new(func(string) *geoip2.City),
+		},
+	},
+	{
+		name:     "GeoIPASNEnrich",
+		function: GeoIPASNEnrich,
+		signature: []interface{}{
+			new(func(string) *geoip2.ASN),
+		},
+	},
+	{
+		name:     "GeoIPRangeEnrich",
+		function: GeoIPRangeEnrich,
+		signature: []interface{}{
+			new(func(string) *net.IPNet),
 		},
 	},
 }

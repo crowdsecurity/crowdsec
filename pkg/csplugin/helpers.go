@@ -1,12 +1,14 @@
 package csplugin
 
 import (
+	"html"
 	"os"
 	"text/template"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	log "github.com/sirupsen/logrus"
 )
 
 var helpers = template.FuncMap{
@@ -28,7 +30,8 @@ var helpers = template.FuncMap{
 		}
 		return ret
 	},
-	"Hostname": os.Hostname,
+	"Hostname":   os.Hostname,
+	"HTMLEscape": html.EscapeString,
 }
 
 func funcMap() template.FuncMap {

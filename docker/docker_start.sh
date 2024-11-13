@@ -6,6 +6,9 @@
 set -e
 shopt -s inherit_errexit
 
+# Note that "if function_name" in bash matches when the function returns 0,
+# meaning successful execution.
+
 # match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
@@ -48,6 +51,52 @@ csv2yaml() {
 # wrap cscli with the correct config file location
 cscli() {
     command cscli -c "$CONFIG_FILE" "$@"
+}
+
+run_hub_update() {
+    index_modification_time=$(stat -c %Y /etc/crowdsec/hub/.index.json 2>/dev/null)
+    # Run cscli hub update if no date or if the index file is older than 24h
+    if [ -z "$index_modification_time" ] || [ $(( $(date +%s) - index_modification_time )) -gt 86400 ]; then
+        cscli hub update --with-content
+    else
+        echo "Skipping hub update, index file is recent"
+    fi
+}
+
+is_mounted() {
+    path=$(readlink -f "$1")
+    mounts=$(awk '{print $2}' /proc/mounts)
+    while true; do
+        if grep -qE ^"$path"$ <<< "$mounts"; then
+            echo "$path was found in a volume"
+            return 0
+        fi
+        path=$(dirname "$path")
+        if [ "$path" = "/" ]; then
+            return 1
+        fi
+    done
+    return 1 #unreachable
+}
+
+run_hub_update_if_from_volume() {
+    if is_mounted "/etc/crowdsec/hub/.index.json"; then
+        echo "Running hub update"
+        run_hub_update
+    else
+        echo "Skipping hub update, index file is not in a volume"
+    fi
+}
+
+run_hub_upgrade_if_from_volume() {
+    isfalse "$NO_HUB_UPGRADE" || return 0
+    if is_mounted "/var/lib/crowdsec/data"; then
+        echo "Running hub upgrade"
+        cscli hub upgrade
+    else
+        echo "Skipping hub upgrade, data directory is not in a volume"
+    fi
+
 }
 
 # conf_get <key> [file_path]
@@ -101,19 +150,30 @@ register_bouncer() {
 # $2 can be install, remove, upgrade
 # $3 is a list of object names separated by space
 cscli_if_clean() {
+    local itemtype="$1"
+    local action="$2"
+    local objs=$3
+    shift 3
     # loop over all objects
-    for obj in $3; do
-        if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
-            echo "Object $1/$obj is tainted, skipping"
+    for obj in $objs; do
+        if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is tainted, skipping"
+        elif cscli "$itemtype" inspect "$obj" -o json | yq -e '.local // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is local, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
 #                error_only=--error
 #            fi
             error_only=""
-            echo "Running: cscli $error_only $1 $2 \"$obj\""
+            echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
-            cscli $error_only "$1" "$2" "$obj"
+            if ! cscli $error_only "$itemtype" "$action" "$obj" "$@"; then
+                echo "Failed to $action $itemtype/$obj, running hub update before retrying"
+                run_hub_update
+                # shellcheck disable=SC2086
+                cscli $error_only "$itemtype" "$action" "$obj" "$@"
+            fi
         fi
     done
 }
@@ -153,15 +213,16 @@ if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     export LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
 fi
 
-# Check and prestage databases
-for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
-    # We keep the pre-populated geoip databases in /staging instead of /var,
-    # because if the data directory is bind-mounted from the host, it will be
-    # empty and the files will be out of reach, requiring a runtime download.
-    # We link to them to save about 80Mb compared to cp/mv.
-    if [ ! -e "/var/lib/crowdsec/data/$geodb" ] && [ -e "/staging/var/lib/crowdsec/data/$geodb" ]; then
-        mkdir -p /var/lib/crowdsec/data
-        ln -s "/staging/var/lib/crowdsec/data/$geodb" /var/lib/crowdsec/data/
+# Link the preloaded data files when the data dir is mounted (common case)
+# The symlinks can be overridden by hub upgrade
+for target in "/staging/var/lib/crowdsec/data"/*; do
+    fname="$(basename "$target")"
+    # skip the db and wal files
+    if [[ $fname == crowdsec.db* ]]; then
+        continue
+    fi
+    if [ ! -e "/var/lib/crowdsec/data/$fname" ]; then
+        ln -s "$target" "/var/lib/crowdsec/data/$fname"
     fi
 done
 
@@ -174,7 +235,7 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
         mkdir -p /etc/crowdsec/
         # if you change this, check that it still works
         # under alpine and k8s, with and without tls
-        cp -an /staging/etc/crowdsec/* /etc/crowdsec/
+        rsync -av --ignore-existing /staging/etc/crowdsec/* /etc/crowdsec
     fi
 fi
 
@@ -198,7 +259,7 @@ if isfalse "$DISABLE_LOCAL_API"; then
             # if the db is persistent but the credentials are not, we need to
             # delete the old machine to generate new credentials
             cscli machines delete "$CUSTOM_HOSTNAME" >/dev/null 2>&1 || true
-            cscli machines add "$CUSTOM_HOSTNAME" --auto
+            cscli machines add "$CUSTOM_HOSTNAME" --auto --force
         fi
     fi
 
@@ -273,10 +334,12 @@ fi
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
     if istrue "$(conf_get '.db_config.type == "sqlite"')"; then
+        # force the creation of the db file(s)
+        cscli machines inspect create-db --error >/dev/null 2>&1 || :
         # don't fail if the db is not there yet
-        chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null \
-            && echo "sqlite database permissions updated" \
-            || true
+        if chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null; then
+            echo "sqlite database permissions updated"
+        fi
     fi
 fi
 
@@ -296,11 +359,11 @@ fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
-## Install collections, parsers, scenarios & postoverflows
-cscli hub update
+## Install hub items
 
-cscli_if_clean collections upgrade crowdsecurity/linux
-cscli_if_clean parsers upgrade crowdsecurity/whitelists
+run_hub_update_if_from_volume || true
+run_hub_upgrade_if_from_volume || true
+
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs
 
@@ -324,25 +387,55 @@ if [ "$POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
+if [ "$CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
+fi
+
+if [ "$APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs install "$(difference "$APPSEC_CONFIGS" "$DISABLE_APPSEC_CONFIGS")"
+fi
+
+if [ "$APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
+fi
+
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove "$DISABLE_COLLECTIONS"
+    cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove "$DISABLE_PARSERS"
+    cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS"
+    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS"
+    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
+fi
+
+if [ "$DISABLE_CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
+fi
+
+if [ "$DISABLE_APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs remove "$DISABLE_APPSEC_CONFIGS" --force
+fi
+
+if [ "$DISABLE_APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules remove "$DISABLE_APPSEC_RULES" --force
 fi
 
 ## Register bouncers via env
@@ -353,6 +446,11 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
         register_bouncer "$NAME" "$KEY"
     fi
 done
+
+if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli console enable console_management
+fi
 
 ## Register bouncers via secrets (Swarm only)
 shopt -s nullglob extglob
@@ -407,6 +505,18 @@ fi
 
 if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
+fi
+
+if istrue "$LEVEL_WARN"; then
+    ARGS="$ARGS -warning"
+fi
+
+if istrue "$LEVEL_ERROR"; then
+    ARGS="$ARGS -error"
+fi
+
+if istrue "$LEVEL_FATAL"; then
+    ARGS="$ARGS -fatal"
 fi
 
 # shellcheck disable=SC2086

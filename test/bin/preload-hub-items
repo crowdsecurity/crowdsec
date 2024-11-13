@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091
+. "${THIS_DIR}/../.environment.sh"
+
+# pre-download everything but don't install anything
+
+echo "Pre-downloading Hub content..."
+
+start=$(date +%s%N)
+
+types=$("$CSCLI" hub types -o raw)
+
+for itemtype in $types; do
+    ALL_ITEMS=$("$CSCLI" "$itemtype" list -a -o json | itemtype="$itemtype" yq '.[env(itemtype)][] | .name')
+    if [[ -n "${ALL_ITEMS}" ]]; then
+        #shellcheck disable=SC2086
+        "$CSCLI" "$itemtype" install \
+            $ALL_ITEMS \
+            --download-only
+    fi
+done
+
+elapsed=$((($(date +%s%N) - start)/1000000))
+# bash only does integer arithmetic, we could use bc or have some fun with sed
+elapsed=$(echo "$elapsed" | sed -e 's/...$/.&/;t' -e 's/.$/.0&/')
+
+echo " done in $elapsed secs."

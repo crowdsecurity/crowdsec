@@ -19,14 +19,59 @@ setup() {
 
 #----------
 
-@test "cscli capi status" {
+@test "cscli capi status: fails without credentials" {
     config_enable_capi
+    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
+    # bogus values, won't be used
+    echo '{"login":"login","password":"password","url":"url"}' > "${ONLINE_API_CREDENTIALS_YAML}"
+
+    config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.url)'
+    rune -1 cscli capi status
+    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing url field)"
+
+    config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.password)'
+    rune -1 cscli capi status
+    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing password field)"
+
+    config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.login)'
+    rune -1 cscli capi status
+    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing login field)"
+
+    rm "${ONLINE_API_CREDENTIALS_YAML}"
+    rune -1 cscli capi status
+    assert_stderr --partial "failed to load Local API: loading online client credentials: open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
+
+    config_set 'del(.api.server.online_client)'
+    rune -1 cscli capi status
+    assert_stderr --regexp "no configuration for Central API \(CAPI\) in '$(echo $CONFIG_YAML|sed s#//#/#g)'"
+}
+
+@test "cscli {capi,papi} status" {
+    ./instance-data load
+    config_enable_capi
+
+    # should not panic with no credentials, but return an error
+    rune -1 cscli papi status
+    assert_stderr --partial "the Central API (CAPI) must be configured with 'cscli capi register'"
+
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    rune -1 cscli capi status
+    assert_stderr --partial "no scenarios or appsec-rules installed, abort"
+
+    rune -1 cscli papi status
+    assert_stderr --partial "no PAPI URL in configuration"
+
+    rune -0 cscli console enable console_management
+    rune -1 cscli papi status
+    assert_stderr --partial "unable to get PAPI permissions"
+    assert_stderr --partial "Forbidden for plan"
+
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli capi status
-    assert_stderr --partial "Loaded credentials from"
-    assert_stderr --partial "Trying to authenticate with username"
-    assert_stderr --partial " on https://api.crowdsec.net/"
-    assert_stderr --partial "You can successfully interact with Central API (CAPI)"
+    assert_output --partial "Loaded credentials from"
+    assert_output --partial "Trying to authenticate with username"
+    assert_output --partial " on https://api.crowdsec.net/"
+    assert_output --partial "You can successfully interact with Central API (CAPI)"
 }
 
 @test "cscli alerts list: receive a community pull when capi is enabled" {
@@ -53,14 +98,7 @@ setup() {
     config_disable_agent
     ./instance-crowdsec start
     rune -0 cscli capi status
-    assert_stderr --partial "You can successfully interact with Central API (CAPI)"
-}
-
-@test "cscli capi status: fails without credentials" {
-    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
-    rm "${ONLINE_API_CREDENTIALS_YAML}"
-    rune -1 cscli capi status
-    assert_stderr --partial "failed to load Local API: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
+    assert_output --partial "You can successfully interact with Central API (CAPI)"
 }
 
 @test "capi register must be run from lapi" {

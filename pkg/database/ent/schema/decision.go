@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -19,25 +20,25 @@ func (Decision) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			Immutable(),
 		field.Time("updated_at").
 			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).Nillable().Optional(),
+			UpdateDefault(types.UtcNow),
 		field.Time("until").Nillable().Optional().SchemaType(map[string]string{
 			dialect.MySQL: "datetime",
 		}),
-		field.String("scenario"),
-		field.String("type"),
-		field.Int64("start_ip").Optional(),
-		field.Int64("end_ip").Optional(),
-		field.Int64("start_suffix").Optional(),
-		field.Int64("end_suffix").Optional(),
-		field.Int64("ip_size").Optional(),
-		field.String("scope"),
-		field.String("value"),
-		field.String("origin"),
-		field.Bool("simulated").Default(false),
-		field.String("uuid").Optional(), //this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each decision
+		field.String("scenario").Immutable(),
+		field.String("type").Immutable(),
+		field.Int64("start_ip").Optional().Immutable(),
+		field.Int64("end_ip").Optional().Immutable(),
+		field.Int64("start_suffix").Optional().Immutable(),
+		field.Int64("end_suffix").Optional().Immutable(),
+		field.Int64("ip_size").Optional().Immutable(),
+		field.String("scope").Immutable(),
+		field.String("value").Immutable(),
+		field.String("origin").Immutable(),
+		field.Bool("simulated").Default(false).Immutable(),
+		field.String("uuid").Optional().Immutable(), // this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each decision
 		field.Int("alert_decisions").Optional(),
 	}
 }

@@ -16,7 +16,10 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
+    LOGFILE=$(config_get '.common.log_dir')/crowdsec.log
+    export LOGFILE
     ./instance-crowdsec start
 }
 
@@ -28,12 +31,11 @@ teardown() {
 
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
-    assert_line "Usage:"
-    assert_stderr --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
+    assert_stderr --partial "missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     rune -1 cscli decisions add -o json
     rune -0 jq -c '[ .level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","Missing arguments, a value is required (--ip, --range or --scope and --value)"]'
+    assert_output '["fatal","missing arguments, a value is required (--ip, --range or --scope and --value)"]'
 }
 
 @test "cscli decisions list, with and without --machine" {
@@ -76,13 +78,13 @@ teardown() {
 
     # invalid defaults
     rune -1 cscli decisions import --duration "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--duration cannot be empty"
+    assert_stderr --partial "default duration cannot be empty"
     rune -1 cscli decisions import --scope "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--scope cannot be empty"
+    assert_stderr --partial "default scope cannot be empty"
     rune -1 cscli decisions import --reason "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--reason cannot be empty"
+    assert_stderr --partial "default reason cannot be empty"
     rune -1 cscli decisions import --type "" -i - <<<'value\n5.6.7.8' --format csv
-    assert_stderr --partial "--type cannot be empty"
+    assert_stderr --partial "default type cannot be empty"
 
     #----------
     # JSON
@@ -106,12 +108,12 @@ teardown() {
     # invalid json
     rune -1 cscli decisions import -i - <<<'{"blah":"blah"}' --format json
     assert_stderr --partial 'Parsing json'
-    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []main.decisionRaw'
+    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []clidecision.decisionRaw'
 
     # json with extra data
     rune -1 cscli decisions import -i - <<<'{"values":"1.2.3.4","blah":"blah"}' --format json
     assert_stderr --partial 'Parsing json'
-    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []main.decisionRaw'
+    assert_stderr --partial 'json: cannot unmarshal object into Go value of type []clidecision.decisionRaw'
 
     #----------
     # CSV
@@ -151,6 +153,7 @@ teardown() {
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
 
+    # leading or trailing spaces are ignored
     rune -0 cscli decisions import -i - --format values <<-EOT
 	  10.2.3.4  
 	10.2.3.5   
@@ -159,11 +162,38 @@ teardown() {
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
 
-    rune -1 cscli decisions import -i - --format values <<-EOT
+    # silently discarding (but logging) invalid decisions
+
+    rune -0 cscli alerts delete --all
+    truncate -s 0 "$LOGFILE"
+
+    rune -0 cscli decisions import -i - --format values <<-EOT
 	whatever
 	EOT
     assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'API error: unable to create alerts: whatever: invalid ip address / range'
+    assert_stderr --partial 'Imported 1 decisions'
+    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid address"
+
+    rune -0 cscli decisions list -a -o json
+    assert_json '[]'
+
+    # disarding only some invalid decisions
+
+    rune -0 cscli alerts delete --all
+    truncate -s 0 "$LOGFILE"
+
+    rune -0 cscli decisions import -i - --format values <<-EOT
+        1.2.3.4
+	bad-apple
+        1.2.3.5
+	EOT
+    assert_stderr --partial 'Parsing values'
+    assert_stderr --partial 'Imported 3 decisions'
+    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid address"
+
+    rune -0 cscli decisions list -a -o json
+    rune -0 jq -r '.[0].decisions | length' <(output)
+    assert_output 2
 
     #----------
     # Batch

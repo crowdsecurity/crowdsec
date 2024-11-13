@@ -14,14 +14,14 @@ end
 Vagrant.configure('2') do |config|
   config.vm.define 'crowdsec'
 
-  if ARGV.any? { |arg| arg == 'up' || arg == 'provision' }
+  if ARGV.any? { |arg| arg == 'up' || arg == 'provision' } && !ARGV.include?('--no-provision')
     unless ENV['DB_BACKEND']
       $stderr.puts "\e[31mThe DB_BACKEND environment variable is not defined. Please set up the environment and try again.\e[0m"
       exit 1
     end
   end
 
-  config.vm.provision 'shell', path: 'bootstrap' if File.exists?('bootstrap')
+  config.vm.provision 'shell', path: 'bootstrap' if File.exist?('bootstrap')
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   config.vm.provider :libvirt do |libvirt|

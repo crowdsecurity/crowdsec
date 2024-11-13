@@ -1,19 +1,17 @@
-name: Functional tests (sqlite)
+name: (sub) Bats / sqlite + coverage
 
 on:
   workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: true
 
 env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
   TEST_COVERAGE: true
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.20.7"]
-
-    name: "Build + tests"
+    name: "Functional tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -25,29 +23,32 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
     - name: "Check out CrowdSec repository"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
+        go-version: "1.23"
 
     - name: "Install bats dependencies"
       env:
         GOBIN: /usr/local/bin
       run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd libre2-dev
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq libre2-dev
 
     - name: "Build crowdsec and fixture"
       run: |
         make clean bats-build bats-fixture BUILD_STATIC=1
 
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
+
     - name: "Run tests"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
 
     - name: "Collect coverage data"
       run: |
@@ -82,8 +83,9 @@ jobs:
       run: for file in $(find ./test/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
-    - name: Upload crowdsec coverage to codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload bats coverage to codecov
+      uses: codecov/codecov-action@v4
       with:
         files: ./coverage-bats.out
         flags: bats
+        token: ${{ secrets.CODECOV_TOKEN }}

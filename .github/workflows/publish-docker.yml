@@ -1,0 +1,125 @@
+name: (sub) Publish Docker images
+
+on:
+  workflow_call:
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+    inputs:
+      platform:
+        required: true
+        type: string
+      image_version:
+        required: true
+        type: string
+      crowdsec_version:
+        required: true
+        type: string
+      latest:
+        required: true
+        type: boolean
+      push:
+        required: true
+        type: boolean
+      slim:
+        required: true
+        type: boolean
+      debian:
+        required: true
+        type: boolean
+
+jobs:
+  push_to_registry:
+    name: Push Docker image to registries
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-config: .github/buildkit.toml
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare (slim)
+        if: ${{ inputs.slim }}
+        id: slim
+        run: |
+          DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
+          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
+          VERSION=${{ inputs.image_version }}
+          DEBIAN=${{ inputs.debian && '-debian' || '' }}
+          TAGS="${DOCKERHUB_IMAGE}:${VERSION}-slim${DEBIAN},${GHCR_IMAGE}:${VERSION}-slim${DEBIAN}"
+          if [[ ${{ inputs.latest }} == true ]]; then
+            TAGS=$TAGS,${DOCKERHUB_IMAGE}:slim${DEBIAN},${GHCR_IMAGE}:slim${DEBIAN}
+          fi
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Prepare (full)
+        id: full
+        run: |
+          DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
+          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
+          VERSION=${{ inputs.image_version }}
+          DEBIAN=${{ inputs.debian && '-debian' || '' }}
+          TAGS="${DOCKERHUB_IMAGE}:${VERSION}${DEBIAN},${GHCR_IMAGE}:${VERSION}${DEBIAN}"
+          if [[ ${{ inputs.latest }} == true ]]; then
+            TAGS=$TAGS,${DOCKERHUB_IMAGE}:latest${DEBIAN},${GHCR_IMAGE}:latest${DEBIAN}
+          fi
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Build and push image (slim)
+        if: ${{ inputs.slim }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
+          push: ${{ inputs.push }}
+          tags: ${{ steps.slim.outputs.tags }}
+          target: slim
+          platforms: ${{ inputs.platform }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.created=${{ steps.slim.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            BUILD_VERSION=${{ inputs.crowdsec_version }}
+
+      - name: Build and push image (full)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
+          push: ${{ inputs.push }}
+          tags: ${{ steps.full.outputs.tags }}
+          target: full
+          platforms: ${{ inputs.platform }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.created=${{ steps.full.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            BUILD_VERSION=${{ inputs.crowdsec_version }}

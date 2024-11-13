@@ -3,6 +3,7 @@
 package csplugin
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -77,14 +78,14 @@ func CheckPerms(path string) error {
 		return fmt.Errorf("while getting owner security info: %w", err)
 	}
 	if !sd.IsValid() {
-		return fmt.Errorf("security descriptor is invalid")
+		return errors.New("security descriptor is invalid")
 	}
 	owner, _, err := sd.Owner()
 	if err != nil {
 		return fmt.Errorf("while getting owner: %w", err)
 	}
 	if !owner.IsValid() {
-		return fmt.Errorf("owner is invalid")
+		return errors.New("owner is invalid")
 	}
 
 	if !owner.Equals(systemSid) && !owner.Equals(currentUserSid) && !owner.Equals(adminSid) {
@@ -98,10 +99,6 @@ func CheckPerms(path string) error {
 
 	if dacl == nil {
 		return fmt.Errorf("no DACL found on plugin, meaning fully permissive access on plugin %s", path)
-	}
-
-	if err != nil {
-		return fmt.Errorf("while looking up current user sid: %w", err)
 	}
 
 	rs := reflect.ValueOf(dacl).Elem()
@@ -119,7 +116,7 @@ func CheckPerms(path string) error {
 	*/
 	aceCount := rs.Field(3).Uint()
 
-	for i := uint64(0); i < aceCount; i++ {
+	for i := range aceCount {
 		ace := &AccessAllowedAce{}
 		ret, _, _ := procGetAce.Call(uintptr(unsafe.Pointer(dacl)), uintptr(i), uintptr(unsafe.Pointer(&ace)))
 		if ret == 0 {

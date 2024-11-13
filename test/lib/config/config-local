@@ -9,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: ${script_name} [make | load | clean]"
+    die "usage: ${script_name} [make | load | lock | unlock | clean]"
 }
 
 #shellcheck disable=SC1007
@@ -57,7 +57,6 @@ config_generate() {
 
     cp ../config/profiles.yaml \
        ../config/simulation.yaml \
-       ../config/local_api_credentials.yaml \
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
@@ -81,7 +80,6 @@ config_generate() {
     .common.daemonize=true |
     del(.common.pid_dir) |
     .common.log_level="info" |
-    .common.force_color_logs=true |
     .common.log_dir=strenv(LOG_DIR) |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
@@ -95,12 +93,12 @@ config_generate() {
     .db_config.db_path=strenv(DATA_DIR)+"/crowdsec.db" |
     .db_config.use_wal=true |
     .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
+    .api.server.listen_socket=strenv(DATA_DIR)+"/crowdsec.sock" |
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
     del(.api.server.online_client)
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
-
 
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
@@ -116,11 +114,15 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "$CSCLI" --warning hub update
-    "$CSCLI" --warning collections install crowdsecurity/linux
-    # the whitelists are installed by the deb & rpm packages, so we test with the same config
-    "$CSCLI" --warning parsers install crowdsecurity/whitelists
+    "$CSCLI" --warning hub update --with-content
+
+    # preload some content and data files
+    "$CSCLI" collections install crowdsecurity/linux --download-only
+    # sub-items did not respect --download-only
+    ./bin/remove-all-hub-items
+
+    # force TCP, the default would be unix socket
+    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --url http://127.0.0.1:8080 --auto --force
 
     mkdir -p "$LOCAL_INIT_DIR"
 
@@ -135,7 +137,16 @@ make_init_data() {
     remove_init_data
 }
 
+lock_init_data() {
+    touch "${LOCAL_INIT_DIR}/.lock"
+}
+
+unlock_init_data() {
+    rm -f "${LOCAL_INIT_DIR}/.lock"
+}
+
 load_init_data() {
+    [[ -f "${LOCAL_INIT_DIR}/.lock" ]] && die "init data is locked"
     ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
 
     if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
@@ -154,7 +165,6 @@ load_init_data() {
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
-
 # ---------------------------
 
 [[ $# -lt 1 ]] && about
@@ -165,6 +175,12 @@ case "$1" in
         ;;
     load)
         load_init_data
+        ;;
+    lock)
+        lock_init_data
+        ;;
+    unlock)
+        unlock_init_data
         ;;
     clean)
         remove_init_data

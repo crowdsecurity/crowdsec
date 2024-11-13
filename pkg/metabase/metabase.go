@@ -70,12 +70,12 @@ func (m *Metabase) Init(containerName string, image string) error {
 
 	switch m.Config.Database.Type {
 	case "mysql":
-		return fmt.Errorf("'mysql' is not supported yet for cscli dashboard")
+		return errors.New("'mysql' is not supported yet for cscli dashboard")
 		//DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postgresql", "postgres", "pgsql":
-		return fmt.Errorf("'postgresql' is not supported yet by cscli dashboard")
+		return errors.New("'postgresql' is not supported yet by cscli dashboard")
 	default:
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}

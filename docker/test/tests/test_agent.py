@@ -13,7 +13,7 @@ def test_no_agent(crowdsec, flavor):
         'DISABLE_AGENT': 'true',
     }
     with crowdsec(flavor=flavor, environment=env) as cs:
-        cs.wait_for_log("*CrowdSec Local API listening on 0.0.0.0:8080*")
+        cs.wait_for_log("*CrowdSec Local API listening on *:8080*")
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
         res = cs.cont.exec_run('cscli lapi status')
         assert res.exit_code == 0
@@ -37,7 +37,7 @@ def test_machine_register(crowdsec, flavor, tmp_path_factory):
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
         cs.wait_for_log([
                 "*Generate local agent credentials*",
-                "*CrowdSec Local API listening on 0.0.0.0:8080*",
+                "*CrowdSec Local API listening on *:8080*",
             ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
         res = cs.cont.exec_run('cscli lapi status')
@@ -50,7 +50,7 @@ def test_machine_register(crowdsec, flavor, tmp_path_factory):
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
         cs.wait_for_log([
                 "*Generate local agent credentials*",
-                "*CrowdSec Local API listening on 0.0.0.0:8080*",
+                "*CrowdSec Local API listening on *:8080*",
             ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
         res = cs.cont.exec_run('cscli lapi status')
@@ -65,7 +65,7 @@ def test_machine_register(crowdsec, flavor, tmp_path_factory):
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
         cs.wait_for_log([
                 "*Generate local agent credentials*",
-                "*CrowdSec Local API listening on 0.0.0.0:8080*",
+                "*CrowdSec Local API listening on *:8080*",
             ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
         res = cs.cont.exec_run('cscli lapi status')
@@ -78,7 +78,7 @@ def test_machine_register(crowdsec, flavor, tmp_path_factory):
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
         cs.wait_for_log([
                 "*Local agent already registered*",
-                "*CrowdSec Local API listening on 0.0.0.0:8080*",
+                "*CrowdSec Local API listening on *:8080*",
             ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
         res = cs.cont.exec_run('cscli lapi status')

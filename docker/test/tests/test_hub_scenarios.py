@@ -21,8 +21,8 @@ def test_install_two_scenarios(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cs:
         cs.wait_for_log([
-            f'*scenarios install "{it1}*"',
-            f'*scenarios install "{it2}*"',
+            f'*scenarios install "{it1}"*',
+            f'*scenarios install "{it2}"*',
             "*Starting processing data*"
         ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)

@@ -4,6 +4,8 @@ package bouncer
 
 import (
 	"time"
+
+	"entgo.io/ent/dialect/sql"
 )
 
 const (
@@ -27,12 +29,16 @@ const (
 	FieldType = "type"
 	// FieldVersion holds the string denoting the version field in the database.
 	FieldVersion = "version"
-	// FieldUntil holds the string denoting the until field in the database.
-	FieldUntil = "until"
 	// FieldLastPull holds the string denoting the last_pull field in the database.
 	FieldLastPull = "last_pull"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
+	// FieldOsname holds the string denoting the osname field in the database.
+	FieldOsname = "osname"
+	// FieldOsversion holds the string denoting the osversion field in the database.
+	FieldOsversion = "osversion"
+	// FieldFeatureflags holds the string denoting the featureflags field in the database.
+	FieldFeatureflags = "featureflags"
 	// Table holds the table name of the bouncer in the database.
 	Table = "bouncers"
 )
@@ -48,9 +54,11 @@ var Columns = []string{
 	FieldIPAddress,
 	FieldType,
 	FieldVersion,
-	FieldUntil,
 	FieldLastPull,
 	FieldAuthType,
+	FieldOsname,
+	FieldOsversion,
+	FieldFeatureflags,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -66,18 +74,85 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
-	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultIPAddress holds the default value on creation for the "ip_address" field.
 	DefaultIPAddress string
-	// DefaultUntil holds the default value on creation for the "until" field.
-	DefaultUntil func() time.Time
-	// DefaultLastPull holds the default value on creation for the "last_pull" field.
-	DefaultLastPull func() time.Time
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
 )
+
+// OrderOption defines the ordering options for the Bouncer queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByAPIKey orders the results by the api_key field.
+func ByAPIKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAPIKey, opts...).ToFunc()
+}
+
+// ByRevoked orders the results by the revoked field.
+func ByRevoked(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRevoked, opts...).ToFunc()
+}
+
+// ByIPAddress orders the results by the ip_address field.
+func ByIPAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIPAddress, opts...).ToFunc()
+}
+
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
+}
+
+// ByLastPull orders the results by the last_pull field.
+func ByLastPull(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastPull, opts...).ToFunc()
+}
+
+// ByAuthType orders the results by the auth_type field.
+func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAuthType, opts...).ToFunc()
+}
+
+// ByOsname orders the results by the osname field.
+func ByOsname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsname, opts...).ToFunc()
+}
+
+// ByOsversion orders the results by the osversion field.
+func ByOsversion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsversion, opts...).ToFunc()
+}
+
+// ByFeatureflags orders the results by the featureflags field.
+func ByFeatureflags(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFeatureflags, opts...).ToFunc()
+}

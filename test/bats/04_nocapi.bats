@@ -25,16 +25,17 @@ teardown() {
 @test "without capi: crowdsec LAPI should run without capi (-no-capi flag)" {
     config_set '.common.log_media="stdout"'
 
-    rune -124 timeout 1s "${CROWDSEC}" -no-capi
-    assert_stderr --partial "Communication with CrowdSec Central API disabled from args"
+    rune -0 wait-for \
+        --err "Communication with CrowdSec Central API disabled from args" \
+        "$CROWDSEC" -no-capi
 }
 
 @test "without capi: crowdsec LAPI should still work" {
     config_disable_capi
     config_set '.common.log_media="stdout"'
-    rune -124 timeout 1s "${CROWDSEC}"
-    # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
-    assert_stderr --partial "push and pull to Central API disabled"
+    rune -0 wait-for \
+        --err "push and pull to Central API disabled" \
+        "$CROWDSEC"
 }
 
 @test "without capi: cscli capi status -> fail" {
@@ -47,18 +48,15 @@ teardown() {
 @test "no capi: cscli config show" {
     config_disable_capi
     rune -0 cscli config show -o human
-    assert_output --partial "Global:"
-    assert_output --partial "cscli:"
-    assert_output --partial "Crowdsec:"
-    assert_output --partial "Local API Server:"
+    assert_output --regexp "Global:.*Crowdsec.*cscli:.*Local API Server:"
 }
 
 @test "no agent: cscli config backup" {
     config_disable_capi
-    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
-    rune -0 cscli config backup "${backupdir}"
+    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
+    rune -0 cscli config backup "$backupdir"
     assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "${backupdir}"
+    rune -1 cscli config backup "$backupdir"
     assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
     rm -rf -- "${backupdir:?}"
@@ -68,7 +66,7 @@ teardown() {
     config_disable_capi
     ./instance-crowdsec start
     rune -0 cscli lapi status
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
+    assert_output --partial "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli metrics" {

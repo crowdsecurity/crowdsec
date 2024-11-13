@@ -20,51 +20,47 @@ env:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.20.7"]
-
     name: "Build + tests"
     runs-on: windows-2022
 
     steps:
 
     - name: Check out CrowdSec repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: false
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
+        go-version: "1.23"
 
     - name: Build
       run: |
         make build BUILD_RE2_WASM=1
 
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
+
     - name: Run tests
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
-        go test -coverprofile coverage.out -covermode=atomic ./... > out.txt
+        go test -tags expr_debug -coverprofile coverage.out -covermode=atomic ./... > out.txt
         if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
         cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: coverage.out
         flags: unit-windows
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.54
+        version: v1.61
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
-        # the cache is already managed above, enabling it here
-        # gives errors when extracting
-        skip-pkg-cache: true
-        skip-build-cache: true

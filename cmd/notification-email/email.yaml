@@ -15,12 +15,14 @@ timeout: 20s          # Time to wait for response from the plugin before conside
 # The following template receives a list of models.Alert objects
 # The output goes in the email message body
 format: |
+  <html><body>
   {{range . -}}
     {{$alert := . -}}
     {{range .Decisions -}}
-      <html><body><p><a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>.</p> <p><a href=https://app.crowdsec.net/cti/{{.Value}}>CrowdSec CTI</a></p></body></html>
+      <p><a href="https://www.whois.com/whois/{{.Value}}">{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>.</p> <p><a href="https://app.crowdsec.net/cti/{{.Value}}">CrowdSec CTI</a></p>
     {{end -}}
   {{end -}}
+  </body></html>
 
 smtp_host:            # example: smtp.gmail.com
 smtp_username:        # Replace with your actual username
@@ -35,7 +37,15 @@ receiver_emails:
 # - email2@gmail.com
 
 # One of "ssltls", "starttls", "none"
-encryption_type: ssltls
+encryption_type: "ssltls"
+
+# If you need to set the HELO hostname:
+# helo_host: "localhost"
+
+# If the email server is hitting the default timeouts (10 seconds), you can increase them here
+#
+# connect_timeout: 10s
+# send_timeout: 10s
 
 ---
 

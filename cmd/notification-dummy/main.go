@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
 type PluginConfig struct {
@@ -18,6 +20,7 @@ type PluginConfig struct {
 }
 
 type DummyPlugin struct {
+	protobufs.UnimplementedNotifierServer
 	PluginConfigByName map[string]PluginConfig
 }
 
@@ -32,6 +35,7 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
+
 	cfg := s.PluginConfigByName[notification.Name]
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
@@ -42,19 +46,22 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	logger.Debug(notification.Text)
 
 	if cfg.OutputFile != nil && *cfg.OutputFile != "" {
-		f, err := os.OpenFile(*cfg.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(*cfg.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Cannot open notification file: %s", err))
 		}
+
 		if _, err := f.WriteString(notification.Text + "\n"); err != nil {
 			f.Close()
 			logger.Error(fmt.Sprintf("Cannot write notification to file: %s", err))
 		}
+
 		err = f.Close()
 		if err != nil {
 			logger.Error(fmt.Sprintf("Cannot close notification file: %s", err))
 		}
 	}
+
 	fmt.Println(notification.Text)
 
 	return &protobufs.Empty{}, nil
@@ -64,11 +71,12 @@ func (s *DummyPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	s.PluginConfigByName[d.Name] = d
+
 	return &protobufs.Empty{}, err
 }
 
 func main() {
-	var handshake = plugin.HandshakeConfig{
+	handshake := plugin.HandshakeConfig{
 		ProtocolVersion:  1,
 		MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
 		MagicCookieValue: os.Getenv("CROWDSEC_PLUGIN_KEY"),
@@ -78,7 +86,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"dummy": &protobufs.NotifierPlugin{
+			"dummy": &csplugin.NotifierPlugin{
 				Impl: sp,
 			},
 		},

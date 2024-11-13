@@ -3,8 +3,8 @@ package leakybucket
 import (
 	"sync"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -39,16 +39,14 @@ func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Lea
 			leaky.logger.Debugf("Uniq(%s) : ok", element)
 			u.KeyCache[element] = true
 			return &msg
-
-		} else {
-			leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
-			return nil
 		}
+		leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
+		return nil
 	}
 }
 
-func (u *Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
+func (u *Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
+	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
 		return alert, queue
 	}
 }

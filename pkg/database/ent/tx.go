@@ -22,20 +22,18 @@ type Tx struct {
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
+	// Lock is the client for interacting with the Lock builders.
+	Lock *LockClient
 	// Machine is the client for interacting with the Machine builders.
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
 	Meta *MetaClient
+	// Metric is the client for interacting with the Metric builders.
+	Metric *MetricClient
 
 	// lazily loaded.
 	client     *Client
 	clientOnce sync.Once
-
-	// completion callbacks.
-	mu         sync.Mutex
-	onCommit   []CommitHook
-	onRollback []RollbackHook
-
 	// ctx lives for the life of the transaction. It is
 	// the same context used by the underlying connection.
 	ctx context.Context
@@ -80,9 +78,9 @@ func (tx *Tx) Commit() error {
 	var fn Committer = CommitFunc(func(context.Context, *Tx) error {
 		return txDriver.tx.Commit()
 	})
-	tx.mu.Lock()
-	hooks := append([]CommitHook(nil), tx.onCommit...)
-	tx.mu.Unlock()
+	txDriver.mu.Lock()
+	hooks := append([]CommitHook(nil), txDriver.onCommit...)
+	txDriver.mu.Unlock()
 	for i := len(hooks) - 1; i >= 0; i-- {
 		fn = hooks[i](fn)
 	}
@@ -91,9 +89,10 @@ func (tx *Tx) Commit() error {
 
 // OnCommit adds a hook to call on commit.
 func (tx *Tx) OnCommit(f CommitHook) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	tx.onCommit = append(tx.onCommit, f)
+	txDriver := tx.config.driver.(*txDriver)
+	txDriver.mu.Lock()
+	txDriver.onCommit = append(txDriver.onCommit, f)
+	txDriver.mu.Unlock()
 }
 
 type (
@@ -135,9 +134,9 @@ func (tx *Tx) Rollback() error {
 	var fn Rollbacker = RollbackFunc(func(context.Context, *Tx) error {
 		return txDriver.tx.Rollback()
 	})
-	tx.mu.Lock()
-	hooks := append([]RollbackHook(nil), tx.onRollback...)
-	tx.mu.Unlock()
+	txDriver.mu.Lock()
+	hooks := append([]RollbackHook(nil), txDriver.onRollback...)
+	txDriver.mu.Unlock()
 	for i := len(hooks) - 1; i >= 0; i-- {
 		fn = hooks[i](fn)
 	}
@@ -146,9 +145,10 @@ func (tx *Tx) Rollback() error {
 
 // OnRollback adds a hook to call on rollback.
 func (tx *Tx) OnRollback(f RollbackHook) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	tx.onRollback = append(tx.onRollback, f)
+	txDriver := tx.config.driver.(*txDriver)
+	txDriver.mu.Lock()
+	txDriver.onRollback = append(txDriver.onRollback, f)
+	txDriver.mu.Unlock()
 }
 
 // Client returns a Client that binds to current transaction.
@@ -166,8 +166,10 @@ func (tx *Tx) init() {
 	tx.ConfigItem = NewConfigItemClient(tx.config)
 	tx.Decision = NewDecisionClient(tx.config)
 	tx.Event = NewEventClient(tx.config)
+	tx.Lock = NewLockClient(tx.config)
 	tx.Machine = NewMachineClient(tx.config)
 	tx.Meta = NewMetaClient(tx.config)
+	tx.Metric = NewMetricClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.
@@ -186,6 +188,10 @@ type txDriver struct {
 	drv dialect.Driver
 	// tx is the underlying transaction.
 	tx dialect.Tx
+	// completion hooks.
+	mu         sync.Mutex
+	onCommit   []CommitHook
+	onRollback []RollbackHook
 }
 
 // newTx creates a new transactional driver.

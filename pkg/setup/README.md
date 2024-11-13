@@ -129,7 +129,7 @@ services:
 and must all return true for a service to be detected (implied *and* clause, no
 short-circuit). A missing or empty `when:` section is evaluated as true.
 The [expression
-engine](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md)
+engine](https://github.com/antonmedv/expr/blob/master/docs/language-definition.md)
 is the same one used by CrowdSec parser filters. You can force the detection of
 a process by using the `cscli setup detect... --force-process <processname>`
 flag. It will always behave as if `<processname>` was running.

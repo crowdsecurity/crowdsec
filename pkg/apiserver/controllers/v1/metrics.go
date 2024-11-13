@@ -3,7 +3,6 @@ package v1
 import (
 	"time"
 
-	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -35,8 +34,11 @@ var LapiBouncerHits = prometheus.NewCounterVec(
 	[]string{"bouncer", "route", "method"},
 )
 
-/* keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
-while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi*/
+/*
+	keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
+
+while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi
+*/
 var LapiNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lapi_decisions_ko_total",
@@ -63,46 +65,49 @@ var LapiResponseTime = prometheus.NewHistogramVec(
 	[]string{"endpoint", "method"})
 
 func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
-	name, ok := c.Get("BOUNCER_NAME")
-	if ok {
+	bouncer, _ := getBouncerFromContext(c)
+	if bouncer != nil {
 		LapiNilDecisions.With(prometheus.Labels{
-			"bouncer": name.(string)}).Inc()
+			"bouncer": bouncer.Name,
+		}).Inc()
 	}
 }
 
 func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
-	name, ok := c.Get("BOUNCER_NAME")
-	if ok {
+	bouncer, _ := getBouncerFromContext(c)
+	if bouncer != nil {
 		LapiNonNilDecisions.With(prometheus.Labels{
-			"bouncer": name.(string)}).Inc()
+			"bouncer": bouncer.Name,
+		}).Inc()
 	}
 }
 
 func PrometheusMachinesMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims := jwt.ExtractClaims(c)
-		if claims != nil {
-			if rawID, ok := claims["id"]; ok {
-				machineID := rawID.(string)
-				LapiMachineHits.With(prometheus.Labels{
-					"machine": machineID,
-					"route":   c.Request.URL.Path,
-					"method":  c.Request.Method}).Inc()
-			}
+		machineID, _ := getMachineIDFromContext(c)
+		if machineID != "" {
+			LapiMachineHits.With(prometheus.Labels{
+				"machine": machineID,
+				"route":   c.Request.URL.Path,
+				"method":  c.Request.Method,
+			}).Inc()
 		}
+
 		c.Next()
 	}
 }
 
 func PrometheusBouncersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		name, ok := c.Get("BOUNCER_NAME")
-		if ok {
+		bouncer, _ := getBouncerFromContext(c)
+		if bouncer != nil {
 			LapiBouncerHits.With(prometheus.Labels{
-				"bouncer": name.(string),
+				"bouncer": bouncer.Name,
 				"route":   c.Request.URL.Path,
-				"method":  c.Request.Method}).Inc()
+				"method":  c.Request.Method,
+			}).Inc()
 		}
+
 		c.Next()
 	}
 }
@@ -110,10 +115,13 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startTime := time.Now()
+
 		LapiRouteHits.With(prometheus.Labels{
 			"route":  c.Request.URL.Path,
-			"method": c.Request.Method}).Inc()
+			"method": c.Request.Method,
+		}).Inc()
 		c.Next()
+
 		elapsed := time.Since(startTime)
 		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(elapsed.Seconds())
 	}

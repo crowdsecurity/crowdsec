@@ -2,7 +2,7 @@ package csplugin
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	plugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
@@ -10,23 +10,21 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
-type Notifier interface {
-	Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error)
-	Configure(ctx context.Context, cfg *protobufs.Config) (*protobufs.Empty, error)
-}
-
 type NotifierPlugin struct {
 	plugin.Plugin
-	Impl Notifier
+	Impl protobufs.NotifierServer
 }
 
-type GRPCClient struct{ client protobufs.NotifierClient }
+type GRPCClient struct{
+	protobufs.UnimplementedNotifierServer
+	client protobufs.NotifierClient 
+}
 
 func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	done := make(chan error)
 	go func() {
 		_, err := m.client.Notify(
-			context.Background(), &protobufs.Notification{Text: notification.Text, Name: notification.Name},
+			ctx, &protobufs.Notification{Text: notification.Text, Name: notification.Name},
 		)
 		done <- err
 	}()
@@ -35,19 +33,17 @@ func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notific
 		return &protobufs.Empty{}, err
 
 	case <-ctx.Done():
-		return &protobufs.Empty{}, fmt.Errorf("timeout exceeded")
+		return &protobufs.Empty{}, errors.New("timeout exceeded")
 	}
 }
 
 func (m *GRPCClient) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
-	_, err := m.client.Configure(
-		context.Background(), config,
-	)
+	_, err := m.client.Configure(ctx, config)
 	return &protobufs.Empty{}, err
 }
 
 type GRPCServer struct {
-	Impl Notifier
+	Impl protobufs.NotifierServer
 }
 
 func (p *NotifierPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {

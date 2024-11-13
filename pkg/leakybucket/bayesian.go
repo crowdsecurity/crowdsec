@@ -3,8 +3,9 @@ package leakybucket
 import (
 	"fmt"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -107,9 +108,9 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	}
 
 	l.logger.Debugf("running condition expression: %s", b.rawCondition.ConditionalFilterName)
-	ret, err := expr.Run(b.conditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
+	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
 	if err != nil {
-		return fmt.Errorf("unable to run conditional filter: %s", err)
+		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}
 
 	l.logger.Tracef("bayesian bucket expression %s returned : %v", b.rawCondition.ConditionalFilterName, ret)
@@ -151,7 +152,7 @@ func (b *BayesianEvent) compileCondition() error {
 
 	conditionalExprCacheLock.Unlock()
 	//release the lock during compile same as coditional bucket
-	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("bayesian condition compile error: %w", err)
 	}

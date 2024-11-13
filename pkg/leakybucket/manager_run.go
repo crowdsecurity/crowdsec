@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -85,7 +85,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	defer buckets.wgDumpState.Done()
 
 	if outputdir == "" {
-		return "", fmt.Errorf("empty output dir for dump bucket state")
+		return "", errors.New("empty output dir for dump bucket state")
 	}
 	tmpFd, err := os.CreateTemp(os.TempDir(), "crowdsec-buckets-dump-")
 	if err != nil {
@@ -132,11 +132,11 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	})
 	bbuckets, err := json.MarshalIndent(serialized, "", " ")
 	if err != nil {
-		return "", fmt.Errorf("Failed to unmarshal buckets : %s", err)
+		return "", fmt.Errorf("failed to parse buckets: %s", err)
 	}
 	size, err := tmpFd.Write(bbuckets)
 	if err != nil {
-		return "", fmt.Errorf("failed to write temp file : %s", err)
+		return "", fmt.Errorf("failed to write temp file: %s", err)
 	}
 	log.Infof("Serialized %d live buckets (+%d expired) in %d bytes to %s", len(serialized), discard, size, tmpFd.Name())
 	serialized = nil
@@ -203,7 +203,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
-					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					holder.logger.Warningf("Failed to parse event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
@@ -297,15 +297,17 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		evt := deepcopy.Copy(parsed)
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
-
 	//find the relevant holders (scenarios)
-	for idx := 0; idx < len(holders); idx++ {
+	for idx := range holders {
 		//for idx, holder := range holders {
 
 		//evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
-			output, err := expr.Run(holders[idx].RunTimeFilter, map[string]interface{}{"evt": &parsed})
+			output, err := exprhelpers.Run(holders[idx].RunTimeFilter,
+				map[string]interface{}{"evt": &parsed},
+				holders[idx].logger,
+				holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -314,10 +316,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			if condition, ok = output.(bool); !ok {
 				holders[idx].logger.Errorf("unexpected non-bool return : %T", output)
 				holders[idx].logger.Fatalf("Filter issue")
-			}
-
-			if holders[idx].Debug {
-				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, map[string]interface{}{"evt": &parsed})
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -328,7 +326,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed})
+			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")

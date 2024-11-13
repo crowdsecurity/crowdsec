@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -33,7 +34,7 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	} else {
 		conditionalExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
@@ -50,12 +51,14 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 		var condition, ok bool
 		if c.ConditionalFilterRuntime != nil {
 			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
-			ret, err := expr.Run(c.ConditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
+
+			ret, err := exprhelpers.Run(c.ConditionalFilterRuntime,
+				map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l},
+				l.logger, b.Debug)
 			if err != nil {
 				l.logger.Errorf("unable to run conditional filter : %s", err)
 				return &msg
 			}
-
 			l.logger.Debugf("Conditional bucket expression returned : %v", ret)
 
 			if condition, ok = ret.(bool); !ok {

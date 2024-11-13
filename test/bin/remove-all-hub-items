@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091
+. "${THIS_DIR}/../.environment.sh"
+
+# pre-download everything but don't install anything
+
+echo "Pre-downloading Hub content..."
+
+types=$("$CSCLI" hub types -o raw)
+
+for itemtype in $types; do
+    "$CSCLI" "$itemtype" remove --all --force
+done
+
+echo " done."

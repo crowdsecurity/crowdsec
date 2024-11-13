@@ -12,2440 +12,1617 @@ import (
 
 // ID filters vertices based on their ID field.
 func ID(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
 func IDEQ(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
 func IDNEQ(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
 func IDIn(ids ...int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		v := make([]any, len(ids))
-		for i := range v {
-			v[i] = ids[i]
-		}
-		s.Where(sql.In(s.C(FieldID), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
 func IDNotIn(ids ...int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		v := make([]any, len(ids))
-		for i := range v {
-			v[i] = ids[i]
-		}
-		s.Where(sql.NotIn(s.C(FieldID), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
 func IDGT(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
 func IDGTE(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
 func IDLT(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
 func IDLTE(id int) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldID), id))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldID, id))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldCreatedAt, v))
 }
 
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // Scenario applies equality check predicate on the "scenario" field. It's identical to ScenarioEQ.
 func Scenario(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldScenario, v))
 }
 
 // BucketId applies equality check predicate on the "bucketId" field. It's identical to BucketIdEQ.
 func BucketId(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldBucketId, v))
 }
 
 // Message applies equality check predicate on the "message" field. It's identical to MessageEQ.
 func Message(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldMessage, v))
 }
 
 // EventsCount applies equality check predicate on the "eventsCount" field. It's identical to EventsCountEQ.
 func EventsCount(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldEventsCount, v))
 }
 
 // StartedAt applies equality check predicate on the "startedAt" field. It's identical to StartedAtEQ.
 func StartedAt(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldStartedAt, v))
 }
 
 // StoppedAt applies equality check predicate on the "stoppedAt" field. It's identical to StoppedAtEQ.
 func StoppedAt(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldStoppedAt, v))
 }
 
 // SourceIp applies equality check predicate on the "sourceIp" field. It's identical to SourceIpEQ.
 func SourceIp(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceIp, v))
 }
 
 // SourceRange applies equality check predicate on the "sourceRange" field. It's identical to SourceRangeEQ.
 func SourceRange(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceRange, v))
 }
 
 // SourceAsNumber applies equality check predicate on the "sourceAsNumber" field. It's identical to SourceAsNumberEQ.
 func SourceAsNumber(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceAsNumber, v))
 }
 
 // SourceAsName applies equality check predicate on the "sourceAsName" field. It's identical to SourceAsNameEQ.
 func SourceAsName(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceAsName, v))
 }
 
 // SourceCountry applies equality check predicate on the "sourceCountry" field. It's identical to SourceCountryEQ.
 func SourceCountry(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceCountry, v))
 }
 
 // SourceLatitude applies equality check predicate on the "sourceLatitude" field. It's identical to SourceLatitudeEQ.
 func SourceLatitude(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceLatitude, v))
 }
 
 // SourceLongitude applies equality check predicate on the "sourceLongitude" field. It's identical to SourceLongitudeEQ.
 func SourceLongitude(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceLongitude, v))
 }
 
 // SourceScope applies equality check predicate on the "sourceScope" field. It's identical to SourceScopeEQ.
 func SourceScope(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceScope, v))
 }
 
 // SourceValue applies equality check predicate on the "sourceValue" field. It's identical to SourceValueEQ.
 func SourceValue(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceValue, v))
 }
 
 // Capacity applies equality check predicate on the "capacity" field. It's identical to CapacityEQ.
 func Capacity(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldCapacity, v))
 }
 
 // LeakSpeed applies equality check predicate on the "leakSpeed" field. It's identical to LeakSpeedEQ.
 func LeakSpeed(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldLeakSpeed, v))
 }
 
 // ScenarioVersion applies equality check predicate on the "scenarioVersion" field. It's identical to ScenarioVersionEQ.
 func ScenarioVersion(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldScenarioVersion, v))
 }
 
 // ScenarioHash applies equality check predicate on the "scenarioHash" field. It's identical to ScenarioHashEQ.
 func ScenarioHash(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldScenarioHash, v))
 }
 
 // Simulated applies equality check predicate on the "simulated" field. It's identical to SimulatedEQ.
 func Simulated(v bool) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSimulated), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSimulated, v))
 }
 
 // UUID applies equality check predicate on the "uuid" field. It's identical to UUIDEQ.
 func UUID(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldUUID, v))
+}
+
+// Remediation applies equality check predicate on the "remediation" field. It's identical to RemediationEQ.
+func Remediation(v bool) predicate.Alert {
+	return predicate.Alert(sql.FieldEQ(FieldRemediation, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldCreatedAt, v))
 }
 
 // CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
 func CreatedAtNEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldCreatedAt, v))
 }
 
 // CreatedAtIn applies the In predicate on the "created_at" field.
 func CreatedAtIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldCreatedAt), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldCreatedAt, vs...))
 }
 
 // CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
 func CreatedAtNotIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldCreatedAt), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldCreatedAt, vs...))
 }
 
 // CreatedAtGT applies the GT predicate on the "created_at" field.
 func CreatedAtGT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldCreatedAt, v))
 }
 
 // CreatedAtGTE applies the GTE predicate on the "created_at" field.
 func CreatedAtGTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldCreatedAt, v))
 }
 
 // CreatedAtLT applies the LT predicate on the "created_at" field.
 func CreatedAtLT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldCreatedAt), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldCreatedAt, v))
 }
 
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldCreatedAt), v))
-	})
-}
-
-// CreatedAtIsNil applies the IsNil predicate on the "created_at" field.
-func CreatedAtIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldCreatedAt)))
-	})
-}
-
-// CreatedAtNotNil applies the NotNil predicate on the "created_at" field.
-func CreatedAtNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldCreatedAt)))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldCreatedAt, v))
 }
 
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
 func UpdatedAtEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
 func UpdatedAtNEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldUpdatedAt, v))
 }
 
 // UpdatedAtIn applies the In predicate on the "updated_at" field.
 func UpdatedAtIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldUpdatedAt), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldUpdatedAt, vs...))
 }
 
 // UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
 func UpdatedAtNotIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldUpdatedAt), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldUpdatedAt, vs...))
 }
 
 // UpdatedAtGT applies the GT predicate on the "updated_at" field.
 func UpdatedAtGT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldUpdatedAt, v))
 }
 
 // UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
 func UpdatedAtGTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldUpdatedAt, v))
 }
 
 // UpdatedAtLT applies the LT predicate on the "updated_at" field.
 func UpdatedAtLT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUpdatedAt), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldUpdatedAt, v))
 }
 
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUpdatedAt), v))
-	})
-}
-
-// UpdatedAtIsNil applies the IsNil predicate on the "updated_at" field.
-func UpdatedAtIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldUpdatedAt)))
-	})
-}
-
-// UpdatedAtNotNil applies the NotNil predicate on the "updated_at" field.
-func UpdatedAtNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldUpdatedAt)))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
 // ScenarioEQ applies the EQ predicate on the "scenario" field.
 func ScenarioEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldScenario, v))
 }
 
 // ScenarioNEQ applies the NEQ predicate on the "scenario" field.
 func ScenarioNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldScenario, v))
 }
 
 // ScenarioIn applies the In predicate on the "scenario" field.
 func ScenarioIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldScenario), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldScenario, vs...))
 }
 
 // ScenarioNotIn applies the NotIn predicate on the "scenario" field.
 func ScenarioNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldScenario), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldScenario, vs...))
 }
 
 // ScenarioGT applies the GT predicate on the "scenario" field.
 func ScenarioGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldScenario, v))
 }
 
 // ScenarioGTE applies the GTE predicate on the "scenario" field.
 func ScenarioGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldScenario, v))
 }
 
 // ScenarioLT applies the LT predicate on the "scenario" field.
 func ScenarioLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldScenario, v))
 }
 
 // ScenarioLTE applies the LTE predicate on the "scenario" field.
 func ScenarioLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldScenario, v))
 }
 
 // ScenarioContains applies the Contains predicate on the "scenario" field.
 func ScenarioContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldScenario, v))
 }
 
 // ScenarioHasPrefix applies the HasPrefix predicate on the "scenario" field.
 func ScenarioHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldScenario, v))
 }
 
 // ScenarioHasSuffix applies the HasSuffix predicate on the "scenario" field.
 func ScenarioHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldScenario, v))
 }
 
 // ScenarioEqualFold applies the EqualFold predicate on the "scenario" field.
 func ScenarioEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldScenario, v))
 }
 
 // ScenarioContainsFold applies the ContainsFold predicate on the "scenario" field.
 func ScenarioContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldScenario), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldScenario, v))
 }
 
 // BucketIdEQ applies the EQ predicate on the "bucketId" field.
 func BucketIdEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldBucketId, v))
 }
 
 // BucketIdNEQ applies the NEQ predicate on the "bucketId" field.
 func BucketIdNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldBucketId, v))
 }
 
 // BucketIdIn applies the In predicate on the "bucketId" field.
 func BucketIdIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldBucketId), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldBucketId, vs...))
 }
 
 // BucketIdNotIn applies the NotIn predicate on the "bucketId" field.
 func BucketIdNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldBucketId), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldBucketId, vs...))
 }
 
 // BucketIdGT applies the GT predicate on the "bucketId" field.
 func BucketIdGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldBucketId, v))
 }
 
 // BucketIdGTE applies the GTE predicate on the "bucketId" field.
 func BucketIdGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldBucketId, v))
 }
 
 // BucketIdLT applies the LT predicate on the "bucketId" field.
 func BucketIdLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldBucketId, v))
 }
 
 // BucketIdLTE applies the LTE predicate on the "bucketId" field.
 func BucketIdLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldBucketId, v))
 }
 
 // BucketIdContains applies the Contains predicate on the "bucketId" field.
 func BucketIdContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldBucketId, v))
 }
 
 // BucketIdHasPrefix applies the HasPrefix predicate on the "bucketId" field.
 func BucketIdHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldBucketId, v))
 }
 
 // BucketIdHasSuffix applies the HasSuffix predicate on the "bucketId" field.
 func BucketIdHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldBucketId, v))
 }
 
 // BucketIdIsNil applies the IsNil predicate on the "bucketId" field.
 func BucketIdIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldBucketId)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldBucketId))
 }
 
 // BucketIdNotNil applies the NotNil predicate on the "bucketId" field.
 func BucketIdNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldBucketId)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldBucketId))
 }
 
 // BucketIdEqualFold applies the EqualFold predicate on the "bucketId" field.
 func BucketIdEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldBucketId, v))
 }
 
 // BucketIdContainsFold applies the ContainsFold predicate on the "bucketId" field.
 func BucketIdContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldBucketId), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldBucketId, v))
 }
 
 // MessageEQ applies the EQ predicate on the "message" field.
 func MessageEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldMessage, v))
 }
 
 // MessageNEQ applies the NEQ predicate on the "message" field.
 func MessageNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldMessage, v))
 }
 
 // MessageIn applies the In predicate on the "message" field.
 func MessageIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldMessage), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldMessage, vs...))
 }
 
 // MessageNotIn applies the NotIn predicate on the "message" field.
 func MessageNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldMessage), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldMessage, vs...))
 }
 
 // MessageGT applies the GT predicate on the "message" field.
 func MessageGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldMessage, v))
 }
 
 // MessageGTE applies the GTE predicate on the "message" field.
 func MessageGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldMessage, v))
 }
 
 // MessageLT applies the LT predicate on the "message" field.
 func MessageLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldMessage, v))
 }
 
 // MessageLTE applies the LTE predicate on the "message" field.
 func MessageLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldMessage, v))
 }
 
 // MessageContains applies the Contains predicate on the "message" field.
 func MessageContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldMessage, v))
 }
 
 // MessageHasPrefix applies the HasPrefix predicate on the "message" field.
 func MessageHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldMessage, v))
 }
 
 // MessageHasSuffix applies the HasSuffix predicate on the "message" field.
 func MessageHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldMessage, v))
 }
 
 // MessageIsNil applies the IsNil predicate on the "message" field.
 func MessageIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldMessage)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldMessage))
 }
 
 // MessageNotNil applies the NotNil predicate on the "message" field.
 func MessageNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldMessage)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldMessage))
 }
 
 // MessageEqualFold applies the EqualFold predicate on the "message" field.
 func MessageEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldMessage, v))
 }
 
 // MessageContainsFold applies the ContainsFold predicate on the "message" field.
 func MessageContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldMessage), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldMessage, v))
 }
 
 // EventsCountEQ applies the EQ predicate on the "eventsCount" field.
 func EventsCountEQ(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldEventsCount, v))
 }
 
 // EventsCountNEQ applies the NEQ predicate on the "eventsCount" field.
 func EventsCountNEQ(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldEventsCount, v))
 }
 
 // EventsCountIn applies the In predicate on the "eventsCount" field.
 func EventsCountIn(vs ...int32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldEventsCount), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldEventsCount, vs...))
 }
 
 // EventsCountNotIn applies the NotIn predicate on the "eventsCount" field.
 func EventsCountNotIn(vs ...int32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldEventsCount), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldEventsCount, vs...))
 }
 
 // EventsCountGT applies the GT predicate on the "eventsCount" field.
 func EventsCountGT(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldEventsCount, v))
 }
 
 // EventsCountGTE applies the GTE predicate on the "eventsCount" field.
 func EventsCountGTE(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldEventsCount, v))
 }
 
 // EventsCountLT applies the LT predicate on the "eventsCount" field.
 func EventsCountLT(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldEventsCount, v))
 }
 
 // EventsCountLTE applies the LTE predicate on the "eventsCount" field.
 func EventsCountLTE(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldEventsCount), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldEventsCount, v))
 }
 
 // EventsCountIsNil applies the IsNil predicate on the "eventsCount" field.
 func EventsCountIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldEventsCount)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldEventsCount))
 }
 
 // EventsCountNotNil applies the NotNil predicate on the "eventsCount" field.
 func EventsCountNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldEventsCount)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldEventsCount))
 }
 
 // StartedAtEQ applies the EQ predicate on the "startedAt" field.
 func StartedAtEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldStartedAt, v))
 }
 
 // StartedAtNEQ applies the NEQ predicate on the "startedAt" field.
 func StartedAtNEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldStartedAt, v))
 }
 
 // StartedAtIn applies the In predicate on the "startedAt" field.
 func StartedAtIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldStartedAt), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldStartedAt, vs...))
 }
 
 // StartedAtNotIn applies the NotIn predicate on the "startedAt" field.
 func StartedAtNotIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldStartedAt), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldStartedAt, vs...))
 }
 
 // StartedAtGT applies the GT predicate on the "startedAt" field.
 func StartedAtGT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldStartedAt, v))
 }
 
 // StartedAtGTE applies the GTE predicate on the "startedAt" field.
 func StartedAtGTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldStartedAt, v))
 }
 
 // StartedAtLT applies the LT predicate on the "startedAt" field.
 func StartedAtLT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldStartedAt, v))
 }
 
 // StartedAtLTE applies the LTE predicate on the "startedAt" field.
 func StartedAtLTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldStartedAt), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldStartedAt, v))
 }
 
 // StartedAtIsNil applies the IsNil predicate on the "startedAt" field.
 func StartedAtIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldStartedAt)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldStartedAt))
 }
 
 // StartedAtNotNil applies the NotNil predicate on the "startedAt" field.
 func StartedAtNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldStartedAt)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldStartedAt))
 }
 
 // StoppedAtEQ applies the EQ predicate on the "stoppedAt" field.
 func StoppedAtEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldStoppedAt, v))
 }
 
 // StoppedAtNEQ applies the NEQ predicate on the "stoppedAt" field.
 func StoppedAtNEQ(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldStoppedAt, v))
 }
 
 // StoppedAtIn applies the In predicate on the "stoppedAt" field.
 func StoppedAtIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldStoppedAt), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldStoppedAt, vs...))
 }
 
 // StoppedAtNotIn applies the NotIn predicate on the "stoppedAt" field.
 func StoppedAtNotIn(vs ...time.Time) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldStoppedAt), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldStoppedAt, vs...))
 }
 
 // StoppedAtGT applies the GT predicate on the "stoppedAt" field.
 func StoppedAtGT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldStoppedAt, v))
 }
 
 // StoppedAtGTE applies the GTE predicate on the "stoppedAt" field.
 func StoppedAtGTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldStoppedAt, v))
 }
 
 // StoppedAtLT applies the LT predicate on the "stoppedAt" field.
 func StoppedAtLT(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldStoppedAt, v))
 }
 
 // StoppedAtLTE applies the LTE predicate on the "stoppedAt" field.
 func StoppedAtLTE(v time.Time) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldStoppedAt), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldStoppedAt, v))
 }
 
 // StoppedAtIsNil applies the IsNil predicate on the "stoppedAt" field.
 func StoppedAtIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldStoppedAt)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldStoppedAt))
 }
 
 // StoppedAtNotNil applies the NotNil predicate on the "stoppedAt" field.
 func StoppedAtNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldStoppedAt)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldStoppedAt))
 }
 
 // SourceIpEQ applies the EQ predicate on the "sourceIp" field.
 func SourceIpEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceIp, v))
 }
 
 // SourceIpNEQ applies the NEQ predicate on the "sourceIp" field.
 func SourceIpNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceIp, v))
 }
 
 // SourceIpIn applies the In predicate on the "sourceIp" field.
 func SourceIpIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceIp), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceIp, vs...))
 }
 
 // SourceIpNotIn applies the NotIn predicate on the "sourceIp" field.
 func SourceIpNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceIp), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceIp, vs...))
 }
 
 // SourceIpGT applies the GT predicate on the "sourceIp" field.
 func SourceIpGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceIp, v))
 }
 
 // SourceIpGTE applies the GTE predicate on the "sourceIp" field.
 func SourceIpGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceIp, v))
 }
 
 // SourceIpLT applies the LT predicate on the "sourceIp" field.
 func SourceIpLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceIp, v))
 }
 
 // SourceIpLTE applies the LTE predicate on the "sourceIp" field.
 func SourceIpLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceIp, v))
 }
 
 // SourceIpContains applies the Contains predicate on the "sourceIp" field.
 func SourceIpContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceIp, v))
 }
 
 // SourceIpHasPrefix applies the HasPrefix predicate on the "sourceIp" field.
 func SourceIpHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceIp, v))
 }
 
 // SourceIpHasSuffix applies the HasSuffix predicate on the "sourceIp" field.
 func SourceIpHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceIp, v))
 }
 
 // SourceIpIsNil applies the IsNil predicate on the "sourceIp" field.
 func SourceIpIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceIp)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceIp))
 }
 
 // SourceIpNotNil applies the NotNil predicate on the "sourceIp" field.
 func SourceIpNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceIp)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceIp))
 }
 
 // SourceIpEqualFold applies the EqualFold predicate on the "sourceIp" field.
 func SourceIpEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceIp, v))
 }
 
 // SourceIpContainsFold applies the ContainsFold predicate on the "sourceIp" field.
 func SourceIpContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceIp), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceIp, v))
 }
 
 // SourceRangeEQ applies the EQ predicate on the "sourceRange" field.
 func SourceRangeEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceRange, v))
 }
 
 // SourceRangeNEQ applies the NEQ predicate on the "sourceRange" field.
 func SourceRangeNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceRange, v))
 }
 
 // SourceRangeIn applies the In predicate on the "sourceRange" field.
 func SourceRangeIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceRange), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceRange, vs...))
 }
 
 // SourceRangeNotIn applies the NotIn predicate on the "sourceRange" field.
 func SourceRangeNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceRange), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceRange, vs...))
 }
 
 // SourceRangeGT applies the GT predicate on the "sourceRange" field.
 func SourceRangeGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceRange, v))
 }
 
 // SourceRangeGTE applies the GTE predicate on the "sourceRange" field.
 func SourceRangeGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceRange, v))
 }
 
 // SourceRangeLT applies the LT predicate on the "sourceRange" field.
 func SourceRangeLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceRange, v))
 }
 
 // SourceRangeLTE applies the LTE predicate on the "sourceRange" field.
 func SourceRangeLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceRange, v))
 }
 
 // SourceRangeContains applies the Contains predicate on the "sourceRange" field.
 func SourceRangeContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceRange, v))
 }
 
 // SourceRangeHasPrefix applies the HasPrefix predicate on the "sourceRange" field.
 func SourceRangeHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceRange, v))
 }
 
 // SourceRangeHasSuffix applies the HasSuffix predicate on the "sourceRange" field.
 func SourceRangeHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceRange, v))
 }
 
 // SourceRangeIsNil applies the IsNil predicate on the "sourceRange" field.
 func SourceRangeIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceRange)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceRange))
 }
 
 // SourceRangeNotNil applies the NotNil predicate on the "sourceRange" field.
 func SourceRangeNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceRange)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceRange))
 }
 
 // SourceRangeEqualFold applies the EqualFold predicate on the "sourceRange" field.
 func SourceRangeEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceRange, v))
 }
 
 // SourceRangeContainsFold applies the ContainsFold predicate on the "sourceRange" field.
 func SourceRangeContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceRange), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceRange, v))
 }
 
 // SourceAsNumberEQ applies the EQ predicate on the "sourceAsNumber" field.
 func SourceAsNumberEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberNEQ applies the NEQ predicate on the "sourceAsNumber" field.
 func SourceAsNumberNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberIn applies the In predicate on the "sourceAsNumber" field.
 func SourceAsNumberIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceAsNumber), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceAsNumber, vs...))
 }
 
 // SourceAsNumberNotIn applies the NotIn predicate on the "sourceAsNumber" field.
 func SourceAsNumberNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceAsNumber), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceAsNumber, vs...))
 }
 
 // SourceAsNumberGT applies the GT predicate on the "sourceAsNumber" field.
 func SourceAsNumberGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberGTE applies the GTE predicate on the "sourceAsNumber" field.
 func SourceAsNumberGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberLT applies the LT predicate on the "sourceAsNumber" field.
 func SourceAsNumberLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberLTE applies the LTE predicate on the "sourceAsNumber" field.
 func SourceAsNumberLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberContains applies the Contains predicate on the "sourceAsNumber" field.
 func SourceAsNumberContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberHasPrefix applies the HasPrefix predicate on the "sourceAsNumber" field.
 func SourceAsNumberHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberHasSuffix applies the HasSuffix predicate on the "sourceAsNumber" field.
 func SourceAsNumberHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberIsNil applies the IsNil predicate on the "sourceAsNumber" field.
 func SourceAsNumberIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceAsNumber)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceAsNumber))
 }
 
 // SourceAsNumberNotNil applies the NotNil predicate on the "sourceAsNumber" field.
 func SourceAsNumberNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceAsNumber)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceAsNumber))
 }
 
 // SourceAsNumberEqualFold applies the EqualFold predicate on the "sourceAsNumber" field.
 func SourceAsNumberEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceAsNumber, v))
 }
 
 // SourceAsNumberContainsFold applies the ContainsFold predicate on the "sourceAsNumber" field.
 func SourceAsNumberContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceAsNumber), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceAsNumber, v))
 }
 
 // SourceAsNameEQ applies the EQ predicate on the "sourceAsName" field.
 func SourceAsNameEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceAsName, v))
 }
 
 // SourceAsNameNEQ applies the NEQ predicate on the "sourceAsName" field.
 func SourceAsNameNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceAsName, v))
 }
 
 // SourceAsNameIn applies the In predicate on the "sourceAsName" field.
 func SourceAsNameIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceAsName), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceAsName, vs...))
 }
 
 // SourceAsNameNotIn applies the NotIn predicate on the "sourceAsName" field.
 func SourceAsNameNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceAsName), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceAsName, vs...))
 }
 
 // SourceAsNameGT applies the GT predicate on the "sourceAsName" field.
 func SourceAsNameGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceAsName, v))
 }
 
 // SourceAsNameGTE applies the GTE predicate on the "sourceAsName" field.
 func SourceAsNameGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceAsName, v))
 }
 
 // SourceAsNameLT applies the LT predicate on the "sourceAsName" field.
 func SourceAsNameLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceAsName, v))
 }
 
 // SourceAsNameLTE applies the LTE predicate on the "sourceAsName" field.
 func SourceAsNameLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceAsName, v))
 }
 
 // SourceAsNameContains applies the Contains predicate on the "sourceAsName" field.
 func SourceAsNameContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceAsName, v))
 }
 
 // SourceAsNameHasPrefix applies the HasPrefix predicate on the "sourceAsName" field.
 func SourceAsNameHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceAsName, v))
 }
 
 // SourceAsNameHasSuffix applies the HasSuffix predicate on the "sourceAsName" field.
 func SourceAsNameHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceAsName, v))
 }
 
 // SourceAsNameIsNil applies the IsNil predicate on the "sourceAsName" field.
 func SourceAsNameIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceAsName)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceAsName))
 }
 
 // SourceAsNameNotNil applies the NotNil predicate on the "sourceAsName" field.
 func SourceAsNameNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceAsName)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceAsName))
 }
 
 // SourceAsNameEqualFold applies the EqualFold predicate on the "sourceAsName" field.
 func SourceAsNameEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceAsName, v))
 }
 
 // SourceAsNameContainsFold applies the ContainsFold predicate on the "sourceAsName" field.
 func SourceAsNameContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceAsName), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceAsName, v))
 }
 
 // SourceCountryEQ applies the EQ predicate on the "sourceCountry" field.
 func SourceCountryEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceCountry, v))
 }
 
 // SourceCountryNEQ applies the NEQ predicate on the "sourceCountry" field.
 func SourceCountryNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceCountry, v))
 }
 
 // SourceCountryIn applies the In predicate on the "sourceCountry" field.
 func SourceCountryIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceCountry), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceCountry, vs...))
 }
 
 // SourceCountryNotIn applies the NotIn predicate on the "sourceCountry" field.
 func SourceCountryNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceCountry), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceCountry, vs...))
 }
 
 // SourceCountryGT applies the GT predicate on the "sourceCountry" field.
 func SourceCountryGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceCountry, v))
 }
 
 // SourceCountryGTE applies the GTE predicate on the "sourceCountry" field.
 func SourceCountryGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceCountry, v))
 }
 
 // SourceCountryLT applies the LT predicate on the "sourceCountry" field.
 func SourceCountryLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceCountry, v))
 }
 
 // SourceCountryLTE applies the LTE predicate on the "sourceCountry" field.
 func SourceCountryLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceCountry, v))
 }
 
 // SourceCountryContains applies the Contains predicate on the "sourceCountry" field.
 func SourceCountryContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceCountry, v))
 }
 
 // SourceCountryHasPrefix applies the HasPrefix predicate on the "sourceCountry" field.
 func SourceCountryHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceCountry, v))
 }
 
 // SourceCountryHasSuffix applies the HasSuffix predicate on the "sourceCountry" field.
 func SourceCountryHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceCountry, v))
 }
 
 // SourceCountryIsNil applies the IsNil predicate on the "sourceCountry" field.
 func SourceCountryIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceCountry)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceCountry))
 }
 
 // SourceCountryNotNil applies the NotNil predicate on the "sourceCountry" field.
 func SourceCountryNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceCountry)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceCountry))
 }
 
 // SourceCountryEqualFold applies the EqualFold predicate on the "sourceCountry" field.
 func SourceCountryEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceCountry, v))
 }
 
 // SourceCountryContainsFold applies the ContainsFold predicate on the "sourceCountry" field.
 func SourceCountryContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceCountry), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceCountry, v))
 }
 
 // SourceLatitudeEQ applies the EQ predicate on the "sourceLatitude" field.
 func SourceLatitudeEQ(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceLatitude, v))
 }
 
 // SourceLatitudeNEQ applies the NEQ predicate on the "sourceLatitude" field.
 func SourceLatitudeNEQ(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceLatitude, v))
 }
 
 // SourceLatitudeIn applies the In predicate on the "sourceLatitude" field.
 func SourceLatitudeIn(vs ...float32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceLatitude), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceLatitude, vs...))
 }
 
 // SourceLatitudeNotIn applies the NotIn predicate on the "sourceLatitude" field.
 func SourceLatitudeNotIn(vs ...float32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceLatitude), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceLatitude, vs...))
 }
 
 // SourceLatitudeGT applies the GT predicate on the "sourceLatitude" field.
 func SourceLatitudeGT(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceLatitude, v))
 }
 
 // SourceLatitudeGTE applies the GTE predicate on the "sourceLatitude" field.
 func SourceLatitudeGTE(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceLatitude, v))
 }
 
 // SourceLatitudeLT applies the LT predicate on the "sourceLatitude" field.
 func SourceLatitudeLT(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceLatitude, v))
 }
 
 // SourceLatitudeLTE applies the LTE predicate on the "sourceLatitude" field.
 func SourceLatitudeLTE(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceLatitude), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceLatitude, v))
 }
 
 // SourceLatitudeIsNil applies the IsNil predicate on the "sourceLatitude" field.
 func SourceLatitudeIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceLatitude)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceLatitude))
 }
 
 // SourceLatitudeNotNil applies the NotNil predicate on the "sourceLatitude" field.
 func SourceLatitudeNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceLatitude)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceLatitude))
 }
 
 // SourceLongitudeEQ applies the EQ predicate on the "sourceLongitude" field.
 func SourceLongitudeEQ(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceLongitude, v))
 }
 
 // SourceLongitudeNEQ applies the NEQ predicate on the "sourceLongitude" field.
 func SourceLongitudeNEQ(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceLongitude, v))
 }
 
 // SourceLongitudeIn applies the In predicate on the "sourceLongitude" field.
 func SourceLongitudeIn(vs ...float32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceLongitude), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceLongitude, vs...))
 }
 
 // SourceLongitudeNotIn applies the NotIn predicate on the "sourceLongitude" field.
 func SourceLongitudeNotIn(vs ...float32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceLongitude), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceLongitude, vs...))
 }
 
 // SourceLongitudeGT applies the GT predicate on the "sourceLongitude" field.
 func SourceLongitudeGT(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceLongitude, v))
 }
 
 // SourceLongitudeGTE applies the GTE predicate on the "sourceLongitude" field.
 func SourceLongitudeGTE(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceLongitude, v))
 }
 
 // SourceLongitudeLT applies the LT predicate on the "sourceLongitude" field.
 func SourceLongitudeLT(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceLongitude, v))
 }
 
 // SourceLongitudeLTE applies the LTE predicate on the "sourceLongitude" field.
 func SourceLongitudeLTE(v float32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceLongitude), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceLongitude, v))
 }
 
 // SourceLongitudeIsNil applies the IsNil predicate on the "sourceLongitude" field.
 func SourceLongitudeIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceLongitude)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceLongitude))
 }
 
 // SourceLongitudeNotNil applies the NotNil predicate on the "sourceLongitude" field.
 func SourceLongitudeNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceLongitude)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceLongitude))
 }
 
 // SourceScopeEQ applies the EQ predicate on the "sourceScope" field.
 func SourceScopeEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceScope, v))
 }
 
 // SourceScopeNEQ applies the NEQ predicate on the "sourceScope" field.
 func SourceScopeNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceScope, v))
 }
 
 // SourceScopeIn applies the In predicate on the "sourceScope" field.
 func SourceScopeIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceScope), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceScope, vs...))
 }
 
 // SourceScopeNotIn applies the NotIn predicate on the "sourceScope" field.
 func SourceScopeNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceScope), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceScope, vs...))
 }
 
 // SourceScopeGT applies the GT predicate on the "sourceScope" field.
 func SourceScopeGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceScope, v))
 }
 
 // SourceScopeGTE applies the GTE predicate on the "sourceScope" field.
 func SourceScopeGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceScope, v))
 }
 
 // SourceScopeLT applies the LT predicate on the "sourceScope" field.
 func SourceScopeLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceScope, v))
 }
 
 // SourceScopeLTE applies the LTE predicate on the "sourceScope" field.
 func SourceScopeLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceScope, v))
 }
 
 // SourceScopeContains applies the Contains predicate on the "sourceScope" field.
 func SourceScopeContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceScope, v))
 }
 
 // SourceScopeHasPrefix applies the HasPrefix predicate on the "sourceScope" field.
 func SourceScopeHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceScope, v))
 }
 
 // SourceScopeHasSuffix applies the HasSuffix predicate on the "sourceScope" field.
 func SourceScopeHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceScope, v))
 }
 
 // SourceScopeIsNil applies the IsNil predicate on the "sourceScope" field.
 func SourceScopeIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceScope)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceScope))
 }
 
 // SourceScopeNotNil applies the NotNil predicate on the "sourceScope" field.
 func SourceScopeNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceScope)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceScope))
 }
 
 // SourceScopeEqualFold applies the EqualFold predicate on the "sourceScope" field.
 func SourceScopeEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceScope, v))
 }
 
 // SourceScopeContainsFold applies the ContainsFold predicate on the "sourceScope" field.
 func SourceScopeContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceScope), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceScope, v))
 }
 
 // SourceValueEQ applies the EQ predicate on the "sourceValue" field.
 func SourceValueEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSourceValue, v))
 }
 
 // SourceValueNEQ applies the NEQ predicate on the "sourceValue" field.
 func SourceValueNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSourceValue, v))
 }
 
 // SourceValueIn applies the In predicate on the "sourceValue" field.
 func SourceValueIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldSourceValue), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldSourceValue, vs...))
 }
 
 // SourceValueNotIn applies the NotIn predicate on the "sourceValue" field.
 func SourceValueNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldSourceValue), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldSourceValue, vs...))
 }
 
 // SourceValueGT applies the GT predicate on the "sourceValue" field.
 func SourceValueGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldSourceValue, v))
 }
 
 // SourceValueGTE applies the GTE predicate on the "sourceValue" field.
 func SourceValueGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldSourceValue, v))
 }
 
 // SourceValueLT applies the LT predicate on the "sourceValue" field.
 func SourceValueLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldSourceValue, v))
 }
 
 // SourceValueLTE applies the LTE predicate on the "sourceValue" field.
 func SourceValueLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldSourceValue, v))
 }
 
 // SourceValueContains applies the Contains predicate on the "sourceValue" field.
 func SourceValueContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldSourceValue, v))
 }
 
 // SourceValueHasPrefix applies the HasPrefix predicate on the "sourceValue" field.
 func SourceValueHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldSourceValue, v))
 }
 
 // SourceValueHasSuffix applies the HasSuffix predicate on the "sourceValue" field.
 func SourceValueHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldSourceValue, v))
 }
 
 // SourceValueIsNil applies the IsNil predicate on the "sourceValue" field.
 func SourceValueIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldSourceValue)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldSourceValue))
 }
 
 // SourceValueNotNil applies the NotNil predicate on the "sourceValue" field.
 func SourceValueNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldSourceValue)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldSourceValue))
 }
 
 // SourceValueEqualFold applies the EqualFold predicate on the "sourceValue" field.
 func SourceValueEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldSourceValue, v))
 }
 
 // SourceValueContainsFold applies the ContainsFold predicate on the "sourceValue" field.
 func SourceValueContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldSourceValue), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldSourceValue, v))
 }
 
 // CapacityEQ applies the EQ predicate on the "capacity" field.
 func CapacityEQ(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldCapacity, v))
 }
 
 // CapacityNEQ applies the NEQ predicate on the "capacity" field.
 func CapacityNEQ(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldCapacity, v))
 }
 
 // CapacityIn applies the In predicate on the "capacity" field.
 func CapacityIn(vs ...int32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldCapacity), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldCapacity, vs...))
 }
 
 // CapacityNotIn applies the NotIn predicate on the "capacity" field.
 func CapacityNotIn(vs ...int32) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldCapacity), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldCapacity, vs...))
 }
 
 // CapacityGT applies the GT predicate on the "capacity" field.
 func CapacityGT(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldCapacity, v))
 }
 
 // CapacityGTE applies the GTE predicate on the "capacity" field.
 func CapacityGTE(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldCapacity, v))
 }
 
 // CapacityLT applies the LT predicate on the "capacity" field.
 func CapacityLT(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldCapacity, v))
 }
 
 // CapacityLTE applies the LTE predicate on the "capacity" field.
 func CapacityLTE(v int32) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldCapacity), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldCapacity, v))
 }
 
 // CapacityIsNil applies the IsNil predicate on the "capacity" field.
 func CapacityIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldCapacity)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldCapacity))
 }
 
 // CapacityNotNil applies the NotNil predicate on the "capacity" field.
 func CapacityNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldCapacity)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldCapacity))
 }
 
 // LeakSpeedEQ applies the EQ predicate on the "leakSpeed" field.
 func LeakSpeedEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldLeakSpeed, v))
 }
 
 // LeakSpeedNEQ applies the NEQ predicate on the "leakSpeed" field.
 func LeakSpeedNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldLeakSpeed, v))
 }
 
 // LeakSpeedIn applies the In predicate on the "leakSpeed" field.
 func LeakSpeedIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldLeakSpeed), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldLeakSpeed, vs...))
 }
 
 // LeakSpeedNotIn applies the NotIn predicate on the "leakSpeed" field.
 func LeakSpeedNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldLeakSpeed), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldLeakSpeed, vs...))
 }
 
 // LeakSpeedGT applies the GT predicate on the "leakSpeed" field.
 func LeakSpeedGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldLeakSpeed, v))
 }
 
 // LeakSpeedGTE applies the GTE predicate on the "leakSpeed" field.
 func LeakSpeedGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldLeakSpeed, v))
 }
 
 // LeakSpeedLT applies the LT predicate on the "leakSpeed" field.
 func LeakSpeedLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldLeakSpeed, v))
 }
 
 // LeakSpeedLTE applies the LTE predicate on the "leakSpeed" field.
 func LeakSpeedLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldLeakSpeed, v))
 }
 
 // LeakSpeedContains applies the Contains predicate on the "leakSpeed" field.
 func LeakSpeedContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldLeakSpeed, v))
 }
 
 // LeakSpeedHasPrefix applies the HasPrefix predicate on the "leakSpeed" field.
 func LeakSpeedHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldLeakSpeed, v))
 }
 
 // LeakSpeedHasSuffix applies the HasSuffix predicate on the "leakSpeed" field.
 func LeakSpeedHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldLeakSpeed, v))
 }
 
 // LeakSpeedIsNil applies the IsNil predicate on the "leakSpeed" field.
 func LeakSpeedIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldLeakSpeed)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldLeakSpeed))
 }
 
 // LeakSpeedNotNil applies the NotNil predicate on the "leakSpeed" field.
 func LeakSpeedNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldLeakSpeed)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldLeakSpeed))
 }
 
 // LeakSpeedEqualFold applies the EqualFold predicate on the "leakSpeed" field.
 func LeakSpeedEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldLeakSpeed, v))
 }
 
 // LeakSpeedContainsFold applies the ContainsFold predicate on the "leakSpeed" field.
 func LeakSpeedContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldLeakSpeed), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldLeakSpeed, v))
 }
 
 // ScenarioVersionEQ applies the EQ predicate on the "scenarioVersion" field.
 func ScenarioVersionEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionNEQ applies the NEQ predicate on the "scenarioVersion" field.
 func ScenarioVersionNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionIn applies the In predicate on the "scenarioVersion" field.
 func ScenarioVersionIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldScenarioVersion), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldScenarioVersion, vs...))
 }
 
 // ScenarioVersionNotIn applies the NotIn predicate on the "scenarioVersion" field.
 func ScenarioVersionNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldScenarioVersion), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldScenarioVersion, vs...))
 }
 
 // ScenarioVersionGT applies the GT predicate on the "scenarioVersion" field.
 func ScenarioVersionGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionGTE applies the GTE predicate on the "scenarioVersion" field.
 func ScenarioVersionGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionLT applies the LT predicate on the "scenarioVersion" field.
 func ScenarioVersionLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionLTE applies the LTE predicate on the "scenarioVersion" field.
 func ScenarioVersionLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionContains applies the Contains predicate on the "scenarioVersion" field.
 func ScenarioVersionContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionHasPrefix applies the HasPrefix predicate on the "scenarioVersion" field.
 func ScenarioVersionHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionHasSuffix applies the HasSuffix predicate on the "scenarioVersion" field.
 func ScenarioVersionHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionIsNil applies the IsNil predicate on the "scenarioVersion" field.
 func ScenarioVersionIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldScenarioVersion)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldScenarioVersion))
 }
 
 // ScenarioVersionNotNil applies the NotNil predicate on the "scenarioVersion" field.
 func ScenarioVersionNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldScenarioVersion)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldScenarioVersion))
 }
 
 // ScenarioVersionEqualFold applies the EqualFold predicate on the "scenarioVersion" field.
 func ScenarioVersionEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldScenarioVersion, v))
 }
 
 // ScenarioVersionContainsFold applies the ContainsFold predicate on the "scenarioVersion" field.
 func ScenarioVersionContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldScenarioVersion), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldScenarioVersion, v))
 }
 
 // ScenarioHashEQ applies the EQ predicate on the "scenarioHash" field.
 func ScenarioHashEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldScenarioHash, v))
 }
 
 // ScenarioHashNEQ applies the NEQ predicate on the "scenarioHash" field.
 func ScenarioHashNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldScenarioHash, v))
 }
 
 // ScenarioHashIn applies the In predicate on the "scenarioHash" field.
 func ScenarioHashIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldScenarioHash), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldScenarioHash, vs...))
 }
 
 // ScenarioHashNotIn applies the NotIn predicate on the "scenarioHash" field.
 func ScenarioHashNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldScenarioHash), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldScenarioHash, vs...))
 }
 
 // ScenarioHashGT applies the GT predicate on the "scenarioHash" field.
 func ScenarioHashGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldScenarioHash, v))
 }
 
 // ScenarioHashGTE applies the GTE predicate on the "scenarioHash" field.
 func ScenarioHashGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldScenarioHash, v))
 }
 
 // ScenarioHashLT applies the LT predicate on the "scenarioHash" field.
 func ScenarioHashLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldScenarioHash, v))
 }
 
 // ScenarioHashLTE applies the LTE predicate on the "scenarioHash" field.
 func ScenarioHashLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldScenarioHash, v))
 }
 
 // ScenarioHashContains applies the Contains predicate on the "scenarioHash" field.
 func ScenarioHashContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldScenarioHash, v))
 }
 
 // ScenarioHashHasPrefix applies the HasPrefix predicate on the "scenarioHash" field.
 func ScenarioHashHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldScenarioHash, v))
 }
 
 // ScenarioHashHasSuffix applies the HasSuffix predicate on the "scenarioHash" field.
 func ScenarioHashHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldScenarioHash, v))
 }
 
 // ScenarioHashIsNil applies the IsNil predicate on the "scenarioHash" field.
 func ScenarioHashIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldScenarioHash)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldScenarioHash))
 }
 
 // ScenarioHashNotNil applies the NotNil predicate on the "scenarioHash" field.
 func ScenarioHashNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldScenarioHash)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldScenarioHash))
 }
 
 // ScenarioHashEqualFold applies the EqualFold predicate on the "scenarioHash" field.
 func ScenarioHashEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldScenarioHash, v))
 }
 
 // ScenarioHashContainsFold applies the ContainsFold predicate on the "scenarioHash" field.
 func ScenarioHashContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldScenarioHash), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldScenarioHash, v))
 }
 
 // SimulatedEQ applies the EQ predicate on the "simulated" field.
 func SimulatedEQ(v bool) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSimulated), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldSimulated, v))
 }
 
 // SimulatedNEQ applies the NEQ predicate on the "simulated" field.
 func SimulatedNEQ(v bool) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSimulated), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldSimulated, v))
 }
 
 // UUIDEQ applies the EQ predicate on the "uuid" field.
 func UUIDEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldEQ(FieldUUID, v))
 }
 
 // UUIDNEQ applies the NEQ predicate on the "uuid" field.
 func UUIDNEQ(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldNEQ(FieldUUID, v))
 }
 
 // UUIDIn applies the In predicate on the "uuid" field.
 func UUIDIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldUUID), v...))
-	})
+	return predicate.Alert(sql.FieldIn(FieldUUID, vs...))
 }
 
 // UUIDNotIn applies the NotIn predicate on the "uuid" field.
 func UUIDNotIn(vs ...string) predicate.Alert {
-	v := make([]any, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldUUID), v...))
-	})
+	return predicate.Alert(sql.FieldNotIn(FieldUUID, vs...))
 }
 
 // UUIDGT applies the GT predicate on the "uuid" field.
 func UUIDGT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldGT(FieldUUID, v))
 }
 
 // UUIDGTE applies the GTE predicate on the "uuid" field.
 func UUIDGTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldGTE(FieldUUID, v))
 }
 
 // UUIDLT applies the LT predicate on the "uuid" field.
 func UUIDLT(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldLT(FieldUUID, v))
 }
 
 // UUIDLTE applies the LTE predicate on the "uuid" field.
 func UUIDLTE(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldLTE(FieldUUID, v))
 }
 
 // UUIDContains applies the Contains predicate on the "uuid" field.
 func UUIDContains(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldContains(FieldUUID, v))
 }
 
 // UUIDHasPrefix applies the HasPrefix predicate on the "uuid" field.
 func UUIDHasPrefix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldHasPrefix(FieldUUID, v))
 }
 
 // UUIDHasSuffix applies the HasSuffix predicate on the "uuid" field.
 func UUIDHasSuffix(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldHasSuffix(FieldUUID, v))
 }
 
 // UUIDIsNil applies the IsNil predicate on the "uuid" field.
 func UUIDIsNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.IsNull(s.C(FieldUUID)))
-	})
+	return predicate.Alert(sql.FieldIsNull(FieldUUID))
 }
 
 // UUIDNotNil applies the NotNil predicate on the "uuid" field.
 func UUIDNotNil() predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.NotNull(s.C(FieldUUID)))
-	})
+	return predicate.Alert(sql.FieldNotNull(FieldUUID))
 }
 
 // UUIDEqualFold applies the EqualFold predicate on the "uuid" field.
 func UUIDEqualFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldEqualFold(FieldUUID, v))
 }
 
 // UUIDContainsFold applies the ContainsFold predicate on the "uuid" field.
 func UUIDContainsFold(v string) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldUUID), v))
-	})
+	return predicate.Alert(sql.FieldContainsFold(FieldUUID, v))
+}
+
+// RemediationEQ applies the EQ predicate on the "remediation" field.
+func RemediationEQ(v bool) predicate.Alert {
+	return predicate.Alert(sql.FieldEQ(FieldRemediation, v))
+}
+
+// RemediationNEQ applies the NEQ predicate on the "remediation" field.
+func RemediationNEQ(v bool) predicate.Alert {
+	return predicate.Alert(sql.FieldNEQ(FieldRemediation, v))
+}
+
+// RemediationIsNil applies the IsNil predicate on the "remediation" field.
+func RemediationIsNil() predicate.Alert {
+	return predicate.Alert(sql.FieldIsNull(FieldRemediation))
+}
+
+// RemediationNotNil applies the NotNil predicate on the "remediation" field.
+func RemediationNotNil() predicate.Alert {
+	return predicate.Alert(sql.FieldNotNull(FieldRemediation))
 }
 
 // HasOwner applies the HasEdge predicate on the "owner" edge.
@@ -2453,7 +1630,6 @@ func HasOwner() predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(OwnerTable, FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, OwnerTable, OwnerColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -2463,11 +1639,7 @@ func HasOwner() predicate.Alert {
 // HasOwnerWith applies the HasEdge predicate on the "owner" edge with a given conditions (other predicates).
 func HasOwnerWith(preds ...predicate.Machine) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(OwnerInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, OwnerTable, OwnerColumn),
-		)
+		step := newOwnerStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -2481,7 +1653,6 @@ func HasDecisions() predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(DecisionsTable, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, DecisionsTable, DecisionsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -2491,11 +1662,7 @@ func HasDecisions() predicate.Alert {
 // HasDecisionsWith applies the HasEdge predicate on the "decisions" edge with a given conditions (other predicates).
 func HasDecisionsWith(preds ...predicate.Decision) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(DecisionsInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, DecisionsTable, DecisionsColumn),
-		)
+		step := newDecisionsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -2509,7 +1676,6 @@ func HasEvents() predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(EventsTable, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, EventsTable, EventsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -2519,11 +1685,7 @@ func HasEvents() predicate.Alert {
 // HasEventsWith applies the HasEdge predicate on the "events" edge with a given conditions (other predicates).
 func HasEventsWith(preds ...predicate.Event) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(EventsInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, EventsTable, EventsColumn),
-		)
+		step := newEventsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -2537,7 +1699,6 @@ func HasMetas() predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(MetasTable, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, MetasTable, MetasColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -2547,11 +1708,7 @@ func HasMetas() predicate.Alert {
 // HasMetasWith applies the HasEdge predicate on the "metas" edge with a given conditions (other predicates).
 func HasMetasWith(preds ...predicate.Meta) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(MetasInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, MetasTable, MetasColumn),
-		)
+		step := newMetasStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -2562,32 +1719,15 @@ func HasMetasWith(preds ...predicate.Meta) predicate.Alert {
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Alert) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.Alert(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.Alert) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.Alert(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.Alert) predicate.Alert {
-	return predicate.Alert(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.Alert(sql.NotPredicates(p))
 }

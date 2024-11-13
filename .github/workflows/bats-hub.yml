@@ -1,4 +1,4 @@
-name: Hub tests
+name: (sub) Bats / Hub
 
 on:
   workflow_call:
@@ -8,16 +8,13 @@ on:
       GIST_BADGES_ID:
         required: true
 
-env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
-
 jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.7"]
+        test-file: ["hub-1.bats", "hub-2.bats", "hub-3.bats"]
 
-    name: "Build + tests"
+    name: "Functional tests"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,34 +25,35 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
     - name: "Check out CrowdSec repository"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
+        go-version: "1.23"
 
     - name: "Install bats dependencies"
       env:
         GOBIN: /usr/local/bin
       run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd libre2-dev
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq libre2-dev
 
     - name: "Build crowdsec and fixture"
       run: make bats-clean bats-build bats-fixture BUILD_STATIC=1
 
     - name: "Run hub tests"
-      run: make bats-test-hub
+      run: |
+          ./test/bin/generate-hub-tests
+          ./test/run-tests ./test/dyn-bats/${{ matrix.test-file }} --formatter $(pwd)/test/lib/color-formatter
 
     - name: "Collect hub coverage"
       run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
-      uses: schneegans/dynamic-badges-action@v1.6.0
+      uses: schneegans/dynamic-badges-action@v1.7.0
       if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
@@ -66,7 +64,7 @@ jobs:
         color: ${{ env.SCENARIO_BADGE_COLOR }}
 
     - name: "Create Scenarios badge"
-      uses: schneegans/dynamic-badges-action@v1.6.0
+      uses: schneegans/dynamic-badges-action@v1.7.0
       if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
