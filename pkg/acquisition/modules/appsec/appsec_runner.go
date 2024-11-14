@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,22 +32,37 @@ type AppsecRunner struct {
 	logger              *log.Entry
 }
 
+func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
+	var rulesArr []string
+	dedupRules := make(map[string]struct{})
+
+	for _, collection := range collections {
+		for _, rule := range collection.Rules {
+			if _, ok := dedupRules[rule]; !ok {
+				rulesArr = append(rulesArr, rule)
+				dedupRules[rule] = struct{}{}
+			} else {
+				logger.Debugf("Discarding duplicate rule : %s", rule)
+			}
+		}
+	}
+	if len(rulesArr) != len(dedupRules) {
+		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
+	}
+
+	return strings.Join(rulesArr, "\n")
+}
+
 func (r *AppsecRunner) Init(datadir string) error {
 	var err error
 	fs := os.DirFS(datadir)
 
-	inBandRules := ""
-	outOfBandRules := ""
-
-	for _, collection := range r.AppsecRuntime.InBandRules {
-		inBandRules += collection.String()
-	}
-
-	for _, collection := range r.AppsecRuntime.OutOfBandRules {
-		outOfBandRules += collection.String()
-	}
 	inBandLogger := r.logger.Dup().WithField("band", "inband")
 	outBandLogger := r.logger.Dup().WithField("band", "outband")
+
+	//While loading rules, we dedup rules based on their content, while keeping the order
+	inBandRules := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
+	outOfBandRules := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
 
 	//setting up inband engine
 	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(inBandLogger))
