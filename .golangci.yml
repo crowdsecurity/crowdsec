@@ -211,9 +211,7 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - execinquery
     - exportloopref
-    - gomnd
 
     #
     # Redundant
@@ -456,3 +454,14 @@ issues:
         - revive
       path: "cmd/crowdsec/win_service.go"
       text: "deep-exit: .*"
+
+    - linters:
+        - recvcheck
+      path: "pkg/csplugin/hclog_adapter.go"
+      text: 'the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.'
+
+    # encoding to json/yaml requires value receivers
+    - linters:
+        - recvcheck
+      path: "pkg/cwhub/item.go"
+      text: 'the methods of "Item" use pointer receiver and non-pointer receiver.'
