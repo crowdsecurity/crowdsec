@@ -18,6 +18,7 @@ type appsecRuleTest struct {
 	expected_load_ok       bool
 	inband_rules           []appsec_rule.CustomRule
 	outofband_rules        []appsec_rule.CustomRule
+	seclang_rules          []string
 	on_load                []appsec.Hook
 	pre_eval               []appsec.Hook
 	post_eval              []appsec.Hook
@@ -60,6 +61,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		}
 		outofbandRules = append(outofbandRules, strRule)
 	}
+
+	inbandRules = append(inbandRules, test.seclang_rules...)
 
 	appsecCfg := appsec.AppsecConfig{Logger: logger,
 		OnLoad:                 test.on_load,

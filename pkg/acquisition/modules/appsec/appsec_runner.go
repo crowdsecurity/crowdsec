@@ -135,7 +135,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		//FIXME: should we abort here ?
 	}
 
-	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
+	request.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
 	for k, v := range request.Args {
 		for _, vv := range v {
