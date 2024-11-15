@@ -1,6 +1,7 @@
 package longpollclient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,7 +51,7 @@ var errUnauthorized = errors.New("user is not authorized to use PAPI")
 
 const timeoutMessage = "no events before timeout"
 
-func (c *LongPollClient) doQuery() (*http.Response, error) {
+func (c *LongPollClient) doQuery(ctx context.Context) (*http.Response, error) {
 	logger := c.logger.WithField("method", "doQuery")
 	query := c.url.Query()
 	query.Set("since_time", fmt.Sprintf("%d", c.since))
@@ -59,7 +60,7 @@ func (c *LongPollClient) doQuery() (*http.Response, error) {
 
 	logger.Debugf("Query parameters: %s", c.url.RawQuery)
 
-	req, err := http.NewRequest(http.MethodGet, c.url.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url.String(), nil)
 	if err != nil {
 		logger.Errorf("failed to create request: %s", err)
 		return nil, err
@@ -73,10 +74,10 @@ func (c *LongPollClient) doQuery() (*http.Response, error) {
 	return resp, nil
 }
 
-func (c *LongPollClient) poll() error {
+func (c *LongPollClient) poll(ctx context.Context) error {
 	logger := c.logger.WithField("method", "poll")
 
-	resp, err := c.doQuery()
+	resp, err := c.doQuery(ctx)
 	if err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func (c *LongPollClient) poll() error {
 	}
 }
 
-func (c *LongPollClient) pollEvents() error {
+func (c *LongPollClient) pollEvents(ctx context.Context) error {
 	for {
 		select {
 		case <-c.t.Dying():
@@ -154,7 +155,7 @@ func (c *LongPollClient) pollEvents() error {
 			return nil
 		default:
 			c.logger.Debug("Polling PAPI")
-			err := c.poll()
+			err := c.poll(ctx)
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
 				if errors.Is(err, errUnauthorized) {
@@ -168,12 +169,12 @@ func (c *LongPollClient) pollEvents() error {
 	}
 }
 
-func (c *LongPollClient) Start(since time.Time) chan Event {
+func (c *LongPollClient) Start(ctx context.Context, since time.Time) chan Event {
 	c.logger.Infof("starting polling client")
 	c.c = make(chan Event)
 	c.since = since.Unix() * 1000
 	c.timeout = "45"
-	c.t.Go(c.pollEvents)
+	c.t.Go(func() error {return c.pollEvents(ctx)})
 	return c.c
 }
 
@@ -182,11 +183,11 @@ func (c *LongPollClient) Stop() error {
 	return nil
 }
 
-func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
+func (c *LongPollClient) PullOnce(ctx context.Context, since time.Time) ([]Event, error) {
 	c.logger.Debug("Pulling PAPI once")
 	c.since = since.Unix() * 1000
 	c.timeout = "1"
-	resp, err := c.doQuery()
+	resp, err := c.doQuery(ctx)
 	if err != nil {
 		return nil, err
 	}
