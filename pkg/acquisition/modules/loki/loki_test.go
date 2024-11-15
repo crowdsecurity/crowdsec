@@ -34,6 +34,7 @@ func TestConfiguration(t *testing.T) {
 		password     string
 		waitForReady time.Duration
 		delayFor     time.Duration
+		noReadyCheck bool
 		testName     string
 	}{
 		{
@@ -99,6 +100,19 @@ query: >
 mode: tail
 source: loki
 url: http://localhost:3100/
+no_ready_check: true
+query: >
+        {server="demo"}
+`,
+			expectedErr:  "",
+			testName:     "Correct config with no_ready_check",
+			noReadyCheck: true,
+		},
+		{
+			config: `
+mode: tail
+source: loki
+url: http://localhost:3100/
 auth:
   username: foo
   password: bar
@@ -148,6 +162,8 @@ query: >
 					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 				}
 			}
+
+			assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
 		})
 	}
 }
@@ -164,6 +180,7 @@ func TestConfigureDSN(t *testing.T) {
 		scheme       string
 		waitForReady time.Duration
 		delayFor     time.Duration
+		noReadyCheck bool
 	}{
 		{
 			name:        "Wrong scheme",
@@ -202,10 +219,11 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:         "Correct DSN",
-			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s`,
+			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s&no_ready_check=true`,
 			expectedErr:  "",
 			waitForReady: 5 * time.Second,
 			delayFor:     1 * time.Second,
+			noReadyCheck: true,
 		},
 		{
 			name:   "SSL DSN",
@@ -256,6 +274,9 @@ func TestConfigureDSN(t *testing.T) {
 				t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 			}
 		}
+
+		assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
+
 	}
 }
 

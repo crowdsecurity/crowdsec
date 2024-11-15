@@ -39,7 +39,7 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 		Example: `cscli hub list
 cscli hub update
 cscli hub upgrade`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 
@@ -87,7 +87,7 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
@@ -140,7 +140,7 @@ func (cli *cliHub) newUpdateCmd() *cobra.Command {
 		Long: `
 Fetches the .index.json file from the hub, containing the list of available configs.
 `,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.update(cmd.Context(), withContent)
@@ -190,7 +190,7 @@ func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 		Long: `
 Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if you want the latest versions available.
 `,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.upgrade(cmd.Context(), force)
@@ -235,7 +235,7 @@ func (cli *cliHub) newTypesCmd() *cobra.Command {
 		Long: `
 List the types of supported hub items.
 `,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.types()

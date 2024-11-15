@@ -337,6 +337,20 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 	return nil
 }
 
+// There's no need for an actual deep copy
+// The event is almost empty, we are mostly interested in allocating new maps for Parsed/Meta/...
+func copyEvent(evt types.Event, line string) types.Event {
+	evtCopy := types.MakeEvent(evt.ExpectMode == types.TIMEMACHINE, evt.Type, evt.Process)
+	evtCopy.Line = evt.Line
+	evtCopy.Line.Raw = line
+	evtCopy.Line.Labels = make(map[string]string)
+	for k, v := range evt.Line.Labels {
+		evtCopy.Line.Labels[k] = v
+	}
+
+	return evtCopy
+}
+
 func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
 	logger.Infof("transformer started")
@@ -363,8 +377,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 			switch v := out.(type) {
 			case string:
 				logger.Tracef("transform expression returned %s", v)
-				evt.Line.Raw = v
-				output <- evt
+				output <- copyEvent(evt, v)
 			case []interface{}:
 				logger.Tracef("transform expression returned %v", v) //nolint:asasalint // We actually want to log the slice content
 
@@ -373,19 +386,16 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 					if !ok {
 						logger.Errorf("transform expression returned []interface{}, but cannot assert an element to string")
 						output <- evt
-
 						continue
 					}
 
-					evt.Line.Raw = l
-					output <- evt
+					output <- copyEvent(evt, l)
 				}
 			case []string:
 				logger.Tracef("transform expression returned %v", v)
 
 				for _, line := range v {
-					evt.Line.Raw = line
-					output <- evt
+					output <- copyEvent(evt, line)
 				}
 			default:
 				logger.Errorf("transform expression returned an invalid type %T, sending event as-is", out)

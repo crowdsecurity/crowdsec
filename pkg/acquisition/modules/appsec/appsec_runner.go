@@ -151,7 +151,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		//FIXME: should we abort here ?
 	}
 
-	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
+	request.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
 	for k, v := range request.Args {
 		for _, vv := range v {
@@ -265,7 +265,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 
 		// Should the in band match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
@@ -309,7 +309,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 
 		// Should the match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return

@@ -80,7 +80,7 @@ cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth)
 cscli explain --dsn "file://myfile.log" --type nginx
 tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.run()
@@ -197,7 +197,7 @@ func (cli *cliExplain) run() error {
 			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
 
-		dsn = fmt.Sprintf("file://%s", absolutePath)
+		dsn = "file://" + absolutePath
 
 		lineCount, err := getLineCountForFile(absolutePath)
 		if err != nil {

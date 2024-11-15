@@ -235,7 +235,7 @@ func (cli *cliConfig) newShowCmd() *cobra.Command {
 		Use:               "show",
 		Short:             "Displays current config",
 		Long:              `Displays the current cli configuration.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := cli.cfg().LoadAPIClient(); err != nil {
