@@ -125,6 +125,10 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("appsec_config or appsec_config_path must be set")
 	}
 
+	if (w.config.AppsecConfig != "" || w.config.AppsecConfigPath != "") && len(w.config.AppsecConfigs) != 0 {
+		return errors.New("appsec_config and appsec_config_path are mutually exclusive with appsec_configs")
+	}
+
 	if w.config.Name == "" {
 		if w.config.ListenSocket != "" && w.config.ListenAddr == "" {
 			w.config.Name = w.config.ListenSocket
