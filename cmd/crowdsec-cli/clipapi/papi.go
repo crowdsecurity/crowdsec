@@ -136,7 +136,7 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 
 	t.Go(papi.SyncDecisions)
 
-	err = papi.PullOnce(time.Time{}, true)
+	err = papi.PullOnce(ctx, time.Time{}, true)
 	if err != nil {
 		return fmt.Errorf("unable to sync decisions: %w", err)
 	}
