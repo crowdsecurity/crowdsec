@@ -373,7 +373,7 @@ toto
 		{
 			name:             "Basic matching IP address",
 			expected_load_ok: true,
-			seclang_rules: []string{
+			inband_native_rules: []string{
 				"SecRule REMOTE_ADDR \"@ipMatch 1.2.3.4\" \"id:1,phase:1,log,deny,msg: 'block ip'\"",
 			},
 			input_request: appsec.ParsedRequest{
