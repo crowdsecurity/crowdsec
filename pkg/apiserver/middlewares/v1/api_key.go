@@ -140,6 +140,10 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	// We found the bouncer with key and IP, we can use it
 	if bouncer != nil {
+		if bouncer.AuthType != types.ApiKeyAuthType {
+			logger.Errorf("bouncer isn't allowed to auth by API key")
+			return nil
+		}
 		return bouncer
 	}
 
