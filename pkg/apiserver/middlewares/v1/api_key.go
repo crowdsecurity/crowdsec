@@ -123,7 +123,7 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	// Appsec case, we only care if the key is valid
 	// No content is returned, no last_pull update or anything
 	if c.Request.Method == http.MethodHead {
-		bouncer, err := a.DbClient.SelectBouncer(ctx, hashStr)
+		bouncer, err := a.DbClient.SelectBouncers(ctx, hashStr, types.ApiKeyAuthType)
 		if err != nil {
 			logger.Errorf("while fetching bouncer info: %s", err)
 			return nil
@@ -140,15 +140,11 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	// We found the bouncer with key and IP, we can use it
 	if bouncer != nil {
-		if bouncer.AuthType != types.ApiKeyAuthType {
-			logger.Errorf("bouncer %s attempted to login using an API key but it is configured to auth with %s", bouncer.Name, bouncer.AuthType)
-			return nil
-		}
 		return bouncer
 	}
 
 	// We didn't find the bouncer with key and IP, let's try to find it with the key only
-	bouncers, err := a.DbClient.SelectBouncer(ctx, hashStr)
+	bouncers, err := a.DbClient.SelectBouncers(ctx, hashStr, types.ApiKeyAuthType)
 	if err != nil {
 		logger.Errorf("while fetching bouncer info: %s", err)
 		return nil
@@ -219,7 +215,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
-
 				return
 			}
 		}

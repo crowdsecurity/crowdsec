@@ -41,10 +41,10 @@ func (c *Client) BouncerUpdateBaseMetrics(ctx context.Context, bouncerName strin
 	return nil
 }
 
-func (c *Client) SelectBouncer(ctx context.Context, apiKeyHash string) ([]*ent.Bouncer, error) {
+func (c *Client) SelectBouncers(ctx context.Context, apiKeyHash string, authType string) ([]*ent.Bouncer, error) {
 	//Order by ID so manually created bouncer will be first in the list to use as the base name
 	//when automatically creating a new entry if API keys are shared
-	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).Order(ent.Asc(bouncer.FieldID)).All(ctx)
+	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash), bouncer.AuthTypeEQ(authType)).Order(ent.Asc(bouncer.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
