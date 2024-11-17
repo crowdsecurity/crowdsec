@@ -41,6 +41,7 @@ type AppsecSourceConfig struct {
 	Path                              string         `yaml:"path"`
 	Routines                          int            `yaml:"routines"`
 	AppsecConfig                      string         `yaml:"appsec_config"`
+	AppsecConfigs                     []string       `yaml:"appsec_configs"`
 	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -121,8 +122,12 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		w.config.Routines = 1
 	}
 
-	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" {
+	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" && len(w.config.AppsecConfigs) == 0 {
 		return errors.New("appsec_config or appsec_config_path must be set")
+	}
+
+	if (w.config.AppsecConfig != "" || w.config.AppsecConfigPath != "") && len(w.config.AppsecConfigs) != 0 {
+		return errors.New("appsec_config and appsec_config_path are mutually exclusive with appsec_configs")
 	}
 
 	if w.config.Name == "" {
@@ -175,6 +180,9 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
+	//we keep the datasource name
+	appsecCfg.Name = w.config.Name
+
 	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
 		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
@@ -186,9 +194,19 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 		if err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
+	} else if len(w.config.AppsecConfigs) > 0 {
+		for _, appsecConfig := range w.config.AppsecConfigs {
+			err := appsecCfg.Load(appsecConfig)
+			if err != nil {
+				return fmt.Errorf("unable to load appsec_config: %w", err)
+			}
+		}
 	} else {
 		return errors.New("no appsec_config provided")
 	}
+
+	// Now we can set up the logger
+	appsecCfg.SetUpLogger()
 
 	w.AppsecRuntime, err = appsecCfg.Build()
 	if err != nil {
