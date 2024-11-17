@@ -88,6 +88,6 @@ func TestAPIKey(t *testing.T) {
 	assert.Equal(t, "test@4.3.2.1", bouncers[1].Name)
 	assert.Equal(t, bouncers[0].APIKey, bouncers[1].APIKey)
 	assert.Equal(t, bouncers[0].AuthType, bouncers[1].AuthType)
-	assert.Equal(t, bouncers[0].AutoCreated, false)
-	assert.Equal(t, bouncers[1].AutoCreated, true)
+	assert.False(t, bouncers[0].AutoCreated)
+	assert.True(t, bouncers[1].AutoCreated)
 }
