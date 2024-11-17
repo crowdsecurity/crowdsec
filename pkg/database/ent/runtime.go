@@ -76,6 +76,10 @@ func init() {
 	bouncerDescAuthType := bouncerFields[9].Descriptor()
 	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.
 	bouncer.DefaultAuthType = bouncerDescAuthType.Default.(string)
+	// bouncerDescAutoCreated is the schema descriptor for auto_created field.
+	bouncerDescAutoCreated := bouncerFields[13].Descriptor()
+	// bouncer.DefaultAutoCreated holds the default value on creation for the auto_created field.
+	bouncer.DefaultAutoCreated = bouncerDescAutoCreated.Default.(bool)
 	configitemFields := schema.ConfigItem{}.Fields()
 	_ = configitemFields
 	// configitemDescCreatedAt is the schema descriptor for created_at field.

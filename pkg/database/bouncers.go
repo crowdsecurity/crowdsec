@@ -79,7 +79,7 @@ func (c *Client) ListBouncers(ctx context.Context) ([]*ent.Bouncer, error) {
 	return result, nil
 }
 
-func (c *Client) CreateBouncer(ctx context.Context, name string, ipAddr string, apiKey string, authType string) (*ent.Bouncer, error) {
+func (c *Client) CreateBouncer(ctx context.Context, name string, ipAddr string, apiKey string, authType string, autoCreated bool) (*ent.Bouncer, error) {
 	bouncer, err := c.Ent.Bouncer.
 		Create().
 		SetName(name).
@@ -87,6 +87,7 @@ func (c *Client) CreateBouncer(ctx context.Context, name string, ipAddr string, 
 		SetRevoked(false).
 		SetAuthType(authType).
 		SetIPAddress(ipAddr).
+		SetAutoCreated(autoCreated).
 		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {

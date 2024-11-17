@@ -304,7 +304,7 @@ func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.Datab
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)
 	require.NoError(t, err)
 
-	_, err = dbClient.CreateBouncer(ctx, "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
+	_, err = dbClient.CreateBouncer(ctx, "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType, false)
 	require.NoError(t, err)
 
 	return apiKey
