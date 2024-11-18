@@ -179,6 +179,8 @@ curl_localhost() {
     assert_output --partial '1.2.3.5'
 
     rune -0 cscli bouncers list -o json
+    rune -0 jq -c '[.[] | [.name,.revoked,.ip_address,.auto_created]]' <(output)
+    assert_json '[["test-auto",false,"127.0.0.1",false],["test-auto@::1",false,"::1",true]]'
 
     # check the 2nd bouncer was created automatically
     rune -0 cscli bouncers inspect "test-auto@::1" -o json
@@ -193,6 +195,5 @@ curl_localhost() {
     rune -0 cscli bouncers delete 'test-auto'
 
     rune -0 cscli bouncers list -o json
-    rune -0 jq -r '. | length' <(output)
-    assert_output 0
+    assert_json []
 }
