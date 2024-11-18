@@ -63,7 +63,7 @@ teardown() {
 @test "delete non-existent bouncer" {
     # this is a fatal error, which is not consistent with "machines delete"
     rune -1 cscli bouncers delete something
-    assert_stderr --partial "unable to delete bouncer: 'something' does not exist"
+    assert_stderr --partial "unable to delete bouncer something: ent: bouncer not found"
     rune -0 cscli bouncers delete something --ignore-missing
     refute_stderr
 }

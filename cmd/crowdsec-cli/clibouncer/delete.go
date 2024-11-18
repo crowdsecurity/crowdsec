@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
 
@@ -32,11 +31,11 @@ func (cli *cliBouncers) delete(ctx context.Context, bouncers []string, ignoreMis
 	for _, bouncerName := range bouncers {
 		bouncer, err := cli.db.SelectBouncerByName(ctx, bouncerName)
 		if err != nil {
-			var notFoundErr *database.BouncerNotFoundError
+			var notFoundErr *ent.NotFoundError
 			if ignoreMissing && errors.As(err, &notFoundErr) {
 				continue
 			}
-			return fmt.Errorf("unable to delete bouncer: %w", err)
+			return fmt.Errorf("unable to delete bouncer %s: %w", bouncerName, err)
 		}
 
 		if bouncer.AutoCreated {
@@ -50,16 +49,16 @@ func (cli *cliBouncers) delete(ctx context.Context, bouncers []string, ignoreMis
 		}
 		//Try to find all child bouncers and delete them
 		for _, childBouncer := range allBouncers {
-			if strings.HasPrefix(childBouncer.Name, bouncerName+"@") {
+			if strings.HasPrefix(childBouncer.Name, bouncerName+"@") && childBouncer.AutoCreated {
 				if err := cli.db.DeleteBouncer(ctx, childBouncer.Name); err != nil {
-					return fmt.Errorf("unable to delete bouncer: %w", err)
+					return fmt.Errorf("unable to delete bouncer %s: %w", childBouncer.Name, err)
 				}
 				log.Infof("bouncer '%s' deleted successfully", childBouncer.Name)
 			}
 		}
 
 		if err := cli.db.DeleteBouncer(ctx, bouncerName); err != nil {
-			return fmt.Errorf("unable to delete bouncer: %w", err)
+			return fmt.Errorf("unable to delete bouncer %s: %w", bouncerName, err)
 		}
 
 		log.Infof("bouncer '%s' deleted successfully", bouncerName)
