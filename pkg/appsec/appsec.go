@@ -1,7 +1,6 @@
 package appsec
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -150,6 +149,18 @@ func (w *AppsecRuntimeConfig) ClearResponse() {
 	w.Response.SendAlert = true
 }
 
+func (wc *AppsecConfig) SetUpLogger() {
+	if wc.LogLevel == nil {
+		lvl := wc.Logger.Logger.GetLevel()
+		wc.LogLevel = &lvl
+	}
+
+	/* wc.Name is actually the datasource name.*/
+	wc.Logger = wc.Logger.Dup().WithField("name", wc.Name)
+	wc.Logger.Logger.SetLevel(*wc.LogLevel)
+
+}
+
 func (wc *AppsecConfig) LoadByPath(file string) error {
 	wc.Logger.Debugf("loading config %s", file)
 
@@ -157,20 +168,65 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	if err != nil {
 		return fmt.Errorf("unable to read file %s : %s", file, err)
 	}
-	err = yaml.UnmarshalStrict(yamlFile, wc)
+
+	//as  LoadByPath can be called several time, we append rules/hooks, but override other options
+	var tmp AppsecConfig
+
+	err = yaml.UnmarshalStrict(yamlFile, &tmp)
 	if err != nil {
 		return fmt.Errorf("unable to parse yaml file %s : %s", file, err)
 	}
 
-	if wc.Name == "" {
-		return errors.New("name cannot be empty")
+	if wc.Name == "" && tmp.Name != "" {
+		wc.Name = tmp.Name
 	}
-	if wc.LogLevel == nil {
-		lvl := wc.Logger.Logger.GetLevel()
-		wc.LogLevel = &lvl
+
+	//We can append rules/hooks
+	if tmp.OutOfBandRules != nil {
+		wc.OutOfBandRules = append(wc.OutOfBandRules, tmp.OutOfBandRules...)
 	}
-	wc.Logger = wc.Logger.Dup().WithField("name", wc.Name)
-	wc.Logger.Logger.SetLevel(*wc.LogLevel)
+	if tmp.InBandRules != nil {
+		wc.InBandRules = append(wc.InBandRules, tmp.InBandRules...)
+	}
+	if tmp.OnLoad != nil {
+		wc.OnLoad = append(wc.OnLoad, tmp.OnLoad...)
+	}
+	if tmp.PreEval != nil {
+		wc.PreEval = append(wc.PreEval, tmp.PreEval...)
+	}
+	if tmp.PostEval != nil {
+		wc.PostEval = append(wc.PostEval, tmp.PostEval...)
+	}
+	if tmp.OnMatch != nil {
+		wc.OnMatch = append(wc.OnMatch, tmp.OnMatch...)
+	}
+	if tmp.VariablesTracking != nil {
+		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
+	}
+
+	//override other options
+	wc.LogLevel = tmp.LogLevel
+
+	wc.DefaultRemediation = tmp.DefaultRemediation
+	wc.DefaultPassAction = tmp.DefaultPassAction
+	wc.BouncerBlockedHTTPCode = tmp.BouncerBlockedHTTPCode
+	wc.BouncerPassedHTTPCode = tmp.BouncerPassedHTTPCode
+	wc.UserBlockedHTTPCode = tmp.UserBlockedHTTPCode
+	wc.UserPassedHTTPCode = tmp.UserPassedHTTPCode
+
+	if tmp.InbandOptions.DisableBodyInspection {
+		wc.InbandOptions.DisableBodyInspection = true
+	}
+	if tmp.InbandOptions.RequestBodyInMemoryLimit != nil {
+		wc.InbandOptions.RequestBodyInMemoryLimit = tmp.InbandOptions.RequestBodyInMemoryLimit
+	}
+	if tmp.OutOfBandOptions.DisableBodyInspection {
+		wc.OutOfBandOptions.DisableBodyInspection = true
+	}
+	if tmp.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
+		wc.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBandOptions.RequestBodyInMemoryLimit
+	}
+
 	return nil
 }
 

@@ -21,6 +21,7 @@ var Built = map[string]bool{
 	"datasource_s3":          false,
 	"datasource_syslog":      false,
 	"datasource_wineventlog": false,
+	"datasource_http":        false,
 	"cscli_setup":            false,
 }
 

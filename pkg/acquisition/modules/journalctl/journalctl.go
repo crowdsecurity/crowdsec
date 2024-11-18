@@ -136,12 +136,9 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			if j.metricsLevel != configuration.METRICS_NONE {
 				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			}
-			var evt types.Event
-			if !j.config.UseTimeMachine {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+
+			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)
