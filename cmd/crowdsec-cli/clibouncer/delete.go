@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func (cli *cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
@@ -36,6 +37,14 @@ func (cli *cliBouncers) delete(ctx context.Context, bouncers []string, ignoreMis
 				continue
 			}
 			return fmt.Errorf("unable to delete bouncer %s: %w", bouncerName, err)
+		}
+
+		// For TLS bouncers, always delete them, they have no parents
+		if bouncer.AuthType == types.TlsAuthType {
+			if err := cli.db.DeleteBouncer(ctx, bouncerName); err != nil {
+				return fmt.Errorf("unable to delete bouncer %s: %w", bouncerName, err)
+			}
+			continue
 		}
 
 		if bouncer.AutoCreated {
