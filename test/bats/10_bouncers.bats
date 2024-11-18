@@ -158,20 +158,16 @@ curl_localhost() {
 
     # crowdsec needs to listen on all interfaces
     rune -0 ./instance-crowdsec stop
-    #FIXME: this should not be required
-    sleep 5
     rune -0 config_set 'del(.api.server.listen_socket) | del(.api.server.listen_uri)'
     echo "{'api':{'server':{'listen_uri':0.0.0.0:8080}}}" >"${CONFIG_YAML}.local"
 
     rune -0 ./instance-crowdsec start
-    rune -0 wait-for-port -q 8080
 
     # add a decision for our bouncers
     rune -0 cscli decisions add -i '1.2.3.5'
-    if is_db_mysql; then sleep 3; fi
 
     rune -0 cscli bouncers add test-auto -k "$API_KEY"
-    
+
     # query with 127.0.0.1 as source ip
     rune -0 curl_localhost "/v1/decisions/stream" -4
     rune -0 jq -r '.new' <(output)
