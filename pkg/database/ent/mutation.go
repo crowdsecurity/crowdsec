@@ -2471,6 +2471,7 @@ type BouncerMutation struct {
 	osname        *string
 	osversion     *string
 	featureflags  *string
+	auto_created  *bool
 	clearedFields map[string]struct{}
 	done          bool
 	oldValue      func(context.Context) (*Bouncer, error)
@@ -3134,6 +3135,42 @@ func (m *BouncerMutation) ResetFeatureflags() {
 	delete(m.clearedFields, bouncer.FieldFeatureflags)
 }
 
+// SetAutoCreated sets the "auto_created" field.
+func (m *BouncerMutation) SetAutoCreated(b bool) {
+	m.auto_created = &b
+}
+
+// AutoCreated returns the value of the "auto_created" field in the mutation.
+func (m *BouncerMutation) AutoCreated() (r bool, exists bool) {
+	v := m.auto_created
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAutoCreated returns the old "auto_created" field's value of the Bouncer entity.
+// If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BouncerMutation) OldAutoCreated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAutoCreated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAutoCreated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAutoCreated: %w", err)
+	}
+	return oldValue.AutoCreated, nil
+}
+
+// ResetAutoCreated resets all changes to the "auto_created" field.
+func (m *BouncerMutation) ResetAutoCreated() {
+	m.auto_created = nil
+}
+
 // Where appends a list predicates to the BouncerMutation builder.
 func (m *BouncerMutation) Where(ps ...predicate.Bouncer) {
 	m.predicates = append(m.predicates, ps...)
@@ -3168,7 +3205,7 @@ func (m *BouncerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BouncerMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, bouncer.FieldCreatedAt)
 	}
@@ -3208,6 +3245,9 @@ func (m *BouncerMutation) Fields() []string {
 	if m.featureflags != nil {
 		fields = append(fields, bouncer.FieldFeatureflags)
 	}
+	if m.auto_created != nil {
+		fields = append(fields, bouncer.FieldAutoCreated)
+	}
 	return fields
 }
 
@@ -3242,6 +3282,8 @@ func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 		return m.Osversion()
 	case bouncer.FieldFeatureflags:
 		return m.Featureflags()
+	case bouncer.FieldAutoCreated:
+		return m.AutoCreated()
 	}
 	return nil, false
 }
@@ -3277,6 +3319,8 @@ func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldOsversion(ctx)
 	case bouncer.FieldFeatureflags:
 		return m.OldFeatureflags(ctx)
+	case bouncer.FieldAutoCreated:
+		return m.OldAutoCreated(ctx)
 	}
 	return nil, fmt.Errorf("unknown Bouncer field %s", name)
 }
@@ -3376,6 +3420,13 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFeatureflags(v)
+		return nil
+	case bouncer.FieldAutoCreated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAutoCreated(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer field %s", name)
@@ -3509,6 +3560,9 @@ func (m *BouncerMutation) ResetField(name string) error {
 		return nil
 	case bouncer.FieldFeatureflags:
 		m.ResetFeatureflags()
+		return nil
+	case bouncer.FieldAutoCreated:
+		m.ResetAutoCreated()
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer field %s", name)

@@ -40,6 +40,7 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		{"Last Pull", lastPull},
 		{"Auth type", bouncer.AuthType},
 		{"OS", clientinfo.GetOSNameAndVersion(bouncer)},
+		{"Auto Created", bouncer.AutoCreated},
 	})
 
 	for _, ff := range clientinfo.GetFeatureFlagList(bouncer) {

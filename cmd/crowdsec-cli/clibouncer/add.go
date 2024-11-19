@@ -24,7 +24,7 @@ func (cli *cliBouncers) add(ctx context.Context, bouncerName string, key string)
 		}
 	}
 
-	_, err = cli.db.CreateBouncer(ctx, bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
+	_, err = cli.db.CreateBouncer(ctx, bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType, false)
 	if err != nil {
 		return fmt.Errorf("unable to create bouncer: %w", err)
 	}
