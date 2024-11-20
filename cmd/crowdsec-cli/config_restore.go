@@ -40,7 +40,7 @@ func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
 
 		err = json.Unmarshal(file, &upstreamList)
 		if err != nil {
-			return fmt.Errorf("error unmarshaling %s: %w", upstreamListFN, err)
+			return fmt.Errorf("error parsing %s: %w", upstreamListFN, err)
 		}
 
 		for _, toinstall := range upstreamList {

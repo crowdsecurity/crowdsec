@@ -23,22 +23,22 @@ type dbPayload struct {
 	Metrics []*models.DetailedMetrics `json:"metrics"`
 }
 
-func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
+func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, error) {
 	allMetrics := &models.AllMetrics{}
 	metricsIds := make([]int, 0)
 
-	lps, err := a.dbClient.ListMachines()
+	lps, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	bouncers, err := a.dbClient.ListBouncers()
+	bouncers, err := a.dbClient.ListBouncers(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for _, bouncer := range bouncers {
-		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(bouncer.Name)
+		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(ctx, bouncer.Name)
 		if err != nil {
 			log.Errorf("unable to get bouncer usage metrics: %s", err)
 			continue
@@ -70,7 +70,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
-				log.Errorf("unable to unmarshal bouncer metric (%s)", err)
+				log.Errorf("unable to parse bouncer metric (%s)", err)
 				continue
 			}
 
@@ -81,7 +81,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	}
 
 	for _, lp := range lps {
-		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(lp.MachineId)
+		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(ctx, lp.MachineId)
 		if err != nil {
 			log.Errorf("unable to get LP usage metrics: %s", err)
 			continue
@@ -132,7 +132,7 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
-				log.Errorf("unable to unmarshal log processor metric (%s)", err)
+				log.Errorf("unable to parse log processor metric (%s)", err)
 				continue
 			}
 
@@ -181,12 +181,12 @@ func (a *apic) GetUsageMetrics() (*models.AllMetrics, []int, error) {
 	return allMetrics, metricsIds, nil
 }
 
-func (a *apic) MarkUsageMetricsAsSent(ids []int) error {
-	return a.dbClient.MarkUsageMetricsAsSent(ids)
+func (a *apic) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
+	return a.dbClient.MarkUsageMetricsAsSent(ctx, ids)
 }
 
-func (a *apic) GetMetrics() (*models.Metrics, error) {
-	machines, err := a.dbClient.ListMachines()
+func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 		}
 	}
 
-	bouncers, err := a.dbClient.ListBouncers()
+	bouncers, err := a.dbClient.ListBouncers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -230,8 +230,8 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	}, nil
 }
 
-func (a *apic) fetchMachineIDs() ([]string, error) {
-	machines, err := a.dbClient.ListMachines()
+func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
+	machines, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func (a *apic) fetchMachineIDs() ([]string, error) {
 // Metrics are sent at start, then at the randomized metricsIntervalFirst,
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
-func (a *apic) SendMetrics(stop chan (bool)) {
+func (a *apic) SendMetrics(ctx context.Context, stop chan (bool)) {
 	defer trace.CatchPanic("lapi/metricsToAPIC")
 
 	// verify the list of machines every <checkInt> interval
@@ -275,7 +275,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	machineIDs := []string{}
 
 	reloadMachineIDs := func() {
-		ids, err := a.fetchMachineIDs()
+		ids, err := a.fetchMachineIDs(ctx)
 		if err != nil {
 			log.Debugf("unable to get machines (%s), will retry", err)
 
@@ -311,7 +311,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		case <-metTicker.C:
 			metTicker.Stop()
 
-			metrics, err := a.GetMetrics()
+			metrics, err := a.GetMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get metrics (%s)", err)
 			}
@@ -319,7 +319,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			if metrics != nil {
 				log.Info("capi metrics: sending")
 
-				_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+				_, _, err = a.apiClient.Metrics.Add(ctx, metrics)
 				if err != nil {
 					log.Errorf("capi metrics: failed: %s", err)
 				}
@@ -337,7 +337,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	}
 }
 
-func (a *apic) SendUsageMetrics() {
+func (a *apic) SendUsageMetrics(ctx context.Context) {
 	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
 
 	firstRun := true
@@ -358,15 +358,20 @@ func (a *apic) SendUsageMetrics() {
 				ticker.Reset(a.usageMetricsInterval)
 			}
 
-			metrics, metricsId, err := a.GetUsageMetrics()
+			metrics, metricsId, err := a.GetUsageMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
 				continue
 			}
 
-			_, resp, err := a.apiClient.UsageMetrics.Add(context.Background(), metrics)
+			_, resp, err := a.apiClient.UsageMetrics.Add(ctx, metrics)
 			if err != nil {
 				log.Errorf("unable to send usage metrics: %s", err)
+
+				if resp == nil || resp.Response == nil {
+					// Most likely a transient network error, it will be retried later
+					continue
+				}
 
 				if resp.Response.StatusCode >= http.StatusBadRequest && resp.Response.StatusCode != http.StatusUnprocessableEntity {
 					// In case of 422, mark the metrics as sent anyway, the API did not like what we sent,
@@ -375,7 +380,7 @@ func (a *apic) SendUsageMetrics() {
 				}
 			}
 
-			err = a.MarkUsageMetricsAsSent(metricsId)
+			err = a.MarkUsageMetricsAsSent(ctx, metricsId)
 			if err != nil {
 				log.Errorf("unable to mark usage metrics as sent: %s", err)
 				continue

@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/go-openapi/strfmt"
@@ -15,5 +16,5 @@ type Config struct {
 	VersionPrefix     string
 	UserAgent         string
 	RegistrationToken string
-	UpdateScenario    func() ([]string, error)
+	UpdateScenario    func(context.Context) ([]string, error)
 }

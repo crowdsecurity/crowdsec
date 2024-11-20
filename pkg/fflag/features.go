@@ -97,7 +97,7 @@ type FeatureRegister struct {
 	features  map[string]*Feature
 }
 
-var featureNameRexp = regexp.MustCompile(`^[a-z0-9_\.]+$`)
+var featureNameRexp = regexp.MustCompile(`^[a-z0-9_.]+$`)
 
 func validateFeatureName(featureName string) error {
 	if featureName == "" {

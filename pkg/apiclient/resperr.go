@@ -19,7 +19,7 @@ func (e *ErrorResponse) Error() string {
 	message := ptr.OrEmpty(e.Message)
 	errors := ""
 
-	if len(e.Errors) > 0 {
+	if e.Errors != "" {
 		errors = fmt.Sprintf(" (%s)", e.Errors)
 	}
 
@@ -51,7 +51,7 @@ func CheckResponse(r *http.Response) error {
 		// try to unmarshal and if there are no 'message' or 'errors' fields, display the body as is,
 		// the API is following a different convention
 		err := json.Unmarshal(data, ret)
-		if err != nil || (ret.Message == nil && len(ret.Errors) == 0) {
+		if err != nil || (ret.Message == nil && ret.Errors == "") {
 			ret.Message = ptr.Of(fmt.Sprintf("http code %d, response: %s", r.StatusCode, string(data)))
 			return ret
 		}

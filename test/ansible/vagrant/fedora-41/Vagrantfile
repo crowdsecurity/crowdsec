@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  config.vm.box = "fedora/40-cloud-base"
+  config.vm.provision "shell", inline: <<-SHELL
+  SHELL
+  config.vm.provision "shell" do |s|
+    s.inline = "sudo dnf upgrade --refresh -y && sudo dnf install dnf-plugin-system-upgrade -y && sudo dnf system-upgrade download --releasever=41 -y && sudo dnf system-upgrade reboot -y"
+  end
+end
+
+common = '../common'
+load common if File.exist?(common)

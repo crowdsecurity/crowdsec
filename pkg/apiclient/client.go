@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -66,11 +67,16 @@ type service struct {
 }
 
 func NewClient(config *Config) (*ApiClient, error) {
+	userAgent := config.UserAgent
+	if userAgent == "" {
+		userAgent = useragent.Default()
+	}
+
 	t := &JWTTransport{
 		MachineID:      &config.MachineID,
 		Password:       &config.Password,
 		Scenarios:      config.Scenarios,
-		UserAgent:      config.UserAgent,
+		UserAgent:      userAgent,
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 		RetryConfig: NewRetryConfig(
@@ -105,7 +111,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 		t.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
 	}
 
-	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
+	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: userAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -143,6 +149,10 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 		}
 	}
 
+	if userAgent == "" {
+		userAgent = useragent.Default()
+	}
+
 	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
@@ -157,7 +167,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	return c, nil
 }
 
-func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
+func RegisterClient(ctx context.Context, config *Config, client *http.Client) (*ApiClient, error) {
 	transport, baseURL := createTransport(config.URL)
 
 	if client == nil {
@@ -178,15 +188,20 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 		client.Transport = transport
 	}
 
-	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	userAgent := config.UserAgent
+	if userAgent == "" {
+		userAgent = useragent.Default()
+	}
+
+	c := &ApiClient{client: client, BaseURL: baseURL, UserAgent: userAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 
-	resp, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password, RegistrationToken: config.RegistrationToken})
-	/*if we have http status, return it*/
+	resp, err := c.Auth.RegisterWatcher(ctx, models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password, RegistrationToken: config.RegistrationToken})
 	if err != nil {
+		/*if we have http status, return it*/
 		if resp != nil && resp.Response != nil {
 			return nil, fmt.Errorf("api register (%s) http %s: %w", c.BaseURL, resp.Response.Status, err)
 		}

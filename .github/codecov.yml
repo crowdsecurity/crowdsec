@@ -1,5 +1,8 @@
 # we measure coverage but don't enforce it
 # https://docs.codecov.com/docs/codecov-yaml
+codecov:
+  require_ci_to_pass: false
+
 coverage:
   status:
     patch:
@@ -10,7 +13,7 @@ coverage:
         target: 0%
 
 # if a directory is ignored, there is no way to un-ignore files like pkg/models/helpers.go
-# so we make a full list, manually updated - but it could be generated right before running codecov
+# so we make a full list
 ignore:
   - "./pkg/modelscapi/success_response.go"
   - "./pkg/modelscapi/get_decisions_stream_response_deleted.go"
@@ -41,17 +44,26 @@ ignore:
   - "./pkg/modelscapi/enroll_request.go"
   - "./pkg/modelscapi/register_request.go"
   - "./pkg/modelscapi/add_signals_request_item_source.go"
+  - "./pkg/models/success_response.go"
+  - "./pkg/models/hub_items.go"
   - "./pkg/models/alert.go"
   - "./pkg/models/metrics_bouncer_info.go"
   - "./pkg/models/add_signals_request_item.go"
+  - "./pkg/models/metrics_meta.go"
+  - "./pkg/models/metrics_detail_item.go"
   - "./pkg/models/add_signals_request_item_decisions_item.go"
+  - "./pkg/models/hub_item.go"
   - "./pkg/models/get_alerts_response.go"
+  - "./pkg/models/metrics_labels.go"
   - "./pkg/models/watcher_auth_request.go"
   - "./pkg/models/add_alerts_request.go"
   - "./pkg/models/event.go"
   - "./pkg/models/decisions_delete_request_item.go"
   - "./pkg/models/meta.go"
+  - "./pkg/models/detailed_metrics.go"
   - "./pkg/models/delete_alerts_response.go"
+  - "./pkg/models/remediation_components_metrics.go"
+  - "./pkg/models/console_options.go"
   - "./pkg/models/topx_response.go"
   - "./pkg/models/add_signals_request.go"
   - "./pkg/models/delete_decision_response.go"
@@ -60,24 +72,34 @@ ignore:
   - "./pkg/models/source.go"
   - "./pkg/models/decisions_stream_response.go"
   - "./pkg/models/error_response.go"
+  - "./pkg/models/all_metrics.go"
+  - "./pkg/models/o_sversion.go"
   - "./pkg/models/decision.go"
   - "./pkg/models/decisions_delete_request.go"
   - "./pkg/models/flush_decision_response.go"
   - "./pkg/models/watcher_auth_response.go"
+  - "./pkg/models/lapi_metrics.go"
   - "./pkg/models/watcher_registration_request.go"
   - "./pkg/models/metrics_agent_info.go"
+  - "./pkg/models/log_processors_metrics.go"
   - "./pkg/models/add_signals_request_item_source.go"
+  - "./pkg/models/base_metrics.go"
   - "./pkg/models/add_alerts_response.go"
   - "./pkg/models/metrics.go"
   - "./pkg/protobufs/notifier.pb.go"
+  - "./pkg/protobufs/notifier_grpc.pb.go"
+  - "./pkg/database/ent/metric_update.go"
   - "./pkg/database/ent/machine_delete.go"
   - "./pkg/database/ent/decision_query.go"
   - "./pkg/database/ent/meta_query.go"
+  - "./pkg/database/ent/metric/where.go"
+  - "./pkg/database/ent/metric/metric.go"
   - "./pkg/database/ent/machine_create.go"
   - "./pkg/database/ent/alert.go"
   - "./pkg/database/ent/event_update.go"
   - "./pkg/database/ent/alert_create.go"
   - "./pkg/database/ent/alert_query.go"
+  - "./pkg/database/ent/metric_delete.go"
   - "./pkg/database/ent/lock_create.go"
   - "./pkg/database/ent/bouncer_update.go"
   - "./pkg/database/ent/meta_update.go"
@@ -92,6 +114,7 @@ ignore:
   - "./pkg/database/ent/migrate/migrate.go"
   - "./pkg/database/ent/migrate/schema.go"
   - "./pkg/database/ent/configitem.go"
+  - "./pkg/database/ent/metric_query.go"
   - "./pkg/database/ent/event.go"
   - "./pkg/database/ent/event_query.go"
   - "./pkg/database/ent/lock_update.go"
@@ -111,6 +134,7 @@ ignore:
   - "./pkg/database/ent/bouncer/bouncer.go"
   - "./pkg/database/ent/bouncer/where.go"
   - "./pkg/database/ent/hook/hook.go"
+  - "./pkg/database/ent/metric.go"
   - "./pkg/database/ent/configitem_create.go"
   - "./pkg/database/ent/configitem_delete.go"
   - "./pkg/database/ent/tx.go"
@@ -120,6 +144,7 @@ ignore:
   - "./pkg/database/ent/machine/where.go"
   - "./pkg/database/ent/machine/machine.go"
   - "./pkg/database/ent/event_create.go"
+  - "./pkg/database/ent/metric_create.go"
   - "./pkg/database/ent/decision/where.go"
   - "./pkg/database/ent/decision/decision.go"
   - "./pkg/database/ent/enttest/enttest.go"

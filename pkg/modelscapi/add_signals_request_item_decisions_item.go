@@ -49,6 +49,9 @@ type AddSignalsRequestItemDecisionsItem struct {
 	// until
 	Until string `json:"until,omitempty"`
 
+	// UUID of the decision
+	UUID string `json:"uuid,omitempty"`
+
 	// the value of the decision scope : an IP, a range, a username, etc
 	// Required: true
 	Value *string `json:"value"`

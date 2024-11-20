@@ -119,6 +119,11 @@ func Featureflags(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldFeatureflags, v))
 }
 
+// AutoCreated applies equality check predicate on the "auto_created" field. It's identical to AutoCreatedEQ.
+func AutoCreated(v bool) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldAutoCreated, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldCreatedAt, v))
@@ -902,6 +907,16 @@ func FeatureflagsEqualFold(v string) predicate.Bouncer {
 // FeatureflagsContainsFold applies the ContainsFold predicate on the "featureflags" field.
 func FeatureflagsContainsFold(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldContainsFold(FieldFeatureflags, v))
+}
+
+// AutoCreatedEQ applies the EQ predicate on the "auto_created" field.
+func AutoCreatedEQ(v bool) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldAutoCreated, v))
+}
+
+// AutoCreatedNEQ applies the NEQ predicate on the "auto_created" field.
+func AutoCreatedNEQ(v bool) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldAutoCreated, v))
 }
 
 // And groups predicates with the AND operator between them.
