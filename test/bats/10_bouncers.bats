@@ -63,7 +63,7 @@ teardown() {
 @test "delete non-existent bouncer" {
     # this is a fatal error, which is not consistent with "machines delete"
     rune -1 cscli bouncers delete something
-    assert_stderr --partial "unable to delete bouncer: 'something' does not exist"
+    assert_stderr --partial "unable to delete bouncer something: ent: bouncer not found"
     rune -0 cscli bouncers delete something --ignore-missing
     refute_stderr
 }
@@ -143,4 +143,57 @@ teardown() {
 
     rune -0 cscli bouncers prune
     assert_output 'No bouncers to prune.'
+}
+
+curl_localhost() {
+    [[ -z "$API_KEY" ]] && { fail "${FUNCNAME[0]}: missing API_KEY"; }
+    local path=$1
+    shift
+    curl "localhost:8080$path" -sS --fail-with-body -H "X-Api-Key: $API_KEY" "$@"
+}
+
+# We can't use curl-with-key here, as we want to query localhost, not 127.0.0.1
+@test "multiple bouncers sharing api key" {
+    export API_KEY=bouncerkey
+
+    # crowdsec needs to listen on all interfaces
+    rune -0 ./instance-crowdsec stop
+    rune -0 config_set 'del(.api.server.listen_socket) | del(.api.server.listen_uri)'
+    echo "{'api':{'server':{'listen_uri':0.0.0.0:8080}}}" >"${CONFIG_YAML}.local"
+
+    rune -0 ./instance-crowdsec start
+
+    # add a decision for our bouncers
+    rune -0 cscli decisions add -i '1.2.3.5'
+
+    rune -0 cscli bouncers add test-auto -k "$API_KEY"
+
+    # query with 127.0.0.1 as source ip
+    rune -0 curl_localhost "/v1/decisions/stream" -4
+    rune -0 jq -r '.new' <(output)
+    assert_output --partial '1.2.3.5'
+
+    # now with ::1, we should get the same IP, even though we are using the same key
+    rune -0 curl_localhost "/v1/decisions/stream" -6
+    rune -0 jq -r '.new' <(output)
+    assert_output --partial '1.2.3.5'
+
+    rune -0 cscli bouncers list -o json
+    rune -0 jq -c '[.[] | [.name,.revoked,.ip_address,.auto_created]]' <(output)
+    assert_json '[["test-auto",false,"127.0.0.1",false],["test-auto@::1",false,"::1",true]]'
+
+    # check the 2nd bouncer was created automatically
+    rune -0 cscli bouncers inspect "test-auto@::1" -o json
+    rune -0 jq -r '.ip_address' <(output)
+    assert_output --partial '::1'
+
+    # attempt to delete the auto-created bouncer, it should fail
+    rune -0 cscli bouncers delete 'test-auto@::1'
+    assert_stderr --partial 'cannot be deleted'
+
+    # delete the "real" bouncer, it should delete both
+    rune -0 cscli bouncers delete 'test-auto'
+
+    rune -0 cscli bouncers list -o json
+    assert_json []
 }

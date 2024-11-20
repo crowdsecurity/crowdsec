@@ -13,7 +13,7 @@ override_dh_auto_build:
 override_dh_auto_install:
 
 	# just use the prebuilt binaries, otherwise:
-	# make build BUILD_RE_WASM=0 BUILD_STATIC=1
+	# make build BUILD_STATIC=1
 
 	mkdir -p debian/crowdsec/usr/bin
 	mkdir -p debian/crowdsec/etc/crowdsec

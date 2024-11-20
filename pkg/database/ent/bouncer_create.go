@@ -178,6 +178,20 @@ func (bc *BouncerCreate) SetNillableFeatureflags(s *string) *BouncerCreate {
 	return bc
 }
 
+// SetAutoCreated sets the "auto_created" field.
+func (bc *BouncerCreate) SetAutoCreated(b bool) *BouncerCreate {
+	bc.mutation.SetAutoCreated(b)
+	return bc
+}
+
+// SetNillableAutoCreated sets the "auto_created" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableAutoCreated(b *bool) *BouncerCreate {
+	if b != nil {
+		bc.SetAutoCreated(*b)
+	}
+	return bc
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (bc *BouncerCreate) Mutation() *BouncerMutation {
 	return bc.mutation
@@ -229,6 +243,10 @@ func (bc *BouncerCreate) defaults() {
 		v := bouncer.DefaultAuthType
 		bc.mutation.SetAuthType(v)
 	}
+	if _, ok := bc.mutation.AutoCreated(); !ok {
+		v := bouncer.DefaultAutoCreated
+		bc.mutation.SetAutoCreated(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -250,6 +268,9 @@ func (bc *BouncerCreate) check() error {
 	}
 	if _, ok := bc.mutation.AuthType(); !ok {
 		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Bouncer.auth_type"`)}
+	}
+	if _, ok := bc.mutation.AutoCreated(); !ok {
+		return &ValidationError{Name: "auto_created", err: errors.New(`ent: missing required field "Bouncer.auto_created"`)}
 	}
 	return nil
 }
@@ -328,6 +349,10 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	if value, ok := bc.mutation.Featureflags(); ok {
 		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
 		_node.Featureflags = value
+	}
+	if value, ok := bc.mutation.AutoCreated(); ok {
+		_spec.SetField(bouncer.FieldAutoCreated, field.TypeBool, value)
+		_node.AutoCreated = value
 	}
 	return _node, _spec
 }

@@ -12,13 +12,13 @@ import (
 )
 
 type CRLChecker struct {
-	path     string			// path to the CRL file
-	fileInfo os.FileInfo		// last stat of the CRL file
-	crls     []*x509.RevocationList	// parsed CRLs
+	path     string                 // path to the CRL file
+	fileInfo os.FileInfo            // last stat of the CRL file
+	crls     []*x509.RevocationList // parsed CRLs
 	logger   *log.Entry
 	mu       sync.RWMutex
-	lastLoad time.Time		// time when the CRL file was last read successfully
-	onLoad	 func()			// called when the CRL file changes (and is read successfully)
+	lastLoad time.Time // time when the CRL file was last read successfully
+	onLoad   func()    // called when the CRL file changes (and is read successfully)
 }
 
 func NewCRLChecker(crlPath string, onLoad func(), logger *log.Entry) (*CRLChecker, error) {

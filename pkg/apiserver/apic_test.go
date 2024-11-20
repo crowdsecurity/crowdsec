@@ -26,7 +26,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -35,10 +34,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func getDBClient(t *testing.T) *database.Client {
+func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 	t.Helper()
-
-	ctx := context.Background()
 
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	require.NoError(t, err)
@@ -52,9 +49,9 @@ func getDBClient(t *testing.T) *database.Client {
 	return dbClient
 }
 
-func getAPIC(t *testing.T) *apic {
+func getAPIC(t *testing.T, ctx context.Context) *apic {
 	t.Helper()
-	dbClient := getDBClient(t)
+	dbClient := getDBClient(t, ctx)
 
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
@@ -72,7 +69,10 @@ func getAPIC(t *testing.T) *apic {
 			ShareCustomScenarios:  ptr.Of(false),
 			ShareContext:          ptr.Of(false),
 		},
-		isPulling: make(chan bool, 1),
+		isPulling:      make(chan bool, 1),
+		shareSignals:   true,
+		pullBlocklists: true,
+		pullCommunity:  true,
 	}
 }
 
@@ -85,8 +85,8 @@ func absDiff(a int, b int) int {
 	return c
 }
 
-func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int) {
-	d := dbClient.Ent.Decision.Query().AllX(context.Background())
+func assertTotalDecisionCount(t *testing.T, ctx context.Context, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Decision.Query().AllX(ctx)
 	assert.Len(t, d, count)
 }
 
@@ -112,9 +112,10 @@ func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
 }
 
 func TestAPICCAPIPullIsOld(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 
-	isOld, err := api.CAPIPullIsOld()
+	isOld, err := api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
 	assert.True(t, isOld)
 
@@ -125,7 +126,7 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		SetScope("Country").
 		SetValue("Blah").
 		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	api.dbClient.Ent.Alert.Create().
 		SetCreatedAt(time.Now()).
@@ -133,15 +134,17 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		AddDecisions(
 			decision,
 		).
-		SaveX(context.Background())
+		SaveX(ctx)
 
-	isOld, err = api.CAPIPullIsOld()
+	isOld, err = api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
 
 	assert.False(t, isOld)
 }
 
 func TestAPICFetchScenariosListFromDB(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name                    string
 		machineIDsWithScenarios map[string]string
@@ -166,21 +169,21 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			api := getAPIC(t)
+			api := getAPIC(t, ctx)
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
 					SetPassword(testPassword.String()).
 					SetIpAddress("1.2.3.4").
 					SetScenarios(scenarios).
-					ExecX(context.Background())
+					ExecX(ctx)
 			}
 
-			scenarios, err := api.FetchScenariosListFromDB()
+			scenarios, err := api.FetchScenariosListFromDB(ctx)
 			require.NoError(t, err)
 
 			for machineID := range tc.machineIDsWithScenarios {
-				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(context.Background())
+				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(ctx)
 			}
 
 			assert.ElementsMatch(t, tc.expectedScenarios, scenarios)
@@ -189,6 +192,8 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 }
 
 func TestNewAPIC(t *testing.T) {
+	ctx := context.Background()
+
 	var testConfig *csconfig.OnlineApiClientCfg
 
 	setConfig := func() {
@@ -197,6 +202,11 @@ func TestNewAPIC(t *testing.T) {
 				URL:      "http://foobar/",
 				Login:    "foo",
 				Password: "bar",
+			},
+			Sharing: ptr.Of(true),
+			PullConfig: csconfig.CapiPullConfig{
+				Community:  ptr.Of(true),
+				Blocklists: ptr.Of(true),
 			},
 		}
 	}
@@ -216,7 +226,7 @@ func TestNewAPIC(t *testing.T) {
 			name:   "simple",
 			action: func() {},
 			args: args{
-				dbClient:      getDBClient(t),
+				dbClient:      getDBClient(t, ctx),
 				consoleConfig: LoadTestConfig(t).API.Server.ConsoleConfig,
 			},
 		},
@@ -224,7 +234,7 @@ func TestNewAPIC(t *testing.T) {
 			name:   "error in parsing URL",
 			action: func() { testConfig.Credentials.URL = "foobar http://" },
 			args: args{
-				dbClient:      getDBClient(t),
+				dbClient:      getDBClient(t, ctx),
 				consoleConfig: LoadTestConfig(t).API.Server.ConsoleConfig,
 			},
 			expectedErr: "first path segment in URL cannot contain colon",
@@ -247,53 +257,18 @@ func TestNewAPIC(t *testing.T) {
 				),
 			))
 			tc.action()
-			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
+			_, err := NewAPIC(ctx, testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
 
-func TestAPICHandleDeletedDecisions(t *testing.T) {
-	api := getAPIC(t)
-	_, deleteCounters := makeAddAndDeleteCounters()
-
-	decision1 := api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("ban").
-		SetScope("IP").
-		SetValue("1.2.3.4").
-		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
-
-	api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("ban").
-		SetScope("IP").
-		SetValue("1.2.3.4").
-		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
-
-	assertTotalDecisionCount(t, api.dbClient, 2)
-
-	nbDeleted, err := api.HandleDeletedDecisions([]*models.Decision{{
-		Value:    ptr.Of("1.2.3.4"),
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Type:     &decision1.Type,
-		Scenario: ptr.Of("crowdsec/test"),
-		Scope:    ptr.Of("IP"),
-	}}, deleteCounters)
-
-	require.NoError(t, err)
-	assert.Equal(t, 2, nbDeleted)
-	assert.Equal(t, 2, deleteCounters[types.CAPIOrigin]["all"])
-}
-
 func TestAPICGetMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	cleanUp := func(api *apic) {
-		api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
-		api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
+		api.dbClient.Ent.Bouncer.Delete().ExecX(ctx)
+		api.dbClient.Ent.Machine.Delete().ExecX(ctx)
 	}
 	tests := []struct {
 		name           string
@@ -352,7 +327,7 @@ func TestAPICGetMetrics(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			apiClient := getAPIC(t)
+			apiClient := getAPIC(t, ctx)
 			cleanUp(apiClient)
 
 			for i, machineID := range tc.machineIDs {
@@ -363,7 +338,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					SetScenarios("crowdsecurity/test").
 					SetLastPush(time.Time{}).
 					SetUpdatedAt(time.Time{}).
-					ExecX(context.Background())
+					ExecX(ctx)
 			}
 
 			for i, bouncerName := range tc.bouncers {
@@ -373,10 +348,10 @@ func TestAPICGetMetrics(t *testing.T) {
 					SetAPIKey("foobar").
 					SetRevoked(false).
 					SetLastPull(time.Time{}).
-					ExecX(context.Background())
+					ExecX(ctx)
 			}
 
-			foundMetrics, err := apiClient.GetMetrics()
+			foundMetrics, err := apiClient.GetMetrics(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
@@ -547,7 +522,8 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 }
 
 func TestAPICWhitelists(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
 	api.whitelists.Ips = append(api.whitelists.Ips, net.ParseIP("9.2.3.4"), net.ParseIP("7.2.3.4"))
@@ -570,7 +546,7 @@ func TestAPICWhitelists(t *testing.T) {
 		SetScenario("crowdsecurity/ssh-bf").
 		SetUntil(time.Now().Add(time.Hour)).
 		ExecX(context.Background())
-	assertTotalDecisionCount(t, api.dbClient, 1)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
 
@@ -676,16 +652,16 @@ func TestAPICWhitelists(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
-	assertTotalDecisionCount(t, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
+	assertTotalDecisionCount(t, ctx, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
@@ -733,7 +709,8 @@ func TestAPICWhitelists(t *testing.T) {
 }
 
 func TestAPICPullTop(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(types.CAPIOrigin).
 		SetType("ban").
@@ -741,8 +718,8 @@ func TestAPICPullTop(t *testing.T) {
 		SetScope("Ip").
 		SetScenario("crowdsecurity/ssh-bf").
 		SetUntil(time.Now().Add(time.Hour)).
-		ExecX(context.Background())
-	assertTotalDecisionCount(t, api.dbClient, 1)
+		ExecX(ctx)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
 
@@ -817,23 +794,22 @@ func TestAPICPullTop(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
-	assertTotalDecisionCount(t, api.dbClient, 5)
+	assertTotalDecisionCount(t, ctx, api.dbClient, 5)
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background(),
-	)
+		AllX(context.Background())
 
 	decisionScenarioFreq := make(map[string]int)
 	alertScenario := make(map[string]int)
@@ -858,8 +834,9 @@ func TestAPICPullTop(t *testing.T) {
 }
 
 func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
+	ctx := context.Background()
 	// no decision in db, no last modified parameter.
-	api := getAPIC(t)
+	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -905,17 +882,17 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
 	blocklistConfigItemName := "blocklist:blocklist1:last_pull"
-	lastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	lastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
 	assert.NotEqual(t, "", *lastPullTimestamp)
 
@@ -925,15 +902,16 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 		return httpmock.NewStringResponse(304, ""), nil
 	})
 
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
-	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
 	assert.Equal(t, *lastPullTimestamp, *secondLastPullTimestamp)
 }
 
 func TestAPICPullTopBLCacheForceCall(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -997,18 +975,19 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 }
 
 func TestAPICPullBlocklistCall(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -1024,13 +1003,13 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		cwversion.UserAgent(),
+		"",
 		nil,
 	)
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullBlocklist(&modelscapi.BlocklistLink{
+	err = api.PullBlocklist(ctx, &modelscapi.BlocklistLink{
 		URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
 		Name:        ptr.Of("blocklist1"),
 		Scope:       ptr.Of("Ip"),
@@ -1041,6 +1020,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 }
 
 func TestAPICPush(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name          string
 		alerts        []*models.Alert
@@ -1093,9 +1073,8 @@ func TestAPICPush(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			api := getAPIC(t)
+			api := getAPIC(t, ctx)
 			api.pushInterval = time.Millisecond
 			api.pushIntervalFirst = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -1107,7 +1086,7 @@ func TestAPICPush(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
@@ -1116,14 +1095,16 @@ func TestAPICPush(t *testing.T) {
 
 			httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", httpmock.NewBytesResponder(200, []byte{}))
 
+			// capture the alerts to avoid datarace
+			alerts := tc.alerts
 			go func() {
-				api.AlertsAddChan <- tc.alerts
+				api.AlertsAddChan <- alerts
 
 				time.Sleep(time.Second)
 				api.Shutdown()
 			}()
 
-			err = api.Push()
+			err = api.Push(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedCalls, httpmock.GetTotalCallCount())
 		})
@@ -1131,7 +1112,8 @@ func TestAPICPush(t *testing.T) {
 }
 
 func TestAPICPull(t *testing.T) {
-	api := getAPIC(t)
+	ctx := context.Background()
+	api := getAPIC(t, ctx)
 	tests := []struct {
 		name                  string
 		setUp                 func()
@@ -1159,7 +1141,7 @@ func TestAPICPull(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			api = getAPIC(t)
+			api = getAPIC(t, ctx)
 			api.pullInterval = time.Millisecond
 			api.pullIntervalFirst = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -1171,7 +1153,7 @@ func TestAPICPull(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				cwversion.UserAgent(),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
@@ -1201,7 +1183,7 @@ func TestAPICPull(t *testing.T) {
 			go func() {
 				logrus.SetOutput(&buf)
 
-				if err := api.Pull(); err != nil {
+				if err := api.Pull(ctx); err != nil {
 					panic(err)
 				}
 			}()
@@ -1210,7 +1192,7 @@ func TestAPICPull(t *testing.T) {
 			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), tc.logContains)
-			assertTotalDecisionCount(t, api.dbClient, tc.expectedDecisionCount)
+			assertTotalDecisionCount(t, ctx, api.dbClient, tc.expectedDecisionCount)
 		})
 	}
 }
@@ -1219,6 +1201,7 @@ func TestShouldShareAlert(t *testing.T) {
 	tests := []struct {
 		name          string
 		consoleConfig *csconfig.ConsoleConfig
+		shareSignals  bool
 		alert         *models.Alert
 		expectedRet   bool
 		expectedTrust string
@@ -1229,6 +1212,7 @@ func TestShouldShareAlert(t *testing.T) {
 				ShareCustomScenarios: ptr.Of(true),
 			},
 			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			shareSignals:  true,
 			expectedRet:   true,
 			expectedTrust: "custom",
 		},
@@ -1238,6 +1222,7 @@ func TestShouldShareAlert(t *testing.T) {
 				ShareCustomScenarios: ptr.Of(false),
 			},
 			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			shareSignals:  true,
 			expectedRet:   false,
 			expectedTrust: "custom",
 		},
@@ -1246,6 +1231,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: ptr.Of(true),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
@@ -1258,6 +1244,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: ptr.Of(false),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
@@ -1270,6 +1257,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: ptr.Of(true),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
@@ -1282,6 +1270,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: ptr.Of(false),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
@@ -1289,11 +1278,24 @@ func TestShouldShareAlert(t *testing.T) {
 			expectedRet:   false,
 			expectedTrust: "tainted",
 		},
+		{
+			name: "manual alert should not be shared if global sharing is disabled",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareManualDecisions: ptr.Of(true),
+			},
+			shareSignals: false,
+			alert: &models.Alert{
+				Simulated:    ptr.Of(false),
+				ScenarioHash: ptr.Of("whateverHash"),
+			},
+			expectedRet:   false,
+			expectedTrust: "manual",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ret := shouldShareAlert(tc.alert, tc.consoleConfig)
+			ret := shouldShareAlert(tc.alert, tc.consoleConfig, tc.shareSignals)
 			assert.Equal(t, tc.expectedRet, ret)
 		})
 	}
