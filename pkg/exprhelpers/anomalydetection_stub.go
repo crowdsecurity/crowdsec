@@ -1,4 +1,4 @@
-//go:build no_datasource_ml
+//go:build no_mlsupport
 
 package exprhelpers
 

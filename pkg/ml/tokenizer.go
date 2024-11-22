@@ -1,5 +1,4 @@
-//go:build !nomlsupport
-// +build !nomlsupport
+//go:build !no_mlsupport
 
 package ml
 

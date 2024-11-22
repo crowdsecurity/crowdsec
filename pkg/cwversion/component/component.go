@@ -17,12 +17,12 @@ var Built = map[string]bool{
 	"datasource_kafka":       false,
 	"datasource_kinesis":     false,
 	"datasource_loki":        false,
-	"datasource_ml":          false,
 	"datasource_s3":          false,
 	"datasource_syslog":      false,
 	"datasource_wineventlog": false,
 	"datasource_http":        false,
 	"cscli_setup":            false,
+	"mlsupport":              false,
 }
 
 func Register(name string) {

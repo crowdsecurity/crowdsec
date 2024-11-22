@@ -141,7 +141,8 @@ COMPONENTS := \
 	datasource_s3 \
 	datasource_syslog \
 	datasource_wineventlog \
-	cscli_setup
+	cscli_setup \
+	mlsupport
 
 comma := ,
 space := $(empty) $(empty)
@@ -151,6 +152,9 @@ space := $(empty) $(empty)
 # keep only datasource-file
 EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
 
+# ml-support requires pre-built static libraries and weights 20MB
+EXCLUDE_DEFAULT := mlsupport
+
 # example
 # EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
 
@@ -159,8 +163,10 @@ BUILD_PROFILE ?= default
 # Set the EXCLUDE_LIST based on the chosen profile, unless EXCLUDE is already set
 ifeq ($(BUILD_PROFILE),minimal)
 EXCLUDE ?= $(EXCLUDE_MINIMAL)
-else ifneq ($(BUILD_PROFILE),default)
-$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default)
+else ifeq ($(BUILD_PROFILE),default)
+EXCLUDE ?= $(EXCLUDE_DEFAULT)
+else ifneq ($(BUILD_PROFILE),full)
+$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default, full)
 endif
 
 # Create list of excluded components from the EXCLUDE variable

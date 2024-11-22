@@ -1,4 +1,4 @@
-//go:build !no_datasource_ml
+//go:build !no_mlsupport
 
 package exprhelpers
 
@@ -13,12 +13,15 @@ import (
 
 var robertaInferencePipeline *ml.RobertaClassificationInferencePipeline
 
+//nolint:gochecknoinits
+func init() {
+	component.Register("mlsupport")
+}
+
 func InitRobertaInferencePipeline(modelBundleFilename string, datadir string) error {
 	var err error
 
 	fmt.Println("Initializing Roberta Inference Pipeline")
-
-	component.Register("datasource_ml")
 
 	robertaInferencePipeline, err = ml.NewRobertaInferencePipeline(modelBundleFilename, datadir)
 	if err != nil {

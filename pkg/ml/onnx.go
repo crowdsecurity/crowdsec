@@ -1,3 +1,4 @@
+//go:build !no_mlsupport
 package ml
 
 import (
