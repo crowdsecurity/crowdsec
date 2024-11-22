@@ -39,6 +39,8 @@ const (
 	FieldOsversion = "osversion"
 	// FieldFeatureflags holds the string denoting the featureflags field in the database.
 	FieldFeatureflags = "featureflags"
+	// FieldAutoCreated holds the string denoting the auto_created field in the database.
+	FieldAutoCreated = "auto_created"
 	// Table holds the table name of the bouncer in the database.
 	Table = "bouncers"
 )
@@ -59,6 +61,7 @@ var Columns = []string{
 	FieldOsname,
 	FieldOsversion,
 	FieldFeatureflags,
+	FieldAutoCreated,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -82,6 +85,8 @@ var (
 	DefaultIPAddress string
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
+	// DefaultAutoCreated holds the default value on creation for the "auto_created" field.
+	DefaultAutoCreated bool
 )
 
 // OrderOption defines the ordering options for the Bouncer queries.
@@ -155,4 +160,9 @@ func ByOsversion(opts ...sql.OrderTermOption) OrderOption {
 // ByFeatureflags orders the results by the featureflags field.
 func ByFeatureflags(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFeatureflags, opts...).ToFunc()
+}
+
+// ByAutoCreated orders the results by the auto_created field.
+func ByAutoCreated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAutoCreated, opts...).ToFunc()
 }
