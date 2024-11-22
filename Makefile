@@ -60,10 +60,8 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
-# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/
+# Define LD_OPTS for the sub-makefiles in cmd/
 #
-
-MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 LD_OPTS_VARS= \
 -X 'github.com/crowdsecurity/go-cs-lib/version.Version=$(BUILD_VERSION)' \
@@ -115,6 +113,14 @@ else
 ifneq (,$(RE2_CHECK))
 endif
 endif
+
+#--------------------------------------
+#
+# List of required build-time dependencies
+
+DEPS_DIR := $(CURDIR)/build/deps
+
+DEPS_FILES :=
 
 #--------------------------------------
 #
@@ -184,6 +190,23 @@ ifneq ($(COMPONENT_TAGS),)
 GO_TAGS := $(GO_TAGS),$(subst $(space),$(comma),$(COMPONENT_TAGS))
 endif
 
+ifeq ($(filter mlsupport,$(EXCLUDE_LIST)),)
+    $(info mlsupport is included)
+    # Set additional variables when mlsupport is included
+ifneq ($(call bool,$(BUILD_RE2_WASM)),1)
+    $(error for now, the flag BUILD_RE2_WASM is required for mlsupport)
+endif
+    CGO_CPPFLAGS := -I$(DEPS_DIR)/src/onnxruntime/include/onnxruntime/core/session
+    CGO_LDFLAGS := -L$(DEPS_DIR)/libs-lstdc++ -lonnxruntime -dl -lm
+    LIBRARY_PATH := $(DEPS_DIR)/lib
+    DEPS_FILES += $(DEPS_DIR)/lib/libtokenizers.a
+    DEPS_FILES += $(DEPS_DIR)/lib/libonnxruntime.a
+else
+    CGO_CPPFLAGS :=
+    CGO_LDFLAGS :=
+    LIBRARY_PATH :=
+endif
+
 #--------------------------------------
 
 ifeq ($(call bool,$(BUILD_STATIC)),1)
@@ -213,7 +236,7 @@ endif
 #--------------------------------------
 
 .PHONY: build
-build: build-info crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
+build: build-info download-deps crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 
 .PHONY: build-info
 build-info:  ## Print build information
@@ -240,6 +263,28 @@ endif
 .PHONY: all
 all: clean test build  ## Clean, test and build (requires localstack)
 
+
+.PHONY: download-deps
+download-deps: $(DEPS_FILES)
+
+$(DEPS_DIR)/lib/libtokenizers.a:
+	curl --fail -L --output $@ --create-dirs \
+		https://github.com/crowdsecurity/packaging-onnx/releases/download/test/libtokenizers.a \
+
+$(DEPS_DIR)/lib/libonnxruntime.a:
+	curl --fail -L --output $@ --create-dirs \
+		https://github.com/crowdsecurity/packaging-onnx/releases/download/test/libonnxruntime.a \
+
+$(DEPS_DIR)/src/onnxruntime:
+	git clone --depth 1 https://github.com/microsoft/onnxruntime $(DEPS_DIR)/src/onnxruntime -b v1.19.2
+
+# Full list of flags that are passed down to the sub-makefiles in cmd/
+
+MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)" CGO_CPPFLAGS="$(CGO_CPPFLAGS)" LIBRARY_PATH="$(LIBRARY_PATH)"
+
+.PHONY: clean-deps
+clean-deps: @$(RM) -r $(DEPS_DIR)
+
 .PHONY: plugins
 plugins:  ## Build notification plugins
 	@$(foreach plugin,$(PLUGINS), \
@@ -265,7 +310,7 @@ clean-rpm:
 	@$(RM) -r rpm/SRPMS
 
 .PHONY: clean
-clean: clean-debian clean-rpm testclean  ## Remove build artifacts
+clean: clean-debian clean-rpm clean-deps testclean  ## Remove build artifacts
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
