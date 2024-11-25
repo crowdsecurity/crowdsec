@@ -201,6 +201,7 @@ endif
     LIBRARY_PATH := $(DEPS_DIR)/lib
     DEPS_FILES += $(DEPS_DIR)/lib/libtokenizers.a
     DEPS_FILES += $(DEPS_DIR)/lib/libonnxruntime.a
+    DEPS_FILES += $(DEPS_DIR)/src/onnxruntime
 else
     CGO_CPPFLAGS :=
     CGO_LDFLAGS :=
