@@ -102,6 +102,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 			return
 		}
 	}
+	if !test.expected_load_ok {
+		t.Fatalf("expected load to fail but it didn't")
+	}
 
 	if test.afterload_asserts != nil {
 		//afterload asserts are just to evaluate the state of the runner after the rules have been loaded
