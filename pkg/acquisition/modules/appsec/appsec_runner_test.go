@@ -130,6 +130,20 @@ func TestAppsecRuleLoad(t *testing.T) {
 				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 4)
 			},
 		},
+		{
+			name:             "invalid inband rule",
+			expected_load_ok: false,
+			inband_native_rules: []string{
+				"this_is_not_a_rule",
+			},
+		},
+		{
+			name:             "invalid outofband rule",
+			expected_load_ok: false,
+			outofband_native_rules: []string{
+				"this_is_not_a_rule",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

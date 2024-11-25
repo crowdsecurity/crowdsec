@@ -91,6 +91,10 @@ func (r *AppsecRunner) Init(datadir string) error {
 	}
 	r.AppsecOutbandEngine, err = coraza.NewWAF(outbandCfg)
 
+	if err != nil {
+		return fmt.Errorf("unable to initialize outband engine : %w", err)
+	}
+
 	if r.AppsecRuntime.DisabledInBandRulesTags != nil {
 		for _, tag := range r.AppsecRuntime.DisabledInBandRulesTags {
 			r.AppsecInbandEngine.GetRuleGroup().DeleteByTag(tag)
