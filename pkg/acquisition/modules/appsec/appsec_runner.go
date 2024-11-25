@@ -122,10 +122,6 @@ func (r *AppsecRunner) Init(datadir string) error {
 	r.logger.Tracef("Loaded inband rules: %+v", r.AppsecInbandEngine.GetRuleGroup().GetRules())
 	r.logger.Tracef("Loaded outband rules: %+v", r.AppsecOutbandEngine.GetRuleGroup().GetRules())
 
-	if err != nil {
-		return fmt.Errorf("unable to initialize outband engine : %w", err)
-	}
-
 	return nil
 }
 

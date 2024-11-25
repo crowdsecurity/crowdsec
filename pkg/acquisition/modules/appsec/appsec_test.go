@@ -96,11 +96,10 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	}
 	err = runner.Init("/tmp/")
 	if err != nil {
-		if test.expected_load_ok {
-			t.Fatalf("unable to initialize runner : %s", err)
-		} else {
+		if !test.expected_load_ok {
 			return
 		}
+		t.Fatalf("unable to initialize runner : %s", err)
 	}
 	if !test.expected_load_ok {
 		t.Fatalf("expected load to fail but it didn't")
