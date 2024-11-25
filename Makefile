@@ -283,7 +283,8 @@ $(DEPS_DIR)/src/onnxruntime:
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)" CGO_CPPFLAGS="$(CGO_CPPFLAGS)" LIBRARY_PATH="$(LIBRARY_PATH)"
 
 .PHONY: clean-deps
-clean-deps: @$(RM) -r $(DEPS_DIR)
+clean-deps:
+	@$(RM) -r $(DEPS_DIR)
 
 .PHONY: plugins
 plugins:  ## Build notification plugins
