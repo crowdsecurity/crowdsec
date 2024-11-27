@@ -8,6 +8,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAppsecRuleMultiLineLoad(t *testing.T) {
+	log.SetLevel(log.TraceLevel)
+	tests := []appsecRuleTest{
+		{
+			name:             "Duplicate multi-line rule",
+			expected_load_ok: true,
+			inband_native_rules: []string{
+				`Secrule \`,
+				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
+				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+				`Secrule \`,
+				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
+				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+			},
+			afterload_asserts: func(runner AppsecRunner) {
+				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
+			},
+		},
+		{
+			name:             "Duplicate multi-line rule (2)",
+			expected_load_ok: true,
+			inband_native_rules: []string{
+				`Secrule \`,
+				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
+				`\`,
+				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+				`Secrule \`,
+				`REQUEST_HEADERS:Content-Type \`,
+				`"@rx ^application/x-www-form-urlencoded" \`,
+				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+			},
+			afterload_asserts: func(runner AppsecRunner) {
+				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loadAppSecEngine(test, t)
+		})
+	}
+
+}
+
 func TestAppsecRuleLoad(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
