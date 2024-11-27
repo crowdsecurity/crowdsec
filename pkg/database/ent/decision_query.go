@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -84,7 +85,7 @@ func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 // First returns the first Decision entity from the query.
 // Returns a *NotFoundError when no Decision was found.
 func (dq *DecisionQuery) First(ctx context.Context) (*Decision, error) {
-	nodes, err := dq.Limit(1).All(setContextOp(ctx, dq.ctx, "First"))
+	nodes, err := dq.Limit(1).All(setContextOp(ctx, dq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,7 @@ func (dq *DecisionQuery) FirstX(ctx context.Context) *Decision {
 // Returns a *NotFoundError when no Decision ID was found.
 func (dq *DecisionQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = dq.Limit(1).IDs(setContextOp(ctx, dq.ctx, "FirstID")); err != nil {
+	if ids, err = dq.Limit(1).IDs(setContextOp(ctx, dq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -130,7 +131,7 @@ func (dq *DecisionQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Decision entity is found.
 // Returns a *NotFoundError when no Decision entities are found.
 func (dq *DecisionQuery) Only(ctx context.Context) (*Decision, error) {
-	nodes, err := dq.Limit(2).All(setContextOp(ctx, dq.ctx, "Only"))
+	nodes, err := dq.Limit(2).All(setContextOp(ctx, dq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +159,7 @@ func (dq *DecisionQuery) OnlyX(ctx context.Context) *Decision {
 // Returns a *NotFoundError when no entities are found.
 func (dq *DecisionQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = dq.Limit(2).IDs(setContextOp(ctx, dq.ctx, "OnlyID")); err != nil {
+	if ids, err = dq.Limit(2).IDs(setContextOp(ctx, dq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -183,7 +184,7 @@ func (dq *DecisionQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Decisions.
 func (dq *DecisionQuery) All(ctx context.Context) ([]*Decision, error) {
-	ctx = setContextOp(ctx, dq.ctx, "All")
+	ctx = setContextOp(ctx, dq.ctx, ent.OpQueryAll)
 	if err := dq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -205,7 +206,7 @@ func (dq *DecisionQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if dq.ctx.Unique == nil && dq.path != nil {
 		dq.Unique(true)
 	}
-	ctx = setContextOp(ctx, dq.ctx, "IDs")
+	ctx = setContextOp(ctx, dq.ctx, ent.OpQueryIDs)
 	if err = dq.Select(decision.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -223,7 +224,7 @@ func (dq *DecisionQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (dq *DecisionQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, dq.ctx, "Count")
+	ctx = setContextOp(ctx, dq.ctx, ent.OpQueryCount)
 	if err := dq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -241,7 +242,7 @@ func (dq *DecisionQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (dq *DecisionQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, dq.ctx, "Exist")
+	ctx = setContextOp(ctx, dq.ctx, ent.OpQueryExist)
 	switch _, err := dq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -528,7 +529,7 @@ func (dgb *DecisionGroupBy) Aggregate(fns ...AggregateFunc) *DecisionGroupBy {
 
 // Scan applies the selector query and scans the result into the given value.
 func (dgb *DecisionGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, dgb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, dgb.build.ctx, ent.OpQueryGroupBy)
 	if err := dgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -576,7 +577,7 @@ func (ds *DecisionSelect) Aggregate(fns ...AggregateFunc) *DecisionSelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (ds *DecisionSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, ds.ctx, "Select")
+	ctx = setContextOp(ctx, ds.ctx, ent.OpQuerySelect)
 	if err := ds.prepareQuery(ctx); err != nil {
 		return err
 	}
