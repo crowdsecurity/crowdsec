@@ -53,7 +53,7 @@ func TestAppsecRuleMultiLineLoad(t *testing.T) {
 				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED" \`,
 			},
 			afterload_asserts: func(runner AppsecRunner) {
-				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 0)
+				require.Empty(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules())
 			},
 		},
 	}
