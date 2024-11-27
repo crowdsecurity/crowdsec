@@ -32,7 +32,7 @@ type AppsecRunner struct {
 	logger              *log.Entry
 }
 
-func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
+func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) (string, error) {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
 
@@ -48,6 +48,9 @@ func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, lo
 			tmp_rule += rule
 			newrules = append(newrules, tmp_rule)
 			tmp_rule = ""
+		}
+		if tmp_rule != "" {
+			return "", fmt.Errorf("unterminated multiline rule %s", tmp_rule)
 		}
 		collections[idx].Rules = newrules
 	}
@@ -67,7 +70,7 @@ func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, lo
 		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
 	}
 
-	return strings.Join(rulesArr, "\n")
+	return strings.Join(rulesArr, "\n"), nil
 }
 
 func (r *AppsecRunner) Init(datadir string) error {
@@ -78,8 +81,14 @@ func (r *AppsecRunner) Init(datadir string) error {
 	outBandLogger := r.logger.Dup().WithField("band", "outband")
 
 	//While loading rules, we dedup rules based on their content, while keeping the order
-	inBandRules := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
-	outOfBandRules := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
+	inBandRules, err := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
+	if err != nil {
+		return fmt.Errorf("unable to merge inband rules : %w", err)
+	}
+	outOfBandRules, err := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
+	if err != nil {
+		return fmt.Errorf("unable to merge outband rules : %w", err)
+	}
 
 	//setting up inband engine
 	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(inBandLogger))

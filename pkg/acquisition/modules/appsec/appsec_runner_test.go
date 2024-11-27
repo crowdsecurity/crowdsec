@@ -43,6 +43,19 @@ func TestAppsecRuleMultiLineLoad(t *testing.T) {
 				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
 			},
 		},
+		{
+			name:             "Single unterminated multi-line rule",
+			expected_load_ok: false,
+			inband_native_rules: []string{
+				`Secrule \`,
+				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
+				`\`,
+				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED" \`,
+			},
+			afterload_asserts: func(runner AppsecRunner) {
+				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 0)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
