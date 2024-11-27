@@ -260,7 +260,7 @@ func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args [
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli cliNotifications) newTestCmd() *cobra.Command {
+func (cli *cliNotifications) newTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
 		pluginTomb    tomb.Tomb
