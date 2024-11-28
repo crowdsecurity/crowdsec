@@ -121,14 +121,14 @@ func TestCreateAlert(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", strings.NewReader("test"), "password")
 	assert.Equal(t, 400, w.Code)
-	assert.Equal(t, `{"message":"invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
 
 	// Create Alert with invalid input
 	alertContent := GetAlertReaderFromFile(t, "./tests/invalidAlert_sample.json")
 
 	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t,
+	assert.JSONEq(t,
 		`{"message":"validation failure list:\n0.scenario in body is required\n0.scenario_hash in body is required\n0.scenario_version in body is required\n0.simulated in body is required\n0.source in body is required"}`,
 		w.Body.String())
 
@@ -176,7 +176,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", alertContent, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// get without filters
 
@@ -242,7 +242,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=gruueq", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"unable to convert 'gruueq' to int: invalid address: invalid ip address / range"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"unable to convert 'gruueq' to int: invalid address: invalid ip address / range"}`, w.Body.String())
 
 	// test range (ok)
 
@@ -261,7 +261,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?range=ratata", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"unable to convert 'ratata' to int: invalid address: invalid ip address / range"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"unable to convert 'ratata' to int: invalid address: invalid ip address / range"}`, w.Body.String())
 
 	// test since (ok)
 
@@ -332,7 +332,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?has_active_decision=ratatqata", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`, w.Body.String())
 }
 
 func TestAlertBulkInsert(t *testing.T) {
@@ -354,7 +354,7 @@ func TestListAlert(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// List Alert
 
@@ -397,7 +397,7 @@ func TestDeleteAlert(t *testing.T) {
 	req.RemoteAddr = "127.0.0.2:4242"
 	lapi.router.ServeHTTP(w, req)
 	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
 
 	// Delete Alert
 	w = httptest.NewRecorder()
@@ -406,7 +406,7 @@ func TestDeleteAlert(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:4242"
 	lapi.router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
 
 func TestDeleteAlertByID(t *testing.T) {
@@ -421,7 +421,7 @@ func TestDeleteAlertByID(t *testing.T) {
 	req.RemoteAddr = "127.0.0.2:4242"
 	lapi.router.ServeHTTP(w, req)
 	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
 
 	// Delete Alert
 	w = httptest.NewRecorder()
@@ -430,7 +430,7 @@ func TestDeleteAlertByID(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:4242"
 	lapi.router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
 
 func TestDeleteAlertTrustedIPS(t *testing.T) {
@@ -475,7 +475,7 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 
 		router.ServeHTTP(w, req)
 		assert.Equal(t, 200, w.Code)
-		assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+		assert.JSONEq(t, `{"nbDeleted":"1"}`, w.Body.String())
 	}
 
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
