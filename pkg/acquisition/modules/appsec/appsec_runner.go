@@ -47,9 +47,7 @@ func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, lo
 			}
 		}
 		// Don't mess up with native modsec rules
-		for _, rule := range collection.NativeRules {
-			rulesArr = append(rulesArr, rule)
-		}
+		rulesArr = append(rulesArr, collection.NativeRules...)
 	}
 	if len(rulesArr) != len(dedupRules) {
 		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
@@ -67,13 +65,7 @@ func (r *AppsecRunner) Init(datadir string) error {
 
 	//While loading rules, we dedup rules based on their content, while keeping the order
 	inBandRules := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
-	if err != nil {
-		return fmt.Errorf("unable to merge inband rules : %w", err)
-	}
 	outOfBandRules := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
-	if err != nil {
-		return fmt.Errorf("unable to merge outband rules : %w", err)
-	}
 
 	//setting up inband engine
 	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(inBandLogger))
