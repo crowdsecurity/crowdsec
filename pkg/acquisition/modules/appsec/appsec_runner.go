@@ -32,7 +32,7 @@ type AppsecRunner struct {
 	logger              *log.Entry
 }
 
-func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) (string, error) {
+func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
 
@@ -55,7 +55,7 @@ func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, lo
 		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
 	}
 
-	return strings.Join(rulesArr, "\n"), nil
+	return strings.Join(rulesArr, "\n")
 }
 
 func (r *AppsecRunner) Init(datadir string) error {
@@ -66,11 +66,11 @@ func (r *AppsecRunner) Init(datadir string) error {
 	outBandLogger := r.logger.Dup().WithField("band", "outband")
 
 	//While loading rules, we dedup rules based on their content, while keeping the order
-	inBandRules, err := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
+	inBandRules := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
 	if err != nil {
 		return fmt.Errorf("unable to merge inband rules : %w", err)
 	}
-	outOfBandRules, err := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
+	outOfBandRules := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
 	if err != nil {
 		return fmt.Errorf("unable to merge outband rules : %w", err)
 	}
