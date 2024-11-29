@@ -8,52 +8,60 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAppsecRuleMultiLineLoad(t *testing.T) {
+func TestAppsecConflictRuleLoad(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{
-			name:             "Duplicate multi-line rule",
+			name:             "simple native rule load",
 			expected_load_ok: true,
 			inband_native_rules: []string{
-				`Secrule \`,
-				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
-				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
-				`Secrule \`,
-				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
-				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+				`Secrule REQUEST_HEADERS:Content-Type "@rx ^multipart/form-data" "id:101,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=MULTIPART"`,
 			},
 			afterload_asserts: func(runner AppsecRunner) {
-				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
+				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 2)
 			},
 		},
 		{
-			name:             "Duplicate multi-line rule (2)",
-			expected_load_ok: true,
-			inband_native_rules: []string{
-				`Secrule \`,
-				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
-				`\`,
-				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
-				`Secrule \`,
-				`REQUEST_HEADERS:Content-Type \`,
-				`"@rx ^application/x-www-form-urlencoded" \`,
-				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
-			},
-			afterload_asserts: func(runner AppsecRunner) {
-				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
-			},
-		},
-		{
-			name:             "Single unterminated multi-line rule",
+			name:             "id conflict on native rule load",
 			expected_load_ok: false,
 			inband_native_rules: []string{
-				`Secrule \`,
-				`REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" \`,
-				`\`,
-				`"id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED" \`,
+				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+				`Secrule REQUEST_HEADERS:Content-Type "@rx ^multipart/form-data" "id:101,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=MULTIPART"`,
+				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
+			},
+		},
+		{
+			name:             "simple rule load",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:  "rule1",
+					Zones: []string{"ARGS"},
+					Match: appsec_rule.Match{Type: "equals", Value: "toto"},
+				},
 			},
 			afterload_asserts: func(runner AppsecRunner) {
-				require.Empty(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules())
+				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
+			},
+		},
+		{
+			name:             "duplicate rule load",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:  "rule1",
+					Zones: []string{"ARGS"},
+					Match: appsec_rule.Match{Type: "equals", Value: "toto"},
+				},
+				{
+					Name:  "rule1",
+					Zones: []string{"ARGS"},
+					Match: appsec_rule.Match{Type: "equals", Value: "toto"},
+				},
+			},
+			afterload_asserts: func(runner AppsecRunner) {
+				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 1)
 			},
 		},
 	}
@@ -62,7 +70,6 @@ func TestAppsecRuleMultiLineLoad(t *testing.T) {
 			loadAppSecEngine(test, t)
 		})
 	}
-
 }
 
 func TestAppsecRuleLoad(t *testing.T) {
@@ -98,18 +105,6 @@ func TestAppsecRuleLoad(t *testing.T) {
 			inband_native_rules: []string{
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
 				`Secrule REQUEST_HEADERS:Content-Type "@rx ^multipart/form-data" "id:101,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=MULTIPART"`,
-			},
-			afterload_asserts: func(runner AppsecRunner) {
-				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 2)
-			},
-		},
-		{
-			name:             "simple native rule load + dedup",
-			expected_load_ok: true,
-			inband_native_rules: []string{
-				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
-				`Secrule REQUEST_HEADERS:Content-Type "@rx ^multipart/form-data" "id:101,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=MULTIPART"`,
-				`Secrule REQUEST_HEADERS:Content-Type "@rx ^application/x-www-form-urlencoded" "id:100,phase:1,pass,nolog,noauditlog,ctl:requestBodyProcessor=URLENCODED"`,
 			},
 			afterload_asserts: func(runner AppsecRunner) {
 				require.Len(t, runner.AppsecInbandEngine.GetRuleGroup().GetRules(), 2)
