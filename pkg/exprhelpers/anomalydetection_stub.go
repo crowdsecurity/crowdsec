@@ -11,7 +11,7 @@ var robertaInferencePipeline *RobertaInferencePipelineStub
 
 type RobertaInferencePipelineStub struct{}
 
-func InitRobertaInferencePipeline(modelBundleFilename string, datadir string) error {
+func InitRobertaInferencePipeline(modelBundlePath string) error {
 	fmt.Println("Stub: InitRobertaInferencePipeline called with no ML support")
 	return nil
 }

@@ -18,12 +18,12 @@ func init() {
 	component.Register("mlsupport")
 }
 
-func InitRobertaInferencePipeline(modelBundleFilename string, datadir string) error {
+func InitRobertaInferencePipeline(modelBundlePath string) error {
 	var err error
 
 	fmt.Println("Initializing Roberta Inference Pipeline")
 
-	robertaInferencePipeline, err = ml.NewRobertaInferencePipeline(modelBundleFilename, datadir)
+	robertaInferencePipeline, err = ml.NewRobertaInferencePipeline(modelBundlePath)
 	if err != nil {
 		return err
 	}

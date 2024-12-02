@@ -206,7 +206,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	filepath := filepath.Join(fileFolder, filename)
 
 	if fileType == "ml_roberta_model" {
-		err := InitRobertaInferencePipeline(filepath, fileFolder)
+		err := InitRobertaInferencePipeline(filepath)
 		if err != nil {
 			log.Errorf("unable to init roberta model : %s", err)
 			return err

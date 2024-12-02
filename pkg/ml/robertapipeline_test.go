@@ -13,10 +13,9 @@ import (
 func BenchmarkPredictLabel(b *testing.B) {
 	log.Println("Starting benchmark for PredictLabel")
 
-	tarFilename := "anomaly_detection_bundle_test.tar"
-	dataDir := "tests"
+	tarFilePath := "tests/anomaly_detection_bundle_test.tar"
 
-	pipeline, err := NewRobertaInferencePipeline(tarFilename, dataDir)
+	pipeline, err := NewRobertaInferencePipeline(tarFilePath)
 	if err != nil {
 		b.Fatalf("NewRobertaInferencePipeline returned error: %v", err)
 	}
@@ -92,10 +91,9 @@ func TestPredictLabel(t *testing.T) {
 		},
 	}
 
-	tarFilename := "anomaly_detection_bundle_test.tar"
-	dataDir := "tests"
+	tarFilePath := "tests/anomaly_detection_bundle_test.tar"
 
-	pipeline, err := NewRobertaInferencePipeline(tarFilename, dataDir)
+	pipeline, err := NewRobertaInferencePipeline(tarFilePath)
 	if err != nil {
 		t.Fatalf("NewRobertaInferencePipeline returned error: %v", err)
 	}

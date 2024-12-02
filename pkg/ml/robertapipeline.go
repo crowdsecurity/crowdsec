@@ -1,4 +1,5 @@
-//go:build !no_mlsupport
+//go:build !no_ml_support
+
 package ml
 
 import (
@@ -18,25 +19,29 @@ type RobertaClassificationInferencePipeline struct {
 	ortSession *OrtSession
 }
 
-func NewRobertaInferencePipeline(modelBundleFilename, datadir string) (*RobertaClassificationInferencePipeline, error) {
-	bundleFilePath := filepath.Join(datadir, modelBundleFilename)
+var bundleFileList = []string{
+	"model.onnx",
+	"tokenizer.json",
+	"tokenizer_config.json",
+}
+
+func NewRobertaInferencePipeline(bundleFilePath string) (*RobertaClassificationInferencePipeline, error) {
 	tempDir, err := os.MkdirTemp("", "crowdsec_roberta_model_assets")
 	if err != nil {
 		return nil, fmt.Errorf("could not create temp directory: %v", err)
 	}
-
-	outputDirName := filepath.Base(strings.TrimSuffix(bundleFilePath, ".tar"))
-	outputDir := filepath.Join(tempDir, outputDirName)
 
 	if err := extractTarFile(bundleFilePath, tempDir); err != nil {
 		os.RemoveAll(tempDir)
 		return nil, fmt.Errorf("failed to extract tar file: %v", err)
 	}
 
-	for _, file := range []string{"model.onnx", "tokenizer.json", "tokenizer_config.json"} {
+	outputDir := filepath.Join(tempDir, strings.Split(filepath.Base(bundleFilePath), ".tar")[0])
+
+	for _, file := range bundleFileList {
 		if _, err := os.Stat(filepath.Join(outputDir, file)); os.IsNotExist(err) {
 			os.RemoveAll(tempDir)
-			return nil, fmt.Errorf("missing required file: %s", file)
+			return nil, fmt.Errorf("missing required file: %s, in %s", file, outputDir)
 		}
 	}
 
