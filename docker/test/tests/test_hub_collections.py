@@ -28,10 +28,8 @@ def test_install_two_collections(crowdsec, flavor):
         assert items[it1]['status'] == 'enabled'
         assert items[it2]['status'] == 'enabled'
         cs.wait_for_log([
-            # f'*collections install "{it1}"*'
-            # f'*collections install "{it2}"*'
-            f'*Enabled collections: {it1}*',
-            f'*Enabled collections: {it2}*',
+            f'*enabling collections:{it1}*',
+            f'*enabling collections:{it2}*',
         ])
 
 
@@ -72,7 +70,7 @@ def test_install_and_disable_collection(crowdsec, flavor):
         assert it not in items
         logs = cs.log_lines()
         # check that there was no attempt to install
-        assert not any(f'Enabled collections: {it}' in line for line in logs)
+        assert not any(f'enabling collections:{it}' in line for line in logs)
 
 
 # already done in bats, prividing here as example of a somewhat complex test
@@ -91,7 +89,7 @@ def test_taint_bubble_up(crowdsec, tmp_path_factory, flavor):
         # implicit check for tainted=False
         assert items[coll]['status'] == 'enabled'
         cs.wait_for_log([
-            f'*Enabled collections: {coll}*',
+            f'*enabling collections:{coll}*',
         ])
 
         scenario = 'crowdsecurity/http-crawl-non_statics'
