@@ -69,12 +69,6 @@ type ActionPlan struct {
 
 	// Indicates whether a reload of the CrowdSec service is required after executing the action plan.
 	ReloadNeeded bool
-
-	// Collect low-priority messages to display during the execution.
-	infos        []string
-
-	// Collect high-priority messages to display during the execution.
-	warnings     []string
 }
 
 func NewActionPlan(hub *cwhub.Hub) *ActionPlan {
