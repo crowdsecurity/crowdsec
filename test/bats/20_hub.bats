@@ -127,7 +127,9 @@ teardown() {
     mkdir -p "$CONFIG_DIR/collections"
     touch "$CONFIG_DIR/collections/foo.yaml"
     rune -0 cscli hub upgrade
-    assert_output "Nothing to do."
+    assert_output - <<-EOT
+	collections:foo.yaml - not downloading local item
+	EOT
 }
 
 @test "cscli hub types" {
