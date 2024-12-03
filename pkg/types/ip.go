@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -38,7 +37,7 @@ func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
 	if strings.Contains(anyIP, "/") {
 		_, net, err := net.ParseCIDR(anyIP)
 		if err != nil {
-			return -1, 0, 0, 0, 0, fmt.Errorf("while parsing range %s: %w", anyIP, err)
+			return -1, 0, 0, 0, 0, fmt.Errorf("invalid ip range '%s': %w", anyIP, err)
 		}
 
 		return Range2Ints(*net)
@@ -46,12 +45,12 @@ func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
 
 	ip := net.ParseIP(anyIP)
 	if ip == nil {
-		return -1, 0, 0, 0, 0, errors.New("invalid address")
+		return -1, 0, 0, 0, 0, fmt.Errorf("invalid ip address '%s'", anyIP)
 	}
 
 	sz, start, end, err := IP2Ints(ip)
 	if err != nil {
-		return -1, 0, 0, 0, 0, fmt.Errorf("while parsing ip %s: %w", anyIP, err)
+		return -1, 0, 0, 0, 0, fmt.Errorf("invalid ip address '%s': %w", anyIP, err)
 	}
 
 	return sz, start, end, start, end, nil
