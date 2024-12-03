@@ -48,8 +48,7 @@ def test_disable_collection(crowdsec, flavor):
         items = {c['name'] for c in j['collections']}
         assert it not in items
         cs.wait_for_log([
-            # f'*collections remove "{it}*",
-            f'*Removed symlink [[]{it}[]]*',
+            f'*disabling collections:{it}*',
         ])
 
 
