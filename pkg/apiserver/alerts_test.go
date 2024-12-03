@@ -242,7 +242,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=gruueq", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
-	assert.JSONEq(t, `{"message":"invalid ip address ''gruueq'"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"invalid ip address 'gruueq'"}`, w.Body.String())
 
 	// test range (ok)
 
