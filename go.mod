@@ -29,7 +29,7 @@ require (
 	github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4
 	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.2
-	github.com/daulet/tokenizers v0.8.0
+	github.com/daulet/tokenizers v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v24.0.9+incompatible
