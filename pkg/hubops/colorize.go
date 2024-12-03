@@ -20,10 +20,6 @@ func colorizeItemName(fullname string) string {
 	return fullname
 }
 
-var style = map[string]string{
-	(&DataRefreshCommand{}).OperationType(): emoji.Sync,
-}
-
 func colorizeOpType(opType string) string {
 	switch opType {
 	case (&DownloadCommand{}).OperationType():
