@@ -199,7 +199,7 @@ get_latest_version() {
     assert_output - <<-EOT
 	Action plan:
 	📥 download
-	 parsers: crowdsecurity/whitelists (0.0 -> $latest_whitelists), crowdsecurity/sshd-logs (0.0 -> $latest_sshd)
+	 parsers: crowdsecurity/sshd-logs (0.0 -> $latest_sshd), crowdsecurity/whitelists (0.0 -> $latest_whitelists)
 	
 	Dry run, no action taken.
 	EOT
