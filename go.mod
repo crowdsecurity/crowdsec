@@ -26,8 +26,10 @@ require (
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20240108124027-a62b8d8e5607
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/go-cs-lib v0.0.15
+	github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4
 	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.2
+	github.com/daulet/tokenizers v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v24.0.9+incompatible
