@@ -82,6 +82,11 @@ func TestConfigureDSN(t *testing.T) {
 	}{
 		{
 			name:        "invalid DSN",
+			dsn:         "asdfasdf",
+			expectedErr: "invalid DSN asdfasdf for docker source, must start with docker://",
+		},
+		{
+			name:        "invalid DSN scheme",
 			dsn:         "asd://",
 			expectedErr: "invalid DSN asd:// for docker source, must start with docker://",
 		},
@@ -300,38 +305,40 @@ func TestOneShot(t *testing.T) {
 	}
 
 	for _, ts := range tests {
-		var (
-			subLogger *log.Entry
-			logger    *log.Logger
-		)
+		t.Run(ts.dsn, func(t *testing.T) {
+			var (
+				subLogger *log.Entry
+				logger    *log.Logger
+			)
 
-		if ts.expectedOutput != "" {
-			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithField("type", "docker")
-		} else {
-			log.SetLevel(ts.logLevel)
-			subLogger = log.WithField("type", "docker")
-		}
+			if ts.expectedOutput != "" {
+				logger.SetLevel(ts.logLevel)
+				subLogger = logger.WithField("type", "docker")
+			} else {
+				log.SetLevel(ts.logLevel)
+				subLogger = log.WithField("type", "docker")
+			}
 
-		readLogs = false
-		dockerClient := &DockerSource{}
-		labels := make(map[string]string)
-		labels["type"] = ts.logType
+			readLogs = false
+			dockerClient := &DockerSource{}
+			labels := make(map[string]string)
+			labels["type"] = ts.logType
 
-		if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, ""); err != nil {
-			t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
-		}
+			if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, ""); err != nil {
+				t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
+			}
 
-		dockerClient.Client = new(mockDockerCli)
-		out := make(chan types.Event, 100)
-		tomb := tomb.Tomb{}
-		err := dockerClient.OneShotAcquisition(ctx, out, &tomb)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
+			dockerClient.Client = new(mockDockerCli)
+			out := make(chan types.Event, 100)
+			tomb := tomb.Tomb{}
+			err := dockerClient.OneShotAcquisition(ctx, out, &tomb)
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		// else we do the check before actualLines is incremented ...
-		if ts.expectedLines != 0 {
-			assert.Len(t, out, ts.expectedLines)
-		}
+			// else we do the check before actualLines is incremented ...
+			if ts.expectedLines != 0 {
+				assert.Len(t, out, ts.expectedLines)
+			}
+		})
 	}
 }
 

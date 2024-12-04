@@ -172,7 +172,12 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	var err error
 
-	if !strings.HasPrefix(dsn, d.GetName()+"://") {
+	parsedURL, err := url.Parse(dsn)
+	if err != nil {
+		return fmt.Errorf("failed to parse DSN %s: %w", dsn, err)
+	}
+	
+	if parsedURL.Scheme != d.GetName() {
 		return fmt.Errorf("invalid DSN %s for docker source, must start with %s://", dsn, d.GetName())
 	}
 
@@ -189,9 +194,9 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	d.logger = logger
 	d.Config.Labels = labels
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
+	opts := []client.Opt{
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
 	}
 
 	d.containerLogsOptions = &dockerContainer.LogsOptions{
@@ -199,30 +204,18 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     false,
 	}
-	dsn = strings.TrimPrefix(dsn, d.GetName()+"://")
-	args := strings.Split(dsn, "?")
 
-	if len(args) == 0 {
-		return fmt.Errorf("invalid dsn: %s", dsn)
-	}
+	containerNameOrID := parsedURL.Host
 
-	if len(args) == 1 && args[0] == "" {
+	if containerNameOrID == "" {
 		return fmt.Errorf("empty %s DSN", d.GetName()+"://")
 	}
-	d.Config.ContainerName = append(d.Config.ContainerName, args[0])
+
+	d.Config.ContainerName = append(d.Config.ContainerName, containerNameOrID)
 	// we add it as an ID also so user can provide docker name or docker ID
-	d.Config.ContainerID = append(d.Config.ContainerID, args[0])
+	d.Config.ContainerID = append(d.Config.ContainerID, containerNameOrID)
 
-	// no parameters
-	if len(args) == 1 {
-		d.Client = dockerClient
-		return nil
-	}
-
-	parameters, err := url.ParseQuery(args[1])
-	if err != nil {
-		return fmt.Errorf("while parsing parameters %s: %w", dsn, err)
-	}
+	parameters := parsedURL.Query()
 
 	for k, v := range parameters {
 		switch k {
@@ -269,17 +262,15 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			if len(v) != 1 {
 				return errors.New("only one 'docker_host' parameters is required, not many")
 			}
-			dockerClient, err = client.NewClientWithOpts(
-				client.FromEnv,
-				client.WithAPIVersionNegotiation(),
-				client.WithHost(v[0]),
-			)
-			if err != nil {
-				return err
-			}
+			opts = append(opts, client.WithHost(v[0]))
 		}
 	}
-	d.Client = dockerClient
+
+	d.Client, err = client.NewClientWithOpts(opts...)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
