@@ -12,6 +12,8 @@ import (
 	"time"
 
 	dockerTypes "github.com/docker/docker/api/types"
+	dockerTypes "github.com/docker/docker/api/types"
+	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -56,7 +58,7 @@ type DockerSource struct {
 	logger                *log.Entry
 	Client                client.CommonAPIClient
 	t                     *tomb.Tomb
-	containerLogsOptions  *dockerTypes.ContainerLogsOptions
+	containerLogsOptions  *dockerContainer.LogsOptions
 }
 
 type ContainerConfig struct {
@@ -104,6 +106,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	if d.Config.Mode == "" {
 		d.Config.Mode = configuration.TAIL_MODE
 	}
+
 	if d.Config.Mode != configuration.CAT_MODE && d.Config.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("unsupported mode %s for docker datasource", d.Config.Mode)
 	}
@@ -120,7 +123,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 	}
 
-	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
+	d.containerLogsOptions = &dockerContainer.LogsOptions{
 		ShowStdout: d.Config.FollowStdout,
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     true,
@@ -137,6 +140,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	d.logger = logger
 	d.metricsLevel = MetricsLevel
+
 	err := d.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -146,18 +150,19 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	d.logger.Tracef("Actual DockerAcquisition configuration %+v", d.Config)
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
+	opts := []client.Opt{
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
 	}
 
 	if d.Config.DockerHost != "" {
-		err = client.WithHost(d.Config.DockerHost)(dockerClient)
-		if err != nil {
-			return err
-		}
+		opts = append(opts, client.WithHost(d.Config.DockerHost))
 	}
-	d.Client = dockerClient
+
+	d.Client, err = client.NewClientWithOpts(opts...)
+	if err != nil {
+		return err
+	}
 
 	_, err = d.Client.Info(context.Background())
 	if err != nil {
@@ -170,7 +175,12 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	var err error
 
-	if !strings.HasPrefix(dsn, d.GetName()+"://") {
+	parsedURL, err := url.Parse(dsn)
+	if err != nil {
+		return fmt.Errorf("failed to parse DSN %s: %w", dsn, err)
+	}
+
+	if parsedURL.Scheme != d.GetName() {
 		return fmt.Errorf("invalid DSN %s for docker source, must start with %s://", dsn, d.GetName())
 	}
 
@@ -187,40 +197,28 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	d.logger = logger
 	d.Config.Labels = labels
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
+	opts := []client.Opt{
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
 	}
 
-	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
+	d.containerLogsOptions = &dockerContainer.LogsOptions{
 		ShowStdout: d.Config.FollowStdout,
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     false,
 	}
-	dsn = strings.TrimPrefix(dsn, d.GetName()+"://")
-	args := strings.Split(dsn, "?")
 
-	if len(args) == 0 {
-		return fmt.Errorf("invalid dsn: %s", dsn)
-	}
+	containerNameOrID := parsedURL.Host
 
-	if len(args) == 1 && args[0] == "" {
+	if containerNameOrID == "" {
 		return fmt.Errorf("empty %s DSN", d.GetName()+"://")
 	}
-	d.Config.ContainerName = append(d.Config.ContainerName, args[0])
+
+	d.Config.ContainerName = append(d.Config.ContainerName, containerNameOrID)
 	// we add it as an ID also so user can provide docker name or docker ID
-	d.Config.ContainerID = append(d.Config.ContainerID, args[0])
+	d.Config.ContainerID = append(d.Config.ContainerID, containerNameOrID)
 
-	// no parameters
-	if len(args) == 1 {
-		d.Client = dockerClient
-		return nil
-	}
-
-	parameters, err := url.ParseQuery(args[1])
-	if err != nil {
-		return fmt.Errorf("while parsing parameters %s: %w", dsn, err)
-	}
+	parameters := parsedURL.Query()
 
 	for k, v := range parameters {
 		switch k {
@@ -267,12 +265,15 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			if len(v) != 1 {
 				return errors.New("only one 'docker_host' parameters is required, not many")
 			}
-			if err := client.WithHost(v[0])(dockerClient); err != nil {
-				return err
-			}
+			opts = append(opts, client.WithHost(v[0]))
 		}
 	}
-	d.Client = dockerClient
+
+	d.Client, err = client.NewClientWithOpts(opts...)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -288,7 +289,7 @@ func (d *DockerSource) SupportedModes() []string {
 // OneShotAcquisition reads a set of file and returns when done
 func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
-	runningContainer, err := d.Client.ContainerList(ctx, dockerTypes.ContainerListOptions{})
+	runningContainer, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -478,7 +479,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 		case <-ticker.C:
 			// to track for garbage collection
 			runningContainersID := make(map[string]bool)
-			runningContainer, err := d.Client.ContainerList(ctx, dockerTypes.ContainerListOptions{})
+			runningContainer, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
 			if err != nil {
 				if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
 					for idx, container := range d.runningContainerState {

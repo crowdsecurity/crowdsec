@@ -15,7 +15,7 @@ services:
       AWS_HOST: localstack
       DEBUG: ""
       KINESYS_ERROR_PROBABILITY: ""
-      DOCKER_HOST: "unix://var/run/docker.sock"
+      BUILDKIT_HOST: "unix://var/run/docker.sock"
       LOCALSTACK_HOST: "localstack"
       AWS_REGION: "us-east-1"
 
