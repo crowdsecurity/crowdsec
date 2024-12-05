@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
-	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerTypes "github.com/docker/docker/api/types"
+	dockerTypes "github.com/docker/docker/api/types"
+	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -105,6 +106,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	if d.Config.Mode == "" {
 		d.Config.Mode = configuration.TAIL_MODE
 	}
+
 	if d.Config.Mode != configuration.CAT_MODE && d.Config.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("unsupported mode %s for docker datasource", d.Config.Mode)
 	}
@@ -138,6 +140,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	d.logger = logger
 	d.metricsLevel = MetricsLevel
+
 	err := d.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -176,7 +179,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	if err != nil {
 		return fmt.Errorf("failed to parse DSN %s: %w", dsn, err)
 	}
-	
+
 	if parsedURL.Scheme != d.GetName() {
 		return fmt.Errorf("invalid DSN %s for docker source, must start with %s://", dsn, d.GetName())
 	}

@@ -107,7 +107,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:        "DSN ok with multiple parameters",
-			dsn:         fmt.Sprintf("docker://test_docker?since=42min&docker_host=%s", dockerHost),
+			dsn:         "docker://test_docker?since=42min&docker_host=" + dockerHost,
 			expectedErr: "",
 		},
 	}
@@ -128,6 +128,7 @@ type mockDockerCli struct {
 
 func TestStreamingAcquisition(t *testing.T) {
 	ctx := context.Background()
+
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
@@ -198,6 +199,7 @@ container_name_regexp:
 		readerTomb.Go(func() error {
 			time.Sleep(1 * time.Second)
 			ticker := time.NewTicker(1 * time.Second)
+
 			for {
 				select {
 				case <-out:
@@ -212,7 +214,7 @@ container_name_regexp:
 		})
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		if err := readerTomb.Wait(); err != nil {
+		if err = readerTomb.Wait(); err != nil {
 			t.Fatal(err)
 		}
 
