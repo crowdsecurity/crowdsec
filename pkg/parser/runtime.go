@@ -248,14 +248,18 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-var ParseDump bool
-var DumpFolder string
+var (
+	ParseDump  bool
+	DumpFolder string
+)
 
-var StageParseCache dumps.ParserResults
-var StageParseMutex sync.Mutex
+var (
+	StageParseCache dumps.ParserResults
+	StageParseMutex sync.Mutex
+)
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
-	var event = xp
+	event := xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {

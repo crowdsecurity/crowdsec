@@ -10,9 +10,11 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var logFormatter log.Formatter
-var LogOutput *lumberjack.Logger //io.Writer
-var logLevel log.Level
+var (
+	logFormatter log.Formatter
+	LogOutput    *lumberjack.Logger // io.Writer
+	logLevel     log.Level
+)
 
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
 	/*Configure logs*/

@@ -1,4 +1,4 @@
-// +build !no_datasource_appsec
+//go:build !no_datasource_appsec
 
 package main
 

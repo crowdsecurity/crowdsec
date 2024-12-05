@@ -1,23 +1,29 @@
 package types
 
-const ApiKeyAuthType = "api-key"
-const TlsAuthType = "tls"
-const PasswordAuthType = "password"
+const (
+	ApiKeyAuthType   = "api-key"
+	TlsAuthType      = "tls"
+	PasswordAuthType = "password"
+)
 
-const PAPIBaseURL = "https://papi.api.crowdsec.net/"
-const PAPIVersion = "v1"
-const PAPIPollUrl = "/decisions/stream/poll"
-const PAPIPermissionsUrl = "/permissions"
+const (
+	PAPIBaseURL        = "https://papi.api.crowdsec.net/"
+	PAPIVersion        = "v1"
+	PAPIPollUrl        = "/decisions/stream/poll"
+	PAPIPermissionsUrl = "/permissions"
+)
 
 const CAPIBaseURL = "https://api.crowdsec.net/"
 
-const CscliOrigin = "cscli"
-const CrowdSecOrigin = "crowdsec"
-const ConsoleOrigin = "console"
-const CscliImportOrigin = "cscli-import"
-const ListOrigin = "lists"
-const CAPIOrigin = "CAPI"
-const CommunityBlocklistPullSourceScope = "crowdsecurity/community-blocklist"
+const (
+	CscliOrigin                       = "cscli"
+	CrowdSecOrigin                    = "crowdsec"
+	ConsoleOrigin                     = "console"
+	CscliImportOrigin                 = "cscli-import"
+	ListOrigin                        = "lists"
+	CAPIOrigin                        = "CAPI"
+	CommunityBlocklistPullSourceScope = "crowdsecurity/community-blocklist"
+)
 
 const DecisionTypeBan = "ban"
 

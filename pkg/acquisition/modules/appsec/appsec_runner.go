@@ -90,7 +90,6 @@ func (r *AppsecRunner) Init(datadir string) error {
 		outbandCfg = outbandCfg.WithRequestBodyInMemoryLimit(*r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit)
 	}
 	r.AppsecOutbandEngine, err = coraza.NewWAF(outbandCfg)
-
 	if err != nil {
 		return fmt.Errorf("unable to initialize outband engine : %w", err)
 	}
@@ -379,7 +378,6 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
 	AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
-
 }
 
 func (r *AppsecRunner) Run(t *tomb.Tomb) error {
