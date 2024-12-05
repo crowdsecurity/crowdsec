@@ -18,9 +18,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/tomb.v2"
 )
 
 const (
@@ -257,7 +257,6 @@ basic_auth:
 	h.Server.Close()
 	tomb.Kill(nil)
 	tomb.Wait()
-
 }
 
 func TestStreamingAcquisitionUnknownPath(t *testing.T) {

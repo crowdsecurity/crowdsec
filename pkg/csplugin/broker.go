@@ -91,7 +91,6 @@ func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg,
 	pb.watcher = PluginWatcher{}
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
 	return nil
-
 }
 
 func (pb *PluginBroker) Kill() {
@@ -166,6 +165,7 @@ func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 		pb.watcher.Inserts <- pluginName
 	}
 }
+
 func (pb *PluginBroker) profilesContainPlugin(pluginName string) bool {
 	for _, profileCfg := range pb.profileConfigs {
 		for _, name := range profileCfg.Notifications {
@@ -176,6 +176,7 @@ func (pb *PluginBroker) profilesContainPlugin(pluginName string) bool {
 	}
 	return false
 }
+
 func (pb *PluginBroker) loadConfig(path string) error {
 	files, err := listFilesAtPath(path)
 	if err != nil {
@@ -277,7 +278,6 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 }
 
 func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (protobufs.NotifierServer, error) {
-
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err

@@ -243,7 +243,8 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 }
 
 func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "show-password",
+	cmd := &cobra.Command{
+		Use:               "show-password",
 		Short:             "displays password of metabase.",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
@@ -457,7 +458,6 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 func (cli *cliDashboard) chownDatabase(gid string) error {
 	cfg := cli.cfg()
 	intID, err := strconv.Atoi(gid)
-
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}

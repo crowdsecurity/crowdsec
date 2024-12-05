@@ -174,7 +174,6 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	logger.Infof("Creating bouncer %s", bouncerName)
 
 	bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, clientIP, hashStr, types.ApiKeyAuthType, true)
-
 	if err != nil {
 		logger.Errorf("while creating bouncer db entry: %s", err)
 		return nil

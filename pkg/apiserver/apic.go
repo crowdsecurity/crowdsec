@@ -332,7 +332,6 @@ func getScenarioTrustOfAlert(alert *models.Alert) string {
 }
 
 func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig, shareSignals bool) bool {
-
 	if !shareSignals {
 		log.Debugf("sharing signals is disabled")
 		return false
