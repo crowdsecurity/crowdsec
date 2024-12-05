@@ -15,7 +15,6 @@ import (
 
 type appsecRuleTest struct {
 	name                   string
-	expected_load_ok       bool
 	inband_rules           []appsec_rule.CustomRule
 	outofband_rules        []appsec_rule.CustomRule
 	inband_native_rules    []string

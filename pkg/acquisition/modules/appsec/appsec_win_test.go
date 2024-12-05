@@ -14,7 +14,6 @@ func TestAppsecRuleTransformsWindows(t *testing.T) {
 	tests := []appsecRuleTest{
 		// {
 		// 	name:             "normalizepath",
-		// 	expected_load_ok: true,
 		// 	inband_rules: []appsec_rule.CustomRule{
 		// 		{
 		// 			Name:      "rule1",
