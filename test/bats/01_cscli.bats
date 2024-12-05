@@ -172,41 +172,13 @@ teardown() {
 }
 
 @test "cscli config backup / restore" {
-    # test that we need a valid path
-    # disabled because in CI, the empty string is not passed as a parameter
-    #rune -1 cscli config backup ""
-    #assert_stderr --partial "failed to backup config: directory path can't be empty"
+    CONFIG_DIR=$(config_get '.config_paths.config_dir')
 
     rune -1 cscli config backup "/dev/null/blah"
-    assert_stderr --partial "failed to backup config: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
+    assert_stderr --partial "'cscli config backup' has been removed, you can manually backup/restore $CONFIG_DIR instead"
 
-    # pick a dirpath
-    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
-
-    # succeed the first time
-    rune -0 cscli config backup "$backupdir"
-    assert_stderr --partial "Starting configuration backup"
-
-    # don't overwrite an existing backup
-    rune -1 cscli config backup "$backupdir"
-    assert_stderr --partial "failed to backup config"
-    assert_stderr --partial "file exists"
-
-    SIMULATION_YAML="$(config_get '.config_paths.simulation_path')"
-
-    # restore
-    rm "$SIMULATION_YAML"
-    rune -0 cscli config restore "$backupdir"
-    assert_file_exists "$SIMULATION_YAML"
-
-    # cleanup
-    rm -rf -- "${backupdir:?}"
-
-    # backup: detect missing files
-    rm "$SIMULATION_YAML"
-    rune -1 cscli config backup "$backupdir"
-    assert_stderr --regexp "failed to backup config: failed copy .* to .*: stat .*: no such file or directory"
-    rm -rf -- "${backupdir:?}"
+    rune -1 cscli config restore "/dev/null/blah"
+    assert_stderr --partial "'cscli config restore' has been removed, you can manually backup/restore $CONFIG_DIR instead"
 }
 
 @test "'cscli completion' with or without configuration file" {
