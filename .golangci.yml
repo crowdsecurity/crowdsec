@@ -183,7 +183,6 @@ linters-settings:
       - ifElseChain
       - importShadow
       - hugeParam
-      - rangeValCopy
       - commentedOutCode
       - commentedOutImport
       - unnamedResult
@@ -465,3 +464,23 @@ issues:
         - recvcheck
       path: "pkg/cwhub/item.go"
       text: 'the methods of "Item" use pointer receiver and non-pointer receiver.'
+
+    - linters:
+        - gocritic
+      path: "cmd/crowdsec-cli"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(cticlient|hubtest)"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "(.+)_test.go"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
+      text: "rangeValCopy: .*"
