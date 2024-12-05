@@ -133,7 +133,7 @@ func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 
 	feedback, err := json.Marshal(c.Crowdsec.ContextToSend)
 	if err != nil {
-		return fmt.Errorf("marshaling console context: %s", err)
+		return fmt.Errorf("serializing console context: %s", err)
 	}
 
 	log.Debugf("console context to send: %s", feedback)

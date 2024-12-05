@@ -22,7 +22,7 @@ BUILD_RE2_WASM ?= 0
 # for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
 BUILD_STATIC ?= 0
 
-# List of plugins to build
+# List of notification plugins to build
 PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 
 #--------------------------------------
@@ -80,8 +80,16 @@ endif
 #expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
+# Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
+export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
+
 # this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+
+#--------------------------------------
+#
+# Choose the re2 backend.
+#
 
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
 ifeq ($(PKG_CONFIG),)
@@ -90,14 +98,88 @@ endif
 
 ifeq ($(RE2_CHECK),)
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
+# if you prefer to build WASM instead of a critical error, comment out RE2_FAIL and uncomment RE2_MSG.
+# RE2_MSG := Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.
 else
 # += adds a space that we don't want
 GO_TAGS := $(GO_TAGS),re2_cgo
 LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
+RE2_MSG := Using C++ regexp library
+endif
+else
+RE2_MSG := Using WebAssembly regexp library
+endif
+
+ifeq ($(call bool,$(BUILD_RE2_WASM)),1)
+else
+ifneq (,$(RE2_CHECK))
 endif
 endif
 
-# Build static to avoid the runtime dependency on libre2.so
+#--------------------------------------
+#
+# Handle optional components and build profiles, to save space on the final binaries.
+#
+# Keep it safe for now until we decide how to expand on the idea. Either choose a profile or exclude components manually.
+# For example if we want to disable some component by default, or have opt-in components (INCLUDE?).
+
+ifeq ($(and $(BUILD_PROFILE),$(EXCLUDE)),1)
+$(error "Cannot specify both BUILD_PROFILE and EXCLUDE")
+endif
+
+COMPONENTS := \
+	datasource_appsec \
+	datasource_cloudwatch \
+	datasource_docker \
+	datasource_file \
+	datasource_http \
+	datasource_k8saudit \
+	datasource_kafka \
+	datasource_journalctl \
+	datasource_kinesis \
+	datasource_loki \
+	datasource_s3 \
+	datasource_syslog \
+	datasource_wineventlog \
+	cscli_setup
+
+comma := ,
+space := $(empty) $(empty)
+
+# Predefined profiles
+
+# keep only datasource-file
+EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
+
+# example
+# EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
+
+BUILD_PROFILE ?= default
+
+# Set the EXCLUDE_LIST based on the chosen profile, unless EXCLUDE is already set
+ifeq ($(BUILD_PROFILE),minimal)
+EXCLUDE ?= $(EXCLUDE_MINIMAL)
+else ifneq ($(BUILD_PROFILE),default)
+$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default)
+endif
+
+# Create list of excluded components from the EXCLUDE variable
+EXCLUDE_LIST := $(subst $(comma),$(space),$(EXCLUDE))
+
+INVALID_COMPONENTS := $(filter-out $(COMPONENTS),$(EXCLUDE_LIST))
+ifneq ($(INVALID_COMPONENTS),)
+$(error Invalid optional components specified in EXCLUDE: $(INVALID_COMPONENTS). Valid components are: $(COMPONENTS))
+endif
+
+# Convert the excluded components to "no_<component>" form
+COMPONENT_TAGS := $(foreach component,$(EXCLUDE_LIST),no_$(component))
+
+ifneq ($(COMPONENT_TAGS),)
+GO_TAGS := $(GO_TAGS),$(subst $(space),$(comma),$(COMPONENT_TAGS))
+endif
+
+#--------------------------------------
+
 ifeq ($(call bool,$(BUILD_STATIC)),1)
 BUILD_TYPE = static
 EXTLDFLAGS := -extldflags '-static'
@@ -111,7 +193,7 @@ ifeq ($(call bool,$(DEBUG)),1)
 STRIP_SYMBOLS :=
 DISABLE_OPTIMIZATION := -gcflags "-N -l"
 else
-STRIP_SYMBOLS := -s -w
+STRIP_SYMBOLS := -s
 DISABLE_OPTIMIZATION :=
 endif
 
@@ -130,16 +212,13 @@ build: build-info crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 .PHONY: build-info
 build-info:  ## Print build information
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
+	$(info Excluded components: $(if $(EXCLUDE_LIST),$(EXCLUDE_LIST),none))
 
 ifneq (,$(RE2_FAIL))
 	$(error $(RE2_FAIL))
 endif
 
-ifneq (,$(RE2_CHECK))
-	$(info Using C++ regexp library)
-else
-	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
-endif
+	$(info $(RE2_MSG))
 
 ifeq ($(call bool,$(DEBUG)),1)
 	$(info Building with debug symbols and disabled optimizations)
@@ -198,11 +277,6 @@ cscli:  ## Build cscli
 .PHONY: crowdsec
 crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
-
-.PHONY: generate
-generate:  ## Generate code for the database and APIs
-	$(GO) generate ./pkg/database/ent
-	$(GO) generate ./pkg/models
 
 .PHONY: testclean
 testclean: bats-clean  ## Remove test artifacts

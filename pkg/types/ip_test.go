@@ -8,21 +8,20 @@ import (
 )
 
 func TestIP2Int(t *testing.T) {
-
 	tEmpty := net.IP{}
 	_, _, _, err := IP2Ints(tEmpty)
 	if !strings.Contains(err.Error(), "unexpected len 0 for <nil>") {
 		t.Fatalf("unexpected: %s", err)
 	}
 }
+
 func TestRange2Int(t *testing.T) {
 	tEmpty := net.IPNet{}
-	//empty item
+	// empty item
 	_, _, _, _, _, err := Range2Ints(tEmpty)
 	if !strings.Contains(err.Error(), "converting first ip in range") {
 		t.Fatalf("unexpected: %s", err)
 	}
-
 }
 
 func TestAdd2Int(t *testing.T) {

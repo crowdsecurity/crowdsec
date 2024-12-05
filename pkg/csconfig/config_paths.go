@@ -10,7 +10,7 @@ type ConfigurationPaths struct {
 	ConfigDir          string `yaml:"config_dir"`
 	DataDir            string `yaml:"data_dir,omitempty"`
 	SimulationFilePath string `yaml:"simulation_path,omitempty"`
-	HubIndexFile       string `yaml:"index_path,omitempty"` //path of the .index.json
+	HubIndexFile       string `yaml:"index_path,omitempty"` // path of the .index.json
 	HubDir             string `yaml:"hub_dir,omitempty"`
 	PluginDir          string `yaml:"plugin_dir,omitempty"`
 	NotificationDir    string `yaml:"notification_dir,omitempty"`
@@ -28,18 +28,18 @@ func (c *Config) loadConfigurationPaths() error {
 	}
 
 	if c.ConfigPaths.HubDir == "" {
-		c.ConfigPaths.HubDir = filepath.Clean(c.ConfigPaths.ConfigDir + "/hub")
+		c.ConfigPaths.HubDir = filepath.Join(c.ConfigPaths.ConfigDir, "hub")
 	}
 
 	if c.ConfigPaths.HubIndexFile == "" {
-		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
+		c.ConfigPaths.HubIndexFile = filepath.Join(c.ConfigPaths.HubDir, ".index.json")
 	}
 
 	if c.ConfigPaths.PatternDir == "" {
-		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns/")
+		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns")
 	}
 
-	var configPathsCleanup = []*string{
+	configPathsCleanup := []*string{
 		&c.ConfigPaths.HubDir,
 		&c.ConfigPaths.HubIndexFile,
 		&c.ConfigPaths.ConfigDir,

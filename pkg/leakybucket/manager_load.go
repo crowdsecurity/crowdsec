@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -45,12 +45,12 @@ type BucketFactory struct {
 	Debug               bool                   `yaml:"debug"`               // Debug, when set to true, will enable debugging for _this_ scenario specifically
 	Labels              map[string]interface{} `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                 `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger              *log.Entry             `yaml:"-"`                   // logger is bucket-specific logger (used by Debug as well)
-	Reprocess           bool                   `yaml:"reprocess"`           // Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize           int                    `yaml:"cache_size"`          // CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling           bool                   `yaml:"profiling"`           // Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter      string                 `yaml:"overflow_filter"`     // OverflowFilter if present, is a filter that must return true for the overflow to go through
-	ConditionalOverflow string                 `yaml:"condition"`           // condition if present, is an expression that must return true for the bucket to overflow
+	logger              *log.Entry             // logger is bucket-specific logger (used by Debug as well)
+	Reprocess           bool                   `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
+	CacheSize           int                    `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	Profiling           bool                   `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
+	OverflowFilter      string                 `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	ConditionalOverflow string                 `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
 	BayesianPrior       float32                `yaml:"bayesian_prior"`
 	BayesianThreshold   float32                `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
@@ -68,11 +68,11 @@ type BucketFactory struct {
 	processors          []Processor            // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
 	output              bool                   // ??
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
-	hash                string                 `yaml:"-"`
-	Simulated           bool                   `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
-	tomb                *tomb.Tomb             `yaml:"-"`
-	wgPour              *sync.WaitGroup        `yaml:"-"`
-	wgDumpState         *sync.WaitGroup        `yaml:"-"`
+	hash                string
+	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
+	tomb                *tomb.Tomb
+	wgPour              *sync.WaitGroup
+	wgDumpState         *sync.WaitGroup
 	orderEvent          bool
 }
 
@@ -292,13 +292,13 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 				bucketFactory.FormatVersion = "1.0"
 			}
 
-			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+			ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to check version: %w", err)
 			}
 
 			if !ok {
-				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
 				continue
 			}
 
@@ -493,7 +493,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 	}
 
 	if err := json.Unmarshal(body, &state); err != nil {
-		return fmt.Errorf("can't unmarshal state file %s: %w", file, err)
+		return fmt.Errorf("can't parse state file %s: %w", file, err)
 	}
 
 	for k, v := range state {

@@ -22,7 +22,7 @@ func listHubItemTable(out io.Writer, wantColor string, title string, items []*cw
 	}
 
 	io.WriteString(out, title+"\n")
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
@@ -35,7 +35,7 @@ func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metric
 	})
 
 	io.WriteString(out, fmt.Sprintf("\n - (AppSec Rule) %s:\n", itemName))
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 func scenarioMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
@@ -55,7 +55,7 @@ func scenarioMetricsTable(out io.Writer, wantColor string, itemName string, metr
 	})
 
 	io.WriteString(out, fmt.Sprintf("\n - (Scenario) %s:\n", itemName))
-	io.WriteString(out, t.Render() + "\n")
+	io.WriteString(out, t.Render()+"\n")
 }
 
 func parserMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]map[string]int) {
@@ -80,6 +80,6 @@ func parserMetricsTable(out io.Writer, wantColor string, itemName string, metric
 
 	if showTable {
 		io.WriteString(out, fmt.Sprintf("\n - (Parser) %s:\n", itemName))
-		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, t.Render()+"\n")
 	}
 }

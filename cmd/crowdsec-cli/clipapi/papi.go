@@ -1,6 +1,7 @@
 package clipapi
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -55,10 +56,10 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliPapi) Status(out io.Writer, db *database.Client) error {
+func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 
-	apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
@@ -68,12 +69,12 @@ func (cli *cliPapi) Status(out io.Writer, db *database.Client) error {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
 
-	perms, err := papi.GetPermissions()
+	perms, err := papi.GetPermissions(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to get PAPI permissions: %w", err)
 	}
 
-	lastTimestampStr, err := db.GetConfigItem(apiserver.PapiPullKey)
+	lastTimestampStr, err := db.GetConfigItem(ctx, apiserver.PapiPullKey)
 	if err != nil {
 		lastTimestampStr = ptr.Of("never")
 	}
@@ -103,28 +104,30 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
-			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
+			ctx := cmd.Context()
+
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return cli.Status(color.Output, db)
+			return cli.Status(ctx, color.Output, db)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliPapi) sync(out io.Writer, db *database.Client) error {
+func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 	t := tomb.Tomb{}
 
-	apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
 
-	t.Go(apic.Push)
+	t.Go(func() error { return apic.Push(ctx) })
 
 	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
 	if err != nil {
@@ -133,7 +136,7 @@ func (cli *cliPapi) sync(out io.Writer, db *database.Client) error {
 
 	t.Go(papi.SyncDecisions)
 
-	err = papi.PullOnce(time.Time{}, true)
+	err = papi.PullOnce(ctx, time.Time{}, true)
 	if err != nil {
 		return fmt.Errorf("unable to sync decisions: %w", err)
 	}
@@ -156,12 +159,14 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
-			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
+			ctx := cmd.Context()
+
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return cli.sync(color.Output, db)
+			return cli.sync(ctx, color.Output, db)
 		},
 	}
 

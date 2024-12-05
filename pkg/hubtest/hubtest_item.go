@@ -111,7 +111,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal: %w", err)
+		return nil, fmt.Errorf("parsing: %w", err)
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
@@ -201,7 +201,7 @@ func (t *HubTestItem) InstallHub() error {
 
 		b, err := yaml.Marshal(n)
 		if err != nil {
-			return fmt.Errorf("unable to marshal overrides: %w", err)
+			return fmt.Errorf("unable to serialize overrides: %w", err)
 		}
 
 		tgtFilename := fmt.Sprintf("%s/parsers/s00-raw/00_overrides.yaml", t.RuntimePath)

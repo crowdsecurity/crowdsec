@@ -14,7 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.Hub) (*apiclient.ApiClient, error) {
+func AuthenticatedLAPIClient(ctx context.Context, credentials csconfig.ApiCredentialsCfg, hub *cwhub.Hub) (*apiclient.ApiClient, error) {
 	apiURL, err := url.Parse(credentials.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing api url ('%s'): %w", credentials.URL, err)
@@ -36,7 +36,7 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 		URL:           apiURL,
 		PapiURL:       papiURL,
 		VersionPrefix: "v1",
-		UpdateScenario: func() ([]string, error) {
+		UpdateScenario: func(_ context.Context) ([]string, error) {
 			return itemsForAPI, nil
 		},
 	})
@@ -44,7 +44,7 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 		return nil, fmt.Errorf("new client api: %w", err)
 	}
 
-	authResp, _, err := client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &credentials.Login,
 		Password:  &password,
 		Scenarios: itemsForAPI,

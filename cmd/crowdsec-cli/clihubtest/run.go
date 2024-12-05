@@ -56,6 +56,46 @@ func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost stri
 	return nil
 }
 
+func printParserFailures(test *hubtest.HubTestItem) {
+	if len(test.ParserAssert.Fails) == 0 {
+		return
+	}
+
+	fmt.Println()
+	log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
+
+	for _, fail := range test.ParserAssert.Fails {
+		fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
+		fmt.Printf("        Actual expression values:\n")
+
+		for key, value := range fail.Debug {
+			fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
+		}
+
+		fmt.Println()
+	}
+}
+
+func printScenarioFailures(test *hubtest.HubTestItem) {
+	if len(test.ScenarioAssert.Fails) == 0 {
+		return
+	}
+
+	fmt.Println()
+	log.Errorf("Scenario test '%s' failed (%d errors)\n", test.Name, len(test.ScenarioAssert.Fails))
+
+	for _, fail := range test.ScenarioAssert.Fails {
+		fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
+		fmt.Printf("        Actual expression values:\n")
+
+		for key, value := range fail.Debug {
+			fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
+		}
+
+		fmt.Println()
+	}
+}
+
 func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	var (
 		noClean          bool
@@ -111,30 +151,8 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 					success = false
 					cleanTestEnv := false
 					if cfg.Cscli.Output == "human" {
-						if len(test.ParserAssert.Fails) > 0 {
-							fmt.Println()
-							log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
-							for _, fail := range test.ParserAssert.Fails {
-								fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
-								fmt.Printf("        Actual expression values:\n")
-								for key, value := range fail.Debug {
-									fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
-								}
-								fmt.Println()
-							}
-						}
-						if len(test.ScenarioAssert.Fails) > 0 {
-							fmt.Println()
-							log.Errorf("Scenario test '%s' failed (%d errors)\n", test.Name, len(test.ScenarioAssert.Fails))
-							for _, fail := range test.ScenarioAssert.Fails {
-								fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
-								fmt.Printf("        Actual expression values:\n")
-								for key, value := range fail.Debug {
-									fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
-								}
-								fmt.Println()
-							}
-						}
+						printParserFailures(test)
+						printScenarioFailures(test)
 						if !forceClean && !noClean {
 							prompt := &survey.Confirm{
 								Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),

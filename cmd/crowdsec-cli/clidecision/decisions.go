@@ -170,7 +170,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
+func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
 	var err error
 
 	*filter.ScopeEquals, err = clialert.SanitizeScope(*filter.ScopeEquals, *filter.IPEquals, *filter.RangeEquals)
@@ -249,7 +249,7 @@ func (cli *cliDecisions) list(filter apiclient.AlertsListOpts, NoSimu *bool, con
 		filter.Contains = new(bool)
 	}
 
-	alerts, _, err := cli.client.Alerts.List(context.Background(), filter)
+	alerts, _, err := cli.client.Alerts.List(ctx, filter)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve decisions: %w", err)
 	}
@@ -290,10 +290,10 @@ cscli decisions list -r 1.2.3.0/24
 cscli decisions list -s crowdsecurity/ssh-bf
 cscli decisions list --origin lists --scenario list_name
 `,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.list(filter, NoSimu, contained, printMachine)
+			return cli.list(cmd.Context(), filter, NoSimu, contained, printMachine)
 		},
 	}
 
@@ -317,7 +317,7 @@ cscli decisions list --origin lists --scenario list_name
 	return cmd
 }
 
-func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
+func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
 	alerts := models.AddAlertsRequest{}
 	origin := types.CscliOrigin
 	capacity := int32(0)
@@ -386,7 +386,7 @@ func (cli *cliDecisions) add(addIP, addRange, addDuration, addValue, addScope, a
 	}
 	alerts = append(alerts, &alert)
 
-	_, _, err = cli.client.Alerts.Add(context.Background(), alerts)
+	_, _, err = cli.client.Alerts.Add(ctx, alerts)
 	if err != nil {
 		return err
 	}
@@ -416,10 +416,10 @@ cscli decisions add --ip 1.2.3.4 --duration 24h --type captcha
 cscli decisions add --scope username --value foobar
 `,
 		/*TBD : fix long and example*/
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.add(addIP, addRange, addDuration, addValue, addScope, addReason, addType)
+			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType)
 		},
 	}
 
@@ -436,7 +436,7 @@ cscli decisions add --scope username --value foobar
 	return cmd
 }
 
-func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDecisionID string, contained *bool) error {
+func (cli *cliDecisions) delete(ctx context.Context, delFilter apiclient.DecisionsDeleteOpts, delDecisionID string, contained *bool) error {
 	var err error
 
 	/*take care of shorthand options*/
@@ -480,7 +480,7 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 	var decisions *models.DeleteDecisionResponse
 
 	if delDecisionID == "" {
-		decisions, _, err = cli.client.Decisions.Delete(context.Background(), delFilter)
+		decisions, _, err = cli.client.Decisions.Delete(ctx, delFilter)
 		if err != nil {
 			return fmt.Errorf("unable to delete decisions: %w", err)
 		}
@@ -489,7 +489,7 @@ func (cli *cliDecisions) delete(delFilter apiclient.DecisionsDeleteOpts, delDeci
 			return fmt.Errorf("id '%s' is not an integer: %w", delDecisionID, err)
 		}
 
-		decisions, _, err = cli.client.Decisions.DeleteOne(context.Background(), delDecisionID)
+		decisions, _, err = cli.client.Decisions.DeleteOne(ctx, delDecisionID)
 		if err != nil {
 			return fmt.Errorf("unable to delete decision: %w", err)
 		}
@@ -543,8 +543,8 @@ cscli decisions delete --origin lists  --scenario list_name
 
 			return nil
 		},
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.delete(delFilter, delDecisionID, contained)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.delete(cmd.Context(), delFilter, delDecisionID, contained)
 		},
 	}
 

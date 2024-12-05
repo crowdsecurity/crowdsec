@@ -64,11 +64,11 @@ func (cli *cliMetrics) list() error {
 			t.AppendRow(table.Row{metric.Type, metric.Title, metric.Description})
 		}
 
-		io.WriteString(out, t.Render() + "\n")
+		io.WriteString(out, t.Render()+"\n")
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal metric types: %w", err)
+			return fmt.Errorf("failed to serialize metric types: %w", err)
 		}
 
 		fmt.Println(string(x))
@@ -84,7 +84,7 @@ func (cli *cliMetrics) newListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "List available types of metrics.",
 		Long:              `List available types of metrics.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.list()

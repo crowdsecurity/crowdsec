@@ -12,6 +12,7 @@ import (
 	mail "github.com/xhit/go-simple-mail/v2"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -55,6 +56,7 @@ type PluginConfig struct {
 }
 
 type EmailPlugin struct {
+	protobufs.UnimplementedNotifierServer
 	ConfigByName map[string]PluginConfig
 }
 
@@ -66,7 +68,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		EncryptionType: "ssltls",
 		AuthType:       "login",
 		SenderEmail:    "crowdsec@crowdsec.local",
-		HeloHost:	"localhost",
+		HeloHost:       "localhost",
 	}
 
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
@@ -170,7 +172,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"email": &protobufs.NotifierPlugin{
+			"email": &csplugin.NotifierPlugin{
 				Impl: &EmailPlugin{ConfigByName: make(map[string]PluginConfig)},
 			},
 		},

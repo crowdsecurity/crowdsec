@@ -43,6 +43,8 @@ type Bouncer struct {
 	Osversion string `json:"osversion,omitempty"`
 	// Featureflags holds the value of the "featureflags" field.
 	Featureflags string `json:"featureflags,omitempty"`
+	// AutoCreated holds the value of the "auto_created" field.
+	AutoCreated  bool `json:"auto_created"`
 	selectValues sql.SelectValues
 }
 
@@ -51,7 +53,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case bouncer.FieldRevoked:
+		case bouncer.FieldRevoked, bouncer.FieldAutoCreated:
 			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
 			values[i] = new(sql.NullInt64)
@@ -159,6 +161,12 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.Featureflags = value.String
 			}
+		case bouncer.FieldAutoCreated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_created", values[i])
+			} else if value.Valid {
+				b.AutoCreated = value.Bool
+			}
 		default:
 			b.selectValues.Set(columns[i], values[i])
 		}
@@ -234,6 +242,9 @@ func (b *Bouncer) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("featureflags=")
 	builder.WriteString(b.Featureflags)
+	builder.WriteString(", ")
+	builder.WriteString("auto_created=")
+	builder.WriteString(fmt.Sprintf("%v", b.AutoCreated))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -3,6 +3,7 @@ package fileacquisition
 import (
 	"bufio"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -73,7 +74,7 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 		f.logger.Tracef("FileAcquisition configuration: %+v", f.config)
 	}
 
-	if len(f.config.Filename) != 0 {
+	if f.config.Filename != "" {
 		f.config.Filenames = append(f.config.Filenames, f.config.Filename)
 	}
 
@@ -202,11 +203,11 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 
 	args := strings.Split(dsn, "?")
 
-	if len(args[0]) == 0 {
+	if args[0] == "" {
 		return errors.New("empty file:// DSN")
 	}
 
-	if len(args) == 2 && len(args[1]) != 0 {
+	if len(args) == 2 && args[1] != "" {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
 			return fmt.Errorf("could not parse file args: %w", err)
@@ -279,7 +280,7 @@ func (f *FileSource) SupportedModes() []string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 
 	for _, file := range f.files {
@@ -320,7 +321,7 @@ func (f *FileSource) CanRun() error {
 	return nil
 }
 
-func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("Starting live acquisition")
 	t.Go(func() error {
 		return f.monitorNewFiles(out, t)
@@ -620,11 +621,9 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			// we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
-			expectMode := types.LIVE
-			if f.config.UseTimeMachine {
-				expectMode = types.TIMEMACHINE
-			}
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: expectMode}
+			evt := types.MakeEvent(f.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
+			out <- evt
 		}
 	}
 }
@@ -683,7 +682,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 			linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 		}
 	}
 

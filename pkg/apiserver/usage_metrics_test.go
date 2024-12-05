@@ -13,6 +13,8 @@ import (
 )
 
 func TestLPMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name                 string
 		body                 string
@@ -28,7 +30,7 @@ func TestLPMetrics(t *testing.T) {
 			name: "empty metrics for LP",
 			body: `{
 			}`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing log processor data",
 			authType:           PASSWORD,
 		},
@@ -48,7 +50,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -72,7 +74,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -96,7 +98,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing remediation component data",
 			authType:           APIKEY,
 		},
@@ -115,7 +117,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedResponse:     "",
 			expectedMetricsCount: 1,
 			expectedFeatureFlags: "a,b,c",
@@ -136,7 +138,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 422,
+			expectedStatusCode: http.StatusUnprocessableEntity,
 			expectedResponse:   "log_processors.0.datasources in body is required",
 			authType:           PASSWORD,
 		},
@@ -155,7 +157,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedOSName:       "foo",
 			expectedOSVersion:    "42",
@@ -177,7 +179,7 @@ func TestLPMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 422,
+			expectedStatusCode: http.StatusUnprocessableEntity,
 			expectedResponse:   "log_processors.0.os.name in body is required",
 			authType:           PASSWORD,
 		},
@@ -185,20 +187,20 @@ func TestLPMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lapi := SetupLAPITest(t)
+			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(context.Background(), lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}
 
-			w := lapi.RecordResponse(t, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
+			w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
 
 			assert.Equal(t, tt.expectedStatusCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
-			machine, _ := dbClient.QueryMachineByID("test")
-			metrics, _ := dbClient.GetLPUsageMetricsByMachineID("test")
+			machine, _ := dbClient.QueryMachineByID(ctx, "test")
+			metrics, _ := dbClient.GetLPUsageMetricsByMachineID(ctx, "test")
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, machine.Osname)
@@ -214,6 +216,8 @@ func TestLPMetrics(t *testing.T) {
 }
 
 func TestRCMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name                 string
 		body                 string
@@ -229,7 +233,7 @@ func TestRCMetrics(t *testing.T) {
 			name: "empty metrics for RC",
 			body: `{
 			}`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing remediation component data",
 			authType:           APIKEY,
 		},
@@ -247,7 +251,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -269,7 +273,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedResponse:     "",
 			expectedOSName:       "foo",
@@ -291,7 +295,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 400,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse:   "Missing log processor data",
 			authType:           PASSWORD,
 		},
@@ -308,7 +312,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedResponse:     "",
 			expectedMetricsCount: 1,
 			expectedFeatureFlags: "a,b,c",
@@ -327,7 +331,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode:   201,
+			expectedStatusCode:   http.StatusCreated,
 			expectedMetricsCount: 1,
 			expectedOSName:       "foo",
 			expectedOSVersion:    "42",
@@ -347,7 +351,7 @@ func TestRCMetrics(t *testing.T) {
 	}
 	]
 }`,
-			expectedStatusCode: 422,
+			expectedStatusCode: http.StatusUnprocessableEntity,
 			expectedResponse:   "remediation_components.0.os.name in body is required",
 			authType:           APIKEY,
 		},
@@ -355,20 +359,20 @@ func TestRCMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lapi := SetupLAPITest(t)
+			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(context.Background(), lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}
 
-			w := lapi.RecordResponse(t, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
+			w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/usage-metrics", strings.NewReader(tt.body), tt.authType)
 
 			assert.Equal(t, tt.expectedStatusCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
-			bouncer, _ := dbClient.SelectBouncerByName("test")
-			metrics, _ := dbClient.GetBouncerUsageMetricsByName("test")
+			bouncer, _ := dbClient.SelectBouncerByName(ctx, "test")
+			metrics, _ := dbClient.GetBouncerUsageMetricsByName(ctx, "test")
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, bouncer.Osname)

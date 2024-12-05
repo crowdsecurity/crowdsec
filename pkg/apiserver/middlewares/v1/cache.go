@@ -9,7 +9,7 @@ import (
 )
 
 type cacheEntry struct {
-	err       error		// if nil, the certificate is not revocated
+	err       error // if nil, the certificate is not revocated
 	timestamp time.Time
 }
 

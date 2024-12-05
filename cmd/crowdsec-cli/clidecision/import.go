@@ -67,64 +67,28 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	return ret, nil
 }
 
-func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	input, err := flags.GetString("input")
-	if err != nil {
-		return err
-	}
-
-	defaultDuration, err := flags.GetString("duration")
-	if err != nil {
-		return err
-	}
-
-	if defaultDuration == "" {
-		return errors.New("--duration cannot be empty")
-	}
-
-	defaultScope, err := flags.GetString("scope")
-	if err != nil {
-		return err
-	}
-
-	if defaultScope == "" {
-		return errors.New("--scope cannot be empty")
-	}
-
-	defaultReason, err := flags.GetString("reason")
-	if err != nil {
-		return err
-	}
-
-	if defaultReason == "" {
-		return errors.New("--reason cannot be empty")
-	}
-
-	defaultType, err := flags.GetString("type")
-	if err != nil {
-		return err
-	}
-
-	if defaultType == "" {
-		return errors.New("--type cannot be empty")
-	}
-
-	batchSize, err := flags.GetInt("batch")
-	if err != nil {
-		return err
-	}
-
-	format, err := flags.GetString("format")
-	if err != nil {
-		return err
-	}
-
+func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string) error {
 	var (
 		content []byte
 		fin     *os.File
+		err     error
 	)
+
+	if duration == "" {
+		return errors.New("default duration cannot be empty")
+	}
+
+	if scope == "" {
+		return errors.New("default scope cannot be empty")
+	}
+
+	if reason == "" {
+		return errors.New("default reason cannot be empty")
+	}
+
+	if type_ == "" {
+		return errors.New("default type cannot be empty")
+	}
 
 	// set format if the file has a json or csv extension
 	if format == "" {
@@ -167,23 +131,23 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 		}
 
 		if d.Duration == "" {
-			d.Duration = defaultDuration
-			log.Debugf("item %d: missing 'duration', using default '%s'", i, defaultDuration)
+			d.Duration = duration
+			log.Debugf("item %d: missing 'duration', using default '%s'", i, duration)
 		}
 
 		if d.Scenario == "" {
-			d.Scenario = defaultReason
-			log.Debugf("item %d: missing 'reason', using default '%s'", i, defaultReason)
+			d.Scenario = reason
+			log.Debugf("item %d: missing 'reason', using default '%s'", i, reason)
 		}
 
 		if d.Type == "" {
-			d.Type = defaultType
-			log.Debugf("item %d: missing 'type', using default '%s'", i, defaultType)
+			d.Type = type_
+			log.Debugf("item %d: missing 'type', using default '%s'", i, type_)
 		}
 
 		if d.Scope == "" {
-			d.Scope = defaultScope
-			log.Debugf("item %d: missing 'scope', using default '%s'", i, defaultScope)
+			d.Scope = scope
+			log.Debugf("item %d: missing 'scope', using default '%s'", i, scope)
 		}
 
 		decisions[i] = &models.Decision{
@@ -201,7 +165,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
 	}
 
-	for _, chunk := range slicetools.Chunks(decisions, batchSize) {
+	for _, chunk := range slicetools.Chunks(decisions, batch) {
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
 		importAlert := models.Alert{
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
@@ -224,7 +188,7 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 			Decisions:       chunk,
 		}
 
-		_, _, err = cli.client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
+		_, _, err = cli.client.Alerts.Add(ctx, models.AddAlertsRequest{&importAlert})
 		if err != nil {
 			return err
 		}
@@ -236,12 +200,22 @@ func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error {
 }
 
 func (cli *cliDecisions) newImportCmd() *cobra.Command {
+	var (
+		input        string
+		duration     string
+		scope        string
+		reason       string
+		decisionType string
+		batch        int
+		format       string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "import [options]",
 		Short: "Import decisions from a file or pipe",
 		Long: "expected format:\n" +
 			"csv  : any of duration,reason,scope,type,value, with a header line\n" +
-			"json :" + "`{" + `"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"` + "}`",
+			"json :" + "`{" + `"duration": "24h", "reason": "my_scenario", "scope": "ip", "type": "ban", "value": "x.y.z.z"` + "}`",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `decisions.csv:
@@ -251,7 +225,7 @@ duration,scope,value
 $ cscli decisions import -i decisions.csv
 
 decisions.json:
-[{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
+[{"duration": "4h", "scope": "ip", "type": "ban", "value": "1.2.3.4"}]
 
 The file format is detected from the extension, but can be forced with the --format option
 which is required when reading from standard input.
@@ -260,18 +234,20 @@ Raw values, standard input:
 
 $ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
-		RunE: cli.runImport,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.import_(cmd.Context(), input, duration, scope, reason, decisionType, batch, format)
+		},
 	}
 
 	flags := cmd.Flags()
 	flags.SortFlags = false
-	flags.StringP("input", "i", "", "Input file")
-	flags.StringP("duration", "d", "4h", "Decision duration: 1h,4h,30m")
-	flags.String("scope", types.Ip, "Decision scope: ip,range,username")
-	flags.StringP("reason", "R", "manual", "Decision reason: <scenario-name>")
-	flags.StringP("type", "t", "ban", "Decision type: ban,captcha,throttle")
-	flags.Int("batch", 0, "Split import in batches of N decisions")
-	flags.String("format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
+	flags.StringVarP(&input, "input", "i", "", "Input file")
+	flags.StringVarP(&duration, "duration", "d", "4h", "Decision duration: 1h,4h,30m")
+	flags.StringVar(&scope, "scope", types.Ip, "Decision scope: ip,range,username")
+	flags.StringVarP(&reason, "reason", "R", "manual", "Decision reason: <scenario-name>")
+	flags.StringVarP(&decisionType, "type", "t", "ban", "Decision type: ban,captcha,throttle")
+	flags.IntVar(&batch, "batch", 0, "Split import in batches of N decisions")
+	flags.StringVar(&format, "format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
 	_ = cmd.MarkFlagRequired("input")
 
