@@ -308,17 +308,12 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		// if we are walking hub dir, just mark present files as downloaded
 		if info.inhub {
-			// wrong author
-			if info.fauthor != item.Author {
-				continue
-			}
-
 			// not the item we're looking for
 			if !item.validPath(info.fauthor, info.fname) {
 				continue
 			}
 
-			src, err := item.downloadPath()
+			src, err := item.DownloadPath()
 			if err != nil {
 				return err
 			}
@@ -364,7 +359,7 @@ func (i *Item) checkSubItemVersions() []string {
 	// ensure all the sub-items are installed, or tag the parent as tainted
 	i.hub.logger.Tracef("checking submembers of %s installed:%t", i.Name, i.State.Installed)
 
-	for _, sub := range i.SubItems() {
+	for sub := range i.CurrentDependencies().SubItems(i.hub) {
 		i.hub.logger.Tracef("check %s installed:%t", sub.Name, sub.State.Installed)
 
 		if !i.State.Installed {

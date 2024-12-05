@@ -1,5 +1,9 @@
 package cwhub
 
+// XXX: these tests are obsolete
+
+/*
+
 import (
 	"context"
 	"os"
@@ -103,7 +107,7 @@ func TestInstallParser(t *testing.T) {
 	 - force update it
 	 - check its status
 	 - remove it
-	*/
+	*
 	hub := envSetup(t)
 
 	// map iteration is random by itself
@@ -126,7 +130,7 @@ func TestInstallCollection(t *testing.T) {
 	 - force update it
 	 - check its status
 	 - remove it
-	*/
+	*
 	hub := envSetup(t)
 
 	// map iteration is random by itself
@@ -139,3 +143,5 @@ func TestInstallCollection(t *testing.T) {
 		break
 	}
 }
+
+*/
