@@ -60,6 +60,7 @@ func MakeEvent(timeMachine bool, evtType int, process bool) Event {
 	if timeMachine {
 		evt.ExpectMode = TIMEMACHINE
 	}
+
 	return evt
 }
 

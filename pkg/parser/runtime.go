@@ -29,10 +29,11 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		return false
 	}
 
-	//it's a hack, we do it for the user
+	// it's a hack, we do it for the user
 	target = strings.TrimPrefix(target, "evt.")
 
 	log.Debugf("setting target %s to %s", target, value)
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("Runtime error while trying to set '%s': %+v", target, r)
@@ -46,6 +47,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		//event is nil
 		return false
 	}
+
 	for _, f := range strings.Split(target, ".") {
 		/*
 		** According to current Event layout we only have to handle struct and map
@@ -57,7 +59,9 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			if (tmp == reflect.Value{}) || tmp.IsZero() {
 				log.Debugf("map entry is zero in '%s'", target)
 			}
+
 			iter.SetMapIndex(reflect.ValueOf(f), reflect.ValueOf(value))
+
 			return true
 		case reflect.Struct:
 			tmp := iter.FieldByName(f)
@@ -65,9 +69,11 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				log.Debugf("'%s' is not a valid target because '%s' is not valid", target, f)
 				return false
 			}
+
 			if tmp.Kind() == reflect.Ptr {
 				tmp = reflect.Indirect(tmp)
 			}
+
 			iter = tmp
 		case reflect.Ptr:
 			tmp := iter.Elem()
@@ -82,11 +88,14 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		log.Errorf("'%s' can't be set", target)
 		return false
 	}
+
 	if iter.Kind() != reflect.String {
 		log.Errorf("Expected string, got %v when handling '%s'", iter.Kind(), target)
 		return false
 	}
+
 	iter.Set(reflect.ValueOf(value))
+
 	return true
 }
 
