@@ -97,7 +97,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 					Name:         item.Name,
 					LocalVersion: item.State.LocalVersion,
 					LocalPath:    item.State.LocalPath,
-					Description:  item.Description,
+					Description:  strings.TrimSpace(item.Description),
 					Status:       status,
 					UTF8Status:   fmt.Sprintf("%v  %s", statusEmo, status),
 				}
