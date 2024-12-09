@@ -666,6 +666,15 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
+	// Update allowlists before processing decisions
+	if data.Links != nil {
+		if len(data.Links.Allowlists) > 0 {
+			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
+				return fmt.Errorf("while updating allowlists: %w", err)
+			}
+		}
+	}
+
 	if len(data.New) > 0 {
 		// create one alert for community blocklist using the first decision
 		decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
@@ -690,11 +699,6 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	// update allowlists/blocklists
 	if data.Links != nil {
-		if len(data.Links.Allowlists) > 0 {
-			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
-				return fmt.Errorf("while updating allowlists: %w", err)
-			}
-		}
 		if len(data.Links.Blocklists) > 0 {
 			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
 				return fmt.Errorf("while updating blocklists: %w", err)
@@ -798,7 +802,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 
 // if decisions is whitelisted: return representation of the whitelist ip or cidr
 // if not whitelisted: empty string
-func (a *apic) whitelistedBy(decision *models.Decision) string {
+func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []net.IP, additionalRanges []*net.IPNet) string {
 	if decision.Value == nil {
 		return ""
 	}
@@ -816,18 +820,37 @@ func (a *apic) whitelistedBy(decision *models.Decision) string {
 		}
 	}
 
+	for _, ip := range additionalIPs {
+		if ip.Equal(ipval) {
+			return ip.String()
+		}
+	}
+
+	for _, cidr := range additionalRanges {
+		if cidr.Contains(ipval) {
+			return cidr.String()
+		}
+	}
+
 	return ""
 }
 
 func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decision {
-	if a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0 {
+
+	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC()
+
+	if err != nil {
+		log.Errorf("while getting allowlists content: %s", err)
+	}
+
+	if (a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0) && len(allowlisted_ips) == 0 && len(allowlisted_cidrs) == 0 {
 		return decisions
 	}
 	// deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
 	outIdx := 0
 
 	for _, decision := range decisions {
-		whitelister := a.whitelistedBy(decision)
+		whitelister := a.whitelistedBy(decision, allowlisted_ips, allowlisted_cidrs)
 		if whitelister != "" {
 			log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, whitelister)
 			continue

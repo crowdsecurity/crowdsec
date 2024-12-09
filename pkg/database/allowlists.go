@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
+	"net"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -252,4 +254,37 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, error) 
 	}
 
 	return allowed, nil
+}
+
+func (c *Client) GetAllowlistsContentForAPIC() ([]net.IP, []*net.IPNet, error) {
+	allowlists, err := c.ListAllowLists(context.Background(), true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get allowlists: %w", err)
+	}
+
+	var ips []net.IP
+	var nets []*net.IPNet
+	for _, allowlist := range allowlists {
+		for _, item := range allowlist.Edges.AllowlistItems {
+			if item.ExpiresAt.IsZero() || item.ExpiresAt.After(time.Now().UTC()) {
+				if strings.Contains(item.Value, "/") {
+					_, ipNet, err := net.ParseCIDR(item.Value)
+					if err != nil {
+						c.Log.Errorf("unable to parse CIDR %s: %s", item.Value, err)
+						continue
+					}
+					nets = append(nets, ipNet)
+				} else {
+					ip := net.ParseIP(item.Value)
+					if ip == nil {
+						c.Log.Errorf("unable to parse IP %s", item.Value)
+						continue
+					}
+					ips = append(ips, ip)
+				}
+			}
+		}
+	}
+
+	return ips, nets, nil
 }
