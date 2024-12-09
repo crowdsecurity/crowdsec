@@ -12,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
 func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
@@ -50,7 +51,17 @@ func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
 				continue
 			}
 
-			if err = item.Install(ctx, false, false); err != nil {
+			plan := hubops.NewActionPlan(hub)
+
+			if err = plan.AddCommand(hubops.NewDownloadCommand(item, false)); err != nil {
+				return err
+			}
+
+			if err = plan.AddCommand(hubops.NewEnableCommand(item, false)); err != nil {
+				return err
+			}
+
+			if err = plan.Execute(ctx, true, false, false); err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
 			}
 		}
