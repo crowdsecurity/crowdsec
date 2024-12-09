@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -123,6 +124,22 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
+func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) bool {
+	if alert.Source.Scope != nil && (*alert.Source.Scope == types.Ip || *alert.Source.Scope == types.Range) && // Allowlist only works for IP/range
+		alert.Source.Value != nil && // Is this possible ?
+		len(alert.Decisions) == 0 { // If there's no decisions, means it's coming from crowdsec (not cscli), so we can apply allowlist
+		isAllowlisted, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
+		if err == nil && isAllowlisted {
+			return true
+		} else if err != nil {
+			//FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
+			log.Errorf("error while checking allowlist: %s", err)
+			return false
+		}
+	}
+	return false
+}
+
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
@@ -155,17 +172,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 		}
 
-		if alert.Source.Scope != nil && (*alert.Source.Scope == types.Ip || *alert.Source.Scope == types.Range) && // Allowlist only works for IP/range
-			alert.Source.Value != nil && // Is this possible ?
-			len(alert.Decisions) == 0 { // If there's no decisions, means it's coming from crowdsec (not cscli), so we can apply allowlist
-			isAllowlisted, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
-			if err == nil && isAllowlisted {
-				log.Infof("alert source %s is allowlisted, skipping", *alert.Source.Value)
-				continue
-			} else if err != nil {
-				//FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
-				log.Errorf("error while checking allowlist: %s", err)
-			}
+		if c.isAllowListed(ctx, alert) {
+			log.Infof("alert source %s is allowlisted, skipping", *alert.Source.Value)
+			continue
 		}
 
 		alert.MachineID = machineID
