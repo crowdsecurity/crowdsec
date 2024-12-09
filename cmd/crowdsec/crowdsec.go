@@ -24,7 +24,7 @@ import (
 )
 
 // initCrowdsec prepares the log processor service
-func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []acquisition.DataSource, error) {
+func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*parser.Parsers, []acquisition.DataSource, error) {
 	var err error
 
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
@@ -52,13 +52,15 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 		return nil, nil, err
 	}
 
-	err = apiclient.InitLAPIClient(
-		context.TODO(), cConfig.API.Client.Credentials.URL, cConfig.API.Client.Credentials.PapiURL,
-		cConfig.API.Client.Credentials.Login, cConfig.API.Client.Credentials.Password,
-		hub.GetInstalledListForAPI())
+	if !testMode {
+		err = apiclient.InitLAPIClient(
+			context.TODO(), cConfig.API.Client.Credentials.URL, cConfig.API.Client.Credentials.PapiURL,
+			cConfig.API.Client.Credentials.Login, cConfig.API.Client.Credentials.Password,
+			hub.GetInstalledListForAPI())
 
-	if err != nil {
-		return nil, nil, fmt.Errorf("while initializing LAPIClient: %w", err)
+		if err != nil {
+			return nil, nil, fmt.Errorf("while initializing LAPIClient: %w", err)
+		}
 	}
 
 	datasources, err := LoadAcquisition(cConfig)
