@@ -679,7 +679,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		// create one alert for community blocklist using the first decision
 		decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
 		// apply APIC specific whitelists
-		decisions = a.ApplyApicWhitelists(decisions)
+		decisions = a.ApplyApicWhitelists(ctx, decisions)
 
 		alert := createAlertForDecision(decisions[0])
 		alertsFromCapi := []*models.Alert{alert}
@@ -835,9 +835,9 @@ func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []net.IP, 
 	return ""
 }
 
-func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decision {
+func (a *apic) ApplyApicWhitelists(ctx context.Context, decisions []*models.Decision) []*models.Decision {
 
-	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC()
+	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC(ctx)
 
 	if err != nil {
 		log.Errorf("while getting allowlists content: %s", err)
@@ -979,7 +979,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 		return nil
 	}
 	// apply APIC specific whitelists
-	decisions = a.ApplyApicWhitelists(decisions)
+	decisions = a.ApplyApicWhitelists(ctx, decisions)
 	alert := createAlertForDecision(decisions[0])
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)

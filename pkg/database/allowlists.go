@@ -256,8 +256,8 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, error) 
 	return allowed, nil
 }
 
-func (c *Client) GetAllowlistsContentForAPIC() ([]net.IP, []*net.IPNet, error) {
-	allowlists, err := c.ListAllowLists(context.Background(), true)
+func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*net.IPNet, error) {
+	allowlists, err := c.ListAllowLists(ctx, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get allowlists: %w", err)
 	}
