@@ -690,14 +690,14 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	// update allowlists/blocklists
 	if data.Links != nil {
-		if len(data.Links.Blocklists) > 0 {
-			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
-				return fmt.Errorf("while updating blocklists: %w", err)
-			}
-		}
 		if len(data.Links.Allowlists) > 0 {
 			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
 				return fmt.Errorf("while updating allowlists: %w", err)
+			}
+		}
+		if len(data.Links.Blocklists) > 0 {
+			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
+				return fmt.Errorf("while updating blocklists: %w", err)
 			}
 		}
 	}
