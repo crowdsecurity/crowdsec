@@ -128,7 +128,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 					item.Name,
 					item.State.Text(),
 					item.State.LocalVersion,
-					item.Description,
+					strings.TrimSpace(item.Description),
 				}
 				if len(itemTypes) > 1 {
 					row = append(row, itemType)
