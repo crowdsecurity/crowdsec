@@ -66,6 +66,42 @@ func (cli *cliAllowLists) validAllowlists(cmd *cobra.Command, args []string, toC
 	ret := []string{}
 
 	for _, allowlist := range allowlists {
+		if strings.Contains(allowlist.Name, toComplete) && !slices.Contains(args, allowlist.Name) && !allowlist.FromConsole {
+			ret = append(ret, allowlist.Name)
+		}
+	}
+
+	return ret, cobra.ShellCompDirectiveNoFileComp
+}
+
+func (cli *cliAllowLists) validAllowlistsWithConsole(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var err error
+
+	cfg := cli.cfg()
+	ctx := cmd.Context()
+
+	// need to load config and db because PersistentPreRunE is not called for completions
+
+	if err = require.LAPI(cfg); err != nil {
+		cobra.CompError("unable to load LAPI " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	cli.db, err = require.DBClient(ctx, cfg.DbConfig)
+	if err != nil {
+		cobra.CompError("unable to load dbclient " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	allowlists, err := cli.db.ListAllowLists(ctx, false)
+	if err != nil {
+		cobra.CompError("unable to list allowlists " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	ret := []string{}
+
+	for _, allowlist := range allowlists {
 		if strings.Contains(allowlist.Name, toComplete) && !slices.Contains(args, allowlist.Name) {
 			ret = append(ret, allowlist.Name)
 		}
@@ -225,10 +261,11 @@ func (cli *cliAllowLists) list(cmd *cobra.Command, out io.Writer) error {
 
 func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "delete [allowlist_name]",
-		Short:   "Delete an allowlist",
-		Example: `cscli allowlists delete my_allowlist`,
-		Args:    cobra.ExactArgs(1),
+		Use:               "delete [allowlist_name]",
+		Short:             "Delete an allowlist",
+		Example:           `cscli allowlists delete my_allowlist`,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cli.validAllowlists,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
@@ -276,10 +313,11 @@ func (cli *cliAllowLists) delete(cmd *cobra.Command, args []string) error {
 
 func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "add [allowlist_name] --value [value] [-e expiration] [-d comment]",
-		Short:   "Add content an allowlist",
-		Example: `cscli allowlists add my_allowlist --value 1.2.3.4 --value 2.3.4.5 -e 1h -d "my comment"`,
-		Args:    cobra.ExactArgs(1),
+		Use:               "add [allowlist_name] --value [value] [-e expiration] [-d comment]",
+		Short:             "Add content an allowlist",
+		Example:           `cscli allowlists add my_allowlist --value 1.2.3.4 --value 2.3.4.5 -e 1h -d "my comment"`,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cli.validAllowlists,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
@@ -375,10 +413,11 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 
 func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "inspect [allowlist_name]",
-		Example: `cscli allowlists inspect my_allowlist`,
-		Short:   "Inspect an allowlist",
-		Args:    cobra.ExactArgs(1),
+		Use:               "inspect [allowlist_name]",
+		Example:           `cscli allowlists inspect my_allowlist`,
+		Short:             "Inspect an allowlist",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cli.validAllowlistsWithConsole,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
@@ -438,10 +477,11 @@ func (cli *cliAllowLists) inspect(cmd *cobra.Command, args []string, out io.Writ
 
 func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "remove [allowlist_name] --value [value]",
-		Short:   "remove content from an allowlist",
-		Example: `cscli allowlists remove my_allowlist --value 1.2.3.4 --value 2.3.4.5"`,
-		Args:    cobra.ExactArgs(1),
+		Use:               "remove [allowlist_name] --value [value]",
+		Short:             "remove content from an allowlist",
+		Example:           `cscli allowlists remove my_allowlist --value 1.2.3.4 --value 2.3.4.5"`,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cli.validAllowlists,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()

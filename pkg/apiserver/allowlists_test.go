@@ -62,7 +62,7 @@ func TestGetAllowlist(t *testing.T) {
 
 	require.Equal(t, "test", allowlist.Name)
 	require.Len(t, allowlist.Items, 1)
-	require.Equal(t, allowlist.Items[0].Value, "1.2.3.4")
+	require.Equal(t, "1.2.3.4", allowlist.Items[0].Value)
 }
 
 func TestCheckInAllowlist(t *testing.T) {
