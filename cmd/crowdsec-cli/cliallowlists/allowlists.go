@@ -391,7 +391,11 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !found {
-			toAdd = append(toAdd, &models.AllowlistItem{Value: v, Description: comment, Expiration: strfmt.DateTime(time.Now().UTC().Add(expiration))})
+			expTS := time.Time{}
+			if expiration != 0 {
+				expTS = time.Now().UTC().Add(expiration)
+			}
+			toAdd = append(toAdd, &models.AllowlistItem{Value: v, Description: comment, Expiration: strfmt.DateTime(expTS)})
 		}
 	}
 
