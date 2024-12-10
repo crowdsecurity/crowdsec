@@ -41,7 +41,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		log.SetLevel(log.WarnLevel)
 	}
 	inbandRules := []string{}
+	nativeInbandRules := []string{}
 	outofbandRules := []string{}
+	nativeOutofbandRules := []string{}
 	InChan := make(chan appsec.ParsedRequest)
 	OutChan := make(chan types.Event)
 
@@ -56,8 +58,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		inbandRules = append(inbandRules, strRule)
 
 	}
-	inbandRules = append(inbandRules, test.inband_native_rules...)
-	outofbandRules = append(outofbandRules, test.outofband_native_rules...)
+	nativeInbandRules = append(nativeInbandRules, test.inband_native_rules...)
+	nativeOutofbandRules = append(nativeOutofbandRules, test.outofband_native_rules...)
 	for ridx, rule := range test.outofband_rules {
 		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
 		if err != nil {
@@ -82,8 +84,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
-	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules}}
-	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules}}
+	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules, NativeRules: nativeInbandRules}}
+	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules, NativeRules: nativeOutofbandRules}}
 	appsecRunnerUUID := uuid.New().String()
 	//we copy AppsecRutime for each runner
 	wrt := *AppsecRuntime
