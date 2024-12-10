@@ -85,7 +85,8 @@ teardown() {
     list_human=$(cscli scenarios list -o human -a | tail -n +6 | head -n -1 | cut -d' ' -f2)
     list_json=$(cscli scenarios list -o json -a | jq -r '.scenarios[].name')
 
-    rune -0 sort -f <<<"$list_raw"
+    # use python to sort because it handles "_" like go
+    rune -0 python3 -c 'import sys; print("".join(sorted(sys.stdin.readlines(), key=str.casefold)), end="")' <<<"$list_raw"
     assert_output "$list_raw"
 
     assert_equal "$list_raw" "$list_json"
