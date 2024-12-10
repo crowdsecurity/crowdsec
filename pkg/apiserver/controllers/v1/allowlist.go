@@ -17,7 +17,7 @@ func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
 		return
 	}
 
-	allowlisted, err := c.DBClient.IsAllowlisted(gctx.Request.Context(), value)
+	allowlisted, reason, err := c.DBClient.IsAllowlisted(gctx.Request.Context(), value)
 
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
@@ -35,6 +35,7 @@ func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
 
 	resp := models.CheckAllowlistResponse{
 		Allowlisted: allowlisted,
+		Reason:      reason,
 	}
 
 	gctx.JSON(http.StatusOK, resp)

@@ -410,12 +410,16 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func (w *AppsecSource) isAllowlisted(ctx context.Context, value string) bool {
+func (w *AppsecSource) isAllowlisted(ctx context.Context, value string, query bool) bool {
 	var err error
 
 	allowlisted, expiration, exists := w.allowlistCache.Get(value)
 	if exists && !time.Now().After(expiration) {
 		return allowlisted
+	}
+
+	if !query {
+		return false
 	}
 
 	allowlisted, _, err = w.apiClient.Allowlists.CheckIfAllowlisted(ctx, value)
@@ -459,7 +463,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// check if the client IP is allowlisted
-	if w.isAllowlisted(r.Context(), clientIP) {
+	if w.isAllowlisted(r.Context(), clientIP, false) {
 		w.logger.Infof("%s is allowlisted by LAPI, not processing", clientIP)
 		statusCode, appsecResponse := w.AppsecRuntime.GenerateResponse(appsec.AppsecTempResponse{
 			InBandInterrupt:    false,

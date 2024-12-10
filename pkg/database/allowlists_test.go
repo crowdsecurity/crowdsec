@@ -63,37 +63,44 @@ func TestCheckAllowlist(t *testing.T) {
 	require.NoError(t, err)
 
 	// Exatch match
-	allowlisted, err := dbClient.IsAllowlisted(ctx, "1.2.3.4")
+	allowlisted, reason, err := dbClient.IsAllowlisted(ctx, "1.2.3.4")
 	require.NoError(t, err)
 	require.True(t, allowlisted)
+	require.Equal(t, "1.2.3.4", reason)
 
 	// CIDR match
-	allowlisted, err = dbClient.IsAllowlisted(ctx, "8.8.8.8")
+	allowlisted, reason, err = dbClient.IsAllowlisted(ctx, "8.8.8.8")
 	require.NoError(t, err)
 	require.True(t, allowlisted)
+	require.Equal(t, "8.0.0.0/8", reason)
 
 	// IPv6 match
-	allowlisted, err = dbClient.IsAllowlisted(ctx, "2001:db8::1")
+	allowlisted, reason, err = dbClient.IsAllowlisted(ctx, "2001:db8::1")
 	require.NoError(t, err)
 	require.True(t, allowlisted)
+	require.Equal(t, "2001:db8::/32", reason)
 
 	// Expired item
-	allowlisted, err = dbClient.IsAllowlisted(ctx, "2.3.4.5")
+	allowlisted, reason, err = dbClient.IsAllowlisted(ctx, "2.3.4.5")
 	require.NoError(t, err)
 	require.False(t, allowlisted)
+	require.Empty(t, reason)
 
 	// Decision on a range that contains an allowlisted value
-	allowlisted, err = dbClient.IsAllowlisted(ctx, "1.2.3.0/24")
+	allowlisted, reason, err = dbClient.IsAllowlisted(ctx, "1.2.3.0/24")
 	require.NoError(t, err)
 	require.True(t, allowlisted)
+	require.Equal(t, "1.2.3.4", reason)
 
 	// No match
-	allowlisted, err = dbClient.IsAllowlisted(ctx, "42.42.42.42")
+	allowlisted, reason, err = dbClient.IsAllowlisted(ctx, "42.42.42.42")
 	require.NoError(t, err)
 	require.False(t, allowlisted)
+	require.Empty(t, reason)
 
 	// IPv6 range that contains an allowlisted value
-	allowlisted, err = dbClient.IsAllowlisted(ctx, "8a95:c186:9f96:4c75::/64")
+	allowlisted, reason, err = dbClient.IsAllowlisted(ctx, "8a95:c186:9f96:4c75::/64")
 	require.NoError(t, err)
 	require.True(t, allowlisted)
+	require.Equal(t, "8a95:c186:9f96:4c75:0dad:49c6:ff62:94b8", reason)
 }

@@ -168,7 +168,7 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 	return nil
 }
 
-func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, error) {
+func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string, error) {
 	/*
 		Few cases:
 		- value is an IP/range directly is in allowlist
@@ -178,7 +178,7 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, error) 
 
 	sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(value)
 	if err != nil {
-		return false, fmt.Errorf("unable to parse value %s: %w", value, err)
+		return false, "", fmt.Errorf("unable to parse value %s: %w", value, err)
 	}
 
 	c.Log.Debugf("checking if %s is allowlisted", value)
@@ -247,13 +247,16 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, error) 
 		)
 	}
 
-	allowed, err := query.Exist(ctx)
+	allowed, err := query.First(ctx)
 
 	if err != nil {
-		return false, fmt.Errorf("unable to check if value is allowlisted: %w", err)
+		if ent.IsNotFound(err) {
+			return false, "", nil
+		}
+		return false, "", fmt.Errorf("unable to check if value is allowlisted: %w", err)
 	}
 
-	return allowed, nil
+	return true, allowed.Value, nil
 }
 
 func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*net.IPNet, error) {

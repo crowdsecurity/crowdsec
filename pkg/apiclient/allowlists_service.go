@@ -89,3 +89,21 @@ func (s *AllowlistsService) CheckIfAllowlisted(ctx context.Context, value string
 
 	return resp.Response.StatusCode == http.StatusOK, resp, nil
 }
+
+func (s *AllowlistsService) CheckIfAllowlistedWithReason(ctx context.Context, value string) (*models.CheckAllowlistResponse, *Response, error) {
+	u := s.client.URLPrefix + "/allowlists/check/" + value
+
+	req, err := s.client.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	body := &models.CheckAllowlistResponse{}
+
+	resp, err := s.client.Do(ctx, req, body)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return body, resp, nil
+}

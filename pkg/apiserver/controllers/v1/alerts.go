@@ -124,20 +124,23 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
-func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) bool {
+func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) (bool, string) {
+	// If we have decisions, it comes from cscli that already checked the allowlist
+	if len(alert.Decisions) > 0 {
+		return false, ""
+	}
 	if alert.Source.Scope != nil && (*alert.Source.Scope == types.Ip || *alert.Source.Scope == types.Range) && // Allowlist only works for IP/range
-		alert.Source.Value != nil && // Is this possible ?
-		len(alert.Decisions) == 0 { // If there's no decisions, means it's coming from crowdsec (not cscli), so we can apply allowlist
-		isAllowlisted, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
+		alert.Source.Value != nil { // Is this possible ?
+		isAllowlisted, reason, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
 		if err == nil && isAllowlisted {
-			return true
+			return true, reason
 		} else if err != nil {
 			//FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
 			log.Errorf("error while checking allowlist: %s", err)
-			return false
+			return false, ""
 		}
 	}
-	return false
+	return false, ""
 }
 
 // CreateAlert writes the alerts received in the body to the database
@@ -172,8 +175,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 		}
 
-		if c.isAllowListed(ctx, alert) {
-			log.Infof("alert source %s is allowlisted, skipping", *alert.Source.Value)
+		if allowlisted, reason := c.isAllowListed(ctx, alert); allowlisted {
+			log.Infof("alert source %s is allowlisted by %s, skipping", *alert.Source.Value, reason)
 			continue
 		}
 

@@ -19,6 +19,9 @@ type CheckAllowlistResponse struct {
 
 	// true if the IP or range is in the allowlist
 	Allowlisted bool `json:"allowlisted,omitempty"`
+
+	// item that matched the provided value
+	Reason string `json:"reason,omitempty"`
 }
 
 // Validate validates this check allowlist response

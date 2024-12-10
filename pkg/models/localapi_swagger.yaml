@@ -1393,6 +1393,9 @@ definitions:
       allowlisted:
         type: boolean
         description: 'true if the IP or range is in the allowlist'
+      reason:
+        type: string
+        description: 'item that matched the provided value'
   ErrorResponse:
     type: "object"
     required:
