@@ -29,7 +29,7 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 			}
 
 			duration := *decisionItem.Duration
-			if strings.HasPrefix(duration, "-") {
+			if strings.HasPrefix(duration, "-") && cli.cfg().Cscli.Color != "no" {
 				duration = color.RedString(duration)
 			}
 
