@@ -3,6 +3,9 @@ package clidecision
 import (
 	"io"
 	"strconv"
+	"strings"
+
+	"github.com/fatih/color"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -25,6 +28,11 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 				*decisionItem.Type = "(simul)" + *decisionItem.Type
 			}
 
+			duration := *decisionItem.Duration
+			if strings.HasPrefix(duration, "-") {
+				duration = color.RedString(duration)
+			}
+
 			row := []string{
 				strconv.Itoa(int(decisionItem.ID)),
 				*decisionItem.Origin,
@@ -34,7 +42,7 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 				alertItem.Source.Cn,
 				alertItem.Source.GetAsNumberName(),
 				strconv.Itoa(int(*alertItem.EventsCount)),
-				*decisionItem.Duration,
+				duration,
 				strconv.Itoa(int(alertItem.ID)),
 			}
 
