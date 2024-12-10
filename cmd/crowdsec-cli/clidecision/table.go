@@ -12,7 +12,8 @@ import (
 )
 
 func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
-	t := cstable.New(out, cli.cfg().Cscli.Color)
+	wantColor := cli.cfg().Cscli.Color
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 
 	header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
@@ -29,7 +30,7 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 			}
 
 			duration := *decisionItem.Duration
-			if strings.HasPrefix(duration, "-") {
+			if strings.HasPrefix(duration, "-") && wantColor != "no" {
 				duration = color.RedString(duration)
 			}
 
