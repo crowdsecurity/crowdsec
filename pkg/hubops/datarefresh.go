@@ -31,6 +31,7 @@ func DownloadDataIfNeeded(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item,
 	return needReload, nil
 }
 
+// DataRefreshCommand updates the data files associated with the installed hub items.
 type DataRefreshCommand struct {
 	Force bool
 }

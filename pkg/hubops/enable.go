@@ -9,6 +9,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+// EnableCommand installs a hub item and its dependencies.
+// In case this command is called during an upgrade, the sub-items list it taken from the
+// latest version in the index, otherwise from the version that is currently installed.
 type EnableCommand struct {
 	Item       *cwhub.Item
 	Force      bool
