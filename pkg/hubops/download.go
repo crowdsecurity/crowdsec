@@ -19,6 +19,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+
+// DownloadCommand handles the downloading of hub items.
+// It ensures that items are fetched from the hub (or from the index file if it also has content)
+// managing dependencies and verifying the integrity of downloaded content.
+// This is used by "cscli install" and "cscli upgrade".
+// Tainted items require the force parameter, local items are skipped.
 type DownloadCommand struct {
 	Item  *cwhub.Item
 	Force bool

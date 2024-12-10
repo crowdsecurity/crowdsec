@@ -8,7 +8,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-// PurgeCommand removes the downloaded content.
+// PurgeCommand removes the downloaded content of a hub item, effectively
+// removing it from the local system. This command also removes the sub-items
+// but not the associated data files.
 type PurgeCommand struct {
 	Item  *cwhub.Item
 	Force bool

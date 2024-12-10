@@ -8,6 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+// RemoveInstallLink removes the item's symlink between the installation directory and the local hub.
 func RemoveInstallLink(i *cwhub.Item) error {
 	syml, err := i.InstallPath()
 	if err != nil {
@@ -45,7 +46,8 @@ func RemoveInstallLink(i *cwhub.Item) error {
 	return nil
 }
 
-// Disable disables the item
+// DisableCommand uninstalls an item and its dependencies, ensuring that no
+// sub-item is left in an inconsistent state.
 type DisableCommand struct {
 	Item  *cwhub.Item
 	Force bool
