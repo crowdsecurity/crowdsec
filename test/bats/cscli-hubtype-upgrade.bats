@@ -12,10 +12,6 @@ set -u
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
-    # shellcheck disable=SC2089
-    RELOAD_MESSAGE="Run 'sudo systemctl reload crowdsec' for the new configuration to be effective."
-    # shellcheck disable=SC2090
-    export RELOAD_MESSAGE
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
     INDEX_PATH=$(config_get '.config_paths.index_path')
@@ -45,7 +41,7 @@ hub_inject_v0() {
     # add a version 0.0 to all parsers
 
     # hash of the string "v0.0"
-    sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
+    sha256_0_0="daa1832414a685d69269e0ae15024b908f4602db45f9900e9c6e7f204af207c0"
 
     new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$INDEX_PATH" '.parsers |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
     echo "$new_hub" >"$INDEX_PATH"
@@ -58,7 +54,7 @@ install_v0() {
     shift
 
     cscli "$hubtype" install "$item_name"
-    echo "v0.0" > "$(jq -r '.local_path' <(cscli "$hubtype" inspect "$item_name" --no-metrics -o json))"
+    printf "%s" "v0.0" > "$(jq -r '.local_path' <(cscli "$hubtype" inspect "$item_name" --no-metrics -o json))"
 }
 
 #----------

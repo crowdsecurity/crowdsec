@@ -117,6 +117,7 @@ func (p *ActionPlan) Description(verbose bool) string {
 func (p *ActionPlan) verboseDescription() string {
 	sb := strings.Builder{}
 
+	// Here we display the commands in the order they will be executed.
 	for _, cmd := range p.commands {
 		sb.WriteString(colorizeOpType(cmd.OperationType()) + " " + cmd.ItemType() + ":" + cmd.Detail() + "\n")
 	}
@@ -139,7 +140,7 @@ func describe(opType string, desc map[string]map[string][]string, sb *strings.Bu
 		}
 
 		details := desc[opType][itemType]
-		// NOTE: sorting for user convenience, but it's not the order the commands will be carried out
+		// Sorting for user convenience, but it's not the same order the commands will be carried out.
 		slices.Sort(details)
 
 		if itemType != "" {
@@ -170,7 +171,7 @@ func (p *ActionPlan) compactDescription() string {
 
 	sb := strings.Builder{}
 
-	// crude hack to guarantee presentation order
+	// Enforce presentation order.
 
 	describe("download", desc, &sb)
 	delete(desc, "download")

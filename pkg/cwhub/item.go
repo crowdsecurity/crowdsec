@@ -161,6 +161,7 @@ type Item struct {
 	Content     string   `json:"content,omitempty" yaml:"-"`
 	References  []string `json:"references,omitempty" yaml:"references,omitempty"`
 
+	// NOTE: RemotePath could be derived from the other fields
 	RemotePath string                 `json:"path,omitempty" yaml:"path,omitempty"`       // path relative to the base URL eg. /parsers/stage/author/file.yaml
 	Version    string                 `json:"version,omitempty" yaml:"version,omitempty"` // the last available version
 	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`               // all the known versions
@@ -181,7 +182,7 @@ func (i *Item) InstallPath() (string, error) {
 	return SafePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
 }
 
-// downloadPath returns the location of the actual config file in the hub
+// DownloadPath returns the location of the actual config file in the hub
 // (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
 // Raises an error if the path goes outside of the hub dir.
 func (i *Item) DownloadPath() (string, error) {

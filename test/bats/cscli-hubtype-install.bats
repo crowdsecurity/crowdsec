@@ -9,11 +9,6 @@ set -u
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
-    # XXX: reload message is different on bsd
-    # shellcheck disable=SC2089
-    RELOAD_MESSAGE="Run 'sudo systemctl reload crowdsec' for the new configuration to be effective."
-    # shellcheck disable=SC2090
-    export RELOAD_MESSAGE
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
 #    INDEX_PATH=$(config_get '.config_paths.index_path')

@@ -61,7 +61,7 @@ func (h *Hub) Load() error {
 	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
 
 	if err := h.parseIndex(); err != nil {
-		return fmt.Errorf("failed to load hub index: %w", err)
+		return err
 	}
 
 	if err := h.localSync(); err != nil {
@@ -85,6 +85,19 @@ func (h *Hub) parseIndex() error {
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
 		for name, item := range h.GetItemMap(itemType) {
+			if item == nil {
+				// likely defined as empty object or null in the index file
+				return fmt.Errorf("%s:%s has no index metadata", itemType, name)
+			}
+
+			if item.RemotePath == "" {
+				return fmt.Errorf("%s:%s has no download path", itemType, name)
+			}
+
+			if (itemType == PARSERS || itemType == POSTOVERFLOWS) && item.Stage == "" {
+				return fmt.Errorf("%s:%s has no stage", itemType, name)
+			}
+
 			item.hub = h
 			item.Name = name
 

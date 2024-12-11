@@ -105,6 +105,9 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 		fname := subsHub[2]
 
 		if ftype == PARSERS || ftype == POSTOVERFLOWS {
+			if len(subsHub) < 4 {
+				return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
+			}
 			stage = subsHub[1]
 			fauthor = subsHub[2]
 			fname = subsHub[3]

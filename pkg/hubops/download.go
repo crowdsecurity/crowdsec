@@ -65,6 +65,11 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 		}
 
 		if i.State.Installed {
+			// ensure the _new_ dependencies are installed too
+			if err := plan.AddCommand(NewEnableCommand(sub, c.Force)); err != nil {
+				return false, err
+			}
+
 			for _, sub2 := range disableKeys {
 				if sub2 == sub {
 					delete(toDisable, sub)
@@ -155,7 +160,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 
 	downloaded, _, err := i.FetchContentTo(ctx, finalPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", i.FQName(), err)
 	}
 
 	if downloaded {
