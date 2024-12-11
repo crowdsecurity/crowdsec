@@ -1,6 +1,7 @@
 package clihub
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,10 +20,16 @@ import (
 func showMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
-		metrics := getParserMetric(prometheusURL, hubItem.Name)
+		metrics, err := getParserMetric(prometheusURL, hubItem.Name)
+		if err != nil {
+			return err
+		}
 		parserMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
-		metrics := getScenarioMetric(prometheusURL, hubItem.Name)
+		metrics, err := getScenarioMetric(prometheusURL, hubItem.Name)
+		if err != nil {
+			return err
+		}
 		scenarioMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, sub := range hubItem.SubItems() {
@@ -31,7 +38,10 @@ func showMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) er
 			}
 		}
 	case cwhub.APPSEC_RULES:
-		metrics := getAppsecRuleMetric(prometheusURL, hubItem.Name)
+		metrics, err := getAppsecRuleMetric(prometheusURL, hubItem.Name)
+		if err != nil {
+			return err
+		}
 		appsecMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	default: // no metrics for this item type
 	}
@@ -40,11 +50,15 @@ func showMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) er
 }
 
 // getParserMetric is a complete rip from prom2json
-func getParserMetric(url string, itemName string) map[string]map[string]int {
+func getParserMetric(url string, itemName string) (map[string]map[string]int, error) {
 	stats := make(map[string]map[string]int)
 
-	result := getPrometheusMetric(url)
-	for idx, fam := range result {
+	results, err := getPrometheusMetric(url)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, fam := range results {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
@@ -128,10 +142,10 @@ func getParserMetric(url string, itemName string) map[string]map[string]int {
 		}
 	}
 
-	return stats
+	return stats, nil
 }
 
-func getScenarioMetric(url string, itemName string) map[string]int {
+func getScenarioMetric(url string, itemName string) (map[string]int, error) {
 	stats := make(map[string]int)
 
 	stats["instantiation"] = 0
@@ -140,8 +154,12 @@ func getScenarioMetric(url string, itemName string) map[string]int {
 	stats["pour"] = 0
 	stats["underflow"] = 0
 
-	result := getPrometheusMetric(url)
-	for idx, fam := range result {
+	results, err := getPrometheusMetric(url)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, fam := range results {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
@@ -192,16 +210,20 @@ func getScenarioMetric(url string, itemName string) map[string]int {
 		}
 	}
 
-	return stats
+	return stats, nil
 }
 
-func getAppsecRuleMetric(url string, itemName string) map[string]int {
+func getAppsecRuleMetric(url string, itemName string) (map[string]int, error) {
 	stats := make(map[string]int)
 
 	stats["inband_hits"] = 0
 	stats["outband_hits"] = 0
 
-	results := getPrometheusMetric(url)
+	results, err := getPrometheusMetric(url)
+	if err != nil {
+		return nil, err
+	}
+
 	for idx, fam := range results {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -257,10 +279,10 @@ func getAppsecRuleMetric(url string, itemName string) map[string]int {
 		}
 	}
 
-	return stats
+	return stats, nil
 }
 
-func getPrometheusMetric(url string) []*prom2json.Family {
+func getPrometheusMetric(url string) ([]*prom2json.Family, error) {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
 	// Start with the DefaultTransport for sane defaults.
@@ -271,12 +293,15 @@ func getPrometheusMetric(url string) []*prom2json.Family {
 	// Timeout early if the server doesn't even return the headers.
 	transport.ResponseHeaderTimeout = time.Minute
 
+	var fetchErr error
+
 	go func() {
 		defer trace.CatchPanic("crowdsec/GetPrometheusMetric")
 
-		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
-		if err != nil {
-			log.Fatalf("failed to fetch prometheus metrics : %v", err)
+		// mfChan is closed by prom2json.FetchMetricFamilies in all cases.
+		if err := prom2json.FetchMetricFamilies(url, mfChan, transport); err != nil {
+			fetchErr = fmt.Errorf("failed to fetch prometheus metrics: %w", err)
+			return
 		}
 	}()
 
@@ -285,7 +310,11 @@ func getPrometheusMetric(url string) []*prom2json.Family {
 		result = append(result, prom2json.NewFamily(mf))
 	}
 
+	if fetchErr != nil {
+		return nil, fetchErr
+	}
+
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 
-	return result
+	return result, nil
 }
