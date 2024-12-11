@@ -1,6 +1,7 @@
 package csplugin
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -96,6 +97,7 @@ func (s *PluginSuite) TearDownTest() {
 
 func (s *PluginSuite) SetupSubTest() {
 	var err error
+
 	t := s.T()
 
 	s.runDir, err = os.MkdirTemp("", "cs_plugin_test")
@@ -127,6 +129,7 @@ func (s *PluginSuite) SetupSubTest() {
 
 func (s *PluginSuite) TearDownSubTest() {
 	t := s.T()
+
 	if s.pluginBroker != nil {
 		s.pluginBroker.Kill()
 		s.pluginBroker = nil
@@ -140,19 +143,24 @@ func (s *PluginSuite) TearDownSubTest() {
 	os.Remove("./out")
 }
 
-func (s *PluginSuite) InitBroker(procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
+func (s *PluginSuite) InitBroker(ctx context.Context, procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
 	pb := PluginBroker{}
+
 	if procCfg == nil {
 		procCfg = &csconfig.PluginCfg{}
 	}
+
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	err := pb.Init(procCfg, profiles, &csconfig.ConfigurationPaths{
+
+	err := pb.Init(ctx, procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       s.pluginDir,
 		NotificationDir: s.notifDir,
 	})
+
 	s.pluginBroker = &pb
+
 	return s.pluginBroker, err
 }

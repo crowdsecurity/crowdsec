@@ -31,7 +31,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.22"
+        go-version: "1.23"
 
     - name: "Install bats dependencies"
       env:
@@ -42,6 +42,10 @@ jobs:
     - name: "Build crowdsec and fixture"
       run: |
         make clean bats-build bats-fixture BUILD_STATIC=1
+
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
 
     - name: "Run tests"
       run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter

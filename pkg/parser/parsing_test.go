@@ -132,7 +132,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	}
 
 	if err = yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
-		return fmt.Errorf("failed unmarshaling %s: %w", parser_cfg_file, err)
+		return fmt.Errorf("failed to parse %s: %w", parser_cfg_file, err)
 	}
 
 	pnodes, err = LoadStages(parser_configs, pctx, ectx)
@@ -151,7 +151,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 		b.ResetTimer()
 	}
 
-	for range(count) {
+	for range count {
 		if !testFile(tests, *pctx, pnodes) {
 			return errors.New("test failed")
 		}
@@ -285,7 +285,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 
 	valid = true
 
-	for mapIdx := range(len(expectMaps)) {
+	for mapIdx := range len(expectMaps) {
 		for expKey, expVal := range expectMaps[mapIdx] {
 			outVal, ok := outMaps[mapIdx][expKey]
 			if !ok {

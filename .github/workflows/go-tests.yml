@@ -126,12 +126,39 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.22"
+        go-version: "1.23"
+
+    - name: Run "go generate" and check for changes
+      run: |
+        set -e
+        # ensure the version of 'protoc' matches the one that generated the files
+        PROTOBUF_VERSION="21.12"
+        # don't pollute the repo
+        pushd $HOME
+        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
+        unzip protoc-${PROTOBUF_VERSION}-linux-x86_64.zip -d $HOME/.protoc
+        popd
+        export PATH="$HOME/.protoc/bin:$PATH"
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+        go generate ./...
+        protoc --version
+        if [[ $(git status --porcelain) ]]; then
+          echo "Error: Uncommitted changes found after running 'make generate'. Please commit all generated code."
+          git diff
+          exit 1
+        else
+          echo "No changes detected after running 'make generate'."
+        fi
 
     - name: Create localstack streams
       run: |
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
+
+    - name: Generate codecov configuration
+      run: |
+          .github/generate-codecov-yml.sh >> .github/codecov.yml
 
     - name: Build and run tests, static
       run: |
@@ -141,6 +168,11 @@ jobs:
         set -o pipefail
         make build BUILD_STATIC=1
         make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+
+    # check if some component stubs are missing
+    - name: "Build profile: minimal"
+      run: |
+        make build BUILD_PROFILE=minimal
 
     - name: Run tests again, dynamic
       run: |
@@ -158,6 +190,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.60
+        version: v1.62
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

@@ -21,7 +21,6 @@ import (
 
 type Client struct {
 	Ent              *ent.Client
-	CTX              context.Context
 	Log              *log.Logger
 	CanFlush         bool
 	Type             string
@@ -106,7 +105,6 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 
 	return &Client{
 		Ent:              client,
-		CTX:              ctx,
 		Log:              clog,
 		CanFlush:         true,
 		Type:             config.Type,

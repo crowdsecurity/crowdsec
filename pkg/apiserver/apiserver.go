@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -46,20 +46,11 @@ type APIServer struct {
 	consoleConfig  *csconfig.ConsoleConfig
 }
 
-func recoverFromPanic(c *gin.Context) {
-	err := recover()
-	if err == nil {
-		return
-	}
-
-	// Check for a broken connection, as it is not really a
-	// condition that warrants a panic stack trace.
-	brokenPipe := false
-
+func isBrokenConnection(err any) bool {
 	if ne, ok := err.(*net.OpError); ok {
 		if se, ok := ne.Err.(*os.SyscallError); ok {
 			if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
-				brokenPipe = true
+				return true
 			}
 		}
 	}
@@ -79,11 +70,22 @@ func recoverFromPanic(c *gin.Context) {
 			errors.Is(strErr, errClosedBody) ||
 			errors.Is(strErr, errHandlerComplete) ||
 			errors.Is(strErr, errStreamClosed) {
-			brokenPipe = true
+			return true
 		}
 	}
 
-	if brokenPipe {
+	return false
+}
+
+func recoverFromPanic(c *gin.Context) {
+	err := recover()
+	if err == nil {
+		return
+	}
+
+	// Check for a broken connection, as it is not really a
+	// condition that warrants a panic stack trace.
+	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
 	} else {
@@ -159,10 +161,8 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
-
-	ctx := context.TODO()
 
 	dbClient, err := database.NewClient(ctx, config.DbConfig)
 	if err != nil {
@@ -170,7 +170,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	if config.DbConfig.Flush != nil {
-		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
+		flushScheduler, err = dbClient.StartFlushScheduler(ctx, config.DbConfig.Flush)
 		if err != nil {
 			return nil, err
 		}
@@ -229,12 +229,12 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
-		Ectx:                          ctx,
 		Router:                        router,
 		Profiles:                      config.Profiles,
 		Log:                           clog,
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
+		AutoRegisterCfg:               config.AutoRegister,
 	}
 
 	var (
@@ -248,7 +248,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI manager")
 
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
+		apiClient, err = NewAPIC(ctx, config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +257,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 
-		if config.ConsoleConfig.IsPAPIEnabled() {
+		if config.ConsoleConfig.IsPAPIEnabled() && config.OnlineClient.Credentials.PapiURL != "" {
 			if apiClient.apiClient.IsEnrolled() {
 				log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
@@ -300,6 +300,72 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
+func (s *APIServer) apicPush(ctx context.Context) error {
+	if err := s.apic.Push(ctx); err != nil {
+		log.Errorf("capi push: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) apicPull(ctx context.Context) error {
+	if err := s.apic.Pull(ctx); err != nil {
+		log.Errorf("capi pull: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) papiPull(ctx context.Context) error {
+	if err := s.papi.Pull(ctx); err != nil {
+		log.Errorf("papi pull: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) papiSync() error {
+	if err := s.papi.SyncDecisions(); err != nil {
+		log.Errorf("capi decisions sync: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *APIServer) initAPIC(ctx context.Context) {
+	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
+	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
+
+	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+	if s.apic.apiClient.IsEnrolled() {
+		if s.consoleConfig.IsPAPIEnabled() && s.papi != nil {
+			if s.papi.URL != "" {
+				log.Info("Starting PAPI decision receiver")
+				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
+				s.papi.syncTomb.Go(s.papiSync)
+			} else {
+				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
+			}
+		} else {
+			log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+		}
+	}
+
+	s.apic.metricsTomb.Go(func() error {
+		s.apic.SendMetrics(ctx, make(chan bool))
+		return nil
+	})
+
+	s.apic.metricsTomb.Go(func() error {
+		s.apic.SendUsageMetrics(ctx)
+		return nil
+	})
+}
+
 func (s *APIServer) Run(apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
 
@@ -314,64 +380,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		TLSConfig: tlsCfg,
 	}
 
+	ctx := context.TODO()
+
 	if s.apic != nil {
-		s.apic.pushTomb.Go(func() error {
-			if err := s.apic.Push(); err != nil {
-				log.Errorf("capi push: %s", err)
-				return err
-			}
-
-			return nil
-		})
-
-		s.apic.pullTomb.Go(func() error {
-			if err := s.apic.Pull(); err != nil {
-				log.Errorf("capi pull: %s", err)
-				return err
-			}
-
-			return nil
-		})
-
-		// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
-		if s.apic.apiClient.IsEnrolled() {
-			if s.consoleConfig.IsPAPIEnabled() {
-				if s.papi.URL != "" {
-					log.Info("Starting PAPI decision receiver")
-					s.papi.pullTomb.Go(func() error {
-						if err := s.papi.Pull(); err != nil {
-							log.Errorf("papi pull: %s", err)
-							return err
-						}
-
-						return nil
-					})
-
-					s.papi.syncTomb.Go(func() error {
-						if err := s.papi.SyncDecisions(); err != nil {
-							log.Errorf("capi decisions sync: %s", err)
-							return err
-						}
-
-						return nil
-					})
-				} else {
-					log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
-				}
-			} else {
-				log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
-			}
-		}
-
-		s.apic.metricsTomb.Go(func() error {
-			s.apic.SendMetrics(make(chan bool))
-			return nil
-		})
-
-		s.apic.metricsTomb.Go(func() error {
-			s.apic.SendUsageMetrics()
-			return nil
-		})
+		s.initAPIC(ctx)
 	}
 
 	s.httpServerTomb.Go(func() error {

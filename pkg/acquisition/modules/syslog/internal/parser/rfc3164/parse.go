@@ -48,7 +48,6 @@ func WithStrictHostname() RFC3164Option {
 }
 
 func (r *RFC3164) parsePRI() error {
-
 	pri := 0
 
 	if r.buf[r.position] != '<' {

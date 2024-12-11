@@ -20,25 +20,22 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type configGetter func() *csconfig.Config
 
 type cliConsole struct {
-	cfg           func() *csconfig.Config
-	reloadMessage string
+	cfg configGetter
 }
 
-func New(cfg configGetter, reloadMessage string) *cliConsole {
+func New(cfg configGetter) *cliConsole {
 	return &cliConsole{
-		cfg:           cfg,
-		reloadMessage: reloadMessage,
+		cfg: cfg,
 	}
 }
 
@@ -69,27 +66,13 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []string, opts []string) error {
+func (cli *cliConsole) enroll(ctx context.Context, key string, name string, overwrite bool, tags []string, opts []string) error {
 	cfg := cli.cfg()
 	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
 
 	apiURL, err := url.Parse(cfg.API.Server.OnlineClient.Credentials.URL)
 	if err != nil {
 		return fmt.Errorf("could not parse CAPI URL: %w", err)
-	}
-
-	hub, err := require.Hub(cfg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	scenarios, err := hub.GetInstalledNamesByType(cwhub.SCENARIOS)
-	if err != nil {
-		return fmt.Errorf("failed to get installed scenarios: %w", err)
-	}
-
-	if len(scenarios) == 0 {
-		scenarios = make([]string, 0)
 	}
 
 	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
@@ -104,23 +87,25 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 			}
 
 			for _, availableOpt := range csconfig.CONSOLE_CONFIGS {
-				if opt == availableOpt {
-					valid = true
-					enable := true
-
-					for _, enabledOpt := range enableOpts {
-						if opt == enabledOpt {
-							enable = false
-							continue
-						}
-					}
-
-					if enable {
-						enableOpts = append(enableOpts, opt)
-					}
-
-					break
+				if opt != availableOpt {
+					continue
 				}
+
+				valid = true
+				enable := true
+
+				for _, enabledOpt := range enableOpts {
+					if opt == enabledOpt {
+						enable = false
+						continue
+					}
+				}
+
+				if enable {
+					enableOpts = append(enableOpts, opt)
+				}
+
+				break
 			}
 
 			if !valid {
@@ -129,16 +114,20 @@ func (cli *cliConsole) enroll(key string, name string, overwrite bool, tags []st
 		}
 	}
 
+	hub, err := require.Hub(cfg, nil, nil)
+	if err != nil {
+		return err
+	}
+
 	c, _ := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
-		Scenarios:     scenarios,
-		UserAgent:     cwversion.UserAgent(),
+		Scenarios:     hub.GetInstalledListForAPI(),
 		URL:           apiURL,
 		VersionPrefix: "v3",
 	})
 
-	resp, err := c.Auth.EnrollWatcher(context.Background(), key, name, tags, overwrite)
+	resp, err := c.Auth.EnrollWatcher(ctx, key, name, tags, overwrite)
 	if err != nil {
 		return fmt.Errorf("could not enroll instance: %w", err)
 	}
@@ -184,8 +173,8 @@ After running this command your will need to validate the enrollment in the weba
 		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.enroll(args[0], name, overwrite, tags, opts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, opts)
 		},
 	}
 
@@ -225,7 +214,7 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("%v have been enabled", args)
 			}
 
-			log.Info(cli.reloadMessage)
+			log.Info(reload.Message)
 
 			return nil
 		},
@@ -259,7 +248,7 @@ Disable given information push to the central API.`,
 				log.Infof("%v have been disabled", args)
 			}
 
-			log.Info(cli.reloadMessage)
+			log.Info(reload.Message)
 
 			return nil
 		},
@@ -291,7 +280,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 				}
 				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
-					return fmt.Errorf("failed to marshal configuration: %w", err)
+					return fmt.Errorf("failed to serialize configuration: %w", err)
 				}
 				fmt.Println(string(data))
 			case "raw":
@@ -329,7 +318,7 @@ func (cli *cliConsole) dumpConfig() error {
 
 	out, err := yaml.Marshal(serverCfg.ConsoleConfig)
 	if err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", serverCfg.ConsoleConfigPath, err)
+		return fmt.Errorf("while serializing ConsoleConfig (for %s): %w", serverCfg.ConsoleConfigPath, err)
 	}
 
 	if serverCfg.ConsoleConfigPath == "" {
@@ -372,7 +361,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				if changed {
 					fileContent, err := yaml.Marshal(cfg.API.Server.OnlineClient.Credentials)
 					if err != nil {
-						return fmt.Errorf("cannot marshal credentials: %w", err)
+						return fmt.Errorf("cannot serialize credentials: %w", err)
 					}
 
 					log.Infof("Updating credentials file: %s", cfg.API.Server.OnlineClient.CredentialsFilePath)

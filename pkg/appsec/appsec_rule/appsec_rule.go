@@ -47,7 +47,6 @@ type CustomRule struct {
 }
 
 func (v *CustomRule) Convert(ruleType string, appsecRuleName string) (string, []uint32, error) {
-
 	if v.Zones == nil && v.And == nil && v.Or == nil {
 		return "", nil, errors.New("no zones defined")
 	}

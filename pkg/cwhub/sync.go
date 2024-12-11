@@ -24,7 +24,7 @@ func isYAMLFileName(path string) bool {
 // returns error if the symlink is dangling or too many symlinks are followed
 func resolveSymlink(path string) (string, error) {
 	const maxSymlinks = 10 // Prevent infinite loops
-	for i := 0; i < maxSymlinks; i++ {
+	for range maxSymlinks {
 		fi, err := os.Lstat(path)
 		if err != nil {
 			return "", err // dangling link
@@ -210,7 +210,7 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
 
 	err = yaml.Unmarshal(itemContent, &itemName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 	}
 
 	if itemName.Name != "" {

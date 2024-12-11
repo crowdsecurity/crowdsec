@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -42,6 +43,8 @@ type listUnsubscribe struct {
 }
 
 func DecisionCmd(message *Message, p *Papi, sync bool) error {
+	ctx := context.TODO()
+
 	switch message.Header.OperationCmd {
 	case "delete":
 		data, err := json.Marshal(message.Data)
@@ -64,7 +67,7 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 		filter := make(map[string][]string)
 		filter["uuid"] = UUIDs
 
-		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(filter)
+		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(ctx, filter)
 		if err != nil {
 			return fmt.Errorf("unable to expire decisions %+v: %w", UUIDs, err)
 		}
@@ -94,6 +97,8 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 }
 
 func AlertCmd(message *Message, p *Papi, sync bool) error {
+	ctx := context.TODO()
+
 	switch message.Header.OperationCmd {
 	case "add":
 		data, err := json.Marshal(message.Data)
@@ -152,7 +157,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		}
 
 		// use a different method: alert and/or decision might already be partially present in the database
-		_, err = p.DBClient.CreateOrUpdateAlert("", alert)
+		_, err = p.DBClient.CreateOrUpdateAlert(ctx, "", alert)
 		if err != nil {
 			log.Errorf("Failed to create alerts in DB: %s", err)
 		} else {
@@ -167,6 +172,8 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 }
 
 func ManagementCmd(message *Message, p *Papi, sync bool) error {
+	ctx := context.TODO()
+
 	if sync {
 		p.Logger.Infof("Ignoring management command from PAPI in sync mode")
 		return nil
@@ -194,7 +201,7 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		filter["origin"] = []string{types.ListOrigin}
 		filter["scenario"] = []string{unsubscribeMsg.Name}
 
-		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(filter)
+		_, deletedDecisions, err := p.DBClient.ExpireDecisionsWithFilter(ctx, filter)
 		if err != nil {
 			return fmt.Errorf("unable to expire decisions for list %s : %w", unsubscribeMsg.Name, err)
 		}
@@ -215,17 +222,19 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
 
+		ctx := context.TODO()
+
 		if forcePullMsg.Blocklist == nil {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
 
-			err = p.apic.PullTop(true)
+			err = p.apic.PullTop(ctx, true)
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
 		} else {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
 
-			err = p.apic.PullBlocklist(&modelscapi.BlocklistLink{
+			err = p.apic.PullBlocklist(ctx, &modelscapi.BlocklistLink{
 				Name:        &forcePullMsg.Blocklist.Name,
 				URL:         &forcePullMsg.Blocklist.Url,
 				Remediation: &forcePullMsg.Blocklist.Remediation,

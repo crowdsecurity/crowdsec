@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.22-alpine3.20 AS build
+FROM golang:1.23-alpine3.20 AS build
 
 ARG BUILD_VERSION
 
@@ -16,7 +16,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
     cd re2-${RE2_VERSION} && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    go install github.com/mikefarah/yq/v4@v4.43.1
+    go install github.com/mikefarah/yq/v4@v4.44.3
 
 COPY . .
 
@@ -24,8 +24,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
-    cscli hub update && \
-    ./docker/preload-hub-items && \
+    cscli hub update --with-content && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists
 

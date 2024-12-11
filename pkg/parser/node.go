@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -236,7 +237,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		case string:
 			gstr = out
 		case int:
-			gstr = fmt.Sprintf("%d", out)
+			gstr = strconv.Itoa(out)
 		case float64, float32:
 			gstr = fmt.Sprintf("%f", out)
 		default:
@@ -357,16 +358,17 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	// Iterate on leafs
-	for _, leaf := range n.LeavesNodes {
-		ret, err := leaf.process(p, ctx, cachedExprEnv)
+	leaves := n.LeavesNodes
+	for idx := range leaves {
+		ret, err := leaves[idx].process(p, ctx, cachedExprEnv)
 		if err != nil {
-			clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
+			clog.Tracef("\tNode (%s) failed : %v", leaves[idx].rn, err)
 			clog.Debugf("Event leaving node : ko")
 
 			return false, err
 		}
 
-		clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
+		clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaves[idx].rn, ret, n.OnSuccess)
 
 		if ret {
 			NodeState = true
@@ -593,7 +595,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	/* compile leafs if present */
 	for idx := range n.LeavesNodes {
 		if n.LeavesNodes[idx].Name == "" {
-			n.LeavesNodes[idx].Name = fmt.Sprintf("child-%s", n.Name)
+			n.LeavesNodes[idx].Name = "child-" + n.Name
 		}
 		/*propagate debug/stats to child nodes*/
 		if !n.LeavesNodes[idx].Debug && n.Debug {

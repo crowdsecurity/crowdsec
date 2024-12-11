@@ -74,6 +74,7 @@ var (
 		{Name: "osname", Type: field.TypeString, Nullable: true},
 		{Name: "osversion", Type: field.TypeString, Nullable: true},
 		{Name: "featureflags", Type: field.TypeString, Nullable: true},
+		{Name: "auto_created", Type: field.TypeBool, Default: false},
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{

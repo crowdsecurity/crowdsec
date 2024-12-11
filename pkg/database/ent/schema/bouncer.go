@@ -33,6 +33,8 @@ func (Bouncer) Fields() []ent.Field {
 		field.String("osname").Optional(),
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
+		// Old auto-created TLS bouncers will have a wrong value for this field
+		field.Bool("auto_created").StructTag(`json:"auto_created"`).Default(false).Immutable(),
 	}
 }
 

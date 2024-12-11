@@ -91,10 +91,8 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 		files []string
 	)
 
-	for _, hubScenarioItem := range hub.GetItemMap(cwhub.SCENARIOS) {
-		if hubScenarioItem.State.Installed {
-			files = append(files, hubScenarioItem.State.LocalPath)
-		}
+	for _, hubScenarioItem := range hub.GetInstalledByType(cwhub.SCENARIOS, false) {
+		files = append(files, hubScenarioItem.State.LocalPath)
 	}
 
 	buckets = leakybucket.NewBuckets()
@@ -150,14 +148,14 @@ func (l *labelsMap) String() string {
 	return "labels"
 }
 
-func (l labelsMap) Set(label string) error {
+func (l *labelsMap) Set(label string) error {
 	for _, pair := range strings.Split(label, ",") {
 		split := strings.Split(pair, ":")
 		if len(split) != 2 {
 			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
 		}
 
-		l[split[0]] = split[1]
+		(*l)[split[0]] = split[1]
 	}
 
 	return nil
