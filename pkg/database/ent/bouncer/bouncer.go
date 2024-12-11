@@ -29,12 +29,18 @@ const (
 	FieldType = "type"
 	// FieldVersion holds the string denoting the version field in the database.
 	FieldVersion = "version"
-	// FieldUntil holds the string denoting the until field in the database.
-	FieldUntil = "until"
 	// FieldLastPull holds the string denoting the last_pull field in the database.
 	FieldLastPull = "last_pull"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
+	// FieldOsname holds the string denoting the osname field in the database.
+	FieldOsname = "osname"
+	// FieldOsversion holds the string denoting the osversion field in the database.
+	FieldOsversion = "osversion"
+	// FieldFeatureflags holds the string denoting the featureflags field in the database.
+	FieldFeatureflags = "featureflags"
+	// FieldAutoCreated holds the string denoting the auto_created field in the database.
+	FieldAutoCreated = "auto_created"
 	// Table holds the table name of the bouncer in the database.
 	Table = "bouncers"
 )
@@ -50,9 +56,12 @@ var Columns = []string{
 	FieldIPAddress,
 	FieldType,
 	FieldVersion,
-	FieldUntil,
 	FieldLastPull,
 	FieldAuthType,
+	FieldOsname,
+	FieldOsversion,
+	FieldFeatureflags,
+	FieldAutoCreated,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -74,12 +83,10 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultIPAddress holds the default value on creation for the "ip_address" field.
 	DefaultIPAddress string
-	// DefaultUntil holds the default value on creation for the "until" field.
-	DefaultUntil func() time.Time
-	// DefaultLastPull holds the default value on creation for the "last_pull" field.
-	DefaultLastPull func() time.Time
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
+	// DefaultAutoCreated holds the default value on creation for the "auto_created" field.
+	DefaultAutoCreated bool
 )
 
 // OrderOption defines the ordering options for the Bouncer queries.
@@ -130,11 +137,6 @@ func ByVersion(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldVersion, opts...).ToFunc()
 }
 
-// ByUntil orders the results by the until field.
-func ByUntil(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUntil, opts...).ToFunc()
-}
-
 // ByLastPull orders the results by the last_pull field.
 func ByLastPull(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastPull, opts...).ToFunc()
@@ -143,4 +145,24 @@ func ByLastPull(opts ...sql.OrderTermOption) OrderOption {
 // ByAuthType orders the results by the auth_type field.
 func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAuthType, opts...).ToFunc()
+}
+
+// ByOsname orders the results by the osname field.
+func ByOsname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsname, opts...).ToFunc()
+}
+
+// ByOsversion orders the results by the osversion field.
+func ByOsversion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsversion, opts...).ToFunc()
+}
+
+// ByFeatureflags orders the results by the featureflags field.
+func ByFeatureflags(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFeatureflags, opts...).ToFunc()
+}
+
+// ByAutoCreated orders the results by the auto_created field.
+func ByAutoCreated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAutoCreated, opts...).ToFunc()
 }

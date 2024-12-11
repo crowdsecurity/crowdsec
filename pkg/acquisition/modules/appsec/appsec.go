@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,18 +11,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/trace"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -29,9 +30,7 @@ const (
 	OutOfBand = "outofband"
 )
 
-var (
-	DefaultAuthCacheDuration = (1 * time.Minute)
-)
+var DefaultAuthCacheDuration = (1 * time.Minute)
 
 // configuration structure of the acquis for the application security engine
 type AppsecSourceConfig struct {
@@ -42,6 +41,7 @@ type AppsecSourceConfig struct {
 	Path                              string         `yaml:"path"`
 	Routines                          int            `yaml:"routines"`
 	AppsecConfig                      string         `yaml:"appsec_config"`
+	AppsecConfigs                     []string       `yaml:"appsec_configs"`
 	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -60,7 +60,7 @@ type AppsecSource struct {
 	AppsecConfigs map[string]appsec.AppsecConfig
 	lapiURL       string
 	AuthCache     AuthCache
-	AppsecRunners []AppsecRunner //one for each go-routine
+	AppsecRunners []AppsecRunner // one for each go-routine
 }
 
 // Struct to handle cache of authentication
@@ -86,6 +86,7 @@ func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
 	ac.mu.RLock()
 	expiration, exists := ac.APIKeys[apiKey]
 	ac.mu.RUnlock()
+
 	return expiration, exists
 }
 
@@ -95,10 +96,9 @@ type BodyResponse struct {
 }
 
 func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
-
 	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse appsec configuration")
+		return fmt.Errorf("cannot parse appsec configuration: %w", err)
 	}
 
 	if w.config.ListenAddr == "" && w.config.ListenSocket == "" {
@@ -122,14 +122,19 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		w.config.Routines = 1
 	}
 
-	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" {
-		return fmt.Errorf("appsec_config or appsec_config_path must be set")
+	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" && len(w.config.AppsecConfigs) == 0 {
+		return errors.New("appsec_config or appsec_config_path must be set")
+	}
+
+	if (w.config.AppsecConfig != "" || w.config.AppsecConfigPath != "") && len(w.config.AppsecConfigs) != 0 {
+		return errors.New("appsec_config and appsec_config_path are mutually exclusive with appsec_configs")
 	}
 
 	if w.config.Name == "" {
 		if w.config.ListenSocket != "" && w.config.ListenAddr == "" {
 			w.config.Name = w.config.ListenSocket
 		}
+
 		if w.config.ListenSocket == "" {
 			w.config.Name = fmt.Sprintf("%s%s", w.config.ListenAddr, w.config.Path)
 		}
@@ -153,8 +158,9 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse appsec configuration")
+		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
+
 	w.logger = logger
 	w.metricsLevel = MetricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
@@ -174,64 +180,77 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
-	//let's load the associated appsec_config:
+	//we keep the datasource name
+	appsecCfg.Name = w.config.Name
+
+	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
 		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
 		if err != nil {
-			return fmt.Errorf("unable to load appsec_config : %s", err)
+			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if w.config.AppsecConfig != "" {
 		err := appsecCfg.Load(w.config.AppsecConfig)
 		if err != nil {
-			return fmt.Errorf("unable to load appsec_config : %s", err)
+			return fmt.Errorf("unable to load appsec_config: %w", err)
+		}
+	} else if len(w.config.AppsecConfigs) > 0 {
+		for _, appsecConfig := range w.config.AppsecConfigs {
+			err := appsecCfg.Load(appsecConfig)
+			if err != nil {
+				return fmt.Errorf("unable to load appsec_config: %w", err)
+			}
 		}
 	} else {
-		return fmt.Errorf("no appsec_config provided")
+		return errors.New("no appsec_config provided")
 	}
+
+	// Now we can set up the logger
+	appsecCfg.SetUpLogger()
 
 	w.AppsecRuntime, err = appsecCfg.Build()
 	if err != nil {
-		return fmt.Errorf("unable to build appsec_config : %s", err)
+		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
-
 	if err != nil {
-		return fmt.Errorf("unable to process on load rules : %s", err)
+		return fmt.Errorf("unable to process on load rules: %w", err)
 	}
 
 	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
 
-	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
+	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		//we copy AppsecRutime for each runner
+		// we copy AppsecRutime for each runner
 		wrt := *w.AppsecRuntime
 		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
-			inChan: w.InChan,
-			UUID:   appsecRunnerUUID,
-			logger: w.logger.WithFields(log.Fields{
-				"runner_uuid": appsecRunnerUUID,
-			}),
+			inChan:        w.InChan,
+			UUID:          appsecRunnerUUID,
+			logger:        w.logger.WithField("runner_uuid", appsecRunnerUUID),
 			AppsecRuntime: &wrt,
 			Labels:        w.config.Labels,
 		}
+
 		err := runner.Init(appsecCfg.GetDataDir())
 		if err != nil {
-			return fmt.Errorf("unable to initialize runner : %s", err)
+			return fmt.Errorf("unable to initialize runner: %w", err)
 		}
+
 		w.AppsecRunners[nbRoutine] = runner
 	}
 
 	w.logger.Infof("Created %d appsec runners", len(w.AppsecRunners))
 
-	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
+	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
+
 	return nil
 }
 
 func (w *AppsecSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return fmt.Errorf("AppSec datasource does not support command line acquisition")
+	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
 func (w *AppsecSource) GetMode() string {
@@ -242,31 +261,33 @@ func (w *AppsecSource) GetName() string {
 	return "appsec"
 }
 
-func (w *AppsecSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("AppSec datasource does not support command line acquisition")
+func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
-func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
+
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
 
 		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
+
 		for _, runner := range w.AppsecRunners {
-			runner := runner
 			runner.outChan = out
 			t.Go(func() error {
 				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
 				return runner.Run(t)
 			})
 		}
+
 		t.Go(func() error {
 			if w.config.ListenSocket != "" {
 				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
 				_ = os.RemoveAll(w.config.ListenSocket)
 				listener, err := net.Listen("unix", w.config.ListenSocket)
 				if err != nil {
-					return errors.Wrap(err, "Appsec server failed")
+					return fmt.Errorf("appsec server failed: %w", err)
 				}
 				defer listener.Close()
 				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
@@ -274,10 +295,11 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 				} else {
 					err = w.server.Serve(listener)
 				}
-				if err != nil && err != http.ErrServerClosed {
-					return errors.Wrap(err, "Appsec server failed")
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
+					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
+
 			return nil
 		})
 		t.Go(func() error {
@@ -291,18 +313,20 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 				}
 
 				if err != nil && err != http.ErrServerClosed {
-					return errors.Wrap(err, "Appsec server failed")
+					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
+
 			return nil
 		})
 		<-t.Dying()
 		w.logger.Info("Shutting down Appsec server")
-		//xx let's clean up the appsec runners :)
+		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
-		w.server.Shutdown(context.TODO())
+		w.server.Shutdown(ctx)
 		return nil
 	})
+
 	return nil
 }
 
@@ -338,7 +362,6 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 	defer resp.Body.Close()
 
 	return resp.StatusCode == http.StatusOK
-
 }
 
 // should this be in the runner ?
@@ -398,12 +421,12 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	logger.Debugf("Response: %+v", appsecResponse)
 
 	rw.WriteHeader(statusCode)
+
 	body, err := json.Marshal(appsecResponse)
 	if err != nil {
-		logger.Errorf("unable to marshal response: %s", err)
+		logger.Errorf("unable to serialize response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
 		rw.Write(body)
 	}
-
 }

@@ -1,70 +1,103 @@
 package appsecacquisition
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"time"
+
+	"github.com/oschwald/geoip2-golang"
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/types/variables"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
-func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
-	//if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
+func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
+
+	if src == nil || src.Scope == nil || *src.Scope != types.Ip {
+		return errors.New("source is nil or not an IP")
+	}
+
+	//GeoIP enrich
+	asndata, err := exprhelpers.GeoIPASNEnrich(src.IP)
+
+	if err != nil {
+		return err
+	} else if asndata != nil {
+		record := asndata.(*geoip2.ASN)
+		src.AsName = record.AutonomousSystemOrganization
+		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	}
+
+	cityData, err := exprhelpers.GeoIPEnrich(src.IP)
+	if err != nil {
+		return err
+	} else if cityData != nil {
+		record := cityData.(*geoip2.City)
+		src.Cn = record.Country.IsoCode
+		src.Latitude = float32(record.Location.Latitude)
+		src.Longitude = float32(record.Location.Longitude)
+	}
+
+	rangeData, err := exprhelpers.GeoIPRangeEnrich(src.IP)
+	if err != nil {
+		return err
+	} else if rangeData != nil {
+		record := rangeData.(*net.IPNet)
+		src.Range = record.String()
+	}
+	return nil
+}
+
+func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
+	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches {
 		return nil, nil
 	}
+
 	evt := types.Event{}
 	evt.Type = types.APPSEC
 	evt.Process = true
+	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
-		Value: ptr.Of(inEvt.Parsed["source_ip"]),
-		IP:    inEvt.Parsed["source_ip"],
+		Value: &sourceIP,
+		IP:    sourceIP,
 		Scope: ptr.Of(types.Ip),
 	}
 
+	// Enrich source with GeoIP data
+	if err := AppsecEventGenerationGeoIPEnrich(&source); err != nil {
+		log.Errorf("unable to enrich source with GeoIP data : %s", err)
+	}
+
+	// Build overflow
 	evt.Overflow.Sources = make(map[string]models.Source)
-	evt.Overflow.Sources["ip"] = source
+	evt.Overflow.Sources[sourceIP] = source
 
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
-	alert.Events = make([]*models.Event, 0)
-	alert.Meta = make(models.Meta, 0)
-	for _, key := range []string{"target_uri", "method"} {
+	alert.Events = make([]*models.Event, len(evt.Appsec.GetRuleIDs()))
 
-		valueByte, err := json.Marshal([]string{inEvt.Parsed[key]})
-		if err != nil {
-			log.Debugf("unable to serialize key %s", key)
-			continue
-		}
-
-		meta := models.MetaItems0{
-			Key:   key,
-			Value: string(valueByte),
-		}
-		alert.Meta = append(alert.Meta, &meta)
-	}
-	matchedZones := inEvt.Appsec.GetMatchedZones()
-	if matchedZones != nil {
-		valueByte, err := json.Marshal(matchedZones)
-		if err != nil {
-			log.Debugf("unable to serialize key matched_zones")
-		} else {
-			meta := models.MetaItems0{
-				Key:   "matched_zones",
-				Value: string(valueByte),
-			}
-			alert.Meta = append(alert.Meta, &meta)
+	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec, request)
+	if len(errors) > 0 {
+		for _, err := range errors {
+			log.Errorf("failed to generate appsec context: %s", err)
 		}
 	}
 
-	alert.EventsCount = ptr.Of(int32(1))
+	alert.Meta = metas
+
+	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
 	alert.Leakspeed = ptr.Of("")
 	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
@@ -78,15 +111,13 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
 	evt.Overflow.APIAlerts = []models.Alert{alert}
 	evt.Overflow.Alert = &alert
+
 	return &evt, nil
 }
 
 func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.Event, error) {
-	evt := types.Event{}
-	//we might want to change this based on in-band vs out-of-band ?
-	evt.Type = types.LOG
-	evt.ExpectMode = types.LIVE
-	//def needs fixing
+	evt := types.MakeEvent(false, types.LOG, true)
+	// def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{
 		"source_ip":           r.ClientIP,
@@ -96,19 +127,19 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		"req_uuid":            r.Tx.ID(),
 		"source":              "crowdsec-appsec",
 		"remediation_cmpt_ip": r.RemoteAddrNormalized,
-		//TBD:
-		//http_status
-		//user_agent
+		// TBD:
+		// http_status
+		// user_agent
 
 	}
 	evt.Line = types.Line{
 		Time: time.Now(),
-		//should we add some info like listen addr/port/path ?
+		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
 		Process: true,
 		Module:  "appsec",
 		Src:     "appsec",
-		Raw:     "dummy-appsec-data", //we discard empty Line.Raw items :)
+		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
 	evt.Appsec = types.AppsecEvent{}
 
@@ -140,29 +171,29 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 			"target_uri": req,
 		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	}
-
 }
 
 func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest) error {
-
 	if evt == nil {
-		//an error was already emitted, let's not spam the logs
+		// an error was already emitted, let's not spam the logs
 		return nil
 	}
 
 	if !req.Tx.IsInterrupted() {
-		//if the phase didn't generate an interruption, we don't have anything to add to the event
+		// if the phase didn't generate an interruption, we don't have anything to add to the event
 		return nil
 	}
-	//if one interruption was generated, event is good for processing :)
+	// if one interruption was generated, event is good for processing :)
 	evt.Process = true
 
 	if evt.Meta == nil {
 		evt.Meta = map[string]string{}
 	}
+
 	if evt.Parsed == nil {
 		evt.Parsed = map[string]string{}
 	}
+
 	if req.IsInBand {
 		evt.Meta["appsec_interrupted"] = "true"
 		evt.Meta["appsec_action"] = req.Tx.Interruption().Action
@@ -183,9 +214,11 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			if variable.Key() != "" {
 				key += "." + variable.Key()
 			}
+
 			if variable.Value() == "" {
 				continue
 			}
+
 			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
 				match := collectionToKeep.MatchString(key)
 				if match {
@@ -196,11 +229,12 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 				}
 			}
 		}
+
 		return true
 	})
 
 	for _, rule := range req.Tx.MatchedRules() {
-		if rule.Message() == "" || rule.DisruptiveAction() == "pass" || rule.DisruptiveAction() == "allow" {
+		if rule.Message() == "" {
 			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
 		}
@@ -218,11 +252,12 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
 		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
-			//Only set them for custom rules, not for rules written in seclang
+			// Only set them for custom rules, not for rules written in seclang
 			name = details.Name
 			version = details.Version
 			hash = details.Hash
 			ruleNameProm = details.Name
+
 			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
 		} else {
 			name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
@@ -231,18 +266,21 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
 		matchedZones := make([]string, 0)
+
 		for _, matchData := range rule.MatchedDatas() {
 			zone := matchData.Variable().Name()
+
 			varName := matchData.Key()
 			if varName != "" {
 				zone += "." + varName
 			}
+
 			matchedZones = append(matchedZones, zone)
 		}
 
 		corazaRule := map[string]interface{}{
 			"id":            rule.Rule().ID(),
-			"uri":           evt.Parsed["uri"],
+			"uri":           evt.Parsed["target_uri"],
 			"rule_type":     kind,
 			"method":        evt.Parsed["method"],
 			"disruptive":    rule.Disruptive(),
@@ -263,5 +301,4 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	}
 
 	return nil
-
 }

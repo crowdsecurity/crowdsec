@@ -2,7 +2,9 @@ package exprhelpers
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -15,11 +17,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
 	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
+	"github.com/oschwald/geoip2-golang"
+	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/umahmood/haversine"
@@ -33,9 +37,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var dataFile map[string][]string
-var dataFileRegex map[string][]*regexp.Regexp
-var dataFileRe2 map[string][]*re2.Regexp
+var (
+	dataFile      map[string][]string
+	dataFileRegex map[string][]*regexp.Regexp
+	dataFileRe2   map[string][]*re2.Regexp
+)
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
@@ -55,6 +61,12 @@ var exprFunctionOptions []expr.Option
 
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
+var (
+	geoIPCityReader  *geoip2.Reader
+	geoIPASNReader   *geoip2.Reader
+	geoIPRangeReader *maxminddb.Reader
+)
+
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 	if len(exprFunctionOptions) == 0 {
 		exprFunctionOptions = []expr.Option{}
@@ -66,10 +78,50 @@ func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 				))
 		}
 	}
+
 	ret := []expr.Option{}
 	ret = append(ret, exprFunctionOptions...)
 	ret = append(ret, expr.Env(ctx))
+
 	return ret
+}
+
+func GeoIPInit(datadir string) error {
+	var err error
+
+	geoIPCityReader, err = geoip2.Open(filepath.Join(datadir, "GeoLite2-City.mmdb"))
+	if err != nil {
+		log.Errorf("unable to open GeoLite2-City.mmdb : %s", err)
+		return err
+	}
+
+	geoIPASNReader, err = geoip2.Open(filepath.Join(datadir, "GeoLite2-ASN.mmdb"))
+	if err != nil {
+		log.Errorf("unable to open GeoLite2-ASN.mmdb : %s", err)
+		return err
+	}
+
+	geoIPRangeReader, err = maxminddb.Open(filepath.Join(datadir, "GeoLite2-ASN.mmdb"))
+	if err != nil {
+		log.Errorf("unable to open GeoLite2-ASN.mmdb : %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func GeoIPClose() {
+	if geoIPCityReader != nil {
+		geoIPCityReader.Close()
+	}
+
+	if geoIPASNReader != nil {
+		geoIPASNReader.Close()
+	}
+
+	if geoIPRangeReader != nil {
+		geoIPRangeReader.Close()
+	}
 }
 
 func Init(databaseClient *database.Client) error {
@@ -77,21 +129,20 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
-
+	XMLCacheInit()
 	return nil
 }
 
 func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
-
-	//cache is explicitly disabled
+	// cache is explicitly disabled
 	if CacheCfg.Cache != nil && !*CacheCfg.Cache {
 		return nil
 	}
-	//cache is implicitly disabled if no cache config is provided
+	// cache is implicitly disabled if no cache config is provided
 	if CacheCfg.Strategy == nil && CacheCfg.TTL == nil && CacheCfg.Size == nil {
 		return nil
 	}
-	//cache is enabled
+	// cache is enabled
 
 	if CacheCfg.Size == nil {
 		CacheCfg.Size = ptr.Of(50)
@@ -102,6 +153,7 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	if CacheCfg.Strategy == nil {
 		CacheCfg.Strategy = ptr.Of("LRU")
 	}
+
 	switch *CacheCfg.Strategy {
 	case "LRU":
 		gc = gc.LRU()
@@ -116,14 +168,17 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	if CacheCfg.TTL != nil {
 		gc.Expiration(*CacheCfg.TTL)
 	}
+
 	cache := gc.Build()
 	dataFileRegexCache[filename] = cache
+
 	return nil
 }
 
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateRegexpCacheMetrics() {
 	RegexpCacheMetrics.Reset()
+
 	for name := range dataFileRegexCache {
 		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
 	}
@@ -131,10 +186,12 @@ func UpdateRegexpCacheMetrics() {
 
 func FileInit(fileFolder string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+
 	if fileType == "" {
 		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
 		return nil
 	}
+
 	ok, err := existsInFileMaps(filename, fileType)
 	if ok {
 		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
@@ -145,6 +202,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 
 	filepath := filepath.Join(fileFolder, filename)
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
@@ -156,31 +214,29 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
 		}
-		if len(scanner.Text()) == 0 { //skip empty lines
+		if scanner.Text() == "" { //skip empty lines
 			continue
 		}
+
 		switch fileType {
 		case "regex", "regexp":
 			if fflag.Re2RegexpInfileSupport.IsEnabled() {
 				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
 				continue
 			}
+
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return nil
+	return scanner.Err()
 }
 
 // Expr helpers
 
 func Distinct(params ...any) (any, error) {
-
 	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
 		return nil, nil
 	}
@@ -189,8 +245,8 @@ func Distinct(params ...any) (any, error) {
 		return []interface{}{}, nil
 	}
 
-	var exists map[any]bool = make(map[any]bool)
-	var ret []interface{} = make([]interface{}, 0)
+	exists := make(map[any]bool)
+	ret := make([]interface{}, 0)
 
 	for _, val := range array {
 		if _, ok := exists[val]; !ok {
@@ -199,7 +255,6 @@ func Distinct(params ...any) (any, error) {
 		}
 	}
 	return ret, nil
-
 }
 
 func FlattenDistinct(params ...any) (any, error) {
@@ -216,7 +271,7 @@ func flatten(args []interface{}, v reflect.Value) []interface{} {
 	}
 
 	if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			args = flatten(args, v.Index(i))
 		}
 	} else {
@@ -225,6 +280,7 @@ func flatten(args []interface{}, v reflect.Value) []interface{} {
 
 	return args
 }
+
 func existsInFileMaps(filename string, ftype string) (bool, error) {
 	ok := false
 	var err error
@@ -537,7 +593,10 @@ func GetDecisionsCount(params ...any) (any, error) {
 		return 0, nil
 
 	}
-	count, err := dbClient.CountDecisionsByValue(value)
+
+	ctx := context.TODO()
+
+	count, err := dbClient.CountDecisionsByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -550,7 +609,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	value := params[0].(string)
 	since := params[1].(string)
 	if dbClient == nil {
-		log.Error("No database config to call GetDecisionsCount()")
+		log.Error("No database config to call GetDecisionsSinceCount()")
 		return 0, nil
 	}
 	sinceDuration, err := time.ParseDuration(since)
@@ -558,13 +617,46 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
 		return 0, nil
 	}
+
+	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
-	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
+
+	count, err := dbClient.CountDecisionsSinceByValue(ctx, value, sinceTime)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 	return count, nil
+}
+
+func GetActiveDecisionsCount(params ...any) (any, error) {
+	value := params[0].(string)
+	if dbClient == nil {
+		log.Error("No database config to call GetActiveDecisionsCount()")
+		return 0, nil
+	}
+	ctx := context.TODO()
+	count, err := dbClient.CountActiveDecisionsByValue(ctx, value)
+	if err != nil {
+		log.Errorf("Failed to get active decisions count from value '%s'", value)
+		return 0, err
+	}
+	return count, nil
+}
+
+func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
+	value := params[0].(string)
+	if dbClient == nil {
+		log.Error("No database config to call GetActiveDecisionsTimeLeft()")
+		return 0, nil
+	}
+	ctx := context.TODO()
+	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value)
+	if err != nil {
+		log.Errorf("Failed to get active decisions time left from value '%s'", value)
+		return 0, err
+	}
+	return timeLeft, nil
 }
 
 // func LookupHost(value string) []string {
@@ -682,7 +774,6 @@ func B64Decode(params ...any) (any, error) {
 }
 
 func ParseKV(params ...any) (any, error) {
-
 	blob := params[0].(string)
 	target := params[1].(map[string]interface{})
 	prefix := params[2].(string)
@@ -690,7 +781,7 @@ func ParseKV(params ...any) (any, error) {
 	matches := keyValuePattern.FindAllStringSubmatch(blob, -1)
 	if matches == nil {
 		log.Errorf("could not find any key/value pair in line")
-		return nil, fmt.Errorf("invalid input format")
+		return nil, errors.New("invalid input format")
 	}
 	if _, ok := target[prefix]; !ok {
 		target[prefix] = make(map[string]string)
@@ -698,7 +789,7 @@ func ParseKV(params ...any) (any, error) {
 		_, ok := target[prefix].(map[string]string)
 		if !ok {
 			log.Errorf("ParseKV: target is not a map[string]string")
-			return nil, fmt.Errorf("target is not a map[string]string")
+			return nil, errors.New("target is not a map[string]string")
 		}
 	}
 	for _, match := range matches {

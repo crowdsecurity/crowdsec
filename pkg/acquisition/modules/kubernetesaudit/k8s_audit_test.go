@@ -1,17 +1,19 @@
 package kubernetesauditacquisition
 
 import (
+	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -46,12 +48,12 @@ listen_addr: 0.0.0.0`,
 			err := f.UnmarshalConfig([]byte(test.config))
 
 			assert.Contains(t, err.Error(), test.expectedErr)
-
 		})
 	}
 }
 
 func TestInvalidConfig(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name        string
 		config      string
@@ -67,9 +69,7 @@ webhook_path: /k8s-audit`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "k8s-audit",
-	})
+	subLogger := log.WithField("type", "k8s-audit")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -85,7 +85,7 @@ webhook_path: /k8s-audit`,
 			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 
 			require.NoError(t, err)
-			f.StreamingAcquisition(out, tb)
+			f.StreamingAcquisition(ctx, out, tb)
 
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
@@ -100,6 +100,7 @@ webhook_path: /k8s-audit`,
 }
 
 func TestHandler(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name               string
 		config             string
@@ -230,9 +231,7 @@ webhook_path: /k8s-audit`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "k8s-audit",
-	})
+	subLogger := log.WithField("type", "k8s-audit")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -261,14 +260,14 @@ webhook_path: /k8s-audit`,
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))
 			w := httptest.NewRecorder()
 
-			f.StreamingAcquisition(out, tb)
+			f.StreamingAcquisition(ctx, out, tb)
 
 			f.webhookHandler(w, req)
 
 			res := w.Result()
 
 			assert.Equal(t, test.expectedStatusCode, res.StatusCode)
-			//time.Sleep(1 * time.Second)
+			// time.Sleep(1 * time.Second)
 			require.NoError(t, err)
 
 			tb.Kill(nil)

@@ -69,7 +69,7 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func smokeHandler(req *http.Request) *http.Response {
-	apiKey := req.Header.Get("x-api-key")
+	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,
@@ -109,7 +109,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	}
 }
 
-func TestNillClient(t *testing.T) {
+func TestNilClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
 	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {

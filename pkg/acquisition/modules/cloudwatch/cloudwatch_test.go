@@ -1,6 +1,7 @@
 package cloudwatchacquisition
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -10,15 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*
@@ -33,6 +35,7 @@ func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
 	input := &cloudwatchlogs.DescribeLogGroupsInput{}
 	result, err := cw.cwClient.DescribeLogGroups(input)
 	require.NoError(t, err)
+
 	for _, group := range result.LogGroups {
 		_, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 			LogGroupName: group.LogGroupName,
@@ -51,7 +54,7 @@ func checkForLocalStackAvailability() error {
 
 	_, err := net.Dial("tcp", v)
 	if err != nil {
-		return fmt.Errorf("while dialing %s : %s : aws endpoint isn't available", v, err)
+		return fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
 	}
 
 	return nil
@@ -61,18 +64,22 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		os.Exit(0)
 	}
+
 	if err := checkForLocalStackAvailability(); err != nil {
 		log.Fatalf("local stack error : %s", err)
 	}
+
 	def_PollNewStreamInterval = 1 * time.Second
 	def_PollStreamInterval = 1 * time.Second
 	def_StreamReadTimeout = 10 * time.Second
 	def_MaxStreamAge = 5 * time.Second
 	def_PollDeadStreamInterval = 5 * time.Second
+
 	os.Exit(m.Run())
 }
 
 func TestWatchLogGroupForStreams(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -423,7 +430,6 @@ stream_name: test_stream`),
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
@@ -447,7 +453,7 @@ stream_name: test_stream`),
 			dbgLogger.Infof("running StreamingAcquisition")
 			actmb := tomb.Tomb{}
 			actmb.Go(func() error {
-				err := cw.StreamingAcquisition(out, &actmb)
+				err := cw.StreamingAcquisition(ctx, out, &actmb)
 				dbgLogger.Infof("acquis done")
 				cstest.RequireErrorContains(t, err, tc.expectedStartErr)
 				return nil
@@ -503,7 +509,6 @@ stream_name: test_stream`),
 				if len(res) != 0 {
 					t.Fatalf("leftover unmatched results : %v", res)
 				}
-
 			}
 			if tc.teardown != nil {
 				tc.teardown(t, &cw)
@@ -513,6 +518,7 @@ stream_name: test_stream`),
 }
 
 func TestConfiguration(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -556,7 +562,6 @@ stream_name: test_stream`),
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
@@ -572,9 +577,9 @@ stream_name: test_stream`),
 
 			switch cw.GetMode() {
 			case "tail":
-				err = cw.StreamingAcquisition(out, &tmb)
+				err = cw.StreamingAcquisition(ctx, out, &tmb)
 			case "cat":
-				err = cw.OneShotAcquisition(out, &tmb)
+				err = cw.OneShotAcquisition(ctx, out, &tmb)
 			}
 
 			cstest.RequireErrorContains(t, err, tc.expectedStartErr)
@@ -621,7 +626,6 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
@@ -633,6 +637,8 @@ func TestConfigureByDSN(t *testing.T) {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -743,7 +749,6 @@ func TestOneShotAcquisition(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
@@ -765,7 +770,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			var rcvdEvts []types.Event
 
 			dbgLogger.Infof("running StreamingAcquisition")
-			err = cw.OneShotAcquisition(out, &tmb)
+			err = cw.OneShotAcquisition(ctx, out, &tmb)
 			dbgLogger.Infof("acquis done")
 			cstest.RequireErrorContains(t, err, tc.expectedStartErr)
 			close(out)
@@ -801,7 +806,6 @@ func TestOneShotAcquisition(t *testing.T) {
 				if len(res) != 0 {
 					t.Fatalf("leftover unmatched results : %v", res)
 				}
-
 			}
 			if tc.teardown != nil {
 				tc.teardown(t, &cw)

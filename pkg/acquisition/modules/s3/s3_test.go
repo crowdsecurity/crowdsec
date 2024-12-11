@@ -14,11 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -207,6 +208,7 @@ func (msqs mockSQSClientNotif) DeleteMessage(input *sqs.DeleteMessageInput) (*sq
 }
 
 func TestDSNAcquis(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name               string
 		dsn                string
@@ -259,20 +261,19 @@ func TestDSNAcquis(t *testing.T) {
 
 			f.s3Client = mockS3Client{}
 			tmb := tomb.Tomb{}
-			err = f.OneShotAcquisition(out, &tmb)
+			err = f.OneShotAcquisition(ctx, out, &tmb)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
 			time.Sleep(2 * time.Second)
 			done <- true
 			assert.Equal(t, test.expectedCount, linesRead)
-
 		})
 	}
-
 }
 
 func TestListPolling(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name          string
 		config        string
@@ -332,8 +333,7 @@ prefix: foo/
 				}
 			}()
 
-			err = f.StreamingAcquisition(out, &tb)
-
+			err = f.StreamingAcquisition(ctx, out, &tb)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -350,6 +350,7 @@ prefix: foo/
 }
 
 func TestSQSPoll(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name          string
 		config        string
@@ -413,8 +414,7 @@ sqs_name: test
 				}
 			}()
 
-			err = f.StreamingAcquisition(out, &tb)
-
+			err = f.StreamingAcquisition(ctx, out, &tb)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}

@@ -155,6 +155,11 @@ assert_log() {
 }
 export -f assert_log
 
+cert_serial_number() {
+    cfssl certinfo -cert "$1" | jq -r '.serial_number'
+}
+export -f cert_serial_number
+
 # Compare ignoring the key order, and allow "expected" without quoted identifiers.
 # Preserve the output variable in case the following commands require it.
 assert_json() {
@@ -260,7 +265,7 @@ hub_strip_index() {
     local INDEX
     INDEX=$(config_get .config_paths.index_path)
     local hub_min
-    hub_min=$(jq <"$INDEX" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
+    hub_min=$(jq <"$INDEX" 'del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
     echo "$hub_min" >"$INDEX"
 }
 export -f hub_strip_index
@@ -276,3 +281,62 @@ rune() {
     run --separate-stderr "$@"
 }
 export -f rune
+
+# call the lapi through unix socket
+# the path (and query string) must be the first parameter, the others will be passed to curl
+curl-socket() {
+    [[ -z "$1" ]] && { fail "${FUNCNAME[0]}: missing path"; }
+    local path=$1
+    shift
+    local socket
+    socket=$(config_get '.api.server.listen_socket')
+    [[ -z "$socket" ]] && { fail "${FUNCNAME[0]}: missing .api.server.listen_socket"; }
+    # curl needs a fake hostname when using a unix socket
+    curl --unix-socket "$socket" "http://lapi$path" "$@"
+}
+export -f curl-socket
+
+# call the lapi through tcp
+# the path (and query string) must be the first parameter, the others will be passed to curl
+curl-tcp() {
+    [[ -z "$1" ]] && { fail "${FUNCNAME[0]}: missing path"; }
+    local path=$1
+    shift
+    local cred
+    cred=$(config_get .api.client.credentials_path)
+    local base_url
+    base_url="$(yq '.url' < "$cred")"
+    curl "$base_url$path" "$@"
+}
+export -f curl-tcp
+
+# call the lapi through unix socket with an API_KEY (authenticates as a bouncer)
+# after $1, pass throught extra arguments to curl
+curl-with-key() {
+    [[ -z "$API_KEY" ]] && { fail "${FUNCNAME[0]}: missing API_KEY"; }
+    curl-tcp "$@" -sS --fail-with-body -H "X-Api-Key: $API_KEY"
+}
+export -f curl-with-key
+
+# call the lapi through unix socket with a TOKEN (authenticates as a machine)
+# after $1, pass throught extra arguments to curl
+curl-with-token() {
+    [[ -z "$TOKEN" ]] && { fail "${FUNCNAME[0]}: missing TOKEN"; }
+    # curl needs a fake hostname when using a unix socket
+    curl-tcp "$@" -sS --fail-with-body -H "Authorization: Bearer $TOKEN"
+}
+export -f curl-with-token
+
+# as a log processor, connect to lapi and get a token
+lp-get-token() {
+    local cred
+    cred=$(config_get .api.client.credentials_path)
+    local resp
+    resp=$(yq -oj -I0 '{"machine_id":.login,"password":.password}' < "$cred" | curl-socket '/v1/watchers/login' -s -X POST --data-binary @-)
+    if [[ "$(yq -e '.code' <<<"$resp")" != 200 ]]; then
+        echo "login_lp: failed to login" >&3
+        return 1
+    fi
+    echo "$resp" | yq -r '.token'
+}
+export -f lp-get-token

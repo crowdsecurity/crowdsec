@@ -33,7 +33,7 @@ type DatabaseCfg struct {
 	Type             string      `yaml:"type"`
 	Flush            *FlushDBCfg `yaml:"flush"`
 	LogLevel         *log.Level  `yaml:"log_level"`
-	MaxOpenConns     *int        `yaml:"max_open_conns,omitempty"`
+	MaxOpenConns     int         `yaml:"max_open_conns,omitempty"`
 	UseWal           *bool       `yaml:"use_wal,omitempty"`
 	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
 }
@@ -48,11 +48,12 @@ type AuthGCCfg struct {
 }
 
 type FlushDBCfg struct {
-	MaxItems   *int       `yaml:"max_items,omitempty"`
+	MaxItems *int `yaml:"max_items,omitempty"`
 	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
-	MaxAge     *string    `yaml:"max_age,omitempty"`
-	BouncersGC *AuthGCCfg `yaml:"bouncers_autodelete,omitempty"`
-	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
+	MaxAge        *string        `yaml:"max_age,omitempty"`
+	BouncersGC    *AuthGCCfg     `yaml:"bouncers_autodelete,omitempty"`
+	AgentsGC      *AuthGCCfg     `yaml:"agents_autodelete,omitempty"`
+	MetricsMaxAge *time.Duration `yaml:"metrics_max_age,omitempty"`
 }
 
 func (c *Config) LoadDBConfig(inCli bool) error {
@@ -68,8 +69,8 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 		c.API.Server.DbConfig = c.DbConfig
 	}
 
-	if c.DbConfig.MaxOpenConns == nil {
-		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
+	if c.DbConfig.MaxOpenConns == 0 {
+		c.DbConfig.MaxOpenConns = DEFAULT_MAX_OPEN_CONNS
 	}
 
 	if !inCli && c.DbConfig.Type == "sqlite" {
@@ -79,7 +80,10 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 			switch {
 			case err != nil:
 				log.Warnf("unable to determine if database is on network filesystem: %s", err)
-				log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+				log.Warning(
+					"You are using sqlite without WAL, this can have a performance impact. " +
+						"If you do not store the database in a network share, set db_config.use_wal to true. " +
+						"Set explicitly to false to disable this warning.")
 			case isNetwork:
 				log.Debugf("database is on network filesystem (%s), setting useWal to false", fsType)
 				c.DbConfig.UseWal = ptr.Of(false)
@@ -130,6 +134,10 @@ func (d *DatabaseCfg) ConnectionString() string {
 			connString = fmt.Sprintf("%s:%s@unix(%s)/%s?parseTime=True", d.User, d.Password, d.DbPath, d.DbName)
 		} else {
 			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
+		}
+
+		if d.Sslmode != "" {
+			connString = fmt.Sprintf("%s&tls=%s", connString, d.Sslmode)
 		}
 	case "postgres", "postgresql", "pgx":
 		if d.isSocketConfig() {

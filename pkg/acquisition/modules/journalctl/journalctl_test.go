@@ -1,6 +1,7 @@
 package journalctlacquisition
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,14 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -47,9 +49,7 @@ journalctl_filter:
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "journalctl",
-	})
+	subLogger := log.WithField("type", "journalctl")
 
 	for _, test := range tests {
 		f := JournalCtlSource{}
@@ -97,9 +97,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "journalctl",
-	})
+	subLogger := log.WithField("type", "journalctl")
 
 	for _, test := range tests {
 		f := JournalCtlSource{}
@@ -109,6 +107,8 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -153,13 +153,9 @@ journalctl_filter:
 		if ts.expectedOutput != "" {
 			logger, hook = test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = logger.WithField("type", "journalctl")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = log.WithField("type", "journalctl")
 		}
 
 		tomb := tomb.Tomb{}
@@ -171,7 +167,7 @@ journalctl_filter:
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		err = j.OneShotAcquisition(out, &tomb)
+		err = j.OneShotAcquisition(ctx, out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if err != nil {
@@ -194,6 +190,7 @@ journalctl_filter:
 }
 
 func TestStreaming(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -227,13 +224,9 @@ journalctl_filter:
 		if ts.expectedOutput != "" {
 			logger, hook = test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = logger.WithField("type", "journalctl")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "journalctl",
-			})
+			subLogger = log.WithField("type", "journalctl")
 		}
 
 		tomb := tomb.Tomb{}
@@ -261,7 +254,7 @@ journalctl_filter:
 			}()
 		}
 
-		err = j.StreamingAcquisition(out, &tomb)
+		err = j.StreamingAcquisition(ctx, out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if err != nil {

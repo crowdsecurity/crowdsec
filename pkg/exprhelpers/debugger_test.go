@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/antonmedv/expr"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type ExprDbgTest struct {
@@ -25,6 +26,7 @@ type ExprDbgTest struct {
 func UpperTwo(params ...any) (any, error) {
 	s := params[0].(string)
 	v := params[1].(string)
+
 	return strings.ToUpper(s) + strings.ToUpper(v), nil
 }
 
@@ -32,6 +34,7 @@ func UpperThree(params ...any) (any, error) {
 	s := params[0].(string)
 	v := params[1].(string)
 	x := params[2].(string)
+
 	return strings.ToUpper(s) + strings.ToUpper(v) + strings.ToUpper(x), nil
 }
 
@@ -40,6 +43,7 @@ func UpperN(params ...any) (any, error) {
 	v := params[1].(string)
 	x := params[2].(string)
 	y := params[3].(string)
+
 	return strings.ToUpper(s) + strings.ToUpper(v) + strings.ToUpper(x) + strings.ToUpper(y), nil
 }
 
@@ -51,6 +55,7 @@ type teststruct struct {
 	Foo string
 }
 
+// You need to add the tag expr_debug when running the tests
 func TestBaseDbg(t *testing.T) {
 	defaultEnv := map[string]interface{}{
 		"queue":        &types.Queue{},
@@ -59,7 +64,7 @@ func TestBaseDbg(t *testing.T) {
 		"base_string":  "hello world",
 		"base_int":     42,
 		"base_float":   42.42,
-		"nillvar":      &teststruct{},
+		"nilvar":       &teststruct{},
 		"base_struct": struct {
 			Foo   string
 			Bar   int
@@ -74,13 +79,13 @@ func TestBaseDbg(t *testing.T) {
 	// use '%#v' to dump in golang syntax
 	// use regexp to clear empty/default fields:
 	// [a-z]+: (false|\[\]string\(nil\)|""),
-	//ConditionResult:(*bool)
+	// ConditionResult:(*bool)
 
-	//Missing multi parametes function
+	// Missing multi parametes function
 	tests := []ExprDbgTest{
 		{
-			Name:                "nill deref",
-			Expr:                "Upper('1') == '1' && nillvar.Foo == '42'",
+			Name:                "nil deref",
+			Expr:                "Upper('1') == '1' && nilvar.Foo == '42'",
 			Env:                 defaultEnv,
 			ExpectedFailRuntime: true,
 			ExpectedOutputs: []OpOutput{
@@ -264,13 +269,13 @@ func TestBaseDbg(t *testing.T) {
 				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"/someotherurl?account-name=admin&account...\""}, FuncResults: []string{"\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "contains Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
 				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: true},
 			},
 		},
 	}
 
 	logger := log.WithField("test", "exprhelpers")
+
 	for _, test := range tests {
 		if test.LogLevel != 0 {
 			log.SetLevel(test.LogLevel)
@@ -307,10 +312,13 @@ func TestBaseDbg(t *testing.T) {
 				t.Fatalf("test %s : unexpected compile error : %s", test.Name, err)
 			}
 		}
-		if test.Name == "nill deref" {
-			test.Env["nillvar"] = nil
+
+		if test.Name == "nil deref" {
+			test.Env["nilvar"] = nil
 		}
+
 		outdbg, ret, err := RunWithDebug(prog, test.Env, logger)
+
 		if test.ExpectedFailRuntime {
 			if err == nil {
 				t.Fatalf("test %s : expected runtime error", test.Name)
@@ -320,25 +328,30 @@ func TestBaseDbg(t *testing.T) {
 				t.Fatalf("test %s : unexpected runtime error : %s", test.Name, err)
 			}
 		}
+
 		log.SetLevel(log.DebugLevel)
 		DisplayExprDebug(prog, outdbg, logger, ret)
+
 		if len(outdbg) != len(test.ExpectedOutputs) {
 			t.Errorf("failed test %s", test.Name)
 			t.Errorf("%#v", outdbg)
-			//out, _ := yaml.Marshal(outdbg)
-			//fmt.Printf("%s", string(out))
+			// out, _ := yaml.Marshal(outdbg)
+			// fmt.Printf("%s", string(out))
 			t.Fatalf("test %s : expected %d outputs, got %d", test.Name, len(test.ExpectedOutputs), len(outdbg))
-
 		}
+
 		for i, out := range outdbg {
-			if !reflect.DeepEqual(out, test.ExpectedOutputs[i]) {
-				spew.Config.DisableMethods = true
-				t.Errorf("failed test %s", test.Name)
-				t.Errorf("expected : %#v", test.ExpectedOutputs[i])
-				t.Errorf("got      : %#v", out)
-				t.Fatalf("%d/%d    : mismatch", i, len(outdbg))
+			if reflect.DeepEqual(out, test.ExpectedOutputs[i]) {
+				// DisplayExprDebug(prog, outdbg, logger, ret)
+				continue
 			}
-			//DisplayExprDebug(prog, outdbg, logger, ret)
+
+			spew.Config.DisableMethods = true
+
+			t.Errorf("failed test %s", test.Name)
+			t.Errorf("expected : %#v", test.ExpectedOutputs[i])
+			t.Errorf("got      : %#v", out)
+			t.Fatalf("%d/%d    : mismatch", i, len(outdbg))
 		}
 	}
 }

@@ -15,11 +15,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-var ctx = context.Background()
-
 func resetTestTomb(testTomb *tomb.Tomb, pw *PluginWatcher) {
 	testTomb.Kill(nil)
 	<-pw.PluginEvents
+
 	if err := testTomb.Wait(); err != nil {
 		log.Fatal(err)
 	}
@@ -34,7 +33,7 @@ func resetWatcherAlertCounter(pw *PluginWatcher) {
 }
 
 func insertNAlertsToPlugin(pw *PluginWatcher, n int, pluginName string) {
-	for i := 0; i < n; i++ {
+	for range n {
 		pw.Inserts <- pluginName
 	}
 }
@@ -46,13 +45,17 @@ func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+
 	return nil
 }
 
 func TestPluginWatcherInterval(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows because timing is not reliable")
 	}
+
 	pw := PluginWatcher{}
 	alertsByPluginName := make(map[string][]*models.Alert)
 	testTomb := tomb.Tomb{}
@@ -66,6 +69,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 
 	ct, cancel := context.WithTimeout(ctx, time.Microsecond)
 	defer cancel()
+
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	cstest.RequireErrorContains(t, err, "context deadline exceeded")
 	resetTestTomb(&testTomb, &pw)
@@ -74,6 +78,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 
 	ct, cancel = context.WithTimeout(ctx, time.Millisecond*5)
 	defer cancel()
+
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	require.NoError(t, err)
 	resetTestTomb(&testTomb, &pw)
@@ -81,9 +86,12 @@ func TestPluginWatcherInterval(t *testing.T) {
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows because timing is not reliable")
 	}
+
 	pw := PluginWatcher{}
 	alertsByPluginName := make(map[string][]*models.Alert)
 	configs := map[string]PluginConfig{
@@ -92,28 +100,34 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 		},
 	}
 	testTomb := tomb.Tomb{}
+
 	pw.Init(configs, alertsByPluginName)
 	pw.Start(&testTomb)
 
 	// Channel won't contain any events since threshold is not crossed.
 	ct, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
+
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	cstest.RequireErrorContains(t, err, "context deadline exceeded")
 
 	// Channel won't contain any events since threshold is not crossed.
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 4, "testPlugin")
+
 	ct, cancel = context.WithTimeout(ctx, time.Second)
 	defer cancel()
+
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	cstest.RequireErrorContains(t, err, "context deadline exceeded")
 
 	// Channel will contain an event since threshold is crossed.
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 5, "testPlugin")
+
 	ct, cancel = context.WithTimeout(ctx, time.Second)
 	defer cancel()
+
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	require.NoError(t, err)
 	resetTestTomb(&testTomb, &pw)

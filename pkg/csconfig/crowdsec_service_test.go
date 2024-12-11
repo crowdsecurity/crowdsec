@@ -61,9 +61,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionFiles:          []string{acquisFullPath},
 				SimulationFilePath:        "./testdata/simulation.yaml",
 				// context is loaded in pkg/alertcontext
-//				ContextToSend: map[string][]string{
-//					"source_ip": {"evt.Parsed.source_ip"},
-//				},
+				// ContextToSend: map[string][]string{
+				// 	"source_ip": {"evt.Parsed.source_ip"},
+				// },
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
 				},
@@ -100,9 +100,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				ConsoleContextValueLength: 0,
 				AcquisitionFiles:          []string{acquisFullPath, acquisInDirFullPath},
 				// context is loaded in pkg/alertcontext
-//				ContextToSend: map[string][]string{
-//					"source_ip": {"evt.Parsed.source_ip"},
-//				},
+				// ContextToSend: map[string][]string{
+				// 	"source_ip": {"evt.Parsed.source_ip"},
+				// },
 				SimulationFilePath: "./testdata/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
@@ -139,9 +139,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionFiles:          []string{},
 				SimulationFilePath:        "",
 				// context is loaded in pkg/alertcontext
-//				ContextToSend: map[string][]string{
-//					"source_ip": {"evt.Parsed.source_ip"},
-//				},
+				// ContextToSend: map[string][]string{
+				// 	"source_ip": {"evt.Parsed.source_ip"},
+				// },
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
 				},
@@ -181,10 +181,10 @@ func TestLoadCrowdsec(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadCrowdsec()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
 			if tc.expectedErr != "" {
 				return
 			}

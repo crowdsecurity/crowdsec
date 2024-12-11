@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -35,7 +35,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		xlog := log.New()
 		if err := types.ConfigureLogger(xlog); err != nil {
-			log.Fatalf("While creating profiles-specific logger : %s", err)
+			return nil, fmt.Errorf("while configuring profiles-specific logger: %w", err)
 		}
 
 		xlog.SetLevel(log.InfoLevel)
@@ -196,6 +196,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 				decisions = append(decisions, subdecisions...)
 			} else {
 				Profile.Logger.Debugf("Profile %s filter is unsuccessful", Profile.Cfg.Name)
+
 				if Profile.Cfg.OnFailure == "break" {
 					break
 				}

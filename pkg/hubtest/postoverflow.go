@@ -23,12 +23,8 @@ func (t *HubTestItem) installPostoverflowItem(item *cwhub.Item) error {
 	// runtime/postoverflows/s00-enrich
 	itemTypeDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, item.Stage)
 
-	if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", hubDirPostoverflowDest, err)
-	}
-
-	if err := os.MkdirAll(itemTypeDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", itemTypeDirDest, err)
+	if err := createDirs([]string{hubDirPostoverflowDest, itemTypeDirDest}); err != nil {
+		return err
 	}
 
 	// runtime/hub/postoverflows/s00-enrich/crowdsecurity/rdns.yaml

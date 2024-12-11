@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
-
 	log "github.com/sirupsen/logrus"
 )
 
@@ -15,11 +14,11 @@ import (
 func JsonExtractLib(params ...any) (any, error) {
 	jsblob := params[0].(string)
 	target := params[1].([]string)
+
 	value, dataType, _, err := jsonparser.Get(
 		jsonparser.StringToBytes(jsblob),
 		target...,
 	)
-
 	if err != nil {
 		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
 			log.Debugf("%+v doesn't exist", target)
@@ -93,7 +92,6 @@ func jsonExtractType(jsblob string, target string, t jsonparser.ValueType) ([]by
 		jsonparser.StringToBytes(jsblob),
 		fullpath...,
 	)
-
 	if err != nil {
 		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
 			log.Debugf("Key %+v doesn't exist", target)
@@ -115,8 +113,8 @@ func jsonExtractType(jsblob string, target string, t jsonparser.ValueType) ([]by
 func JsonExtractSlice(params ...any) (any, error) {
 	jsblob := params[0].(string)
 	target := params[1].(string)
-	value, err := jsonExtractType(jsblob, target, jsonparser.Array)
 
+	value, err := jsonExtractType(jsblob, target, jsonparser.Array)
 	if err != nil {
 		log.Errorf("JsonExtractSlice : %s", err)
 		return []interface{}(nil), nil
@@ -136,8 +134,8 @@ func JsonExtractSlice(params ...any) (any, error) {
 func JsonExtractObject(params ...any) (any, error) {
 	jsblob := params[0].(string)
 	target := params[1].(string)
-	value, err := jsonExtractType(jsblob, target, jsonparser.Object)
 
+	value, err := jsonExtractType(jsblob, target, jsonparser.Object)
 	if err != nil {
 		log.Errorf("JsonExtractObject: %s", err)
 		return map[string]interface{}(nil), nil

@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -43,6 +42,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
 		Simulated:       &alert.Simulated,
+		Remediation:     alert.Remediation,
 		UUID:            alert.UUID,
 		Source: &models.Source{
 			Scope:     &alert.SourceScope,
@@ -63,7 +63,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		var Metas models.Meta
 
 		if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
-			log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
+			log.Errorf("unable to parse events meta '%s' : %s", eventItem.Serialized, err)
 		}
 
 		outputAlert.Events = append(outputAlert.Events, &models.Event{
@@ -80,7 +80,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 	}
 
 	for _, decisionItem := range alert.Edges.Decisions {
-		duration := decisionItem.Until.Sub(time.Now().UTC()).String()
+		duration := decisionItem.Until.Sub(time.Now().UTC()).Round(time.Second).String()
 		outputAlert.Decisions = append(outputAlert.Decisions, &models.Decision{
 			Duration:  &duration, // transform into time.Time ?
 			Scenario:  &decisionItem.Scenario,
@@ -109,7 +109,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
 	if c.PluginChannel != nil {
 	RETRY:
-		for try := 0; try < 3; try++ {
+		for try := range 3 {
 			select {
 			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
 				log.Debugf("alert sent to Plugin channel")
@@ -123,25 +123,11 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
-func normalizeScope(scope string) string {
-	switch strings.ToLower(scope) {
-	case "ip":
-		return types.Ip
-	case "range":
-		return types.Range
-	case "as":
-		return types.AS
-	case "country":
-		return types.Country
-	default:
-		return scope
-	}
-}
-
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
 
+	ctx := gctx.Request.Context()
 	machineID, _ := getMachineIDFromContext(gctx)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
@@ -159,12 +145,12 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	for _, alert := range input {
 		// normalize scope for alert.Source and decisions
 		if alert.Source.Scope != nil {
-			*alert.Source.Scope = normalizeScope(*alert.Source.Scope)
+			*alert.Source.Scope = types.NormalizeScope(*alert.Source.Scope)
 		}
 
 		for _, decision := range alert.Decisions {
 			if decision.Scope != nil {
-				*decision.Scope = normalizeScope(*decision.Scope)
+				*decision.Scope = types.NormalizeScope(*decision.Scope)
 			}
 		}
 
@@ -254,7 +240,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.DBClient.CanFlush = false
 	}
 
-	alerts, err := c.DBClient.CreateAlert(machineID, input)
+	alerts, err := c.DBClient.CreateAlert(ctx, machineID, input)
 	c.DBClient.CanFlush = true
 
 	if err != nil {
@@ -276,7 +262,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 // FindAlerts: returns alerts from the database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
-	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
+	ctx := gctx.Request.Context()
+
+	result, err := c.DBClient.QueryAlertWithFilter(ctx, gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -294,15 +282,16 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 
 // FindAlertByID returns the alert associated with the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
+	ctx := gctx.Request.Context()
 	alertIDStr := gctx.Param("alert_id")
-	alertID, err := strconv.Atoi(alertIDStr)
 
+	alertID, err := strconv.Atoi(alertIDStr)
 	if err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
 		return
 	}
 
-	result, err := c.DBClient.GetAlertByID(alertID)
+	result, err := c.DBClient.GetAlertByID(ctx, alertID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -322,6 +311,8 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 	var err error
 
+	ctx := gctx.Request.Context()
+
 	incomingIP := gctx.ClientIP()
 	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) && !isUnixSocket(gctx) {
 		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
@@ -336,7 +327,7 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 		return
 	}
 
-	err = c.DBClient.DeleteAlertByID(decisionID)
+	err = c.DBClient.DeleteAlertByID(ctx, decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -349,13 +340,15 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
+	ctx := gctx.Request.Context()
+
 	incomingIP := gctx.ClientIP()
 	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) && !isUnixSocket(gctx) {
 		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 
-	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
+	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(ctx, gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return

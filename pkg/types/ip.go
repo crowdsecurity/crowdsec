@@ -23,7 +23,8 @@ func LastAddress(n net.IPNet) net.IP {
 			ip[6] | ^n.Mask[6], ip[7] | ^n.Mask[7], ip[8] | ^n.Mask[8],
 			ip[9] | ^n.Mask[9], ip[10] | ^n.Mask[10], ip[11] | ^n.Mask[11],
 			ip[12] | ^n.Mask[12], ip[13] | ^n.Mask[13], ip[14] | ^n.Mask[14],
-			ip[15] | ^n.Mask[15]}
+			ip[15] | ^n.Mask[15],
+		}
 	}
 
 	return net.IPv4(

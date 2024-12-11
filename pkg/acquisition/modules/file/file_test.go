@@ -1,6 +1,7 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -49,12 +50,9 @@ exclude_regexps: ["as[a-$d"]`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "file",
-	})
+	subLogger := log.WithField("type", "file")
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
 			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
@@ -91,12 +89,9 @@ func TestConfigureDSN(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "file",
-	})
+	subLogger := log.WithField("type", "file")
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
 			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
@@ -106,6 +101,8 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
 
@@ -206,14 +203,11 @@ filename: test_files/test_delete.log`,
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithFields(log.Fields{
-				"type": "file",
-			})
+			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event, 100)
@@ -232,7 +226,7 @@ filename: test_files/test_delete.log`,
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
-			err = f.OneShotAcquisition(out, &tomb)
+			err = f.OneShotAcquisition(ctx, out, &tomb)
 			actualLines := len(out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
@@ -252,6 +246,7 @@ filename: test_files/test_delete.log`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
+	ctx := context.Background()
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
 	testPattern := "test_files/*.log"
@@ -367,14 +362,11 @@ force_inotify: true`, testPattern),
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithFields(log.Fields{
-				"type": "file",
-			})
+			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
@@ -406,18 +398,18 @@ force_inotify: true`, testPattern),
 				}()
 			}
 
-			err = f.StreamingAcquisition(out, &tomb)
+			err = f.StreamingAcquisition(ctx, out, &tomb)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
 				fd, err := os.Create("test_files/stream.log")
 				require.NoError(t, err, "could not create test file")
 
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
-						t.Fatalf("could not write test file : %s", err)
 						os.Remove("test_files/stream.log")
+						t.Fatalf("could not write test file : %s", err)
 					}
 				}
 
@@ -451,9 +443,7 @@ func TestExclusion(t *testing.T) {
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
 	// logger.SetLevel(ts.logLevel)
-	subLogger := logger.WithFields(log.Fields{
-		"type": "file",
-	})
+	subLogger := logger.WithField("type", "file")
 
 	f := fileacquisition.FileSource{}
 	if err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE); err != nil {

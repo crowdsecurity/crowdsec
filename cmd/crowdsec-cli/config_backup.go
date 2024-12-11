@@ -21,9 +21,7 @@ func (cli *cliConfig) backupHub(dirPath string) error {
 	}
 
 	for _, itemType := range cwhub.ItemTypes {
-		clog := log.WithFields(log.Fields{
-			"type": itemType,
-		})
+		clog := log.WithField("type", itemType)
 
 		itemMap := hub.GetItemMap(itemType)
 		if itemMap == nil {
@@ -39,9 +37,7 @@ func (cli *cliConfig) backupHub(dirPath string) error {
 		upstreamParsers := []string{}
 
 		for k, v := range itemMap {
-			clog = clog.WithFields(log.Fields{
-				"file": v.Name,
-			})
+			clog = clog.WithField("file", v.Name)
 			if !v.State.Installed { // only backup installed ones
 				clog.Debugf("[%s]: not installed", k)
 				continue
@@ -78,7 +74,7 @@ func (cli *cliConfig) backupHub(dirPath string) error {
 
 		upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed marshaling upstream parsers: %w", err)
+			return fmt.Errorf("failed to serialize upstream parsers: %w", err)
 		}
 
 		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0o644)

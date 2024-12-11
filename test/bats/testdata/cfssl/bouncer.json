@@ -1,10 +1,10 @@
 {
-    "CN": "localhost",
-    "key": {
-      "algo": "rsa",
-      "size": 2048
-    },
-    "names": [
+  "CN": "localhost",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
     {
       "C": "FR",
       "L": "Paris",
@@ -12,5 +12,5 @@
       "OU": "bouncer-ou",
       "ST": "France"
     }
-    ]
-  }
+  ]
+}

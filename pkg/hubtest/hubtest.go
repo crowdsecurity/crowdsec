@@ -83,7 +83,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 	}
 
 	if isAppsecTest {
-		HubTestPath := filepath.Join(hubPath, "./.appsec-tests/")
+		HubTestPath := filepath.Join(hubPath, ".appsec-tests")
 		hubIndexFile := filepath.Join(hubPath, ".index.json")
 
 		local := &csconfig.LocalHubCfg{
@@ -93,9 +93,13 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			InstallDataDir: HubTestPath,
 		}
 
-		hub, err := cwhub.NewHub(local, nil, false, nil)
+		hub, err := cwhub.NewHub(local, nil, nil)
 		if err != nil {
-			return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
+			return HubTest{}, err
+		}
+
+		if err := hub.Load(); err != nil {
+			return HubTest{}, err
 		}
 
 		return HubTest{
@@ -115,7 +119,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		}, nil
 	}
 
-	HubTestPath := filepath.Join(hubPath, "./.tests/")
+	HubTestPath := filepath.Join(hubPath, ".tests")
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
 
@@ -126,9 +130,13 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		InstallDataDir: HubTestPath,
 	}
 
-	hub, err := cwhub.NewHub(local, nil, false, nil)
+	hub, err := cwhub.NewHub(local, nil, nil)
 	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
+		return HubTest{}, err
+	}
+
+	if err := hub.Load(); err != nil {
+		return HubTest{}, err
 	}
 
 	return HubTest{

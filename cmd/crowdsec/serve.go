@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -51,6 +52,8 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	var tmpFile string
 
+	ctx := context.TODO()
+
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -59,6 +62,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -72,7 +76,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			cConfig.API.Server.OnlineClient = nil
 		}
 
-		apiServer, err := initAPIServer(cConfig)
+		apiServer, err := initAPIServer(ctx, cConfig)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init api server: %w", err)
 		}
@@ -81,9 +85,13 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
 		if err != nil {
-			return nil, fmt.Errorf("while loading hub index: %w", err)
+			return nil, err
+		}
+
+		if err = hub.Load(); err != nil {
+			return nil, err
 		}
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub)
@@ -174,8 +182,20 @@ func ShutdownCrowdsecRoutines() error {
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
+	lpMetricsTomb.Kill(nil)
+
+	if err := lpMetricsTomb.Wait(); err != nil {
+		log.Warningf("Metrics returned error : %s", err)
+		reterr = err
+	}
+
+	log.Debugf("metrics are done")
+
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
+
+	// close the potential geoips reader we have to avoid leaking ressources on reload
+	exprhelpers.GeoIPClose()
 
 	return reterr
 }
@@ -314,9 +334,12 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+	lpMetricsTomb = tomb.Tomb{}
+
+	ctx := context.TODO()
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
-		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
+		dbClient, err := database.NewClient(ctx, cConfig.API.Server.DbConfig)
 		if err != nil {
 			return fmt.Errorf("failed to get database client: %w", err)
 		}
@@ -334,7 +357,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		log.Warningln("Exprhelpers loaded without database client.")
 	}
 
-	if cConfig.API.CTI != nil && *cConfig.API.CTI.Enabled {
+	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 
 		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
@@ -353,7 +376,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			cConfig.API.Server.OnlineClient = nil
 		}
 
-		apiServer, err := initAPIServer(cConfig)
+		apiServer, err := initAPIServer(ctx, cConfig)
 		if err != nil {
 			return fmt.Errorf("api server init: %w", err)
 		}
@@ -364,9 +387,13 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
 		if err != nil {
-			return fmt.Errorf("while loading hub index: %w", err)
+			return err
+		}
+
+		if err = hub.Load(); err != nil {
+			return err
 		}
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub)
@@ -387,7 +414,8 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if flags.TestMode {
 		log.Infof("Configuration test done")
 		pluginBroker.Kill()
-		os.Exit(0)
+
+		return nil
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {

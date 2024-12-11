@@ -1,20 +1,21 @@
 package syslogacquisition
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/tomb.v2"
+
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigure(t *testing.T) {
@@ -52,9 +53,7 @@ listen_addr: 10.0.0`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "syslog",
-	})
+	subLogger := log.WithField("type", "syslog")
 	for _, test := range tests {
 		s := SyslogSource{}
 		err := s.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -82,6 +81,7 @@ func writeToSyslog(logs []string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name          string
 		config        string
@@ -102,8 +102,10 @@ listen_addr: 127.0.0.1`,
 listen_port: 4242
 listen_addr: 127.0.0.1`,
 			expectedLines: 2,
-			logs: []string{`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`,
-				`<13>1 2021-05-18T12:12:37.560695+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla2[foobar]`},
+			logs: []string{
+				`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`,
+				`<13>1 2021-05-18T12:12:37.560695+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla2[foobar]`,
+			},
 		},
 		{
 			name: "RFC3164",
@@ -111,10 +113,12 @@ listen_addr: 127.0.0.1`,
 listen_port: 4242
 listen_addr: 127.0.0.1`,
 			expectedLines: 3,
-			logs: []string{`<13>May 18 12:37:56 mantis sshd[49340]: blabla2[foobar]`,
+			logs: []string{
+				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2[foobar]`,
 				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2`,
 				`<13>May 18 12:37:56 mantis sshd: blabla2`,
-				`<13>May 18 12:37:56 mantis sshd`},
+				`<13>May 18 12:37:56 mantis sshd`,
+			},
 		},
 	}
 	if runtime.GOOS != "windows" {
@@ -132,11 +136,8 @@ listen_addr: 127.0.0.1`,
 	}
 
 	for _, ts := range tests {
-		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
-			subLogger := log.WithFields(log.Fields{
-				"type": "syslog",
-			})
+			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}
 			err := s.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 			if err != nil {
@@ -144,7 +145,7 @@ listen_addr: 127.0.0.1`,
 			}
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err = s.StreamingAcquisition(out, &tomb)
+			err = s.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 			if ts.expectedErr != "" {
 				return

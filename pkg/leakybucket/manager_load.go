@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -45,12 +45,12 @@ type BucketFactory struct {
 	Debug               bool                   `yaml:"debug"`               // Debug, when set to true, will enable debugging for _this_ scenario specifically
 	Labels              map[string]interface{} `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                 `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger              *log.Entry             `yaml:"-"`                   // logger is bucket-specific logger (used by Debug as well)
-	Reprocess           bool                   `yaml:"reprocess"`           // Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize           int                    `yaml:"cache_size"`          // CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling           bool                   `yaml:"profiling"`           // Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter      string                 `yaml:"overflow_filter"`     // OverflowFilter if present, is a filter that must return true for the overflow to go through
-	ConditionalOverflow string                 `yaml:"condition"`           // condition if present, is an expression that must return true for the bucket to overflow
+	logger              *log.Entry             // logger is bucket-specific logger (used by Debug as well)
+	Reprocess           bool                   `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
+	CacheSize           int                    `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	Profiling           bool                   `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
+	OverflowFilter      string                 `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	ConditionalOverflow string                 `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
 	BayesianPrior       float32                `yaml:"bayesian_prior"`
 	BayesianThreshold   float32                `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
@@ -68,16 +68,104 @@ type BucketFactory struct {
 	processors          []Processor            // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
 	output              bool                   // ??
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
-	hash                string                 `yaml:"-"`
-	Simulated           bool                   `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
-	tomb                *tomb.Tomb             `yaml:"-"`
-	wgPour              *sync.WaitGroup        `yaml:"-"`
-	wgDumpState         *sync.WaitGroup        `yaml:"-"`
+	hash                string
+	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
+	tomb                *tomb.Tomb
+	wgPour              *sync.WaitGroup
+	wgDumpState         *sync.WaitGroup
 	orderEvent          bool
 }
 
 // we use one NameGenerator for all the future buckets
 var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
+
+func validateLeakyType(bucketFactory *BucketFactory) error {
+	if bucketFactory.Capacity <= 0 { // capacity must be a positive int
+		return fmt.Errorf("bad capacity for leaky '%d'", bucketFactory.Capacity)
+	}
+
+	if bucketFactory.LeakSpeed == "" {
+		return errors.New("leakspeed can't be empty for leaky")
+	}
+
+	if bucketFactory.leakspeed == 0 {
+		return fmt.Errorf("bad leakspeed for leaky '%s'", bucketFactory.LeakSpeed)
+	}
+
+	return nil
+}
+
+func validateCounterType(bucketFactory *BucketFactory) error {
+	if bucketFactory.Duration == "" {
+		return errors.New("duration can't be empty for counter")
+	}
+
+	if bucketFactory.duration == 0 {
+		return fmt.Errorf("bad duration for counter bucket '%d'", bucketFactory.duration)
+	}
+
+	if bucketFactory.Capacity != -1 {
+		return errors.New("counter bucket must have -1 capacity")
+	}
+
+	return nil
+}
+
+func validateTriggerType(bucketFactory *BucketFactory) error {
+	if bucketFactory.Capacity != 0 {
+		return errors.New("trigger bucket must have 0 capacity")
+	}
+
+	return nil
+}
+
+func validateConditionalType(bucketFactory *BucketFactory) error {
+	if bucketFactory.ConditionalOverflow == "" {
+		return errors.New("conditional bucket must have a condition")
+	}
+
+	if bucketFactory.Capacity != -1 {
+		bucketFactory.logger.Warnf("Using a value different than -1 as capacity for conditional bucket, this may lead to unexpected overflows")
+	}
+
+	if bucketFactory.LeakSpeed == "" {
+		return errors.New("leakspeed can't be empty for conditional bucket")
+	}
+
+	if bucketFactory.leakspeed == 0 {
+		return fmt.Errorf("bad leakspeed for conditional bucket '%s'", bucketFactory.LeakSpeed)
+	}
+
+	return nil
+}
+
+func validateBayesianType(bucketFactory *BucketFactory) error {
+	if bucketFactory.BayesianConditions == nil {
+		return errors.New("bayesian bucket must have bayesian conditions")
+	}
+
+	if bucketFactory.BayesianPrior == 0 {
+		return errors.New("bayesian bucket must have a valid, non-zero prior")
+	}
+
+	if bucketFactory.BayesianThreshold == 0 {
+		return errors.New("bayesian bucket must have a valid, non-zero threshold")
+	}
+
+	if bucketFactory.BayesianPrior > 1 {
+		return errors.New("bayesian bucket must have a valid, non-zero prior")
+	}
+
+	if bucketFactory.BayesianThreshold > 1 {
+		return errors.New("bayesian bucket must have a valid, non-zero threshold")
+	}
+
+	if bucketFactory.Capacity != -1 {
+		return errors.New("bayesian bucket must have capacity -1")
+	}
+
+	return nil
+}
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
 	if bucketFactory.Name == "" {
@@ -88,75 +176,28 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		return errors.New("description is mandatory")
 	}
 
-	if bucketFactory.Type == "leaky" {
-		if bucketFactory.Capacity <= 0 { // capacity must be a positive int
-			return fmt.Errorf("bad capacity for leaky '%d'", bucketFactory.Capacity)
+	switch bucketFactory.Type {
+	case "leaky":
+		if err := validateLeakyType(bucketFactory); err != nil {
+			return err
 		}
-
-		if bucketFactory.LeakSpeed == "" {
-			return errors.New("leakspeed can't be empty for leaky")
+	case "counter":
+		if err := validateCounterType(bucketFactory); err != nil {
+			return err
 		}
-
-		if bucketFactory.leakspeed == 0 {
-			return fmt.Errorf("bad leakspeed for leaky '%s'", bucketFactory.LeakSpeed)
+	case "trigger":
+		if err := validateTriggerType(bucketFactory); err != nil {
+			return err
 		}
-	} else if bucketFactory.Type == "counter" {
-		if bucketFactory.Duration == "" {
-			return errors.New("duration can't be empty for counter")
+	case "conditional":
+		if err := validateConditionalType(bucketFactory); err != nil {
+			return err
 		}
-
-		if bucketFactory.duration == 0 {
-			return fmt.Errorf("bad duration for counter bucket '%d'", bucketFactory.duration)
+	case "bayesian":
+		if err := validateBayesianType(bucketFactory); err != nil {
+			return err
 		}
-
-		if bucketFactory.Capacity != -1 {
-			return errors.New("counter bucket must have -1 capacity")
-		}
-	} else if bucketFactory.Type == "trigger" {
-		if bucketFactory.Capacity != 0 {
-			return errors.New("trigger bucket must have 0 capacity")
-		}
-	} else if bucketFactory.Type == "conditional" {
-		if bucketFactory.ConditionalOverflow == "" {
-			return errors.New("conditional bucket must have a condition")
-		}
-
-		if bucketFactory.Capacity != -1 {
-			bucketFactory.logger.Warnf("Using a value different than -1 as capacity for conditional bucket, this may lead to unexpected overflows")
-		}
-
-		if bucketFactory.LeakSpeed == "" {
-			return errors.New("leakspeed can't be empty for conditional bucket")
-		}
-
-		if bucketFactory.leakspeed == 0 {
-			return fmt.Errorf("bad leakspeed for conditional bucket '%s'", bucketFactory.LeakSpeed)
-		}
-	} else if bucketFactory.Type == "bayesian" {
-		if bucketFactory.BayesianConditions == nil {
-			return errors.New("bayesian bucket must have bayesian conditions")
-		}
-
-		if bucketFactory.BayesianPrior == 0 {
-			return errors.New("bayesian bucket must have a valid, non-zero prior")
-		}
-
-		if bucketFactory.BayesianThreshold == 0 {
-			return errors.New("bayesian bucket must have a valid, non-zero threshold")
-		}
-
-		if bucketFactory.BayesianPrior > 1 {
-			return errors.New("bayesian bucket must have a valid, non-zero prior")
-		}
-
-		if bucketFactory.BayesianThreshold > 1 {
-			return errors.New("bayesian bucket must have a valid, non-zero threshold")
-		}
-
-		if bucketFactory.Capacity != -1 {
-			return errors.New("bayesian bucket must have capacity -1")
-		}
-	} else {
+	default:
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
 
@@ -230,8 +271,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					log.Errorf("Bad yaml in %s : %v", f, err)
-					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
+					log.Errorf("Bad yaml in %s: %v", f, err)
+					return nil, nil, fmt.Errorf("bad yaml in %s: %w", f, err)
 				}
 
 				log.Tracef("End of yaml file")
@@ -251,13 +292,13 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 				bucketFactory.FormatVersion = "1.0"
 			}
 
-			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+			ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to check version : %s", err)
+				return nil, nil, fmt.Errorf("failed to check version: %w", err)
 			}
 
 			if !ok {
-				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
 				continue
 			}
 
@@ -265,20 +306,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 
-			hubItem, err := hub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
-			if err != nil {
-				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+			hubItem := hub.GetItemByPath(bucketFactory.Filename)
+			if hubItem == nil {
+				log.Errorf("scenario %s (%s) could not be found in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {
 				if cscfg.SimulationConfig != nil {
 					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
 				}
 
-				if hubItem != nil {
-					bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
-					bucketFactory.hash = hubItem.State.LocalHash
-				} else {
-					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
-				}
+				bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
+				bucketFactory.hash = hubItem.State.LocalHash
 			}
 
 			bucketFactory.wgDumpState = buckets.wgDumpState
@@ -286,8 +323,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 			err = LoadBucket(&bucketFactory, tomb)
 			if err != nil {
-				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
-				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
+				log.Errorf("Failed to load bucket %s: %v", bucketFactory.Name, err)
+				return nil, nil, fmt.Errorf("loading of %s failed: %w", bucketFactory.Name, err)
 			}
 
 			bucketFactory.orderEvent = orderEvent
@@ -312,7 +349,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Debug {
 		clog := log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
+			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
 		clog.SetLevel(log.DebugLevel)
@@ -330,7 +367,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.LeakSpeed != "" {
 		if bucketFactory.leakspeed, err = time.ParseDuration(bucketFactory.LeakSpeed); err != nil {
-			return fmt.Errorf("bad leakspeed '%s' in %s : %v", bucketFactory.LeakSpeed, bucketFactory.Filename, err)
+			return fmt.Errorf("bad leakspeed '%s' in %s: %w", bucketFactory.LeakSpeed, bucketFactory.Filename, err)
 		}
 	} else {
 		bucketFactory.leakspeed = time.Duration(0)
@@ -338,7 +375,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Duration != "" {
 		if bucketFactory.duration, err = time.ParseDuration(bucketFactory.Duration); err != nil {
-			return fmt.Errorf("invalid Duration '%s' in %s : %v", bucketFactory.Duration, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid Duration '%s' in %s: %w", bucketFactory.Duration, bucketFactory.Filename, err)
 		}
 	}
 
@@ -349,13 +386,13 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 	if err != nil {
-		return fmt.Errorf("invalid filter '%s' in %s : %v", bucketFactory.Filter, bucketFactory.Filename, err)
+		return fmt.Errorf("invalid filter '%s' in %s: %w", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.GroupBy != "" {
 		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("invalid groupby '%s' in %s : %v", bucketFactory.GroupBy, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid groupby '%s' in %s: %w", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
 	}
 
@@ -374,7 +411,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	case "bayesian":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	default:
-		return fmt.Errorf("invalid type '%s' in %s : %v", bucketFactory.Type, bucketFactory.Filename, err)
+		return fmt.Errorf("invalid type '%s' in %s: %w", bucketFactory.Type, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.Distinct != "" {
@@ -439,7 +476,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	bucketFactory.output = false
 	if err := ValidateFactory(bucketFactory); err != nil {
-		return fmt.Errorf("invalid bucket from %s : %v", bucketFactory.Filename, err)
+		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
 	}
 
 	bucketFactory.tomb = tomb
@@ -456,7 +493,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 	}
 
 	if err := json.Unmarshal(body, &state); err != nil {
-		return fmt.Errorf("can't unmarshal state file %s: %w", file, err)
+		return fmt.Errorf("can't parse state file %s: %w", file, err)
 	}
 
 	for k, v := range state {
@@ -466,47 +503,49 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 
 		val, ok := buckets.Bucket_map.Load(k)
 		if ok {
-			log.Fatalf("key %s already exists : %+v", k, val)
+			return fmt.Errorf("key %s already exists: %+v", k, val)
 		}
 		// find back our holder
 		found := false
 
 		for _, h := range bucketFactories {
-			if h.Name == v.Name {
-				log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
-				// check in which mode the bucket was
-				if v.Mode == types.TIMEMACHINE {
-					tbucket = NewTimeMachine(h)
-				} else if v.Mode == types.LIVE {
-					tbucket = NewLeaky(h)
-				} else {
-					log.Errorf("Unknown bucket type : %d", v.Mode)
-				}
-				/*Trying to restore queue state*/
-				tbucket.Queue = v.Queue
-				/*Trying to set the limiter to the saved values*/
-				tbucket.Limiter.Load(v.SerializedState)
-				tbucket.In = make(chan *types.Event)
-				tbucket.Mapkey = k
-				tbucket.Signal = make(chan bool, 1)
-				tbucket.First_ts = v.First_ts
-				tbucket.Last_ts = v.Last_ts
-				tbucket.Ovflw_ts = v.Ovflw_ts
-				tbucket.Total_count = v.Total_count
-				buckets.Bucket_map.Store(k, tbucket)
-				h.tomb.Go(func() error {
-					return LeakRoutine(tbucket)
-				})
-				<-tbucket.Signal
-
-				found = true
-
-				break
+			if h.Name != v.Name {
+				continue
 			}
+
+			log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
+			// check in which mode the bucket was
+			if v.Mode == types.TIMEMACHINE {
+				tbucket = NewTimeMachine(h)
+			} else if v.Mode == types.LIVE {
+				tbucket = NewLeaky(h)
+			} else {
+				log.Errorf("Unknown bucket type : %d", v.Mode)
+			}
+			/*Trying to restore queue state*/
+			tbucket.Queue = v.Queue
+			/*Trying to set the limiter to the saved values*/
+			tbucket.Limiter.Load(v.SerializedState)
+			tbucket.In = make(chan *types.Event)
+			tbucket.Mapkey = k
+			tbucket.Signal = make(chan bool, 1)
+			tbucket.First_ts = v.First_ts
+			tbucket.Last_ts = v.Last_ts
+			tbucket.Ovflw_ts = v.Ovflw_ts
+			tbucket.Total_count = v.Total_count
+			buckets.Bucket_map.Store(k, tbucket)
+			h.tomb.Go(func() error {
+				return LeakRoutine(tbucket)
+			})
+			<-tbucket.Signal
+
+			found = true
+
+			break
 		}
 
 		if !found {
-			log.Fatalf("Unable to find holder for bucket %s : %s", k, spew.Sdump(v))
+			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(v))
 		}
 	}
 

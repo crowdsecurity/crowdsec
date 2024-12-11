@@ -1,26 +1,31 @@
 package exprhelpers
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/bluele/gcache"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
-var CTIUrl = "https://cti.api.crowdsec.net"
-var CTIUrlSuffix = "/v2/smoke/"
-var CTIApiKey = ""
+var (
+	CTIUrl       = "https://cti.api.crowdsec.net"
+	CTIUrlSuffix = "/v2/smoke/"
+	CTIApiKey    = ""
+)
 
 // this is set for non-recoverable errors, such as 403 when querying API or empty API key
 var CTIApiEnabled = false
 
 // when hitting quotas or auth errors, we temporarily disable the API
-var CTIBackOffUntil time.Time
-var CTIBackOffDuration time.Duration = 5 * time.Minute
+var (
+	CTIBackOffUntil    time.Time
+	CTIBackOffDuration = 5 * time.Minute
+)
 
 var ctiClient *cticlient.CrowdsecCTIClient
 
@@ -40,15 +45,12 @@ func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.L
 	}
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		return errors.Wrap(err, "while configuring datasource logger")
+		return fmt.Errorf("while configuring datasource logger: %w", err)
 	}
 	if LogLevel != nil {
 		clog.SetLevel(*LogLevel)
 	}
-	customLog := log.Fields{
-		"type": "crowdsec-cti",
-	}
-	subLogger := clog.WithFields(customLog)
+	subLogger := clog.WithField("type", "crowdsec-cti")
 	CrowdsecCTIInitCache(*Size, *TTL)
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(CTIApiKey), cticlient.WithLogger(subLogger))
 	CTIApiEnabled = true
@@ -64,8 +66,10 @@ func ShutdownCrowdsecCTI() {
 }
 
 // Cache for responses
-var CTICache gcache.Cache
-var CacheExpiration time.Duration
+var (
+	CTICache        gcache.Cache
+	CacheExpiration time.Duration
+)
 
 func CrowdsecCTIInitCache(size int, ttl time.Duration) {
 	CTICache = gcache.New(size).LRU().Build()
@@ -86,12 +90,11 @@ func CrowdsecCTI(params ...any) (any, error) {
 	if val, err := CTICache.Get(ip); err == nil && val != nil {
 		ctiClient.Logger.Debugf("cti cache fetch for %s", ip)
 		ret, ok := val.(*cticlient.SmokeItem)
-		if !ok {
-			ctiClient.Logger.Warningf("CrowdsecCTI: invalid type in cache, removing")
-			CTICache.Remove(ip)
-		} else {
+		if ok {
 			return ret, nil
 		}
+		ctiClient.Logger.Warningf("CrowdsecCTI: invalid type in cache, removing")
+		CTICache.Remove(ip)
 	}
 
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
@@ -115,7 +118,7 @@ func CrowdsecCTI(params ...any) (any, error) {
 			return &cticlient.SmokeItem{}, cticlient.ErrLimit
 		default:
 			ctiClient.Logger.Warnf("CTI API error : %s", err)
-			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error : %v", err)
+			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error: %w", err)
 		}
 	}
 

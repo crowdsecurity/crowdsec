@@ -3,11 +3,12 @@ package alertcontext
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"slices"
 	"strconv"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	maxContextValueLen = 4000
+	MaxContextValueLen = 4000
 )
 
 var alertContext = Context{}
@@ -30,9 +31,12 @@ type Context struct {
 
 func ValidateContextExpr(key string, expressions []string) error {
 	for _, expression := range expressions {
-		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{
+			"evt":   &types.Event{},
+			"match": &types.MatchedRule{},
+			"req":   &http.Request{}})...)
 		if err != nil {
-			return fmt.Errorf("compilation of '%s' failed: %v", expression, err)
+			return fmt.Errorf("compilation of '%s' failed: %w", expression, err)
 		}
 	}
 
@@ -46,13 +50,13 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	}
 
 	if valueLength == 0 {
-		clog.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
-		valueLength = maxContextValueLen
+		clog.Debugf("No console context value length provided, using default: %d", MaxContextValueLen)
+		valueLength = MaxContextValueLen
 	}
 
-	if valueLength > maxContextValueLen {
-		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, maxContextValueLen)
-		valueLength = maxContextValueLen
+	if valueLength > MaxContextValueLen {
+		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, MaxContextValueLen)
+		valueLength = MaxContextValueLen
 	}
 
 	alertContext = Context{
@@ -72,9 +76,12 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		}
 
 		for _, value := range values {
-			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{
+				"evt":   &types.Event{},
+				"match": &types.MatchedRule{},
+				"req":   &http.Request{}})...)
 			if err != nil {
-				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
+				return fmt.Errorf("compilation of '%s' context value failed: %w", value, err)
 			}
 
 			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
@@ -85,7 +92,33 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	return nil
 }
 
-func truncate(values []string, contextValueLen int) (string, error) {
+// Truncate the context map to fit in the context value length
+func TruncateContextMap(contextMap map[string][]string, contextValueLen int) ([]*models.MetaItems0, []error) {
+	metas := make([]*models.MetaItems0, 0)
+	errors := make([]error, 0)
+
+	for key, values := range contextMap {
+		if len(values) == 0 {
+			continue
+		}
+
+		valueStr, err := TruncateContext(values, alertContext.ContextValueLen)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("error truncating content for %s: %w", key, err))
+			continue
+		}
+
+		meta := models.MetaItems0{
+			Key:   key,
+			Value: valueStr,
+		}
+		metas = append(metas, &meta)
+	}
+	return metas, errors
+}
+
+// Truncate an individual []string to fit in the context value length
+func TruncateContext(values []string, contextValueLen int) (string, error) {
 	valueByte, err := json.Marshal(values)
 	if err != nil {
 		return "", fmt.Errorf("unable to dump metas: %w", err)
@@ -116,60 +149,101 @@ func truncate(values []string, contextValueLen int) (string, error) {
 	return ret, nil
 }
 
-func EventToContext(events []types.Event) (models.Meta, []error) {
+func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
+
 	var errors []error
 
-	metas := make([]*models.MetaItems0, 0)
-	tmpContext := make(map[string][]string)
+	//if we're evaluating context for appsec event, match and request will be present.
+	//otherwise, only evt will be.
+	if match == nil {
+		match = types.NewMatchedRule()
+	}
+	if request == nil {
+		request = &http.Request{}
+	}
 
-	for _, evt := range events {
-		for key, values := range alertContext.ContextToSendCompiled {
-			if _, ok := tmpContext[key]; !ok {
-				tmpContext[key] = make([]string, 0)
+	for key, values := range alertContext.ContextToSendCompiled {
+
+		if _, ok := tmpContext[key]; !ok {
+			tmpContext[key] = make([]string, 0)
+		}
+
+		for _, value := range values {
+			var val string
+
+			output, err := expr.Run(value, map[string]interface{}{"match": match, "evt": evt, "req": request})
+			if err != nil {
+				errors = append(errors, fmt.Errorf("failed to get value for %s: %w", key, err))
+				continue
 			}
-
-			for _, value := range values {
-				var val string
-
-				output, err := expr.Run(value, map[string]interface{}{"evt": evt})
-				if err != nil {
-					errors = append(errors, fmt.Errorf("failed to get value for %s : %v", key, err))
-					continue
+			switch out := output.(type) {
+			case string:
+				val = out
+				if val != "" && !slices.Contains(tmpContext[key], val) {
+					tmpContext[key] = append(tmpContext[key], val)
 				}
-
-				switch out := output.(type) {
-				case string:
-					val = out
-				case int:
-					val = strconv.Itoa(out)
-				default:
-					errors = append(errors, fmt.Errorf("unexpected return type for %s : %T", key, output))
-					continue
+			case []string:
+				for _, v := range out {
+					if v != "" && !slices.Contains(tmpContext[key], v) {
+						tmpContext[key] = append(tmpContext[key], v)
+					}
 				}
-
+			case int:
+				val = strconv.Itoa(out)
+				if val != "" && !slices.Contains(tmpContext[key], val) {
+					tmpContext[key] = append(tmpContext[key], val)
+				}
+			case []int:
+				for _, v := range out {
+					val = strconv.Itoa(v)
+					if val != "" && !slices.Contains(tmpContext[key], val) {
+						tmpContext[key] = append(tmpContext[key], val)
+					}
+				}
+			default:
+				val := fmt.Sprintf("%v", output)
 				if val != "" && !slices.Contains(tmpContext[key], val) {
 					tmpContext[key] = append(tmpContext[key], val)
 				}
 			}
 		}
 	}
+	return errors
+}
 
-	for key, values := range tmpContext {
-		if len(values) == 0 {
-			continue
-		}
+// Iterate over the individual appsec matched rules to create the needed alert context.
+func AppsecEventToContext(event types.AppsecEvent, request *http.Request) (models.Meta, []error) {
+	var errors []error
 
-		valueStr, err := truncate(values, alertContext.ContextValueLen)
-		if err != nil {
-			log.Warningf(err.Error())
-		}
+	tmpContext := make(map[string][]string)
 
-		meta := models.MetaItems0{
-			Key:   key,
-			Value: valueStr,
-		}
-		metas = append(metas, &meta)
+	evt := types.MakeEvent(false, types.LOG, false)
+	for _, matched_rule := range event.MatchedRules {
+		tmpErrors := EvalAlertContextRules(evt, &matched_rule, request, tmpContext)
+		errors = append(errors, tmpErrors...)
 	}
+
+	metas, truncErrors := TruncateContextMap(tmpContext, alertContext.ContextValueLen)
+	errors = append(errors, truncErrors...)
+
+	ret := models.Meta(metas)
+
+	return ret, errors
+}
+
+// Iterate over the individual events to create the needed alert context.
+func EventToContext(events []types.Event) (models.Meta, []error) {
+	var errors []error
+
+	tmpContext := make(map[string][]string)
+
+	for _, evt := range events {
+		tmpErrors := EvalAlertContextRules(evt, nil, nil, tmpContext)
+		errors = append(errors, tmpErrors...)
+	}
+
+	metas, truncErrors := TruncateContextMap(tmpContext, alertContext.ContextValueLen)
+	errors = append(errors, truncErrors...)
 
 	ret := models.Meta(metas)
 

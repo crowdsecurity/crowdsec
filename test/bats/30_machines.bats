@@ -62,6 +62,38 @@ teardown() {
     assert_output 1
 }
 
+@test "delete non-existent machine" {
+    # this is not a fatal error, won't halt a script with -e
+    rune -0 cscli machines delete something
+    assert_stderr --partial "unable to delete machine: 'something' does not exist"
+    rune -0 cscli machines delete something --ignore-missing
+    refute_stderr
+}
+
+@test "machines [delete|inspect] has autocompletion" {
+    rune -0 cscli machines add -a -f /dev/null foo1
+    rune -0 cscli machines add -a -f /dev/null foo2
+    rune -0 cscli machines add -a -f /dev/null bar
+    rune -0 cscli machines add -a -f /dev/null baz
+    rune -0 cscli __complete machines delete 'foo'
+    assert_line --index 0 'foo1'
+    assert_line --index 1 'foo2'
+    refute_line 'bar'
+    refute_line 'baz'
+    rune -0 cscli __complete machines inspect 'foo'
+    assert_line --index 0 'foo1'
+    assert_line --index 1 'foo2'
+    refute_line 'bar'
+    refute_line 'baz'
+}
+
+@test "heartbeat is initially null" {
+    rune -0 cscli machines add foo --auto --file /dev/null
+    rune -0 cscli machines list -o json
+    rune -0 yq '.[] | select(.machineId == "foo") | .last_heartbeat' <(output)
+    assert_output null
+}
+
 @test "register, validate and then remove a machine" {
     rune -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_stderr --partial "Successfully registered to Local API (LAPI)"

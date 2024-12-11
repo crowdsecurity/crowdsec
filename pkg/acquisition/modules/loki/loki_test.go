@@ -34,6 +34,7 @@ func TestConfiguration(t *testing.T) {
 		password     string
 		waitForReady time.Duration
 		delayFor     time.Duration
+		noReadyCheck bool
 		testName     string
 	}{
 		{
@@ -95,7 +96,19 @@ query: >
 			delayFor:    1 * time.Second,
 		},
 		{
-
+			config: `
+mode: tail
+source: loki
+url: http://localhost:3100/
+no_ready_check: true
+query: >
+        {server="demo"}
+`,
+			expectedErr:  "",
+			testName:     "Correct config with no_ready_check",
+			noReadyCheck: true,
+		},
+		{
 			config: `
 mode: tail
 source: loki
@@ -111,7 +124,6 @@ query: >
 			testName:    "Correct config with password",
 		},
 		{
-
 			config: `
 mode: tail
 source: loki
@@ -124,9 +136,7 @@ query: >
 			testName:    "Invalid DelayFor",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "loki",
-	})
+	subLogger := log.WithField("type", "loki")
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -152,6 +162,8 @@ query: >
 					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 				}
 			}
+
+			assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
 		})
 	}
 }
@@ -168,6 +180,7 @@ func TestConfigureDSN(t *testing.T) {
 		scheme       string
 		waitForReady time.Duration
 		delayFor     time.Duration
+		noReadyCheck bool
 	}{
 		{
 			name:        "Wrong scheme",
@@ -206,10 +219,11 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:         "Correct DSN",
-			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s`,
+			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s&no_ready_check=true`,
 			expectedErr:  "",
 			waitForReady: 5 * time.Second,
 			delayFor:     1 * time.Second,
+			noReadyCheck: true,
 		},
 		{
 			name:   "SSL DSN",
@@ -260,10 +274,13 @@ func TestConfigureDSN(t *testing.T) {
 				t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 			}
 		}
+
+		assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
+
 	}
 }
 
-func feedLoki(logger *log.Entry, n int, title string) error {
+func feedLoki(ctx context.Context, logger *log.Entry, n int, title string) error {
 	streams := LogStreams{
 		Streams: []LogStream{
 			{
@@ -276,7 +293,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 			},
 		},
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		streams.Streams[0].Values[i] = LogValue{
 			Time: time.Now(),
 			Line: fmt.Sprintf("Log line #%d %v", i, title),
@@ -288,13 +305,13 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Scope-OrgID", "1234")
+	req.Header.Set("X-Scope-Orgid", "1234")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -316,6 +333,8 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -343,17 +362,14 @@ since: 1h
 
 	for _, ts := range tests {
 		logger := log.New()
-		subLogger := logger.WithFields(log.Fields{
-			"type": "loki",
-		})
+		subLogger := logger.WithField("type", "loki")
 		lokiSource := loki.LokiSource{}
 		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
-
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		err = feedLoki(subLogger, 20, title)
+		err = feedLoki(ctx, subLogger, 20, title)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -371,7 +387,7 @@ since: 1h
 
 		lokiTomb := tomb.Tomb{}
 
-		err = lokiSource.OneShotAcquisition(out, &lokiTomb)
+		err = lokiSource.OneShotAcquisition(ctx, out, &lokiTomb)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -425,6 +441,8 @@ query: >
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
@@ -442,7 +460,7 @@ query: >
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = lokiSource.StreamingAcquisition(out, &lokiTomb)
+			err = lokiSource.StreamingAcquisition(ctx, out, &lokiTomb)
 			cstest.AssertErrorContains(t, err, ts.streamErr)
 
 			if ts.streamErr != "" {
@@ -452,7 +470,7 @@ query: >
 			time.Sleep(time.Second * 2) // We need to give time to start reading from the WS
 
 			readTomb := tomb.Tomb{}
-			readCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			readCtx, cancel := context.WithTimeout(ctx, time.Second*10)
 			count := 0
 
 			readTomb.Go(func() error {
@@ -476,7 +494,7 @@ query: >
 				}
 			})
 
-			err = feedLoki(subLogger, ts.expectedLines, title)
+			err = feedLoki(ctx, subLogger, ts.expectedLines, title)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -495,6 +513,7 @@ query: >
 }
 
 func TestStopStreaming(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -509,9 +528,7 @@ query: >
   {server="demo"}
 `
 	logger := log.New()
-	subLogger := logger.WithFields(log.Fields{
-		"type": "loki",
-	})
+	subLogger := logger.WithField("type", "loki")
 	title := time.Now().String()
 	lokiSource := loki.LokiSource{}
 
@@ -524,14 +541,14 @@ query: >
 
 	lokiTomb := &tomb.Tomb{}
 
-	err = lokiSource.StreamingAcquisition(out, lokiTomb)
+	err = lokiSource.StreamingAcquisition(ctx, out, lokiTomb)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
 	time.Sleep(time.Second * 2)
 
-	err = feedLoki(subLogger, 1, title)
+	err = feedLoki(ctx, subLogger, 1, title)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}

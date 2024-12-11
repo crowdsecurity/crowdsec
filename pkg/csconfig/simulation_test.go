@@ -60,7 +60,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: "while unmarshaling simulation file './testdata/config.yaml': yaml: unmarshal errors",
+			expectedErr: "while parsing simulation file './testdata/config.yaml': yaml: unmarshal errors",
 		},
 		{
 			name: "basic bad file content",
@@ -71,12 +71,11 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: "while unmarshaling simulation file './testdata/config.yaml': yaml: unmarshal errors",
+			expectedErr: "while parsing simulation file './testdata/config.yaml': yaml: unmarshal errors",
 		},
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.input.LoadSimulation()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -124,7 +123,6 @@ func TestIsSimulated(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			isSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
 			require.Equal(t, tc.expected, isSimulated)

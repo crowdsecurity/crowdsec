@@ -14,6 +14,22 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clidecision"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihubtest"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliitem"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clilapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clinotifications"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisimulation"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisupport"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -98,14 +114,14 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 }
 
 // initialize is called before the subcommand is executed.
-func (cli *cliRoot) initialize() {
+func (cli *cliRoot) initialize() error {
 	var err error
 
 	log.SetLevel(cli.wantedLogLevel())
 
 	csConfig, mergedConfig, err = loadConfigFor(os.Args[1])
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// recap of the enabled feature flags, because logging
@@ -127,7 +143,7 @@ func (cli *cliRoot) initialize() {
 	}
 
 	if csConfig.Cscli.Output != "human" && csConfig.Cscli.Output != "json" && csConfig.Cscli.Output != "raw" {
-		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
+		return fmt.Errorf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
 
 	log.SetFormatter(&log.TextFormatter{
@@ -146,17 +162,11 @@ func (cli *cliRoot) initialize() {
 		csConfig.Cscli.Color = cli.outputColor
 
 		if cli.outputColor != "yes" && cli.outputColor != "no" && cli.outputColor != "auto" {
-			log.Fatalf("output color %s unknown", cli.outputColor)
+			return fmt.Errorf("output color '%s' not supported: must be one of yes, no, auto", cli.outputColor)
 		}
 	}
-}
 
-// list of valid subcommands for the shell completion
-var validArgs = []string{
-	"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
-	"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
-	"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
-	"postoverflows", "scenarios", "simulation", "support", "version",
+	return nil
 }
 
 func (cli *cliRoot) colorize(cmd *cobra.Command) {
@@ -177,17 +187,25 @@ func (cli *cliRoot) colorize(cmd *cobra.Command) {
 	cmd.SetOut(color.Output)
 }
 
-func (cli *cliRoot) NewCommand() *cobra.Command {
+func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 	// set the formatter asap and worry about level later
 	logFormatter := &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
-		log.Fatalf("failed to register features: %s", err)
+		return nil, fmt.Errorf("failed to register features: %w", err)
 	}
 
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
-		log.Fatalf("failed to set feature flags from env: %s", err)
+		return nil, fmt.Errorf("failed to set feature flags from env: %w", err)
+	}
+
+	// list of valid subcommands for the shell completion
+	validArgs := []string{
+		"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+		"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
+		"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
+		"postoverflows", "scenarios", "simulation", "support", "version",
 	}
 
 	cmd := &cobra.Command{
@@ -220,9 +238,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	pflags.BoolVar(&cli.logTrace, "trace", false, "Set logging to trace")
 	pflags.StringVar(&cli.flagBranch, "branch", "", "Override hub branch on github")
 
-	if err := pflags.MarkHidden("branch"); err != nil {
-		log.Fatalf("failed to hide flag: %s", err)
-	}
+	_ = pflags.MarkHidden("branch")
 
 	// Look for "-c /path/to/config.yaml"
 	// This duplicates the logic in cobra, but we need to do it before
@@ -236,50 +252,58 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	if err := csconfig.LoadFeatureFlagsFile(ConfigFilePath, log.StandardLogger()); err != nil {
-		log.Fatal(err)
-	}
-
-	if len(os.Args) > 1 {
-		cobra.OnInitialize(cli.initialize)
+		return nil, err
 	}
 
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
 	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIHub(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIMetrics(cli.cfg).NewCommand())
+	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
+	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIDecisions(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIAlerts(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLISimulation(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIBouncers(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIMachines(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLICapi(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLILapi(cli.cfg).NewCommand())
+	cmd.AddCommand(clidecision.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clialert.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clisimulation.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clibouncer.New(cli.cfg).NewCommand())
+	cmd.AddCommand(climachine.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clicapi.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clilapi.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCompletionCmd())
-	cmd.AddCommand(NewCLIConsole(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIExplain(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIHubTest(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLINotifications(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLISupport(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIPapi(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLICollection(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIParser(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIScenario(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIPostOverflow(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIContext(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIAppsecConfig(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIAppsecRule(cli.cfg).NewCommand())
+	cmd.AddCommand(cliconsole.New(cli.cfg).NewCommand())
+	cmd.AddCommand(cliexplain.New(cli.cfg, ConfigFilePath).NewCommand())
+	cmd.AddCommand(clihubtest.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clinotifications.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clisupport.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clipapi.New(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewCollection(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewParser(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewScenario(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewPostOverflow(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewContext(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
 
-	if fflag.CscliSetup.IsEnabled() {
-		cmd.AddCommand(NewSetupCmd())
+	cli.addSetup(cmd)
+
+	if len(os.Args) > 1 {
+		cobra.OnInitialize(
+			func() {
+				if err := cli.initialize(); err != nil {
+					log.Fatal(err)
+				}
+			},
+		)
 	}
 
-	return cmd
+	return cmd, nil
 }
 
 func main() {
-	cmd := newCliRoot().NewCommand()
+	cmd, err := newCliRoot().NewCommand()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err := cmd.Execute(); err != nil {
 		log.Fatal(err)
 	}

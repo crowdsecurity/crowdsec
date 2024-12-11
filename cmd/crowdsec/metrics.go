@@ -12,7 +12,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -118,7 +118,9 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		decisions, err := dbClient.QueryDecisionCountByScenario()
+		ctx := r.Context()
+
+		decisions, err := dbClient.QueryDecisionCountByScenario(ctx)
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)
@@ -138,7 +140,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			"include_capi": {"false"},
 		}
 
-		alerts, err := dbClient.AlertsCountPerScenario(alertsFilter)
+		alerts, err := dbClient.AlertsCountPerScenario(ctx, alertsFilter)
 		if err != nil {
 			log.Errorf("Error querying alerts for metrics: %v", err)
 			next.ServeHTTP(w, r)

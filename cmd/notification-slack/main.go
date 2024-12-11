@@ -10,6 +10,7 @@ import (
 	"github.com/slack-go/slack"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -23,6 +24,7 @@ type PluginConfig struct {
 	LogLevel  *string `yaml:"log_level"`
 }
 type Notify struct {
+	protobufs.UnimplementedNotifierServer
 	ConfigByName map[string]PluginConfig
 }
 
@@ -84,7 +86,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"slack": &protobufs.NotifierPlugin{
+			"slack": &csplugin.NotifierPlugin{
 				Impl: &Notify{ConfigByName: make(map[string]PluginConfig)},
 			},
 		},

@@ -12,7 +12,6 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -276,7 +275,7 @@ func (r *ReqDumpFilter) ToJSON() error {
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
-func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedRequest, error) {
+func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
 	var err error
 	contentLength := r.ContentLength
 	if contentLength < 0 {
@@ -332,8 +331,9 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		originalHTTPRequest.Header.Set("User-Agent", userAgent)
 		r.Header.Set("User-Agent", userAgent) //Override the UA in the original request, as this is what will be used by the waf engine
 	} else {
-		//If we don't have a forwarded UA, delete the one that was set by the bouncer
+		//If we don't have a forwarded UA, delete the one that was set by the remediation in both original and incoming
 		originalHTTPRequest.Header.Del("User-Agent")
+		r.Header.Del("User-Agent")
 	}
 
 	parsedURL, err := url.Parse(clientURI)

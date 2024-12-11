@@ -9,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: ${script_name} [make | load | clean]"
+    die "usage: ${script_name} [make | load | lock | unlock | clean]"
 }
 
 #shellcheck disable=SC1007
@@ -114,9 +114,12 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "$CSCLI" --warning hub update
+    "$CSCLI" --warning hub update --with-content
 
-    ./bin/preload-hub-items
+    # preload some content and data files
+    "$CSCLI" collections install crowdsecurity/linux --download-only
+    # sub-items did not respect --download-only
+    ./bin/remove-all-hub-items
 
     # force TCP, the default would be unix socket
     "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --url http://127.0.0.1:8080 --auto --force
@@ -134,7 +137,16 @@ make_init_data() {
     remove_init_data
 }
 
+lock_init_data() {
+    touch "${LOCAL_INIT_DIR}/.lock"
+}
+
+unlock_init_data() {
+    rm -f "${LOCAL_INIT_DIR}/.lock"
+}
+
 load_init_data() {
+    [[ -f "${LOCAL_INIT_DIR}/.lock" ]] && die "init data is locked"
     ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
 
     if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
@@ -163,6 +175,12 @@ case "$1" in
         ;;
     load)
         load_init_data
+        ;;
+    lock)
+        lock_init_data
+        ;;
+    unlock)
+        unlock_init_data
         ;;
     clean)
         remove_init_data

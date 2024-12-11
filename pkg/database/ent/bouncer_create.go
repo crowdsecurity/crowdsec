@@ -108,20 +108,6 @@ func (bc *BouncerCreate) SetNillableVersion(s *string) *BouncerCreate {
 	return bc
 }
 
-// SetUntil sets the "until" field.
-func (bc *BouncerCreate) SetUntil(t time.Time) *BouncerCreate {
-	bc.mutation.SetUntil(t)
-	return bc
-}
-
-// SetNillableUntil sets the "until" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableUntil(t *time.Time) *BouncerCreate {
-	if t != nil {
-		bc.SetUntil(*t)
-	}
-	return bc
-}
-
 // SetLastPull sets the "last_pull" field.
 func (bc *BouncerCreate) SetLastPull(t time.Time) *BouncerCreate {
 	bc.mutation.SetLastPull(t)
@@ -146,6 +132,62 @@ func (bc *BouncerCreate) SetAuthType(s string) *BouncerCreate {
 func (bc *BouncerCreate) SetNillableAuthType(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetAuthType(*s)
+	}
+	return bc
+}
+
+// SetOsname sets the "osname" field.
+func (bc *BouncerCreate) SetOsname(s string) *BouncerCreate {
+	bc.mutation.SetOsname(s)
+	return bc
+}
+
+// SetNillableOsname sets the "osname" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsname(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsname(*s)
+	}
+	return bc
+}
+
+// SetOsversion sets the "osversion" field.
+func (bc *BouncerCreate) SetOsversion(s string) *BouncerCreate {
+	bc.mutation.SetOsversion(s)
+	return bc
+}
+
+// SetNillableOsversion sets the "osversion" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsversion(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsversion(*s)
+	}
+	return bc
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (bc *BouncerCreate) SetFeatureflags(s string) *BouncerCreate {
+	bc.mutation.SetFeatureflags(s)
+	return bc
+}
+
+// SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableFeatureflags(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetFeatureflags(*s)
+	}
+	return bc
+}
+
+// SetAutoCreated sets the "auto_created" field.
+func (bc *BouncerCreate) SetAutoCreated(b bool) *BouncerCreate {
+	bc.mutation.SetAutoCreated(b)
+	return bc
+}
+
+// SetNillableAutoCreated sets the "auto_created" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableAutoCreated(b *bool) *BouncerCreate {
+	if b != nil {
+		bc.SetAutoCreated(*b)
 	}
 	return bc
 }
@@ -197,17 +239,13 @@ func (bc *BouncerCreate) defaults() {
 		v := bouncer.DefaultIPAddress
 		bc.mutation.SetIPAddress(v)
 	}
-	if _, ok := bc.mutation.Until(); !ok {
-		v := bouncer.DefaultUntil()
-		bc.mutation.SetUntil(v)
-	}
-	if _, ok := bc.mutation.LastPull(); !ok {
-		v := bouncer.DefaultLastPull()
-		bc.mutation.SetLastPull(v)
-	}
 	if _, ok := bc.mutation.AuthType(); !ok {
 		v := bouncer.DefaultAuthType
 		bc.mutation.SetAuthType(v)
+	}
+	if _, ok := bc.mutation.AutoCreated(); !ok {
+		v := bouncer.DefaultAutoCreated
+		bc.mutation.SetAutoCreated(v)
 	}
 }
 
@@ -228,11 +266,11 @@ func (bc *BouncerCreate) check() error {
 	if _, ok := bc.mutation.Revoked(); !ok {
 		return &ValidationError{Name: "revoked", err: errors.New(`ent: missing required field "Bouncer.revoked"`)}
 	}
-	if _, ok := bc.mutation.LastPull(); !ok {
-		return &ValidationError{Name: "last_pull", err: errors.New(`ent: missing required field "Bouncer.last_pull"`)}
-	}
 	if _, ok := bc.mutation.AuthType(); !ok {
 		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Bouncer.auth_type"`)}
+	}
+	if _, ok := bc.mutation.AutoCreated(); !ok {
+		return &ValidationError{Name: "auto_created", err: errors.New(`ent: missing required field "Bouncer.auto_created"`)}
 	}
 	return nil
 }
@@ -292,17 +330,29 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 		_node.Version = value
 	}
-	if value, ok := bc.mutation.Until(); ok {
-		_spec.SetField(bouncer.FieldUntil, field.TypeTime, value)
-		_node.Until = value
-	}
 	if value, ok := bc.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
-		_node.LastPull = value
+		_node.LastPull = &value
 	}
 	if value, ok := bc.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 		_node.AuthType = value
+	}
+	if value, ok := bc.mutation.Osname(); ok {
+		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
+		_node.Osname = value
+	}
+	if value, ok := bc.mutation.Osversion(); ok {
+		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
+		_node.Osversion = value
+	}
+	if value, ok := bc.mutation.Featureflags(); ok {
+		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
+		_node.Featureflags = value
+	}
+	if value, ok := bc.mutation.AutoCreated(); ok {
+		_spec.SetField(bouncer.FieldAutoCreated, field.TypeBool, value)
+		_node.AutoCreated = value
 	}
 	return _node, _spec
 }

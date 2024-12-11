@@ -16,19 +16,29 @@ func NewCLIDoc() *cliDoc {
 }
 
 func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
+	var target string
+
+	const defaultTarget = "./doc"
+
 	cmd := &cobra.Command{
 		Use:               "doc",
-		Short:             "Generate the documentation in `./doc/`. Directory must exist.",
-		Args:              cobra.ExactArgs(0),
+		Short:             "Generate the documentation related to cscli commands. Target directory must exist.",
+		Args:              cobra.NoArgs,
 		Hidden:            true,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", cli.filePrepender, cli.linkHandler); err != nil {
-				return fmt.Errorf("failed to generate cobra doc: %s", err)
+		RunE: func(_ *cobra.Command, args []string) error {
+			if err := doc.GenMarkdownTreeCustom(rootCmd, target, cli.filePrepender, cli.linkHandler); err != nil {
+				return fmt.Errorf("failed to generate cscli documentation: %w", err)
 			}
+
+			fmt.Println("Documentation generated in", target)
+
 			return nil
 		},
 	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&target, "target", defaultTarget, "The target directory where the documentation will be generated")
 
 	return cmd
 }

@@ -21,7 +21,7 @@ type DataSet struct {
 }
 
 // downloadDataSet downloads all the data files for an item.
-func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *logrus.Logger) error {
+func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader io.Reader, logger *logrus.Logger) error {
 	dec := yaml.NewDecoder(reader)
 
 	for {
@@ -46,14 +46,12 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *lo
 				WithHTTPClient(hubClient).
 				ToFile(destPath).
 				CompareContent().
-				WithLogger(logrus.WithFields(logrus.Fields{"url": dataS.SourceURL}))
+				WithLogger(logrus.WithField("url", dataS.SourceURL))
 
 			if !force {
 				d = d.WithLastModified().
 					WithShelfLife(7 * 24 * time.Hour)
 			}
-
-			ctx := context.TODO()
 
 			downloaded, err := d.Download(ctx, dataS.SourceURL)
 			if err != nil {

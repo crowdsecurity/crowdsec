@@ -9,8 +9,6 @@ setup_file() {
     ./instance-crowdsec start
     API_KEY=$(cscli bouncers add testbouncer -o raw)
     export API_KEY
-    CROWDSEC_API_URL="http://localhost:8080"
-    export CROWDSEC_API_URL
 }
 
 teardown_file() {
@@ -20,11 +18,6 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     if is_db_mysql; then sleep 0.3; fi
-}
-
-api() {
-    URI="$1"
-    curl -s -H "X-Api-Key: ${API_KEY}" "${CROWDSEC_API_URL}${URI}"
 }
 
 #----------
@@ -48,7 +41,7 @@ api() {
 }
 
 @test "API - all decisions" {
-    rune -0 api '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -62,7 +55,7 @@ api() {
 }
 
 @test "API - decisions for ip 4.4.4." {
-    rune -0 api '/v1/decisions?ip=4.4.4.3'
+    rune -0 curl-with-key '/v1/decisions?ip=4.4.4.3'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -73,7 +66,7 @@ api() {
 }
 
 @test "API - decisions for ip contained in 4.4.4." {
-    rune -0 api '/v1/decisions?ip=4.4.4.4&contains=false'
+    rune -0 curl-with-key '/v1/decisions?ip=4.4.4.4&contains=false'
     assert_output 'null'
 }
 
@@ -83,7 +76,7 @@ api() {
 }
 
 @test "API - decisions for ip 5.4.4." {
-    rune -0 api '/v1/decisions?ip=5.4.4.3'
+    rune -0 curl-with-key '/v1/decisions?ip=5.4.4.3'
     assert_output 'null'
 }
 
@@ -93,7 +86,7 @@ api() {
 }
 
 @test "API - decisions for range 4.4.0.0/1" {
-    rune -0 api '/v1/decisions?range=4.4.0.0/16'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.0.0/16'
     assert_output 'null'
 }
 
@@ -104,7 +97,7 @@ api() {
 }
 
 @test "API - decisions for ip/range in 4.4.0.0/1" {
-    rune -0 api '/v1/decisions?range=4.4.0.0/16&contains=false'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.0.0/16&contains=false'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -118,7 +111,7 @@ api() {
 }
 
 @test "API - decisions for range 4.4.4.2/2" {
-    rune -0 api '/v1/decisions?range=4.4.4.2/28'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.4.2/28'
     rune -0 jq -r '.[].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -129,6 +122,6 @@ api() {
 }
 
 @test "API - decisions for range 4.4.3.2/2" {
-    rune -0 api '/v1/decisions?range=4.4.3.2/28'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.3.2/28'
     assert_output 'null'
 }

@@ -130,7 +130,7 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 	message := &Message{}
 	if err := json.Unmarshal([]byte(event.Data), message); err != nil {
-		return fmt.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
+		return fmt.Errorf("polling papi message format is not compatible: %+v: %w", event.Data, err)
 	}
 
 	if message.Header == nil {
@@ -141,32 +141,33 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 		return errors.New("no source user in header message, skipping")
 	}
 
-	if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
-		logger.Debugf("Calling operation '%s'", message.Header.OperationType)
-
-		err := operationFunc(message, p, sync)
-		if err != nil {
-			return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
-		}
-	} else {
+	operationFunc, ok := operationMap[message.Header.OperationType]
+	if !ok {
 		return fmt.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
+	}
+
+	logger.Debugf("Calling operation '%s'", message.Header.OperationType)
+
+	err := operationFunc(message, p, sync)
+	if err != nil {
+		return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
 	}
 
 	return nil
 }
 
-func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
+func (p *Papi) GetPermissions(ctx context.Context) (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
 	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
 
-	req, err := http.NewRequest(http.MethodGet, papiCheckUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, nil)
 	if err != nil {
-		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Fatalf("failed to get response : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to get response: %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -176,7 +177,7 @@ func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 
 		err = json.NewDecoder(resp.Body).Decode(&errResp)
 		if err != nil {
-			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response: %w", err)
 		}
 
 		return PapiPermCheckSuccess{}, fmt.Errorf("unable to query PAPI : %s (%d)", errResp.Error, resp.StatusCode)
@@ -186,7 +187,7 @@ func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
-		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	return respBody, nil
@@ -204,8 +205,8 @@ func reverse(s []longpollclient.Event) []longpollclient.Event {
 	return a
 }
 
-func (p *Papi) PullOnce(since time.Time, sync bool) error {
-	events, err := p.Client.PullOnce(since)
+func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
+	events, err := p.Client.PullOnce(ctx, since)
 	if err != nil {
 		return err
 	}
@@ -229,13 +230,13 @@ func (p *Papi) PullOnce(since time.Time, sync bool) error {
 }
 
 // PullPAPI is the long polling client for real-time decisions from PAPI
-func (p *Papi) Pull() error {
+func (p *Papi) Pull(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/PullPAPI")
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
 
-	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
+	lastTimestampStr, err := p.DBClient.GetConfigItem(ctx, PapiPullKey)
 	if err != nil {
 		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
 	}
@@ -244,30 +245,30 @@ func (p *Papi) Pull() error {
 	if lastTimestampStr == nil {
 		binTime, err := lastTimestamp.MarshalText()
 		if err != nil {
-			return fmt.Errorf("failed to marshal last timestamp: %w", err)
+			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
-		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
 			p.Logger.Errorf("error setting papi pull last key: %s", err)
 		} else {
 			p.Logger.Debugf("config item '%s' set in database with value '%s'", PapiPullKey, string(binTime))
 		}
 	} else {
 		if err := lastTimestamp.UnmarshalText([]byte(*lastTimestampStr)); err != nil {
-			return fmt.Errorf("failed to unmarshal last timestamp: %w", err)
+			return fmt.Errorf("failed to parse last timestamp: %w", err)
 		}
 	}
 
 	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
 
-	for event := range p.Client.Start(lastTimestamp) {
+	for event := range p.Client.Start(ctx, lastTimestamp) {
 		logger := p.Logger.WithField("request-id", event.RequestId)
 		// update last timestamp in database
 		newTime := time.Now().UTC()
 
 		binTime, err := newTime.MarshalText()
 		if err != nil {
-			return fmt.Errorf("failed to marshal last timestamp: %w", err)
+			return fmt.Errorf("failed to serialize last timestamp: %w", err)
 		}
 
 		err = p.handleEvent(event, false)
@@ -276,7 +277,7 @@ func (p *Papi) Pull() error {
 			continue
 		}
 
-		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
 			return fmt.Errorf("failed to update last timestamp: %w", err)
 		}
 

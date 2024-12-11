@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
 
+set -eu
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-cd "${THIS_DIR}" || exit 1
+cd "$THIS_DIR" || exit 1
 # shellcheck disable=SC1091
 . ./.environment.sh
 
-backend_script="./lib/config/config-${CONFIG_BACKEND}"
-
-if [[ ! -x "${backend_script}" ]]; then
-    echo "unknown config backend '${CONFIG_BACKEND}'" >&2
-    exit 1
+if [[ -f "$LOCAL_INIT_DIR/.lock" ]] && [[ "$1" != "unlock" ]]; then
+    die "init data is locked: are you doing some manual test? if so, please finish what you are doing, run 'instance-data unlock' and retry"
 fi
 
-exec "${backend_script}" "$@"
+backend_script="./lib/config/config-${CONFIG_BACKEND}"
+
+if [[ ! -x "$backend_script" ]]; then
+    die "unknown config backend '${CONFIG_BACKEND}'"
+fi
+
+exec "$backend_script" "$@"

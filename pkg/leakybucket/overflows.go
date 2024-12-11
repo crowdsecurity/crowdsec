@@ -19,65 +19,76 @@ import (
 
 // SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
-	srcs := make(map[string]models.Source)
 	/*if it's already an overflow, we have properly formatted sources.
 	we can just twitch them to reflect the requested scope*/
 	if evt.Type == types.OVFLW {
-		for k, v := range evt.Overflow.Sources {
-			/*the scopes are already similar, nothing to do*/
-			if leaky.scopeType.Scope == *v.Scope {
-				srcs[k] = v
-				continue
-			}
+		return overflowEventSources(evt, leaky)
+	}
 
-			/*The bucket requires a decision on scope Range */
-			if leaky.scopeType.Scope == types.Range {
-				/*the original bucket was target IPs, check that we do have range*/
-				if *v.Scope == types.Ip {
-					src := models.Source{}
-					src.AsName = v.AsName
-					src.AsNumber = v.AsNumber
-					src.Cn = v.Cn
-					src.Latitude = v.Latitude
-					src.Longitude = v.Longitude
-					src.Range = v.Range
-					src.Value = new(string)
-					src.Scope = new(string)
-					*src.Scope = leaky.scopeType.Scope
-					*src.Value = ""
+	return eventSources(evt, leaky)
+}
 
-					if v.Range != "" {
-						*src.Value = v.Range
-					}
+func overflowEventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
+	srcs := make(map[string]models.Source)
 
-					if leaky.scopeType.RunTimeFilter != nil {
-						retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
-						if err != nil {
-							return srcs, fmt.Errorf("while running scope filter: %w", err)
-						}
-
-						value, ok := retValue.(string)
-						if !ok {
-							value = ""
-						}
-
-						src.Value = &value
-					}
-
-					if *src.Value != "" {
-						srcs[*src.Value] = src
-					} else {
-						log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
-					}
-				} else {
-					log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
-						leaky.Name, *v.Scope, *v.Value)
-				}
-			}
+	for k, v := range evt.Overflow.Sources {
+		/*the scopes are already similar, nothing to do*/
+		if leaky.scopeType.Scope == *v.Scope {
+			srcs[k] = v
+			continue
 		}
 
-		return srcs, nil
+		/*The bucket requires a decision on scope Range */
+		if leaky.scopeType.Scope == types.Range {
+			/*the original bucket was target IPs, check that we do have range*/
+			if *v.Scope == types.Ip {
+				src := models.Source{}
+				src.AsName = v.AsName
+				src.AsNumber = v.AsNumber
+				src.Cn = v.Cn
+				src.Latitude = v.Latitude
+				src.Longitude = v.Longitude
+				src.Range = v.Range
+				src.Value = new(string)
+				src.Scope = new(string)
+				*src.Scope = leaky.scopeType.Scope
+				*src.Value = ""
+
+				if v.Range != "" {
+					*src.Value = v.Range
+				}
+
+				if leaky.scopeType.RunTimeFilter != nil {
+					retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+					if err != nil {
+						return srcs, fmt.Errorf("while running scope filter: %w", err)
+					}
+
+					value, ok := retValue.(string)
+					if !ok {
+						value = ""
+					}
+
+					src.Value = &value
+				}
+
+				if *src.Value != "" {
+					srcs[*src.Value] = src
+				} else {
+					log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
+				}
+			} else {
+				log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
+					leaky.Name, *v.Scope, *v.Value)
+			}
+		}
 	}
+
+	return srcs, nil
+}
+
+func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
+	srcs := make(map[string]models.Source)
 
 	src := models.Source{}
 
@@ -187,22 +198,24 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 func EventsFromQueue(queue *types.Queue) []*models.Event {
 	events := []*models.Event{}
 
-	for _, evt := range queue.Queue {
-		if evt.Meta == nil {
+	qEvents := queue.GetQueue()
+
+	for idx := range qEvents {
+		if qEvents[idx].Meta == nil {
 			continue
 		}
 
 		meta := models.Meta{}
 		// we want consistence
-		skeys := make([]string, 0, len(evt.Meta))
-		for k := range evt.Meta {
+		skeys := make([]string, 0, len(qEvents[idx].Meta))
+		for k := range qEvents[idx].Meta {
 			skeys = append(skeys, k)
 		}
 
 		sort.Strings(skeys)
 
 		for _, k := range skeys {
-			v := evt.Meta[k]
+			v := qEvents[idx].Meta[k]
 			subMeta := models.MetaItems0{Key: k, Value: v}
 			meta = append(meta, &subMeta)
 		}
@@ -212,15 +225,15 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 			Meta: meta,
 		}
 		// either MarshaledTime is present and is extracted from log
-		if evt.MarshaledTime != "" {
-			tmpTimeStamp := evt.MarshaledTime
+		if qEvents[idx].MarshaledTime != "" {
+			tmpTimeStamp := qEvents[idx].MarshaledTime
 			ovflwEvent.Timestamp = &tmpTimeStamp
-		} else if !evt.Time.IsZero() { // or .Time has been set during parse as time.Now().UTC()
+		} else if !qEvents[idx].Time.IsZero() { // or .Time has been set during parse as time.Now().UTC()
 			ovflwEvent.Timestamp = new(string)
 
-			raw, err := evt.Time.MarshalText()
+			raw, err := qEvents[idx].Time.MarshalText()
 			if err != nil {
-				log.Warningf("while marshaling time '%s' : %s", evt.Time.String(), err)
+				log.Warningf("while serializing time '%s' : %s", qEvents[idx].Time.String(), err)
 			} else {
 				*ovflwEvent.Timestamp = string(raw)
 			}
@@ -236,13 +249,15 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 
 // alertFormatSource iterates over the queue to collect sources
 func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Source, string, error) {
-	var sources = make(map[string]models.Source)
 	var source_type string
+
+	sources := make(map[string]models.Source)
 
 	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
 
-	for _, evt := range queue.Queue {
-		srcs, err := SourceFromEvent(evt, leaky)
+	qEvents := queue.GetQueue()
+	for idx := range qEvents {
+		srcs, err := SourceFromEvent(qEvents[idx], leaky)
 		if err != nil {
 			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Name, err)
 		}
@@ -274,12 +289,12 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 	*/
 	start_at, err := leaky.First_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal start ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to serialize start ts %s : %s", leaky.First_ts.String(), err)
 	}
 
 	stop_at, err := leaky.Ovflw_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal ovflw ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to serialize ovflw ts %s : %s", leaky.First_ts.String(), err)
 	}
 
 	capacity := int32(leaky.Capacity)
@@ -299,6 +314,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		StopAt:          &stopAt,
 		Simulated:       &leaky.Simulated,
 	}
+
 	if leaky.BucketConfig == nil {
 		return runtimeAlert, errors.New("leaky.BucketConfig is nil")
 	}
@@ -341,7 +357,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
 
-		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true {
+		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true { //nolint:revive
 			newApiAlert.Remediation = true
 		}
 

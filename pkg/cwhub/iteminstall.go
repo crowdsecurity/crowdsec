@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -8,11 +9,11 @@ import (
 func (i *Item) enable() error {
 	if i.State.Installed {
 		if i.State.Tainted {
-			return fmt.Errorf("%s is tainted, won't enable unless --force", i.Name)
+			return fmt.Errorf("%s is tainted, won't overwrite unless --force", i.Name)
 		}
 
 		if i.State.IsLocal() {
-			return fmt.Errorf("%s is local, won't enable", i.Name)
+			return fmt.Errorf("%s is local, won't overwrite", i.Name)
 		}
 
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date
@@ -39,7 +40,7 @@ func (i *Item) enable() error {
 }
 
 // Install installs the item from the hub, downloading it if needed.
-func (i *Item) Install(force bool, downloadOnly bool) error {
+func (i *Item) Install(ctx context.Context, force bool, downloadOnly bool) error {
 	if downloadOnly && i.State.Downloaded && i.State.UpToDate {
 		i.hub.logger.Infof("%s is already downloaded and up-to-date", i.Name)
 
@@ -48,13 +49,12 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		}
 	}
 
-	downloaded, err := i.downloadLatest(force, true)
+	downloaded, err := i.downloadLatest(ctx, force, true)
 	if err != nil {
 		return err
 	}
 
 	if downloadOnly && downloaded {
-		i.hub.logger.Infof("Downloaded %s", i.Name)
 		return nil
 	}
 

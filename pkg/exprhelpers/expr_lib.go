@@ -1,7 +1,10 @@
 package exprhelpers
 
 import (
+	"net"
 	"time"
+
+	"github.com/oschwald/geoip2-golang"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
@@ -232,6 +235,20 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "GetActiveDecisionsCount",
+		function: GetActiveDecisionsCount,
+		signature: []interface{}{
+			new(func(string) int),
+		},
+	},
+	{
+		name:     "GetActiveDecisionsTimeLeft",
+		function: GetActiveDecisionsTimeLeft,
+		signature: []interface{}{
+			new(func(string) time.Duration),
+		},
+	},
+	{
 		name:     "GetDecisionsSinceCount",
 		function: GetDecisionsSinceCount,
 		signature: []interface{}{
@@ -453,6 +470,27 @@ var exprFuncs = []exprCustomFunc{
 		function: LibInjectionIsXSS,
 		signature: []interface{}{
 			new(func(string) bool),
+		},
+	},
+	{
+		name:     "GeoIPEnrich",
+		function: GeoIPEnrich,
+		signature: []interface{}{
+			new(func(string) *geoip2.City),
+		},
+	},
+	{
+		name:     "GeoIPASNEnrich",
+		function: GeoIPASNEnrich,
+		signature: []interface{}{
+			new(func(string) *geoip2.ASN),
+		},
+	},
+	{
+		name:     "GeoIPRangeEnrich",
+		function: GeoIPRangeEnrich,
+		signature: []interface{}{
+			new(func(string) *net.IPNet),
 		},
 	},
 }

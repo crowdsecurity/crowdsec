@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -11,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
 
 func TestAPICSendMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name            string
 		duration        time.Duration
@@ -37,7 +36,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			metricsInterval: time.Millisecond * 20,
 			expectedCalls:   5,
 			setUp: func(api *apic) {
-				api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
+				api.dbClient.Ent.Machine.Delete().ExecX(ctx)
 				api.dbClient.Ent.Machine.Create().
 					SetMachineId("1234").
 					SetPassword(testPassword.String()).
@@ -45,16 +44,16 @@ func TestAPICSendMetrics(t *testing.T) {
 					SetScenarios("crowdsecurity/test").
 					SetLastPush(time.Time{}).
 					SetUpdatedAt(time.Time{}).
-					ExecX(context.Background())
+					ExecX(ctx)
 
-				api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
+				api.dbClient.Ent.Bouncer.Delete().ExecX(ctx)
 				api.dbClient.Ent.Bouncer.Create().
 					SetIPAddress("1.2.3.6").
 					SetName("someBouncer").
 					SetAPIKey("foobar").
 					SetRevoked(false).
 					SetLastPull(time.Time{}).
-					ExecX(context.Background())
+					ExecX(ctx)
 			},
 		},
 	}
@@ -65,7 +64,6 @@ func TestAPICSendMetrics(t *testing.T) {
 	defer httpmock.Deactivate()
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 			require.NoError(t, err)
@@ -73,12 +71,12 @@ func TestAPICSendMetrics(t *testing.T) {
 			apiClient, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", version.String()),
+				"",
 				nil,
 			)
 			require.NoError(t, err)
 
-			api := getAPIC(t)
+			api := getAPIC(t, ctx)
 			api.pushInterval = time.Millisecond
 			api.pushIntervalFirst = time.Millisecond
 			api.apiClient = apiClient
@@ -87,8 +85,11 @@ func TestAPICSendMetrics(t *testing.T) {
 			tc.setUp(api)
 
 			stop := make(chan bool)
+
 			httpmock.ZeroCallCounters()
-			go api.SendMetrics(stop)
+
+			go api.SendMetrics(ctx, stop)
+
 			time.Sleep(tc.duration)
 			stop <- true
 

@@ -18,7 +18,7 @@ func parseDateWithFormat(date, format string) (string, time.Time) {
 		}
 		retstr, err := t.MarshalText()
 		if err != nil {
-			log.Warningf("Failed marshaling '%v'", t)
+			log.Warningf("Failed to serialize '%v'", t)
 			return "", time.Time{}
 		}
 		return string(retstr), t
@@ -56,7 +56,7 @@ func GenDateParse(date string) (string, time.Time) {
 	return "", time.Time{}
 }
 
-func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[string]string, error) {
+func ParseDate(in string, p *types.Event, plog *log.Entry) (map[string]string, error) {
 
 	var ret = make(map[string]string)
 	var strDate string
@@ -98,14 +98,10 @@ func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[s
 	now := time.Now().UTC()
 	retstr, err := now.MarshalText()
 	if err != nil {
-		plog.Warning("Failed marshaling current time")
+		plog.Warning("Failed to serialize current time")
 		return ret, err
 	}
 	ret["MarshaledTime"] = string(retstr)
 
 	return ret, nil
-}
-
-func parseDateInit(cfg map[string]string) (interface{}, error) {
-	return nil, nil
 }

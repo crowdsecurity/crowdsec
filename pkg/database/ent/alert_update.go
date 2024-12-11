@@ -38,442 +38,6 @@ func (au *AlertUpdate) SetUpdatedAt(t time.Time) *AlertUpdate {
 	return au
 }
 
-// SetScenario sets the "scenario" field.
-func (au *AlertUpdate) SetScenario(s string) *AlertUpdate {
-	au.mutation.SetScenario(s)
-	return au
-}
-
-// SetNillableScenario sets the "scenario" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableScenario(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetScenario(*s)
-	}
-	return au
-}
-
-// SetBucketId sets the "bucketId" field.
-func (au *AlertUpdate) SetBucketId(s string) *AlertUpdate {
-	au.mutation.SetBucketId(s)
-	return au
-}
-
-// SetNillableBucketId sets the "bucketId" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableBucketId(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetBucketId(*s)
-	}
-	return au
-}
-
-// ClearBucketId clears the value of the "bucketId" field.
-func (au *AlertUpdate) ClearBucketId() *AlertUpdate {
-	au.mutation.ClearBucketId()
-	return au
-}
-
-// SetMessage sets the "message" field.
-func (au *AlertUpdate) SetMessage(s string) *AlertUpdate {
-	au.mutation.SetMessage(s)
-	return au
-}
-
-// SetNillableMessage sets the "message" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableMessage(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetMessage(*s)
-	}
-	return au
-}
-
-// ClearMessage clears the value of the "message" field.
-func (au *AlertUpdate) ClearMessage() *AlertUpdate {
-	au.mutation.ClearMessage()
-	return au
-}
-
-// SetEventsCount sets the "eventsCount" field.
-func (au *AlertUpdate) SetEventsCount(i int32) *AlertUpdate {
-	au.mutation.ResetEventsCount()
-	au.mutation.SetEventsCount(i)
-	return au
-}
-
-// SetNillableEventsCount sets the "eventsCount" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableEventsCount(i *int32) *AlertUpdate {
-	if i != nil {
-		au.SetEventsCount(*i)
-	}
-	return au
-}
-
-// AddEventsCount adds i to the "eventsCount" field.
-func (au *AlertUpdate) AddEventsCount(i int32) *AlertUpdate {
-	au.mutation.AddEventsCount(i)
-	return au
-}
-
-// ClearEventsCount clears the value of the "eventsCount" field.
-func (au *AlertUpdate) ClearEventsCount() *AlertUpdate {
-	au.mutation.ClearEventsCount()
-	return au
-}
-
-// SetStartedAt sets the "startedAt" field.
-func (au *AlertUpdate) SetStartedAt(t time.Time) *AlertUpdate {
-	au.mutation.SetStartedAt(t)
-	return au
-}
-
-// SetNillableStartedAt sets the "startedAt" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableStartedAt(t *time.Time) *AlertUpdate {
-	if t != nil {
-		au.SetStartedAt(*t)
-	}
-	return au
-}
-
-// ClearStartedAt clears the value of the "startedAt" field.
-func (au *AlertUpdate) ClearStartedAt() *AlertUpdate {
-	au.mutation.ClearStartedAt()
-	return au
-}
-
-// SetStoppedAt sets the "stoppedAt" field.
-func (au *AlertUpdate) SetStoppedAt(t time.Time) *AlertUpdate {
-	au.mutation.SetStoppedAt(t)
-	return au
-}
-
-// SetNillableStoppedAt sets the "stoppedAt" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableStoppedAt(t *time.Time) *AlertUpdate {
-	if t != nil {
-		au.SetStoppedAt(*t)
-	}
-	return au
-}
-
-// ClearStoppedAt clears the value of the "stoppedAt" field.
-func (au *AlertUpdate) ClearStoppedAt() *AlertUpdate {
-	au.mutation.ClearStoppedAt()
-	return au
-}
-
-// SetSourceIp sets the "sourceIp" field.
-func (au *AlertUpdate) SetSourceIp(s string) *AlertUpdate {
-	au.mutation.SetSourceIp(s)
-	return au
-}
-
-// SetNillableSourceIp sets the "sourceIp" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceIp(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceIp(*s)
-	}
-	return au
-}
-
-// ClearSourceIp clears the value of the "sourceIp" field.
-func (au *AlertUpdate) ClearSourceIp() *AlertUpdate {
-	au.mutation.ClearSourceIp()
-	return au
-}
-
-// SetSourceRange sets the "sourceRange" field.
-func (au *AlertUpdate) SetSourceRange(s string) *AlertUpdate {
-	au.mutation.SetSourceRange(s)
-	return au
-}
-
-// SetNillableSourceRange sets the "sourceRange" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceRange(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceRange(*s)
-	}
-	return au
-}
-
-// ClearSourceRange clears the value of the "sourceRange" field.
-func (au *AlertUpdate) ClearSourceRange() *AlertUpdate {
-	au.mutation.ClearSourceRange()
-	return au
-}
-
-// SetSourceAsNumber sets the "sourceAsNumber" field.
-func (au *AlertUpdate) SetSourceAsNumber(s string) *AlertUpdate {
-	au.mutation.SetSourceAsNumber(s)
-	return au
-}
-
-// SetNillableSourceAsNumber sets the "sourceAsNumber" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceAsNumber(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceAsNumber(*s)
-	}
-	return au
-}
-
-// ClearSourceAsNumber clears the value of the "sourceAsNumber" field.
-func (au *AlertUpdate) ClearSourceAsNumber() *AlertUpdate {
-	au.mutation.ClearSourceAsNumber()
-	return au
-}
-
-// SetSourceAsName sets the "sourceAsName" field.
-func (au *AlertUpdate) SetSourceAsName(s string) *AlertUpdate {
-	au.mutation.SetSourceAsName(s)
-	return au
-}
-
-// SetNillableSourceAsName sets the "sourceAsName" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceAsName(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceAsName(*s)
-	}
-	return au
-}
-
-// ClearSourceAsName clears the value of the "sourceAsName" field.
-func (au *AlertUpdate) ClearSourceAsName() *AlertUpdate {
-	au.mutation.ClearSourceAsName()
-	return au
-}
-
-// SetSourceCountry sets the "sourceCountry" field.
-func (au *AlertUpdate) SetSourceCountry(s string) *AlertUpdate {
-	au.mutation.SetSourceCountry(s)
-	return au
-}
-
-// SetNillableSourceCountry sets the "sourceCountry" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceCountry(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceCountry(*s)
-	}
-	return au
-}
-
-// ClearSourceCountry clears the value of the "sourceCountry" field.
-func (au *AlertUpdate) ClearSourceCountry() *AlertUpdate {
-	au.mutation.ClearSourceCountry()
-	return au
-}
-
-// SetSourceLatitude sets the "sourceLatitude" field.
-func (au *AlertUpdate) SetSourceLatitude(f float32) *AlertUpdate {
-	au.mutation.ResetSourceLatitude()
-	au.mutation.SetSourceLatitude(f)
-	return au
-}
-
-// SetNillableSourceLatitude sets the "sourceLatitude" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceLatitude(f *float32) *AlertUpdate {
-	if f != nil {
-		au.SetSourceLatitude(*f)
-	}
-	return au
-}
-
-// AddSourceLatitude adds f to the "sourceLatitude" field.
-func (au *AlertUpdate) AddSourceLatitude(f float32) *AlertUpdate {
-	au.mutation.AddSourceLatitude(f)
-	return au
-}
-
-// ClearSourceLatitude clears the value of the "sourceLatitude" field.
-func (au *AlertUpdate) ClearSourceLatitude() *AlertUpdate {
-	au.mutation.ClearSourceLatitude()
-	return au
-}
-
-// SetSourceLongitude sets the "sourceLongitude" field.
-func (au *AlertUpdate) SetSourceLongitude(f float32) *AlertUpdate {
-	au.mutation.ResetSourceLongitude()
-	au.mutation.SetSourceLongitude(f)
-	return au
-}
-
-// SetNillableSourceLongitude sets the "sourceLongitude" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceLongitude(f *float32) *AlertUpdate {
-	if f != nil {
-		au.SetSourceLongitude(*f)
-	}
-	return au
-}
-
-// AddSourceLongitude adds f to the "sourceLongitude" field.
-func (au *AlertUpdate) AddSourceLongitude(f float32) *AlertUpdate {
-	au.mutation.AddSourceLongitude(f)
-	return au
-}
-
-// ClearSourceLongitude clears the value of the "sourceLongitude" field.
-func (au *AlertUpdate) ClearSourceLongitude() *AlertUpdate {
-	au.mutation.ClearSourceLongitude()
-	return au
-}
-
-// SetSourceScope sets the "sourceScope" field.
-func (au *AlertUpdate) SetSourceScope(s string) *AlertUpdate {
-	au.mutation.SetSourceScope(s)
-	return au
-}
-
-// SetNillableSourceScope sets the "sourceScope" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceScope(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceScope(*s)
-	}
-	return au
-}
-
-// ClearSourceScope clears the value of the "sourceScope" field.
-func (au *AlertUpdate) ClearSourceScope() *AlertUpdate {
-	au.mutation.ClearSourceScope()
-	return au
-}
-
-// SetSourceValue sets the "sourceValue" field.
-func (au *AlertUpdate) SetSourceValue(s string) *AlertUpdate {
-	au.mutation.SetSourceValue(s)
-	return au
-}
-
-// SetNillableSourceValue sets the "sourceValue" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSourceValue(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetSourceValue(*s)
-	}
-	return au
-}
-
-// ClearSourceValue clears the value of the "sourceValue" field.
-func (au *AlertUpdate) ClearSourceValue() *AlertUpdate {
-	au.mutation.ClearSourceValue()
-	return au
-}
-
-// SetCapacity sets the "capacity" field.
-func (au *AlertUpdate) SetCapacity(i int32) *AlertUpdate {
-	au.mutation.ResetCapacity()
-	au.mutation.SetCapacity(i)
-	return au
-}
-
-// SetNillableCapacity sets the "capacity" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableCapacity(i *int32) *AlertUpdate {
-	if i != nil {
-		au.SetCapacity(*i)
-	}
-	return au
-}
-
-// AddCapacity adds i to the "capacity" field.
-func (au *AlertUpdate) AddCapacity(i int32) *AlertUpdate {
-	au.mutation.AddCapacity(i)
-	return au
-}
-
-// ClearCapacity clears the value of the "capacity" field.
-func (au *AlertUpdate) ClearCapacity() *AlertUpdate {
-	au.mutation.ClearCapacity()
-	return au
-}
-
-// SetLeakSpeed sets the "leakSpeed" field.
-func (au *AlertUpdate) SetLeakSpeed(s string) *AlertUpdate {
-	au.mutation.SetLeakSpeed(s)
-	return au
-}
-
-// SetNillableLeakSpeed sets the "leakSpeed" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableLeakSpeed(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetLeakSpeed(*s)
-	}
-	return au
-}
-
-// ClearLeakSpeed clears the value of the "leakSpeed" field.
-func (au *AlertUpdate) ClearLeakSpeed() *AlertUpdate {
-	au.mutation.ClearLeakSpeed()
-	return au
-}
-
-// SetScenarioVersion sets the "scenarioVersion" field.
-func (au *AlertUpdate) SetScenarioVersion(s string) *AlertUpdate {
-	au.mutation.SetScenarioVersion(s)
-	return au
-}
-
-// SetNillableScenarioVersion sets the "scenarioVersion" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableScenarioVersion(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetScenarioVersion(*s)
-	}
-	return au
-}
-
-// ClearScenarioVersion clears the value of the "scenarioVersion" field.
-func (au *AlertUpdate) ClearScenarioVersion() *AlertUpdate {
-	au.mutation.ClearScenarioVersion()
-	return au
-}
-
-// SetScenarioHash sets the "scenarioHash" field.
-func (au *AlertUpdate) SetScenarioHash(s string) *AlertUpdate {
-	au.mutation.SetScenarioHash(s)
-	return au
-}
-
-// SetNillableScenarioHash sets the "scenarioHash" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableScenarioHash(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetScenarioHash(*s)
-	}
-	return au
-}
-
-// ClearScenarioHash clears the value of the "scenarioHash" field.
-func (au *AlertUpdate) ClearScenarioHash() *AlertUpdate {
-	au.mutation.ClearScenarioHash()
-	return au
-}
-
-// SetSimulated sets the "simulated" field.
-func (au *AlertUpdate) SetSimulated(b bool) *AlertUpdate {
-	au.mutation.SetSimulated(b)
-	return au
-}
-
-// SetNillableSimulated sets the "simulated" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
-	if b != nil {
-		au.SetSimulated(*b)
-	}
-	return au
-}
-
-// SetUUID sets the "uuid" field.
-func (au *AlertUpdate) SetUUID(s string) *AlertUpdate {
-	au.mutation.SetUUID(s)
-	return au
-}
-
-// SetNillableUUID sets the "uuid" field if the given value is not nil.
-func (au *AlertUpdate) SetNillableUUID(s *string) *AlertUpdate {
-	if s != nil {
-		au.SetUUID(*s)
-	}
-	return au
-}
-
-// ClearUUID clears the value of the "uuid" field.
-func (au *AlertUpdate) ClearUUID() *AlertUpdate {
-	au.mutation.ClearUUID()
-	return au
-}
-
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (au *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
 	au.mutation.SetOwnerID(id)
@@ -660,137 +224,65 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := au.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := au.mutation.Scenario(); ok {
-		_spec.SetField(alert.FieldScenario, field.TypeString, value)
-	}
-	if value, ok := au.mutation.BucketId(); ok {
-		_spec.SetField(alert.FieldBucketId, field.TypeString, value)
-	}
 	if au.mutation.BucketIdCleared() {
 		_spec.ClearField(alert.FieldBucketId, field.TypeString)
-	}
-	if value, ok := au.mutation.Message(); ok {
-		_spec.SetField(alert.FieldMessage, field.TypeString, value)
 	}
 	if au.mutation.MessageCleared() {
 		_spec.ClearField(alert.FieldMessage, field.TypeString)
 	}
-	if value, ok := au.mutation.EventsCount(); ok {
-		_spec.SetField(alert.FieldEventsCount, field.TypeInt32, value)
-	}
-	if value, ok := au.mutation.AddedEventsCount(); ok {
-		_spec.AddField(alert.FieldEventsCount, field.TypeInt32, value)
-	}
 	if au.mutation.EventsCountCleared() {
 		_spec.ClearField(alert.FieldEventsCount, field.TypeInt32)
-	}
-	if value, ok := au.mutation.StartedAt(); ok {
-		_spec.SetField(alert.FieldStartedAt, field.TypeTime, value)
 	}
 	if au.mutation.StartedAtCleared() {
 		_spec.ClearField(alert.FieldStartedAt, field.TypeTime)
 	}
-	if value, ok := au.mutation.StoppedAt(); ok {
-		_spec.SetField(alert.FieldStoppedAt, field.TypeTime, value)
-	}
 	if au.mutation.StoppedAtCleared() {
 		_spec.ClearField(alert.FieldStoppedAt, field.TypeTime)
-	}
-	if value, ok := au.mutation.SourceIp(); ok {
-		_spec.SetField(alert.FieldSourceIp, field.TypeString, value)
 	}
 	if au.mutation.SourceIpCleared() {
 		_spec.ClearField(alert.FieldSourceIp, field.TypeString)
 	}
-	if value, ok := au.mutation.SourceRange(); ok {
-		_spec.SetField(alert.FieldSourceRange, field.TypeString, value)
-	}
 	if au.mutation.SourceRangeCleared() {
 		_spec.ClearField(alert.FieldSourceRange, field.TypeString)
-	}
-	if value, ok := au.mutation.SourceAsNumber(); ok {
-		_spec.SetField(alert.FieldSourceAsNumber, field.TypeString, value)
 	}
 	if au.mutation.SourceAsNumberCleared() {
 		_spec.ClearField(alert.FieldSourceAsNumber, field.TypeString)
 	}
-	if value, ok := au.mutation.SourceAsName(); ok {
-		_spec.SetField(alert.FieldSourceAsName, field.TypeString, value)
-	}
 	if au.mutation.SourceAsNameCleared() {
 		_spec.ClearField(alert.FieldSourceAsName, field.TypeString)
-	}
-	if value, ok := au.mutation.SourceCountry(); ok {
-		_spec.SetField(alert.FieldSourceCountry, field.TypeString, value)
 	}
 	if au.mutation.SourceCountryCleared() {
 		_spec.ClearField(alert.FieldSourceCountry, field.TypeString)
 	}
-	if value, ok := au.mutation.SourceLatitude(); ok {
-		_spec.SetField(alert.FieldSourceLatitude, field.TypeFloat32, value)
-	}
-	if value, ok := au.mutation.AddedSourceLatitude(); ok {
-		_spec.AddField(alert.FieldSourceLatitude, field.TypeFloat32, value)
-	}
 	if au.mutation.SourceLatitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLatitude, field.TypeFloat32)
-	}
-	if value, ok := au.mutation.SourceLongitude(); ok {
-		_spec.SetField(alert.FieldSourceLongitude, field.TypeFloat32, value)
-	}
-	if value, ok := au.mutation.AddedSourceLongitude(); ok {
-		_spec.AddField(alert.FieldSourceLongitude, field.TypeFloat32, value)
 	}
 	if au.mutation.SourceLongitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLongitude, field.TypeFloat32)
 	}
-	if value, ok := au.mutation.SourceScope(); ok {
-		_spec.SetField(alert.FieldSourceScope, field.TypeString, value)
-	}
 	if au.mutation.SourceScopeCleared() {
 		_spec.ClearField(alert.FieldSourceScope, field.TypeString)
-	}
-	if value, ok := au.mutation.SourceValue(); ok {
-		_spec.SetField(alert.FieldSourceValue, field.TypeString, value)
 	}
 	if au.mutation.SourceValueCleared() {
 		_spec.ClearField(alert.FieldSourceValue, field.TypeString)
 	}
-	if value, ok := au.mutation.Capacity(); ok {
-		_spec.SetField(alert.FieldCapacity, field.TypeInt32, value)
-	}
-	if value, ok := au.mutation.AddedCapacity(); ok {
-		_spec.AddField(alert.FieldCapacity, field.TypeInt32, value)
-	}
 	if au.mutation.CapacityCleared() {
 		_spec.ClearField(alert.FieldCapacity, field.TypeInt32)
-	}
-	if value, ok := au.mutation.LeakSpeed(); ok {
-		_spec.SetField(alert.FieldLeakSpeed, field.TypeString, value)
 	}
 	if au.mutation.LeakSpeedCleared() {
 		_spec.ClearField(alert.FieldLeakSpeed, field.TypeString)
 	}
-	if value, ok := au.mutation.ScenarioVersion(); ok {
-		_spec.SetField(alert.FieldScenarioVersion, field.TypeString, value)
-	}
 	if au.mutation.ScenarioVersionCleared() {
 		_spec.ClearField(alert.FieldScenarioVersion, field.TypeString)
-	}
-	if value, ok := au.mutation.ScenarioHash(); ok {
-		_spec.SetField(alert.FieldScenarioHash, field.TypeString, value)
 	}
 	if au.mutation.ScenarioHashCleared() {
 		_spec.ClearField(alert.FieldScenarioHash, field.TypeString)
 	}
-	if value, ok := au.mutation.Simulated(); ok {
-		_spec.SetField(alert.FieldSimulated, field.TypeBool, value)
-	}
-	if value, ok := au.mutation.UUID(); ok {
-		_spec.SetField(alert.FieldUUID, field.TypeString, value)
-	}
 	if au.mutation.UUIDCleared() {
 		_spec.ClearField(alert.FieldUUID, field.TypeString)
+	}
+	if au.mutation.RemediationCleared() {
+		_spec.ClearField(alert.FieldRemediation, field.TypeBool)
 	}
 	if au.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -979,442 +471,6 @@ type AlertUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (auo *AlertUpdateOne) SetUpdatedAt(t time.Time) *AlertUpdateOne {
 	auo.mutation.SetUpdatedAt(t)
-	return auo
-}
-
-// SetScenario sets the "scenario" field.
-func (auo *AlertUpdateOne) SetScenario(s string) *AlertUpdateOne {
-	auo.mutation.SetScenario(s)
-	return auo
-}
-
-// SetNillableScenario sets the "scenario" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableScenario(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetScenario(*s)
-	}
-	return auo
-}
-
-// SetBucketId sets the "bucketId" field.
-func (auo *AlertUpdateOne) SetBucketId(s string) *AlertUpdateOne {
-	auo.mutation.SetBucketId(s)
-	return auo
-}
-
-// SetNillableBucketId sets the "bucketId" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableBucketId(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetBucketId(*s)
-	}
-	return auo
-}
-
-// ClearBucketId clears the value of the "bucketId" field.
-func (auo *AlertUpdateOne) ClearBucketId() *AlertUpdateOne {
-	auo.mutation.ClearBucketId()
-	return auo
-}
-
-// SetMessage sets the "message" field.
-func (auo *AlertUpdateOne) SetMessage(s string) *AlertUpdateOne {
-	auo.mutation.SetMessage(s)
-	return auo
-}
-
-// SetNillableMessage sets the "message" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableMessage(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetMessage(*s)
-	}
-	return auo
-}
-
-// ClearMessage clears the value of the "message" field.
-func (auo *AlertUpdateOne) ClearMessage() *AlertUpdateOne {
-	auo.mutation.ClearMessage()
-	return auo
-}
-
-// SetEventsCount sets the "eventsCount" field.
-func (auo *AlertUpdateOne) SetEventsCount(i int32) *AlertUpdateOne {
-	auo.mutation.ResetEventsCount()
-	auo.mutation.SetEventsCount(i)
-	return auo
-}
-
-// SetNillableEventsCount sets the "eventsCount" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableEventsCount(i *int32) *AlertUpdateOne {
-	if i != nil {
-		auo.SetEventsCount(*i)
-	}
-	return auo
-}
-
-// AddEventsCount adds i to the "eventsCount" field.
-func (auo *AlertUpdateOne) AddEventsCount(i int32) *AlertUpdateOne {
-	auo.mutation.AddEventsCount(i)
-	return auo
-}
-
-// ClearEventsCount clears the value of the "eventsCount" field.
-func (auo *AlertUpdateOne) ClearEventsCount() *AlertUpdateOne {
-	auo.mutation.ClearEventsCount()
-	return auo
-}
-
-// SetStartedAt sets the "startedAt" field.
-func (auo *AlertUpdateOne) SetStartedAt(t time.Time) *AlertUpdateOne {
-	auo.mutation.SetStartedAt(t)
-	return auo
-}
-
-// SetNillableStartedAt sets the "startedAt" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableStartedAt(t *time.Time) *AlertUpdateOne {
-	if t != nil {
-		auo.SetStartedAt(*t)
-	}
-	return auo
-}
-
-// ClearStartedAt clears the value of the "startedAt" field.
-func (auo *AlertUpdateOne) ClearStartedAt() *AlertUpdateOne {
-	auo.mutation.ClearStartedAt()
-	return auo
-}
-
-// SetStoppedAt sets the "stoppedAt" field.
-func (auo *AlertUpdateOne) SetStoppedAt(t time.Time) *AlertUpdateOne {
-	auo.mutation.SetStoppedAt(t)
-	return auo
-}
-
-// SetNillableStoppedAt sets the "stoppedAt" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableStoppedAt(t *time.Time) *AlertUpdateOne {
-	if t != nil {
-		auo.SetStoppedAt(*t)
-	}
-	return auo
-}
-
-// ClearStoppedAt clears the value of the "stoppedAt" field.
-func (auo *AlertUpdateOne) ClearStoppedAt() *AlertUpdateOne {
-	auo.mutation.ClearStoppedAt()
-	return auo
-}
-
-// SetSourceIp sets the "sourceIp" field.
-func (auo *AlertUpdateOne) SetSourceIp(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceIp(s)
-	return auo
-}
-
-// SetNillableSourceIp sets the "sourceIp" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceIp(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceIp(*s)
-	}
-	return auo
-}
-
-// ClearSourceIp clears the value of the "sourceIp" field.
-func (auo *AlertUpdateOne) ClearSourceIp() *AlertUpdateOne {
-	auo.mutation.ClearSourceIp()
-	return auo
-}
-
-// SetSourceRange sets the "sourceRange" field.
-func (auo *AlertUpdateOne) SetSourceRange(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceRange(s)
-	return auo
-}
-
-// SetNillableSourceRange sets the "sourceRange" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceRange(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceRange(*s)
-	}
-	return auo
-}
-
-// ClearSourceRange clears the value of the "sourceRange" field.
-func (auo *AlertUpdateOne) ClearSourceRange() *AlertUpdateOne {
-	auo.mutation.ClearSourceRange()
-	return auo
-}
-
-// SetSourceAsNumber sets the "sourceAsNumber" field.
-func (auo *AlertUpdateOne) SetSourceAsNumber(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceAsNumber(s)
-	return auo
-}
-
-// SetNillableSourceAsNumber sets the "sourceAsNumber" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceAsNumber(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceAsNumber(*s)
-	}
-	return auo
-}
-
-// ClearSourceAsNumber clears the value of the "sourceAsNumber" field.
-func (auo *AlertUpdateOne) ClearSourceAsNumber() *AlertUpdateOne {
-	auo.mutation.ClearSourceAsNumber()
-	return auo
-}
-
-// SetSourceAsName sets the "sourceAsName" field.
-func (auo *AlertUpdateOne) SetSourceAsName(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceAsName(s)
-	return auo
-}
-
-// SetNillableSourceAsName sets the "sourceAsName" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceAsName(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceAsName(*s)
-	}
-	return auo
-}
-
-// ClearSourceAsName clears the value of the "sourceAsName" field.
-func (auo *AlertUpdateOne) ClearSourceAsName() *AlertUpdateOne {
-	auo.mutation.ClearSourceAsName()
-	return auo
-}
-
-// SetSourceCountry sets the "sourceCountry" field.
-func (auo *AlertUpdateOne) SetSourceCountry(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceCountry(s)
-	return auo
-}
-
-// SetNillableSourceCountry sets the "sourceCountry" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceCountry(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceCountry(*s)
-	}
-	return auo
-}
-
-// ClearSourceCountry clears the value of the "sourceCountry" field.
-func (auo *AlertUpdateOne) ClearSourceCountry() *AlertUpdateOne {
-	auo.mutation.ClearSourceCountry()
-	return auo
-}
-
-// SetSourceLatitude sets the "sourceLatitude" field.
-func (auo *AlertUpdateOne) SetSourceLatitude(f float32) *AlertUpdateOne {
-	auo.mutation.ResetSourceLatitude()
-	auo.mutation.SetSourceLatitude(f)
-	return auo
-}
-
-// SetNillableSourceLatitude sets the "sourceLatitude" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceLatitude(f *float32) *AlertUpdateOne {
-	if f != nil {
-		auo.SetSourceLatitude(*f)
-	}
-	return auo
-}
-
-// AddSourceLatitude adds f to the "sourceLatitude" field.
-func (auo *AlertUpdateOne) AddSourceLatitude(f float32) *AlertUpdateOne {
-	auo.mutation.AddSourceLatitude(f)
-	return auo
-}
-
-// ClearSourceLatitude clears the value of the "sourceLatitude" field.
-func (auo *AlertUpdateOne) ClearSourceLatitude() *AlertUpdateOne {
-	auo.mutation.ClearSourceLatitude()
-	return auo
-}
-
-// SetSourceLongitude sets the "sourceLongitude" field.
-func (auo *AlertUpdateOne) SetSourceLongitude(f float32) *AlertUpdateOne {
-	auo.mutation.ResetSourceLongitude()
-	auo.mutation.SetSourceLongitude(f)
-	return auo
-}
-
-// SetNillableSourceLongitude sets the "sourceLongitude" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceLongitude(f *float32) *AlertUpdateOne {
-	if f != nil {
-		auo.SetSourceLongitude(*f)
-	}
-	return auo
-}
-
-// AddSourceLongitude adds f to the "sourceLongitude" field.
-func (auo *AlertUpdateOne) AddSourceLongitude(f float32) *AlertUpdateOne {
-	auo.mutation.AddSourceLongitude(f)
-	return auo
-}
-
-// ClearSourceLongitude clears the value of the "sourceLongitude" field.
-func (auo *AlertUpdateOne) ClearSourceLongitude() *AlertUpdateOne {
-	auo.mutation.ClearSourceLongitude()
-	return auo
-}
-
-// SetSourceScope sets the "sourceScope" field.
-func (auo *AlertUpdateOne) SetSourceScope(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceScope(s)
-	return auo
-}
-
-// SetNillableSourceScope sets the "sourceScope" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceScope(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceScope(*s)
-	}
-	return auo
-}
-
-// ClearSourceScope clears the value of the "sourceScope" field.
-func (auo *AlertUpdateOne) ClearSourceScope() *AlertUpdateOne {
-	auo.mutation.ClearSourceScope()
-	return auo
-}
-
-// SetSourceValue sets the "sourceValue" field.
-func (auo *AlertUpdateOne) SetSourceValue(s string) *AlertUpdateOne {
-	auo.mutation.SetSourceValue(s)
-	return auo
-}
-
-// SetNillableSourceValue sets the "sourceValue" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSourceValue(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetSourceValue(*s)
-	}
-	return auo
-}
-
-// ClearSourceValue clears the value of the "sourceValue" field.
-func (auo *AlertUpdateOne) ClearSourceValue() *AlertUpdateOne {
-	auo.mutation.ClearSourceValue()
-	return auo
-}
-
-// SetCapacity sets the "capacity" field.
-func (auo *AlertUpdateOne) SetCapacity(i int32) *AlertUpdateOne {
-	auo.mutation.ResetCapacity()
-	auo.mutation.SetCapacity(i)
-	return auo
-}
-
-// SetNillableCapacity sets the "capacity" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableCapacity(i *int32) *AlertUpdateOne {
-	if i != nil {
-		auo.SetCapacity(*i)
-	}
-	return auo
-}
-
-// AddCapacity adds i to the "capacity" field.
-func (auo *AlertUpdateOne) AddCapacity(i int32) *AlertUpdateOne {
-	auo.mutation.AddCapacity(i)
-	return auo
-}
-
-// ClearCapacity clears the value of the "capacity" field.
-func (auo *AlertUpdateOne) ClearCapacity() *AlertUpdateOne {
-	auo.mutation.ClearCapacity()
-	return auo
-}
-
-// SetLeakSpeed sets the "leakSpeed" field.
-func (auo *AlertUpdateOne) SetLeakSpeed(s string) *AlertUpdateOne {
-	auo.mutation.SetLeakSpeed(s)
-	return auo
-}
-
-// SetNillableLeakSpeed sets the "leakSpeed" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableLeakSpeed(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetLeakSpeed(*s)
-	}
-	return auo
-}
-
-// ClearLeakSpeed clears the value of the "leakSpeed" field.
-func (auo *AlertUpdateOne) ClearLeakSpeed() *AlertUpdateOne {
-	auo.mutation.ClearLeakSpeed()
-	return auo
-}
-
-// SetScenarioVersion sets the "scenarioVersion" field.
-func (auo *AlertUpdateOne) SetScenarioVersion(s string) *AlertUpdateOne {
-	auo.mutation.SetScenarioVersion(s)
-	return auo
-}
-
-// SetNillableScenarioVersion sets the "scenarioVersion" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableScenarioVersion(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetScenarioVersion(*s)
-	}
-	return auo
-}
-
-// ClearScenarioVersion clears the value of the "scenarioVersion" field.
-func (auo *AlertUpdateOne) ClearScenarioVersion() *AlertUpdateOne {
-	auo.mutation.ClearScenarioVersion()
-	return auo
-}
-
-// SetScenarioHash sets the "scenarioHash" field.
-func (auo *AlertUpdateOne) SetScenarioHash(s string) *AlertUpdateOne {
-	auo.mutation.SetScenarioHash(s)
-	return auo
-}
-
-// SetNillableScenarioHash sets the "scenarioHash" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableScenarioHash(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetScenarioHash(*s)
-	}
-	return auo
-}
-
-// ClearScenarioHash clears the value of the "scenarioHash" field.
-func (auo *AlertUpdateOne) ClearScenarioHash() *AlertUpdateOne {
-	auo.mutation.ClearScenarioHash()
-	return auo
-}
-
-// SetSimulated sets the "simulated" field.
-func (auo *AlertUpdateOne) SetSimulated(b bool) *AlertUpdateOne {
-	auo.mutation.SetSimulated(b)
-	return auo
-}
-
-// SetNillableSimulated sets the "simulated" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
-	if b != nil {
-		auo.SetSimulated(*b)
-	}
-	return auo
-}
-
-// SetUUID sets the "uuid" field.
-func (auo *AlertUpdateOne) SetUUID(s string) *AlertUpdateOne {
-	auo.mutation.SetUUID(s)
-	return auo
-}
-
-// SetNillableUUID sets the "uuid" field if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableUUID(s *string) *AlertUpdateOne {
-	if s != nil {
-		auo.SetUUID(*s)
-	}
-	return auo
-}
-
-// ClearUUID clears the value of the "uuid" field.
-func (auo *AlertUpdateOne) ClearUUID() *AlertUpdateOne {
-	auo.mutation.ClearUUID()
 	return auo
 }
 
@@ -1634,137 +690,65 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 	if value, ok := auo.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := auo.mutation.Scenario(); ok {
-		_spec.SetField(alert.FieldScenario, field.TypeString, value)
-	}
-	if value, ok := auo.mutation.BucketId(); ok {
-		_spec.SetField(alert.FieldBucketId, field.TypeString, value)
-	}
 	if auo.mutation.BucketIdCleared() {
 		_spec.ClearField(alert.FieldBucketId, field.TypeString)
-	}
-	if value, ok := auo.mutation.Message(); ok {
-		_spec.SetField(alert.FieldMessage, field.TypeString, value)
 	}
 	if auo.mutation.MessageCleared() {
 		_spec.ClearField(alert.FieldMessage, field.TypeString)
 	}
-	if value, ok := auo.mutation.EventsCount(); ok {
-		_spec.SetField(alert.FieldEventsCount, field.TypeInt32, value)
-	}
-	if value, ok := auo.mutation.AddedEventsCount(); ok {
-		_spec.AddField(alert.FieldEventsCount, field.TypeInt32, value)
-	}
 	if auo.mutation.EventsCountCleared() {
 		_spec.ClearField(alert.FieldEventsCount, field.TypeInt32)
-	}
-	if value, ok := auo.mutation.StartedAt(); ok {
-		_spec.SetField(alert.FieldStartedAt, field.TypeTime, value)
 	}
 	if auo.mutation.StartedAtCleared() {
 		_spec.ClearField(alert.FieldStartedAt, field.TypeTime)
 	}
-	if value, ok := auo.mutation.StoppedAt(); ok {
-		_spec.SetField(alert.FieldStoppedAt, field.TypeTime, value)
-	}
 	if auo.mutation.StoppedAtCleared() {
 		_spec.ClearField(alert.FieldStoppedAt, field.TypeTime)
-	}
-	if value, ok := auo.mutation.SourceIp(); ok {
-		_spec.SetField(alert.FieldSourceIp, field.TypeString, value)
 	}
 	if auo.mutation.SourceIpCleared() {
 		_spec.ClearField(alert.FieldSourceIp, field.TypeString)
 	}
-	if value, ok := auo.mutation.SourceRange(); ok {
-		_spec.SetField(alert.FieldSourceRange, field.TypeString, value)
-	}
 	if auo.mutation.SourceRangeCleared() {
 		_spec.ClearField(alert.FieldSourceRange, field.TypeString)
-	}
-	if value, ok := auo.mutation.SourceAsNumber(); ok {
-		_spec.SetField(alert.FieldSourceAsNumber, field.TypeString, value)
 	}
 	if auo.mutation.SourceAsNumberCleared() {
 		_spec.ClearField(alert.FieldSourceAsNumber, field.TypeString)
 	}
-	if value, ok := auo.mutation.SourceAsName(); ok {
-		_spec.SetField(alert.FieldSourceAsName, field.TypeString, value)
-	}
 	if auo.mutation.SourceAsNameCleared() {
 		_spec.ClearField(alert.FieldSourceAsName, field.TypeString)
-	}
-	if value, ok := auo.mutation.SourceCountry(); ok {
-		_spec.SetField(alert.FieldSourceCountry, field.TypeString, value)
 	}
 	if auo.mutation.SourceCountryCleared() {
 		_spec.ClearField(alert.FieldSourceCountry, field.TypeString)
 	}
-	if value, ok := auo.mutation.SourceLatitude(); ok {
-		_spec.SetField(alert.FieldSourceLatitude, field.TypeFloat32, value)
-	}
-	if value, ok := auo.mutation.AddedSourceLatitude(); ok {
-		_spec.AddField(alert.FieldSourceLatitude, field.TypeFloat32, value)
-	}
 	if auo.mutation.SourceLatitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLatitude, field.TypeFloat32)
-	}
-	if value, ok := auo.mutation.SourceLongitude(); ok {
-		_spec.SetField(alert.FieldSourceLongitude, field.TypeFloat32, value)
-	}
-	if value, ok := auo.mutation.AddedSourceLongitude(); ok {
-		_spec.AddField(alert.FieldSourceLongitude, field.TypeFloat32, value)
 	}
 	if auo.mutation.SourceLongitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLongitude, field.TypeFloat32)
 	}
-	if value, ok := auo.mutation.SourceScope(); ok {
-		_spec.SetField(alert.FieldSourceScope, field.TypeString, value)
-	}
 	if auo.mutation.SourceScopeCleared() {
 		_spec.ClearField(alert.FieldSourceScope, field.TypeString)
-	}
-	if value, ok := auo.mutation.SourceValue(); ok {
-		_spec.SetField(alert.FieldSourceValue, field.TypeString, value)
 	}
 	if auo.mutation.SourceValueCleared() {
 		_spec.ClearField(alert.FieldSourceValue, field.TypeString)
 	}
-	if value, ok := auo.mutation.Capacity(); ok {
-		_spec.SetField(alert.FieldCapacity, field.TypeInt32, value)
-	}
-	if value, ok := auo.mutation.AddedCapacity(); ok {
-		_spec.AddField(alert.FieldCapacity, field.TypeInt32, value)
-	}
 	if auo.mutation.CapacityCleared() {
 		_spec.ClearField(alert.FieldCapacity, field.TypeInt32)
-	}
-	if value, ok := auo.mutation.LeakSpeed(); ok {
-		_spec.SetField(alert.FieldLeakSpeed, field.TypeString, value)
 	}
 	if auo.mutation.LeakSpeedCleared() {
 		_spec.ClearField(alert.FieldLeakSpeed, field.TypeString)
 	}
-	if value, ok := auo.mutation.ScenarioVersion(); ok {
-		_spec.SetField(alert.FieldScenarioVersion, field.TypeString, value)
-	}
 	if auo.mutation.ScenarioVersionCleared() {
 		_spec.ClearField(alert.FieldScenarioVersion, field.TypeString)
-	}
-	if value, ok := auo.mutation.ScenarioHash(); ok {
-		_spec.SetField(alert.FieldScenarioHash, field.TypeString, value)
 	}
 	if auo.mutation.ScenarioHashCleared() {
 		_spec.ClearField(alert.FieldScenarioHash, field.TypeString)
 	}
-	if value, ok := auo.mutation.Simulated(); ok {
-		_spec.SetField(alert.FieldSimulated, field.TypeBool, value)
-	}
-	if value, ok := auo.mutation.UUID(); ok {
-		_spec.SetField(alert.FieldUUID, field.TypeString, value)
-	}
 	if auo.mutation.UUIDCleared() {
 		_spec.ClearField(alert.FieldUUID, field.TypeString)
+	}
+	if auo.mutation.RemediationCleared() {
+		_spec.ClearField(alert.FieldRemediation, field.TypeBool)
 	}
 	if auo.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{

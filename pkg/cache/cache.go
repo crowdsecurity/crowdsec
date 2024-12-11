@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -11,9 +12,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var Caches []gcache.Cache
-var CacheNames []string
-var CacheConfig []CacheCfg
+var (
+	Caches      []gcache.Cache
+	CacheNames  []string
+	CacheConfig []CacheCfg
+)
 
 /*prometheus*/
 var CacheMetrics = prometheus.NewGaugeVec(
@@ -27,6 +30,7 @@ var CacheMetrics = prometheus.NewGaugeVec(
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateCacheMetrics() {
 	CacheMetrics.Reset()
+
 	for i, name := range CacheNames {
 		CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
 	}
@@ -42,27 +46,28 @@ type CacheCfg struct {
 }
 
 func CacheInit(cfg CacheCfg) error {
-
 	for _, name := range CacheNames {
 		if name == cfg.Name {
 			log.Infof("Cache %s already exists", cfg.Name)
 		}
 	}
-	//get a default logger
+	// get a default logger
 	if cfg.LogLevel == nil {
 		cfg.LogLevel = new(log.Level)
 		*cfg.LogLevel = log.InfoLevel
 	}
-	var clog = log.New()
+
+	clog := log.New()
+
 	if err := types.ConfigureLogger(clog); err != nil {
-		log.Fatalf("While creating cache logger : %s", err)
+		return fmt.Errorf("while creating cache logger: %w", err)
 	}
+
 	clog.SetLevel(*cfg.LogLevel)
-	cfg.Logger = clog.WithFields(log.Fields{
-		"cache": cfg.Name,
-	})
+	cfg.Logger = clog.WithField("cache", cfg.Name)
 
 	tmpCache := gcache.New(cfg.Size)
+
 	switch cfg.Strategy {
 	case "LRU":
 		tmpCache = tmpCache.LRU()
@@ -73,7 +78,6 @@ func CacheInit(cfg CacheCfg) error {
 	default:
 		cfg.Strategy = "LRU"
 		tmpCache = tmpCache.LRU()
-
 	}
 
 	CTICache := tmpCache.Build()
@@ -85,36 +89,42 @@ func CacheInit(cfg CacheCfg) error {
 }
 
 func SetKey(cacheName string, key string, value string, expiration *time.Duration) error {
-
 	for i, name := range CacheNames {
 		if name == cacheName {
 			if expiration == nil {
 				expiration = &CacheConfig[i].TTL
 			}
+
 			CacheConfig[i].Logger.Debugf("Setting key %s to %s with expiration %v", key, value, *expiration)
+
 			if err := Caches[i].SetWithExpire(key, value, *expiration); err != nil {
 				CacheConfig[i].Logger.Warningf("While setting key %s in cache %s: %s", key, cacheName, err)
 			}
 		}
 	}
+
 	return nil
 }
 
 func GetKey(cacheName string, key string) (string, error) {
 	for i, name := range CacheNames {
 		if name == cacheName {
-			if value, err := Caches[i].Get(key); err != nil {
-				//do not warn or log if key not found
+			value, err := Caches[i].Get(key)
+			if err != nil {
+				// do not warn or log if key not found
 				if errors.Is(err, gcache.KeyNotFoundError) {
 					return "", nil
 				}
 				CacheConfig[i].Logger.Warningf("While getting key %s in cache %s: %s", key, cacheName, err)
+
 				return "", err
-			} else {
-				return value.(string), nil
 			}
+
+			return value.(string), nil
 		}
 	}
+
 	log.Warningf("Cache %s not found", cacheName)
+
 	return "", nil
 }

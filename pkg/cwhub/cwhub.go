@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 // hubTransport wraps a Transport to set a custom User-Agent.
@@ -17,7 +16,7 @@ type hubTransport struct {
 }
 
 func (t *hubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("User-Agent", "crowdsec/"+version.String())
+	req.Header.Set("User-Agent", useragent.Default())
 	return t.RoundTripper.RoundTrip(req)
 }
 
@@ -44,11 +43,4 @@ func safePath(dir, filePath string) (string, error) {
 	}
 
 	return absFilePath, nil
-}
-
-// SortItemSlice sorts a slice of items by name, case insensitive.
-func SortItemSlice(items []*Item) {
-	sort.Slice(items, func(i, j int) bool {
-		return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
-	})
 }

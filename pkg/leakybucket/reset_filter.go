@@ -3,8 +3,8 @@ package leakybucket
 import (
 	"sync"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -23,10 +23,12 @@ type CancelOnFilter struct {
 	Debug          bool
 }
 
-var cancelExprCacheLock sync.Mutex
-var cancelExprCache map[string]struct {
-	CancelOnFilter *vm.Program
-}
+var (
+	cancelExprCacheLock sync.Mutex
+	cancelExprCache     map[string]struct {
+		CancelOnFilter *vm.Program
+	}
+)
 
 func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, leaky *Leaky) *types.Event {
@@ -82,22 +84,22 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 		cancelExprCacheLock.Unlock()
 		u.CancelOnFilter = compiled.CancelOnFilter
 		return nil
-	} else {
-		cancelExprCacheLock.Unlock()
-		//release the lock during compile
-
-		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
-			return err
-		}
-		u.CancelOnFilter = compiledExpr.CancelOnFilter
-		if bucketFactory.Debug {
-			u.Debug = true
-		}
-		cancelExprCacheLock.Lock()
-		cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr
-		cancelExprCacheLock.Unlock()
 	}
-	return err
+
+	cancelExprCacheLock.Unlock()
+	//release the lock during compile
+
+	compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+	if err != nil {
+		bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
+		return err
+	}
+	u.CancelOnFilter = compiledExpr.CancelOnFilter
+	if bucketFactory.Debug {
+		u.Debug = true
+	}
+	cancelExprCacheLock.Lock()
+	cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr
+	cancelExprCacheLock.Unlock()
+	return nil
 }

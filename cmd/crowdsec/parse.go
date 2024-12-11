@@ -11,12 +11,11 @@ import (
 )
 
 func runParse(input chan types.Event, output chan types.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
-LOOP:
 	for {
 		select {
 		case <-parsersTomb.Dying():
 			log.Infof("Killing parser routines")
-			break LOOP
+			return nil
 		case event := <-input:
 			if !event.Process {
 				continue
@@ -38,7 +37,7 @@ LOOP:
 			/* parse the log using magic */
 			parsed, err := parser.Parse(parserCTX, event, nodes)
 			if err != nil {
-				log.Errorf("failed parsing : %v\n", err)
+				log.Errorf("failed parsing: %v", err)
 			}
 			elapsed := time.Since(startParsing)
 			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
@@ -55,6 +54,4 @@ LOOP:
 			output <- parsed
 		}
 	}
-
-	return nil
 }

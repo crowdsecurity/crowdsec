@@ -33,12 +33,18 @@ type Bouncer struct {
 	Type string `json:"type"`
 	// Version holds the value of the "version" field.
 	Version string `json:"version"`
-	// Until holds the value of the "until" field.
-	Until time.Time `json:"until"`
 	// LastPull holds the value of the "last_pull" field.
-	LastPull time.Time `json:"last_pull"`
+	LastPull *time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
-	AuthType     string `json:"auth_type"`
+	AuthType string `json:"auth_type"`
+	// Osname holds the value of the "osname" field.
+	Osname string `json:"osname,omitempty"`
+	// Osversion holds the value of the "osversion" field.
+	Osversion string `json:"osversion,omitempty"`
+	// Featureflags holds the value of the "featureflags" field.
+	Featureflags string `json:"featureflags,omitempty"`
+	// AutoCreated holds the value of the "auto_created" field.
+	AutoCreated  bool `json:"auto_created"`
 	selectValues sql.SelectValues
 }
 
@@ -47,13 +53,13 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case bouncer.FieldRevoked:
+		case bouncer.FieldRevoked, bouncer.FieldAutoCreated:
 			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
 			values[i] = new(sql.NullInt64)
-		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType:
+		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
 			values[i] = new(sql.NullString)
-		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
+		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -124,23 +130,42 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.Version = value.String
 			}
-		case bouncer.FieldUntil:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field until", values[i])
-			} else if value.Valid {
-				b.Until = value.Time
-			}
 		case bouncer.FieldLastPull:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_pull", values[i])
 			} else if value.Valid {
-				b.LastPull = value.Time
+				b.LastPull = new(time.Time)
+				*b.LastPull = value.Time
 			}
 		case bouncer.FieldAuthType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field auth_type", values[i])
 			} else if value.Valid {
 				b.AuthType = value.String
+			}
+		case bouncer.FieldOsname:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osname", values[i])
+			} else if value.Valid {
+				b.Osname = value.String
+			}
+		case bouncer.FieldOsversion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osversion", values[i])
+			} else if value.Valid {
+				b.Osversion = value.String
+			}
+		case bouncer.FieldFeatureflags:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field featureflags", values[i])
+			} else if value.Valid {
+				b.Featureflags = value.String
+			}
+		case bouncer.FieldAutoCreated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_created", values[i])
+			} else if value.Valid {
+				b.AutoCreated = value.Bool
 			}
 		default:
 			b.selectValues.Set(columns[i], values[i])
@@ -201,14 +226,25 @@ func (b *Bouncer) String() string {
 	builder.WriteString("version=")
 	builder.WriteString(b.Version)
 	builder.WriteString(", ")
-	builder.WriteString("until=")
-	builder.WriteString(b.Until.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("last_pull=")
-	builder.WriteString(b.LastPull.Format(time.ANSIC))
+	if v := b.LastPull; v != nil {
+		builder.WriteString("last_pull=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(b.AuthType)
+	builder.WriteString(", ")
+	builder.WriteString("osname=")
+	builder.WriteString(b.Osname)
+	builder.WriteString(", ")
+	builder.WriteString("osversion=")
+	builder.WriteString(b.Osversion)
+	builder.WriteString(", ")
+	builder.WriteString("featureflags=")
+	builder.WriteString(b.Featureflags)
+	builder.WriteString(", ")
+	builder.WriteString("auto_created=")
+	builder.WriteString(fmt.Sprintf("%v", b.AutoCreated))
 	builder.WriteByte(')')
 	return builder.String()
 }

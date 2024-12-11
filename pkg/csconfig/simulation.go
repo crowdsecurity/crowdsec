@@ -26,8 +26,7 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 
 	for _, excluded := range s.Exclusions {
 		if excluded == scenario {
-			simulated = !simulated
-			break
+			return !simulated
 		}
 	}
 
@@ -38,7 +37,7 @@ func (c *Config) LoadSimulation() error {
 	simCfg := SimulationConfig{}
 
 	if c.ConfigPaths.SimulationFilePath == "" {
-		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
+		c.ConfigPaths.SimulationFilePath = filepath.Join(c.ConfigPaths.ConfigDir, "simulation.yaml")
 	}
 
 	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
@@ -53,7 +52,7 @@ func (c *Config) LoadSimulation() error {
 
 	if err := dec.Decode(&simCfg); err != nil {
 		if !errors.Is(err, io.EOF) {
-			return fmt.Errorf("while unmarshaling simulation file '%s': %w", c.ConfigPaths.SimulationFilePath, err)
+			return fmt.Errorf("while parsing simulation file '%s': %w", c.ConfigPaths.SimulationFilePath, err)
 		}
 	}
 

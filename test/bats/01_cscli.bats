@@ -40,20 +40,20 @@ teardown() {
 
 @test "cscli version" {
     rune -0 cscli version
-    assert_stderr --partial "version:"
-    assert_stderr --partial "Codename:"
-    assert_stderr --partial "BuildDate:"
-    assert_stderr --partial "GoVersion:"
-    assert_stderr --partial "Platform:"
-    assert_stderr --partial "Constraint_parser:"
-    assert_stderr --partial "Constraint_scenario:"
-    assert_stderr --partial "Constraint_api:"
-    assert_stderr --partial "Constraint_acquis:"
+    assert_output --partial "version:"
+    assert_output --partial "Codename:"
+    assert_output --partial "BuildDate:"
+    assert_output --partial "GoVersion:"
+    assert_output --partial "Platform:"
+    assert_output --partial "Constraint_parser:"
+    assert_output --partial "Constraint_scenario:"
+    assert_output --partial "Constraint_api:"
+    assert_output --partial "Constraint_acquis:"
 
     # should work without configuration file
     rm "$CONFIG_YAML"
     rune -0 cscli version
-    assert_stderr --partial "version:"
+    assert_output --partial "version:"
 }
 
 @test "cscli help" {
@@ -129,7 +129,6 @@ teardown() {
 	}
 	EOT
 }
-
 
 @test "cscli - required configuration paths" {
     config=$(cat "$CONFIG_YAML")
@@ -210,72 +209,6 @@ teardown() {
     rm -rf -- "${backupdir:?}"
 }
 
-@test "cscli lapi status" {
-    rune -0 ./instance-crowdsec start
-    rune -0 cscli lapi status
-
-    assert_stderr --partial "Loaded credentials from"
-    assert_stderr --partial "Trying to authenticate with username"
-    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
-}
-
-@test "cscli - missing LAPI credentials file" {
-    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    rm -f "$LOCAL_API_CREDENTIALS"
-    rune -1 cscli lapi status
-    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
-
-    rune -1 cscli alerts list
-    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
-
-    rune -1 cscli decisions list
-    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
-}
-
-@test "cscli - empty LAPI credentials file" {
-    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    : > "$LOCAL_API_CREDENTIALS"
-    rune -1 cscli lapi status
-    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
-
-    rune -1 cscli alerts list
-    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
-
-    rune -1 cscli decisions list
-    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
-}
-
-@test "cscli - missing LAPI client settings" {
-    config_set 'del(.api.client)'
-    rune -1 cscli lapi status
-    assert_stderr --partial "loading api client: no API client section in configuration"
-
-    rune -1 cscli alerts list
-    assert_stderr --partial "loading api client: no API client section in configuration"
-
-    rune -1 cscli decisions list
-    assert_stderr --partial "loading api client: no API client section in configuration"
-}
-
-@test "cscli - malformed LAPI url" {
-    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    config_set "$LOCAL_API_CREDENTIALS" '.url="http://127.0.0.1:-80"'
-
-    rune -1 cscli lapi status -o json
-    rune -0 jq -r '.msg' <(stderr)
-    assert_output 'failed to authenticate to Local API (LAPI): parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
-}
-
-@test "cscli - bad LAPI password" {
-    rune -0 ./instance-crowdsec start
-    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    config_set "$LOCAL_API_CREDENTIALS" '.password="meh"'
-
-    rune -1 cscli lapi status -o json
-    rune -0 jq -r '.msg' <(stderr)
-    assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
-}
-
 @test "'cscli completion' with or without configuration file" {
     rune -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
@@ -330,16 +263,14 @@ teardown() {
 }
 
 @test "cscli doc" {
-    # generating documentation requires a directory named "doc"
-
     cd "$BATS_TEST_TMPDIR"
     rune -1 cscli doc
     refute_output
-    assert_stderr --regexp 'failed to generate cobra doc: open doc/.*: no such file or directory'
+    assert_stderr --regexp 'failed to generate cscli documentation: open doc/.*: no such file or directory'
 
     mkdir -p doc
     rune -0 cscli doc
-    refute_output
+    assert_output "Documentation generated in ./doc"
     refute_stderr
     assert_file_exists "doc/cscli.md"
     assert_file_not_exist "doc/cscli_setup.md"
@@ -349,6 +280,14 @@ teardown() {
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
     rune -0 cscli doc
     assert_file_exists "doc/cscli_setup.md"
+
+    # specify a target directory
+    mkdir -p "$BATS_TEST_TMPDIR/doc2"
+    rune -0 cscli doc --target "$BATS_TEST_TMPDIR/doc2"
+    assert_output "Documentation generated in $BATS_TEST_TMPDIR/doc2"
+    refute_stderr
+    assert_file_exists "$BATS_TEST_TMPDIR/doc2/cscli_setup.md"
+
 }
 
 @test "feature.yaml for subcommands" {

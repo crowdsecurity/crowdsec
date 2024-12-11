@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+const decisionDeleteBulkSize = 256 // scientifically proven to be the best value for bulk delete
+
 type DecisionsByScenario struct {
 	Scenario string
 	Count    int
@@ -28,7 +31,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
-	var contains = true
+	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 
@@ -109,23 +112,25 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			query = query.Where(decision.IDGT(id))
 		}
 	}
+
 	query, err = applyStartIpEndIpFilter(query, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
 		return nil, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
 	}
+
 	return query, nil
 }
-func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+
+func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
 	query, err := BuildDecisionRequestWithFilter(query, filters)
-
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
@@ -133,19 +138,20 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
-	data, err := query.All(c.CTX)
+	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
+
 	return data, nil
 }
 
-func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
@@ -158,20 +164,22 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
-	data, err := query.All(c.CTX)
+
+	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
+
 	return data, nil
 }
 
-func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) {
+func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*DecisionsByScenario, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
-	query, err := BuildDecisionRequestWithFilter(query, make(map[string][]string))
 
+	query, err := BuildDecisionRequestWithFilter(query, make(map[string][]string))
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
 		return nil, errors.Wrap(QueryFail, "count all decisions with filters")
@@ -179,8 +187,7 @@ func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) 
 
 	var r []*DecisionsByScenario
 
-	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType).Aggregate(ent.Count()).Scan(c.CTX, &r)
-
+	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType).Aggregate(ent.Count()).Scan(ctx, &r)
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
 		return nil, errors.Wrap(QueryFail, "count all decisions with filters")
@@ -189,7 +196,7 @@ func (c *Client) QueryDecisionCountByScenario() ([]*DecisionsByScenario, error) 
 	return r, nil
 }
 
-func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
 	var data []*ent.Decision
 	var err error
 
@@ -211,7 +218,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldValue,
 		decision.FieldScope,
 		decision.FieldOrigin,
-	).Scan(c.CTX, &data)
+	).Scan(ctx, &data)
 	if err != nil {
 		c.Log.Warningf("QueryDecisionWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "query decision failed")
@@ -248,15 +255,20 @@ func longestDecisionForScopeTypeValue(s *sql.Selector) {
 	)
 }
 
-func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
-		decision.UntilGT(since),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+
+	if since != nil {
+		query = query.Where(decision.UntilGT(*since))
+	}
+
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -265,7 +277,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
-	data, err := query.All(c.CTX)
+	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
@@ -274,11 +286,14 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	return data, nil
 }
 
-func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
-		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
 	)
+
+	if since != nil {
+		query = query.Where(decision.CreatedAtGT(*since))
+	}
 
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
@@ -293,7 +308,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
-	data, err := query.All(c.CTX)
+	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
@@ -302,24 +317,11 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 	return data, nil
 }
 
-func (c *Client) DeleteDecisionById(decisionID int) ([]*ent.Decision, error) {
-	toDelete, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
-	if err != nil {
-		c.Log.Warningf("DeleteDecisionById : %s", err)
-		return nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
-	}
-
-	count, err := c.BulkDeleteDecisions(toDelete, false)
-	c.Log.Debugf("deleted %d decisions", count)
-
-	return toDelete, err
-}
-
-func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, []*ent.Decision, error) {
+func (c *Client) DeleteDecisionsWithFilter(ctx context.Context, filter map[string][]string) (string, []*ent.Decision, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
-	var contains = true
+	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer) */
 
@@ -418,13 +420,13 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 
-	toDelete, err := decisions.All(c.CTX)
+	toDelete, err := decisions.All(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteDecisionsWithFilter : %s", err)
 		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
 
-	count, err := c.BulkDeleteDecisions(toDelete, false)
+	count, err := c.DeleteDecisions(ctx, toDelete)
 	if err != nil {
 		c.Log.Warningf("While deleting decisions : %s", err)
 		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
@@ -433,12 +435,12 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	return strconv.Itoa(count), toDelete, nil
 }
 
-// SoftDeleteDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
-func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, []*ent.Decision, error) {
+// ExpireDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
+func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[string][]string) (string, []*ent.Decision, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
-	var contains = true
+	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 	decisions := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
@@ -543,66 +545,100 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 
-	DecisionsToDelete, err := decisions.All(c.CTX)
+	DecisionsToDelete, err := decisions.All(ctx)
 	if err != nil {
-		c.Log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
-		return "0", nil, errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
+		c.Log.Warningf("ExpireDecisionsWithFilter : %s", err)
+		return "0", nil, errors.Wrap(DeleteFail, "expire decisions with provided filter")
 	}
 
-	count, err := c.BulkDeleteDecisions(DecisionsToDelete, true)
+	count, err := c.ExpireDecisions(ctx, DecisionsToDelete)
 	if err != nil {
-		return "0", nil, errors.Wrapf(DeleteFail, "soft delete decisions with provided filter : %s", err)
+		return "0", nil, errors.Wrapf(DeleteFail, "expire decisions with provided filter : %s", err)
 	}
 
 	return strconv.Itoa(count), DecisionsToDelete, err
 }
 
-// BulkDeleteDecisions sets the expiration of a bulk of decisions to now() or hard deletes them.
-// We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
-func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDelete bool) (int, error) {
-	const bulkSize = 256 // scientifically proven to be the best value for bulk delete
-
-	var (
-		nbUpdates    int
-		err          error
-		totalUpdates = 0
-	)
-
-	idsToDelete := make([]int, len(decisionsToDelete))
-	for i, decision := range decisionsToDelete {
-		idsToDelete[i] = decision.ID
+func decisionIDs(decisions []*ent.Decision) []int {
+	ids := make([]int, len(decisions))
+	for i, d := range decisions {
+		ids[i] = d.ID
 	}
 
-	for _, chunk := range slicetools.Chunks(idsToDelete, bulkSize) {
-		if softDelete {
-			nbUpdates, err = c.Ent.Decision.Update().Where(
-				decision.IDIn(chunk...),
-			).SetUntil(time.Now().UTC()).Save(c.CTX)
-			if err != nil {
-				return totalUpdates, fmt.Errorf("soft delete decisions with provided filter: %w", err)
-			}
-		} else {
-			nbUpdates, err = c.Ent.Decision.Delete().Where(
-				decision.IDIn(chunk...),
-			).Exec(c.CTX)
-			if err != nil {
-				return totalUpdates, fmt.Errorf("hard delete decisions with provided filter: %w", err)
-			}
-		}
-
-		totalUpdates += nbUpdates
-	}
-
-	return totalUpdates, nil
+	return ids
 }
 
-// SoftDeleteDecisionByID set the expiration of a decision to now()
-func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, error) {
-	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
+// ExpireDecisions sets the expiration of a list of decisions to now()
+// It returns the number of impacted decisions for the CAPI/PAPI
+func (c *Client) ExpireDecisions(ctx context.Context, decisions []*ent.Decision) (int, error) {
+	if len(decisions) <= decisionDeleteBulkSize {
+		ids := decisionIDs(decisions)
+
+		rows, err := c.Ent.Decision.Update().Where(
+			decision.IDIn(ids...),
+		).SetUntil(time.Now().UTC()).Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("expire decisions with provided filter: %w", err)
+		}
+
+		return rows, nil
+	}
+
+	// big batch, let's split it and recurse
+
+	total := 0
+
+	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
+		rows, err := c.ExpireDecisions(ctx, chunk)
+		if err != nil {
+			return total, err
+		}
+
+		total += rows
+	}
+
+	return total, nil
+}
+
+// DeleteDecisions removes a list of decisions from the database
+// It returns the number of impacted decisions for the CAPI/PAPI
+func (c *Client) DeleteDecisions(ctx context.Context, decisions []*ent.Decision) (int, error) {
+	if len(decisions) < decisionDeleteBulkSize {
+		ids := decisionIDs(decisions)
+
+		rows, err := c.Ent.Decision.Delete().Where(
+			decision.IDIn(ids...),
+		).Exec(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("hard delete decisions with provided filter: %w", err)
+		}
+
+		return rows, nil
+	}
+
+	// big batch, let's split it and recurse
+
+	tot := 0
+
+	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
+		rows, err := c.DeleteDecisions(ctx, chunk)
+		if err != nil {
+			return tot, err
+		}
+
+		tot += rows
+	}
+
+	return tot, nil
+}
+
+// ExpireDecision set the expiration of a decision to now()
+func (c *Client) ExpireDecisionByID(ctx context.Context, decisionID int) (int, []*ent.Decision, error) {
+	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(ctx)
 
 	// XXX: do we want 500 or 404 here?
 	if err != nil || len(toUpdate) == 0 {
-		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, len(toUpdate))
+		c.Log.Warningf("ExpireDecisionByID : %v (nb expired: %d)", err, len(toUpdate))
 		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 
@@ -610,16 +646,17 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, e
 		return 0, nil, ItemNotFound
 	}
 
-	count, err := c.BulkDeleteDecisions(toUpdate, true)
+	count, err := c.ExpireDecisions(ctx, toUpdate)
+
 	return count, toUpdate, err
 }
 
-func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
+func (c *Client) CountDecisionsByValue(ctx context.Context, decisionValue string) (int, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz, count int
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 	if err != nil {
 		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
 	}
@@ -632,7 +669,7 @@ func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
 	}
 
-	count, err = decisions.Count(c.CTX)
+	count, err = decisions.Count(ctx)
 	if err != nil {
 		return 0, errors.Wrapf(err, "fail to count decisions")
 	}
@@ -640,9 +677,70 @@ func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 	return count, nil
 }
 
-func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Time) (int, error) {
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(decisionValue)
+func (c *Client) CountActiveDecisionsByValue(ctx context.Context, decisionValue string) (int, error) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz, count int
 
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
+	if err != nil {
+		return 0, fmt.Errorf("unable to convert '%s' to int: %w", decisionValue, err)
+	}
+
+	contains := true
+	decisions := c.Ent.Decision.Query()
+
+	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
+	if err != nil {
+		return 0, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
+	}
+
+	decisions = decisions.Where(decision.UntilGT(time.Now().UTC()))
+
+	count, err = decisions.Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("fail to count decisions: %w", err)
+	}
+
+	return count, nil
+}
+
+func (c *Client) GetActiveDecisionsTimeLeftByValue(ctx context.Context, decisionValue string) (time.Duration, error) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz int
+
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
+	if err != nil {
+		return 0, fmt.Errorf("unable to convert '%s' to int: %w", decisionValue, err)
+	}
+
+	contains := true
+	decisions := c.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now().UTC()),
+	)
+
+	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
+	if err != nil {
+		return 0, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
+	}
+
+	decisions = decisions.Order(ent.Desc(decision.FieldUntil))
+
+	decision, err := decisions.First(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return 0, fmt.Errorf("fail to get decision: %w", err)
+	}
+
+	if decision == nil {
+		return 0, nil
+	}
+
+	return decision.Until.Sub(time.Now().UTC()), nil
+}
+
+func (c *Client) CountDecisionsSinceByValue(ctx context.Context, decisionValue string, since time.Time) (int, error) {
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(decisionValue)
 	if err != nil {
 		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
 	}
@@ -657,7 +755,7 @@ func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Tim
 		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
 	}
 
-	count, err := decisions.Count(c.CTX)
+	count, err := decisions.Count(ctx)
 	if err != nil {
 		return 0, errors.Wrapf(err, "fail to count decisions")
 	}

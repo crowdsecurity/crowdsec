@@ -105,14 +105,24 @@ func IsValidated(v bool) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldIsValidated, v))
 }
 
-// Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
-func Status(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEQ(FieldStatus, v))
-}
-
 // AuthType applies equality check predicate on the "auth_type" field. It's identical to AuthTypeEQ.
 func AuthType(v string) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldAuthType, v))
+}
+
+// Osname applies equality check predicate on the "osname" field. It's identical to OsnameEQ.
+func Osname(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEQ(FieldOsname, v))
+}
+
+// Osversion applies equality check predicate on the "osversion" field. It's identical to OsversionEQ.
+func Osversion(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEQ(FieldOsversion, v))
+}
+
+// Featureflags applies equality check predicate on the "featureflags" field. It's identical to FeatureflagsEQ.
+func Featureflags(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEQ(FieldFeatureflags, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -650,81 +660,6 @@ func IsValidatedNEQ(v bool) predicate.Machine {
 	return predicate.Machine(sql.FieldNEQ(FieldIsValidated, v))
 }
 
-// StatusEQ applies the EQ predicate on the "status" field.
-func StatusEQ(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEQ(FieldStatus, v))
-}
-
-// StatusNEQ applies the NEQ predicate on the "status" field.
-func StatusNEQ(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldNEQ(FieldStatus, v))
-}
-
-// StatusIn applies the In predicate on the "status" field.
-func StatusIn(vs ...string) predicate.Machine {
-	return predicate.Machine(sql.FieldIn(FieldStatus, vs...))
-}
-
-// StatusNotIn applies the NotIn predicate on the "status" field.
-func StatusNotIn(vs ...string) predicate.Machine {
-	return predicate.Machine(sql.FieldNotIn(FieldStatus, vs...))
-}
-
-// StatusGT applies the GT predicate on the "status" field.
-func StatusGT(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldGT(FieldStatus, v))
-}
-
-// StatusGTE applies the GTE predicate on the "status" field.
-func StatusGTE(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldGTE(FieldStatus, v))
-}
-
-// StatusLT applies the LT predicate on the "status" field.
-func StatusLT(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldLT(FieldStatus, v))
-}
-
-// StatusLTE applies the LTE predicate on the "status" field.
-func StatusLTE(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldLTE(FieldStatus, v))
-}
-
-// StatusContains applies the Contains predicate on the "status" field.
-func StatusContains(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldContains(FieldStatus, v))
-}
-
-// StatusHasPrefix applies the HasPrefix predicate on the "status" field.
-func StatusHasPrefix(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldHasPrefix(FieldStatus, v))
-}
-
-// StatusHasSuffix applies the HasSuffix predicate on the "status" field.
-func StatusHasSuffix(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldHasSuffix(FieldStatus, v))
-}
-
-// StatusIsNil applies the IsNil predicate on the "status" field.
-func StatusIsNil() predicate.Machine {
-	return predicate.Machine(sql.FieldIsNull(FieldStatus))
-}
-
-// StatusNotNil applies the NotNil predicate on the "status" field.
-func StatusNotNil() predicate.Machine {
-	return predicate.Machine(sql.FieldNotNull(FieldStatus))
-}
-
-// StatusEqualFold applies the EqualFold predicate on the "status" field.
-func StatusEqualFold(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEqualFold(FieldStatus, v))
-}
-
-// StatusContainsFold applies the ContainsFold predicate on the "status" field.
-func StatusContainsFold(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldContainsFold(FieldStatus, v))
-}
-
 // AuthTypeEQ applies the EQ predicate on the "auth_type" field.
 func AuthTypeEQ(v string) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldAuthType, v))
@@ -788,6 +723,251 @@ func AuthTypeEqualFold(v string) predicate.Machine {
 // AuthTypeContainsFold applies the ContainsFold predicate on the "auth_type" field.
 func AuthTypeContainsFold(v string) predicate.Machine {
 	return predicate.Machine(sql.FieldContainsFold(FieldAuthType, v))
+}
+
+// OsnameEQ applies the EQ predicate on the "osname" field.
+func OsnameEQ(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEQ(FieldOsname, v))
+}
+
+// OsnameNEQ applies the NEQ predicate on the "osname" field.
+func OsnameNEQ(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldNEQ(FieldOsname, v))
+}
+
+// OsnameIn applies the In predicate on the "osname" field.
+func OsnameIn(vs ...string) predicate.Machine {
+	return predicate.Machine(sql.FieldIn(FieldOsname, vs...))
+}
+
+// OsnameNotIn applies the NotIn predicate on the "osname" field.
+func OsnameNotIn(vs ...string) predicate.Machine {
+	return predicate.Machine(sql.FieldNotIn(FieldOsname, vs...))
+}
+
+// OsnameGT applies the GT predicate on the "osname" field.
+func OsnameGT(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldGT(FieldOsname, v))
+}
+
+// OsnameGTE applies the GTE predicate on the "osname" field.
+func OsnameGTE(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldGTE(FieldOsname, v))
+}
+
+// OsnameLT applies the LT predicate on the "osname" field.
+func OsnameLT(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldLT(FieldOsname, v))
+}
+
+// OsnameLTE applies the LTE predicate on the "osname" field.
+func OsnameLTE(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldLTE(FieldOsname, v))
+}
+
+// OsnameContains applies the Contains predicate on the "osname" field.
+func OsnameContains(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldContains(FieldOsname, v))
+}
+
+// OsnameHasPrefix applies the HasPrefix predicate on the "osname" field.
+func OsnameHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldHasPrefix(FieldOsname, v))
+}
+
+// OsnameHasSuffix applies the HasSuffix predicate on the "osname" field.
+func OsnameHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldHasSuffix(FieldOsname, v))
+}
+
+// OsnameIsNil applies the IsNil predicate on the "osname" field.
+func OsnameIsNil() predicate.Machine {
+	return predicate.Machine(sql.FieldIsNull(FieldOsname))
+}
+
+// OsnameNotNil applies the NotNil predicate on the "osname" field.
+func OsnameNotNil() predicate.Machine {
+	return predicate.Machine(sql.FieldNotNull(FieldOsname))
+}
+
+// OsnameEqualFold applies the EqualFold predicate on the "osname" field.
+func OsnameEqualFold(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEqualFold(FieldOsname, v))
+}
+
+// OsnameContainsFold applies the ContainsFold predicate on the "osname" field.
+func OsnameContainsFold(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldContainsFold(FieldOsname, v))
+}
+
+// OsversionEQ applies the EQ predicate on the "osversion" field.
+func OsversionEQ(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEQ(FieldOsversion, v))
+}
+
+// OsversionNEQ applies the NEQ predicate on the "osversion" field.
+func OsversionNEQ(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldNEQ(FieldOsversion, v))
+}
+
+// OsversionIn applies the In predicate on the "osversion" field.
+func OsversionIn(vs ...string) predicate.Machine {
+	return predicate.Machine(sql.FieldIn(FieldOsversion, vs...))
+}
+
+// OsversionNotIn applies the NotIn predicate on the "osversion" field.
+func OsversionNotIn(vs ...string) predicate.Machine {
+	return predicate.Machine(sql.FieldNotIn(FieldOsversion, vs...))
+}
+
+// OsversionGT applies the GT predicate on the "osversion" field.
+func OsversionGT(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldGT(FieldOsversion, v))
+}
+
+// OsversionGTE applies the GTE predicate on the "osversion" field.
+func OsversionGTE(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldGTE(FieldOsversion, v))
+}
+
+// OsversionLT applies the LT predicate on the "osversion" field.
+func OsversionLT(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldLT(FieldOsversion, v))
+}
+
+// OsversionLTE applies the LTE predicate on the "osversion" field.
+func OsversionLTE(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldLTE(FieldOsversion, v))
+}
+
+// OsversionContains applies the Contains predicate on the "osversion" field.
+func OsversionContains(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldContains(FieldOsversion, v))
+}
+
+// OsversionHasPrefix applies the HasPrefix predicate on the "osversion" field.
+func OsversionHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldHasPrefix(FieldOsversion, v))
+}
+
+// OsversionHasSuffix applies the HasSuffix predicate on the "osversion" field.
+func OsversionHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldHasSuffix(FieldOsversion, v))
+}
+
+// OsversionIsNil applies the IsNil predicate on the "osversion" field.
+func OsversionIsNil() predicate.Machine {
+	return predicate.Machine(sql.FieldIsNull(FieldOsversion))
+}
+
+// OsversionNotNil applies the NotNil predicate on the "osversion" field.
+func OsversionNotNil() predicate.Machine {
+	return predicate.Machine(sql.FieldNotNull(FieldOsversion))
+}
+
+// OsversionEqualFold applies the EqualFold predicate on the "osversion" field.
+func OsversionEqualFold(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEqualFold(FieldOsversion, v))
+}
+
+// OsversionContainsFold applies the ContainsFold predicate on the "osversion" field.
+func OsversionContainsFold(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldContainsFold(FieldOsversion, v))
+}
+
+// FeatureflagsEQ applies the EQ predicate on the "featureflags" field.
+func FeatureflagsEQ(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEQ(FieldFeatureflags, v))
+}
+
+// FeatureflagsNEQ applies the NEQ predicate on the "featureflags" field.
+func FeatureflagsNEQ(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldNEQ(FieldFeatureflags, v))
+}
+
+// FeatureflagsIn applies the In predicate on the "featureflags" field.
+func FeatureflagsIn(vs ...string) predicate.Machine {
+	return predicate.Machine(sql.FieldIn(FieldFeatureflags, vs...))
+}
+
+// FeatureflagsNotIn applies the NotIn predicate on the "featureflags" field.
+func FeatureflagsNotIn(vs ...string) predicate.Machine {
+	return predicate.Machine(sql.FieldNotIn(FieldFeatureflags, vs...))
+}
+
+// FeatureflagsGT applies the GT predicate on the "featureflags" field.
+func FeatureflagsGT(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldGT(FieldFeatureflags, v))
+}
+
+// FeatureflagsGTE applies the GTE predicate on the "featureflags" field.
+func FeatureflagsGTE(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldGTE(FieldFeatureflags, v))
+}
+
+// FeatureflagsLT applies the LT predicate on the "featureflags" field.
+func FeatureflagsLT(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldLT(FieldFeatureflags, v))
+}
+
+// FeatureflagsLTE applies the LTE predicate on the "featureflags" field.
+func FeatureflagsLTE(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldLTE(FieldFeatureflags, v))
+}
+
+// FeatureflagsContains applies the Contains predicate on the "featureflags" field.
+func FeatureflagsContains(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldContains(FieldFeatureflags, v))
+}
+
+// FeatureflagsHasPrefix applies the HasPrefix predicate on the "featureflags" field.
+func FeatureflagsHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldHasPrefix(FieldFeatureflags, v))
+}
+
+// FeatureflagsHasSuffix applies the HasSuffix predicate on the "featureflags" field.
+func FeatureflagsHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldHasSuffix(FieldFeatureflags, v))
+}
+
+// FeatureflagsIsNil applies the IsNil predicate on the "featureflags" field.
+func FeatureflagsIsNil() predicate.Machine {
+	return predicate.Machine(sql.FieldIsNull(FieldFeatureflags))
+}
+
+// FeatureflagsNotNil applies the NotNil predicate on the "featureflags" field.
+func FeatureflagsNotNil() predicate.Machine {
+	return predicate.Machine(sql.FieldNotNull(FieldFeatureflags))
+}
+
+// FeatureflagsEqualFold applies the EqualFold predicate on the "featureflags" field.
+func FeatureflagsEqualFold(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldEqualFold(FieldFeatureflags, v))
+}
+
+// FeatureflagsContainsFold applies the ContainsFold predicate on the "featureflags" field.
+func FeatureflagsContainsFold(v string) predicate.Machine {
+	return predicate.Machine(sql.FieldContainsFold(FieldFeatureflags, v))
+}
+
+// HubstateIsNil applies the IsNil predicate on the "hubstate" field.
+func HubstateIsNil() predicate.Machine {
+	return predicate.Machine(sql.FieldIsNull(FieldHubstate))
+}
+
+// HubstateNotNil applies the NotNil predicate on the "hubstate" field.
+func HubstateNotNil() predicate.Machine {
+	return predicate.Machine(sql.FieldNotNull(FieldHubstate))
+}
+
+// DatasourcesIsNil applies the IsNil predicate on the "datasources" field.
+func DatasourcesIsNil() predicate.Machine {
+	return predicate.Machine(sql.FieldIsNull(FieldDatasources))
+}
+
+// DatasourcesNotNil applies the NotNil predicate on the "datasources" field.
+func DatasourcesNotNil() predicate.Machine {
+	return predicate.Machine(sql.FieldNotNull(FieldDatasources))
 }
 
 // HasAlerts applies the HasEdge predicate on the "alerts" edge.

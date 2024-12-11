@@ -5,12 +5,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestAppsecOnMatchHooks(t *testing.T) {
@@ -41,7 +42,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
-
 			},
 		},
 		{
@@ -274,6 +274,64 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
 		},
+		{
+			name:             "on_match: on_success break",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"CancelEvent()"}, OnSuccess: "break"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 1)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+			},
+		},
+		{
+			name:             "on_match: on_success continue",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"CancelEvent()"}, OnSuccess: "continue"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 1)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -283,10 +341,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 }
 
 func TestAppsecPreEvalHooks(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
-			name:             "Basic on_load hook to disable inband rule",
+			name:             "Basic pre_eval hook to disable inband rule",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -314,7 +371,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "Basic on_load fails to disable rule",
+			name:             "Basic pre_eval fails to disable rule",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -345,11 +402,10 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
-
 			},
 		},
 		{
-			name:             "on_load : disable inband by tag",
+			name:             "pre_eval : disable inband by tag",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -377,7 +433,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "on_load : disable inband by ID",
+			name:             "pre_eval : disable inband by ID",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -405,7 +461,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "on_load : disable inband by name",
+			name:             "pre_eval : disable inband by name",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -433,7 +489,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "on_load : outofband default behavior",
+			name:             "pre_eval : outofband default behavior",
 			expected_load_ok: true,
 			outofband_rules: []appsec_rule.CustomRule{
 				{
@@ -464,7 +520,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "on_load : set remediation by tag",
+			name:             "pre_eval : set remediation by tag",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -491,7 +547,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "on_load : set remediation by name",
+			name:             "pre_eval : set remediation by name",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -518,7 +574,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "on_load : set remediation by ID",
+			name:             "pre_eval : set remediation by ID",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -546,6 +602,62 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
 			},
 		},
+		{
+			name:             "pre_eval : on_success continue",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "1==1", Apply: []string{"SetRemediationByName('rulez', 'foobar')"}, OnSuccess: "continue"},
+				{Filter: "1==1", Apply: []string{"SetRemediationByName('rulez', 'foobar2')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Len(t, responses, 1)
+				require.Equal(t, "foobar2", responses[0].Action)
+			},
+		},
+		{
+			name:             "pre_eval : on_success break",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "1==1", Apply: []string{"SetRemediationByName('rulez', 'foobar')"}, OnSuccess: "break"},
+				{Filter: "1==1", Apply: []string{"SetRemediationByName('rulez', 'foobar2')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Len(t, responses, 1)
+				require.Equal(t, "foobar", responses[0].Action)
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -556,7 +668,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 }
 
 func TestAppsecRemediationConfigHooks(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
@@ -645,6 +756,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		})
 	}
 }
+
 func TestOnMatchRemediationHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
@@ -701,6 +813,72 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 
 				log.Errorf("http status : %d", statusCode)
 				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusForbidden, statusCode)
+			},
+		},
+		{
+			name:             "on_match: on_success break",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "break"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				spew.Dump(responses)
+				spew.Dump(appsecResponse)
+
+				log.Errorf("http status : %d", statusCode)
+				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusForbidden, statusCode)
+			},
+		},
+		{
+			name:             "on_match: on_success continue",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "continue"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				spew.Dump(responses)
+				spew.Dump(appsecResponse)
+
+				log.Errorf("http status : %d", statusCode)
+				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
 				require.Equal(t, http.StatusForbidden, statusCode)
 			},

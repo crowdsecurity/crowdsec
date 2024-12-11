@@ -65,6 +65,9 @@ type AddSignalsRequestItem struct {
 	// stop at
 	// Required: true
 	StopAt *string `json:"stop_at"`
+
+	// UUID of the alert
+	UUID string `json:"uuid,omitempty"`
 }
 
 // Validate validates this add signals request item
@@ -257,6 +260,11 @@ func (m *AddSignalsRequestItem) contextValidateContext(ctx context.Context, form
 	for i := 0; i < len(m.Context); i++ {
 
 		if m.Context[i] != nil {
+
+			if swag.IsZero(m.Context[i]) { // not required
+				return nil
+			}
+
 			if err := m.Context[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("context" + "." + strconv.Itoa(i))
@@ -289,6 +297,7 @@ func (m *AddSignalsRequestItem) contextValidateDecisions(ctx context.Context, fo
 func (m *AddSignalsRequestItem) contextValidateSource(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Source != nil {
+
 		if err := m.Source.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("source")

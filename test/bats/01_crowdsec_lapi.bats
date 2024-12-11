@@ -48,4 +48,3 @@ teardown() {
     rune -0 config_set 'del(.api.server.listen_socket) | .api.server.listen_uri="127.0.0.1:0"'
     rune -0 wait-for --err "CrowdSec Local API listening on 127.0.0.1:" "$CROWDSEC" -no-cs
 }
-

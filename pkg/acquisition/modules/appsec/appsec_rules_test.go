@@ -5,15 +5,15 @@ import (
 	"net/url"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAppsecRuleMatches(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
@@ -28,7 +28,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"toto"}},
@@ -59,7 +60,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"tutu"}},
@@ -84,7 +86,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"toto"}},
@@ -110,7 +113,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"toto"}},
@@ -136,7 +140,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"toto"}},
@@ -165,7 +170,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"bla"}},
@@ -192,7 +198,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(418)"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"bla"}},
@@ -219,7 +226,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediationByName('rule42', 'captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/urllll",
 				Args:       url.Values{"foo": []string{"bla"}},
@@ -228,6 +236,164 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+			},
+		},
+		{
+			name:             "Basic matching in cookies",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"COOKIES"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Cookie": []string{"foo=toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "Basic matching in all cookies",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"COOKIES"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^tutu"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Cookie": []string{"foo=toto; bar=tutu"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "Basic matching in cookie name",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"COOKIES_NAMES"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^tutu"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Cookie": []string{"bar=tutu; tututata=toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "Basic matching in multipart file name",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"FILES"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "\\.php$"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
+				Body: []byte(`
+--boundary
+Content-Disposition: form-data; name="foo"; filename="bar.php"
+Content-Type: application/octet-stream
+
+toto
+--boundary--`),
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "Basic matching IP address",
+			expected_load_ok: true,
+			inband_native_rules: []string{
+				"SecRule REMOTE_ADDR \"@ipMatch 1.2.3.4\" \"id:1,phase:1,log,deny,msg: 'block ip'\"",
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
+				Method:     "GET",
+				URI:        "/urllll",
+				Headers:    http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "block ip", events[1].Appsec.MatchedRules[0]["msg"])
+
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
 			},
 		},
 	}
@@ -240,7 +406,6 @@ func TestAppsecRuleMatches(t *testing.T) {
 }
 
 func TestAppsecRuleTransforms(t *testing.T) {
-
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{
@@ -254,7 +419,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/toto",
 			},
@@ -277,7 +443,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/TOTO",
 			},
@@ -300,7 +467,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/toto",
 			},
@@ -324,7 +492,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/?foo=dG90bw",
 			},
@@ -348,7 +517,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/?foo=dG90bw===",
 			},
@@ -372,7 +542,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/?foo=toto",
 			},
@@ -396,7 +567,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/?foo=%42%42%2F%41",
 			},
@@ -420,7 +592,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/?foo=%20%20%42%42%2F%41%20%20",
 			},
@@ -440,7 +613,6 @@ func TestAppsecRuleTransforms(t *testing.T) {
 }
 
 func TestAppsecRuleZones(t *testing.T) {
-
 	log.SetLevel(log.TraceLevel)
 	tests := []appsecRuleTest{
 		{
@@ -459,7 +631,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/foobar?something=toto&foobar=smth",
 			},
@@ -486,7 +659,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/foobar?something=toto&foobar=smth",
 			},
@@ -513,7 +687,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 				Body:       []byte("smth=toto&foobar=other"),
@@ -542,7 +717,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 				Body:       []byte("smth=toto&foobar=other"),
@@ -571,7 +747,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 				Headers:    http.Header{"foobar": []string{"toto"}},
@@ -599,7 +776,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 				Headers:    http.Header{"foobar": []string{"toto"}},
@@ -622,7 +800,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 			},
@@ -644,7 +823,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 				Proto:      "HTTP/3.1",
@@ -667,7 +847,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/foobar",
 			},
@@ -689,7 +870,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/foobar?a=b",
 			},
@@ -711,7 +893,8 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "127.0.0.1",
 				Method:     "GET",
 				URI:        "/",
 				Body:       []byte("foobar=42421"),

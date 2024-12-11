@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const testContainerName = "docker_test"
@@ -55,9 +55,7 @@ container_name:
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "docker",
-	})
+	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
 		f := DockerSource{}
@@ -108,9 +106,7 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "",
 		},
 	}
-	subLogger := log.WithFields(log.Fields{
-		"type": "docker",
-	})
+	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
 		f := DockerSource{}
@@ -124,6 +120,7 @@ type mockDockerCli struct {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := context.Background()
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
@@ -169,13 +166,9 @@ container_name_regexp:
 
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = logger.WithField("type", "docker")
 		} else {
-			subLogger = log.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = log.WithField("type", "docker")
 		}
 
 		readLogs = false
@@ -193,7 +186,7 @@ container_name_regexp:
 		readerTomb := &tomb.Tomb{}
 		streamTomb := tomb.Tomb{}
 		streamTomb.Go(func() error {
-			return dockerSource.StreamingAcquisition(out, &dockerTomb)
+			return dockerSource.StreamingAcquisition(ctx, out, &dockerTomb)
 		})
 		readerTomb.Go(func() error {
 			time.Sleep(1 * time.Second)
@@ -228,7 +221,7 @@ container_name_regexp:
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
-	if readLogs == true {
+	if readLogs {
 		return []dockerTypes.Container{}, nil
 	}
 
@@ -243,7 +236,7 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
-	if readLogs == true {
+	if readLogs {
 		return io.NopCloser(strings.NewReader("")), nil
 	}
 
@@ -253,7 +246,7 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 
 	for _, line := range data {
 		startLineByte := make([]byte, 8)
-		binary.LittleEndian.PutUint32(startLineByte, 1) //stdout stream
+		binary.LittleEndian.PutUint32(startLineByte, 1) // stdout stream
 		binary.BigEndian.PutUint32(startLineByte[4:], uint32(len(line)))
 		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}
@@ -274,6 +267,8 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	log.Infof("Test 'TestOneShot'")
 
 	tests := []struct {
@@ -310,14 +305,10 @@ func TestOneShot(t *testing.T) {
 
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = logger.WithField("type", "docker")
 		} else {
 			log.SetLevel(ts.logLevel)
-			subLogger = log.WithFields(log.Fields{
-				"type": "docker",
-			})
+			subLogger = log.WithField("type", "docker")
 		}
 
 		readLogs = false
@@ -332,12 +323,63 @@ func TestOneShot(t *testing.T) {
 		dockerClient.Client = new(mockDockerCli)
 		out := make(chan types.Event, 100)
 		tomb := tomb.Tomb{}
-		err := dockerClient.OneShotAcquisition(out, &tomb)
+		err := dockerClient.OneShotAcquisition(ctx, out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		// else we do the check before actualLines is incremented ...
 		if ts.expectedLines != 0 {
 			assert.Len(t, out, ts.expectedLines)
 		}
+	}
+}
+
+func TestParseLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   map[string]string
+		expected map[string]interface{}
+	}{
+		{
+			name:     "bad label",
+			labels:   map[string]string{"crowdsecfoo": "bar"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name:     "simple label",
+			labels:   map[string]string{"crowdsec.bar": "baz"},
+			expected: map[string]interface{}{"bar": "baz"},
+		},
+		{
+			name:     "multiple simple labels",
+			labels:   map[string]string{"crowdsec.bar": "baz", "crowdsec.foo": "bar"},
+			expected: map[string]interface{}{"bar": "baz", "foo": "bar"},
+		},
+		{
+			name:     "multiple simple labels 2",
+			labels:   map[string]string{"crowdsec.bar": "baz", "bla": "foo"},
+			expected: map[string]interface{}{"bar": "baz"},
+		},
+		{
+			name:     "end with dot",
+			labels:   map[string]string{"crowdsec.bar.": "baz"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name:     "consecutive dots",
+			labels:   map[string]string{"crowdsec......bar": "baz"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name:     "crowdsec labels",
+			labels:   map[string]string{"crowdsec.labels.type": "nginx"},
+			expected: map[string]interface{}{"labels": map[string]interface{}{"type": "nginx"}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			labels := parseLabels(test.labels)
+			assert.Equal(t, test.expected, labels)
+		})
 	}
 }

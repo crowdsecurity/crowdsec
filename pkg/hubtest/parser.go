@@ -23,12 +23,8 @@ func (t *HubTestItem) installParserItem(item *cwhub.Item) error {
 	// runtime/parsers/s00-raw/
 	itemTypeDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, item.Stage)
 
-	if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", hubDirParserDest, err)
-	}
-
-	if err := os.MkdirAll(itemTypeDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", itemTypeDirDest, err)
+	if err := createDirs([]string{hubDirParserDest, itemTypeDirDest}); err != nil {
+		return err
 	}
 
 	// runtime/hub/parsers/s00-raw/crowdsecurity/syslog-logs.yaml

@@ -1,4 +1,4 @@
-//go:build !windows && !freebsd
+//go:build !windows && !freebsd && !openbsd
 
 package types
 
@@ -11,7 +11,7 @@ import (
 // Generated with `man statfs | grep _MAGIC | awk '{split(tolower($1),a,"_"); print $2 ": \"" a[1] "\","}'`
 // ext2/3/4 duplicates removed to just have ext4
 // XIAFS removed as well
-var fsTypeMapping map[int64]string = map[int64]string{
+var fsTypeMapping = map[int64]string{
 	0xadf5:     "adfs",
 	0xadff:     "affs",
 	0x5346414f: "afs",
@@ -100,7 +100,6 @@ func GetFSType(path string) (string, error) {
 	var buf unix.Statfs_t
 
 	err := unix.Statfs(path, &buf)
-
 	if err != nil {
 		return "", err
 	}

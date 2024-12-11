@@ -6,6 +6,9 @@
 set -e
 shopt -s inherit_errexit
 
+# Note that "if function_name" in bash matches when the function returns 0,
+# meaning successful execution.
+
 # match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
@@ -48,6 +51,52 @@ csv2yaml() {
 # wrap cscli with the correct config file location
 cscli() {
     command cscli -c "$CONFIG_FILE" "$@"
+}
+
+run_hub_update() {
+    index_modification_time=$(stat -c %Y /etc/crowdsec/hub/.index.json 2>/dev/null)
+    # Run cscli hub update if no date or if the index file is older than 24h
+    if [ -z "$index_modification_time" ] || [ $(( $(date +%s) - index_modification_time )) -gt 86400 ]; then
+        cscli hub update --with-content
+    else
+        echo "Skipping hub update, index file is recent"
+    fi
+}
+
+is_mounted() {
+    path=$(readlink -f "$1")
+    mounts=$(awk '{print $2}' /proc/mounts)
+    while true; do
+        if grep -qE ^"$path"$ <<< "$mounts"; then
+            echo "$path was found in a volume"
+            return 0
+        fi
+        path=$(dirname "$path")
+        if [ "$path" = "/" ]; then
+            return 1
+        fi
+    done
+    return 1 #unreachable
+}
+
+run_hub_update_if_from_volume() {
+    if is_mounted "/etc/crowdsec/hub/.index.json"; then
+        echo "Running hub update"
+        run_hub_update
+    else
+        echo "Skipping hub update, index file is not in a volume"
+    fi
+}
+
+run_hub_upgrade_if_from_volume() {
+    isfalse "$NO_HUB_UPGRADE" || return 0
+    if is_mounted "/var/lib/crowdsec/data"; then
+        echo "Running hub upgrade"
+        cscli hub upgrade
+    else
+        echo "Skipping hub upgrade, data directory is not in a volume"
+    fi
+
 }
 
 # conf_get <key> [file_path]
@@ -119,7 +168,12 @@ cscli_if_clean() {
             error_only=""
             echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
-            cscli $error_only "$itemtype" "$action" "$obj" "$@"
+            if ! cscli $error_only "$itemtype" "$action" "$obj" "$@"; then
+                echo "Failed to $action $itemtype/$obj, running hub update before retrying"
+                run_hub_update
+                # shellcheck disable=SC2086
+                cscli $error_only "$itemtype" "$action" "$obj" "$@"
+            fi
         fi
     done
 }
@@ -159,15 +213,16 @@ if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     export LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
 fi
 
-# Check and prestage databases
-for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
-    # We keep the pre-populated geoip databases in /staging instead of /var,
-    # because if the data directory is bind-mounted from the host, it will be
-    # empty and the files will be out of reach, requiring a runtime download.
-    # We link to them to save about 80Mb compared to cp/mv.
-    if [ ! -e "/var/lib/crowdsec/data/$geodb" ] && [ -e "/staging/var/lib/crowdsec/data/$geodb" ]; then
-        mkdir -p /var/lib/crowdsec/data
-        ln -s "/staging/var/lib/crowdsec/data/$geodb" /var/lib/crowdsec/data/
+# Link the preloaded data files when the data dir is mounted (common case)
+# The symlinks can be overridden by hub upgrade
+for target in "/staging/var/lib/crowdsec/data"/*; do
+    fname="$(basename "$target")"
+    # skip the db and wal files
+    if [[ $fname == crowdsec.db* ]]; then
+        continue
+    fi
+    if [ ! -e "/var/lib/crowdsec/data/$fname" ]; then
+        ln -s "$target" "/var/lib/crowdsec/data/$fname"
     fi
 done
 
@@ -279,10 +334,12 @@ fi
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
     if istrue "$(conf_get '.db_config.type == "sqlite"')"; then
+        # force the creation of the db file(s)
+        cscli machines inspect create-db --error >/dev/null 2>&1 || :
         # don't fail if the db is not there yet
-        chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null \
-            && echo "sqlite database permissions updated" \
-            || true
+        if chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null; then
+            echo "sqlite database permissions updated"
+        fi
     fi
 fi
 
@@ -304,11 +361,8 @@ conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install hub items
 
-cscli hub update || true
-
-if isfalse "$NO_HUB_UPGRADE"; then
-    cscli hub upgrade || true
-fi
+run_hub_update_if_from_volume || true
+run_hub_upgrade_if_from_volume || true
 
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs
@@ -451,6 +505,18 @@ fi
 
 if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
+fi
+
+if istrue "$LEVEL_WARN"; then
+    ARGS="$ARGS -warning"
+fi
+
+if istrue "$LEVEL_ERROR"; then
+    ARGS="$ARGS -error"
+fi
+
+if istrue "$LEVEL_FATAL"; then
+    ARGS="$ARGS -fatal"
 fi
 
 # shellcheck disable=SC2086

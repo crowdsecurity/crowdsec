@@ -34,6 +34,7 @@ var (
 		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "uuid", Type: field.TypeString, Nullable: true},
+		{Name: "remediation", Type: field.TypeBool, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -44,7 +45,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[24]},
+				Columns:    []*schema.Column{AlertsColumns[25]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -68,9 +69,12 @@ var (
 		{Name: "ip_address", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "type", Type: field.TypeString, Nullable: true},
 		{Name: "version", Type: field.TypeString, Nullable: true},
-		{Name: "until", Type: field.TypeTime, Nullable: true},
-		{Name: "last_pull", Type: field.TypeTime},
+		{Name: "last_pull", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
+		{Name: "osname", Type: field.TypeString, Nullable: true},
+		{Name: "osversion", Type: field.TypeString, Nullable: true},
+		{Name: "featureflags", Type: field.TypeString, Nullable: true},
+		{Name: "auto_created", Type: field.TypeBool, Default: false},
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{
@@ -203,8 +207,12 @@ var (
 		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 100000},
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool, Default: false},
-		{Name: "status", Type: field.TypeString, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "password"},
+		{Name: "osname", Type: field.TypeString, Nullable: true},
+		{Name: "osversion", Type: field.TypeString, Nullable: true},
+		{Name: "featureflags", Type: field.TypeString, Nullable: true},
+		{Name: "hubstate", Type: field.TypeJSON, Nullable: true},
+		{Name: "datasources", Type: field.TypeJSON, Nullable: true},
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{
@@ -242,6 +250,21 @@ var (
 			},
 		},
 	}
+	// MetricsColumns holds the columns for the "metrics" table.
+	MetricsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "generated_type", Type: field.TypeEnum, Enums: []string{"LP", "RC"}},
+		{Name: "generated_by", Type: field.TypeString},
+		{Name: "received_at", Type: field.TypeTime},
+		{Name: "pushed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "payload", Type: field.TypeString, Size: 2147483647},
+	}
+	// MetricsTable holds the schema information for the "metrics" table.
+	MetricsTable = &schema.Table{
+		Name:       "metrics",
+		Columns:    MetricsColumns,
+		PrimaryKey: []*schema.Column{MetricsColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AlertsTable,
@@ -252,6 +275,7 @@ var (
 		LocksTable,
 		MachinesTable,
 		MetaTable,
+		MetricsTable,
 	}
 )
 

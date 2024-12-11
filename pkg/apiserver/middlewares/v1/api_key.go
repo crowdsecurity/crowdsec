@@ -60,27 +60,22 @@ func HashSHA512(str string) string {
 
 func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	if a.TlsAuth == nil {
-		logger.Error("TLS Auth is not configured but client presented a certificate")
+		logger.Warn("TLS Auth is not configured but client presented a certificate")
 		return nil
 	}
 
-	validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
-	if !validCert {
-		logger.Error(err)
-		return nil
-	}
+	ctx := c.Request.Context()
 
+	extractedCN, err := a.TlsAuth.ValidateCert(c)
 	if err != nil {
-		logger.Error(err)
+		logger.Warn(err)
 		return nil
 	}
 
-	logger = logger.WithFields(log.Fields{
-		"cn": extractedCN,
-	})
+	logger = logger.WithField("cn", extractedCN)
 
 	bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
-	bouncer, err := a.DbClient.SelectBouncerByName(bouncerName)
+	bouncer, err := a.DbClient.SelectBouncerByName(ctx, bouncerName)
 
 	// This is likely not the proper way, but isNotFound does not seem to work
 	if err != nil && strings.Contains(err.Error(), "bouncer not found") {
@@ -94,7 +89,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 		logger.Infof("Creating bouncer %s", bouncerName)
 
-		bouncer, err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType)
+		bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType, true)
 		if err != nil {
 			logger.Errorf("while creating bouncer db entry: %s", err)
 			return nil
@@ -119,16 +114,68 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 		return nil
 	}
 
+	clientIP := c.ClientIP()
+
+	ctx := c.Request.Context()
+
 	hashStr := HashSHA512(val[0])
 
-	bouncer, err := a.DbClient.SelectBouncer(hashStr)
+	// Appsec case, we only care if the key is valid
+	// No content is returned, no last_pull update or anything
+	if c.Request.Method == http.MethodHead {
+		bouncer, err := a.DbClient.SelectBouncers(ctx, hashStr, types.ApiKeyAuthType)
+		if err != nil {
+			logger.Errorf("while fetching bouncer info: %s", err)
+			return nil
+		}
+		return bouncer[0]
+	}
+
+	// most common case, check if this specific bouncer exists
+	bouncer, err := a.DbClient.SelectBouncerWithIP(ctx, hashStr, clientIP)
+	if err != nil && !ent.IsNotFound(err) {
+		logger.Errorf("while fetching bouncer info: %s", err)
+		return nil
+	}
+
+	// We found the bouncer with key and IP, we can use it
+	if bouncer != nil {
+		if bouncer.AuthType != types.ApiKeyAuthType {
+			logger.Errorf("bouncer isn't allowed to auth by API key")
+			return nil
+		}
+		return bouncer
+	}
+
+	// We didn't find the bouncer with key and IP, let's try to find it with the key only
+	bouncers, err := a.DbClient.SelectBouncers(ctx, hashStr, types.ApiKeyAuthType)
 	if err != nil {
 		logger.Errorf("while fetching bouncer info: %s", err)
 		return nil
 	}
 
-	if bouncer.AuthType != types.ApiKeyAuthType {
-		logger.Errorf("bouncer %s attempted to login using an API key but it is configured to auth with %s", bouncer.Name, bouncer.AuthType)
+	if len(bouncers) == 0 {
+		logger.Debugf("no bouncer found with this key")
+		return nil
+	}
+
+	logger.Debugf("found %d bouncers with this key", len(bouncers))
+
+	// We only have one bouncer with this key and no IP
+	// This is the first request made by this bouncer, keep this one
+	if len(bouncers) == 1 && bouncers[0].IPAddress == "" {
+		return bouncers[0]
+	}
+
+	// Bouncers are ordered by ID, first one *should* be the manually created one
+	// Can probably get a bit weird if the user deletes the manually created one
+	bouncerName := fmt.Sprintf("%s@%s", bouncers[0].Name, clientIP)
+
+	logger.Infof("Creating bouncer %s", bouncerName)
+
+	bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, clientIP, hashStr, types.ApiKeyAuthType, true)
+	if err != nil {
+		logger.Errorf("while creating bouncer db entry: %s", err)
 		return nil
 	}
 
@@ -139,11 +186,11 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bouncer *ent.Bouncer
 
+		ctx := c.Request.Context()
+
 		clientIP := c.ClientIP()
 
-		logger := log.WithFields(log.Fields{
-			"ip": clientIP,
-		})
+		logger := log.WithField("ip", clientIP)
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 			bouncer = a.authTLS(c, logger)
@@ -152,35 +199,27 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		if bouncer == nil {
+			// XXX: StatusUnauthorized?
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 
 			return
 		}
 
-		logger = logger.WithFields(log.Fields{
-			"name": bouncer.Name,
-		})
-
-		if bouncer.IPAddress == "" {
-			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {
-				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-				c.Abort()
-
-				return
-			}
+		// Appsec request, return immediately if we found something
+		if c.Request.Method == http.MethodHead {
+			c.Set(BouncerContextKey, bouncer)
+			return
 		}
 
-		// Don't update IP on HEAD request, as it's used by the appsec to check the validity of the API key provided
-		if bouncer.IPAddress != clientIP && bouncer.IPAddress != "" && c.Request.Method != http.MethodHead {
-			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, clientIP, bouncer.IPAddress)
+		logger = logger.WithField("name", bouncer.Name)
 
-			if err := a.DbClient.UpdateBouncerIP(clientIP, bouncer.ID); err != nil {
+		// 1st time we see this bouncer, we update its IP
+		if bouncer.IPAddress == "" {
+			if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
-
 				return
 			}
 		}
@@ -192,7 +231,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		if bouncer.Version != useragent[1] || bouncer.Type != useragent[0] {
-			if err := a.DbClient.UpdateBouncerTypeAndVersion(useragent[0], useragent[1], bouncer.ID); err != nil {
+			if err := a.DbClient.UpdateBouncerTypeAndVersion(ctx, useragent[0], useragent[1], bouncer.ID); err != nil {
 				logger.Errorf("failed to update bouncer version and type: %s", err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
 				c.Abort()

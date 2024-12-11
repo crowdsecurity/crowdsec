@@ -95,7 +95,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 
 	err = yaml.Unmarshal(yamlFile, c.ConsoleConfig)
 	if err != nil {
-		return fmt.Errorf("unmarshaling console config file '%s': %w", c.ConsoleConfigPath, err)
+		return fmt.Errorf("parsing console config file '%s': %w", c.ConsoleConfigPath, err)
 	}
 
 	if c.ConsoleConfig.ShareCustomScenarios == nil {

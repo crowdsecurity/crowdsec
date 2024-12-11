@@ -4,12 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type appsecRuleTest struct {
@@ -17,6 +18,8 @@ type appsecRuleTest struct {
 	expected_load_ok       bool
 	inband_rules           []appsec_rule.CustomRule
 	outofband_rules        []appsec_rule.CustomRule
+	inband_native_rules    []string
+	outofband_native_rules []string
 	on_load                []appsec.Hook
 	pre_eval               []appsec.Hook
 	post_eval              []appsec.Hook
@@ -27,6 +30,7 @@ type appsecRuleTest struct {
 	DefaultRemediation     string
 	DefaultPassAction      string
 	input_request          appsec.ParsedRequest
+	afterload_asserts      func(runner AppsecRunner)
 	output_asserts         func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int)
 }
 
@@ -41,7 +45,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	InChan := make(chan appsec.ParsedRequest)
 	OutChan := make(chan types.Event)
 
-	logger := log.WithFields(log.Fields{"test": test.name})
+	logger := log.WithField("test", test.name)
 
 	//build rules
 	for ridx, rule := range test.inband_rules {
@@ -52,6 +56,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		inbandRules = append(inbandRules, strRule)
 
 	}
+	inbandRules = append(inbandRules, test.inband_native_rules...)
+	outofbandRules = append(outofbandRules, test.outofband_native_rules...)
 	for ridx, rule := range test.outofband_rules {
 		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
 		if err != nil {
@@ -60,7 +66,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		outofbandRules = append(outofbandRules, strRule)
 	}
 
-	appsecCfg := appsec.AppsecConfig{Logger: logger,
+	appsecCfg := appsec.AppsecConfig{
+		Logger:                 logger,
 		OnLoad:                 test.on_load,
 		PreEval:                test.pre_eval,
 		PostEval:               test.post_eval,
@@ -69,7 +76,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		UserBlockedHTTPCode:    test.UserBlockedHTTPCode,
 		UserPassedHTTPCode:     test.UserPassedHTTPCode,
 		DefaultRemediation:     test.DefaultRemediation,
-		DefaultPassAction:      test.DefaultPassAction}
+		DefaultPassAction:      test.DefaultPassAction,
+	}
 	AppsecRuntime, err := appsecCfg.Build()
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
@@ -90,7 +98,20 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	}
 	err = runner.Init("/tmp/")
 	if err != nil {
+		if !test.expected_load_ok {
+			return
+		}
 		t.Fatalf("unable to initialize runner : %s", err)
+	}
+	if !test.expected_load_ok {
+		t.Fatalf("expected load to fail but it didn't")
+	}
+
+	if test.afterload_asserts != nil {
+		//afterload asserts are just to evaluate the state of the runner after the rules have been loaded
+		//if it's present, don't try to process requests
+		test.afterload_asserts(runner)
+		return
 	}
 
 	input := test.input_request
@@ -120,5 +141,4 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	log.Infof("events : %s", spew.Sdump(OutputEvents))
 	log.Infof("responses : %s", spew.Sdump(OutputResponses))
 	test.output_asserts(OutputEvents, OutputResponses, appsecResponse, http_status)
-
 }

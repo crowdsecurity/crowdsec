@@ -36,6 +36,11 @@ teardown() {
     rune -0 wait-for --err "argument provided but not defined: trololo" "$CROWDSEC" trololo
 }
 
+@test "crowdsec -version" {
+    rune -0 "$CROWDSEC" -version
+    assert_output --partial "version:"
+}
+
 @test "crowdsec (no api and no agent)" {
     rune -0 wait-for \
         --err "you must run at least the API Server or crowdsec" \
@@ -181,7 +186,7 @@ teardown() {
     config_set '.crowdsec_service.acquisition_path=""'
 
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
-    rm -f "$ACQUIS_DIR"
+    rm -rf "$ACQUIS_DIR"
 
     config_set '.common.log_media="stdout"'
     rune -1 wait-for "$CROWDSEC"
@@ -196,7 +201,7 @@ teardown() {
     config_set '.crowdsec_service.acquisition_path=""'
 
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
-    rm -f "$ACQUIS_DIR"
+    rm -rf "$ACQUIS_DIR"
     config_set '.crowdsec_service.acquisition_dir=""'
 
     config_set '.common.log_media="stdout"'
@@ -228,7 +233,42 @@ teardown() {
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
-@test "crowdsec (disabled datasources)" {
+@test "crowdsec (datasource not built)" {
+    config_set '.common.log_media="stdout"'
+
+    # a datasource cannot run - it's not built in the log processor executable
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    cat >"$ACQUIS_DIR"/foo.yaml <<-EOT
+	source: journalctl
+	journalctl_filter:
+	 - "_SYSTEMD_UNIT=ssh.service"
+	labels:
+	  type: syslog
+	EOT
+
+    #shellcheck disable=SC2016
+    rune -1 wait-for \
+        --err "crowdsec init: while loading acquisition config: in file $ACQUIS_DIR/foo.yaml (position: 0) - data source journalctl is not built in this version of crowdsec" \
+        env PATH='' "$CROWDSEC".min
+
+    # auto-detection of journalctl_filter still works
+    cat >"$ACQUIS_DIR"/foo.yaml <<-EOT
+        source: whatever
+	journalctl_filter:
+	 - "_SYSTEMD_UNIT=ssh.service"
+	labels:
+	  type: syslog
+	EOT
+
+    #shellcheck disable=SC2016
+    rune -1 wait-for \
+        --err "crowdsec init: while loading acquisition config: in file $ACQUIS_DIR/foo.yaml (position: 0) - data source journalctl is not built in this version of crowdsec" \
+        env PATH='' "$CROWDSEC".min
+}
+
+@test "crowdsec (disabled datasource)" {
     if is_package_testing; then
         # we can't hide journalctl in package testing
         # because crowdsec is run from systemd

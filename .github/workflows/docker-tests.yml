@@ -35,10 +35,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          config: .github/buildkit.toml
+          buildkitd-config: .github/buildkit.toml
 
       - name: "Build image"
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
@@ -53,23 +53,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+          cache: 'pipenv'
 
-      - name: "Install pipenv"
+      - name: "Install dependencies"
         run: |
           cd docker/test
           python -m pip install --upgrade pipenv wheel
-
-      #- name: "Cache virtualenvs"
-      #  id: cache-pipenv
-      #  uses: actions/cache@v4
-      #  with:
-      #    path: ~/.local/share/virtualenvs
-      #    key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-
-      - name: "Install dependencies"
-        #if: steps.cache-pipenv.outputs.cache-hit != 'true'
-        run: |
-          cd docker/test
           pipenv install --deploy
 
       - name: "Create Docker network"

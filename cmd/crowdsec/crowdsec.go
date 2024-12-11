@@ -4,21 +4,19 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -32,18 +30,25 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 		return nil, nil, fmt.Errorf("while loading context: %w", err)
 	}
 
+	err = exprhelpers.GeoIPInit(hub.GetDataDir())
+	if err != nil {
+		// GeoIP databases are not mandatory, do not make crowdsec fail if they are not present
+		log.Warnf("unable to initialize GeoIP: %s", err)
+	}
+
 	// Start loading configs
 	csParsers := parser.NewParsers(hub)
 	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
 		return nil, nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
-	if err := LoadBuckets(cConfig, hub); err != nil {
+	if err = LoadBuckets(cConfig, hub); err != nil {
 		return nil, nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
-	if err := appsec.LoadAppsecRules(hub); err != nil {
-		return nil, nil, fmt.Errorf("while loading appsec rules: %w", err)
+	// can be nerfed by a build flag
+	if err = LoadAppsecRules(hub); err != nil {
+		return nil, nil, err
 	}
 
 	datasources, err := LoadAcquisition(cConfig)
@@ -65,19 +70,19 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	parsersTomb.Go(func() error {
 		parserWg.Add(1)
 
-		for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
+		for range cConfig.Crowdsec.ParserRoutinesCount {
 			parsersTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 
 				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil {
 					// this error will never happen as parser.Parse is not able to return errors
-					log.Fatalf("starting parse error : %s", err)
 					return err
 				}
 
 				return nil
 			})
 		}
+
 		parserWg.Done()
 
 		return nil
@@ -88,7 +93,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
-		/*restore previous state as well if present*/
+		// restore previous state as well if present
 		if cConfig.Crowdsec.BucketStateFile != "" {
 			log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
 
@@ -97,25 +102,21 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 			}
 		}
 
-		for i := 0; i < cConfig.Crowdsec.BucketsRoutinesCount; i++ {
+		for range cConfig.Crowdsec.BucketsRoutinesCount {
 			bucketsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runPour")
 
-				if err := runPour(inputEventChan, holders, buckets, cConfig); err != nil {
-					log.Fatalf("starting pour error : %s", err)
-					return err
-				}
-
-				return nil
+				return runPour(inputEventChan, holders, buckets, cConfig)
 			})
 		}
+
 		bucketWg.Done()
 
 		return nil
 	})
 	bucketWg.Wait()
 
-	apiClient, err := AuthenticatedLAPIClient(*cConfig.API.Client.Credentials, hub)
+	apiClient, err := AuthenticatedLAPIClient(context.TODO(), *cConfig.API.Client.Credentials, hub)
 	if err != nil {
 		return err
 	}
@@ -128,23 +129,32 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	outputsTomb.Go(func() error {
 		outputWg.Add(1)
 
-		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
+		for range cConfig.Crowdsec.OutputRoutinesCount {
 			outputsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runOutput")
 
-				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, apiClient); err != nil {
-					log.Fatalf("starting outputs error : %s", err)
-					return err
-				}
-
-				return nil
+				return runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, apiClient)
 			})
 		}
+
 		outputWg.Done()
 
 		return nil
 	})
 	outputWg.Wait()
+
+	mp := NewMetricsProvider(
+		apiClient,
+		lpMetricsDefaultInterval,
+		log.WithField("service", "lpmetrics"),
+		[]string{},
+		datasources,
+		hub,
+	)
+
+	lpMetricsTomb.Go(func() error {
+		return mp.Run(context.Background(), &lpMetricsTomb)
+	})
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false
@@ -159,7 +169,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(context.TODO(), dataSources, inputLineChan, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
@@ -182,7 +192,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub
 			}
 		}()
 
-		/*we should stop in two cases :
+		/* we should stop in two cases :
 		- crowdsecTomb has been Killed() : it might be shutdown or reload, so stop
 		- acquisTomb is dead, it means that we were in "cat" mode and files are done reading, quit
 		*/
@@ -190,15 +200,15 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub
 		log.Debugf("Shutting down crowdsec routines")
 
 		if err := ShutdownCrowdsecRoutines(); err != nil {
-			log.Fatalf("unable to shutdown crowdsec routines: %s", err)
+			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
 		}
 
 		log.Debugf("everything is dead, return crowdsecTomb")
 
 		if dumpStates {
-			dumpParserState()
-			dumpOverflowState()
-			dumpBucketsPour()
+			if err := dumpAllStates(); err != nil {
+				log.Fatal(err)
+			}
 			os.Exit(0)
 		}
 
@@ -206,80 +216,11 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub
 	})
 }
 
-func dumpBucketsPour() {
-	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucketpour-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o666)
-	if err != nil {
-		log.Fatalf("open: %s", err)
-	}
-
-	out, err := yaml.Marshal(leaky.BucketPourCache)
-	if err != nil {
-		log.Fatalf("marshal: %s", err)
-	}
-
-	b, err := fd.Write(out)
-	if err != nil {
-		log.Fatalf("write: %s", err)
-	}
-
-	log.Tracef("wrote %d bytes", b)
-
-	if err := fd.Close(); err != nil {
-		log.Fatalf(" close: %s", err)
-	}
-}
-
-func dumpParserState() {
-	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "parser-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o666)
-	if err != nil {
-		log.Fatalf("open: %s", err)
-	}
-
-	out, err := yaml.Marshal(parser.StageParseCache)
-	if err != nil {
-		log.Fatalf("marshal: %s", err)
-	}
-
-	b, err := fd.Write(out)
-	if err != nil {
-		log.Fatalf("write: %s", err)
-	}
-
-	log.Tracef("wrote %d bytes", b)
-
-	if err := fd.Close(); err != nil {
-		log.Fatalf(" close: %s", err)
-	}
-}
-
-func dumpOverflowState() {
-	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucket-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o666)
-	if err != nil {
-		log.Fatalf("open: %s", err)
-	}
-
-	out, err := yaml.Marshal(bucketOverflows)
-	if err != nil {
-		log.Fatalf("marshal: %s", err)
-	}
-
-	b, err := fd.Write(out)
-	if err != nil {
-		log.Fatalf("write: %s", err)
-	}
-
-	log.Tracef("wrote %d bytes", b)
-
-	if err := fd.Close(); err != nil {
-		log.Fatalf(" close: %s", err)
-	}
-}
-
 func waitOnTomb() {
 	for {
 		select {
 		case <-acquisTomb.Dead():
-			/*if it's acquisition dying it means that we were in "cat" mode.
+			/* if it's acquisition dying it means that we were in "cat" mode.
 			while shutting down, we need to give time for all buckets to process in flight data*/
 			log.Info("Acquisition is finished, shutting down")
 			/*
