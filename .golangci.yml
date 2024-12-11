@@ -426,11 +426,6 @@ issues:
 
     - linters:
         - revive
-      path: "cmd/crowdsec-cli/idgen/password.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
       path: "pkg/leakybucket/overflows.go"
       text: "deep-exit: .*"
 
