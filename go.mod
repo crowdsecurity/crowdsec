@@ -7,7 +7,7 @@ go 1.23.3
 // toolchain go1.21.3
 
 require (
-	entgo.io/ent v0.13.1
+	entgo.io/ent v0.14.1
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3
@@ -83,7 +83,7 @@ require (
 	github.com/wasilibs/go-re2 v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.26.0
-	golang.org/x/mod v0.17.0
+	golang.org/x/mod v0.20.0
 	golang.org/x/sys v0.24.0
 	golang.org/x/text v0.17.0
 	google.golang.org/grpc v1.67.1
@@ -205,7 +205,7 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/term v0.23.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.24.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect

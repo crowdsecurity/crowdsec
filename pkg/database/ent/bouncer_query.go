@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -60,7 +61,7 @@ func (bq *BouncerQuery) Order(o ...bouncer.OrderOption) *BouncerQuery {
 // First returns the first Bouncer entity from the query.
 // Returns a *NotFoundError when no Bouncer was found.
 func (bq *BouncerQuery) First(ctx context.Context) (*Bouncer, error) {
-	nodes, err := bq.Limit(1).All(setContextOp(ctx, bq.ctx, "First"))
+	nodes, err := bq.Limit(1).All(setContextOp(ctx, bq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func (bq *BouncerQuery) FirstX(ctx context.Context) *Bouncer {
 // Returns a *NotFoundError when no Bouncer ID was found.
 func (bq *BouncerQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = bq.Limit(1).IDs(setContextOp(ctx, bq.ctx, "FirstID")); err != nil {
+	if ids, err = bq.Limit(1).IDs(setContextOp(ctx, bq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -106,7 +107,7 @@ func (bq *BouncerQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Bouncer entity is found.
 // Returns a *NotFoundError when no Bouncer entities are found.
 func (bq *BouncerQuery) Only(ctx context.Context) (*Bouncer, error) {
-	nodes, err := bq.Limit(2).All(setContextOp(ctx, bq.ctx, "Only"))
+	nodes, err := bq.Limit(2).All(setContextOp(ctx, bq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (bq *BouncerQuery) OnlyX(ctx context.Context) *Bouncer {
 // Returns a *NotFoundError when no entities are found.
 func (bq *BouncerQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = bq.Limit(2).IDs(setContextOp(ctx, bq.ctx, "OnlyID")); err != nil {
+	if ids, err = bq.Limit(2).IDs(setContextOp(ctx, bq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -159,7 +160,7 @@ func (bq *BouncerQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Bouncers.
 func (bq *BouncerQuery) All(ctx context.Context) ([]*Bouncer, error) {
-	ctx = setContextOp(ctx, bq.ctx, "All")
+	ctx = setContextOp(ctx, bq.ctx, ent.OpQueryAll)
 	if err := bq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (bq *BouncerQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if bq.ctx.Unique == nil && bq.path != nil {
 		bq.Unique(true)
 	}
-	ctx = setContextOp(ctx, bq.ctx, "IDs")
+	ctx = setContextOp(ctx, bq.ctx, ent.OpQueryIDs)
 	if err = bq.Select(bouncer.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func (bq *BouncerQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (bq *BouncerQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, bq.ctx, "Count")
+	ctx = setContextOp(ctx, bq.ctx, ent.OpQueryCount)
 	if err := bq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -217,7 +218,7 @@ func (bq *BouncerQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (bq *BouncerQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, bq.ctx, "Exist")
+	ctx = setContextOp(ctx, bq.ctx, ent.OpQueryExist)
 	switch _, err := bq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -449,7 +450,7 @@ func (bgb *BouncerGroupBy) Aggregate(fns ...AggregateFunc) *BouncerGroupBy {
 
 // Scan applies the selector query and scans the result into the given value.
 func (bgb *BouncerGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, bgb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, bgb.build.ctx, ent.OpQueryGroupBy)
 	if err := bgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -497,7 +498,7 @@ func (bs *BouncerSelect) Aggregate(fns ...AggregateFunc) *BouncerSelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (bs *BouncerSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, bs.ctx, "Select")
+	ctx = setContextOp(ctx, bs.ctx, ent.OpQuerySelect)
 	if err := bs.prepareQuery(ctx); err != nil {
 		return err
 	}
