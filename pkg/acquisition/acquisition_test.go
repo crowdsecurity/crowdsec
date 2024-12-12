@@ -140,7 +140,7 @@ log_level: debug
 source: mock
 toto: test_value1
 `,
-			ExpectedError: "failed to configure datasource mock: mode ratata is not supported",
+			ExpectedError: "mode ratata is not supported",
 		},
 		{
 			TestName: "bad_type_config",
@@ -272,7 +272,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
 			},
-			ExpectedError: "in file test_files/bad_source.yaml (position: 0) - unknown data source does_not_exist",
+			ExpectedError: "in file test_files/bad_source.yaml (position 0) - unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
