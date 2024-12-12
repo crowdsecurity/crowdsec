@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -361,9 +362,7 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 	expirationStr := cmd.Flag("expiration").Value.String()
 
 	if expirationStr != "" {
-		//FIXME: handle days (and maybe more ?)
-		expiration, err = time.ParseDuration(expirationStr)
-
+		expiration, err = cstime.ParseDuration(expirationStr)
 		if err != nil {
 			return err
 		}
