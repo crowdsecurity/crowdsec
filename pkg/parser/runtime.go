@@ -29,10 +29,11 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		return false
 	}
 
-	//it's a hack, we do it for the user
+	// it's a hack, we do it for the user
 	target = strings.TrimPrefix(target, "evt.")
 
 	log.Debugf("setting target %s to %s", target, value)
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("Runtime error while trying to set '%s': %+v", target, r)
@@ -46,6 +47,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		//event is nil
 		return false
 	}
+
 	for _, f := range strings.Split(target, ".") {
 		/*
 		** According to current Event layout we only have to handle struct and map
@@ -57,7 +59,9 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			if (tmp == reflect.Value{}) || tmp.IsZero() {
 				log.Debugf("map entry is zero in '%s'", target)
 			}
+
 			iter.SetMapIndex(reflect.ValueOf(f), reflect.ValueOf(value))
+
 			return true
 		case reflect.Struct:
 			tmp := iter.FieldByName(f)
@@ -65,9 +69,11 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				log.Debugf("'%s' is not a valid target because '%s' is not valid", target, f)
 				return false
 			}
+
 			if tmp.Kind() == reflect.Ptr {
 				tmp = reflect.Indirect(tmp)
 			}
+
 			iter = tmp
 		case reflect.Ptr:
 			tmp := iter.Elem()
@@ -82,11 +88,14 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		log.Errorf("'%s' can't be set", target)
 		return false
 	}
+
 	if iter.Kind() != reflect.String {
 		log.Errorf("Expected string, got %v when handling '%s'", iter.Kind(), target)
 		return false
 	}
+
 	iter.Set(reflect.ValueOf(value))
+
 	return true
 }
 
@@ -321,46 +330,46 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		}
 
 		isStageOK := false
-		for idx, node := range nodes {
+		for idx := range nodes {
 			//Only process current stage's nodes
-			if event.Stage != node.Stage {
+			if event.Stage != nodes[idx].Stage {
 				continue
 			}
 			clog := log.WithFields(log.Fields{
-				"node-name": node.rn,
+				"node-name": nodes[idx].rn,
 				"stage":     event.Stage,
 			})
-			clog.Tracef("Processing node %d/%d -> %s", idx, len(nodes), node.rn)
+			clog.Tracef("Processing node %d/%d -> %s", idx, len(nodes), nodes[idx].rn)
 			if ctx.Profiling {
-				node.Profiling = true
+				nodes[idx].Profiling = true
 			}
-			ret, err := node.process(&event, ctx, map[string]interface{}{"evt": &event})
+			ret, err := nodes[idx].process(&event, ctx, map[string]interface{}{"evt": &event})
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err
 			}
-			clog.Tracef("node (%s) ret : %v", node.rn, ret)
+			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 			if ParseDump {
 				var parserIdxInStage int
 				StageParseMutex.Lock()
-				if len(StageParseCache[stage][node.Name]) == 0 {
-					StageParseCache[stage][node.Name] = make([]dumps.ParserResult, 0)
+				if len(StageParseCache[stage][nodes[idx].Name]) == 0 {
+					StageParseCache[stage][nodes[idx].Name] = make([]dumps.ParserResult, 0)
 					parserIdxInStage = len(StageParseCache[stage])
 				} else {
-					parserIdxInStage = StageParseCache[stage][node.Name][0].Idx
+					parserIdxInStage = StageParseCache[stage][nodes[idx].Name][0].Idx
 				}
 				StageParseMutex.Unlock()
 
 				evtcopy := deepcopy.Copy(event)
 				parserInfo := dumps.ParserResult{Evt: evtcopy.(types.Event), Success: ret, Idx: parserIdxInStage}
 				StageParseMutex.Lock()
-				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
+				StageParseCache[stage][nodes[idx].Name] = append(StageParseCache[stage][nodes[idx].Name], parserInfo)
 				StageParseMutex.Unlock()
 			}
 			if ret {
 				isStageOK = true
 			}
-			if ret && node.OnSuccess == "next_stage" {
+			if ret && nodes[idx].OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
