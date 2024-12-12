@@ -302,6 +302,8 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatal(err)
+		red := color.New(color.FgRed).SprintFunc()
+		fmt.Fprintln(os.Stderr, red("Error:"), err)
+		os.Exit(1)
 	}
 }
