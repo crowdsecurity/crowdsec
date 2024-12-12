@@ -195,8 +195,6 @@ linters-settings:
       - whyNoLint
       - equalFold               #
       - unnecessaryBlock        #
-      - ptrToRefParam           #
-      - appendAssign            #
       - tooManyResultsChecker
       - unnecessaryDefer
       - docStub

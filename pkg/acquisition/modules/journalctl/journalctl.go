@@ -189,7 +189,10 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	if len(j.config.Filters) == 0 {
 		return errors.New("journalctl_filter is required")
 	}
-	j.args = append(args, j.config.Filters...)
+
+	args = append(args, j.config.Filters...)
+
+	j.args = args
 	j.src = fmt.Sprintf("journalctl-%s", strings.Join(j.config.Filters, "."))
 
 	return nil
