@@ -219,3 +219,51 @@ teardown() {
     rune -0 cscli parsers inspect crowdsecurity/pgsql-logs --no-metrics -o json
     rune -0 jq -e '.installed==true' <(output)
 }
+
+@test "override part of a collection with local items" {
+    # A collection will use a local item to fulfil a dependency provided it has
+    # the correct name field.
+
+    mkdir -p "$CONFIG_DIR/parsers/s01-parse"
+    echo "name: crowdsecurity/sshd-logs" > "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
+    rune -0 cscli parsers list -o json
+    rune -0 jq -c '.parsers[] | [.name,.status]' <(output)
+    assert_json '["crowdsecurity/sshd-logs","enabled,local"]'
+
+    # attempt to install from hub
+    rune -0 cscli parsers install crowdsecurity/sshd-logs
+    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+    rune -0 cscli parsers list -o json
+    rune -0 jq -c '.parsers[] | [.name,.status]' <(output)
+    assert_json '["crowdsecurity/sshd-logs","enabled,local"]'
+
+    # attempt to install from a collection
+    rune -0 cscli collections install crowdsecurity/sshd
+    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+
+    # verify it installed the rest of the collection
+    assert_line 'enabling contexts:crowdsecurity/bf_base'
+    assert_line 'enabling collections:crowdsecurity/sshd'
+
+    # remove them
+    rune -0 cscli collections delete crowdsecurity/sshd --force --purge
+    rune -0 rm "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
+
+    # do the same with a different file name
+    echo "name: crowdsecurity/sshd-logs" > "$CONFIG_DIR/parsers/s01-parse/something.yaml"
+    rune -0 cscli parsers list -o json
+    rune -0 jq -c '.parsers[] | [.name,.status]' <(output)
+    assert_json '["crowdsecurity/sshd-logs","enabled,local"]'
+
+    # attempt to install from hub
+    rune -0 cscli parsers install crowdsecurity/sshd-logs
+    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+
+    # attempt to install from a collection
+    rune -0 cscli collections install crowdsecurity/sshd
+    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+
+    # verify it installed the rest of the collection
+    assert_line 'enabling contexts:crowdsecurity/bf_base'
+    assert_line 'enabling collections:crowdsecurity/sshd'
+}
