@@ -237,8 +237,8 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 
 	tmpContext := make(map[string][]string)
 
-	for _, evt := range events {
-		tmpErrors := EvalAlertContextRules(evt, nil, nil, tmpContext)
+	for i := range events {
+		tmpErrors := EvalAlertContextRules(events[i], nil, nil, tmpContext)
 		errors = append(errors, tmpErrors...)
 	}
 
