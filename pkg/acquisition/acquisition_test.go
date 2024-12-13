@@ -140,7 +140,7 @@ log_level: debug
 source: mock
 toto: test_value1
 `,
-			ExpectedError: "failed to configure datasource mock: mode ratata is not supported",
+			ExpectedError: "mode ratata is not supported",
 		},
 		{
 			TestName: "bad_type_config",
@@ -182,7 +182,8 @@ wowo: ajsajasjas
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
 			common := configuration.DataSourceCommonCfg{}
-			yaml.Unmarshal([]byte(tc.String), &common)
+			err := yaml.Unmarshal([]byte(tc.String), &common)
+			require.NoError(t, err)
 			ds, err := DataSourceConfigure(common, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
@@ -236,7 +237,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/badyaml.yaml"},
 			},
-			ExpectedError: "failed to yaml decode test_files/badyaml.yaml: yaml: unmarshal errors",
+			ExpectedError: "failed to parse test_files/badyaml.yaml: yaml: unmarshal errors",
 			ExpectedLen:   0,
 		},
 		{
@@ -272,7 +273,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
 			},
-			ExpectedError: "in file test_files/bad_source.yaml (position: 0) - unknown data source does_not_exist",
+			ExpectedError: "in file test_files/bad_source.yaml (position 0) - unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
