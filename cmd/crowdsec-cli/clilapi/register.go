@@ -28,7 +28,12 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 		}
 	}
 
-	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
+	pstr, err := idgen.GeneratePassword(idgen.PasswordLength)
+	if err != nil {
+		return err
+	}
+
+	password := strfmt.Password(pstr)
 
 	apiurl, err := prepareAPIURL(cfg.API.Client, apiURL)
 	if err != nil {
