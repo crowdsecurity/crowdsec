@@ -186,15 +186,16 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		resp, err = t.transport().RoundTrip(clonedReq)
-		if log.GetLevel() >= log.TraceLevel {
-			dump, _ := httputil.DumpResponse(resp, true)
-			log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
-		}
 
 		if err != nil {
 			// we had an error (network error for example), reset the token?
 			t.ResetToken()
 			return resp, fmt.Errorf("performing jwt auth: %w", err)
+		}
+
+		if log.GetLevel() >= log.TraceLevel {
+			dump, _ := httputil.DumpResponse(resp, true)
+			log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
 		}
 
 		if resp != nil {

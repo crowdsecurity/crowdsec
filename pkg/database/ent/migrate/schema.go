@@ -58,6 +58,66 @@ var (
 			},
 		},
 	}
+	// AllowListsColumns holds the columns for the "allow_lists" table.
+	AllowListsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "name", Type: field.TypeString},
+		{Name: "from_console", Type: field.TypeBool},
+		{Name: "description", Type: field.TypeString, Nullable: true},
+		{Name: "allowlist_id", Type: field.TypeString, Nullable: true},
+	}
+	// AllowListsTable holds the schema information for the "allow_lists" table.
+	AllowListsTable = &schema.Table{
+		Name:       "allow_lists",
+		Columns:    AllowListsColumns,
+		PrimaryKey: []*schema.Column{AllowListsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "allowlist_id",
+				Unique:  true,
+				Columns: []*schema.Column{AllowListsColumns[0]},
+			},
+			{
+				Name:    "allowlist_name",
+				Unique:  true,
+				Columns: []*schema.Column{AllowListsColumns[3]},
+			},
+		},
+	}
+	// AllowListItemsColumns holds the columns for the "allow_list_items" table.
+	AllowListItemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "comment", Type: field.TypeString, Nullable: true},
+		{Name: "value", Type: field.TypeString},
+		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
+		{Name: "end_ip", Type: field.TypeInt64, Nullable: true},
+		{Name: "start_suffix", Type: field.TypeInt64, Nullable: true},
+		{Name: "end_suffix", Type: field.TypeInt64, Nullable: true},
+		{Name: "ip_size", Type: field.TypeInt64, Nullable: true},
+	}
+	// AllowListItemsTable holds the schema information for the "allow_list_items" table.
+	AllowListItemsTable = &schema.Table{
+		Name:       "allow_list_items",
+		Columns:    AllowListItemsColumns,
+		PrimaryKey: []*schema.Column{AllowListItemsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "allowlistitem_id",
+				Unique:  false,
+				Columns: []*schema.Column{AllowListItemsColumns[0]},
+			},
+			{
+				Name:    "allowlistitem_start_ip_end_ip",
+				Unique:  false,
+				Columns: []*schema.Column{AllowListItemsColumns[6], AllowListItemsColumns[7]},
+			},
+		},
+	}
 	// BouncersColumns holds the columns for the "bouncers" table.
 	BouncersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -265,9 +325,36 @@ var (
 		Columns:    MetricsColumns,
 		PrimaryKey: []*schema.Column{MetricsColumns[0]},
 	}
+	// AllowListAllowlistItemsColumns holds the columns for the "allow_list_allowlist_items" table.
+	AllowListAllowlistItemsColumns = []*schema.Column{
+		{Name: "allow_list_id", Type: field.TypeInt},
+		{Name: "allow_list_item_id", Type: field.TypeInt},
+	}
+	// AllowListAllowlistItemsTable holds the schema information for the "allow_list_allowlist_items" table.
+	AllowListAllowlistItemsTable = &schema.Table{
+		Name:       "allow_list_allowlist_items",
+		Columns:    AllowListAllowlistItemsColumns,
+		PrimaryKey: []*schema.Column{AllowListAllowlistItemsColumns[0], AllowListAllowlistItemsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "allow_list_allowlist_items_allow_list_id",
+				Columns:    []*schema.Column{AllowListAllowlistItemsColumns[0]},
+				RefColumns: []*schema.Column{AllowListsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "allow_list_allowlist_items_allow_list_item_id",
+				Columns:    []*schema.Column{AllowListAllowlistItemsColumns[1]},
+				RefColumns: []*schema.Column{AllowListItemsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AlertsTable,
+		AllowListsTable,
+		AllowListItemsTable,
 		BouncersTable,
 		ConfigItemsTable,
 		DecisionsTable,
@@ -276,6 +363,7 @@ var (
 		MachinesTable,
 		MetaTable,
 		MetricsTable,
+		AllowListAllowlistItemsTable,
 	}
 )
 
@@ -284,4 +372,6 @@ func init() {
 	DecisionsTable.ForeignKeys[0].RefTable = AlertsTable
 	EventsTable.ForeignKeys[0].RefTable = AlertsTable
 	MetaTable.ForeignKeys[0].RefTable = AlertsTable
+	AllowListAllowlistItemsTable.ForeignKeys[0].RefTable = AllowListsTable
+	AllowListAllowlistItemsTable.ForeignKeys[1].RefTable = AllowListItemsTable
 }
