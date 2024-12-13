@@ -182,7 +182,8 @@ wowo: ajsajasjas
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
 			common := configuration.DataSourceCommonCfg{}
-			yaml.Unmarshal([]byte(tc.String), &common)
+			err := yaml.Unmarshal([]byte(tc.String), &common)
+			require.NoError(t, err)
 			ds, err := DataSourceConfigure(common, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 

@@ -164,8 +164,6 @@ func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 }
 
 func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
-	var sources []DataSource
-
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
@@ -197,9 +195,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
 
-	sources = append(sources, dataSrc)
-
-	return sources, nil
+	return []DataSource{dataSrc}, nil
 }
 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
@@ -260,9 +256,11 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			// for backward compat ('type' was not mandatory, detect it)
 			if guessType := detectBackwardCompatAcquis(sub); guessType != "" {
 				log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
+
 				if sub.Source != "" && sub.Source != guessType {
 					log.Warnf("datasource type mismatch in %s (position %d): found '%s' but should probably be '%s'", acquisFile, idx, sub.Source, guessType)
 				}
+
 				sub.Source = guessType
 			}
 			// it's an empty item, skip it
@@ -348,6 +346,7 @@ func copyEvent(evt types.Event, line string) types.Event {
 	evtCopy.Line = evt.Line
 	evtCopy.Line.Raw = line
 	evtCopy.Line.Labels = make(map[string]string)
+
 	for k, v := range evt.Line.Labels {
 		evtCopy.Line.Labels[k] = v
 	}
@@ -390,6 +389,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 					if !ok {
 						logger.Errorf("transform expression returned []interface{}, but cannot assert an element to string")
 						output <- evt
+
 						continue
 					}
 
