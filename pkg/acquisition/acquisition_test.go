@@ -236,7 +236,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/badyaml.yaml"},
 			},
-			ExpectedError: "failed to yaml decode test_files/badyaml.yaml: yaml: unmarshal errors",
+			ExpectedError: "failed to parse test_files/badyaml.yaml: yaml: unmarshal errors",
 			ExpectedLen:   0,
 		},
 		{
