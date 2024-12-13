@@ -193,19 +193,19 @@ wowo: ajsajasjas
 
 			switch tc.TestName {
 			case "basic_valid_config":
-				mock := (*ds).Dump().(*MockSource)
+				mock := ds.Dump().(*MockSource)
 				assert.Equal(t, "test_value1", mock.Toto)
 				assert.Equal(t, "cat", mock.Mode)
 				assert.Equal(t, log.InfoLevel, mock.logger.Logger.Level)
 				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_debug_config":
-				mock := (*ds).Dump().(*MockSource)
+				mock := ds.Dump().(*MockSource)
 				assert.Equal(t, "test_value1", mock.Toto)
 				assert.Equal(t, "cat", mock.Mode)
 				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
 				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_tailmode_config":
-				mock := (*ds).Dump().(*MockSource)
+				mock := ds.Dump().(*MockSource)
 				assert.Equal(t, "test_value1", mock.Toto)
 				assert.Equal(t, "tail", mock.Mode)
 				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)

@@ -116,7 +116,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (*DataSource, error) {
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (DataSource, error) {
 	// we dump it back to []byte, because we want to decode the yaml blob twice:
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
@@ -143,7 +143,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 		return nil, err
 	}
 
-	return &dataSrc, nil
+	return dataSrc, nil
 }
 
 // detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
@@ -309,7 +309,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 				transformRuntimes[uniqueId] = vm
 			}
 
-			sources = append(sources, *src)
+			sources = append(sources, src)
 		}
 	}
 
