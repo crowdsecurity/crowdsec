@@ -1,8 +1,8 @@
 package idgen
 
 import (
-	"fmt"
 	saferand "crypto/rand"
+	"fmt"
 	"math/big"
 )
 

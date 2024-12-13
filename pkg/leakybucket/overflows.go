@@ -149,6 +149,7 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 				leaky.logger.Tracef("Valid range from %s : %s", src.IP, src.Range)
 			}
 		}
+
 		if leaky.scopeType.Scope == types.Ip {
 			src.Value = &src.IP
 		} else if leaky.scopeType.Scope == types.Range {
