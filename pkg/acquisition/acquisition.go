@@ -249,7 +249,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			err = dec.Decode(&sub)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					return nil, fmt.Errorf("failed to yaml decode %s: %w", acquisFile, err)
+					return nil, fmt.Errorf("failed to parse %s: %w", acquisFile, err)
 				}
 
 				log.Tracef("End of yaml file")

@@ -27,11 +27,13 @@ teardown() {
 @test "malformed acqusition file" {
     cat >"$ACQUIS_DIR/file.yaml" <<-EOT
 	filename:
-	 - /path/to/file.log
+	- /path/to/file.log
+	labels:
+	  type: syslog
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_DIR/file.yaml (position: 0): cannot parse FileAcquisition configuration"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: yaml: unmarshal errors:\n  line 6: cannot unmarshal !!seq into string"
 }
 
 @test "datasource type detection" {
