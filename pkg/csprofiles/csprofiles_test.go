@@ -199,17 +199,22 @@ func TestEvaluateProfile(t *testing.T) {
 			profilesCfg := []*csconfig.ProfileCfg{
 				tt.args.profileCfg,
 			}
+
 			profile, err := NewProfile(profilesCfg)
 			if err != nil {
 				t.Errorf("failed to get newProfile : %+v", err)
 			}
+
 			got, got1, _ := profile[0].EvaluateProfile(tt.args.Alert)
+
 			if !reflect.DeepEqual(len(got), tt.expectedDecisionCount) {
 				t.Errorf("EvaluateProfile() got = %+v, want %+v", got, tt.expectedDecisionCount)
 			}
+
 			if got1 != tt.expectedMatchStatus {
 				t.Errorf("EvaluateProfile() got1 = %v, want %v", got1, tt.expectedMatchStatus)
 			}
+
 			if tt.expectedDuration != "" {
 				require.Equal(t, tt.expectedDuration, *got[0].Duration, "The two durations should be the same")
 			}
