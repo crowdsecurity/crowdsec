@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -18,6 +19,8 @@ func NewCLIDashboard(cfg configGetter) *cliDashboard {
 	}
 }
 
+var ErrDashboardDeprecated = errors.New("command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
+
 func (cli *cliDashboard) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "dashboard [command]",
@@ -25,9 +28,13 @@ func (cli *cliDashboard) NewCommand() *cobra.Command {
 		Short:             "Manage your metabase dashboard container [requires local API]",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return errors.New("command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
+			return ErrDashboardDeprecated
 		},
 	}
+
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		fmt.Println(ErrDashboardDeprecated.Error())
+	})
 
 	return cmd
 }
