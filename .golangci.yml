@@ -402,12 +402,6 @@ issues:
       path: "pkg/(.+)_test.go"
       text: "line-length-limit: .*"
 
-    # tolerate deep exit in tests, for now
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "deep-exit: .*"
-
     # we use t,ctx instead of ctx,t in tests
     - linters:
         - revive
