@@ -80,10 +80,9 @@ teardown() {
     echo "$new_hub" >"$INDEX_PATH"
 
     rune -0 cscli collections install crowdsecurity/sshd
-    rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics -o json
+    rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics
     # XXX: we are on the verbose side here...
-    rune -0 jq -r ".msg" <(stderr)
-    assert_output --regexp "failed to read Hub index: failed to sync hub items: failed to scan .*: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
+    assert_stderr --regexp "Error: failed to read Hub index: failed to sync hub items: failed to scan .*: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
 }
 
 @test "removing or purging an item already removed by hand" {

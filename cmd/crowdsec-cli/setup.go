@@ -1,4 +1,5 @@
 //go:build !no_cscli_setup
+
 package main
 
 import (

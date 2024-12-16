@@ -183,7 +183,6 @@ linters-settings:
       - ifElseChain
       - importShadow
       - hugeParam
-      - rangeValCopy
       - commentedOutCode
       - commentedOutImport
       - unnamedResult
@@ -193,13 +192,9 @@ linters-settings:
       - typeUnparen
       - commentFormatting
       - deferInLoop             #
-      - sprintfQuotedString     #
       - whyNoLint
       - equalFold               #
       - unnecessaryBlock        #
-      - ptrToRefParam           #
-      - stringXbytes            #
-      - appendAssign            #
       - tooManyResultsChecker
       - unnecessaryDefer
       - docStub
@@ -427,16 +422,6 @@ issues:
 
     - linters:
         - revive
-      path: "cmd/crowdsec-cli/clihub/item_metrics.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/idgen/password.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
       path: "pkg/leakybucket/overflows.go"
       text: "deep-exit: .*"
 
@@ -465,3 +450,23 @@ issues:
         - recvcheck
       path: "pkg/cwhub/item.go"
       text: 'the methods of "Item" use pointer receiver and non-pointer receiver.'
+
+    - linters:
+        - gocritic
+      path: "cmd/crowdsec-cli"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(cticlient|hubtest)"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "(.+)_test.go"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
+      text: "rangeValCopy: .*"

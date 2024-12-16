@@ -60,6 +60,7 @@ func MakeEvent(timeMachine bool, evtType int, process bool) Event {
 	if timeMachine {
 		evt.ExpectMode = TIMEMACHINE
 	}
+
 	return evt
 }
 
@@ -97,8 +98,9 @@ func (e *Event) GetType() string {
 
 func (e *Event) GetMeta(key string) string {
 	if e.Type == OVFLW {
-		for _, alert := range e.Overflow.APIAlerts {
-			for _, event := range alert.Events {
+		alerts := e.Overflow.APIAlerts
+		for idx := range alerts {
+			for _, event := range alerts[idx].Events {
 				if event.GetMeta(key) != "" {
 					return event.GetMeta(key)
 				}

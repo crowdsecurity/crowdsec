@@ -314,7 +314,7 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 		ctx,
 		http.MethodGet,
 		fmt.Sprintf(
-			"http://%s/debug/pprof/%s?debug=1",
+			"http://%s/debug/pprof/%s",
 			net.JoinHostPort(
 				prometheusCfg.ListenAddr,
 				strconv.Itoa(prometheusCfg.ListenPort),

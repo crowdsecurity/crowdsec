@@ -23,10 +23,12 @@ type CancelOnFilter struct {
 	Debug          bool
 }
 
-var cancelExprCacheLock sync.Mutex
-var cancelExprCache map[string]struct {
-	CancelOnFilter *vm.Program
-}
+var (
+	cancelExprCacheLock sync.Mutex
+	cancelExprCache     map[string]struct {
+		CancelOnFilter *vm.Program
+	}
+)
 
 func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, leaky *Leaky) *types.Event {

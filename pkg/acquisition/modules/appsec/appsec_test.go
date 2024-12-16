@@ -68,7 +68,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		outofbandRules = append(outofbandRules, strRule)
 	}
 
-	appsecCfg := appsec.AppsecConfig{Logger: logger,
+	appsecCfg := appsec.AppsecConfig{
+		Logger:                 logger,
 		OnLoad:                 test.on_load,
 		PreEval:                test.pre_eval,
 		PostEval:               test.post_eval,
@@ -77,7 +78,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		UserBlockedHTTPCode:    test.UserBlockedHTTPCode,
 		UserPassedHTTPCode:     test.UserPassedHTTPCode,
 		DefaultRemediation:     test.DefaultRemediation,
-		DefaultPassAction:      test.DefaultPassAction}
+		DefaultPassAction:      test.DefaultPassAction,
+	}
 	AppsecRuntime, err := appsecCfg.Build()
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)

@@ -16,8 +16,10 @@ import (
 // on overflow
 // on leak
 
-var uniqExprCache map[string]vm.Program
-var uniqExprCacheLock sync.Mutex
+var (
+	uniqExprCache     map[string]vm.Program
+	uniqExprCacheLock sync.Mutex
+)
 
 type Uniq struct {
 	DistinctCompiled *vm.Program
