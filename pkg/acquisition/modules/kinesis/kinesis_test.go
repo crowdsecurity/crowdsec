@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -38,7 +39,7 @@ func getLocalStackEndpoint() (string, error) {
 	return endpoint, nil
 }
 
-func GenSubObject(i int) []byte {
+func GenSubObject(t *testing.T, i int) []byte {
 	r := CloudWatchSubscriptionRecord{
 		MessageType:         "subscription",
 		Owner:               "test",
@@ -54,9 +55,7 @@ func GenSubObject(i int) []byte {
 		},
 	}
 	body, err := json.Marshal(r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	gz.Write(body)
@@ -66,11 +65,9 @@ func GenSubObject(i int) []byte {
 	return b.Bytes()
 }
 
-func WriteToStream(streamName string, count int, shards int, sub bool) {
+func WriteToStream(t *testing.T, streamName string, count int, shards int, sub bool) {
 	endpoint, err := getLocalStackEndpoint()
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	sess := session.Must(session.NewSession())
 	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
 	for i := range count {
@@ -80,7 +77,7 @@ func WriteToStream(streamName string, count int, shards int, sub bool) {
 		}
 		var data []byte
 		if sub {
-			data = GenSubObject(i)
+			data = GenSubObject(t, i)
 		} else {
 			data = []byte(fmt.Sprintf("%d", i))
 		}
@@ -89,10 +86,7 @@ func WriteToStream(streamName string, count int, shards int, sub bool) {
 			PartitionKey: aws.String(partition),
 			StreamName:   aws.String(streamName),
 		})
-		if err != nil {
-			fmt.Printf("Error writing to stream: %s\n", err)
-			log.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -173,18 +167,14 @@ stream_name: stream-1-shard`,
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
-		if err != nil {
-			t.Fatalf("Error configuring source: %s", err)
-		}
+		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
-		if err != nil {
-			t.Fatalf("Error starting source: %s", err)
-		}
+		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
+		WriteToStream(t, f.Config.StreamName, test.count, test.shards, false)
 		for i := range test.count {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
@@ -218,18 +208,14 @@ stream_name: stream-2-shards`,
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
-		if err != nil {
-			t.Fatalf("Error configuring source: %s", err)
-		}
+		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
-		if err != nil {
-			t.Fatalf("Error starting source: %s", err)
-		}
+		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
+		WriteToStream(t, f.Config.StreamName, test.count, test.shards, false)
 		c := 0
 		for range test.count {
 			<-out
@@ -266,18 +252,14 @@ from_subscription: true`,
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
-		if err != nil {
-			t.Fatalf("Error configuring source: %s", err)
-		}
+		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
-		if err != nil {
-			t.Fatalf("Error starting source: %s", err)
-		}
+		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(f.Config.StreamName, test.count, test.shards, true)
+		WriteToStream(t, f.Config.StreamName, test.count, test.shards, true)
 		for i := range test.count {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
@@ -310,15 +292,11 @@ use_enhanced_fanout: true`,
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"))
-		if err != nil {
-			t.Fatalf("Error configuring source: %s", err)
-		}
+		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(out, tomb)
-		if err != nil {
-			t.Fatalf("Error starting source: %s", err)
-		}
+		require.NoError(t, err)
 		//Allow the datasource to start listening to the stream
 		time.Sleep(10 * time.Second)
 		WriteToStream("stream-1-shard", test.count, test.shards)
