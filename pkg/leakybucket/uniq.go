@@ -75,6 +75,9 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 		uniqExprCacheLock.Unlock()
 		//release the lock during compile
 		compiledExpr, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return err
+		}
 		u.DistinctCompiled = compiledExpr
 		uniqExprCacheLock.Lock()
 		uniqExprCache[bucketFactory.Distinct] = *compiledExpr
