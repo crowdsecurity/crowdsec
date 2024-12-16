@@ -363,10 +363,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		}
 
 		if err := newApiAlert.Validate(strfmt.Default); err != nil {
-			log.Errorf("Generated alerts isn't valid")
-			log.Errorf("->%s", spew.Sdump(newApiAlert))
-			// XXX: deep-exit - note other errors returned from this function are not fatal
-			log.Fatalf("error : %s", err)
+			return runtimeAlert, fmt.Errorf("invalid generated alert: %w: %s", err, spew.Sdump(newApiAlert))
 		}
 
 		runtimeAlert.APIAlerts = append(runtimeAlert.APIAlerts, newApiAlert)

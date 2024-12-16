@@ -422,11 +422,6 @@ issues:
 
     - linters:
         - revive
-      path: "pkg/leakybucket/overflows.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
       path: "cmd/crowdsec/crowdsec.go"
       text: "deep-exit: .*"
 
