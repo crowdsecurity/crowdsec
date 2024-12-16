@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -137,6 +136,8 @@ teardown() {
 
     rune -0 ./instance-crowdsec stop
 }
+
+# TODO: move acquisition tests to test/bats/crowdsec-acquisition.bats
 
 @test "crowdsec (error if the acquisition_path file is defined but missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
@@ -278,7 +279,7 @@ teardown() {
     # if filenames are missing, it won't be able to detect source type
     config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "failed to configure datasource file: no filename or filenames configuration provided"
+    assert_stderr --partial "while configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
 
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'

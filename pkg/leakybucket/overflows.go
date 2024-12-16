@@ -149,6 +149,7 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 				leaky.logger.Tracef("Valid range from %s : %s", src.IP, src.Range)
 			}
 		}
+
 		if leaky.scopeType.Scope == types.Ip {
 			src.Value = &src.IP
 		} else if leaky.scopeType.Scope == types.Range {
@@ -364,6 +365,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		if err := newApiAlert.Validate(strfmt.Default); err != nil {
 			log.Errorf("Generated alerts isn't valid")
 			log.Errorf("->%s", spew.Sdump(newApiAlert))
+			// XXX: deep-exit - note other errors returned from this function are not fatal
 			log.Fatalf("error : %s", err)
 		}
 

@@ -33,9 +33,9 @@ teardown() {
 
     # no "usage" output after every error
     rune -1 cscli blahblah
-    # error is displayed as log entry, not with print
-    assert_stderr --partial 'level=fatal msg="unknown command \"blahblah\" for \"cscli\""'
-    refute_stderr --partial 'unknown command "blahblah" for "cscli"'
+    # error is displayed with print, not as a log entry
+    assert_stderr --partial 'unknown command "blahblah" for "cscli"'
+    refute_stderr --partial 'level=fatal'
 }
 
 @test "cscli version" {
@@ -294,7 +294,7 @@ teardown() {
     # it is possible to enable subcommands with feature flags defined in feature.yaml
 
     rune -1 cscli setup
-    assert_stderr --partial 'unknown command \"setup\" for \"cscli\"'
+    assert_stderr --partial 'unknown command "setup" for "cscli"'
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
     echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
     rune -0 cscli setup
