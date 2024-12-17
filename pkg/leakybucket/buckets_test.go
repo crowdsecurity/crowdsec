@@ -139,14 +139,24 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 		t.Fatalf("failed to parse %s : %s", stagecfg, err)
 	}
 
-	files := []string{}
+	scenarios := []*cwhub.Item{}
 	for _, x := range stages {
-		files = append(files, x.Filename)
+		// XXX: LoadBuckets should take an interface, BucketProvider ScenarioProvider or w/e
+		item := &cwhub.Item{
+			Name: x.Filename,
+			State: cwhub.ItemState{
+				LocalVersion: "",
+				LocalPath: x.Filename,
+				LocalHash: "",
+			},
+		}
+
+		scenarios = append(scenarios, item)
 	}
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, files, tomb, buckets, false)
+	holders, response, err := LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}

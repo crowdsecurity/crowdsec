@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -238,7 +237,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
 		response chan types.Event
@@ -246,18 +245,15 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 	response = make(chan types.Event, 1)
 
-	for _, f := range files {
-		log.Debugf("Loading '%s'", f)
+	for _, item := range scenarios {
+		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
-			log.Debugf("Skipping %s : not a yaml file", f)
-			continue
-		}
+		itemPath := item.State.LocalPath
 
 		// process the yaml
-		bucketConfigurationFile, err := os.Open(f)
+		bucketConfigurationFile, err := os.Open(itemPath)
 		if err != nil {
-			log.Errorf("Can't access leaky configuration file %s", f)
+			log.Errorf("Can't access leaky configuration file %s", itemPath)
 			return nil, nil, err
 		}
 
@@ -271,8 +267,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					log.Errorf("Bad yaml in %s: %v", f, err)
-					return nil, nil, fmt.Errorf("bad yaml in %s: %w", f, err)
+					log.Errorf("Bad yaml in %s: %v", itemPath, err)
+					return nil, nil, fmt.Errorf("bad yaml in %s: %w", itemPath, err)
 				}
 
 				log.Tracef("End of yaml file")
@@ -288,7 +284,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			}
 			// check compat
 			if bucketFactory.FormatVersion == "" {
-				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
+				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, itemPath)
 				bucketFactory.FormatVersion = "1.0"
 			}
 
@@ -302,21 +298,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 				continue
 			}
 
-			bucketFactory.Filename = filepath.Clean(f)
+			bucketFactory.Filename = filepath.Clean(itemPath)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 
-			hubItem := hub.GetItemByPath(bucketFactory.Filename)
-			if hubItem == nil {
-				log.Errorf("scenario %s (%s) could not be found in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
-			} else {
-				if cscfg.SimulationConfig != nil {
-					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
-				}
-
-				bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
-				bucketFactory.hash = hubItem.State.LocalHash
+			if cscfg.SimulationConfig != nil {
+				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(item.Name)
 			}
+
+			bucketFactory.ScenarioVersion = item.State.LocalVersion
+			bucketFactory.hash = item.State.LocalHash
 
 			bucketFactory.wgDumpState = buckets.wgDumpState
 			bucketFactory.wgPour = buckets.wgPour
