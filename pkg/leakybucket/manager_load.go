@@ -200,42 +200,41 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
 
-	switch bucketFactory.ScopeType.Scope {
-	case types.Undefined:
+	return compileScopeFilter(bucketFactory)
+}
+
+func compileScopeFilter(bucketFactory *BucketFactory) error {
+	if bucketFactory.ScopeType.Scope == types.Undefined {
 		bucketFactory.ScopeType.Scope = types.Ip
-	case types.Ip:
-	case types.Range:
-		var (
-			runTimeFilter *vm.Program
-			err           error
-		)
-
-		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
-				return fmt.Errorf("error compiling the scope filter: %w", err)
-			}
-
-			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
-		}
-
-	default:
-		// Compile the scope filter
-		var (
-			runTimeFilter *vm.Program
-			err           error
-		)
-
-		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
-				return fmt.Errorf("error compiling the scope filter: %w", err)
-			}
-
-			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
-		}
 	}
+
+	if bucketFactory.ScopeType.Scope == types.Ip {
+		if bucketFactory.ScopeType.Filter != "" {
+			return errors.New("filter is not allowed for IP scope")
+		}
+
+		return nil
+	}
+
+	if bucketFactory.ScopeType.Scope == types.Range && bucketFactory.ScopeType.Filter == "" {
+		return nil
+	}
+	
+	if bucketFactory.ScopeType.Filter == "" {
+		return errors.New("filter is mandatory for non-IP, non-Range scope")
+	}
+
+	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+	if err != nil {
+		return fmt.Errorf("error compiling the scope filter: %w", err)
+	}
+
+	bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 
 	return nil
 }
+
+
 
 func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
