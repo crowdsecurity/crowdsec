@@ -348,7 +348,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err := types.ConfigureLogger(clog); err != nil {
+		if err = types.ConfigureLogger(clog); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
@@ -496,7 +496,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		return fmt.Errorf("can't parse state file %s: %w", file, err)
 	}
 
-	for k, v := range state {
+	for k := range state {
 		var tbucket *Leaky
 
 		log.Debugf("Reloading bucket %s", k)
@@ -509,30 +509,30 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		found := false
 
 		for _, h := range bucketFactories {
-			if h.Name != v.Name {
+			if h.Name != state[k].Name {
 				continue
 			}
 
 			log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 			// check in which mode the bucket was
-			if v.Mode == types.TIMEMACHINE {
+			if state[k].Mode == types.TIMEMACHINE {
 				tbucket = NewTimeMachine(h)
-			} else if v.Mode == types.LIVE {
+			} else if state[k].Mode == types.LIVE {
 				tbucket = NewLeaky(h)
 			} else {
-				log.Errorf("Unknown bucket type : %d", v.Mode)
+				log.Errorf("Unknown bucket type : %d", state[k].Mode)
 			}
 			/*Trying to restore queue state*/
-			tbucket.Queue = v.Queue
+			tbucket.Queue = state[k].Queue
 			/*Trying to set the limiter to the saved values*/
-			tbucket.Limiter.Load(v.SerializedState)
+			tbucket.Limiter.Load(state[k].SerializedState)
 			tbucket.In = make(chan *types.Event)
 			tbucket.Mapkey = k
 			tbucket.Signal = make(chan bool, 1)
-			tbucket.First_ts = v.First_ts
-			tbucket.Last_ts = v.Last_ts
-			tbucket.Ovflw_ts = v.Ovflw_ts
-			tbucket.Total_count = v.Total_count
+			tbucket.First_ts = state[k].First_ts
+			tbucket.Last_ts = state[k].Last_ts
+			tbucket.Ovflw_ts = state[k].Ovflw_ts
+			tbucket.Total_count = state[k].Total_count
 			buckets.Bucket_map.Store(k, tbucket)
 			h.tomb.Go(func() error {
 				return LeakRoutine(tbucket)
@@ -545,7 +545,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		}
 
 		if !found {
-			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(v))
+			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(state[k]))
 		}
 	}
 
