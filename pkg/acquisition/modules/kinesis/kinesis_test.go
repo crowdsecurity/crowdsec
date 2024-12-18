@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -29,13 +30,16 @@ import (
 
 func getLocalStackEndpoint() (string, error) {
 	endpoint := "http://localhost:4566"
+
 	if v := os.Getenv("AWS_ENDPOINT_FORCE"); v != "" {
 		v = strings.TrimPrefix(v, "http://")
+
 		_, err := net.Dial("tcp", v)
 		if err != nil {
 			return "", fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
 		}
 	}
+
 	return endpoint, nil
 }
 
@@ -49,13 +53,14 @@ func GenSubObject(t *testing.T, i int) []byte {
 		LogEvents: []CloudwatchSubscriptionLogEvent{
 			{
 				ID:        "testid",
-				Message:   fmt.Sprintf("%d", i),
+				Message:   strconv.Itoa(i),
 				Timestamp: time.Now().UTC().Unix(),
 			},
 		},
 	}
 	body, err := json.Marshal(r)
 	require.NoError(t, err)
+
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	gz.Write(body)
@@ -68,19 +73,24 @@ func GenSubObject(t *testing.T, i int) []byte {
 func WriteToStream(t *testing.T, streamName string, count int, shards int, sub bool) {
 	endpoint, err := getLocalStackEndpoint()
 	require.NoError(t, err)
+
 	sess := session.Must(session.NewSession())
 	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
+
 	for i := range count {
 		partition := "partition"
 		if shards != 1 {
 			partition = fmt.Sprintf("partition-%d", i%shards)
 		}
+
 		var data []byte
+
 		if sub {
 			data = GenSubObject(t, i)
 		} else {
-			data = []byte(fmt.Sprintf("%d", i))
+			data = []byte(strconv.Itoa(i))
 		}
+
 		_, err = kinesisClient.PutRecord(&kinesis.PutRecordInput{
 			Data:         data,
 			PartitionKey: aws.String(partition),
@@ -105,6 +115,7 @@ func TestBadConfiguration(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -136,6 +147,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 	}
 
 	subLogger := log.WithField("type", "kinesis")
+
 	for _, test := range tests {
 		f := KinesisSource{}
 		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
@@ -145,9 +157,11 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 
 func TestReadFromStream(t *testing.T) {
 	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config string
 		count  int
@@ -163,11 +177,13 @@ stream_name: stream-1-shard`,
 		},
 	}
 	endpoint, _ := getLocalStackEndpoint()
+
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		require.NoError(t, err)
+
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
@@ -175,10 +191,12 @@ stream_name: stream-1-shard`,
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(t, f.Config.StreamName, test.count, test.shards, false)
+
 		for i := range test.count {
 			e := <-out
-			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
+			assert.Equal(t, strconv.Itoa(i), e.Line.Raw)
 		}
+
 		tomb.Kill(nil)
 		tomb.Wait()
 	}
@@ -186,9 +204,11 @@ stream_name: stream-1-shard`,
 
 func TestReadFromMultipleShards(t *testing.T) {
 	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config string
 		count  int
@@ -204,6 +224,7 @@ stream_name: stream-2-shards`,
 		},
 	}
 	endpoint, _ := getLocalStackEndpoint()
+
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
@@ -216,7 +237,9 @@ stream_name: stream-2-shards`,
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(t, f.Config.StreamName, test.count, test.shards, false)
+
 		c := 0
+
 		for range test.count {
 			<-out
 			c += 1
@@ -229,9 +252,11 @@ stream_name: stream-2-shards`,
 
 func TestFromSubscription(t *testing.T) {
 	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config string
 		count  int
