@@ -4,9 +4,13 @@ package cwhub
 
 import (
 	"context"
+	"crypto"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/sirupsen/logrus"
 
@@ -110,20 +114,55 @@ func (i *Item) downloadLatest(ctx context.Context, overwrite bool, updateOnly bo
 
 // FetchContentTo downloads the last version of the item's YAML file to the specified path.
 func (i *Item) FetchContentTo(ctx context.Context, destPath string) (bool, string, error) {
+	wantHash := i.latestHash()
+	if wantHash == "" {
+		return false, "", errors.New("latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again")
+	}
+
+	// Use the embedded content if available
+	if i.Content != "" {
+		// the content was historically base64 encoded
+		content, err := base64.StdEncoding.DecodeString(i.Content)
+		if err != nil {
+			content = []byte(i.Content)
+		}
+
+		dir := filepath.Dir(destPath)
+
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return false, "", fmt.Errorf("while creating %s: %w", dir, err)
+		}
+
+		// check sha256
+		hash := crypto.SHA256.New()
+		if _, err := hash.Write(content); err != nil {
+			return false, "", fmt.Errorf("while hashing %s: %w", i.Name, err)
+		}
+
+		gotHash := hex.EncodeToString(hash.Sum(nil))
+		if gotHash != wantHash {
+			return false, "", fmt.Errorf("hash mismatch: expected %s, got %s. The index file is invalid, please run 'cscli hub update' and try again", wantHash, gotHash)
+		}
+
+		if err := os.WriteFile(destPath, content, 0o600); err != nil {
+			return false, "", fmt.Errorf("while writing %s: %w", destPath, err)
+		}
+
+		i.hub.logger.Debugf("Wrote %s content from .index.json to %s", i.Name, destPath)
+
+		return true, fmt.Sprintf("(embedded in %s)", i.hub.local.HubIndexFile), nil
+	}
+
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to build request: %w", err)
-	}
-
-	wantHash := i.latestHash()
-	if wantHash == "" {
-		return false, "", errors.New("latest hash missing from index")
 	}
 
 	d := downloader.
 		New().
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
+		WithETagFn(downloader.SHA256).
 		WithMakeDirs(true).
 		WithLogger(logrus.WithField("url", url)).
 		CompareContent().
@@ -133,7 +172,7 @@ func (i *Item) FetchContentTo(ctx context.Context, destPath string) (bool, strin
 
 	downloaded, err := d.Download(ctx, url)
 	if err != nil {
-		return false, "", fmt.Errorf("while downloading %s to %s: %w", i.Name, url, err)
+		return false, "", err
 	}
 
 	return downloaded, url, nil
@@ -167,7 +206,7 @@ func (i *Item) download(ctx context.Context, overwrite bool) (bool, error) {
 
 	downloaded, _, err := i.FetchContentTo(ctx, finalPath)
 	if err != nil {
-		return false, fmt.Errorf("while downloading %s: %w", i.Name, err)
+		return false, err
 	}
 
 	if downloaded {

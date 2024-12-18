@@ -52,6 +52,8 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	var tmpFile string
 
+	ctx := context.TODO()
+
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -60,6 +62,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -73,7 +76,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			cConfig.API.Server.OnlineClient = nil
 		}
 
-		apiServer, err := initAPIServer(cConfig)
+		apiServer, err := initAPIServer(ctx, cConfig)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init api server: %w", err)
 		}
@@ -87,7 +90,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, err
 		}
 
-		if err := hub.Load(); err != nil {
+		if err = hub.Load(); err != nil {
 			return nil, err
 		}
 
@@ -178,6 +181,15 @@ func ShutdownCrowdsecRoutines() error {
 		// this can happen if outputs are stuck in a http retry loop
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
+
+	lpMetricsTomb.Kill(nil)
+
+	if err := lpMetricsTomb.Wait(); err != nil {
+		log.Warningf("Metrics returned error : %s", err)
+		reterr = err
+	}
+
+	log.Debugf("metrics are done")
 
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
@@ -322,6 +334,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+	lpMetricsTomb = tomb.Tomb{}
 
 	ctx := context.TODO()
 
@@ -363,7 +376,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			cConfig.API.Server.OnlineClient = nil
 		}
 
-		apiServer, err := initAPIServer(cConfig)
+		apiServer, err := initAPIServer(ctx, cConfig)
 		if err != nil {
 			return fmt.Errorf("api server init: %w", err)
 		}
@@ -379,7 +392,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			return err
 		}
 
-		if err := hub.Load(); err != nil {
+		if err = hub.Load(); err != nil {
 			return err
 		}
 

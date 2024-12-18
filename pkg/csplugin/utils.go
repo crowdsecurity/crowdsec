@@ -51,7 +51,7 @@ func getUID(username string) (uint32, error) {
 		return 0, err
 	}
 	if uid < 0 || uid > math.MaxInt32 {
-		return 0, fmt.Errorf("out of bound uid")
+		return 0, errors.New("out of bound uid")
 	}
 	return uint32(uid), nil
 }
@@ -66,7 +66,7 @@ func getGID(groupname string) (uint32, error) {
 		return 0, err
 	}
 	if gid < 0 || gid > math.MaxInt32 {
-		return 0, fmt.Errorf("out of bound gid")
+		return 0, errors.New("out of bound gid")
 	}
 	return uint32(gid), nil
 }
@@ -123,10 +123,10 @@ func pluginIsValid(path string) error {
 
 	mode := details.Mode()
 	perm := uint32(mode)
-	if (perm & 00002) != 0 {
+	if (perm & 0o0002) != 0 {
 		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
 	}
-	if (perm & 00020) != 0 {
+	if (perm & 0o0020) != 0 {
 		return fmt.Errorf("plugin at %s is group writable, group writable plugins are invalid", path)
 	}
 	if (mode & os.ModeSetgid) != 0 {

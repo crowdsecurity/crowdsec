@@ -49,7 +49,6 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 				tmp = append(tmp, element)
 			} else {
 				leaky.logger.Debugf("%s left blackhole %s ago", element.key, leaky.Ovflw_ts.Sub(element.expiration))
-
 			}
 		}
 		bl.hiddenKeys = tmp
@@ -64,5 +63,4 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 		leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.First_ts)
 		return alert, queue
 	}
-
 }

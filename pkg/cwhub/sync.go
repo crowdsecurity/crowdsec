@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,22 +20,49 @@ func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-// linkTarget returns the target of a symlink, or empty string if it's dangling.
-func linkTarget(path string, logger *logrus.Logger) (string, error) {
-	hubpath, err := os.Readlink(path)
+// resolveSymlink returns the ultimate target path of a symlink
+// returns error if the symlink is dangling or too many symlinks are followed
+func resolveSymlink(path string) (string, error) {
+	const maxSymlinks = 10 // Prevent infinite loops
+	for range maxSymlinks {
+		fi, err := os.Lstat(path)
+		if err != nil {
+			return "", err // dangling link
+		}
+
+		if fi.Mode()&os.ModeSymlink == 0 {
+			// found the target
+			return path, nil
+		}
+
+		path, err = os.Readlink(path)
+		if err != nil {
+			return "", err
+		}
+
+		// relative to the link's directory?
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(filepath.Dir(path), path)
+		}
+	}
+
+	return "", errors.New("too many levels of symbolic links")
+}
+
+// isPathInside checks if a path is inside the given directory
+// it can return false negatives if the filesystem is case insensitive
+func isPathInside(path, dir string) (bool, error) {
+	absFilePath, err := filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("unable to read symlink: %s", path)
+		return false, err
 	}
 
-	logger.Tracef("symlink %s -> %s", path, hubpath)
-
-	_, err = os.Lstat(hubpath)
-	if os.IsNotExist(err) {
-		logger.Warningf("link target does not exist: %s -> %s", path, hubpath)
-		return "", nil
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return false, err
 	}
 
-	return hubpath, nil
+	return strings.HasPrefix(absFilePath, absDir), nil
 }
 
 // information used to create a new Item, from a file path.
@@ -52,58 +80,76 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 	hubDir := h.local.HubDir
 	installDir := h.local.InstallDir
 
-	subs := strings.Split(path, string(os.PathSeparator))
+	subsHub := relativePathComponents(path, hubDir)
+	subsInstall := relativePathComponents(path, installDir)
 
-	logger.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubDir, installDir)
-	logger.Tracef("subs:%v", subs)
-	// we're in hub (~/.hub/hub/)
-	if strings.HasPrefix(path, hubDir) {
+	switch {
+	case len(subsHub) > 0:
 		logger.Tracef("in hub dir")
 
-		// .../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-		// .../hub/scenarios/crowdsec/ssh_bf.yaml
-		// .../hub/profiles/crowdsec/linux.yaml
-		if len(subs) < 4 {
-			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
+		// .../hub/parsers/s00-raw/crowdsecurity/skip-pretag.yaml
+		// .../hub/scenarios/crowdsecurity/ssh_bf.yaml
+		// .../hub/profiles/crowdsecurity/linux.yaml
+		if len(subsHub) < 3 {
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
+		}
+
+		ftype := subsHub[0]
+		if !slices.Contains(ItemTypes, ftype) {
+			// this doesn't really happen anymore, because we only scan the {hubtype} directories
+			return nil, fmt.Errorf("unknown configuration type '%s'", ftype)
+		}
+
+		stage := ""
+		fauthor := subsHub[1]
+		fname := subsHub[2]
+
+		if ftype == PARSERS || ftype == POSTOVERFLOWS {
+			stage = subsHub[1]
+			fauthor = subsHub[2]
+			fname = subsHub[3]
 		}
 
 		ret = &itemFileInfo{
 			inhub:   true,
-			fname:   subs[len(subs)-1],
-			fauthor: subs[len(subs)-2],
-			stage:   subs[len(subs)-3],
-			ftype:   subs[len(subs)-4],
+			ftype:   ftype,
+			stage:   stage,
+			fauthor: fauthor,
+			fname:   fname,
 		}
-	} else if strings.HasPrefix(path, installDir) { // we're in install /etc/crowdsec/<type>/...
+
+	case len(subsInstall) > 0:
 		logger.Tracef("in install dir")
 
-		if len(subs) < 3 {
-			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
-		}
 		// .../config/parser/stage/file.yaml
 		// .../config/postoverflow/stage/file.yaml
 		// .../config/scenarios/scenar.yaml
 		// .../config/collections/linux.yaml //file is empty
+
+		if len(subsInstall) < 2 {
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsInstall))
+		}
+
+		// this can be in any number of subdirs, we join them to compose the item name
+
+		ftype := subsInstall[0]
+		stage := ""
+		fname := strings.Join(subsInstall[1:], "/")
+
+		if ftype == PARSERS || ftype == POSTOVERFLOWS {
+			stage = subsInstall[1]
+			fname = strings.Join(subsInstall[2:], "/")
+		}
+
 		ret = &itemFileInfo{
 			inhub:   false,
-			fname:   subs[len(subs)-1],
-			stage:   subs[len(subs)-2],
-			ftype:   subs[len(subs)-3],
+			ftype:   ftype,
+			stage:   stage,
 			fauthor: "",
+			fname:   fname,
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
-	}
-
-	logger.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
-
-	if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		if !slices.Contains(ItemTypes, ret.stage) {
-			return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
-		}
-
-		ret.ftype = ret.stage
-		ret.stage = ""
 	}
 
 	logger.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
@@ -164,7 +210,7 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
 
 	err = yaml.Unmarshal(itemContent, &itemName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 	}
 
 	if itemName.Name != "" {
@@ -175,8 +221,6 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
 }
 
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
-	hubpath := ""
-
 	if err != nil {
 		h.logger.Debugf("while syncing hub dir: %s", err)
 		// there is a path error, we ignore the file
@@ -189,44 +233,66 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		return err
 	}
 
+	// permission errors, files removed while reading, etc.
+	if f == nil {
+		return nil
+	}
+
+	if f.IsDir() {
+		// if a directory starts with a dot, we don't traverse it
+		// - single dot prefix is hidden by unix convention
+		// - double dot prefix is used by k8s to mount config maps
+		if strings.HasPrefix(f.Name(), ".") {
+			h.logger.Tracef("skipping hidden directory %s", path)
+			return filepath.SkipDir
+		}
+
+		// keep traversing
+		return nil
+	}
+
 	// we only care about YAML files
-	if f == nil || f.IsDir() || !isYAMLFileName(f.Name()) {
+	if !isYAMLFileName(f.Name()) {
 		return nil
 	}
 
 	info, err := h.getItemFileInfo(path, h.logger)
 	if err != nil {
-		return err
+		h.logger.Warningf("Ignoring file %s: %s", path, err)
+		return nil
 	}
 
-	// non symlinks are local user files or hub files
-	if f.Type()&os.ModeSymlink == 0 {
-		h.logger.Tracef("%s is not a symlink", path)
+	// follow the link to see if it falls in the hub directory
+	// if it's not a link, target == path
+	target, err := resolveSymlink(path)
+	if err != nil {
+		// target does not exist, the user might have removed the file
+		// or switched to a hub branch without it; or symlink loop
+		h.logger.Warningf("Ignoring file %s: %s", path, err)
+		return nil
+	}
 
-		if !info.inhub {
-			h.logger.Tracef("%s is a local file, skip", path)
+	targetInHub, err := isPathInside(target, h.local.HubDir)
+	if err != nil {
+		h.logger.Warningf("Ignoring file %s: %s", path, err)
+		return nil
+	}
 
-			item, err := newLocalItem(h, path, info)
-			if err != nil {
-				return err
-			}
+	// local (custom) item if the file or link target is not inside the hub dir
+	if !targetInHub {
+		h.logger.Tracef("%s is a local file, skip", path)
 
-			h.addItem(item)
-
-			return nil
-		}
-	} else {
-		hubpath, err = linkTarget(path, h.logger)
+		item, err := newLocalItem(h, path, info)
 		if err != nil {
 			return err
 		}
 
-		if hubpath == "" {
-			// target does not exist, the user might have removed the file
-			// or switched to a hub branch without it
-			return nil
-		}
+		h.addItem(item)
+
+		return nil
 	}
+
+	hubpath := target
 
 	// try to find which configuration item it is
 	h.logger.Tracef("check [%s] of %s", info.fname, info.ftype)

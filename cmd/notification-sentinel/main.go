@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -27,6 +28,7 @@ type PluginConfig struct {
 }
 
 type SentinelPlugin struct {
+	protobufs.UnimplementedNotifierServer
 	PluginConfigByName map[string]PluginConfig
 }
 
@@ -122,7 +124,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"sentinel": &protobufs.NotifierPlugin{
+			"sentinel": &csplugin.NotifierPlugin{
 				Impl: sp,
 			},
 		},

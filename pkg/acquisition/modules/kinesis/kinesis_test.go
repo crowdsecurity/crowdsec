@@ -3,6 +3,7 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -60,8 +61,8 @@ func GenSubObject(i int) []byte {
 	gz := gzip.NewWriter(&b)
 	gz.Write(body)
 	gz.Close()
-	//AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
-	//localstack does not do it, so let's just write a raw gzipped stream
+	// AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
+	// localstack does not do it, so let's just write a raw gzipped stream
 	return b.Bytes()
 }
 
@@ -99,10 +100,10 @@ func TestMain(m *testing.M) {
 	os.Setenv("AWS_ACCESS_KEY_ID", "foobar")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "foobar")
 
-	//delete_streams()
-	//create_streams()
+	// delete_streams()
+	// create_streams()
 	code := m.Run()
-	//delete_streams()
+	// delete_streams()
 	os.Exit(code)
 }
 
@@ -149,6 +150,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -176,11 +178,11 @@ stream_name: stream-1-shard`,
 		}
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
-		err = f.StreamingAcquisition(out, tomb)
+		err = f.StreamingAcquisition(ctx, out, tomb)
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		for i := range test.count {
@@ -193,6 +195,7 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -220,11 +223,11 @@ stream_name: stream-2-shards`,
 		}
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
-		err = f.StreamingAcquisition(out, tomb)
+		err = f.StreamingAcquisition(ctx, out, tomb)
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		c := 0
@@ -239,6 +242,7 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
+	ctx := context.Background()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -267,11 +271,11 @@ from_subscription: true`,
 		}
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
-		err = f.StreamingAcquisition(out, tomb)
+		err = f.StreamingAcquisition(ctx, out, tomb)
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, true)
 		for i := range test.count {

@@ -3,8 +3,8 @@ package leakybucket
 import (
 	"sync"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -16,8 +16,10 @@ import (
 // on overflow
 // on leak
 
-var uniqExprCache map[string]vm.Program
-var uniqExprCacheLock sync.Mutex
+var (
+	uniqExprCache     map[string]vm.Program
+	uniqExprCacheLock sync.Mutex
+)
 
 type Uniq struct {
 	DistinctCompiled *vm.Program

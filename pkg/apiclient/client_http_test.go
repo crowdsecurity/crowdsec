@@ -10,22 +10,19 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 func TestNewRequestInvalid(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
 
-	//missing slash in uri
+	// missing slash in uri
 	apiURL, err := url.Parse(urlx)
 	require.NoError(t, err)
 
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -57,7 +54,6 @@ func TestNewRequestTimeout(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     cwversion.UserAgent(),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})

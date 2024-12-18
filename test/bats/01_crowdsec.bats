@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -138,6 +137,8 @@ teardown() {
     rune -0 ./instance-crowdsec stop
 }
 
+# TODO: move acquisition tests to test/bats/crowdsec-acquisition.bats
+
 @test "crowdsec (error if the acquisition_path file is defined but missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     rm -f "$ACQUIS_YAML"
@@ -199,7 +200,42 @@ teardown() {
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
-@test "crowdsec (disabled datasources)" {
+@test "crowdsec (datasource not built)" {
+    config_set '.common.log_media="stdout"'
+
+    # a datasource cannot run - it's not built in the log processor executable
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    cat >"$ACQUIS_DIR"/foo.yaml <<-EOT
+	source: journalctl
+	journalctl_filter:
+	 - "_SYSTEMD_UNIT=ssh.service"
+	labels:
+	  type: syslog
+	EOT
+
+    #shellcheck disable=SC2016
+    rune -1 wait-for \
+        --err "crowdsec init: while loading acquisition config: in file $ACQUIS_DIR/foo.yaml (position: 0) - data source journalctl is not built in this version of crowdsec" \
+        env PATH='' "$CROWDSEC".min
+
+    # auto-detection of journalctl_filter still works
+    cat >"$ACQUIS_DIR"/foo.yaml <<-EOT
+        source: whatever
+	journalctl_filter:
+	 - "_SYSTEMD_UNIT=ssh.service"
+	labels:
+	  type: syslog
+	EOT
+
+    #shellcheck disable=SC2016
+    rune -1 wait-for \
+        --err "crowdsec init: while loading acquisition config: in file $ACQUIS_DIR/foo.yaml (position: 0) - data source journalctl is not built in this version of crowdsec" \
+        env PATH='' "$CROWDSEC".min
+}
+
+@test "crowdsec (disabled datasource)" {
     if is_package_testing; then
         # we can't hide journalctl in package testing
         # because crowdsec is run from systemd
@@ -243,7 +279,7 @@ teardown() {
     # if filenames are missing, it won't be able to detect source type
     config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "failed to configure datasource file: no filename or filenames configuration provided"
+    assert_stderr --partial "while configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
 
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'

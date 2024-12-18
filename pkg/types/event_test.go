@@ -46,7 +46,6 @@ func TestSetParsed(t *testing.T) {
 			assert.Equal(t, tt.value, tt.evt.Parsed[tt.key])
 		})
 	}
-
 }
 
 func TestSetMeta(t *testing.T) {
@@ -86,7 +85,6 @@ func TestSetMeta(t *testing.T) {
 			assert.Equal(t, tt.value, tt.evt.GetMeta(tt.key))
 		})
 	}
-
 }
 
 func TestParseIPSources(t *testing.T) {

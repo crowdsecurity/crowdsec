@@ -3,6 +3,7 @@ package cwhub
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/sirupsen/logrus"
 
@@ -11,9 +12,10 @@ import (
 
 // RemoteHubCfg is used to retrieve index and items from the remote hub.
 type RemoteHubCfg struct {
-	Branch      string
-	URLTemplate string
-	IndexPath   string
+	Branch           string
+	URLTemplate      string
+	IndexPath        string
+	EmbedItemContent bool
 }
 
 // urlTo builds the URL to download a file from the remote hub.
@@ -30,6 +32,24 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	return fmt.Sprintf(r.URLTemplate, r.Branch, remotePath), nil
 }
 
+// addURLParam adds the "with_content=true" parameter to the URL if it's not already present.
+func addURLParam(rawURL string, param string, value string) (string, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	query := parsedURL.Query()
+
+	if _, exists := query[param]; !exists {
+		query.Add(param, value)
+	}
+
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String(), nil
+}
+
 // fetchIndex downloads the index from the hub and returns the content.
 func (r *RemoteHubCfg) fetchIndex(ctx context.Context, destPath string) (bool, error) {
 	if r == nil {
@@ -41,10 +61,18 @@ func (r *RemoteHubCfg) fetchIndex(ctx context.Context, destPath string) (bool, e
 		return false, fmt.Errorf("failed to build hub index request: %w", err)
 	}
 
+	if r.EmbedItemContent {
+		url, err = addURLParam(url, "with_content", "true")
+		if err != nil {
+			return false, fmt.Errorf("failed to add 'with_content' parameter to URL: %w", err)
+		}
+	}
+
 	downloaded, err := downloader.
 		New().
 		WithHTTPClient(hubClient).
 		ToFile(destPath).
+		WithETagFn(downloader.SHA256).
 		CompareContent().
 		WithLogger(logrus.WithField("url", url)).
 		Download(ctx, url)

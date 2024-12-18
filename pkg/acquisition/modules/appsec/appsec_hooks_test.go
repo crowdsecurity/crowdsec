@@ -341,7 +341,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 }
 
 func TestAppsecPreEvalHooks(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic pre_eval hook to disable inband rule",
@@ -403,7 +402,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
-
 			},
 		},
 		{
@@ -670,7 +668,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 }
 
 func TestAppsecRemediationConfigHooks(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
@@ -759,6 +756,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		})
 	}
 }
+
 func TestOnMatchRemediationHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{

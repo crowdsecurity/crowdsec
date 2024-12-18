@@ -34,6 +34,14 @@ func CAPI(c *csconfig.Config) error {
 }
 
 func PAPI(c *csconfig.Config) error {
+	if err := CAPI(c); err != nil {
+		return err
+	}
+
+	if err := CAPIRegistered(c); err != nil {
+		return err
+	}
+
 	if c.API.Server.OnlineClient.Credentials.PapiURL == "" {
 		return errors.New("no PAPI URL in configuration")
 	}

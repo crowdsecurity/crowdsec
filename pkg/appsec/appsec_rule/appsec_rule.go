@@ -1,6 +1,7 @@
 package appsec_rule
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -46,17 +47,16 @@ type CustomRule struct {
 }
 
 func (v *CustomRule) Convert(ruleType string, appsecRuleName string) (string, []uint32, error) {
-
 	if v.Zones == nil && v.And == nil && v.Or == nil {
-		return "", nil, fmt.Errorf("no zones defined")
+		return "", nil, errors.New("no zones defined")
 	}
 
 	if v.Match.Type == "" && v.And == nil && v.Or == nil {
-		return "", nil, fmt.Errorf("no match type defined")
+		return "", nil, errors.New("no match type defined")
 	}
 
 	if v.Match.Value == "" && v.And == nil && v.Or == nil {
-		return "", nil, fmt.Errorf("no match value defined")
+		return "", nil, errors.New("no match value defined")
 	}
 
 	switch ruleType {

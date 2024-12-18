@@ -25,7 +25,6 @@ type SyslogMessage struct {
 }
 
 func (s *SyslogServer) Listen(listenAddr string, port int) error {
-
 	s.listenAddr = listenAddr
 	s.port = port
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", s.listenAddr, s.port))

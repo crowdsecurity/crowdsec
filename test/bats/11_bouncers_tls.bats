@@ -146,12 +146,13 @@ teardown() {
 }
 
 @test "simulate a bouncer request with a valid cert" {
-    rune -0 curl -f -s \
+    rune -0 curl --fail-with-body -sS \
         --cert "$tmpdir/leaf.pem" \
         --key "$tmpdir/leaf-key.pem" \
         --cacert "$tmpdir/bundle.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
+    refute_stderr
     rune -0 cscli bouncers list -o json
     rune -0 jq '. | length' <(output)
     assert_output '1'
@@ -161,23 +162,54 @@ teardown() {
     rune cscli bouncers delete localhost@127.0.0.1
 }
 
+@test "a bouncer authenticated with TLS can send metrics" {
+    payload=$(yq -o j <<-EOT
+	remediation_components: []
+	log_processors: []
+	EOT
+    )
+
+    # with mutual authentication there is no api key, so it's detected as RC if user agent != crowdsec
+
+    rune -22 curl --fail-with-body -sS \
+        --cert "$tmpdir/leaf.pem" \
+        --key "$tmpdir/leaf-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
+        https://localhost:8080/v1/usage-metrics -X POST --data "$payload"
+    assert_stderr --partial 'error: 400'
+    assert_json '{message: "Missing remediation component data"}'
+
+    rune -22 curl --fail-with-body -sS \
+        --cert "$tmpdir/leaf.pem" \
+        --key "$tmpdir/leaf-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
+        --user-agent "crowdsec/someversion" \
+        https://localhost:8080/v1/usage-metrics -X POST --data "$payload"
+    assert_stderr --partial 'error: 401'
+    assert_json '{code:401, message: "cookie token is empty"}'
+
+    rune cscli bouncers delete localhost@127.0.0.1
+}
+
 @test "simulate a bouncer request with an invalid cert" {
-    rune -77 curl -f -s \
+    rune -77 curl --fail-with-body -sS \
         --cert "$tmpdir/leaf_invalid.pem" \
         --key "$tmpdir/leaf_invalid-key.pem" \
         --cacert "$tmpdir/root-key.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    assert_stderr --partial 'error setting certificate file'
     rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
 @test "simulate a bouncer request with an invalid OU" {
-    rune -0 curl -s \
+    rune -22 curl --fail-with-body -sS \
         --cert "$tmpdir/leaf_bad_ou.pem" \
         --key "$tmpdir/leaf_bad_ou-key.pem" \
         --cacert "$tmpdir/bundle.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
-    assert_json '{message:"access forbidden"}'
+    assert_json '{message: "access forbidden"}'
+    assert_stderr --partial 'error: 403'
     rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
@@ -187,13 +219,14 @@ teardown() {
     # we connect twice to test the cache too
     for cert in "leaf_rev1" "leaf_rev2" "leaf_rev1" "leaf_rev2"; do
         truncate_log
-        rune -0 curl -s \
+        rune -22 curl --fail-with-body -sS \
             --cert "$tmpdir/$cert.pem" \
             --key "$tmpdir/$cert-key.pem" \
             --cacert "$tmpdir/bundle.pem" \
             https://localhost:8080/v1/decisions\?ip=42.42.42.42
         assert_log --partial "certificate revoked by CRL"
-        assert_output --partial "access forbidden"
+        assert_json '{message: "access forbidden"}'
+        assert_stderr --partial "error: 403"
         rune -0 cscli bouncers list -o json
         assert_output "[]"
     done
