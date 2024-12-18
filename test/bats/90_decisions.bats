@@ -31,11 +31,7 @@ teardown() {
 
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
-    assert_stderr --partial "missing arguments, a value is required (--ip, --range or --scope and --value)"
-
-    rune -1 cscli decisions add -o json
-    rune -0 jq -c '[ .level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","missing arguments, a value is required (--ip, --range or --scope and --value)"]'
+    assert_stderr "Error: missing arguments, a value is required (--ip, --range or --scope and --value)"
 }
 
 @test "cscli decisions list, with and without --machine" {
@@ -61,16 +57,13 @@ teardown() {
 
 @test "cscli decisions list, incorrect parameters" {
     rune -1 cscli decisions list --until toto
-    assert_stderr --partial 'unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration \"toto\"'
-    rune -1 cscli decisions list --until toto -o json
-    rune -0 jq -c '[.level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
+    assert_stderr 'Error: unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration "toto"'
 }
 
 @test "cscli decisions import" {
     # required input
     rune -1 cscli decisions import
-    assert_stderr --partial 'required flag(s) \"input\" not set"'
+    assert_stderr 'Error: required flag(s) "input" not set'
 
     # unsupported format
     rune -1 cscli decisions import -i - <<<'value\n5.6.7.8' --format xml

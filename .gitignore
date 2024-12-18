@@ -21,6 +21,9 @@
 # Test dependencies
 test/tools/*
 
+# Saved test status
+test/bats/.bats/run-logs
+
 # VMs used for dev/test
 
 .vagrant

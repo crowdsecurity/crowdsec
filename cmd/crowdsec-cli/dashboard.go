@@ -144,7 +144,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				isValid := passwordIsValid(metabasePassword)
 				for !isValid {
-					metabasePassword = idgen.GeneratePassword(16)
+					var err error
+					metabasePassword, err = idgen.GeneratePassword(16)
+					if err != nil {
+						return err
+					}
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}

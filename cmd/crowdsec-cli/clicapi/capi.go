@@ -66,7 +66,12 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		return fmt.Errorf("unable to generate machine id: %w", err)
 	}
 
-	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
+	pstr, err := idgen.GeneratePassword(idgen.PasswordLength)
+	if err != nil {
+		return err
+	}
+
+	password := strfmt.Password(pstr)
 
 	apiurl, err := url.Parse(types.CAPIBaseURL)
 	if err != nil {

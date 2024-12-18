@@ -81,7 +81,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			dsn:         "journalctl://filters=%ZZ",
-			expectedErr: "could not parse journalctl DSN : invalid URL escape \"%ZZ\"",
+			expectedErr: "could not parse journalctl DSN: invalid URL escape \"%ZZ\"",
 		},
 		{
 			dsn:         "journalctl://filters=_UID=42?log_level=warn",
@@ -191,6 +191,7 @@ journalctl_filter:
 
 func TestStreaming(t *testing.T) {
 	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -270,7 +271,7 @@ journalctl_filter:
 		tomb.Wait()
 
 		output, _ := exec.Command("pgrep", "-x", "journalctl").CombinedOutput()
-		if string(output) != "" {
+		if len(output) != 0 {
 			t.Fatalf("Found a journalctl process after killing the tomb !")
 		}
 
