@@ -56,13 +56,11 @@ func toUNCPath(path string) (string, error) {
 	return uncPath, nil
 }
 
-func setupUnixSocketWithPrefix(socket string, urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
+func setupUnixSocketWithPrefix(t *testing.T, socket string, urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
 	var err error
 	if runtime.GOOS == "windows" {
 		socket, err = toUNCPath(socket)
-		if err != nil {
-			log.Fatalf("converting to UNC path: %s", err)
-		}
+		require.NoError(t, err, "converting to UNC path")
 	}
 
 	mux = http.NewServeMux()
@@ -120,7 +118,7 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
-	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	apiURL, err := url.Parse(urlx)
@@ -215,7 +213,7 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
-	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	apiURL, err := url.Parse(urlx)
@@ -293,7 +291,7 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
-	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	/*mock login*/
