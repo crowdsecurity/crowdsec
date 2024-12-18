@@ -16,12 +16,18 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	err := fmt.Sprintf("API error: %s", *e.Message)
-	if len(e.Errors) > 0 {
-		err += fmt.Sprintf(" (%s)", e.Errors)
+	message := ptr.OrEmpty(e.Message)
+	errors := ""
+
+	if e.Errors != "" {
+		errors = fmt.Sprintf(" (%s)", e.Errors)
 	}
 
-	return err
+	if message == "" && errors == "" {
+		errors = "(no errors)"
+	}
+
+	return fmt.Sprintf("API error: %s%s", message, errors)
 }
 
 // CheckResponse verifies the API response and builds an appropriate Go error if necessary.
@@ -34,12 +40,21 @@ func CheckResponse(r *http.Response) error {
 
 	data, err := io.ReadAll(r.Body)
 	if err != nil || len(data) == 0 {
-		ret.Message = ptr.Of(fmt.Sprintf("http code %d, no error message", r.StatusCode))
+		ret.Message = ptr.Of(fmt.Sprintf("http code %d, no response body", r.StatusCode))
 		return ret
 	}
 
-	if err := json.Unmarshal(data, ret); err != nil {
-		return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
+	switch r.StatusCode {
+	case http.StatusUnprocessableEntity:
+		ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid request: %s", r.StatusCode, string(data)))
+	default:
+		// try to unmarshal and if there are no 'message' or 'errors' fields, display the body as is,
+		// the API is following a different convention
+		err := json.Unmarshal(data, ret)
+		if err != nil || (ret.Message == nil && ret.Errors == "") {
+			ret.Message = ptr.Of(fmt.Sprintf("http code %d, response: %s", r.StatusCode, string(data)))
+			return ret
+		}
 	}
 
 	return ret

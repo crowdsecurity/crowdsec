@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 )
 
 type LokiClient struct {
@@ -119,7 +119,7 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 		case <-lc.t.Dying():
 			return lc.t.Err()
 		case <-ticker.C:
-			resp, err := lc.Get(uri)
+			resp, err := lc.Get(ctx, uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
 					return fmt.Errorf("error querying range: %w", err)
@@ -215,7 +215,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 			return lc.t.Err()
 		case <-tick.C:
 			lc.Logger.Debug("Checking if Loki is ready")
-			resp, err := lc.Get(url)
+			resp, err := lc.Get(ctx, url)
 			if err != nil {
 				lc.Logger.Warnf("Error checking if Loki is ready: %s", err)
 				continue
@@ -300,8 +300,8 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 }
 
 // Create a wrapper for http.Get to be able to set headers and auth
-func (lc *LokiClient) Get(url string) (*http.Response, error) {
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+func (lc *LokiClient) Get(ctx context.Context, url string) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -319,6 +319,6 @@ func NewLokiClient(config Config) *LokiClient {
 	if config.Username != "" || config.Password != "" {
 		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(config.Username+":"+config.Password))
 	}
-	headers["User-Agent"] = cwversion.UserAgent()
+	headers["User-Agent"] = useragent.Default()
 	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config, requestHeaders: headers}
 }

@@ -12,6 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
 
+	"github.com/crowdsecurity/go-cs-lib/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
@@ -74,13 +76,13 @@ func chooseBranch(ctx context.Context, cfg *csconfig.Config) string {
 	}
 
 	if csVersion == latest {
-		log.Debugf("Latest crowdsec version (%s), using hub branch 'master'", csVersion)
+		log.Debugf("Latest crowdsec version (%s), using hub branch 'master'", version.String())
 		return "master"
 	}
 
 	// if current version is greater than the latest we are in pre-release
 	if semver.Compare(csVersion, latest) == 1 {
-		log.Debugf("Your current crowdsec version seems to be a pre-release (%s), using hub branch 'master'", csVersion)
+		log.Debugf("Your current crowdsec version seems to be a pre-release (%s), using hub branch 'master'", version.String())
 		return "master"
 	}
 

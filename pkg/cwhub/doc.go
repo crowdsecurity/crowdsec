@@ -2,10 +2,10 @@
 //
 // # Definitions
 //
-//  - A hub ITEM is a file that defines a parser, a scenario, a collection... in the case of a collection, it has dependencies on other hub items.
-//  - The hub INDEX is a JSON file that contains a tree of available hub items.
-//  - A REMOTE HUB is an HTTP server that hosts the hub index and the hub items. It can serve from several branches, usually linked to the CrowdSec version.
-//  - A LOCAL HUB is a directory that contains a copy of the hub index and the downloaded hub items.
+//   - A hub ITEM is a file that defines a parser, a scenario, a collection... in the case of a collection, it has dependencies on other hub items.
+//   - The hub INDEX is a JSON file that contains a tree of available hub items.
+//   - A REMOTE HUB is an HTTP server that hosts the hub index and the hub items. It can serve from several branches, usually linked to the CrowdSec version.
+//   - A LOCAL HUB is a directory that contains a copy of the hub index and the downloaded hub items.
 //
 // Once downloaded, hub items can be installed by linking to them from the configuration directory.
 // If an item is present in the configuration directory but it's not a link to the local hub, it is
@@ -17,15 +17,15 @@
 //
 // For the local hub (HubDir = /etc/crowdsec/hub):
 //
-//  - /etc/crowdsec/hub/.index.json
-//  - /etc/crowdsec/hub/parsers/{stage}/{author}/{parser-name}.yaml
-//  - /etc/crowdsec/hub/scenarios/{author}/{scenario-name}.yaml
+//   - /etc/crowdsec/hub/.index.json
+//   - /etc/crowdsec/hub/parsers/{stage}/{author}/{parser-name}.yaml
+//   - /etc/crowdsec/hub/scenarios/{author}/{scenario-name}.yaml
 //
 // For the configuration directory (InstallDir = /etc/crowdsec):
 //
-//  - /etc/crowdsec/parsers/{stage}/{parser-name.yaml} -> /etc/crowdsec/hub/parsers/{stage}/{author}/{parser-name}.yaml
-//  - /etc/crowdsec/scenarios/{scenario-name.yaml} -> /etc/crowdsec/hub/scenarios/{author}/{scenario-name}.yaml
-//  - /etc/crowdsec/scenarios/local-scenario.yaml
+//   - /etc/crowdsec/parsers/{stage}/{parser-name.yaml} -> /etc/crowdsec/hub/parsers/{stage}/{author}/{parser-name}.yaml
+//   - /etc/crowdsec/scenarios/{scenario-name.yaml} -> /etc/crowdsec/hub/scenarios/{author}/{scenario-name}.yaml
+//   - /etc/crowdsec/scenarios/local-scenario.yaml
 //
 // Note that installed items are not grouped by author, this may change in the future if we want to
 // support items with the same name from different authors.
@@ -35,11 +35,10 @@
 // Additionally, an item can reference a DATA SET that is installed in a different location than
 // the item itself. These files are stored in the data directory (InstallDataDir = /var/lib/crowdsec/data).
 //
-//  - /var/lib/crowdsec/data/http_path_traversal.txt
-//  - /var/lib/crowdsec/data/jira_cve_2021-26086.txt
-//  - /var/lib/crowdsec/data/log4j2_cve_2021_44228.txt
-//  - /var/lib/crowdsec/data/sensitive_data.txt
-//
+//   - /var/lib/crowdsec/data/http_path_traversal.txt
+//   - /var/lib/crowdsec/data/jira_cve_2021-26086.txt
+//   - /var/lib/crowdsec/data/log4j2_cve_2021_44228.txt
+//   - /var/lib/crowdsec/data/sensitive_data.txt
 //
 // # Using the package
 //
@@ -75,7 +74,7 @@
 // Now you can use the hub object to access the existing items:
 //
 //	// list all the parsers
-//	for _, parser := range hub.GetItemMap(cwhub.PARSERS) {
+//	for _, parser := range hub.GetItemsByType(cwhub.PARSERS, false) {
 //		fmt.Printf("parser: %s\n", parser.Name)
 //	}
 //
@@ -87,13 +86,13 @@
 //
 // You can also install items if they have already been downloaded:
 //
-// 	// install a parser
-// 	force := false
-// 	downloadOnly := false
-// 	err := parser.Install(force, downloadOnly)
-// 	if err != nil {
-// 		return fmt.Errorf("unable to install parser: %w", err)
-// 	}
+//	// install a parser
+//	force := false
+//	downloadOnly := false
+//	err := parser.Install(force, downloadOnly)
+//	if err != nil {
+//		return fmt.Errorf("unable to install parser: %w", err)
+//	}
 //
 // As soon as you try to install an item that is not downloaded or is not up-to-date (meaning its computed hash
 // does not correspond to the latest version available in the index), a download will be attempted and you'll
@@ -101,8 +100,8 @@
 //
 // To provide the remote hub configuration, use the second parameter of NewHub():
 //
-// 	remoteHub := cwhub.RemoteHubCfg{
-//		URLTemplate: "https://hub-cdn.crowdsec.net/%s/%s",
+//	remoteHub := cwhub.RemoteHubCfg{
+//		URLTemplate: "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s",
 //		Branch: "master",
 //		IndexPath: ".index.json",
 //	}
@@ -124,5 +123,4 @@
 //
 // Note that the command will fail if the hub has already been synced. If you want to do it (ex. after a configuration
 // change the application is notified with SIGHUP) you have to instantiate a new hub object and dispose of the old one.
-//
 package cwhub

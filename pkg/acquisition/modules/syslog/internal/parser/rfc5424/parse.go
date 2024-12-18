@@ -1,7 +1,7 @@
 package rfc5424
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/utils"
@@ -48,11 +48,10 @@ func WithStrictHostname() RFC5424Option {
 }
 
 func (r *RFC5424) parsePRI() error {
-
 	pri := 0
 
 	if r.buf[r.position] != '<' {
-		return fmt.Errorf("PRI must start with '<'")
+		return errors.New("PRI must start with '<'")
 	}
 
 	r.position++
@@ -64,18 +63,18 @@ func (r *RFC5424) parsePRI() error {
 			break
 		}
 		if c < '0' || c > '9' {
-			return fmt.Errorf("PRI must be a number")
+			return errors.New("PRI must be a number")
 		}
 		pri = pri*10 + int(c-'0')
 		r.position++
 	}
 
 	if pri > 999 {
-		return fmt.Errorf("PRI must be up to 3 characters long")
+		return errors.New("PRI must be up to 3 characters long")
 	}
 
 	if r.position == r.len && r.buf[r.position-1] != '>' {
-		return fmt.Errorf("PRI must end with '>'")
+		return errors.New("PRI must end with '>'")
 	}
 
 	r.PRI = pri
@@ -84,17 +83,16 @@ func (r *RFC5424) parsePRI() error {
 
 func (r *RFC5424) parseVersion() error {
 	if r.buf[r.position] != '1' {
-		return fmt.Errorf("version must be 1")
+		return errors.New("version must be 1")
 	}
 	r.position += 2
 	if r.position >= r.len {
-		return fmt.Errorf("version must be followed by a space")
+		return errors.New("version must be followed by a space")
 	}
 	return nil
 }
 
 func (r *RFC5424) parseTimestamp() error {
-
 	timestamp := []byte{}
 
 	if r.buf[r.position] == NIL_VALUE {
@@ -113,17 +111,16 @@ func (r *RFC5424) parseTimestamp() error {
 	}
 
 	if len(timestamp) == 0 {
-		return fmt.Errorf("timestamp is empty")
+		return errors.New("timestamp is empty")
 	}
 
 	if r.position == r.len {
-		return fmt.Errorf("EOL after timestamp")
+		return errors.New("EOL after timestamp")
 	}
 
 	date, err := time.Parse(VALID_TIMESTAMP, string(timestamp))
-
 	if err != nil {
-		return fmt.Errorf("timestamp is not valid")
+		return errors.New("timestamp is not valid")
 	}
 
 	r.Timestamp = date
@@ -131,7 +128,7 @@ func (r *RFC5424) parseTimestamp() error {
 	r.position++
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after timestamp")
+		return errors.New("EOL after timestamp")
 	}
 
 	return nil
@@ -156,11 +153,11 @@ func (r *RFC5424) parseHostname() error {
 	}
 	if r.strictHostname {
 		if !utils.IsValidHostnameOrIP(string(hostname)) {
-			return fmt.Errorf("hostname is not valid")
+			return errors.New("hostname is not valid")
 		}
 	}
 	if len(hostname) == 0 {
-		return fmt.Errorf("hostname is empty")
+		return errors.New("hostname is empty")
 	}
 	r.Hostname = string(hostname)
 	return nil
@@ -185,11 +182,11 @@ func (r *RFC5424) parseAppName() error {
 	}
 
 	if len(appname) == 0 {
-		return fmt.Errorf("appname is empty")
+		return errors.New("appname is empty")
 	}
 
 	if len(appname) > 48 {
-		return fmt.Errorf("appname is too long")
+		return errors.New("appname is too long")
 	}
 
 	r.Tag = string(appname)
@@ -215,11 +212,11 @@ func (r *RFC5424) parseProcID() error {
 	}
 
 	if len(procid) == 0 {
-		return fmt.Errorf("procid is empty")
+		return errors.New("procid is empty")
 	}
 
 	if len(procid) > 128 {
-		return fmt.Errorf("procid is too long")
+		return errors.New("procid is too long")
 	}
 
 	r.PID = string(procid)
@@ -245,11 +242,11 @@ func (r *RFC5424) parseMsgID() error {
 	}
 
 	if len(msgid) == 0 {
-		return fmt.Errorf("msgid is empty")
+		return errors.New("msgid is empty")
 	}
 
 	if len(msgid) > 32 {
-		return fmt.Errorf("msgid is too long")
+		return errors.New("msgid is too long")
 	}
 
 	r.MsgID = string(msgid)
@@ -263,7 +260,7 @@ func (r *RFC5424) parseStructuredData() error {
 		return nil
 	}
 	if r.buf[r.position] != '[' {
-		return fmt.Errorf("structured data must start with '[' or be '-'")
+		return errors.New("structured data must start with '[' or be '-'")
 	}
 	prev := byte(0)
 	for r.position < r.len {
@@ -281,14 +278,14 @@ func (r *RFC5424) parseStructuredData() error {
 	}
 	r.position++
 	if !done {
-		return fmt.Errorf("structured data must end with ']'")
+		return errors.New("structured data must end with ']'")
 	}
 	return nil
 }
 
 func (r *RFC5424) parseMessage() error {
 	if r.position == r.len {
-		return fmt.Errorf("message is empty")
+		return errors.New("message is empty")
 	}
 
 	message := []byte{}
@@ -305,7 +302,7 @@ func (r *RFC5424) parseMessage() error {
 func (r *RFC5424) Parse(message []byte) error {
 	r.len = len(message)
 	if r.len == 0 {
-		return fmt.Errorf("syslog line is empty")
+		return errors.New("syslog line is empty")
 	}
 	r.buf = message
 
@@ -315,7 +312,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after PRI")
+		return errors.New("EOL after PRI")
 	}
 
 	err = r.parseVersion()
@@ -324,7 +321,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after Version")
+		return errors.New("EOL after Version")
 	}
 
 	err = r.parseTimestamp()
@@ -333,7 +330,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after Timestamp")
+		return errors.New("EOL after Timestamp")
 	}
 
 	err = r.parseHostname()
@@ -342,7 +339,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after hostname")
+		return errors.New("EOL after hostname")
 	}
 
 	err = r.parseAppName()
@@ -351,7 +348,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after appname")
+		return errors.New("EOL after appname")
 	}
 
 	err = r.parseProcID()
@@ -360,7 +357,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after ProcID")
+		return errors.New("EOL after ProcID")
 	}
 
 	err = r.parseMsgID()
@@ -369,7 +366,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after MSGID")
+		return errors.New("EOL after MSGID")
 	}
 
 	err = r.parseStructuredData()
@@ -378,7 +375,7 @@ func (r *RFC5424) Parse(message []byte) error {
 	}
 
 	if r.position >= r.len {
-		return fmt.Errorf("EOL after SD")
+		return errors.New("EOL after SD")
 	}
 
 	err = r.parseMessage()

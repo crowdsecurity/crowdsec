@@ -3,7 +3,7 @@ package parser
 import (
 	"time"
 
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/grokky"
 )

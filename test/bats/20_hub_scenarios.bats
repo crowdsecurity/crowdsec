@@ -85,7 +85,8 @@ teardown() {
     list_human=$(cscli scenarios list -o human -a | tail -n +6 | head -n -1 | cut -d' ' -f2)
     list_json=$(cscli scenarios list -o json -a | jq -r '.scenarios[].name')
 
-    rune -0 sort -f <<<"$list_raw"
+    # use python to sort because it handles "_" like go
+    rune -0 python3 -c 'import sys; print("".join(sorted(sys.stdin.readlines(), key=str.casefold)), end="")' <<<"$list_raw"
     assert_output "$list_raw"
 
     assert_equal "$list_raw" "$list_json"
@@ -96,7 +97,7 @@ teardown() {
     # non-existent
     rune -1 cscli scenario install foo/bar
     assert_stderr --partial "can't find 'foo/bar' in scenarios"
- 
+
     # not installed
     rune -0 cscli scenarios list crowdsecurity/ssh-bf
     assert_output --regexp 'crowdsecurity/ssh-bf.*disabled'
@@ -178,7 +179,7 @@ teardown() {
     echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
 
     rune -1 cscli scenarios install crowdsecurity/ssh-bf
-    assert_stderr --partial "error while installing 'crowdsecurity/ssh-bf': while enabling crowdsecurity/ssh-bf: crowdsecurity/ssh-bf is tainted, won't enable unless --force"
+    assert_stderr --partial "error while installing 'crowdsecurity/ssh-bf': while enabling crowdsecurity/ssh-bf: crowdsecurity/ssh-bf is tainted, won't overwrite unless --force"
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf --force
     assert_stderr --partial "Enabled crowdsecurity/ssh-bf"

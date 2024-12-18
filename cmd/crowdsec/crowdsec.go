@@ -14,7 +14,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -43,12 +42,13 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 		return nil, nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
-	if err := LoadBuckets(cConfig, hub); err != nil {
+	if err = LoadBuckets(cConfig, hub); err != nil {
 		return nil, nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
-	if err := appsec.LoadAppsecRules(hub); err != nil {
-		return nil, nil, fmt.Errorf("while loading appsec rules: %w", err)
+	// can be nerfed by a build flag
+	if err = LoadAppsecRules(hub); err != nil {
+		return nil, nil, err
 	}
 
 	datasources, err := LoadAcquisition(cConfig)
@@ -82,6 +82,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 				return nil
 			})
 		}
+
 		parserWg.Done()
 
 		return nil
@@ -108,13 +109,14 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 				return runPour(inputEventChan, holders, buckets, cConfig)
 			})
 		}
+
 		bucketWg.Done()
 
 		return nil
 	})
 	bucketWg.Wait()
 
-	apiClient, err := AuthenticatedLAPIClient(*cConfig.API.Client.Credentials, hub)
+	apiClient, err := AuthenticatedLAPIClient(context.TODO(), *cConfig.API.Client.Credentials, hub)
 	if err != nil {
 		return err
 	}
@@ -134,11 +136,25 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 				return runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, apiClient)
 			})
 		}
+
 		outputWg.Done()
 
 		return nil
 	})
 	outputWg.Wait()
+
+	mp := NewMetricsProvider(
+		apiClient,
+		lpMetricsDefaultInterval,
+		log.WithField("service", "lpmetrics"),
+		[]string{},
+		datasources,
+		hub,
+	)
+
+	lpMetricsTomb.Go(func() error {
+		return mp.Run(context.Background(), &lpMetricsTomb)
+	})
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false
@@ -153,7 +169,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(context.TODO(), dataSources, inputLineChan, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 

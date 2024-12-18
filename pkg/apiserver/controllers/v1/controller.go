@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -14,7 +13,6 @@ import (
 )
 
 type Controller struct {
-	Ectx         context.Context
 	DBClient     *database.Client
 	APIKeyHeader string
 	Middlewares  *middlewares.Middlewares
@@ -23,22 +21,23 @@ type Controller struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	PluginChannel chan csplugin.ProfileAlert
-	ConsoleConfig csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
+	PluginChannel   chan csplugin.ProfileAlert
+	ConsoleConfig   csconfig.ConsoleConfig
+	TrustedIPs      []net.IPNet
+	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
 }
 
 type ControllerV1Config struct {
 	DbClient    *database.Client
-	Ctx         context.Context
 	ProfilesCfg []*csconfig.ProfileCfg
 
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	PluginChannel chan csplugin.ProfileAlert
-	ConsoleConfig csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
+	PluginChannel   chan csplugin.ProfileAlert
+	ConsoleConfig   csconfig.ConsoleConfig
+	TrustedIPs      []net.IPNet
+	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -50,7 +49,6 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 	}
 
 	v1 := &Controller{
-		Ectx:               cfg.Ctx,
 		DBClient:           cfg.DbClient,
 		APIKeyHeader:       middlewares.APIKeyHeader,
 		Profiles:           profiles,
@@ -59,9 +57,10 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		PluginChannel:      cfg.PluginChannel,
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
+		AutoRegisterCfg:    cfg.AutoRegisterCfg,
 	}
-	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 
+	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 	if err != nil {
 		return v1, err
 	}

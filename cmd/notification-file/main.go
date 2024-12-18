@@ -15,6 +15,7 @@ import (
 	plugin "github.com/hashicorp/go-plugin"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
@@ -52,6 +53,7 @@ type LogRotate struct {
 }
 
 type FilePlugin struct {
+	protobufs.UnimplementedNotifierServer
 	PluginConfigByName map[string]PluginConfig
 }
 
@@ -210,7 +212,7 @@ func (s *FilePlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	if err != nil {
-		logger.Error("Failed to unmarshal config", "error", err)
+		logger.Error("Failed to parse config", "error", err)
 		return &protobufs.Empty{}, err
 	}
 	FileWriteMutex = &sync.Mutex{}
@@ -241,7 +243,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"file": &protobufs.NotifierPlugin{
+			"file": &csplugin.NotifierPlugin{
 				Impl: sp,
 			},
 		},

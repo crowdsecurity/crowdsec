@@ -12,16 +12,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var CTIUrl = "https://cti.api.crowdsec.net"
-var CTIUrlSuffix = "/v2/smoke/"
-var CTIApiKey = ""
+var (
+	CTIUrl       = "https://cti.api.crowdsec.net"
+	CTIUrlSuffix = "/v2/smoke/"
+	CTIApiKey    = ""
+)
 
 // this is set for non-recoverable errors, such as 403 when querying API or empty API key
 var CTIApiEnabled = false
 
 // when hitting quotas or auth errors, we temporarily disable the API
-var CTIBackOffUntil time.Time
-var CTIBackOffDuration = 5 * time.Minute
+var (
+	CTIBackOffUntil    time.Time
+	CTIBackOffDuration = 5 * time.Minute
+)
 
 var ctiClient *cticlient.CrowdsecCTIClient
 
@@ -62,8 +66,10 @@ func ShutdownCrowdsecCTI() {
 }
 
 // Cache for responses
-var CTICache gcache.Cache
-var CacheExpiration time.Duration
+var (
+	CTICache        gcache.Cache
+	CacheExpiration time.Duration
+)
 
 func CrowdsecCTIInitCache(size int, ttl time.Duration) {
 	CTICache = gcache.New(size).LRU().Build()

@@ -17,9 +17,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var serialized map[string]Leaky
-var BucketPourCache map[string][]types.Event
-var BucketPourTrack bool
+var (
+	serialized      map[string]Leaky
+	BucketPourCache map[string][]types.Event
+	BucketPourTrack bool
+)
 
 /*
 The leaky routines lifecycle are based on "real" time.
@@ -132,7 +134,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	})
 	bbuckets, err := json.MarshalIndent(serialized, "", " ")
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal buckets: %s", err)
+		return "", fmt.Errorf("failed to parse buckets: %s", err)
 	}
 	size, err := tmpFd.Write(bbuckets)
 	if err != nil {
@@ -203,7 +205,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
-					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					holder.logger.Warningf("Failed to parse event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
@@ -243,7 +245,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 }
 
 func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
-
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 
 	/* the bucket doesn't exist, create it !*/
@@ -283,9 +284,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 var orderEvent map[string]*sync.WaitGroup
 
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
-	var (
-		ok, condition, poured bool
-	)
+	var ok, condition, poured bool
 
 	if BucketPourTrack {
 		if BucketPourCache == nil {
@@ -298,7 +297,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
 	//find the relevant holders (scenarios)
-	for idx := range len(holders) {
+	for idx := range holders {
 		//for idx, holder := range holders {
 
 		//evaluate bucket's condition

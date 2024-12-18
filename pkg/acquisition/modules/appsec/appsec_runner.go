@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,22 +32,37 @@ type AppsecRunner struct {
 	logger              *log.Entry
 }
 
+func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
+	var rulesArr []string
+	dedupRules := make(map[string]struct{})
+
+	for _, collection := range collections {
+		for _, rule := range collection.Rules {
+			if _, ok := dedupRules[rule]; !ok {
+				rulesArr = append(rulesArr, rule)
+				dedupRules[rule] = struct{}{}
+			} else {
+				logger.Debugf("Discarding duplicate rule : %s", rule)
+			}
+		}
+	}
+	if len(rulesArr) != len(dedupRules) {
+		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
+	}
+
+	return strings.Join(rulesArr, "\n")
+}
+
 func (r *AppsecRunner) Init(datadir string) error {
 	var err error
 	fs := os.DirFS(datadir)
 
-	inBandRules := ""
-	outOfBandRules := ""
-
-	for _, collection := range r.AppsecRuntime.InBandRules {
-		inBandRules += collection.String()
-	}
-
-	for _, collection := range r.AppsecRuntime.OutOfBandRules {
-		outOfBandRules += collection.String()
-	}
 	inBandLogger := r.logger.Dup().WithField("band", "inband")
 	outBandLogger := r.logger.Dup().WithField("band", "outband")
+
+	//While loading rules, we dedup rules based on their content, while keeping the order
+	inBandRules := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
+	outOfBandRules := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
 
 	//setting up inband engine
 	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(inBandLogger))
@@ -74,6 +90,9 @@ func (r *AppsecRunner) Init(datadir string) error {
 		outbandCfg = outbandCfg.WithRequestBodyInMemoryLimit(*r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit)
 	}
 	r.AppsecOutbandEngine, err = coraza.NewWAF(outbandCfg)
+	if err != nil {
+		return fmt.Errorf("unable to initialize outband engine : %w", err)
+	}
 
 	if r.AppsecRuntime.DisabledInBandRulesTags != nil {
 		for _, tag := range r.AppsecRuntime.DisabledInBandRulesTags {
@@ -101,10 +120,6 @@ func (r *AppsecRunner) Init(datadir string) error {
 
 	r.logger.Tracef("Loaded inband rules: %+v", r.AppsecInbandEngine.GetRuleGroup().GetRules())
 	r.logger.Tracef("Loaded outband rules: %+v", r.AppsecOutbandEngine.GetRuleGroup().GetRules())
-
-	if err != nil {
-		return fmt.Errorf("unable to initialize outband engine : %w", err)
-	}
 
 	return nil
 }
@@ -135,7 +150,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		//FIXME: should we abort here ?
 	}
 
-	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
+	request.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
 	for k, v := range request.Args {
 		for _, vv := range v {
@@ -167,7 +182,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		return nil
 	}
 
-	if request.Body != nil && len(request.Body) > 0 {
+	if len(request.Body) > 0 {
 		in, _, err = request.Tx.WriteRequestBody(request.Body)
 		if err != nil {
 			r.logger.Errorf("unable to write request body : %s", err)
@@ -249,7 +264,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 
 		// Should the in band match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
@@ -293,7 +308,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 
 		// Should the match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
@@ -363,7 +378,6 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
 	AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
-
 }
 
 func (r *AppsecRunner) Run(t *tomb.Tomb) error {

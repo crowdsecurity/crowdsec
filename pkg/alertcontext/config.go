@@ -98,20 +98,14 @@ func addContextFromFile(toSend map[string][]string, filePath string) error {
 	return nil
 }
 
-
 // LoadConsoleContext loads the context from the hub (if provided) and the file console_context_path.
 func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
 
 	if hub != nil {
-		items, err := hub.GetInstalledItemsByType(cwhub.CONTEXTS)
-		if err != nil {
-			return err
-		}
-
-		for _, item := range items {
+		for _, item := range hub.GetInstalledByType(cwhub.CONTEXTS, true) {
 			// context in item files goes under the key 'context'
-			if err = addContextFromItem(c.Crowdsec.ContextToSend, item); err != nil {
+			if err := addContextFromItem(c.Crowdsec.ContextToSend, item); err != nil {
 				return err
 			}
 		}
@@ -139,7 +133,7 @@ func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 
 	feedback, err := json.Marshal(c.Crowdsec.ContextToSend)
 	if err != nil {
-		return fmt.Errorf("marshaling console context: %s", err)
+		return fmt.Errorf("serializing console context: %s", err)
 	}
 
 	log.Debugf("console context to send: %s", feedback)

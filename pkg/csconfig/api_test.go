@@ -101,7 +101,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				CredentialsFilePath: "./testdata/bad_lapi-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
-			expectedErr: "failed unmarshaling api server credentials",
+			expectedErr: "failed to parse api server credentials",
 		},
 		{
 			name: "missing field configuration",
@@ -191,7 +191,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DbConfig: &DatabaseCfg{
 					DbPath:           "./testdata/test.db",
 					Type:             "sqlite",
-					MaxOpenConns:     ptr.Of(DEFAULT_MAX_OPEN_CONNS),
+					MaxOpenConns:     DEFAULT_MAX_OPEN_CONNS,
 					UseWal:           ptr.Of(true), // autodetected
 					DecisionBulkSize: defaultDecisionBulkSize,
 				},
@@ -212,11 +212,22 @@ func TestLoadAPIServer(t *testing.T) {
 						Login:    "test",
 						Password: "testpassword",
 					},
+					Sharing: ptr.Of(true),
+					PullConfig: CapiPullConfig{
+						Community:  ptr.Of(true),
+						Blocklists: ptr.Of(true),
+					},
 				},
 				Profiles:               tmpLAPI.Profiles,
 				ProfilesPath:           "./testdata/profiles.yaml",
 				UseForwardedForHeaders: false,
 				PapiLogLevel:           &logLevel,
+				AutoRegister: &LocalAPIAutoRegisterCfg{
+					Enable:              ptr.Of(false),
+					Token:               "",
+					AllowedRanges:       nil,
+					AllowedRangesParsed: nil,
+				},
 			},
 		},
 		{

@@ -2,7 +2,9 @@ package exprhelpers
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -15,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
 	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/expr-lang/expr"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/client_golang/prometheus"
@@ -127,7 +129,7 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
-
+	XMLCacheInit()
 	return nil
 }
 
@@ -212,7 +214,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
 		}
-		if len(scanner.Text()) == 0 { //skip empty lines
+		if scanner.Text() == "" { //skip empty lines
 			continue
 		}
 
@@ -253,7 +255,6 @@ func Distinct(params ...any) (any, error) {
 		}
 	}
 	return ret, nil
-
 }
 
 func FlattenDistinct(params ...any) (any, error) {
@@ -279,6 +280,7 @@ func flatten(args []interface{}, v reflect.Value) []interface{} {
 
 	return args
 }
+
 func existsInFileMaps(filename string, ftype string) (bool, error) {
 	ok := false
 	var err error
@@ -591,7 +593,10 @@ func GetDecisionsCount(params ...any) (any, error) {
 		return 0, nil
 
 	}
-	count, err := dbClient.CountDecisionsByValue(value)
+
+	ctx := context.TODO()
+
+	count, err := dbClient.CountDecisionsByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -612,8 +617,11 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
 		return 0, nil
 	}
+
+	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
-	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
+
+	count, err := dbClient.CountDecisionsSinceByValue(ctx, value, sinceTime)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -627,7 +635,8 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 		log.Error("No database config to call GetActiveDecisionsCount()")
 		return 0, nil
 	}
-	count, err := dbClient.CountActiveDecisionsByValue(value)
+	ctx := context.TODO()
+	count, err := dbClient.CountActiveDecisionsByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
@@ -641,7 +650,8 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 		log.Error("No database config to call GetActiveDecisionsTimeLeft()")
 		return 0, nil
 	}
-	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(value)
+	ctx := context.TODO()
+	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get active decisions time left from value '%s'", value)
 		return 0, err
@@ -764,7 +774,6 @@ func B64Decode(params ...any) (any, error) {
 }
 
 func ParseKV(params ...any) (any, error) {
-
 	blob := params[0].(string)
 	target := params[1].(map[string]interface{})
 	prefix := params[2].(string)
@@ -772,7 +781,7 @@ func ParseKV(params ...any) (any, error) {
 	matches := keyValuePattern.FindAllStringSubmatch(blob, -1)
 	if matches == nil {
 		log.Errorf("could not find any key/value pair in line")
-		return nil, fmt.Errorf("invalid input format")
+		return nil, errors.New("invalid input format")
 	}
 	if _, ok := target[prefix]; !ok {
 		target[prefix] = make(map[string]string)
@@ -780,7 +789,7 @@ func ParseKV(params ...any) (any, error) {
 		_, ok := target[prefix].(map[string]string)
 		if !ok {
 			log.Errorf("ParseKV: target is not a map[string]string")
-			return nil, fmt.Errorf("target is not a map[string]string")
+			return nil, errors.New("target is not a map[string]string")
 		}
 	}
 	for _, match := range matches {

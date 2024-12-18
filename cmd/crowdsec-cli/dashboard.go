@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -19,6 +20,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/version"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 )
@@ -69,6 +73,10 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			if version.System == "docker" {
+				return errors.New("cscli dashboard is not supported whilst running CrowdSec within a container please see: https://github.com/crowdsecurity/example-docker-compose/tree/main/basic")
+			}
+
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
@@ -122,7 +130,7 @@ func (cli *cliDashboard) newSetupCmd() *cobra.Command {
 		Use:               "setup",
 		Short:             "Setup a metabase container.",
 		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
@@ -137,7 +145,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				isValid := passwordIsValid(metabasePassword)
 				for !isValid {
-					metabasePassword = generatePassword(16)
+					var err error
+					metabasePassword, err = idgen.GeneratePassword(16)
+					if err != nil {
+						return err
+					}
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}
@@ -192,7 +204,7 @@ func (cli *cliDashboard) newStartCmd() *cobra.Command {
 		Use:               "start",
 		Short:             "Start the metabase container.",
 		Long:              `Stats the metabase container using docker.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
@@ -223,7 +235,7 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 		Use:               "stop",
 		Short:             "Stops the metabase container.",
 		Long:              `Stops the metabase container using docker.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := metabase.StopContainer(metabaseContainerID); err != nil {
@@ -237,9 +249,10 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 }
 
 func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "show-password",
+	cmd := &cobra.Command{
+		Use:               "show-password",
 		Short:             "displays password of metabase.",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			m := metabase.Metabase{}
@@ -262,7 +275,7 @@ func (cli *cliDashboard) newRemoveCmd() *cobra.Command {
 		Use:               "remove",
 		Short:             "removes the metabase container.",
 		Long:              `removes the metabase container using docker.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard remove
@@ -279,7 +292,7 @@ cscli dashboard remove --force
 					return fmt.Errorf("unable to ask to force: %s", err)
 				}
 				if !answer {
-					return fmt.Errorf("user stated no to continue")
+					return errors.New("user stated no to continue")
 				}
 			}
 			if metabase.IsContainerExist(metabaseContainerID) {
@@ -291,7 +304,7 @@ cscli dashboard remove --force
 				if err == nil { // if group exist, remove it
 					groupDelCmd, err := exec.LookPath("groupdel")
 					if err != nil {
-						return fmt.Errorf("unable to find 'groupdel' command, can't continue")
+						return errors.New("unable to find 'groupdel' command, can't continue")
 					}
 
 					groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
@@ -368,7 +381,7 @@ func checkSystemMemory(forceYes *bool) error {
 		}
 
 		if !answer {
-			return fmt.Errorf("user stated no to continue")
+			return errors.New("user stated no to continue")
 		}
 
 		return nil
@@ -401,7 +414,7 @@ func disclaimer(forceYes *bool) error {
 		}
 
 		if !answer {
-			return fmt.Errorf("user stated no to responsibilities")
+			return errors.New("user stated no to responsibilities")
 		}
 
 		return nil
@@ -437,7 +450,7 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 
 	groupAddCmd, err := exec.LookPath("groupadd")
 	if err != nil {
-		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+		return dockerGroup, errors.New("unable to find 'groupadd' command, can't continue")
 	}
 
 	groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
@@ -451,7 +464,6 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 func (cli *cliDashboard) chownDatabase(gid string) error {
 	cfg := cli.cfg()
 	intID, err := strconv.Atoi(gid)
-
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}

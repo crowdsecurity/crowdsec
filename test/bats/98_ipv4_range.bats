@@ -41,7 +41,7 @@ setup() {
 }
 
 @test "API - all decisions" {
-    rune -0 lapi-get '/v1/decisions'
+    rune -0 curl-with-key '/v1/decisions'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -55,7 +55,7 @@ setup() {
 }
 
 @test "API - decisions for ip 4.4.4." {
-    rune -0 lapi-get '/v1/decisions?ip=4.4.4.3'
+    rune -0 curl-with-key '/v1/decisions?ip=4.4.4.3'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -66,7 +66,7 @@ setup() {
 }
 
 @test "API - decisions for ip contained in 4.4.4." {
-    rune -0 lapi-get '/v1/decisions?ip=4.4.4.4&contains=false'
+    rune -0 curl-with-key '/v1/decisions?ip=4.4.4.4&contains=false'
     assert_output 'null'
 }
 
@@ -76,7 +76,7 @@ setup() {
 }
 
 @test "API - decisions for ip 5.4.4." {
-    rune -0 lapi-get '/v1/decisions?ip=5.4.4.3'
+    rune -0 curl-with-key '/v1/decisions?ip=5.4.4.3'
     assert_output 'null'
 }
 
@@ -86,7 +86,7 @@ setup() {
 }
 
 @test "API - decisions for range 4.4.0.0/1" {
-    rune -0 lapi-get '/v1/decisions?range=4.4.0.0/16'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.0.0/16'
     assert_output 'null'
 }
 
@@ -97,7 +97,7 @@ setup() {
 }
 
 @test "API - decisions for ip/range in 4.4.0.0/1" {
-    rune -0 lapi-get '/v1/decisions?range=4.4.0.0/16&contains=false'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.0.0/16&contains=false'
     rune -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -111,7 +111,7 @@ setup() {
 }
 
 @test "API - decisions for range 4.4.4.2/2" {
-    rune -0 lapi-get '/v1/decisions?range=4.4.4.2/28'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.4.2/28'
     rune -0 jq -r '.[].value' <(output)
     assert_output '4.4.4.0/24'
 }
@@ -122,6 +122,6 @@ setup() {
 }
 
 @test "API - decisions for range 4.4.3.2/2" {
-    rune -0 lapi-get '/v1/decisions?range=4.4.3.2/28'
+    rune -0 curl-with-key '/v1/decisions?range=4.4.3.2/28'
     assert_output 'null'
 }

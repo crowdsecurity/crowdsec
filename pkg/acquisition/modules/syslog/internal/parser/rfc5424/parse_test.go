@@ -94,7 +94,8 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			"valid msg",
-			`<13>1 2021-05-18T11:58:40.828081+02:42 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{
+			`<13>1 2021-05-18T11:58:40.828081+02:42 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`,
+			expected{
 				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, time.FixedZone("+0242", 9720)),
 				Hostname:  "mantis",
 				Tag:       "sshd",
@@ -102,11 +103,14 @@ func TestParse(t *testing.T) {
 				MsgID:     "",
 				Message:   "blabla",
 				PRI:       13,
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"valid msg with msgid",
-			`<13>1 2021-05-18T11:58:40.828081+02:42 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{
+			`<13>1 2021-05-18T11:58:40.828081+02:42 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"] blabla`,
+			expected{
 				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, time.FixedZone("+0242", 9720)),
 				Hostname:  "mantis",
 				Tag:       "foobar",
@@ -114,11 +118,14 @@ func TestParse(t *testing.T) {
 				MsgID:     "123123",
 				Message:   "blabla",
 				PRI:       13,
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"valid msg with repeating SD",
-			`<13>1 2021-05-18T11:58:40.828081+02:42 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"][foo="bar][a] blabla`, expected{
+			`<13>1 2021-05-18T11:58:40.828081+02:42 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"][foo="bar][a] blabla`,
+			expected{
 				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, time.FixedZone("+0242", 9720)),
 				Hostname:  "mantis",
 				Tag:       "foobar",
@@ -126,36 +133,53 @@ func TestParse(t *testing.T) {
 				MsgID:     "123123",
 				Message:   "blabla",
 				PRI:       13,
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"invalid SD",
-			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis foobar 49340 123123 [timeQuality asd`, expected{}, "structured data must end with ']'", []RFC5424Option{},
+			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis foobar 49340 123123 [timeQuality asd`,
+			expected{},
+			"structured data must end with ']'",
+			[]RFC5424Option{},
 		},
 		{
 			"invalid version",
-			`<13>42 2021-05-18T11:58:40.828081+02:00 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{}, "version must be 1", []RFC5424Option{},
+			`<13>42 2021-05-18T11:58:40.828081+02:00 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"] blabla`,
+			expected{},
+			"version must be 1",
+			[]RFC5424Option{},
 		},
 		{
 			"invalid message",
-			`<13>1`, expected{}, "version must be followed by a space", []RFC5424Option{},
+			`<13>1`,
+			expected{},
+			"version must be followed by a space",
+			[]RFC5424Option{},
 		},
 		{
 			"valid msg with empty fields",
-			`<13>1 - foo - - - - blabla`, expected{
+			`<13>1 - foo - - - - blabla`,
+			expected{
 				Timestamp: time.Now().UTC(),
 				Hostname:  "foo",
 				PRI:       13,
 				Message:   "blabla",
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"valid msg with empty fields",
-			`<13>1 - - - - - - blabla`, expected{
+			`<13>1 - - - - - - blabla`,
+			expected{
 				Timestamp: time.Now().UTC(),
 				PRI:       13,
 				Message:   "blabla",
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"valid msg with escaped SD",
@@ -167,7 +191,9 @@ func TestParse(t *testing.T) {
 				Hostname:  "testhostname",
 				MsgID:     `sn="msgid"`,
 				Message:   `testmessage`,
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"valid complex msg",
@@ -179,7 +205,9 @@ func TestParse(t *testing.T) {
 				PRI:       13,
 				MsgID:     `sn="msgid"`,
 				Message:   `source: sn="www.foobar.com" | message: 1.1.1.1 - - [24/May/2022:10:57:37 +0200] "GET /dist/precache-manifest.58b57debe6bc4f96698da0dc314461e9.js HTTP/2.0" 304 0 "https://www.foobar.com/sw.js" "Mozilla/5.0 (Linux; Android 9; ANE-LX1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.61 Mobile Safari/537.36" "-" "www.foobar.com" sn="www.foobar.com" rt=0.000 ua="-" us="-" ut="-" ul="-" cs=HIT { request: /dist/precache-manifest.58b57debe6bc4f96698da0dc314461e9.js | src_ip_geo_country: DE | MONTH: May | COMMONAPACHELOG: 1.1.1.1 - - [24/May/2022:10:57:37 +0200] "GET /dist/precache-manifest.58b57debe6bc4f96698da0dc314461e9.js HTTP/2.0" 304 0 | auth: - | HOUR: 10 | gl2_remote_ip: 172.31.32.142 | ident: - | gl2_remote_port: 43375 | BASE10NUM: [2.0, 304, 0] | pid: -1 | program: nginx | gl2_source_input: 623ed3440183476d61cff974 | INT: +0200 | is_private_ip: false | YEAR: 2022 | src_ip_geo_city: Achern | clientip: 1.1.1.1 | USERNAME:`,
-			}, "", []RFC5424Option{},
+			},
+			"",
+			[]RFC5424Option{},
 		},
 		{
 			"partial message",

@@ -77,6 +77,7 @@ type AlertMutation struct {
 	scenarioHash       *string
 	simulated          *bool
 	uuid               *string
+	remediation        *bool
 	clearedFields      map[string]struct{}
 	owner              *int
 	clearedowner       bool
@@ -1351,6 +1352,55 @@ func (m *AlertMutation) ResetUUID() {
 	delete(m.clearedFields, alert.FieldUUID)
 }
 
+// SetRemediation sets the "remediation" field.
+func (m *AlertMutation) SetRemediation(b bool) {
+	m.remediation = &b
+}
+
+// Remediation returns the value of the "remediation" field in the mutation.
+func (m *AlertMutation) Remediation() (r bool, exists bool) {
+	v := m.remediation
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemediation returns the old "remediation" field's value of the Alert entity.
+// If the Alert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AlertMutation) OldRemediation(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemediation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemediation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemediation: %w", err)
+	}
+	return oldValue.Remediation, nil
+}
+
+// ClearRemediation clears the value of the "remediation" field.
+func (m *AlertMutation) ClearRemediation() {
+	m.remediation = nil
+	m.clearedFields[alert.FieldRemediation] = struct{}{}
+}
+
+// RemediationCleared returns if the "remediation" field was cleared in this mutation.
+func (m *AlertMutation) RemediationCleared() bool {
+	_, ok := m.clearedFields[alert.FieldRemediation]
+	return ok
+}
+
+// ResetRemediation resets all changes to the "remediation" field.
+func (m *AlertMutation) ResetRemediation() {
+	m.remediation = nil
+	delete(m.clearedFields, alert.FieldRemediation)
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by id.
 func (m *AlertMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -1586,7 +1636,7 @@ func (m *AlertMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AlertMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, alert.FieldCreatedAt)
 	}
@@ -1656,6 +1706,9 @@ func (m *AlertMutation) Fields() []string {
 	if m.uuid != nil {
 		fields = append(fields, alert.FieldUUID)
 	}
+	if m.remediation != nil {
+		fields = append(fields, alert.FieldRemediation)
+	}
 	return fields
 }
 
@@ -1710,6 +1763,8 @@ func (m *AlertMutation) Field(name string) (ent.Value, bool) {
 		return m.Simulated()
 	case alert.FieldUUID:
 		return m.UUID()
+	case alert.FieldRemediation:
+		return m.Remediation()
 	}
 	return nil, false
 }
@@ -1765,6 +1820,8 @@ func (m *AlertMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldSimulated(ctx)
 	case alert.FieldUUID:
 		return m.OldUUID(ctx)
+	case alert.FieldRemediation:
+		return m.OldRemediation(ctx)
 	}
 	return nil, fmt.Errorf("unknown Alert field %s", name)
 }
@@ -1935,6 +1992,13 @@ func (m *AlertMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUUID(v)
 		return nil
+	case alert.FieldRemediation:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemediation(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
 }
@@ -2073,6 +2137,9 @@ func (m *AlertMutation) ClearedFields() []string {
 	if m.FieldCleared(alert.FieldUUID) {
 		fields = append(fields, alert.FieldUUID)
 	}
+	if m.FieldCleared(alert.FieldRemediation) {
+		fields = append(fields, alert.FieldRemediation)
+	}
 	return fields
 }
 
@@ -2143,6 +2210,9 @@ func (m *AlertMutation) ClearField(name string) error {
 		return nil
 	case alert.FieldUUID:
 		m.ClearUUID()
+		return nil
+	case alert.FieldRemediation:
+		m.ClearRemediation()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert nullable field %s", name)
@@ -2220,6 +2290,9 @@ func (m *AlertMutation) ResetField(name string) error {
 		return nil
 	case alert.FieldUUID:
 		m.ResetUUID()
+		return nil
+	case alert.FieldRemediation:
+		m.ResetRemediation()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
@@ -2398,6 +2471,7 @@ type BouncerMutation struct {
 	osname        *string
 	osversion     *string
 	featureflags  *string
+	auto_created  *bool
 	clearedFields map[string]struct{}
 	done          bool
 	oldValue      func(context.Context) (*Bouncer, error)
@@ -3061,6 +3135,42 @@ func (m *BouncerMutation) ResetFeatureflags() {
 	delete(m.clearedFields, bouncer.FieldFeatureflags)
 }
 
+// SetAutoCreated sets the "auto_created" field.
+func (m *BouncerMutation) SetAutoCreated(b bool) {
+	m.auto_created = &b
+}
+
+// AutoCreated returns the value of the "auto_created" field in the mutation.
+func (m *BouncerMutation) AutoCreated() (r bool, exists bool) {
+	v := m.auto_created
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAutoCreated returns the old "auto_created" field's value of the Bouncer entity.
+// If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BouncerMutation) OldAutoCreated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAutoCreated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAutoCreated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAutoCreated: %w", err)
+	}
+	return oldValue.AutoCreated, nil
+}
+
+// ResetAutoCreated resets all changes to the "auto_created" field.
+func (m *BouncerMutation) ResetAutoCreated() {
+	m.auto_created = nil
+}
+
 // Where appends a list predicates to the BouncerMutation builder.
 func (m *BouncerMutation) Where(ps ...predicate.Bouncer) {
 	m.predicates = append(m.predicates, ps...)
@@ -3095,7 +3205,7 @@ func (m *BouncerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BouncerMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, bouncer.FieldCreatedAt)
 	}
@@ -3135,6 +3245,9 @@ func (m *BouncerMutation) Fields() []string {
 	if m.featureflags != nil {
 		fields = append(fields, bouncer.FieldFeatureflags)
 	}
+	if m.auto_created != nil {
+		fields = append(fields, bouncer.FieldAutoCreated)
+	}
 	return fields
 }
 
@@ -3169,6 +3282,8 @@ func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 		return m.Osversion()
 	case bouncer.FieldFeatureflags:
 		return m.Featureflags()
+	case bouncer.FieldAutoCreated:
+		return m.AutoCreated()
 	}
 	return nil, false
 }
@@ -3204,6 +3319,8 @@ func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldOsversion(ctx)
 	case bouncer.FieldFeatureflags:
 		return m.OldFeatureflags(ctx)
+	case bouncer.FieldAutoCreated:
+		return m.OldAutoCreated(ctx)
 	}
 	return nil, fmt.Errorf("unknown Bouncer field %s", name)
 }
@@ -3303,6 +3420,13 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFeatureflags(v)
+		return nil
+	case bouncer.FieldAutoCreated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAutoCreated(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer field %s", name)
@@ -3436,6 +3560,9 @@ func (m *BouncerMutation) ResetField(name string) error {
 		return nil
 	case bouncer.FieldFeatureflags:
 		m.ResetFeatureflags()
+		return nil
+	case bouncer.FieldAutoCreated:
+		m.ResetAutoCreated()
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer field %s", name)
@@ -8567,7 +8694,7 @@ type MetricMutation struct {
 	id             *int
 	generated_type *metric.GeneratedType
 	generated_by   *string
-	collected_at   *time.Time
+	received_at    *time.Time
 	pushed_at      *time.Time
 	payload        *string
 	clearedFields  map[string]struct{}
@@ -8746,40 +8873,40 @@ func (m *MetricMutation) ResetGeneratedBy() {
 	m.generated_by = nil
 }
 
-// SetCollectedAt sets the "collected_at" field.
-func (m *MetricMutation) SetCollectedAt(t time.Time) {
-	m.collected_at = &t
+// SetReceivedAt sets the "received_at" field.
+func (m *MetricMutation) SetReceivedAt(t time.Time) {
+	m.received_at = &t
 }
 
-// CollectedAt returns the value of the "collected_at" field in the mutation.
-func (m *MetricMutation) CollectedAt() (r time.Time, exists bool) {
-	v := m.collected_at
+// ReceivedAt returns the value of the "received_at" field in the mutation.
+func (m *MetricMutation) ReceivedAt() (r time.Time, exists bool) {
+	v := m.received_at
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldCollectedAt returns the old "collected_at" field's value of the Metric entity.
+// OldReceivedAt returns the old "received_at" field's value of the Metric entity.
 // If the Metric object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MetricMutation) OldCollectedAt(ctx context.Context) (v time.Time, err error) {
+func (m *MetricMutation) OldReceivedAt(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCollectedAt is only allowed on UpdateOne operations")
+		return v, errors.New("OldReceivedAt is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCollectedAt requires an ID field in the mutation")
+		return v, errors.New("OldReceivedAt requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCollectedAt: %w", err)
+		return v, fmt.Errorf("querying old value for OldReceivedAt: %w", err)
 	}
-	return oldValue.CollectedAt, nil
+	return oldValue.ReceivedAt, nil
 }
 
-// ResetCollectedAt resets all changes to the "collected_at" field.
-func (m *MetricMutation) ResetCollectedAt() {
-	m.collected_at = nil
+// ResetReceivedAt resets all changes to the "received_at" field.
+func (m *MetricMutation) ResetReceivedAt() {
+	m.received_at = nil
 }
 
 // SetPushedAt sets the "pushed_at" field.
@@ -8908,8 +9035,8 @@ func (m *MetricMutation) Fields() []string {
 	if m.generated_by != nil {
 		fields = append(fields, metric.FieldGeneratedBy)
 	}
-	if m.collected_at != nil {
-		fields = append(fields, metric.FieldCollectedAt)
+	if m.received_at != nil {
+		fields = append(fields, metric.FieldReceivedAt)
 	}
 	if m.pushed_at != nil {
 		fields = append(fields, metric.FieldPushedAt)
@@ -8929,8 +9056,8 @@ func (m *MetricMutation) Field(name string) (ent.Value, bool) {
 		return m.GeneratedType()
 	case metric.FieldGeneratedBy:
 		return m.GeneratedBy()
-	case metric.FieldCollectedAt:
-		return m.CollectedAt()
+	case metric.FieldReceivedAt:
+		return m.ReceivedAt()
 	case metric.FieldPushedAt:
 		return m.PushedAt()
 	case metric.FieldPayload:
@@ -8948,8 +9075,8 @@ func (m *MetricMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldGeneratedType(ctx)
 	case metric.FieldGeneratedBy:
 		return m.OldGeneratedBy(ctx)
-	case metric.FieldCollectedAt:
-		return m.OldCollectedAt(ctx)
+	case metric.FieldReceivedAt:
+		return m.OldReceivedAt(ctx)
 	case metric.FieldPushedAt:
 		return m.OldPushedAt(ctx)
 	case metric.FieldPayload:
@@ -8977,12 +9104,12 @@ func (m *MetricMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetGeneratedBy(v)
 		return nil
-	case metric.FieldCollectedAt:
+	case metric.FieldReceivedAt:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetCollectedAt(v)
+		m.SetReceivedAt(v)
 		return nil
 	case metric.FieldPushedAt:
 		v, ok := value.(time.Time)
@@ -9062,8 +9189,8 @@ func (m *MetricMutation) ResetField(name string) error {
 	case metric.FieldGeneratedBy:
 		m.ResetGeneratedBy()
 		return nil
-	case metric.FieldCollectedAt:
-		m.ResetCollectedAt()
+	case metric.FieldReceivedAt:
+		m.ResetReceivedAt()
 		return nil
 	case metric.FieldPushedAt:
 		m.ResetPushedAt()

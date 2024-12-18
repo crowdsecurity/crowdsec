@@ -1,15 +1,15 @@
 package controllers
 
 import (
-	"context"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/alexliesenfeld/health"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -17,7 +17,6 @@ import (
 )
 
 type Controller struct {
-	Ectx                          context.Context
 	DBClient                      *database.Client
 	Router                        *gin.Engine
 	Profiles                      []*csconfig.ProfileCfg
@@ -28,6 +27,7 @@ type Controller struct {
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
 	HandlerV1                     *v1.Controller
+	AutoRegisterCfg               *csconfig.LocalAPIAutoRegisterCfg
 	DisableRemoteLapiRegistration bool
 }
 
@@ -59,18 +59,35 @@ func serveHealth() http.HandlerFunc {
 	return health.NewHandler(checker)
 }
 
+func eitherAuthMiddleware(jwtMiddleware gin.HandlerFunc, apiKeyMiddleware gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch {
+		case c.GetHeader("X-Api-Key") != "":
+			apiKeyMiddleware(c)
+		case c.GetHeader("Authorization") != "":
+			jwtMiddleware(c)
+		// uh no auth header. is this TLS with mutual authentication?
+		case strings.HasPrefix(c.Request.UserAgent(), "crowdsec/"):
+			// guess log processors by sniffing user-agent
+			jwtMiddleware(c)
+		default:
+			apiKeyMiddleware(c)
+		}
+	}
+}
+
 func (c *Controller) NewV1() error {
 	var err error
 
 	v1Config := v1.ControllerV1Config{
 		DbClient:           c.DBClient,
-		Ctx:                c.Ectx,
 		ProfilesCfg:        c.Profiles,
 		DecisionDeleteChan: c.DecisionDeleteChan,
 		AlertsAddChan:      c.AlertsAddChan,
 		PluginChannel:      c.PluginChannel,
 		ConsoleConfig:      *c.ConsoleConfig,
 		TrustedIPs:         c.TrustedIPs,
+		AutoRegisterCfg:    c.AutoRegisterCfg,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)
@@ -115,6 +132,12 @@ func (c *Controller) NewV1() error {
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.StreamDecision)
 		apiKeyAuth.HEAD("/decisions/stream", c.HandlerV1.StreamDecision)
+	}
+
+	eitherAuth := groupV1.Group("")
+	eitherAuth.Use(eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.MiddlewareFunc()))
+	{
+		eitherAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
 	}
 
 	return nil
