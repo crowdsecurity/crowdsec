@@ -165,7 +165,7 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 1 decisions'
-    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid address"
+    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid ip address 'whatever'"
 
     rune -0 cscli decisions list -a -o json
     assert_json '[]'
@@ -182,7 +182,7 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
-    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid address"
+    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid ip address 'bad-apple'"
 
     rune -0 cscli decisions list -a -o json
     rune -0 jq -r '.[0].decisions | length' <(output)
