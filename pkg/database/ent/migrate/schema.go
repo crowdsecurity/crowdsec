@@ -34,6 +34,7 @@ var (
 		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "uuid", Type: field.TypeString, Nullable: true},
+		{Name: "remediation", Type: field.TypeBool, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -44,7 +45,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[24]},
+				Columns:    []*schema.Column{AlertsColumns[25]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -73,6 +74,7 @@ var (
 		{Name: "osname", Type: field.TypeString, Nullable: true},
 		{Name: "osversion", Type: field.TypeString, Nullable: true},
 		{Name: "featureflags", Type: field.TypeString, Nullable: true},
+		{Name: "auto_created", Type: field.TypeBool, Default: false},
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{
@@ -253,22 +255,15 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "generated_type", Type: field.TypeEnum, Enums: []string{"LP", "RC"}},
 		{Name: "generated_by", Type: field.TypeString},
-		{Name: "collected_at", Type: field.TypeTime},
+		{Name: "received_at", Type: field.TypeTime},
 		{Name: "pushed_at", Type: field.TypeTime, Nullable: true},
-		{Name: "payload", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeString, Size: 2147483647},
 	}
 	// MetricsTable holds the schema information for the "metrics" table.
 	MetricsTable = &schema.Table{
 		Name:       "metrics",
 		Columns:    MetricsColumns,
 		PrimaryKey: []*schema.Column{MetricsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "metric_generated_type_generated_by_collected_at",
-				Unique:  true,
-				Columns: []*schema.Column{MetricsColumns[1], MetricsColumns[2], MetricsColumns[3]},
-			},
-		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{

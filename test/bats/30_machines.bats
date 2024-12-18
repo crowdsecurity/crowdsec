@@ -30,9 +30,8 @@ teardown() {
 }
 
 @test "don't overwrite local credentials by default" {
-    rune -1 cscli machines add local -a -o json
-    rune -0 jq -r '.msg' <(stderr)
-    assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
+    rune -1 cscli machines add local -a
+    assert_stderr --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
     rune -0 cscli machines add local -a --force
     assert_stderr --partial "Machine 'local' successfully added to the local API."
 }
@@ -60,6 +59,14 @@ teardown() {
     rune -0 cscli machines list -o json
     rune -0 jq '. | length' <(output)
     assert_output 1
+}
+
+@test "delete non-existent machine" {
+    # this is not a fatal error, won't halt a script with -e
+    rune -0 cscli machines delete something
+    assert_stderr --partial "unable to delete machine: 'something' does not exist"
+    rune -0 cscli machines delete something --ignore-missing
+    refute_stderr
 }
 
 @test "machines [delete|inspect] has autocompletion" {

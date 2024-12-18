@@ -177,7 +177,7 @@ teardown() {
     echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 
     rune -1 cscli parsers install crowdsecurity/whitelists
-    assert_stderr --partial "error while installing 'crowdsecurity/whitelists': while enabling crowdsecurity/whitelists: crowdsecurity/whitelists is tainted, won't enable unless --force"
+    assert_stderr --partial "error while installing 'crowdsecurity/whitelists': while enabling crowdsecurity/whitelists: crowdsecurity/whitelists is tainted, won't overwrite unless --force"
 
     rune -0 cscli parsers install crowdsecurity/whitelists --force
     assert_stderr --partial "Enabled crowdsecurity/whitelists"

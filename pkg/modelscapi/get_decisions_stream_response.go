@@ -144,6 +144,11 @@ func (m *GetDecisionsStreamResponse) contextValidateDeleted(ctx context.Context,
 func (m *GetDecisionsStreamResponse) contextValidateLinks(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Links != nil {
+
+		if swag.IsZero(m.Links) { // not required
+			return nil
+		}
+
 		if err := m.Links.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("links")

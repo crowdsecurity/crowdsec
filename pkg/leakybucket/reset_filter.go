@@ -3,8 +3,8 @@ package leakybucket
 import (
 	"sync"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -23,10 +23,12 @@ type CancelOnFilter struct {
 	Debug          bool
 }
 
-var cancelExprCacheLock sync.Mutex
-var cancelExprCache map[string]struct {
-	CancelOnFilter *vm.Program
-}
+var (
+	cancelExprCacheLock sync.Mutex
+	cancelExprCache     map[string]struct {
+		CancelOnFilter *vm.Program
+	}
+)
 
 func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, leaky *Leaky) *types.Event {

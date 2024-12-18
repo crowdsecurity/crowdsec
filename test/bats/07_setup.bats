@@ -819,7 +819,6 @@ update-notifier-motd.timer              enabled enabled
 	setup:
 	alsdk al; sdf
 	EOT
-    assert_output "while unmarshaling setup file: yaml: line 2: could not find expected ':'"
+    assert_output "while parsing setup file: yaml: line 2: could not find expected ':'"
     assert_stderr --partial "invalid setup file"
 }
-

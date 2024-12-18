@@ -31,6 +31,8 @@ type DecisionsListOpts struct {
 
 type DecisionsStreamOpts struct {
 	Startup                bool   `url:"startup,omitempty"`
+	CommunityPull          bool   `url:"community_pull"`
+	AdditionalPull         bool   `url:"additional_pull"`
 	Scopes                 string `url:"scopes,omitempty"`
 	ScenariosContaining    string `url:"scenarios_containing,omitempty"`
 	ScenariosNotContaining string `url:"scenarios_not_containing,omitempty"`
@@ -41,6 +43,17 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 	params, err := qs.Values(o)
 	if err != nil {
 		return "", err
+	}
+
+	//Those 2 are a bit different
+	//They default to true, and we only want to include them if they are false
+
+	if params.Get("community_pull") == "true" {
+		params.Del("community_pull")
+	}
+
+	if params.Get("additional_pull") == "true" {
+		params.Del("additional_pull")
 	}
 
 	return fmt.Sprintf("%s?%s", url, params.Encode()), nil
@@ -144,7 +157,7 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 		partialDecisions := make([]*models.Decision, len(decisionsGroup.Decisions))
 
 		for idx, decision := range decisionsGroup.Decisions {
-			decision := decision // fix exportloopref linter message
+			decision := decision //nolint:copyloopvar // fix exportloopref linter message
 			partialDecisions[idx] = &models.Decision{
 				Scenario: &scenarioDeleted,
 				Scope:    decisionsGroup.Scope,

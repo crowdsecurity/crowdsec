@@ -91,7 +91,7 @@ func CopyDir(src string, dest string) error {
 		return errors.New("Source " + file.Name() + " is not a directory!")
 	}
 
-	err = os.MkdirAll(dest, 0755)
+	err = os.MkdirAll(dest, 0o755)
 	if err != nil {
 		return err
 	}

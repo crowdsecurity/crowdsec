@@ -18,14 +18,13 @@ func IpToRange(field string, p *types.Event, plog *log.Entry) (map[string]string
 	}
 
 	r, err := exprhelpers.GeoIPRangeEnrich(field)
-
 	if err != nil {
 		plog.Errorf("Unable to enrich ip '%s'", field)
 		return nil, nil //nolint:nilerr
 	}
 
 	if r == nil {
-		plog.Warnf("No range found for ip '%s'", field)
+		plog.Debugf("No range found for ip '%s'", field)
 		return nil, nil
 	}
 
@@ -47,10 +46,14 @@ func GeoIpASN(field string, p *types.Event, plog *log.Entry) (map[string]string,
 	}
 
 	r, err := exprhelpers.GeoIPASNEnrich(field)
-
 	if err != nil {
-		plog.Errorf("Unable to enrich ip '%s'", field)
+		plog.Debugf("Unable to enrich ip '%s'", field)
 		return nil, nil //nolint:nilerr
+	}
+
+	if r == nil {
+		plog.Debugf("No ASN found for ip '%s'", field)
+		return nil, nil
 	}
 
 	record, ok := r.(*geoip2.ASN)
@@ -76,10 +79,14 @@ func GeoIpCity(field string, p *types.Event, plog *log.Entry) (map[string]string
 	}
 
 	r, err := exprhelpers.GeoIPEnrich(field)
-
 	if err != nil {
-		plog.Errorf("Unable to enrich ip '%s'", field)
+		plog.Debugf("Unable to enrich ip '%s'", field)
 		return nil, nil //nolint:nilerr
+	}
+
+	if r == nil {
+		plog.Debugf("No city found for ip '%s'", field)
+		return nil, nil
 	}
 
 	record, ok := r.(*geoip2.City)

@@ -18,7 +18,7 @@ func (cli *cliConfig) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "config [command]",
 		Short:             "Allows to view current config",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 

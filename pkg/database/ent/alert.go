@@ -64,6 +64,8 @@ type Alert struct {
 	Simulated bool `json:"simulated,omitempty"`
 	// UUID holds the value of the "uuid" field.
 	UUID string `json:"uuid,omitempty"`
+	// Remediation holds the value of the "remediation" field.
+	Remediation bool `json:"remediation,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
@@ -129,7 +131,7 @@ func (*Alert) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case alert.FieldSimulated:
+		case alert.FieldSimulated, alert.FieldRemediation:
 			values[i] = new(sql.NullBool)
 		case alert.FieldSourceLatitude, alert.FieldSourceLongitude:
 			values[i] = new(sql.NullFloat64)
@@ -300,6 +302,12 @@ func (a *Alert) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				a.UUID = value.String
 			}
+		case alert.FieldRemediation:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field remediation", values[i])
+			} else if value.Valid {
+				a.Remediation = value.Bool
+			}
 		case alert.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
@@ -431,6 +439,9 @@ func (a *Alert) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("uuid=")
 	builder.WriteString(a.UUID)
+	builder.WriteString(", ")
+	builder.WriteString("remediation=")
+	builder.WriteString(fmt.Sprintf("%v", a.Remediation))
 	builder.WriteByte(')')
 	return builder.String()
 }

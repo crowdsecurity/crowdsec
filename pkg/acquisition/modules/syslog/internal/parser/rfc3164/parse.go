@@ -1,7 +1,7 @@
 package rfc3164
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/utils"
@@ -48,11 +48,10 @@ func WithStrictHostname() RFC3164Option {
 }
 
 func (r *RFC3164) parsePRI() error {
-
 	pri := 0
 
 	if r.buf[r.position] != '<' {
-		return fmt.Errorf("PRI must start with '<'")
+		return errors.New("PRI must start with '<'")
 	}
 
 	r.position++
@@ -64,18 +63,18 @@ func (r *RFC3164) parsePRI() error {
 			break
 		}
 		if c < '0' || c > '9' {
-			return fmt.Errorf("PRI must be a number")
+			return errors.New("PRI must be a number")
 		}
 		pri = pri*10 + int(c-'0')
 		r.position++
 	}
 
 	if pri > 999 {
-		return fmt.Errorf("PRI must be up to 3 characters long")
+		return errors.New("PRI must be up to 3 characters long")
 	}
 
 	if r.position == r.len && r.buf[r.position-1] != '>' {
-		return fmt.Errorf("PRI must end with '>'")
+		return errors.New("PRI must end with '>'")
 	}
 
 	r.PRI = pri
@@ -98,7 +97,7 @@ func (r *RFC3164) parseTimestamp() error {
 		}
 	}
 	if !validTs {
-		return fmt.Errorf("timestamp is not valid")
+		return errors.New("timestamp is not valid")
 	}
 	if r.useCurrentYear {
 		if r.Timestamp.Year() == 0 {
@@ -122,11 +121,11 @@ func (r *RFC3164) parseHostname() error {
 	}
 	if r.strictHostname {
 		if !utils.IsValidHostnameOrIP(string(hostname)) {
-			return fmt.Errorf("hostname is not valid")
+			return errors.New("hostname is not valid")
 		}
 	}
 	if len(hostname) == 0 {
-		return fmt.Errorf("hostname is empty")
+		return errors.New("hostname is empty")
 	}
 	r.Hostname = string(hostname)
 	return nil
@@ -147,7 +146,7 @@ func (r *RFC3164) parseTag() error {
 		r.position++
 	}
 	if len(tag) == 0 {
-		return fmt.Errorf("tag is empty")
+		return errors.New("tag is empty")
 	}
 	r.Tag = string(tag)
 
@@ -167,7 +166,7 @@ func (r *RFC3164) parseTag() error {
 				break
 			}
 			if c < '0' || c > '9' {
-				return fmt.Errorf("pid inside tag must be a number")
+				return errors.New("pid inside tag must be a number")
 			}
 			tmpPid = append(tmpPid, c)
 			r.position++
@@ -175,7 +174,7 @@ func (r *RFC3164) parseTag() error {
 	}
 
 	if hasPid && !pidEnd {
-		return fmt.Errorf("pid inside tag must be closed with ']'")
+		return errors.New("pid inside tag must be closed with ']'")
 	}
 
 	if hasPid {
@@ -191,7 +190,7 @@ func (r *RFC3164) parseMessage() error {
 	}
 
 	if r.position == r.len {
-		return fmt.Errorf("message is empty")
+		return errors.New("message is empty")
 	}
 
 	c := r.buf[r.position]
@@ -202,7 +201,7 @@ func (r *RFC3164) parseMessage() error {
 
 	for {
 		if r.position >= r.len {
-			return fmt.Errorf("message is empty")
+			return errors.New("message is empty")
 		}
 		c := r.buf[r.position]
 		if c != ' ' {
@@ -219,7 +218,7 @@ func (r *RFC3164) parseMessage() error {
 func (r *RFC3164) Parse(message []byte) error {
 	r.len = len(message)
 	if r.len == 0 {
-		return fmt.Errorf("message is empty")
+		return errors.New("message is empty")
 	}
 	r.buf = message
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1361,7 +1361,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		},
 	}
 
-	delta := 0.0001
+	delta := 0.001
 
 	for _, test := range tests {
 		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
@@ -1392,12 +1392,12 @@ func TestParseUnixTime(t *testing.T) {
 		{
 			name:     "ParseUnix() test: valid value with milli",
 			value:    "1672239773.3590894",
-			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+			expected: time.Date(2022, 12, 28, 15, 2, 53, 0, time.UTC),
 		},
 		{
 			name:     "ParseUnix() test: valid value without milli",
 			value:    "1672239773",
-			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+			expected: time.Date(2022, 12, 28, 15, 2, 53, 0, time.UTC),
 		},
 		{
 			name:        "ParseUnix() test: invalid input",

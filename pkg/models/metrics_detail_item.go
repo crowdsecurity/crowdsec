@@ -24,10 +24,12 @@ type MetricsDetailItem struct {
 
 	// name of the metric
 	// Required: true
+	// Max Length: 255
 	Name *string `json:"name"`
 
 	// unit of the metric
 	// Required: true
+	// Max Length: 255
 	Unit *string `json:"unit"`
 
 	// value of the metric
@@ -86,12 +88,20 @@ func (m *MetricsDetailItem) validateName(formats strfmt.Registry) error {
 		return err
 	}
 
+	if err := validate.MaxLength("name", "body", *m.Name, 255); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (m *MetricsDetailItem) validateUnit(formats strfmt.Registry) error {
 
 	if err := validate.Required("unit", "body", m.Unit); err != nil {
+		return err
+	}
+
+	if err := validate.MaxLength("unit", "body", *m.Unit, 255); err != nil {
 		return err
 	}
 

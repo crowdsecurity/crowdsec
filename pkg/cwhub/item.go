@@ -109,6 +109,7 @@ type Item struct {
 	Name        string   `json:"name,omitempty" yaml:"name,omitempty"`           // usually "author/name"
 	FileName    string   `json:"file_name,omitempty" yaml:"file_name,omitempty"` // eg. apache2-logs.yaml
 	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Content     string   `json:"content,omitempty" yaml:"-"`
 	Author      string   `json:"author,omitempty" yaml:"author,omitempty"`
 	References  []string `json:"references,omitempty" yaml:"references,omitempty"`
 
