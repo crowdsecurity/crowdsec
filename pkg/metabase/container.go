@@ -16,31 +16,33 @@ import (
 )
 
 type Container struct {
-	ListenAddr    string
-	ListenPort    string
-	SharedFolder  string
-	Image         string
-	Name          string
-	ID            string
-	CLI           *client.Client
-	MBDBUri       string
-	DockerGroupID string
+	ListenAddr           string
+	ListenPort           string
+	SharedFolder         string
+	Image                string
+	Name                 string
+	ID                   string
+	CLI                  *client.Client
+	MBDBUri              string
+	DockerGroupID        string
+	EnvironmentVariables []string
 }
 
-func NewContainer(listenAddr string, listenPort string, sharedFolder string, containerName string, image string, mbDBURI string, dockerGroupID string) (*Container, error) {
+func NewContainer(listenAddr string, listenPort string, sharedFolder string, containerName string, image string, mbDBURI string, dockerGroupID string, environmentVariables []string) (*Container, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client : %s", err)
 	}
 	return &Container{
-		ListenAddr:    listenAddr,
-		ListenPort:    listenPort,
-		SharedFolder:  sharedFolder,
-		Image:         image,
-		Name:          containerName,
-		CLI:           cli,
-		MBDBUri:       mbDBURI,
-		DockerGroupID: dockerGroupID,
+		ListenAddr:           listenAddr,
+		ListenPort:           listenPort,
+		SharedFolder:         sharedFolder,
+		Image:                image,
+		Name:                 containerName,
+		CLI:                  cli,
+		MBDBUri:              mbDBURI,
+		DockerGroupID:        dockerGroupID,
+		EnvironmentVariables: environmentVariables,
 	}, nil
 }
 
@@ -79,9 +81,9 @@ func (c *Container) Create() error {
 		},
 	}
 
-	env := []string{
-		fmt.Sprintf("MB_DB_FILE=%s/metabase.db", containerSharedFolder),
-	}
+	env := c.EnvironmentVariables
+
+	env = append(env, fmt.Sprintf("MB_DB_FILE=%s/metabase.db", containerSharedFolder))
 	if c.MBDBUri != "" {
 		env = append(env, c.MBDBUri)
 	}
