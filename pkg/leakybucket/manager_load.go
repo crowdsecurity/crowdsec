@@ -348,7 +348,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err := types.ConfigureLogger(clog); err != nil {
+		if err = types.ConfigureLogger(clog); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
