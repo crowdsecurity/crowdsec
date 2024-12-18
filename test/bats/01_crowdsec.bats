@@ -67,6 +67,40 @@ teardown() {
     refute_output
 }
 
+@test "crowdsec - log format" {
+    # fail early
+    config_disable_lapi
+    config_disable_agent
+
+    config_set '.common.log_media="stdout"'
+
+    config_set '.common.log_format=""'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --partial 'level=fatal msg="you must run at least the API Server or crowdsec"'
+
+    config_set '.common.log_format="text"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --partial 'level=fatal msg="you must run at least the API Server or crowdsec"'
+
+    config_set '.common.log_format="json"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    rune -0 jq -c 'select(.msg=="you must run at least the API Server or crowdsec") | .level' <(stderr | grep "^{")
+    assert_output '"fatal"'
+
+    # If log_media='file', a hook to stderr is added only for fatal messages,
+    # with a predefined formatter (level + msg, no timestamp, ignore log_format)
+
+    config_set '.common.log_media="file"'
+
+    config_set '.common.log_format="text"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --regexp 'FATAL.* you must run at least the API Server or crowdsec$'
+
+    config_set '.common.log_format="json"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --regexp 'FATAL.* you must run at least the API Server or crowdsec$'
+}
+
 @test "CS_LAPI_SECRET not strong enough" {
     CS_LAPI_SECRET=foo rune -1 wait-for "$CROWDSEC"
     assert_stderr --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
