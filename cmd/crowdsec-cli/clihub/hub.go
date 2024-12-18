@@ -107,10 +107,15 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliHub) update(ctx context.Context, withContent bool) error {
+func (cli *cliHub) update(ctx context.Context, withContent *bool) error {
 	local := cli.cfg().Hub
 	remote := require.RemoteHub(ctx, cli.cfg())
-	remote.EmbedItemContent = withContent
+
+	if withContent != nil {
+		remote.EmbedItemContent = *withContent
+	} else {
+		remote.EmbedItemContent = cli.cfg().Cscli.HubWithContent
+	}
 
 	// don't use require.Hub because if there is no index file, it would fail
 	hub, err := cwhub.NewHub(local, remote, log.StandardLogger())
@@ -142,10 +147,18 @@ func (cli *cliHub) newUpdateCmd() *cobra.Command {
 		Long: `
 Fetches the .index.json file from the hub, containing the list of available configs.
 `,
+		Example: `# Download the last version of the index file.
+cscli hub update
+
+# Download a 4x bigger version with all item contents (effectively pre-caching item downloads, but not data files).
+cscli hub update --with-content`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.update(cmd.Context(), withContent)
+			if cmd.Flags().Changed("with-content") {
+				return cli.update(cmd.Context(), &withContent)
+			}
+			return cli.update(cmd.Context(), nil)
 		},
 	}
 
