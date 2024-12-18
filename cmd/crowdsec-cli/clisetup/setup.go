@@ -94,7 +94,10 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
-	var dryRun bool
+	var (
+		yes bool
+		dryRun bool
+	)
 
 	cmd := &cobra.Command{
 		Use:               "install-hub [setup_file] [flags]",
@@ -102,12 +105,14 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.install(cmd.Context(), dryRun, args[0])
+			return cli.install(cmd.Context(), yes, dryRun, args[0])
 		},
 	}
 
 	flags := cmd.Flags()
+	flags.BoolVarP(&yes, "yes", "y", false, "confirm execution without prompt")
 	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
+	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
 
 	return cmd
 }
@@ -276,7 +281,7 @@ func (cli *cliSetup) dataSources(fromFile string, toDir string) error {
 	return nil
 }
 
-func (cli *cliSetup) install(ctx context.Context, dryRun bool, fromFile string) error {
+func (cli *cliSetup) install(ctx context.Context, yes bool, dryRun bool, fromFile string) error {
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
@@ -289,7 +294,9 @@ func (cli *cliSetup) install(ctx context.Context, dryRun bool, fromFile string) 
 		return err
 	}
 
-	return setup.InstallHubItems(ctx, hub, input, dryRun)
+	verbose := (cfg.Cscli.Output == "raw")
+
+	return setup.InstallHubItems(ctx, hub, input, yes, dryRun, verbose)
 }
 
 func (cli *cliSetup) validate(fromFile string) error {
