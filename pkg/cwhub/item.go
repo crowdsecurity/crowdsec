@@ -103,12 +103,12 @@ func (s *ItemState) Emoji() string {
 }
 
 type Dependencies struct {
-	Parsers       []string `json:"parsers,omitempty" yaml:"parsers,omitempty"`
-	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
-	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
-	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
-	Contexts      []string `json:"contexts,omitempty" yaml:"contexts,omitempty"`
-	AppsecConfigs []string `json:"appsec-configs,omitempty"   yaml:"appsec-configs,omitempty"`
+	Parsers       []string `json:"parsers,omitempty"        yaml:"parsers,omitempty"`
+	PostOverflows []string `json:"postoverflows,omitempty"  yaml:"postoverflows,omitempty"`
+	Scenarios     []string `json:"scenarios,omitempty"      yaml:"scenarios,omitempty"`
+	Collections   []string `json:"collections,omitempty"    yaml:"collections,omitempty"`
+	Contexts      []string `json:"contexts,omitempty"       yaml:"contexts,omitempty"`
+	AppsecConfigs []string `json:"appsec-configs,omitempty" yaml:"appsec-configs,omitempty"`
 	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
 }
 
@@ -153,13 +153,13 @@ type Item struct {
 
 	State ItemState `json:"-" yaml:"-"` // local state, not stored in the index
 
-	Type        string   `json:"type,omitempty" yaml:"type,omitempty"`           // one of the ItemTypes
-	Stage       string   `json:"stage,omitempty" yaml:"stage,omitempty"`         // Stage for parser|postoverflow: s00-raw/s01-...
-	Name        string   `json:"name,omitempty" yaml:"name,omitempty"`           // usually "author/name"
-	FileName    string   `json:"file_name,omitempty" yaml:"file_name,omitempty"` // eg. apache2-logs.yaml
+	Type        string   `json:"type,omitempty"        yaml:"type,omitempty"`
+	Stage       string   `json:"stage,omitempty"       yaml:"stage,omitempty"`     // Stage for parser|postoverflow: s00-raw/s01-...
+	Name        string   `json:"name,omitempty"        yaml:"name,omitempty"`      // usually "author/name"
+	FileName    string   `json:"file_name,omitempty"   yaml:"file_name,omitempty"` // eg. apache2-logs.yaml
 	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
-	Content     string   `json:"content,omitempty" yaml:"-"`
-	References  []string `json:"references,omitempty" yaml:"references,omitempty"`
+	Content     string   `json:"content,omitempty"     yaml:"-"`
+	References  []string `json:"references,omitempty"  yaml:"references,omitempty"`
 
 	// NOTE: RemotePath could be derived from the other fields
 	RemotePath string                 `json:"path,omitempty" yaml:"path,omitempty"`       // path relative to the base URL eg. /parsers/stage/author/file.yaml

@@ -102,20 +102,14 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVarP(&all, "all", "a", false, "List disabled items as well")
+	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
 
 	return cmd
 }
 
-func (cli *cliHub) update(ctx context.Context, withContent *bool) error {
+func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	local := cli.cfg().Hub
 	remote := require.RemoteHub(ctx, cli.cfg())
-
-	if withContent != nil {
-		remote.EmbedItemContent = *withContent
-	} else {
-		remote.EmbedItemContent = cli.cfg().Cscli.HubWithContent
-	}
 
 	// don't use require.Hub because if there is no index file, it would fail
 	hub, err := cwhub.NewHub(local, remote, log.StandardLogger())
@@ -123,7 +117,7 @@ func (cli *cliHub) update(ctx context.Context, withContent *bool) error {
 		return err
 	}
 
-	if err := hub.Update(ctx); err != nil {
+	if err := hub.Update(ctx, withContent); err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
@@ -156,9 +150,9 @@ cscli hub update --with-content`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if cmd.Flags().Changed("with-content") {
-				return cli.update(cmd.Context(), &withContent)
+				return cli.update(cmd.Context(), withContent)
 			}
-			return cli.update(cmd.Context(), nil)
+			return cli.update(cmd.Context(), cli.cfg().Cscli.HubWithContent)
 		},
 	}
 
@@ -212,6 +206,7 @@ func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 		Long: `
 Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if you want the latest versions available.
 `,
+		// TODO: Example
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
