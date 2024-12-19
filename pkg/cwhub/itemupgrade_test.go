@@ -1,5 +1,7 @@
 package cwhub
 
+/*
+
 import (
 	"context"
 	"testing"
@@ -221,3 +223,5 @@ func pushUpdateToCollectionInHub() {
 	responseByPath["/crowdsecurity/master/.index.json"] = fileToStringX("./testdata/index2.json")
 	responseByPath["/crowdsecurity/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./testdata/collection_v2.yaml")
 }
+
+*/

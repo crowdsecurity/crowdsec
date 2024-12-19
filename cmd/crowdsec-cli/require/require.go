@@ -116,7 +116,7 @@ func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg, logger *logrus.Logger) 
 	}
 
 	if err := hub.Load(); err != nil {
-		return nil, fmt.Errorf("failed to read Hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
+		return nil, fmt.Errorf("failed to read hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
 	return hub, nil

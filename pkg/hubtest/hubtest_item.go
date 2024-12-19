@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
 
@@ -224,7 +225,7 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install data for parsers if needed
 	for _, item := range hub.GetInstalledByType(cwhub.PARSERS, true) {
-		if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
 			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
 
@@ -233,7 +234,7 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install data for scenarios if needed
 	for _, item := range hub.GetInstalledByType(cwhub.SCENARIOS, true) {
-		if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
 			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
 
@@ -242,7 +243,7 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install data for postoverflows if needed
 	for _, item := range hub.GetInstalledByType(cwhub.POSTOVERFLOWS, true) {
-		if err := item.DownloadDataIfNeeded(ctx, true); err != nil {
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
 			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
 
