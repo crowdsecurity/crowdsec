@@ -86,9 +86,7 @@ func (f *Flags) haveTimeMachine() bool {
 type labelsMap map[string]string
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
-	var (
-		err   error
-	)
+	var err error
 
 	buckets = leakybucket.NewBuckets()
 

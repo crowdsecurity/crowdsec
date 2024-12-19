@@ -234,8 +234,6 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-
-
 func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
