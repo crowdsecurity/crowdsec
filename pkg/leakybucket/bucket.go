@@ -316,7 +316,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 				alert, err = NewAlert(leaky, ofw)
 				if err != nil {
-					log.Errorf("%s", err)
+					log.Error(err)
 				}
 				for _, f := range leaky.BucketConfig.processors {
 					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
