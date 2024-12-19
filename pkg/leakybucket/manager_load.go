@@ -66,7 +66,6 @@ type BucketFactory struct {
 	duration            time.Duration          // internal representation of `Duration`
 	ret                 chan types.Event       // the bucket-specific output chan for overflows
 	processors          []Processor            // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	output              bool                   // ??
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
 	hash                string
 	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
@@ -474,7 +473,6 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		}
 	}
 
-	bucketFactory.output = false
 	if err := ValidateFactory(bucketFactory); err != nil {
 		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
 	}
