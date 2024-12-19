@@ -21,7 +21,10 @@ type Runtime struct {
 	Logger              *log.Entry           `json:"-" yaml:"-"`
 }
 
-const defaultDuration = "4h"
+const (
+	defaultDuration = "4h"
+	defaultType     = "ban"
+)
 
 func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 	var err error
@@ -77,7 +80,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		for _, decision := range profile.Decisions {
 			if runtime.RuntimeDurationExpr == nil {
 				var duration string
-				if decision.Duration != nil {
+				if decision.Duration != nil && *decision.Duration != "" {
 					duration = *decision.Duration
 				} else {
 					runtime.Logger.Warningf("No duration specified for %s, using default duration %s", profile.Name, defaultDuration)
@@ -121,8 +124,10 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		/*some fields are populated from the reference object : duration, scope, type*/
 
 		decision.Duration = new(string)
-		if refDecision.Duration != nil {
+		if refDecision.Duration != nil && *refDecision.Duration != ""  {
 			*decision.Duration = *refDecision.Duration
+		} else {
+			*decision.Duration = defaultDuration
 		}
 
 		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
@@ -145,7 +150,11 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		}
 
 		decision.Type = new(string)
-		*decision.Type = *refDecision.Type
+		if refDecision.Type != nil && *refDecision.Type != "" {
+			*decision.Type = *refDecision.Type
+		} else {
+			*decision.Type = defaultType
+		}
 
 		/*for the others, let's populate it from the alert and its source*/
 		decision.Value = new(string)
