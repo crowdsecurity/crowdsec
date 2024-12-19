@@ -24,7 +24,7 @@ func (Decision) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow),
-		field.Time("until").Nillable().Optional().SchemaType(map[string]string{
+		field.Time("until").SchemaType(map[string]string{
 			dialect.MySQL: "datetime",
 		}),
 		field.String("scenario").Immutable(),
