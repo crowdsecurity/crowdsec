@@ -86,20 +86,15 @@ func (f *Flags) haveTimeMachine() bool {
 type labelsMap map[string]string
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
-	var (
-		err   error
-		files []string
-	)
-
-	for _, hubScenarioItem := range hub.GetInstalledByType(cwhub.SCENARIOS, false) {
-		files = append(files, hubScenarioItem.State.LocalPath)
-	}
+	var err error
 
 	buckets = leakybucket.NewBuckets()
 
-	log.Infof("Loading %d scenario files", len(files))
+	scenarios := hub.GetInstalledByType(cwhub.SCENARIOS, false)
 
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, files, &bucketsTomb, buckets, flags.OrderEvent)
+	log.Infof("Loading %d scenario files", len(scenarios))
+
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, &bucketsTomb, buckets, flags.OrderEvent)
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %w", err)
 	}
