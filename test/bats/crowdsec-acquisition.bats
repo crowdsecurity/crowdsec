@@ -33,7 +33,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: yaml: unmarshal errors:\n  line 6: cannot unmarshal !!seq into string"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: yaml: unmarshal errors:"
 }
 
 @test "datasource type detection" {

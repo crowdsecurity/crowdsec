@@ -249,16 +249,13 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
 		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
+		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
 		cConfig.Common.ForceColorLogs); err != nil {
 		return nil, err
 	}
 
 	if cConfig.Common.LogMedia != "stdout" {
-		log.AddHook(&FatalHook{
-			Writer:    os.Stderr,
-			LogLevels: []log.Level{log.FatalLevel, log.PanicLevel},
-		})
+		log.AddHook(newFatalHook())
 	}
 
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {

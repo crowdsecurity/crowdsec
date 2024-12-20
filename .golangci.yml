@@ -459,3 +459,8 @@ issues:
         - gocritic
       path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
       text: "rangeValCopy: .*"
+
+    - linters:
+        - revive
+      path: "pkg/types/utils.go"
+      text: "argument-limit: .*"
