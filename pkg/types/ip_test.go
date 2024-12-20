@@ -181,7 +181,7 @@ func TestAdd2Int(t *testing.T) {
 		},
 		{
 			in_addr:   "xxx2",
-			exp_error: "invalid address",
+			exp_error: "invalid ip address 'xxx2'",
 		},
 	}
 
