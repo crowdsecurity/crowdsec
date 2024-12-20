@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -218,7 +217,7 @@ wowo: ajsajasjas
 
 func TestLoadAcquisitionFromFile(t *testing.T) {
 	appendMockSource()
-	os.Setenv("TEST_ENV", "test_value2")
+	t.Setenv("TEST_ENV", "test_value2")
 
 	tests := []struct {
 		TestName      string
