@@ -352,72 +352,9 @@ func (c *Client) DeleteDecisionsWithFilter(ctx context.Context, filter map[strin
 		}
 	}
 
-	if ip_sz == 4 {
-		if contains { /*decision contains {start_ip,end_ip}*/
-			decisions = decisions.Where(decision.And(
-				decision.StartIPLTE(start_ip),
-				decision.EndIPGTE(end_ip),
-				decision.IPSizeEQ(int64(ip_sz)),
-			))
-		} else { /*decision is contained within {start_ip,end_ip}*/
-			decisions = decisions.Where(decision.And(
-				decision.StartIPGTE(start_ip),
-				decision.EndIPLTE(end_ip),
-				decision.IPSizeEQ(int64(ip_sz)),
-			))
-		}
-	} else if ip_sz == 16 {
-		if contains { /*decision contains {start_ip,end_ip}*/
-			decisions = decisions.Where(decision.And(
-				// matching addr size
-				decision.IPSizeEQ(int64(ip_sz)),
-				decision.Or(
-					// decision.start_ip < query.start_ip
-					decision.StartIPLT(start_ip),
-					decision.And(
-						// decision.start_ip == query.start_ip
-						decision.StartIPEQ(start_ip),
-						// decision.start_suffix <= query.start_suffix
-						decision.StartSuffixLTE(start_sfx),
-					)),
-				decision.Or(
-					// decision.end_ip > query.end_ip
-					decision.EndIPGT(end_ip),
-					decision.And(
-						// decision.end_ip == query.end_ip
-						decision.EndIPEQ(end_ip),
-						// decision.end_suffix >= query.end_suffix
-						decision.EndSuffixGTE(end_sfx),
-					),
-				),
-			))
-		} else {
-			decisions = decisions.Where(decision.And(
-				// matching addr size
-				decision.IPSizeEQ(int64(ip_sz)),
-				decision.Or(
-					// decision.start_ip > query.start_ip
-					decision.StartIPGT(start_ip),
-					decision.And(
-						// decision.start_ip == query.start_ip
-						decision.StartIPEQ(start_ip),
-						// decision.start_suffix >= query.start_suffix
-						decision.StartSuffixGTE(start_sfx),
-					)),
-				decision.Or(
-					// decision.end_ip < query.end_ip
-					decision.EndIPLT(end_ip),
-					decision.And(
-						// decision.end_ip == query.end_ip
-						decision.EndIPEQ(end_ip),
-						// decision.end_suffix <= query.end_suffix
-						decision.EndSuffixLTE(end_sfx),
-					),
-				),
-			))
-		}
-	} else if ip_sz != 0 {
-		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
+	if err != nil {
+		return "0", nil, err
 	}
 
 	toDelete, err := decisions.All(ctx)
@@ -473,76 +410,10 @@ func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[strin
 			return "0", nil, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 	}
-	if ip_sz == 4 {
-		if contains {
-			/*Decision contains {start_ip,end_ip}*/
-			decisions = decisions.Where(decision.And(
-				decision.StartIPLTE(start_ip),
-				decision.EndIPGTE(end_ip),
-				decision.IPSizeEQ(int64(ip_sz)),
-			))
-		} else {
-			/*Decision is contained within {start_ip,end_ip}*/
-			decisions = decisions.Where(decision.And(
-				decision.StartIPGTE(start_ip),
-				decision.EndIPLTE(end_ip),
-				decision.IPSizeEQ(int64(ip_sz)),
-			))
-		}
-	} else if ip_sz == 16 {
-		/*decision contains {start_ip,end_ip}*/
-		if contains {
-			decisions = decisions.Where(decision.And(
-				// matching addr size
-				decision.IPSizeEQ(int64(ip_sz)),
-				decision.Or(
-					// decision.start_ip < query.start_ip
-					decision.StartIPLT(start_ip),
-					decision.And(
-						// decision.start_ip == query.start_ip
-						decision.StartIPEQ(start_ip),
-						// decision.start_suffix <= query.start_suffix
-						decision.StartSuffixLTE(start_sfx),
-					)),
-				decision.Or(
-					// decision.end_ip > query.end_ip
-					decision.EndIPGT(end_ip),
-					decision.And(
-						// decision.end_ip == query.end_ip
-						decision.EndIPEQ(end_ip),
-						// decision.end_suffix >= query.end_suffix
-						decision.EndSuffixGTE(end_sfx),
-					),
-				),
-			))
-		} else {
-			/*decision is contained within {start_ip,end_ip}*/
-			decisions = decisions.Where(decision.And(
-				// matching addr size
-				decision.IPSizeEQ(int64(ip_sz)),
-				decision.Or(
-					// decision.start_ip > query.start_ip
-					decision.StartIPGT(start_ip),
-					decision.And(
-						// decision.start_ip == query.start_ip
-						decision.StartIPEQ(start_ip),
-						// decision.start_suffix >= query.start_suffix
-						decision.StartSuffixGTE(start_sfx),
-					)),
-				decision.Or(
-					// decision.end_ip < query.end_ip
-					decision.EndIPLT(end_ip),
-					decision.And(
-						// decision.end_ip == query.end_ip
-						decision.EndIPEQ(end_ip),
-						// decision.end_suffix <= query.end_suffix
-						decision.EndSuffixLTE(end_sfx),
-					),
-				),
-			))
-		}
-	} else if ip_sz != 0 {
-		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+
+	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
+	if err != nil {
+		return "0", nil, err
 	}
 
 	DecisionsToDelete, err := decisions.All(ctx)
