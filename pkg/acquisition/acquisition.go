@@ -328,7 +328,8 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
-				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+				var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+				if !errors.As(err, &alreadyRegisteredErr) {
 					return fmt.Errorf("could not register metrics for datasource %s: %w", sources[i].GetName(), err)
 				}
 				// ignore the error

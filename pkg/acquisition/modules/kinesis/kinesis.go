@@ -214,15 +214,17 @@ func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, strea
 			ConsumerName: aws.String(consumerName),
 			StreamARN:    aws.String(streamARN),
 		})
-		if err != nil {
-			switch err.(type) {
-			case *kinesis.ResourceNotFoundException:
-				return nil
-			default:
-				k.logger.Errorf("Error while waiting for consumer deregistration: %s", err)
-				return fmt.Errorf("cannot describe stream consumer: %w", err)
-			}
+
+		var resourceNotFoundErr *kinesis.ResourceNotFoundException
+		if errors.As(err, &resourceNotFoundErr) {
+			return nil
 		}
+
+		if err != nil {
+			k.logger.Errorf("Error while waiting for consumer deregistration: %s", err)
+			return fmt.Errorf("cannot describe stream consumer: %w", err)
+		}
+
 		time.Sleep(time.Millisecond * 200 * time.Duration(i+1))
 	}
 	return fmt.Errorf("consumer %s is not deregistered after %d tries", consumerName, maxTries)
@@ -234,17 +236,21 @@ func (k *KinesisSource) DeregisterConsumer() error {
 		ConsumerName: aws.String(k.Config.ConsumerName),
 		StreamARN:    aws.String(k.Config.StreamARN),
 	})
-	if err != nil {
-		switch err.(type) {
-		case *kinesis.ResourceNotFoundException:
-		default:
-			return fmt.Errorf("cannot deregister stream consumer: %w", err)
-		}
+
+	var resourceNotFoundErr *kinesis.ResourceNotFoundException
+	if errors.As(err, &resourceNotFoundErr) {
+		return nil
 	}
+
+	if err != nil {
+		return fmt.Errorf("cannot deregister stream consumer: %w", err)
+	}
+
 	err = k.WaitForConsumerDeregistration(k.Config.ConsumerName, k.Config.StreamARN)
 	if err != nil {
 		return fmt.Errorf("cannot wait for consumer deregistration: %w", err)
 	}
+
 	return nil
 }
 
@@ -454,20 +460,25 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 		case <-ticker.C:
 			records, err := k.kClient.GetRecords(&kinesis.GetRecordsInput{ShardIterator: it})
 			it = records.NextShardIterator
-			if err != nil {
-				switch err.(type) {
-				case *kinesis.ProvisionedThroughputExceededException:
-					logger.Warn("Provisioned throughput exceeded")
-					// TODO: implement exponential backoff
-					continue
-				case *kinesis.ExpiredIteratorException:
-					logger.Warn("Expired iterator")
-					continue
-				default:
-					logger.Error("Cannot get records")
-					return fmt.Errorf("cannot get records: %w", err)
-				}
+
+			var throughputErr *kinesis.ProvisionedThroughputExceededException
+			if errors.As(err, &throughputErr) {
+				logger.Warn("Provisioned throughput exceeded")
+				// TODO: implement exponential backoff
+				continue
 			}
+
+			var expiredIteratorErr *kinesis.ExpiredIteratorException
+			if errors.As(err, &expiredIteratorErr) {
+				logger.Warn("Expired iterator")
+				continue
+			}
+
+			if err != nil {
+				logger.Error("Cannot get records")
+				return fmt.Errorf("cannot get records: %w", err)
+			}
+
 			k.ParseAndPushRecords(records.Records, out, logger, shardId)
 
 			if it == nil {
