@@ -2,11 +2,15 @@ package cwhub
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
+	yaml "gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
@@ -98,52 +102,91 @@ func (s *ItemState) Emoji() string {
 	}
 }
 
+type Dependencies struct {
+	Parsers       []string `json:"parsers,omitempty"        yaml:"parsers,omitempty"`
+	PostOverflows []string `json:"postoverflows,omitempty"  yaml:"postoverflows,omitempty"`
+	Scenarios     []string `json:"scenarios,omitempty"      yaml:"scenarios,omitempty"`
+	Collections   []string `json:"collections,omitempty"    yaml:"collections,omitempty"`
+	Contexts      []string `json:"contexts,omitempty"       yaml:"contexts,omitempty"`
+	AppsecConfigs []string `json:"appsec-configs,omitempty" yaml:"appsec-configs,omitempty"`
+	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
+}
+
+// a group of items of the same type
+type itemgroup struct {
+	typeName string
+	itemNames  []string
+}
+
+func (d Dependencies) byType() []itemgroup {
+    return []itemgroup{
+        {PARSERS, d.Parsers},
+        {POSTOVERFLOWS, d.PostOverflows},
+        {SCENARIOS, d.Scenarios},
+        {CONTEXTS, d.Contexts},
+        {APPSEC_CONFIGS, d.AppsecConfigs},
+        {APPSEC_RULES, d.AppsecRules},
+        {COLLECTIONS, d.Collections},
+    }
+}
+
+// SubItems iterates over the sub-items in the struct, excluding the ones that were not found in the hub.
+func (d Dependencies) SubItems(hub *Hub) func(func(*Item) bool) {
+    return func(yield func(*Item) bool) {
+        for _, typeGroup := range d.byType() {
+            for _, name := range typeGroup.itemNames {
+                s := hub.GetItem(typeGroup.typeName, name)
+                if s == nil {
+                    continue
+                }
+                if !yield(s) {
+                    return
+                }
+            }
+        }
+    }
+}
+
 // Item is created from an index file and enriched with local info.
 type Item struct {
 	hub *Hub // back pointer to the hub, to retrieve other items and call install/remove methods
 
 	State ItemState `json:"-" yaml:"-"` // local state, not stored in the index
 
-	Type        string   `json:"type,omitempty" yaml:"type,omitempty"`           // one of the ItemTypes
-	Stage       string   `json:"stage,omitempty" yaml:"stage,omitempty"`         // Stage for parser|postoverflow: s00-raw/s01-...
-	Name        string   `json:"name,omitempty" yaml:"name,omitempty"`           // usually "author/name"
-	FileName    string   `json:"file_name,omitempty" yaml:"file_name,omitempty"` // eg. apache2-logs.yaml
+	Type        string   `json:"type,omitempty"        yaml:"type,omitempty"`
+	Stage       string   `json:"stage,omitempty"       yaml:"stage,omitempty"`     // Stage for parser|postoverflow: s00-raw/s01-...
+	Name        string   `json:"name,omitempty"        yaml:"name,omitempty"`      // usually "author/name"
+	FileName    string   `json:"file_name,omitempty"   yaml:"file_name,omitempty"` // eg. apache2-logs.yaml
 	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
-	Content     string   `json:"content,omitempty" yaml:"-"`
-	Author      string   `json:"author,omitempty" yaml:"author,omitempty"`
-	References  []string `json:"references,omitempty" yaml:"references,omitempty"`
+	Content     string   `json:"content,omitempty"     yaml:"-"`
+	References  []string `json:"references,omitempty"  yaml:"references,omitempty"`
 
+	// NOTE: RemotePath could be derived from the other fields
 	RemotePath string                 `json:"path,omitempty" yaml:"path,omitempty"`       // path relative to the base URL eg. /parsers/stage/author/file.yaml
 	Version    string                 `json:"version,omitempty" yaml:"version,omitempty"` // the last available version
 	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`               // all the known versions
 
-	// if it's a collection, it can have sub items
-	Parsers       []string `json:"parsers,omitempty" yaml:"parsers,omitempty"`
-	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
-	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
-	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
-	Contexts      []string `json:"contexts,omitempty" yaml:"contexts,omitempty"`
-	AppsecConfigs []string `json:"appsec-configs,omitempty"   yaml:"appsec-configs,omitempty"`
-	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
+	// The index contains the dependencies of the "latest" version (collections only)
+	Dependencies
 }
 
-// installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
+// InstallPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
 // (eg. /etc/crowdsec/collections/xyz.yaml).
 // Raises an error if the path goes outside of the install dir.
-func (i *Item) installPath() (string, error) {
+func (i *Item) InstallPath() (string, error) {
 	p := i.Type
 	if i.Stage != "" {
 		p = filepath.Join(p, i.Stage)
 	}
 
-	return safePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
+	return SafePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
 }
 
-// downloadPath returns the location of the actual config file in the hub
+// DownloadPath returns the location of the actual config file in the hub
 // (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
 // Raises an error if the path goes outside of the hub dir.
-func (i *Item) downloadPath() (string, error) {
-	ret, err := safePath(i.hub.local.HubDir, i.RemotePath)
+func (i *Item) DownloadPath() (string, error) {
+	ret, err := SafePath(i.hub.local.HubDir, i.RemotePath)
 	if err != nil {
 		return "", err
 	}
@@ -203,75 +246,49 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	}, nil
 }
 
-// SubItems returns a slice of sub-items, excluding the ones that were not found.
-func (i *Item) SubItems() []*Item {
-	sub := make([]*Item, 0)
-
-	for _, name := range i.Parsers {
-		s := i.hub.GetItem(PARSERS, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	for _, name := range i.PostOverflows {
-		s := i.hub.GetItem(POSTOVERFLOWS, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	for _, name := range i.Scenarios {
-		s := i.hub.GetItem(SCENARIOS, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	for _, name := range i.Contexts {
-		s := i.hub.GetItem(CONTEXTS, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	for _, name := range i.AppsecConfigs {
-		s := i.hub.GetItem(APPSEC_CONFIGS, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	for _, name := range i.AppsecRules {
-		s := i.hub.GetItem(APPSEC_RULES, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	for _, name := range i.Collections {
-		s := i.hub.GetItem(COLLECTIONS, name)
-		if s == nil {
-			continue
-		}
-
-		sub = append(sub, s)
-	}
-
-	return sub
+// LatestDependencies returns a slice of sub-items of the "latest" available version of the item, as opposed to the version that is actually installed. The information comes from the index.
+func (i *Item) LatestDependencies() Dependencies {
+	return i.Dependencies
 }
+
+// CurrentSubItems returns a slice of sub-items of the installed version, excluding the ones that were not found.
+// The list comes from the content file if parseable, otherwise from the index (same as LatestDependencies).
+func (i *Item) CurrentDependencies() Dependencies {
+	if !i.HasSubItems() {
+		return Dependencies{}
+	}
+
+	if i.State.UpToDate {
+		return i.Dependencies
+	}
+
+	contentPath, err := i.InstallPath()
+	if err != nil {
+		i.hub.logger.Warningf("can't access dependencies for %s, using index", i.FQName())
+		return i.Dependencies
+	}
+
+	currentContent, err := os.ReadFile(contentPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return i.Dependencies
+	}
+	if err != nil {
+		// a file might be corrupted, or in development
+		i.hub.logger.Warningf("can't read dependencies for %s, using index", i.FQName())
+		return i.Dependencies
+	}
+
+	var d Dependencies
+
+	// XXX: assume collection content never has multiple documents
+	if err := yaml.Unmarshal(currentContent, &d); err != nil {
+		i.hub.logger.Warningf("can't parse dependencies for %s, using index", i.FQName())
+		return i.Dependencies
+	}
+	
+	return d
+}
+
 
 func (i *Item) logMissingSubItems() {
 	if !i.HasSubItems() {
@@ -337,7 +354,59 @@ func (i *Item) Ancestors() []*Item {
 	return ret
 }
 
-// descendants returns a list of all (direct or indirect) dependencies of the item.
+// SafeToRemoveDeps returns a slice of dependencies that can be safely removed when this item is removed.
+// The returned slice can contain items that are not installed, or not downloaded.
+func (i *Item) SafeToRemoveDeps() ([]*Item, error) {
+	ret := make([]*Item, 0)
+
+	// can return err for circular dependencies
+	descendants, err := i.descendants()
+	if err != nil {
+		return nil, err
+	}
+
+	ancestors := i.Ancestors()
+
+	for sub := range i.CurrentDependencies().SubItems(i.hub) {
+		safe := true
+
+		// if the sub depends on a collection that is not a direct or indirect dependency
+		// of the current item, it is not removed
+		for _, subParent := range sub.Ancestors() {
+			if !subParent.State.Installed {
+				continue
+			}
+
+			// the ancestor that would block the removal of the sub item is also an ancestor
+			// of the item we are removing, so we don't want false warnings
+			// (e.g. crowdsecurity/sshd-logs was not removed because it also belongs to crowdsecurity/linux,
+			// while we are removing crowdsecurity/sshd)
+			if slices.Contains(ancestors, subParent) {
+				continue
+			}
+
+			// the sub-item belongs to the item we are removing, but we already knew that
+			if subParent == i {
+				continue
+			}
+
+			if !slices.Contains(descendants, subParent) {
+				// not removing %s because it also belongs to %s", sub.FQName(), subParent.FQName())
+				safe = false
+				break
+			}
+		}
+
+		if safe {
+			ret = append(ret, sub)
+		}
+	}
+
+	return ret, nil
+}
+
+
+// descendants returns a list of all (direct or indirect) dependencies of the item's current version.
 func (i *Item) descendants() ([]*Item, error) {
 	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
 
@@ -352,7 +421,7 @@ func (i *Item) descendants() ([]*Item, error) {
 
 		visited[item] = true
 
-		for _, subItem := range item.SubItems() {
+		for subItem := range item.CurrentDependencies().SubItems(item.hub) {
 			if subItem == i {
 				return fmt.Errorf("circular dependency detected: %s depends on %s", item.Name, i.Name)
 			}
