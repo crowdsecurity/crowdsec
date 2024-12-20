@@ -402,12 +402,6 @@ issues:
       path: "pkg/(.+)_test.go"
       text: "line-length-limit: .*"
 
-    # tolerate deep exit in tests, for now
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "deep-exit: .*"
-
     # we use t,ctx instead of ctx,t in tests
     - linters:
         - revive
@@ -418,11 +412,6 @@ issues:
     - linters:
         - revive
       path: "cmd/crowdsec-cli/main.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "pkg/leakybucket/overflows.go"
       text: "deep-exit: .*"
 
     - linters:

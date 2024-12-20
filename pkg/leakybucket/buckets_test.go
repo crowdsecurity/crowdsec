@@ -139,14 +139,24 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 		t.Fatalf("failed to parse %s : %s", stagecfg, err)
 	}
 
-	files := []string{}
+	scenarios := []*cwhub.Item{}
 	for _, x := range stages {
-		files = append(files, x.Filename)
+		// XXX: LoadBuckets should take an interface, BucketProvider ScenarioProvider or w/e
+		item := &cwhub.Item{
+			Name: x.Filename,
+			State: cwhub.ItemState{
+				LocalVersion: "",
+				LocalPath:    x.Filename,
+				LocalHash:    "",
+			},
+		}
+
+		scenarios = append(scenarios, item)
 	}
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, files, tomb, buckets, false)
+	holders, response, err := LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
@@ -184,7 +194,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	}
 	dec := json.NewDecoder(yamlFile)
 	dec.DisallowUnknownFields()
-	//dec.SetStrict(true)
+	// dec.SetStrict(true)
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
@@ -196,7 +206,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	}
 	var latest_ts time.Time
 	for _, in := range tf.Lines {
-		//just to avoid any race during ingestion of funny scenarios
+		// just to avoid any race during ingestion of funny scenarios
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
 
@@ -226,7 +236,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 
 	time.Sleep(1 * time.Second)
 
-	//Read results from chan
+	// Read results from chan
 POLL_AGAIN:
 	fails := 0
 	for fails < 2 {
@@ -287,37 +297,37 @@ POLL_AGAIN:
 
 				log.Tracef("Checking next expected result.")
 
-				//empty overflow
+				// empty overflow
 				if out.Overflow.Alert == nil && expected.Overflow.Alert == nil {
-					//match stuff
+					// match stuff
 				} else {
 					if out.Overflow.Alert == nil || expected.Overflow.Alert == nil {
 						log.Printf("Here ?")
 						continue
 					}
 
-					//Scenario
+					// Scenario
 					if *out.Overflow.Alert.Scenario != *expected.Overflow.Alert.Scenario {
 						log.Errorf("(scenario) %v != %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 						continue
 					}
 					log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 
-					//EventsCount
+					// EventsCount
 					if *out.Overflow.Alert.EventsCount != *expected.Overflow.Alert.EventsCount {
 						log.Errorf("(EventsCount) %d != %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 						continue
 					}
 					log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 
-					//Sources
+					// Sources
 					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
 						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 						continue
 					}
 					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
-				//Events
+				// Events
 				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
 				// 	log.Errorf("(Events %s != %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
 				// 	valid = false
@@ -326,10 +336,10 @@ POLL_AGAIN:
 				// 	log.Infof("(Events: %s == %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
 				// }
 
-				//CheckFailed:
+				// CheckFailed:
 
 				log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
-				//don't do this at home : delete current element from list and redo
+				// don't do this at home : delete current element from list and redo
 				results[eidx] = results[len(results)-1]
 				results = results[:len(results)-1]
 				tf.Results[ridx] = tf.Results[len(tf.Results)-1]

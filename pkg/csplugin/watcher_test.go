@@ -15,13 +15,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func resetTestTomb(testTomb *tomb.Tomb, pw *PluginWatcher) {
+func resetTestTomb(t *testing.T, testTomb *tomb.Tomb, pw *PluginWatcher) {
 	testTomb.Kill(nil)
 	<-pw.PluginEvents
 
-	if err := testTomb.Wait(); err != nil {
-		log.Fatal(err)
-	}
+	err := testTomb.Wait()
+	require.NoError(t, err)
 }
 
 func resetWatcherAlertCounter(pw *PluginWatcher) {
@@ -72,7 +71,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	cstest.RequireErrorContains(t, err, "context deadline exceeded")
-	resetTestTomb(&testTomb, &pw)
+	resetTestTomb(t, &testTomb, &pw)
 	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
 
@@ -81,7 +80,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	require.NoError(t, err)
-	resetTestTomb(&testTomb, &pw)
+	resetTestTomb(t, &testTomb, &pw)
 	// This is to avoid the int complaining
 }
 
@@ -130,5 +129,5 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	require.NoError(t, err)
-	resetTestTomb(&testTomb, &pw)
+	resetTestTomb(t, &testTomb, &pw)
 }
