@@ -642,7 +642,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 					break
 				}
 
-				var sqliteErr *sqlite3.Error
+				var sqliteErr sqlite3.Error
 				if errors.As(err, &sqliteErr) {
 					if sqliteErr.Code == sqlite3.ErrBusy {
 						// sqlite3.Error{
