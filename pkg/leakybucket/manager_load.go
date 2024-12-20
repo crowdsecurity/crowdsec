@@ -219,7 +219,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	if bucketFactory.ScopeType.Scope == types.Range && bucketFactory.ScopeType.Filter == "" {
 		return nil
 	}
-	
+
 	if bucketFactory.ScopeType.Filter == "" {
 		return errors.New("filter is mandatory for non-IP, non-Range scope")
 	}
