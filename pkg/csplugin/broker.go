@@ -265,7 +265,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 			if err != nil {
 				return err
 			}
-			data = []byte(csstring.StrictExpand(string(data), os.LookupEnv))
+
 			_, err = pluginClient.Configure(ctx, &protobufs.Config{Config: data})
 			if err != nil {
 				return fmt.Errorf("while configuring %s: %w", pc.Name, err)
@@ -355,7 +355,13 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while opening %s: %w", path, err)
 	}
-	dec := yaml.NewDecoder(yamlFile)
+	defer yamlFile.Close()
+	yamlContents, err := io.ReadAll(yamlFile)
+	if err != nil {
+		return nil, fmt.Errorf("while reading %s: %w", path, err)
+	}
+	expandedYamlContents := csstring.StrictExpand(string(yamlContents), os.LookupEnv)
+	dec := yaml.NewDecoder(strings.NewReader(expandedYamlContents))
 	dec.SetStrict(true)
 	for {
 		pc := PluginConfig{}
