@@ -1,4 +1,5 @@
-// Package cwhub is responsible for installing and upgrading the local hub files for CrowdSec.
+// Package cwhub is responsible for providing the state of the local hub to the security engine and cscli command.
+// Installation, upgrade and removal of items or data files has been moved to pkg/hubops.
 //
 // # Definitions
 //
@@ -83,20 +84,6 @@
 //	if coll == nil {
 //		return fmt.Errorf("collection not found")
 //	}
-//
-// You can also install items if they have already been downloaded:
-//
-//	// install a parser
-//	force := false
-//	downloadOnly := false
-//	err := parser.Install(force, downloadOnly)
-//	if err != nil {
-//		return fmt.Errorf("unable to install parser: %w", err)
-//	}
-//
-// As soon as you try to install an item that is not downloaded or is not up-to-date (meaning its computed hash
-// does not correspond to the latest version available in the index), a download will be attempted and you'll
-// get the error "remote hub configuration is not provided".
 //
 // To provide the remote hub configuration, use the second parameter of NewHub():
 //

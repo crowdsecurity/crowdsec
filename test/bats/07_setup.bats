@@ -511,8 +511,9 @@ update-notifier-motd.timer              enabled enabled
     rune -0 jq -e '.installed == false' <(output)
 
     # we install it
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
-    assert_output 'dry-run: would install collection crowdsecurity/apache2'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
+    assert_line --regexp 'download collections:crowdsecurity/apache2'
+    assert_line --regexp 'enable collections:crowdsecurity/apache2'
 
     # still not installed
     rune -0 cscli collections inspect crowdsecurity/apache2 -o json
@@ -520,8 +521,8 @@ update-notifier-motd.timer              enabled enabled
 
     # same with dependencies
     rune -0 cscli collections remove --all
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
-    assert_output 'dry-run: would install collection crowdsecurity/linux'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
+    assert_line --regexp 'enable collections:crowdsecurity/linux'
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections)" {
@@ -530,8 +531,8 @@ update-notifier-motd.timer              enabled enabled
     rune -0 jq -e '.installed == false' <(output)
 
     # we install it
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
-    assert_output 'dry-run: would install collection crowdsecurity/apache2'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
+    assert_line --regexp 'enable collections:crowdsecurity/apache2'
 
     # still not installed
     rune -0 cscli collections inspect crowdsecurity/apache2 -o json
@@ -539,15 +540,15 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-fs"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
-    assert_line 'dry-run: would install collection crowdsecurity/aws-console'
-    assert_line 'dry-run: would install collection crowdsecurity/caddy'
-    assert_line 'dry-run: would install parser crowdsecurity/asterisk-logs'
-    assert_line 'dry-run: would install scenario crowdsecurity/smb-fs'
-    assert_line 'dry-run: would install postoverflow crowdsecurity/cdn-whitelist'
-    assert_line 'dry-run: would install postoverflow crowdsecurity/rdns'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
+    assert_line --regexp 'enable collections:crowdsecurity/aws-console'
+    assert_line --regexp 'enable collections:crowdsecurity/caddy'
+    assert_line --regexp 'enable parsers:crowdsecurity/asterisk-logs'
+    assert_line --regexp 'enable scenarios:crowdsecurity/smb-bf'
+    assert_line --regexp 'enable postoverflows:crowdsecurity/cdn-whitelist'
+    assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
 
-    rune -1 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
+    rune -1 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
     assert_stderr --partial 'collection crowdsecurity/foo not found'
 
 }

@@ -117,7 +117,7 @@ make_init_data() {
     "$CSCLI" --warning hub update --with-content
 
     # preload some content and data files
-    "$CSCLI" collections install crowdsecurity/linux --download-only
+    "$CSCLI" collections install crowdsecurity/linux --download-only --yes
     # sub-items did not respect --download-only
     ./bin/remove-all-hub-items
 

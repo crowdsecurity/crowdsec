@@ -54,7 +54,7 @@ func TestSetupHelperProcess(t *testing.T) {
 	}
 
 	fmt.Fprint(os.Stdout, fakeSystemctlOutput)
-	os.Exit(0) //nolint:revive,deep-exit
+	os.Exit(0) //nolint:revive
 }
 
 func tempYAML(t *testing.T, content string) os.File {

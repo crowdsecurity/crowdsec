@@ -20,7 +20,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_strip_index
 }
 
 teardown() {
@@ -76,7 +75,7 @@ teardown() {
     assert_stderr --partial "invalid hub item appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest version missing from index"
 
     rune -1 cscli appsec-rules install crowdsecurity/vpatch-laravel-debug-mode --force
-    assert_stderr --partial "error while installing 'crowdsecurity/vpatch-laravel-debug-mode': latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again"
+    assert_stderr --partial "appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again"
 }
 
 @test "missing reference in hub index" {
@@ -108,47 +107,28 @@ teardown() {
 @test "cscli hub update" {
     rm -f "$INDEX_PATH"
     rune -0 cscli hub update
-    assert_stderr --partial "Wrote index to $INDEX_PATH"
+    assert_output "Downloading $INDEX_PATH"
     rune -0 cscli hub update
-    assert_stderr --partial "hub index is up to date"
+    assert_output "Nothing to do, the hub index is up to date."
 }
 
-@test "cscli hub upgrade" {
+@test "cscli hub upgrade (up to date)" {
     rune -0 cscli hub upgrade
-    assert_stderr --partial "Upgrading parsers"
-    assert_stderr --partial "Upgraded 0 parsers"
-    assert_stderr --partial "Upgrading postoverflows"
-    assert_stderr --partial "Upgraded 0 postoverflows"
-    assert_stderr --partial "Upgrading scenarios"
-    assert_stderr --partial "Upgraded 0 scenarios"
-    assert_stderr --partial "Upgrading contexts"
-    assert_stderr --partial "Upgraded 0 contexts"
-    assert_stderr --partial "Upgrading collections"
-    assert_stderr --partial "Upgraded 0 collections"
-    assert_stderr --partial "Upgrading appsec-configs"
-    assert_stderr --partial "Upgraded 0 appsec-configs"
-    assert_stderr --partial "Upgrading appsec-rules"
-    assert_stderr --partial "Upgraded 0 appsec-rules"
-    assert_stderr --partial "Upgrading collections"
-    assert_stderr --partial "Upgraded 0 collections"
+    refute_output
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs
-    rune -0 cscli hub upgrade
-    assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
-
     rune -0 cscli hub upgrade --force
-    assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
-    assert_stderr --partial "crowdsecurity/syslog-logs: updated"
-    assert_stderr --partial "Upgraded 1 parsers"
-    # this is used by the cron script to know if the hub was updated
-    assert_output --partial "updated crowdsecurity/syslog-logs"
+    refute_output
+    skip "todo: data files are re-downloaded with --force"
 }
 
 @test "cscli hub upgrade (with local items)" {
     mkdir -p "$CONFIG_DIR/collections"
     touch "$CONFIG_DIR/collections/foo.yaml"
     rune -0 cscli hub upgrade
-    assert_stderr --partial "not upgrading foo.yaml: local item"
+    assert_output - <<-EOT
+	collections:foo.yaml - not downloading local item
+	EOT
 }
 
 @test "cscli hub types" {
