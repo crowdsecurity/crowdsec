@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
@@ -57,11 +58,11 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
 	cfg := cli.cfg()
 
 	for _, v := range hub.Warnings {
-		log.Info(v)
+		fmt.Fprintln(os.Stderr, v)
 	}
 
 	for _, line := range hub.ItemStats() {
-		log.Info(line)
+		fmt.Fprintln(os.Stderr, line)
 	}
 
 	items := make(map[string][]*cwhub.Item)
@@ -126,7 +127,7 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	}
 
 	for _, v := range hub.Warnings {
-		log.Info(v)
+		fmt.Fprintln(os.Stderr, v)
 	}
 
 	return nil
