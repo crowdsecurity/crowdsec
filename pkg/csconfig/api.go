@@ -352,7 +352,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		log.Printf("push and pull to Central API disabled")
 	}
 
-	//Set default values for CAPI push/pull
+	// Set default values for CAPI push/pull
 	if c.API.Server.OnlineClient != nil {
 		if c.API.Server.OnlineClient.PullConfig.Community == nil {
 			c.API.Server.OnlineClient.PullConfig.Community = ptr.Of(true)

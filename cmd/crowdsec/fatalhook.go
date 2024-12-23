@@ -25,7 +25,7 @@ func newFatalHook() *FatalHook {
 			// the output is not a terminal.
 			// There are more flexible formatters that don't conflate the two concepts,
 			// or we can write our own.
-			ForceColors: true,
+			ForceColors:            true,
 			DisableLevelTruncation: true,
 		},
 		LogLevels: []log.Level{log.FatalLevel, log.PanicLevel},

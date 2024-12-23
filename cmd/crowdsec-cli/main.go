@@ -147,7 +147,7 @@ func (cli *cliRoot) initialize() error {
 	}
 
 	log.SetFormatter(&log.TextFormatter{
-		DisableTimestamp: true,
+		DisableTimestamp:       true,
 		DisableLevelTruncation: true,
 	})
 
