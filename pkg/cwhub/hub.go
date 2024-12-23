@@ -58,14 +58,10 @@ func (h *Hub) Load() error {
 	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
 
 	if err := h.parseIndex(); err != nil {
-		return err
+		return fmt.Errorf("failed to parse hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
-	if err := h.localSync(); err != nil {
-		return fmt.Errorf("failed to sync hub items: %w", err)
-	}
-
-	return nil
+	return h.localSync()
 }
 
 // parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections.
