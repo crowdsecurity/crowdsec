@@ -183,7 +183,6 @@ linters-settings:
       - ifElseChain
       - importShadow
       - hugeParam
-      - rangeValCopy
       - commentedOutCode
       - commentedOutImport
       - unnamedResult
@@ -193,13 +192,9 @@ linters-settings:
       - typeUnparen
       - commentFormatting
       - deferInLoop             #
-      - sprintfQuotedString     #
       - whyNoLint
       - equalFold               #
       - unnecessaryBlock        #
-      - ptrToRefParam           #
-      - stringXbytes            #
-      - appendAssign            #
       - tooManyResultsChecker
       - unnecessaryDefer
       - docStub
@@ -211,9 +206,7 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - execinquery
     - exportloopref
-    - gomnd
 
     #
     # Redundant
@@ -409,12 +402,6 @@ issues:
       path: "pkg/(.+)_test.go"
       text: "line-length-limit: .*"
 
-    # tolerate deep exit in tests, for now
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "deep-exit: .*"
-
     # we use t,ctx instead of ctx,t in tests
     - linters:
         - revive
@@ -425,21 +412,6 @@ issues:
     - linters:
         - revive
       path: "cmd/crowdsec-cli/main.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/clihub/item_metrics.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/idgen/password.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "pkg/leakybucket/overflows.go"
       text: "deep-exit: .*"
 
     - linters:
@@ -456,3 +428,39 @@ issues:
         - revive
       path: "cmd/crowdsec/win_service.go"
       text: "deep-exit: .*"
+
+    - linters:
+        - recvcheck
+      path: "pkg/csplugin/hclog_adapter.go"
+      text: 'the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.'
+
+    # encoding to json/yaml requires value receivers
+    - linters:
+        - recvcheck
+      path: "pkg/cwhub/item.go"
+      text: 'the methods of "Item" use pointer receiver and non-pointer receiver.'
+
+    - linters:
+        - gocritic
+      path: "cmd/crowdsec-cli"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(cticlient|hubtest)"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "(.+)_test.go"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - gocritic
+      path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
+      text: "rangeValCopy: .*"
+
+    - linters:
+        - revive
+      path: "pkg/types/utils.go"
+      text: "argument-limit: .*"

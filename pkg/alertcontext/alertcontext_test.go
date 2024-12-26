@@ -239,7 +239,6 @@ func TestValidateContextExpr(t *testing.T) {
 }
 
 func TestAppsecEventToContext(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		contextToSend  map[string][]string

@@ -144,7 +144,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				isValid := passwordIsValid(metabasePassword)
 				for !isValid {
-					metabasePassword = idgen.GeneratePassword(16)
+					var err error
+					metabasePassword, err = idgen.GeneratePassword(16)
+					if err != nil {
+						return err
+					}
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}
@@ -243,7 +247,8 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 }
 
 func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "show-password",
+	cmd := &cobra.Command{
+		Use:               "show-password",
 		Short:             "displays password of metabase.",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
@@ -457,7 +462,6 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 func (cli *cliDashboard) chownDatabase(gid string) error {
 	cfg := cli.cfg()
 	intID, err := strconv.Atoi(gid)
-
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}

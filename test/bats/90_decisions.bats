@@ -31,11 +31,7 @@ teardown() {
 
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
-    assert_stderr --partial "missing arguments, a value is required (--ip, --range or --scope and --value)"
-
-    rune -1 cscli decisions add -o json
-    rune -0 jq -c '[ .level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","missing arguments, a value is required (--ip, --range or --scope and --value)"]'
+    assert_stderr "Error: missing arguments, a value is required (--ip, --range or --scope and --value)"
 }
 
 @test "cscli decisions list, with and without --machine" {
@@ -61,16 +57,13 @@ teardown() {
 
 @test "cscli decisions list, incorrect parameters" {
     rune -1 cscli decisions list --until toto
-    assert_stderr --partial 'unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration \"toto\"'
-    rune -1 cscli decisions list --until toto -o json
-    rune -0 jq -c '[.level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
+    assert_stderr 'Error: unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration "toto"'
 }
 
 @test "cscli decisions import" {
     # required input
     rune -1 cscli decisions import
-    assert_stderr --partial 'required flag(s) \"input\" not set"'
+    assert_stderr 'Error: required flag(s) "input" not set'
 
     # unsupported format
     rune -1 cscli decisions import -i - <<<'value\n5.6.7.8' --format xml
@@ -172,7 +165,7 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 1 decisions'
-    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid address"
+    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid ip address 'whatever'"
 
     rune -0 cscli decisions list -a -o json
     assert_json '[]'
@@ -189,7 +182,7 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
-    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid address"
+    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid ip address 'bad-apple'"
 
     rune -0 cscli decisions list -a -o json
     rune -0 jq -r '.[0].decisions | length' <(output)

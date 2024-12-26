@@ -3,13 +3,17 @@ package clidecision
 import (
 	"io"
 	"strconv"
+	"strings"
+
+	"github.com/fatih/color"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
-	t := cstable.New(out, cli.cfg().Cscli.Color)
+	wantColor := cli.cfg().Cscli.Color
+	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 
 	header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
@@ -25,6 +29,11 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 				*decisionItem.Type = "(simul)" + *decisionItem.Type
 			}
 
+			duration := *decisionItem.Duration
+			if strings.HasPrefix(duration, "-") && wantColor != "no" {
+				duration = color.RedString(duration)
+			}
+
 			row := []string{
 				strconv.Itoa(int(decisionItem.ID)),
 				*decisionItem.Origin,
@@ -34,7 +43,7 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 				alertItem.Source.Cn,
 				alertItem.Source.GetAsNumberName(),
 				strconv.Itoa(int(*alertItem.EventsCount)),
-				*decisionItem.Duration,
+				duration,
 				strconv.Itoa(int(alertItem.ID)),
 			}
 

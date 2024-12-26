@@ -158,7 +158,6 @@ func (wc *AppsecConfig) SetUpLogger() {
 	/* wc.Name is actually the datasource name.*/
 	wc.Logger = wc.Logger.Dup().WithField("name", wc.Name)
 	wc.Logger.Logger.SetLevel(*wc.LogLevel)
-
 }
 
 func (wc *AppsecConfig) LoadByPath(file string) error {

@@ -65,7 +65,10 @@ func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword 
 			return errors.New("please specify a password with --password or use --auto")
 		}
 
-		machinePassword = idgen.GeneratePassword(idgen.PasswordLength)
+		machinePassword, err = idgen.GeneratePassword(idgen.PasswordLength)
+		if err != nil {
+			return err
+		}
 	} else if machinePassword == "" && interactive {
 		qs := &survey.Password{
 			Message: "Please provide a password for the machine:",

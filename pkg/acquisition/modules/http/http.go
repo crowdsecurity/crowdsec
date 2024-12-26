@@ -26,9 +26,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var (
-	dataSourceName = "http"
-)
+var dataSourceName = "http"
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
