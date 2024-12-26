@@ -271,6 +271,10 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && all {
+				return errors.New("can't specify items and '--all' at the same time")
+			}
+
 			return cli.remove(cmd.Context(), args, yes, dryRun, purge, force, all)
 		},
 	}

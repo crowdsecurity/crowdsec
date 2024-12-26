@@ -100,10 +100,10 @@ teardown() {
     rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
     assert_output "Nothing to do."
 
-    rune -0 cscli parsers remove crowdsecurity/linux --all --error --purge --force
+    rune -0 cscli parsers remove --all --error --purge --force
     assert_output "Nothing to do."
     refute_stderr
-    rune -0 cscli collections remove crowdsecurity/linux --all --error --purge --force
+    rune -0 cscli collections remove --all --error --purge --force
     assert_output "Nothing to do."
     refute_stderr
 }
@@ -122,7 +122,7 @@ teardown() {
 
     # and not from hub update
     rune -0 cscli hub update
-    assert_stderr --partial "collection crowdsecurity/sshd is tainted"
+    assert_stderr --partial "collection crowdsecurity/sshd is tainted by local changes"
     refute_stderr --partial "collection foobar.yaml is tainted"
 }
 

@@ -173,6 +173,10 @@ teardown() {
 
 @test "remove all items of a same type" {
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/windows-auth
+
+    rune -1 cscli parsers remove crowdsecurity/whitelists --all
+    assert_stderr "Error: can't specify items and '--all' at the same time"
+
     rune -0 cscli parsers remove --all --dry-run
     assert_output - --regexp <<-EOT
 	Action plan:
