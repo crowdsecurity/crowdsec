@@ -38,7 +38,7 @@ func LoadFeatureFlagsFile(configPath string, logger *log.Logger) error {
 func ListFeatureFlags() string {
 	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
 
-	msg := "<none>"
+	msg := "none"
 	if len(enabledFeatures) > 0 {
 		msg = strings.Join(enabledFeatures, ", ")
 	}
