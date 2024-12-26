@@ -5,12 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -141,45 +137,6 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 		}
 
 		csvwriter.Flush()
-	}
-
-	return nil
-}
-
-func InspectItem(item *cwhub.Item, wantMetrics bool, output string, prometheusURL string, wantColor string) error {
-	switch output {
-	case "human", "raw":
-		enc := yaml.NewEncoder(os.Stdout)
-		enc.SetIndent(2)
-
-		if err := enc.Encode(item); err != nil {
-			return fmt.Errorf("unable to encode item: %w", err)
-		}
-	case "json":
-		b, err := json.MarshalIndent(*item, "", "  ")
-		if err != nil {
-			return fmt.Errorf("unable to serialize item: %w", err)
-		}
-
-		fmt.Print(string(b))
-	}
-
-	if output != "human" {
-		return nil
-	}
-
-	if item.State.Tainted {
-		fmt.Println()
-		fmt.Printf(`This item is tainted. Use "%s %s inspect --diff %s" to see why.`, filepath.Base(os.Args[0]), item.Type, item.Name)
-		fmt.Println()
-	}
-
-	if wantMetrics {
-		fmt.Printf("\nCurrent metrics: \n")
-
-		if err := showMetrics(prometheusURL, item, wantColor); err != nil {
-			return err
-		}
 	}
 
 	return nil

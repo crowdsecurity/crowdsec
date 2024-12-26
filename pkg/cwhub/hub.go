@@ -61,7 +61,7 @@ func (h *Hub) Load() error {
 	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
 
 	if err := h.parseIndex(); err != nil {
-		return fmt.Errorf("failed to load hub index: %w", err)
+		return err
 	}
 
 	if err := h.localSync(); err != nil {
@@ -82,20 +82,24 @@ func (h *Hub) parseIndex() error {
 		return fmt.Errorf("failed to parse index: %w", err)
 	}
 
-	h.logger.Debugf("%d item types in hub index", len(ItemTypes))
-
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		h.logger.Tracef("%s: %d items", itemType, len(h.GetItemMap(itemType)))
-
 		for name, item := range h.GetItemMap(itemType) {
+			if item == nil {
+				// likely defined as empty object or null in the index file
+				return fmt.Errorf("%s:%s has no index metadata", itemType, name)
+			}
+
+			if item.RemotePath == "" {
+				return fmt.Errorf("%s:%s has no download path", itemType, name)
+			}
+
+			if (itemType == PARSERS || itemType == POSTOVERFLOWS) && item.Stage == "" {
+				return fmt.Errorf("%s:%s has no stage", itemType, name)
+			}
+
 			item.hub = h
 			item.Name = name
-
-			// if the item has no (redundant) author, take it from the json key
-			if item.Author == "" && strings.Contains(name, "/") {
-				item.Author = strings.Split(name, "/")[0]
-			}
 
 			item.Type = itemType
 			item.FileName = path.Base(item.RemotePath)
@@ -152,23 +156,21 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
-// Update downloads the latest version of the index and writes it to disk if it changed. It cannot be called after Load()
-// unless the hub is completely empty.
-func (h *Hub) Update(ctx context.Context) error {
+// Update downloads the latest version of the index and writes it to disk if it changed.
+// It cannot be called after Load() unless the hub is completely empty.
+func (h *Hub) Update(ctx context.Context, withContent bool) error {
 	if len(h.pathIndex) > 0 {
 		// if this happens, it's a bug.
 		return errors.New("cannot update hub after items have been loaded")
 	}
 
-	downloaded, err := h.remote.fetchIndex(ctx, h.local.HubIndexFile)
+	downloaded, err := h.remote.fetchIndex(ctx, h.local.HubIndexFile, withContent)
 	if err != nil {
 		return err
 	}
 
-	if downloaded {
-		h.logger.Infof("Wrote index to %s", h.local.HubIndexFile)
-	} else {
-		h.logger.Info("hub index is up to date")
+	if !downloaded {
+		fmt.Println("Nothing to do, the hub index is up to date.")
 	}
 
 	return nil
