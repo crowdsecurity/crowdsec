@@ -85,7 +85,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
 		if err != nil {
 			return nil, err
 		}
@@ -387,7 +387,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, log.StandardLogger())
+		hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
 		if err != nil {
 			return err
 		}

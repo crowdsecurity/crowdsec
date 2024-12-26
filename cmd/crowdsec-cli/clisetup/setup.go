@@ -289,14 +289,16 @@ func (cli *cliSetup) install(ctx context.Context, yes bool, dryRun bool, fromFil
 
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
 	verbose := (cfg.Cscli.Output == "raw")
 
-	return setup.InstallHubItems(ctx, hub, input, yes, dryRun, verbose)
+	hubProvider := require.HubDownloader(ctx, cfg)
+
+	return setup.InstallHubItems(ctx, hub, hubProvider, input, yes, dryRun, verbose)
 }
 
 func (cli *cliSetup) validate(fromFile string) error {

@@ -22,7 +22,6 @@ type Hub struct {
 	items     HubItems // Items read from HubDir and InstallDir
 	pathIndex map[string]*Item
 	local     *csconfig.LocalHubCfg
-	remote    *RemoteHubCfg
 	logger    *logrus.Logger
 	Warnings  []string // Warnings encountered during sync
 }
@@ -35,8 +34,7 @@ func (h *Hub) GetDataDir() string {
 // NewHub returns a new Hub instance with local and (optionally) remote configuration.
 // The hub is not synced automatically. Load() must be called to read the index, sync the local state,
 // and check for unmanaged items.
-// All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
-func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, logger *logrus.Logger) (*Hub, error) {
+func NewHub(local *csconfig.LocalHubCfg, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
 		return nil, errors.New("no hub configuration found")
 	}
@@ -48,7 +46,6 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, logger *logrus.Lo
 
 	hub := &Hub{
 		local:     local,
-		remote:    remote,
 		logger:    logger,
 		pathIndex: make(map[string]*Item, 0),
 	}
@@ -156,15 +153,20 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
+type HubProvider interface {
+	FetchIndex(ctx context.Context, indexFile string, withContent bool, logger *logrus.Logger) (bool, error)
+	FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (bool, string, error)
+}
+
 // Update downloads the latest version of the index and writes it to disk if it changed.
 // It cannot be called after Load() unless the hub is completely empty.
-func (h *Hub) Update(ctx context.Context, withContent bool) error {
+func (h *Hub) Update(ctx context.Context, hubProvider HubProvider, withContent bool) error {
 	if len(h.pathIndex) > 0 {
 		// if this happens, it's a bug.
 		return errors.New("cannot update hub after items have been loaded")
 	}
 
-	downloaded, err := h.remote.fetchIndex(ctx, h.local.HubIndexFile, withContent)
+	downloaded, err := hubProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
 	if err != nil {
 		return err
 	}

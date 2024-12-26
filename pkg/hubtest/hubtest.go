@@ -93,7 +93,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			InstallDataDir: HubTestPath,
 		}
 
-		hub, err := cwhub.NewHub(local, nil, nil)
+		hub, err := cwhub.NewHub(local, nil)
 		if err != nil {
 			return HubTest{}, err
 		}
@@ -130,7 +130,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		InstallDataDir: HubTestPath,
 	}
 
-	hub, err := cwhub.NewHub(local, nil, nil)
+	hub, err := cwhub.NewHub(local, nil)
 	if err != nil {
 		return HubTest{}, err
 	}

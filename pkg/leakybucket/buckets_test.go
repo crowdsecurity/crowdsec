@@ -46,7 +46,7 @@ func TestBucket(t *testing.T) {
 		InstallDataDir: testdata,
 	}
 
-	hub, err := cwhub.NewHub(hubCfg, nil, nil)
+	hub, err := cwhub.NewHub(hubCfg, nil)
 	require.NoError(t, err)
 
 	err = hub.Load()
