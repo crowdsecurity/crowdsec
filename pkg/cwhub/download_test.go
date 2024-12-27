@@ -20,10 +20,12 @@ func TestFetchIndex(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("with_content") == "true" {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`Hi I'm an index with content`))
+			_, err := w.Write([]byte(`Hi I'm an index with content`))
+			assert.NoError(t, err)
 		} else {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`Hi I'm a regular index`))
+			_, err := w.Write([]byte(`Hi I'm a regular index`))
+			assert.NoError(t, err)
 		}
 	}))
 	defer mockServer.Close()

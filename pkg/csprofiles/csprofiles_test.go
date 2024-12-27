@@ -119,7 +119,8 @@ func TestEvaluateProfile(t *testing.T) {
 		Alert      *models.Alert
 	}
 
-	exprhelpers.Init(nil)
+	err := exprhelpers.Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name                  string

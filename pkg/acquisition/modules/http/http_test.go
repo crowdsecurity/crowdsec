@@ -231,7 +231,8 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	require.NoError(t, err)
 
 	for _, metric := range h.GetMetrics() {
-		prometheus.Register(metric)
+		err = prometheus.Register(metric)
+		require.NoError(t, err)
 	}
 
 	return out, &tomb

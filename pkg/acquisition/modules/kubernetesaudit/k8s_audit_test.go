@@ -85,7 +85,8 @@ webhook_path: /k8s-audit`,
 			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
 
 			require.NoError(t, err)
-			f.StreamingAcquisition(ctx, out, tb)
+			err = f.StreamingAcquisition(ctx, out, tb)
+			require.NoError(t, err)
 
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
@@ -260,7 +261,8 @@ webhook_path: /k8s-audit`,
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))
 			w := httptest.NewRecorder()
 
-			f.StreamingAcquisition(ctx, out, tb)
+			err = f.StreamingAcquisition(ctx, out, tb)
+			require.NoError(t, err)
 
 			f.webhookHandler(w, req)
 
