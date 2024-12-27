@@ -46,7 +46,7 @@ func TestBucket(t *testing.T) {
 		InstallDataDir: testdata,
 	}
 
-	hub, err := cwhub.NewHub(hubCfg, nil, nil)
+	hub, err := cwhub.NewHub(hubCfg, nil)
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -140,6 +140,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 	}
 
 	scenarios := []*cwhub.Item{}
+
 	for _, x := range stages {
 		// XXX: LoadBuckets should take an interface, BucketProvider ScenarioProvider or w/e
 		item := &cwhub.Item{

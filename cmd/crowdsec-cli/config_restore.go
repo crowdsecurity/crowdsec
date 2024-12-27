@@ -18,10 +18,12 @@ import (
 func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), nil)
+	hub, err := require.Hub(cfg, nil)
 	if err != nil {
 		return err
 	}
+
+	contentProvider := require.HubDownloader(ctx, cfg)
 
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
@@ -53,7 +55,7 @@ func (cli *cliConfig) restoreHub(ctx context.Context, dirPath string) error {
 
 			plan := hubops.NewActionPlan(hub)
 
-			if err = plan.AddCommand(hubops.NewDownloadCommand(item, false)); err != nil {
+			if err = plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, false)); err != nil {
 				return err
 			}
 

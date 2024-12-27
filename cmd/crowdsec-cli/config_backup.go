@@ -15,7 +15,7 @@ import (
 )
 
 func (cli *cliConfig) backupHub(dirPath string) error {
-	hub, err := require.Hub(cli.cfg(), nil, nil)
+	hub, err := require.Hub(cli.cfg(), nil)
 	if err != nil {
 		return err
 	}

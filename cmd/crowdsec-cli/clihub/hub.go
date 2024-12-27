@@ -93,7 +93,7 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
+			hub, err := require.Hub(cli.cfg(), log.StandardLogger())
 			if err != nil {
 				return err
 			}
@@ -110,15 +110,15 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 
 func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	local := cli.cfg().Hub
-	remote := require.RemoteHub(ctx, cli.cfg())
-
 	// don't use require.Hub because if there is no index file, it would fail
-	hub, err := cwhub.NewHub(local, remote, log.StandardLogger())
+	hub, err := cwhub.NewHub(local, log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
-	if err := hub.Update(ctx, withContent); err != nil {
+	indexProvider := require.HubDownloader(ctx, cli.cfg())
+
+	if err := hub.Update(ctx, indexProvider, withContent); err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
@@ -166,16 +166,18 @@ cscli hub update --with-content`,
 func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
 	plan := hubops.NewActionPlan(hub)
 
+	contentProvider := require.HubDownloader(ctx, cfg)
+
 	for _, itemType := range cwhub.ItemTypes {
 		for _, item := range hub.GetInstalledByType(itemType, true) {
-			plan.AddCommand(hubops.NewDownloadCommand(item, force))
+			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force))
 		}
 	}
 
@@ -196,9 +198,9 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 
 func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 	var (
-		yes bool
+		yes    bool
 		dryRun bool
-		force bool
+		force  bool
 	)
 
 	cmd := &cobra.Command{

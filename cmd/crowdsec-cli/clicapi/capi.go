@@ -261,7 +261,7 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, nil)
+			hub, err := require.Hub(cli.cfg(), nil)
 			if err != nil {
 				return err
 			}

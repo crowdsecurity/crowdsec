@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"github.com/fatih/color"
 
 	"github.com/crowdsecurity/go-cs-lib/downloader"
 
@@ -19,19 +19,19 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-
 // DownloadCommand handles the downloading of hub items.
 // It ensures that items are fetched from the hub (or from the index file if it also has content)
 // managing dependencies and verifying the integrity of downloaded content.
 // This is used by "cscli install" and "cscli upgrade".
 // Tainted items require the force parameter, local items are skipped.
 type DownloadCommand struct {
-	Item  *cwhub.Item
-	Force bool
+	Item            *cwhub.Item
+	Force           bool
+	contentProvider cwhub.ContentProvider
 }
 
-func NewDownloadCommand(item *cwhub.Item, force bool) *DownloadCommand {
-	return &DownloadCommand{Item: item, Force: force}
+func NewDownloadCommand(item *cwhub.Item, contentProvider cwhub.ContentProvider, force bool) *DownloadCommand {
+	return &DownloadCommand{Item: item, Force: force, contentProvider: contentProvider}
 }
 
 func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
@@ -60,7 +60,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 	}
 
 	for sub := range i.LatestDependencies().SubItems(plan.hub) {
-		if err := plan.AddCommand(NewDownloadCommand(sub, c.Force)); err != nil {
+		if err := plan.AddCommand(NewDownloadCommand(sub, c.contentProvider, c.Force)); err != nil {
 			return false, err
 		}
 
@@ -158,7 +158,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 		return err
 	}
 
-	downloaded, _, err := i.FetchContentTo(ctx, finalPath)
+	downloaded, _, err := i.FetchContentTo(ctx, c.contentProvider, finalPath)
 	if err != nil {
 		return fmt.Errorf("%s: %w", i.FQName(), err)
 	}

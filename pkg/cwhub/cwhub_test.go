@@ -57,18 +57,18 @@ func testHub(t *testing.T, update bool) *Hub {
 		os.RemoveAll(tmpDir)
 	})
 
-	remote := &RemoteHubCfg{
-		Branch:      "master",
-		URLTemplate: mockURLTemplate,
-		IndexPath:   ".index.json",
-	}
-
-	hub, err := NewHub(local, remote, log.StandardLogger())
+	hub, err := NewHub(local, log.StandardLogger())
 	require.NoError(t, err)
 
 	if update {
+		indexProvider := &Downloader{
+			Branch:      "master",
+			URLTemplate: mockURLTemplate,
+			IndexPath:   ".index.json",
+		}
+
 		ctx := context.Background()
-		err := hub.Update(ctx, false)
+		err := hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
 	}
 
