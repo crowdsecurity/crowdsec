@@ -1,4 +1,4 @@
-package clihub
+package cliitem
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func showMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) error {
+func showMetrics(prometheusURL string, hub *cwhub.Hub, hubItem *cwhub.Item, wantColor string) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics, err := getParserMetric(prometheusURL, hubItem.Name)
@@ -32,8 +32,8 @@ func showMetrics(prometheusURL string, hubItem *cwhub.Item, wantColor string) er
 		}
 		scenarioMetricsTable(color.Output, wantColor, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
-		for _, sub := range hubItem.SubItems() {
-			if err := showMetrics(prometheusURL, sub, wantColor); err != nil {
+		for sub := range hubItem.CurrentDependencies().SubItems(hub) {
+			if err := showMetrics(prometheusURL, hub, sub, wantColor); err != nil {
 				return err
 			}
 		}

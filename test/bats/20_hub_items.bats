@@ -22,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_strip_index
 }
 
 teardown() {
@@ -82,7 +81,7 @@ teardown() {
     rune -0 cscli collections install crowdsecurity/sshd
     rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics
     # XXX: we are on the verbose side here...
-    assert_stderr --regexp "Error: failed to read Hub index: failed to sync hub items: failed to scan .*: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
+    assert_stderr "Error: failed to read hub index: failed to sync hub items: failed to scan $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
 }
 
 @test "removing or purging an item already removed by hand" {
@@ -91,19 +90,21 @@ teardown() {
     rune -0 jq -r '.local_path' <(output)
     rune -0 rm "$(output)"
 
-    rune -0 cscli parsers remove crowdsecurity/syslog-logs --debug
-    assert_stderr --partial "removing crowdsecurity/syslog-logs: not installed -- no need to remove"
+    rune -0 cscli parsers remove crowdsecurity/syslog-logs
+    assert_output "Nothing to do."
 
     rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
     rune -0 jq -r '.path' <(output)
     rune -0 rm "$HUB_DIR/$(output)"
 
-    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge --debug
-    assert_stderr --partial "removing crowdsecurity/syslog-logs: not downloaded -- no need to remove"
+    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
+    assert_output "Nothing to do."
 
-    rune -0 cscli parsers remove crowdsecurity/linux --all --error --purge --force
-    rune -0 cscli collections remove crowdsecurity/linux --all --error --purge --force
-    refute_output
+    rune -0 cscli parsers remove --all --error --purge --force
+    assert_output "Nothing to do."
+    refute_stderr
+    rune -0 cscli collections remove --all --error --purge --force
+    assert_output "Nothing to do."
     refute_stderr
 }
 
@@ -121,7 +122,7 @@ teardown() {
 
     # and not from hub update
     rune -0 cscli hub update
-    assert_stderr --partial "collection crowdsecurity/sshd is tainted"
+    assert_stderr --partial "collection crowdsecurity/sshd is tainted by local changes"
     refute_stderr --partial "collection foobar.yaml is tainted"
 }
 
@@ -150,25 +151,42 @@ teardown() {
 @test "a local item cannot be downloaded by cscli" {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
-    rune -1 cscli collections install foobar.yaml
-    assert_stderr --partial "foobar.yaml is local, can't download"
-    rune -1 cscli collections install foobar.yaml --force
-    assert_stderr --partial "foobar.yaml is local, can't download"
+    rune -0 cscli collections install foobar.yaml
+    assert_output --partial "Nothing to do."
+    rune -0 cscli collections install foobar.yaml --force
+    assert_output --partial "Nothing to do."
+    rune -0 cscli collections install --download-only foobar.yaml
+    assert_output --partial "Nothing to do."
 }
 
 @test "a local item cannot be removed by cscli" {
-    rune -0 mkdir -p "$CONFIG_DIR/collections"
-    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
-    rune -0 cscli collections remove foobar.yaml
-    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
-    rune -0 cscli collections remove foobar.yaml --purge
-    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
-    rune -0 cscli collections remove foobar.yaml --force
-    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
-    rune -0 cscli collections remove --all
-    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
-    rune -0 cscli collections remove --all --purge
-    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 mkdir -p "$CONFIG_DIR/scenarios"
+    rune -0 touch "$CONFIG_DIR/scenarios/foobar.yaml"
+    rune -0 cscli scenarios remove foobar.yaml
+    assert_output - <<-EOT
+	WARN scenarios:foobar.yaml is a local item, please delete manually
+	Nothing to do.
+	EOT
+    rune -0 cscli scenarios remove foobar.yaml --purge
+    assert_output - <<-EOT
+	WARN scenarios:foobar.yaml is a local item, please delete manually
+	Nothing to do.
+	EOT
+    rune -0 cscli scenarios remove foobar.yaml --force
+    assert_output - <<-EOT
+	WARN scenarios:foobar.yaml is a local item, please delete manually
+	Nothing to do.
+	EOT
+
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
+
+    rune -0 cscli scenarios remove --all
+    assert_line "WARN scenarios:foobar.yaml is a local item, please delete manually"
+    assert_line "disabling scenarios:crowdsecurity/ssh-bf"
+
+    rune -0 cscli scenarios remove --all --purge
+    assert_line "WARN scenarios:foobar.yaml is a local item, please delete manually"
+    assert_line "purging scenarios:crowdsecurity/ssh-bf"
 }
 
 @test "a dangling link is reported with a warning" {
