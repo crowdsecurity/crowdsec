@@ -256,7 +256,8 @@ basic_auth:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionUnknownPath(t *testing.T) {
@@ -278,7 +279,8 @@ basic_auth:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionBasicAuth(t *testing.T) {
@@ -310,7 +312,8 @@ basic_auth:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionBadHeaders(t *testing.T) {
@@ -337,7 +340,8 @@ headers:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
@@ -365,7 +369,8 @@ max_body_size: 5`), 0)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionSuccess(t *testing.T) {
@@ -400,7 +405,8 @@ headers:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
@@ -439,7 +445,8 @@ custom_headers:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 type slowReader struct {
@@ -525,7 +532,8 @@ timeout: 1s`), 0)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionTLSHTTPRequest(t *testing.T) {
@@ -549,7 +557,8 @@ tls:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
@@ -604,7 +613,8 @@ tls:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionMTLS(t *testing.T) {
@@ -661,7 +671,8 @@ tls:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionGzipData(t *testing.T) {
@@ -713,7 +724,8 @@ headers:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionNDJson(t *testing.T) {
@@ -751,7 +763,8 @@ headers:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func assertMetrics(t *testing.T, metrics []prometheus.Collector, expected int) {
