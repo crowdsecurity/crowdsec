@@ -72,6 +72,7 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 			}
 
 			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}
@@ -84,6 +85,7 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 			}
 
 			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}
@@ -96,6 +98,7 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 			}
 
 			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}
@@ -108,6 +111,7 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 			}
 
 			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 )
 
-
 // writeEmbeddedContentTo writes the embedded content to the specified path and checks the hash.
 // If the content is base64 encoded, it will be decoded before writing. Check for item.Content
 // before calling this method.

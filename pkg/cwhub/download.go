@@ -14,9 +14,9 @@ import (
 
 // Downloader is used to retrieve index and items from a remote hub, with cache control.
 type Downloader struct {
-	Branch           string
-	URLTemplate      string
-	IndexPath        string
+	Branch      string
+	URLTemplate string
+	IndexPath   string
 }
 
 // IndexProvider retrieves and writes .index.json
@@ -28,7 +28,6 @@ type IndexProvider interface {
 type ContentProvider interface {
 	FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (bool, string, error)
 }
-
 
 // urlTo builds the URL to download a file from the remote hub.
 func (d *Downloader) urlTo(remotePath string) (string, error) {
@@ -82,7 +81,7 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 		CompareContent().
 		WithLogger(logger.WithField("url", url)).
 		BeforeRequest(func(_ *http.Request) {
-			fmt.Println("Downloading "+destPath)
+			fmt.Println("Downloading " + destPath)
 		}).
 		Download(ctx, url)
 	if err != nil {

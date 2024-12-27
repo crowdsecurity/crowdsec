@@ -14,8 +14,8 @@ type HubTest struct {
 	CrowdSecPath              string
 	CscliPath                 string
 	HubPath                   string
-	HubTestPath               string //generic parser/scenario tests .tests
-	HubAppsecTestPath         string //dir specific to appsec tests .appsec-tests
+	HubTestPath               string // generic parser/scenario tests .tests
+	HubAppsecTestPath         string // dir specific to appsec tests .appsec-tests
 	HubIndexFile              string
 	TemplateConfigPath        string
 	TemplateProfilePath       string

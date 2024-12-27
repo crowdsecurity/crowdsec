@@ -198,9 +198,9 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 
 func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 	var (
-		yes bool
+		yes    bool
 		dryRun bool
-		force bool
+		force  bool
 	)
 
 	cmd := &cobra.Command{

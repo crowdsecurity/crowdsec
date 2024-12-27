@@ -123,7 +123,7 @@ func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun 
 
 func (cli cliItem) newInstallCmd() *cobra.Command {
 	var (
-		yes bool
+		yes          bool
 		dryRun       bool
 		downloadOnly bool
 		force        bool
@@ -182,6 +182,7 @@ func (cli cliItem) removePlan(hub *cwhub.Hub, args []string, purge bool, force b
 			if err := plan.AddCommand(hubops.NewDisableCommand(item, force)); err != nil {
 				return nil, err
 			}
+
 			if purge {
 				if err := plan.AddCommand(hubops.NewPurgeCommand(item, force)); err != nil {
 					return nil, err
@@ -213,19 +214,17 @@ func (cli cliItem) removePlan(hub *cwhub.Hub, args []string, purge bool, force b
 
 		if err := plan.AddCommand(hubops.NewDisableCommand(item, force)); err != nil {
 			return nil, err
-
 		}
+
 		if purge {
 			if err := plan.AddCommand(hubops.NewPurgeCommand(item, force)); err != nil {
 				return nil, err
-
 			}
 		}
 	}
 
 	return plan, nil
 }
-
 
 func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun bool, purge bool, force bool, all bool) error {
 	cfg := cli.cfg()
@@ -255,7 +254,7 @@ func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun b
 
 func (cli cliItem) newRemoveCmd() *cobra.Command {
 	var (
-		yes bool
+		yes    bool
 		dryRun bool
 		purge  bool
 		force  bool
@@ -353,10 +352,10 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun 
 
 func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	var (
-		yes bool
+		yes    bool
 		dryRun bool
-		all   bool
-		force bool
+		all    bool
+		force  bool
 	)
 
 	cmd := &cobra.Command{

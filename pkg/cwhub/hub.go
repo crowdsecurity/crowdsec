@@ -235,6 +235,7 @@ func (h *Hub) GetItemsByType(itemType string, sorted bool) []*Item {
 	}
 
 	idx := 0
+
 	for _, item := range items {
 		ret[idx] = item
 		idx += 1
@@ -266,6 +267,7 @@ func (h *Hub) GetInstalledListForAPI() []string {
 	ret := make([]string, len(scenarios)+len(appsecRules))
 
 	idx := 0
+
 	for _, item := range scenarios {
 		ret[idx] = item.Name
 		idx += 1

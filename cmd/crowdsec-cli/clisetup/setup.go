@@ -95,7 +95,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	var (
-		yes bool
+		yes    bool
 		dryRun bool
 	)
 

@@ -3,11 +3,11 @@ package cwhub
 import (
 	"context"
 	"io"
-	"os"
-	"testing"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
