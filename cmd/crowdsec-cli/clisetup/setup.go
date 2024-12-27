@@ -296,9 +296,9 @@ func (cli *cliSetup) install(ctx context.Context, yes bool, dryRun bool, fromFil
 
 	verbose := (cfg.Cscli.Output == "raw")
 
-	hubProvider := require.HubDownloader(ctx, cfg)
+	contentProvider := require.HubDownloader(ctx, cfg)
 
-	return setup.InstallHubItems(ctx, hub, hubProvider, input, yes, dryRun, verbose)
+	return setup.InstallHubItems(ctx, hub, contentProvider, input, yes, dryRun, verbose)
 }
 
 func (cli *cliSetup) validate(fromFile string) error {

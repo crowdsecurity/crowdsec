@@ -28,11 +28,11 @@ import (
 type DownloadCommand struct {
 	Item  *cwhub.Item
 	Force bool
-	hubProvider cwhub.HubProvider
+	contentProvider cwhub.ContentProvider
 }
 
-func NewDownloadCommand(item *cwhub.Item, hubProvider cwhub.HubProvider, force bool) *DownloadCommand {
-	return &DownloadCommand{Item: item, Force: force, hubProvider: hubProvider}
+func NewDownloadCommand(item *cwhub.Item, contentProvider cwhub.ContentProvider, force bool) *DownloadCommand {
+	return &DownloadCommand{Item: item, Force: force, contentProvider: contentProvider}
 }
 
 func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
@@ -61,7 +61,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 	}
 
 	for sub := range i.LatestDependencies().SubItems(plan.hub) {
-		if err := plan.AddCommand(NewDownloadCommand(sub, c.hubProvider, c.Force)); err != nil {
+		if err := plan.AddCommand(NewDownloadCommand(sub, c.contentProvider, c.Force)); err != nil {
 			return false, err
 		}
 
@@ -159,7 +159,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 		return err
 	}
 
-	downloaded, _, err := i.FetchContentTo(ctx, c.hubProvider, finalPath)
+	downloaded, _, err := i.FetchContentTo(ctx, c.contentProvider, finalPath)
 	if err != nil {
 		return fmt.Errorf("%s: %w", i.FQName(), err)
 	}

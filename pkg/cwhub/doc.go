@@ -87,7 +87,7 @@
 //
 // Some commands require an object to provide the hub index, or contents:
 //
-//	hubProvider := cwhub.Downloader{
+//	indexProvider := cwhub.Downloader{
 //		URLTemplate: "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s",
 //		Branch: "master",
 //		IndexPath: ".index.json",
@@ -98,7 +98,7 @@
 //
 // Before calling hub.Load(), you can update the index file by calling the Update() method:
 //
-//	err := hub.Update(context.Background(), hubProvider)
+//	err := hub.Update(context.Background(), indexProvider)
 //	if err != nil {
 //		return fmt.Errorf("unable to update hub index: %w", err)
 //	}

@@ -12,12 +12,23 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/downloader"
 )
 
-// Downloader is used to retrieve index and items from a remote hub.
+// Downloader is used to retrieve index and items from a remote hub, with cache control.
 type Downloader struct {
 	Branch           string
 	URLTemplate      string
 	IndexPath        string
 }
+
+// IndexProvider retrieves and writes .index.json
+type IndexProvider interface {
+	FetchIndex(ctx context.Context, indexFile string, withContent bool, logger *logrus.Logger) (bool, error)
+}
+
+// ContentProvider retrieves and writes the YAML files with the item content.
+type ContentProvider interface {
+	FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (bool, string, error)
+}
+
 
 // urlTo builds the URL to download a file from the remote hub.
 func (d *Downloader) urlTo(remotePath string) (string, error) {
@@ -47,7 +58,9 @@ func addURLParam(rawURL string, param string, value string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-// FetchIndex downloads the index from the hub and returns the content.
+// FetchIndex downloads the index from the hub and writes it to the filesystem.
+// It uses a temporary file to avoid partial downloads, and won't overwrite the original
+// if it has not changed.
 func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withContent bool, logger *logrus.Logger) (bool, error) {
 	url, err := d.urlTo(d.IndexPath)
 	if err != nil {
@@ -79,7 +92,9 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 	return downloaded, nil
 }
 
-// FetchContent downloads the content to the specified path and checks the hash.
+// FetchContent downloads the content to the specified path, through a temporary file
+// to avoid partial downloads.
+// If the hash does not match, it will not overwrite and log a warning.
 func (d *Downloader) FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (bool, string, error) {
 	url, err := d.urlTo(remotePath)
 	if err != nil {

@@ -78,7 +78,7 @@ func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun 
 
 	plan := hubops.NewActionPlan(hub)
 
-	hubProvider := require.HubDownloader(ctx, cfg)
+	contentProvider := require.HubDownloader(ctx, cfg)
 
 	for _, name := range args {
 		item := hub.GetItem(cli.name, name)
@@ -93,7 +93,7 @@ func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun 
 			continue
 		}
 
-		if err = plan.AddCommand(hubops.NewDownloadCommand(item, hubProvider, force)); err != nil {
+		if err = plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
 			return err
 		}
 
@@ -292,12 +292,12 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) upgradePlan(hub *cwhub.Hub, hubProvider cwhub.HubProvider, args []string, force bool, all bool) (*hubops.ActionPlan, error) {
+func (cli cliItem) upgradePlan(hub *cwhub.Hub, contentProvider cwhub.ContentProvider, args []string, force bool, all bool) (*hubops.ActionPlan, error) {
 	plan := hubops.NewActionPlan(hub)
 
 	if all {
 		for _, item := range hub.GetInstalledByType(cli.name, true) {
-			if err := plan.AddCommand(hubops.NewDownloadCommand(item, hubProvider, force)); err != nil {
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
 				return nil, err
 			}
 		}
@@ -315,7 +315,7 @@ func (cli cliItem) upgradePlan(hub *cwhub.Hub, hubProvider cwhub.HubProvider, ar
 			return nil, fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
-		if err := plan.AddCommand(hubops.NewDownloadCommand(item, hubProvider, force)); err != nil {
+		if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
 			return nil, err
 		}
 	}
@@ -331,9 +331,9 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun 
 		return err
 	}
 
-	hubProvider := require.HubDownloader(ctx, cfg)
+	contentProvider := require.HubDownloader(ctx, cfg)
 
-	plan, err := cli.upgradePlan(hub, hubProvider, args, force, all)
+	plan, err := cli.upgradePlan(hub, contentProvider, args, force, all)
 	if err != nil {
 		return err
 	}
@@ -394,10 +394,10 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 		cfg.Cscli.PrometheusUrl = url
 	}
 
-	var hubProvider cwhub.HubProvider
+	var contentProvider cwhub.ContentProvider
 
 	if diff {
-		hubProvider = require.HubDownloader(ctx, cfg)
+		contentProvider = require.HubDownloader(ctx, cfg)
 	}
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -412,7 +412,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 		}
 
 		if diff {
-			fmt.Println(cli.whyTainted(ctx, hub, hubProvider, item, rev))
+			fmt.Println(cli.whyTainted(ctx, hub, contentProvider, item, rev))
 
 			continue
 		}
@@ -502,7 +502,7 @@ func (cli cliItem) newListCmd() *cobra.Command {
 }
 
 // return the diff between the installed version and the latest version
-func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, hubProvider cwhub.HubProvider, reverse bool) (string, error) {
+func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.Installed {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -513,7 +513,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, hubProvider c
 	}
 	defer os.Remove(dest.Name())
 
-	_, remoteURL, err := item.FetchContentTo(ctx, hubProvider, dest.Name())
+	_, remoteURL, err := item.FetchContentTo(ctx, contentProvider, dest.Name())
 	if err != nil {
 		return "", err
 	}
@@ -544,7 +544,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, hubProvider c
 	return fmt.Sprintf("%s", diff), nil
 }
 
-func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, hubProvider cwhub.HubProvider, item *cwhub.Item, reverse bool) string {
+func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
 	if !item.State.Installed {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
@@ -569,7 +569,7 @@ func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, hubProvider c
 			ret = append(ret, err.Error())
 		}
 
-		diff, err := cli.itemDiff(ctx, sub, hubProvider, reverse)
+		diff, err := cli.itemDiff(ctx, sub, contentProvider, reverse)
 		if err != nil {
 			ret = append(ret, err.Error())
 		}

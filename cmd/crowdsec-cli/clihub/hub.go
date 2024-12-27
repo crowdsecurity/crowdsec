@@ -116,9 +116,9 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 		return err
 	}
 
-	hubProvider := require.HubDownloader(ctx, cli.cfg())
+	indexProvider := require.HubDownloader(ctx, cli.cfg())
 
-	if err := hub.Update(ctx, hubProvider, withContent); err != nil {
+	if err := hub.Update(ctx, indexProvider, withContent); err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
@@ -173,11 +173,11 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 
 	plan := hubops.NewActionPlan(hub)
 
-	hubProvider := require.HubDownloader(ctx, cfg)
+	contentProvider := require.HubDownloader(ctx, cfg)
 
 	for _, itemType := range cwhub.ItemTypes {
 		for _, item := range hub.GetInstalledByType(itemType, true) {
-			plan.AddCommand(hubops.NewDownloadCommand(item, hubProvider, force))
+			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force))
 		}
 	}
 

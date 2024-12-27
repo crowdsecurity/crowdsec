@@ -61,14 +61,14 @@ func testHub(t *testing.T, update bool) *Hub {
 	require.NoError(t, err)
 
 	if update {
-		hubProvider := &Downloader{
+		indexProvider := &Downloader{
 			Branch:      "master",
 			URLTemplate: mockURLTemplate,
 			IndexPath:   ".index.json",
 		}
 
 		ctx := context.Background()
-		err := hub.Update(ctx, hubProvider, false)
+		err := hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
 	}
 

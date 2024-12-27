@@ -153,20 +153,15 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
-type HubProvider interface {
-	FetchIndex(ctx context.Context, indexFile string, withContent bool, logger *logrus.Logger) (bool, error)
-	FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (bool, string, error)
-}
-
 // Update downloads the latest version of the index and writes it to disk if it changed.
 // It cannot be called after Load() unless the hub is completely empty.
-func (h *Hub) Update(ctx context.Context, hubProvider HubProvider, withContent bool) error {
+func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) error {
 	if len(h.pathIndex) > 0 {
 		// if this happens, it's a bug.
 		return errors.New("cannot update hub after items have been loaded")
 	}
 
-	downloaded, err := hubProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
+	downloaded, err := indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
 	if err != nil {
 		return err
 	}

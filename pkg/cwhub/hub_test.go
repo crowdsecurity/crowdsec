@@ -19,13 +19,13 @@ func TestInitHubUpdate(t *testing.T) {
 
 	ctx := context.Background()
 
-	hubProvider := &Downloader{
+	indexProvider := &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
 		IndexPath:   ".index.json",
 	}
 
-	err = hub.Update(ctx, hubProvider, false)
+	err = hub.Update(ctx, indexProvider, false)
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -53,25 +53,25 @@ func TestUpdateIndex(t *testing.T) {
 
 	ctx := context.Background()
 
-	hubProvider := &Downloader{
+	indexProvider := &Downloader{
 		URLTemplate: "x",
 		Branch:      "",
 		IndexPath:   "",
 	}
 
-	err = hub.Update(ctx, hubProvider, false)
+	err = hub.Update(ctx, indexProvider, false)
 	cstest.RequireErrorContains(t, err, "failed to build hub index request: invalid URL template 'x'")
 
 	// bad domain
 	fmt.Println("Test 'bad domain'")
 
-	hubProvider = &Downloader{
+	indexProvider = &Downloader{
 		URLTemplate: "https://baddomain/crowdsecurity/%s/%s",
 		Branch:      "master",
 		IndexPath:   ".index.json",
 	}
 
-	err = hub.Update(ctx, hubProvider, false)
+	err = hub.Update(ctx, indexProvider, false)
 	require.NoError(t, err)
 	// XXX: this is not failing
 	//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
@@ -79,7 +79,7 @@ func TestUpdateIndex(t *testing.T) {
 	// bad target path
 	fmt.Println("Test 'bad target path'")
 
-	hubProvider = &Downloader{
+	indexProvider = &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
 		IndexPath:   ".index.json",
@@ -87,6 +87,6 @@ func TestUpdateIndex(t *testing.T) {
 
 	hub.local.HubIndexFile = "/does/not/exist/index.json"
 
-	err = hub.Update(ctx, hubProvider, false)
+	err = hub.Update(ctx, indexProvider, false)
 	cstest.RequireErrorContains(t, err, "failed to create temporary download file for /does/not/exist/index.json:")
 }

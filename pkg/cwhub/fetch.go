@@ -50,7 +50,7 @@ func (i *Item) writeEmbeddedContentTo(destPath, wantHash string) error {
 
 // FetchContentTo writes the last version of the item's YAML file to the specified path.
 // Returns whether the file was downloaded, and the remote url for feedback purposes.
-func (i *Item) FetchContentTo(ctx context.Context, hubProvider HubProvider, destPath string) (bool, string, error) {
+func (i *Item) FetchContentTo(ctx context.Context, contentProvider ContentProvider, destPath string) (bool, string, error) {
 	wantHash := i.latestHash()
 	if wantHash == "" {
 		return false, "", fmt.Errorf("%s: latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again", i.FQName())
@@ -65,5 +65,5 @@ func (i *Item) FetchContentTo(ctx context.Context, hubProvider HubProvider, dest
 		return true, fmt.Sprintf("(embedded in %s)", i.hub.local.HubIndexFile), nil
 	}
 
-	return hubProvider.FetchContent(ctx, i.RemotePath, destPath, wantHash, i.hub.logger)
+	return contentProvider.FetchContent(ctx, i.RemotePath, destPath, wantHash, i.hub.logger)
 }
