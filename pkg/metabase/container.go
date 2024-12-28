@@ -25,9 +25,10 @@ type Container struct {
 	CLI           *client.Client
 	MBDBUri       string
 	DockerGroupID string
+	Networks      []string
 }
 
-func NewContainer(listenAddr string, listenPort string, sharedFolder string, containerName string, image string, mbDBURI string, dockerGroupID string) (*Container, error) {
+func NewContainer(listenAddr string, listenPort string, sharedFolder string, containerName string, image string, mbDBURI string, dockerGroupID string, networks []string) (*Container, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client : %s", err)
@@ -41,6 +42,7 @@ func NewContainer(listenAddr string, listenPort string, sharedFolder string, con
 		CLI:           cli,
 		MBDBUri:       mbDBURI,
 		DockerGroupID: dockerGroupID,
+		Networks:      networks,
 	}, nil
 }
 
@@ -99,6 +101,13 @@ func (c *Container) Create() error {
 		return fmt.Errorf("failed to create container : %s", err)
 	}
 	c.ID = resp.ID
+
+	for _, network := range c.Networks {
+		log.Infof("connecting container '%s' to network '%s'", c.Name, network)
+		if err := c.CLI.NetworkConnect(ctx, network, c.ID, nil); err != nil {
+			return fmt.Errorf("failed to connect container to network : %s", err)
+		}
+	}
 
 	return nil
 }
