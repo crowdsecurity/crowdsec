@@ -224,30 +224,30 @@ func (cli *cliExplain) run() error {
 
 	parsedUrl, _ := url.Parse(cli.cfg().API.Client.Credentials.URL)
 
-	tpcConnUrl := parsedUrl.Host
+	connUrl := parsedUrl.Host
 	connType := "tcp"
 	if parsedUrl.Port() == "" {
 		if parsedUrl.Scheme == "http" {
-			tpcConnUrl = parsedUrl.Host + ":80"
+			connUrl = parsedUrl.Host + ":80"
 		}
 		if parsedUrl.Scheme == "https" {
-			tpcConnUrl = parsedUrl.Host + ":443"
+			connUrl = parsedUrl.Host + ":443"
 		}
 	}
 
 	if parsedUrl.Scheme == "" {
 		connType = "unix"
-		tpcConnUrl = parsedUrl.Path
+		connUrl = parsedUrl.Path
 	}
 
 	cmdArgs := []string{"-c", cli.configFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir}
 
-	conn, err := net.DialTimeout(connType, tpcConnUrl, 5*time.Second)
+	conn, err := net.DialTimeout(connType, connUrl, 5*time.Second)
 	if err == nil {
 		conn.Close()
 		cmdArgs = append(cmdArgs, "-no-api")
 	} else {
-		log.Tracef("unable to reach LAPI: %s", err)
+		log.Debugf("unable to reach LAPI: %s", err)
 	}
 
 	if labels != "" {
