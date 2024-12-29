@@ -91,7 +91,6 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 		"help",
 		"completion",
 		"version",
-		"hubtest",
 	}
 
 	if !slices.Contains(noNeedConfig, command) {

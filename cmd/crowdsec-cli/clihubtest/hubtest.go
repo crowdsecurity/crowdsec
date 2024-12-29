@@ -43,12 +43,13 @@ func (cli *cliHubTest) NewCommand() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, false)
+			cfg := cli.cfg()
+			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, false, cfg.ConfigPaths.PatternDir)
 			if err != nil {
 				return fmt.Errorf("unable to load hubtest: %+v", err)
 			}
 
-			HubAppsecTests, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, true)
+			HubAppsecTests, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, true, cfg.ConfigPaths.PatternDir)
 			if err != nil {
 				return fmt.Errorf("unable to load appsec specific hubtest: %+v", err)
 			}
