@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -91,7 +94,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 				return errors.New("the option -f - is intended to work with pipes")
 			}
 
-			return nil
+			return cli.cfg().LoadAPIClient()
 		},
 	}
 
@@ -219,7 +222,33 @@ func (cli *cliExplain) run() error {
 		return errors.New("no acquisition (--file or --dsn) provided, can't run cscli test")
 	}
 
-	cmdArgs := []string{"-c", cli.configFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
+	parsedUrl, _ := url.Parse(cli.cfg().API.Client.Credentials.URL)
+
+	tpcConnUrl := parsedUrl.Host
+	connType := "tcp"
+	if parsedUrl.Port() == "" {
+		if parsedUrl.Scheme == "http" {
+			tpcConnUrl = parsedUrl.Host + ":80"
+		}
+		if parsedUrl.Scheme == "https" {
+			tpcConnUrl = parsedUrl.Host + ":443"
+		}
+	}
+
+	if parsedUrl.Scheme == "" {
+		connType = "unix"
+		tpcConnUrl = parsedUrl.Path
+	}
+
+	cmdArgs := []string{"-c", cli.configFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir}
+
+	conn, err := net.DialTimeout(connType, tpcConnUrl, 5*time.Second)
+	if err == nil {
+		conn.Close()
+		cmdArgs = append(cmdArgs, "-no-api")
+	} else {
+		log.Tracef("unable to reach LAPI: %s", err)
+	}
 
 	if labels != "" {
 		log.Debugf("adding labels %s", labels)
