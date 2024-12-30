@@ -26,7 +26,7 @@ type DatabaseCfg struct {
 	User             string      `yaml:"user"`
 	Password         string      `yaml:"password"`
 	DbName           string      `yaml:"db_name"`
-	SSLmode          string      `yaml:"sslmode"`
+	SSLMode          string      `yaml:"sslmode"`
 	SSLCACert        string      `yaml:"ssl_ca_cert"`
 	SSLClientCert    string      `yaml:"ssl_client_cert"`
 	SSLClientKey     string      `yaml:"ssl_client_key"`
@@ -139,8 +139,8 @@ func (d *DatabaseCfg) ConnectionString() string {
 			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
 		}
 
-		if d.SSLmode != "" {
-			connString = fmt.Sprintf("%s&tls=%s", connString, d.SSLmode)
+		if d.SSLMode != "" {
+			connString = fmt.Sprintf("%s&tls=%s", connString, d.SSLMode)
 		}
 
 		if d.SSLCACert != "" {
@@ -157,8 +157,8 @@ func (d *DatabaseCfg) ConnectionString() string {
 			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s", d.Host, d.Port, d.User, d.DbName, d.Password)
 		}
 
-		if d.SSLmode != "" {
-			connString = fmt.Sprintf("%s sslmode=%s", connString, d.SSLmode)
+		if d.SSLMode != "" {
+			connString = fmt.Sprintf("%s sslmode=%s", connString, d.SSLMode)
 		}
 
 		if d.SSLCACert != "" {
