@@ -94,7 +94,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, err
 		}
 
-		csParsers, datasources, err := initCrowdsec(cConfig, hub)
+		csParsers, datasources, err := initCrowdsec(cConfig, hub, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
@@ -396,7 +396,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			return err
 		}
 
-		csParsers, datasources, err := initCrowdsec(cConfig, hub)
+		csParsers, datasources, err := initCrowdsec(cConfig, hub, flags.TestMode)
 		if err != nil {
 			return fmt.Errorf("crowdsec init: %w", err)
 		}
