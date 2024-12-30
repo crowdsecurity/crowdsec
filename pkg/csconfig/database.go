@@ -26,7 +26,10 @@ type DatabaseCfg struct {
 	User             string      `yaml:"user"`
 	Password         string      `yaml:"password"`
 	DbName           string      `yaml:"db_name"`
-	Sslmode          string      `yaml:"sslmode"`
+	SSLMode          string      `yaml:"sslmode"`
+	SSLCACert        string      `yaml:"ssl_ca_cert"`
+	SSLClientCert    string      `yaml:"ssl_client_cert"`
+	SSLClientKey     string      `yaml:"ssl_client_key"`
 	Host             string      `yaml:"host"`
 	Port             int         `yaml:"port"`
 	DbPath           string      `yaml:"db_path"`
@@ -136,14 +139,34 @@ func (d *DatabaseCfg) ConnectionString() string {
 			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
 		}
 
-		if d.Sslmode != "" {
-			connString = fmt.Sprintf("%s&tls=%s", connString, d.Sslmode)
+		if d.SSLMode != "" {
+			connString = fmt.Sprintf("%s&tls=%s", connString, d.SSLMode)
+		}
+
+		if d.SSLCACert != "" {
+			connString = fmt.Sprintf("%s&tls-ca=%s", connString, d.SSLCACert)
+		}
+
+		if d.SSLClientCert != "" && d.SSLClientKey != "" {
+			connString = fmt.Sprintf("%s&tls-cert=%s&tls-key=%s", connString, d.SSLClientCert, d.SSLClientKey)
 		}
 	case "postgres", "postgresql", "pgx":
 		if d.isSocketConfig() {
 			connString = fmt.Sprintf("host=%s user=%s dbname=%s password=%s", d.DbPath, d.User, d.DbName, d.Password)
 		} else {
-			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", d.Host, d.Port, d.User, d.DbName, d.Password, d.Sslmode)
+			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s", d.Host, d.Port, d.User, d.DbName, d.Password)
+		}
+
+		if d.SSLMode != "" {
+			connString = fmt.Sprintf("%s sslmode=%s", connString, d.SSLMode)
+		}
+
+		if d.SSLCACert != "" {
+			connString = fmt.Sprintf("%s sslrootcert=%s", connString, d.SSLCACert)
+		}
+
+		if d.SSLClientCert != "" && d.SSLClientKey != "" {
+			connString = fmt.Sprintf("%s sslcert=%s sslkey=%s", connString, d.SSLClientCert, d.SSLClientKey)
 		}
 	}
 
