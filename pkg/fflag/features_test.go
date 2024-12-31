@@ -377,7 +377,7 @@ func TestGetEnabledFeatures(t *testing.T) {
 	feat1, err := fr.GetFeature("new_standard")
 	require.NoError(t, err)
 	err = feat1.Set(true)
-	require.NoError(t, err)
+	require.Error(t, err, "the flag is deprecated")
 
 	feat2, err := fr.GetFeature("experimental1")
 	require.NoError(t, err)
