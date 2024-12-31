@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -60,7 +61,7 @@ func (ciq *ConfigItemQuery) Order(o ...configitem.OrderOption) *ConfigItemQuery 
 // First returns the first ConfigItem entity from the query.
 // Returns a *NotFoundError when no ConfigItem was found.
 func (ciq *ConfigItemQuery) First(ctx context.Context) (*ConfigItem, error) {
-	nodes, err := ciq.Limit(1).All(setContextOp(ctx, ciq.ctx, "First"))
+	nodes, err := ciq.Limit(1).All(setContextOp(ctx, ciq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func (ciq *ConfigItemQuery) FirstX(ctx context.Context) *ConfigItem {
 // Returns a *NotFoundError when no ConfigItem ID was found.
 func (ciq *ConfigItemQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = ciq.Limit(1).IDs(setContextOp(ctx, ciq.ctx, "FirstID")); err != nil {
+	if ids, err = ciq.Limit(1).IDs(setContextOp(ctx, ciq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -106,7 +107,7 @@ func (ciq *ConfigItemQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one ConfigItem entity is found.
 // Returns a *NotFoundError when no ConfigItem entities are found.
 func (ciq *ConfigItemQuery) Only(ctx context.Context) (*ConfigItem, error) {
-	nodes, err := ciq.Limit(2).All(setContextOp(ctx, ciq.ctx, "Only"))
+	nodes, err := ciq.Limit(2).All(setContextOp(ctx, ciq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (ciq *ConfigItemQuery) OnlyX(ctx context.Context) *ConfigItem {
 // Returns a *NotFoundError when no entities are found.
 func (ciq *ConfigItemQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = ciq.Limit(2).IDs(setContextOp(ctx, ciq.ctx, "OnlyID")); err != nil {
+	if ids, err = ciq.Limit(2).IDs(setContextOp(ctx, ciq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -159,7 +160,7 @@ func (ciq *ConfigItemQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of ConfigItems.
 func (ciq *ConfigItemQuery) All(ctx context.Context) ([]*ConfigItem, error) {
-	ctx = setContextOp(ctx, ciq.ctx, "All")
+	ctx = setContextOp(ctx, ciq.ctx, ent.OpQueryAll)
 	if err := ciq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (ciq *ConfigItemQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if ciq.ctx.Unique == nil && ciq.path != nil {
 		ciq.Unique(true)
 	}
-	ctx = setContextOp(ctx, ciq.ctx, "IDs")
+	ctx = setContextOp(ctx, ciq.ctx, ent.OpQueryIDs)
 	if err = ciq.Select(configitem.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func (ciq *ConfigItemQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (ciq *ConfigItemQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, ciq.ctx, "Count")
+	ctx = setContextOp(ctx, ciq.ctx, ent.OpQueryCount)
 	if err := ciq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -217,7 +218,7 @@ func (ciq *ConfigItemQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (ciq *ConfigItemQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, ciq.ctx, "Exist")
+	ctx = setContextOp(ctx, ciq.ctx, ent.OpQueryExist)
 	switch _, err := ciq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -449,7 +450,7 @@ func (cigb *ConfigItemGroupBy) Aggregate(fns ...AggregateFunc) *ConfigItemGroupB
 
 // Scan applies the selector query and scans the result into the given value.
 func (cigb *ConfigItemGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, cigb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, cigb.build.ctx, ent.OpQueryGroupBy)
 	if err := cigb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -497,7 +498,7 @@ func (cis *ConfigItemSelect) Aggregate(fns ...AggregateFunc) *ConfigItemSelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (cis *ConfigItemSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, cis.ctx, "Select")
+	ctx = setContextOp(ctx, cis.ctx, ent.OpQuerySelect)
 	if err := cis.prepareQuery(ctx); err != nil {
 		return err
 	}
