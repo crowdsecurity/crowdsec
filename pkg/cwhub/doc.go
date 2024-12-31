@@ -85,17 +85,12 @@
 //		return fmt.Errorf("collection not found")
 //	}
 //
-// To provide the remote hub configuration, use the second parameter of NewHub():
+// Some commands require an object to provide the hub index, or contents:
 //
-//	remoteHub := cwhub.RemoteHubCfg{
+//	indexProvider := cwhub.Downloader{
 //		URLTemplate: "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s",
 //		Branch: "master",
 //		IndexPath: ".index.json",
-//	}
-//
-//	hub, err := cwhub.NewHub(localHub, remoteHub, logger)
-//	if err != nil {
-//		return fmt.Errorf("unable to initialize hub: %w", err)
 //	}
 //
 // The URLTemplate is a string that will be used to build the URL of the remote hub. It must contain two
@@ -103,7 +98,7 @@
 //
 // Before calling hub.Load(), you can update the index file by calling the Update() method:
 //
-//	err := hub.Update(context.Background())
+//	err := hub.Update(context.Background(), indexProvider)
 //	if err != nil {
 //		return fmt.Errorf("unable to update hub index: %w", err)
 //	}

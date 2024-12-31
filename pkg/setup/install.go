@@ -48,7 +48,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, yes, dryRun, verbose bool) error {
+func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, input []byte, yes, dryRun, verbose bool) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
@@ -71,7 +71,8 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, yes, dry
 				return fmt.Errorf("collection %s not found", collection)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, forceAction))
+			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}
@@ -83,7 +84,8 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, yes, dry
 				return fmt.Errorf("parser %s not found", parser)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, forceAction))
+			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}
@@ -95,7 +97,8 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, yes, dry
 				return fmt.Errorf("scenario %s not found", scenario)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, forceAction))
+			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}
@@ -107,7 +110,8 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, input []byte, yes, dry
 				return fmt.Errorf("postoverflow %s not found", postoverflow)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, forceAction))
+			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+
 			if !downloadOnly {
 				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
 			}

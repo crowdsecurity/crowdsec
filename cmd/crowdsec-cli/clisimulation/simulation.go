@@ -71,7 +71,7 @@ func (cli *cliSimulation) newEnableCmd() *cobra.Command {
 		Example:           `cscli simulation enable`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, nil)
+			hub, err := require.Hub(cli.cfg(), nil)
 			if err != nil {
 				return err
 			}

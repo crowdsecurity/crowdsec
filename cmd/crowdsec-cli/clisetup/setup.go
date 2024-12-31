@@ -95,7 +95,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	var (
-		yes bool
+		yes    bool
 		dryRun bool
 	)
 
@@ -289,14 +289,16 @@ func (cli *cliSetup) install(ctx context.Context, yes bool, dryRun bool, fromFil
 
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
 	verbose := (cfg.Cscli.Output == "raw")
 
-	return setup.InstallHubItems(ctx, hub, input, yes, dryRun, verbose)
+	contentProvider := require.HubDownloader(ctx, cfg)
+
+	return setup.InstallHubItems(ctx, hub, contentProvider, input, yes, dryRun, verbose)
 }
 
 func (cli *cliSetup) validate(fromFile string) error {
