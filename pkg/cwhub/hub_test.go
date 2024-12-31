@@ -13,18 +13,19 @@ import (
 
 func TestInitHubUpdate(t *testing.T) {
 	hub := envSetup(t)
-	remote := &RemoteHubCfg{
+
+	_, err := NewHub(hub.local, nil)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	indexProvider := &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
 		IndexPath:   ".index.json",
 	}
 
-	_, err := NewHub(hub.local, remote, nil)
-	require.NoError(t, err)
-
-	ctx := context.Background()
-
-	err = hub.Update(ctx, false)
+	err = hub.Update(ctx, indexProvider, false)
 	require.NoError(t, err)
 
 	err = hub.Load()
@@ -48,29 +49,29 @@ func TestUpdateIndex(t *testing.T) {
 
 	hub := envSetup(t)
 
-	hub.remote = &RemoteHubCfg{
+	hub.local.HubIndexFile = tmpIndex.Name()
+
+	ctx := context.Background()
+
+	indexProvider := &Downloader{
 		URLTemplate: "x",
 		Branch:      "",
 		IndexPath:   "",
 	}
 
-	hub.local.HubIndexFile = tmpIndex.Name()
-
-	ctx := context.Background()
-
-	err = hub.Update(ctx, false)
+	err = hub.Update(ctx, indexProvider, false)
 	cstest.RequireErrorContains(t, err, "failed to build hub index request: invalid URL template 'x'")
 
 	// bad domain
 	fmt.Println("Test 'bad domain'")
 
-	hub.remote = &RemoteHubCfg{
+	indexProvider = &Downloader{
 		URLTemplate: "https://baddomain/crowdsecurity/%s/%s",
 		Branch:      "master",
 		IndexPath:   ".index.json",
 	}
 
-	err = hub.Update(ctx, false)
+	err = hub.Update(ctx, indexProvider, false)
 	require.NoError(t, err)
 	// XXX: this is not failing
 	//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
@@ -78,7 +79,7 @@ func TestUpdateIndex(t *testing.T) {
 	// bad target path
 	fmt.Println("Test 'bad target path'")
 
-	hub.remote = &RemoteHubCfg{
+	indexProvider = &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
 		IndexPath:   ".index.json",
@@ -86,6 +87,6 @@ func TestUpdateIndex(t *testing.T) {
 
 	hub.local.HubIndexFile = "/does/not/exist/index.json"
 
-	err = hub.Update(ctx, false)
+	err = hub.Update(ctx, indexProvider, false)
 	cstest.RequireErrorContains(t, err, "failed to create temporary download file for /does/not/exist/index.json:")
 }

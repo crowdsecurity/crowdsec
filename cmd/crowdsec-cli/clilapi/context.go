@@ -59,7 +59,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, nil)
+			hub, err := require.Hub(cli.cfg(), nil)
 			if err != nil {
 				return err
 			}
@@ -101,7 +101,7 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
-			hub, err := require.Hub(cfg, nil, nil)
+			hub, err := require.Hub(cfg, nil)
 			if err != nil {
 				return err
 			}
@@ -153,7 +153,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				return fmt.Errorf("failed to init expr helpers: %w", err)
 			}
 
-			hub, err := require.Hub(cfg, nil, nil)
+			hub, err := require.Hub(cfg, nil)
 			if err != nil {
 				return err
 			}
