@@ -177,11 +177,15 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 
 	for _, itemType := range cwhub.ItemTypes {
 		for _, item := range hub.GetInstalledByType(itemType, true) {
-			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force))
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
+				return err
+			}
 		}
 	}
 
-	plan.AddCommand(hubops.NewDataRefreshCommand(force))
+	if err := plan.AddCommand(hubops.NewDataRefreshCommand(force)); err != nil {
+		return err
+	}
 
 	verbose := (cfg.Cscli.Output == "raw")
 
