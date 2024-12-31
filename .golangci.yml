@@ -118,7 +118,7 @@ linters-settings:
         arguments: [6]
       - name: function-length
         # lower this after refactoring
-        arguments: [110, 237]
+        arguments: [111, 238]
       - name: get-return
         disabled: true
       - name: increment-decrement
@@ -334,14 +334,6 @@ issues:
       text: "non-wrapping format verb for fmt.Errorf. Use `%w` to format errors"
 
     - linters:
-        - errorlint
-      text: "type assertion on error will fail on wrapped errors. Use errors.As to check for specific errors"
-
-    - linters:
-        - errorlint
-      text: "type switch on error will fail on wrapped errors. Use errors.As to check for specific errors"
-
-    - linters:
         - nosprintfhostport
       text: "host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf"
 
@@ -402,12 +394,6 @@ issues:
       path: "pkg/(.+)_test.go"
       text: "line-length-limit: .*"
 
-    # tolerate deep exit in tests, for now
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "deep-exit: .*"
-
     # we use t,ctx instead of ctx,t in tests
     - linters:
         - revive
@@ -418,11 +404,6 @@ issues:
     - linters:
         - revive
       path: "cmd/crowdsec-cli/main.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "pkg/leakybucket/overflows.go"
       text: "deep-exit: .*"
 
     - linters:
@@ -470,3 +451,8 @@ issues:
         - gocritic
       path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
       text: "rangeValCopy: .*"
+
+    - linters:
+        - revive
+      path: "pkg/types/utils.go"
+      text: "argument-limit: .*"

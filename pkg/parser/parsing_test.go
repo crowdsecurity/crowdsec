@@ -13,6 +13,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -33,14 +35,11 @@ func TestParser(t *testing.T) {
 
 	envSetting := os.Getenv("TEST_ONLY")
 
-	pctx, ectx, err := prepTests()
-	if err != nil {
-		t.Fatalf("failed to load env : %s", err)
-	}
+	pctx, ectx := prepTests(t)
 
 	// Init the enricher
 	if envSetting != "" {
-		if err := testOneParser(pctx, ectx, envSetting, nil); err != nil {
+		if err := testOneParser(t, pctx, ectx, envSetting, nil); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
@@ -57,7 +56,7 @@ func TestParser(t *testing.T) {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 
-			if err := testOneParser(pctx, ectx, fname, nil); err != nil {
+			if err := testOneParser(t, pctx, ectx, fname, nil); err != nil {
 				t.Fatalf("Test '%s' failed : %s", fname, err)
 			}
 		}
@@ -71,22 +70,16 @@ func BenchmarkParser(t *testing.B) {
 
 	log.SetLevel(log.ErrorLevel)
 
-	pctx, ectx, err := prepTests()
-	if err != nil {
-		t.Fatalf("failed to load env : %s", err)
-	}
+	pctx, ectx := prepTests(t)
 
 	envSetting := os.Getenv("TEST_ONLY")
 
 	if envSetting != "" {
-		if err := testOneParser(pctx, ectx, envSetting, t); err != nil {
-			t.Fatalf("Test '%s' failed : %s", envSetting, err)
-		}
+		err := testOneParser(t, pctx, ectx, envSetting, t)
+		require.NoError(t, err, "Test '%s' failed", envSetting)
 	} else {
 		fds, err := os.ReadDir("./tests/")
-		if err != nil {
-			t.Fatalf("Unable to read test directory : %s", err)
-		}
+		require.NoError(t, err, "Unable to read test directory")
 
 		for _, fd := range fds {
 			if !fd.IsDir() {
@@ -96,14 +89,13 @@ func BenchmarkParser(t *testing.B) {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 
-			if err := testOneParser(pctx, ectx, fname, t); err != nil {
-				t.Fatalf("Test '%s' failed : %s", fname, err)
-			}
+			err := testOneParser(t, pctx, ectx, fname, t)
+			require.NoError(t, err, "Test '%s' failed", fname)
 		}
 	}
 }
 
-func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
+func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
 	var (
 		err            error
 		pnodes         []Node
@@ -143,7 +135,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	// TBD: Load post overflows
 	// func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
 	parser_test_file := fmt.Sprintf("%s/test.yaml", dir)
-	tests := loadTestFile(parser_test_file)
+	tests := loadTestFile(t, parser_test_file)
 	count := 1
 
 	if b != nil {
@@ -152,7 +144,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	}
 
 	for range count {
-		if !testFile(tests, *pctx, pnodes) {
+		if !testFile(t, tests, *pctx, pnodes) {
 			return errors.New("test failed")
 		}
 	}
@@ -161,7 +153,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 }
 
 // prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
-func prepTests() (*UnixParserCtx, EnricherCtx, error) {
+func prepTests(t require.TestingT) (*UnixParserCtx, EnricherCtx) {
 	var (
 		err  error
 		pctx *UnixParserCtx
@@ -169,22 +161,16 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	)
 
 	err = exprhelpers.Init(nil)
-	if err != nil {
-		return nil, ectx, fmt.Errorf("exprhelpers init failed: %w", err)
-	}
+	require.NoError(t, err, "exprhelpers init failed")
 
 	// Load enrichment
 	datadir := "./test_data/"
 
 	err = exprhelpers.GeoIPInit(datadir)
-	if err != nil {
-		log.Fatalf("unable to initialize GeoIP: %s", err)
-	}
+	require.NoError(t, err, "geoip init failed")
 
 	ectx, err = Loadplugin()
-	if err != nil {
-		return nil, ectx, fmt.Errorf("failed to load plugin geoip: %v", err)
-	}
+	require.NoError(t, err, "load plugin failed")
 
 	log.Printf("Loaded -> %+v", ectx)
 
@@ -194,18 +180,14 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
 	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
-	if err != nil {
-		return nil, ectx, fmt.Errorf("failed to initialize parser: %v", err)
-	}
+	require.NoError(t, err, "parser init failed")
 
-	return pctx, ectx, nil
+	return pctx, ectx
 }
 
-func loadTestFile(file string) []TestFile {
+func loadTestFile(t require.TestingT, file string) []TestFile {
 	yamlFile, err := os.Open(file)
-	if err != nil {
-		log.Fatalf("yamlFile.Get err   #%v ", err)
-	}
+	require.NoError(t, err, "failed to open test file")
 
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
@@ -221,7 +203,7 @@ func loadTestFile(file string) []TestFile {
 				break
 			}
 
-			log.Fatalf("Failed to load testfile '%s' yaml error : %v", file, err)
+			require.NoError(t, err, "failed to load testfile '%s'", file)
 
 			return nil
 		}
@@ -391,19 +373,14 @@ reCheck:
 	return true, nil
 }
 
-func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
+func testFile(t require.TestingT, testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
 	log.Warning("Going to process one test set")
 
 	for _, tf := range testSet {
 		// func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
 		testOk, err := testSubSet(tf, pctx, nodes)
-		if err != nil {
-			log.Fatalf("test failed : %s", err)
-		}
-
-		if !testOk {
-			log.Fatalf("failed test : %+v", tf)
-		}
+		require.NoError(t, err, "test failed")
+		assert.True(t, testOk, "failed test: %+v", tf)
 	}
 
 	return true
@@ -427,9 +404,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	}
 
 	pctx, err := Init(map[string]interface{}{"patterns": "../../config/patterns/", "data": "./tests/"})
-	if err != nil {
-		t.Fatalf("unable to load patterns : %s", err)
-	}
+	require.NoError(t, err, "unable to load patterns")
 
 	log.Infof("-> %s", spew.Sdump(pctx))
 	/*don't judge me, we do it for the users*/

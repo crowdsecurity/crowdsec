@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
 type cliHelp struct {
@@ -67,13 +68,17 @@ func (cli cliItem) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool, force bool, ignoreError bool) error {
+func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
+	hub, err := require.Hub(cfg, log.StandardLogger())
 	if err != nil {
 		return err
 	}
+
+	plan := hubops.NewActionPlan(hub)
+
+	contentProvider := require.HubDownloader(ctx, cfg)
 
 	for _, name := range args {
 		item := hub.GetItem(cli.name, name)
@@ -88,22 +93,38 @@ func (cli cliItem) install(ctx context.Context, args []string, downloadOnly bool
 			continue
 		}
 
-		if err := item.Install(ctx, force, downloadOnly); err != nil {
-			if !ignoreError {
-				return fmt.Errorf("error while installing '%s': %w", item.Name, err)
-			}
+		if err = plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
+			return err
+		}
 
-			log.Errorf("Error while installing '%s': %s", item.Name, err)
+		if !downloadOnly {
+			if err = plan.AddCommand(hubops.NewEnableCommand(item, force)); err != nil {
+				return err
+			}
 		}
 	}
 
-	log.Info(reload.Message)
+	verbose := (cfg.Cscli.Output == "raw")
+
+	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+		if !ignoreError {
+			return err
+		}
+
+		log.Error(err)
+	}
+
+	if plan.ReloadNeeded {
+		fmt.Println("\n" + reload.Message)
+	}
 
 	return nil
 }
 
 func (cli cliItem) newInstallCmd() *cobra.Command {
 	var (
+		yes          bool
+		dryRun       bool
 		downloadOnly bool
 		force        bool
 		ignoreError  bool
@@ -120,20 +141,23 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 			return compAllItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.install(cmd.Context(), args, downloadOnly, force, ignoreError)
+			return cli.install(cmd.Context(), args, yes, dryRun, downloadOnly, force, ignoreError)
 		},
 	}
 
 	flags := cmd.Flags()
+	flags.BoolVarP(&yes, "yes", "y", false, "Confirm execution without prompt")
+	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	flags.BoolVar(&force, "force", false, "Force install: overwrite tainted and outdated files")
 	flags.BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple "+cli.name)
+	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
 
 	return cmd
 }
 
 // return the names of the installed parents of an item, used to check if we can remove it
-func istalledParentNames(item *cwhub.Item) []string {
+func installedParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
 	for _, parent := range item.Ancestors() {
@@ -145,11 +169,8 @@ func istalledParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error {
-	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
-	if err != nil {
-		return err
-	}
+func (cli cliItem) removePlan(hub *cwhub.Hub, args []string, purge bool, force bool, all bool) (*hubops.ActionPlan, error) {
+	plan := hubops.NewActionPlan(hub)
 
 	if all {
 		itemGetter := hub.GetInstalledByType
@@ -157,43 +178,32 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 			itemGetter = hub.GetItemsByType
 		}
 
-		removed := 0
-
 		for _, item := range itemGetter(cli.name, true) {
-			didRemove, err := item.Remove(purge, force)
-			if err != nil {
-				return err
+			if err := plan.AddCommand(hubops.NewDisableCommand(item, force)); err != nil {
+				return nil, err
 			}
 
-			if didRemove {
-				log.Infof("Removed %s", item.Name)
-
-				removed++
+			if purge {
+				if err := plan.AddCommand(hubops.NewPurgeCommand(item, force)); err != nil {
+					return nil, err
+				}
 			}
 		}
 
-		log.Infof("Removed %d %s", removed, cli.name)
-
-		if removed > 0 {
-			log.Info(reload.Message)
-		}
-
-		return nil
+		return plan, nil
 	}
 
 	if len(args) == 0 {
-		return fmt.Errorf("specify at least one %s to remove or '--all'", cli.singular)
+		return nil, fmt.Errorf("specify at least one %s to remove or '--all'", cli.singular)
 	}
-
-	removed := 0
 
 	for _, itemName := range args {
 		item := hub.GetItem(cli.name, itemName)
 		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
+			return nil, fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
-		parents := istalledParentNames(item)
+		parents := installedParentNames(item)
 
 		if !force && len(parents) > 0 {
 			log.Warningf("%s belongs to collections: %s", item.Name, parents)
@@ -202,22 +212,41 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 			continue
 		}
 
-		didRemove, err := item.Remove(purge, force)
-		if err != nil {
-			return err
+		if err := plan.AddCommand(hubops.NewDisableCommand(item, force)); err != nil {
+			return nil, err
 		}
 
-		if didRemove {
-			log.Infof("Removed %s", item.Name)
-
-			removed++
+		if purge {
+			if err := plan.AddCommand(hubops.NewPurgeCommand(item, force)); err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	log.Infof("Removed %d %s", removed, cli.name)
+	return plan, nil
+}
 
-	if removed > 0 {
-		log.Info(reload.Message)
+func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun bool, purge bool, force bool, all bool) error {
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cli.cfg(), log.StandardLogger())
+	if err != nil {
+		return err
+	}
+
+	plan, err := cli.removePlan(hub, args, purge, force, all)
+	if err != nil {
+		return err
+	}
+
+	verbose := (cfg.Cscli.Output == "raw")
+
+	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+		return err
+	}
+
+	if plan.ReloadNeeded {
+		fmt.Println("\n" + reload.Message)
 	}
 
 	return nil
@@ -225,9 +254,11 @@ func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error
 
 func (cli cliItem) newRemoveCmd() *cobra.Command {
 	var (
-		purge bool
-		force bool
-		all   bool
+		yes    bool
+		dryRun bool
+		purge  bool
+		force  bool
+		all    bool
 	)
 
 	cmd := &cobra.Command{
@@ -240,76 +271,80 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.remove(args, purge, force, all)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && all {
+				return errors.New("can't specify items and '--all' at the same time")
+			}
+
+			return cli.remove(cmd.Context(), args, yes, dryRun, purge, force, all)
 		},
 	}
 
 	flags := cmd.Flags()
+	flags.BoolVarP(&yes, "yes", "y", false, "Confirm execution without prompt")
+	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVar(&purge, "purge", false, "Delete source file too")
 	flags.BoolVar(&force, "force", false, "Force remove: remove tainted and outdated files")
 	flags.BoolVar(&all, "all", false, "Remove all the "+cli.name)
+	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
 
 	return cmd
 }
 
-func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all bool) error {
-	cfg := cli.cfg()
-
-	hub, err := require.Hub(cfg, require.RemoteHub(ctx, cfg), log.StandardLogger())
-	if err != nil {
-		return err
-	}
+func (cli cliItem) upgradePlan(hub *cwhub.Hub, contentProvider cwhub.ContentProvider, args []string, force bool, all bool) (*hubops.ActionPlan, error) {
+	plan := hubops.NewActionPlan(hub)
 
 	if all {
-		updated := 0
-
 		for _, item := range hub.GetInstalledByType(cli.name, true) {
-			didUpdate, err := item.Upgrade(ctx, force)
-			if err != nil {
-				return err
-			}
-
-			if didUpdate {
-				updated++
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
+				return nil, err
 			}
 		}
 
-		log.Infof("Updated %d %s", updated, cli.name)
-
-		if updated > 0 {
-			log.Info(reload.Message)
-		}
-
-		return nil
+		return plan, nil
 	}
 
 	if len(args) == 0 {
-		return fmt.Errorf("specify at least one %s to upgrade or '--all'", cli.singular)
+		return nil, fmt.Errorf("specify at least one %s to upgrade or '--all'", cli.singular)
 	}
-
-	updated := 0
 
 	for _, itemName := range args {
 		item := hub.GetItem(cli.name, itemName)
 		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
+			return nil, fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
-		didUpdate, err := item.Upgrade(ctx, force)
-		if err != nil {
-			return err
-		}
-
-		if didUpdate {
-			log.Infof("Updated %s", item.Name)
-
-			updated++
+		if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
+			return nil, err
 		}
 	}
 
-	if updated > 0 {
-		log.Info(reload.Message)
+	return plan, nil
+}
+
+func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun bool, force bool, all bool) error {
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cfg, log.StandardLogger())
+	if err != nil {
+		return err
+	}
+
+	contentProvider := require.HubDownloader(ctx, cfg)
+
+	plan, err := cli.upgradePlan(hub, contentProvider, args, force, all)
+	if err != nil {
+		return err
+	}
+
+	verbose := (cfg.Cscli.Output == "raw")
+
+	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+		return err
+	}
+
+	if plan.ReloadNeeded {
+		fmt.Println("\n" + reload.Message)
 	}
 
 	return nil
@@ -317,8 +352,10 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, force bool, all b
 
 func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	var (
-		all   bool
-		force bool
+		yes    bool
+		dryRun bool
+		all    bool
+		force  bool
 	)
 
 	cmd := &cobra.Command{
@@ -331,13 +368,16 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.upgrade(cmd.Context(), args, force, all)
+			return cli.upgrade(cmd.Context(), args, yes, dryRun, force, all)
 		},
 	}
 
 	flags := cmd.Flags()
+	flags.BoolVarP(&yes, "yes", "y", false, "Confirm execution without prompt")
+	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVarP(&all, "all", "a", false, "Upgrade all the "+cli.name)
 	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated files")
+	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
 
 	return cmd
 }
@@ -353,13 +393,13 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 		cfg.Cscli.PrometheusUrl = url
 	}
 
-	remote := (*cwhub.RemoteHubCfg)(nil)
+	var contentProvider cwhub.ContentProvider
 
 	if diff {
-		remote = require.RemoteHub(ctx, cfg)
+		contentProvider = require.HubDownloader(ctx, cfg)
 	}
 
-	hub, err := require.Hub(cfg, remote, log.StandardLogger())
+	hub, err := require.Hub(cfg, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -371,12 +411,12 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 		}
 
 		if diff {
-			fmt.Println(cli.whyTainted(ctx, hub, item, rev))
+			fmt.Println(cli.whyTainted(ctx, hub, contentProvider, item, rev))
 
 			continue
 		}
 
-		if err = clihub.InspectItem(item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		if err = inspectItem(hub, item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
@@ -425,7 +465,7 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 func (cli cliItem) list(args []string, all bool) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
+	hub, err := require.Hub(cli.cfg(), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -461,7 +501,7 @@ func (cli cliItem) newListCmd() *cobra.Command {
 }
 
 // return the diff between the installed version and the latest version
-func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, reverse bool) (string, error) {
+func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.Installed {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -472,7 +512,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, reverse bool)
 	}
 	defer os.Remove(dest.Name())
 
-	_, remoteURL, err := item.FetchContentTo(ctx, dest.Name())
+	_, remoteURL, err := item.FetchContentTo(ctx, contentProvider, dest.Name())
 	if err != nil {
 		return "", err
 	}
@@ -503,7 +543,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, reverse bool)
 	return fmt.Sprintf("%s", diff), nil
 }
 
-func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item, reverse bool) string {
+func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
 	if !item.State.Installed {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
@@ -528,7 +568,7 @@ func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, item *cwhub.I
 			ret = append(ret, err.Error())
 		}
 
-		diff, err := cli.itemDiff(ctx, sub, reverse)
+		diff, err := cli.itemDiff(ctx, sub, contentProvider, reverse)
 		if err != nil {
 			ret = append(ret, err.Error())
 		}
