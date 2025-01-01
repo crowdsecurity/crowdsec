@@ -439,11 +439,8 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
 	}
 
-	// don't use SetTitle() because it draws the title inside table box
-	io.WriteString(out, title+":\n")
-	io.WriteString(out, t.Render()+"\n")
-	// empty line between tables
-	io.WriteString(out, "\n")
+	t.SetTitle(title)
+	fmt.Fprintln(out, t.Render())
 }
 
 // Table displays a table of metrics for each bouncer
@@ -456,6 +453,6 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 	}
 
 	if !found && showEmpty {
-		io.WriteString(out, "No bouncer metrics found.\n\n")
+		fmt.Fprintln(out, "No bouncer metrics found.")
 	}
 }

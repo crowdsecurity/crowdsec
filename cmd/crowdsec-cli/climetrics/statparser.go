@@ -1,6 +1,7 @@
 package climetrics
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -36,8 +37,7 @@ func (s statParser) Table(out io.Writer, wantColor string, noUnit bool, showEmpt
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		io.WriteString(out, title+":\n")
-		io.WriteString(out, t.Render()+"\n")
-		io.WriteString(out, "\n")
+		t.SetTitle(title)
+		fmt.Fprintln(out, t.Render())
 	}
 }

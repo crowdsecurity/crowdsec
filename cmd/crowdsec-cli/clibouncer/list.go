@@ -37,7 +37,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	fmt.Fprintln(out, t.Render())
 }
 
 func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
