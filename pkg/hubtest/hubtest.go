@@ -27,7 +27,6 @@ type HubTest struct {
 
 	HubIndex   *cwhub.Hub
 	Tests      []*HubTestItem
-	PatternDir string
 }
 
 const (
@@ -59,7 +58,7 @@ http:
 `
 )
 
-func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool, patternDir string) (HubTest, error) {
+func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
 	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
@@ -117,7 +116,6 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			NucleiTargetHost:          DefaultNucleiTarget,
 			AppSecHost:                DefaultAppsecHost,
 			HubIndex:                  hub,
-			PatternDir:                patternDir,
 		}, nil
 	}
 
@@ -151,7 +149,6 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		TemplateProfilePath:    filepath.Join(HubTestPath, templateProfileFile),
 		TemplateSimulationPath: filepath.Join(HubTestPath, templateSimulationFile),
 		HubIndex:               hub,
-		PatternDir:             patternDir,
 	}, nil
 }
 

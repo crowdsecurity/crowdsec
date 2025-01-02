@@ -78,7 +78,6 @@ type HubTestItem struct {
 
 	NucleiTargetHost string
 	AppSecHost       string
-	PatternDir       string
 }
 
 const (
@@ -160,7 +159,6 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
 		NucleiTargetHost:          hubTest.NucleiTargetHost,
 		AppSecHost:                hubTest.AppSecHost,
-		PatternDir:                hubTest.PatternDir,
 	}, nil
 }
 
@@ -384,7 +382,7 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithLogFile() error {
+func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
@@ -420,8 +418,8 @@ func (t *HubTestItem) RunWithLogFile() error {
 	}
 
 	// copy template patterns folder to runtime folder
-	if err = CopyDir(t.PatternDir, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", t.PatternDir, t.RuntimePatternsPath, err)
+	if err = CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
+		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
 	}
 
 	// install the hub in the runtime folder
@@ -566,7 +564,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	return nil
 }
 
-func (t *HubTestItem) Run() error {
+func (t *HubTestItem) Run(patternDir string) error {
 	var err error
 
 	t.Success = false
@@ -597,8 +595,8 @@ func (t *HubTestItem) Run() error {
 	}
 
 	// copy template patterns folder to runtime folder
-	if err = CopyDir(t.PatternDir, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", t.PatternDir, t.RuntimePatternsPath, err)
+	if err = CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
+		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
 	}
 
 	// create the appsec-configs dir
@@ -632,7 +630,7 @@ func (t *HubTestItem) Run() error {
 	}
 
 	if t.Config.LogFile != "" {
-		return t.RunWithLogFile()
+		return t.RunWithLogFile(patternDir)
 	} else if t.Config.NucleiTemplate != "" {
 		return t.RunWithNucleiTemplate()
 	}
