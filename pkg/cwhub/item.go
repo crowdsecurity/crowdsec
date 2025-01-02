@@ -114,37 +114,38 @@ type Dependencies struct {
 
 // a group of items of the same type
 type itemgroup struct {
-	typeName string
-	itemNames  []string
+	typeName  string
+	itemNames []string
 }
 
 func (d Dependencies) byType() []itemgroup {
-    return []itemgroup{
-        {PARSERS, d.Parsers},
-        {POSTOVERFLOWS, d.PostOverflows},
-        {SCENARIOS, d.Scenarios},
-        {CONTEXTS, d.Contexts},
-        {APPSEC_CONFIGS, d.AppsecConfigs},
-        {APPSEC_RULES, d.AppsecRules},
-        {COLLECTIONS, d.Collections},
-    }
+	return []itemgroup{
+		{PARSERS, d.Parsers},
+		{POSTOVERFLOWS, d.PostOverflows},
+		{SCENARIOS, d.Scenarios},
+		{CONTEXTS, d.Contexts},
+		{APPSEC_CONFIGS, d.AppsecConfigs},
+		{APPSEC_RULES, d.AppsecRules},
+		{COLLECTIONS, d.Collections},
+	}
 }
 
 // SubItems iterates over the sub-items in the struct, excluding the ones that were not found in the hub.
 func (d Dependencies) SubItems(hub *Hub) func(func(*Item) bool) {
-    return func(yield func(*Item) bool) {
-        for _, typeGroup := range d.byType() {
-            for _, name := range typeGroup.itemNames {
-                s := hub.GetItem(typeGroup.typeName, name)
-                if s == nil {
-                    continue
-                }
-                if !yield(s) {
-                    return
-                }
-            }
-        }
-    }
+	return func(yield func(*Item) bool) {
+		for _, typeGroup := range d.byType() {
+			for _, name := range typeGroup.itemNames {
+				s := hub.GetItem(typeGroup.typeName, name)
+				if s == nil {
+					continue
+				}
+
+				if !yield(s) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // Item is created from an index file and enriched with local info.
@@ -272,6 +273,7 @@ func (i *Item) CurrentDependencies() Dependencies {
 	if errors.Is(err, fs.ErrNotExist) {
 		return i.Dependencies
 	}
+
 	if err != nil {
 		// a file might be corrupted, or in development
 		i.hub.logger.Warningf("can't read dependencies for %s, using index", i.FQName())
@@ -285,10 +287,9 @@ func (i *Item) CurrentDependencies() Dependencies {
 		i.hub.logger.Warningf("can't parse dependencies for %s, using index", i.FQName())
 		return i.Dependencies
 	}
-	
+
 	return d
 }
-
 
 func (i *Item) logMissingSubItems() {
 	if !i.HasSubItems() {
@@ -404,7 +405,6 @@ func (i *Item) SafeToRemoveDeps() ([]*Item, error) {
 
 	return ret, nil
 }
-
 
 // descendants returns a list of all (direct or indirect) dependencies of the item's current version.
 func (i *Item) descendants() ([]*Item, error) {

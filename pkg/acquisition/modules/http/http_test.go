@@ -14,13 +14,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -241,7 +243,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 
 func TestStreamingAcquisitionWrongHTTPMethod(t *testing.T) {
 	h := &HTTPSource{}
-	_, _, tomb:= SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test

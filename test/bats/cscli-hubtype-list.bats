@@ -80,7 +80,7 @@ teardown() {
     # the list should be the same in all formats, and sorted (not case sensitive)
 
     list_raw=$(cscli parsers list -o raw -a | tail -n +2 | cut -d, -f1)
-    list_human=$(cscli parsers list -o human -a | tail -n +6 | head -n -1 | cut -d' ' -f2)
+    list_human=$(cscli parsers list -o human -a | tail -n +7 | head -n -1 | cut -d' ' -f2)
     list_json=$(cscli parsers list -o json -a | jq -r '.parsers[].name')
 
     # use python to sort because it handles "_" like go
