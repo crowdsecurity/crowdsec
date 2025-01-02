@@ -218,7 +218,7 @@ func TestGetName(t *testing.T) {
 	assert.Equal(t, "http", h.GetName())
 }
 
-func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel int) (chan types.Event, *tomb.Tomb) {
+func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel int) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := context.Background()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
@@ -230,16 +230,18 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	err = h.StreamingAcquisition(ctx, out, &tomb)
 	require.NoError(t, err)
 
+	testRegistry := prometheus.NewPedanticRegistry()
 	for _, metric := range h.GetMetrics() {
-		prometheus.Register(metric)
+		err = testRegistry.Register(metric)
+		require.NoError(t, err)
 	}
 
-	return out, &tomb
+	return out, testRegistry, &tomb
 }
 
 func TestStreamingAcquisitionWrongHTTPMethod(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb:= SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -256,12 +258,13 @@ basic_auth:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionUnknownPath(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -278,12 +281,13 @@ basic_auth:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionBasicAuth(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -310,12 +314,13 @@ basic_auth:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionBadHeaders(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -337,12 +342,13 @@ headers:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -365,12 +371,13 @@ max_body_size: 5`), 0)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionSuccess(t *testing.T) {
 	h := &HTTPSource{}
-	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -396,16 +403,17 @@ headers:
 	err = <-errChan
 	require.NoError(t, err)
 
-	assertMetrics(t, h.GetMetrics(), 1)
+	assertMetrics(t, reg, h.GetMetrics(), 1)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
 	h := &HTTPSource{}
-	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -435,11 +443,12 @@ custom_headers:
 	err = <-errChan
 	require.NoError(t, err)
 
-	assertMetrics(t, h.GetMetrics(), 1)
+	assertMetrics(t, reg, h.GetMetrics(), 1)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 type slowReader struct {
@@ -495,7 +504,7 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 
 func TestStreamingAcquisitionTimeout(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -525,12 +534,13 @@ timeout: 1s`), 0)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionTLSHTTPRequest(t *testing.T) {
 	h := &HTTPSource{}
-	_, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 auth_type: mtls
@@ -549,12 +559,13 @@ tls:
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
 	h := &HTTPSource{}
-	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -600,16 +611,17 @@ tls:
 	err = <-errChan
 	require.NoError(t, err)
 
-	assertMetrics(t, h.GetMetrics(), 0)
+	assertMetrics(t, reg, h.GetMetrics(), 0)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionMTLS(t *testing.T) {
 	h := &HTTPSource{}
-	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -657,16 +669,17 @@ tls:
 	err = <-errChan
 	require.NoError(t, err)
 
-	assertMetrics(t, h.GetMetrics(), 0)
+	assertMetrics(t, reg, h.GetMetrics(), 0)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionGzipData(t *testing.T) {
 	h := &HTTPSource{}
-	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -709,16 +722,17 @@ headers:
 	err = <-errChan
 	require.NoError(t, err)
 
-	assertMetrics(t, h.GetMetrics(), 2)
+	assertMetrics(t, reg, h.GetMetrics(), 2)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisitionNDJson(t *testing.T) {
 	h := &HTTPSource{}
-	out, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: /test
@@ -747,15 +761,16 @@ headers:
 	err = <-errChan
 	require.NoError(t, err)
 
-	assertMetrics(t, h.GetMetrics(), 2)
+	assertMetrics(t, reg, h.GetMetrics(), 2)
 
 	h.Server.Close()
 	tomb.Kill(nil)
-	tomb.Wait()
+	err = tomb.Wait()
+	require.NoError(t, err)
 }
 
-func assertMetrics(t *testing.T, metrics []prometheus.Collector, expected int) {
-	promMetrics, err := prometheus.DefaultGatherer.Gather()
+func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.Collector, expected int) {
+	promMetrics, err := reg.Gather()
 	require.NoError(t, err)
 
 	isExist := false

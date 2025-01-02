@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -31,7 +32,8 @@ func TestNewRequestInvalid(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
