@@ -11,6 +11,7 @@ import (
 
 func TestAppsecRuleLoad(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
+
 	tests := []appsecRuleTest{
 		{
 			name:             "simple rule load",
@@ -106,21 +107,22 @@ func TestAppsecRuleLoad(t *testing.T) {
 
 					Or: []appsec_rule.CustomRule{
 						{
-							//Name:  "rule1",
+							// Name:  "rule1",
 							Zones: []string{"ARGS"},
 							Match: appsec_rule.Match{Type: "equals", Value: "toto"},
 						},
 						{
-							//Name:  "rule1",
+							// Name:  "rule1",
 							Zones: []string{"ARGS"},
 							Match: appsec_rule.Match{Type: "equals", Value: "tutu"},
 						},
 						{
-							//Name:  "rule1",
+							// Name:  "rule1",
 							Zones: []string{"ARGS"},
 							Match: appsec_rule.Match{Type: "equals", Value: "tata"},
-						}, {
-							//Name:  "rule1",
+						},
+						{
+							// Name:  "rule1",
 							Zones: []string{"ARGS"},
 							Match: appsec_rule.Match{Type: "equals", Value: "titi"},
 						},

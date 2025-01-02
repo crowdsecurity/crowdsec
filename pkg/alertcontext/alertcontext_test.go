@@ -230,6 +230,7 @@ func TestValidateContextExpr(t *testing.T) {
 	}
 	for _, test := range tests {
 		fmt.Printf("Running test '%s'\n", test.name)
+
 		err := ValidateContextExpr(test.key, test.exprs)
 		if test.expectedErr == nil {
 			require.NoError(t, err)
@@ -349,13 +350,13 @@ func TestAppsecEventToContext(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		//reset cache
+		// reset cache
 		alertContext = Context{}
-		//compile
+		// compile
 		if err := NewAlertContext(test.contextToSend, 100); err != nil {
 			t.Fatalf("failed to compile %s: %s", test.name, err)
 		}
-		//run
+		// run
 
 		metas, errors := AppsecEventToContext(test.match, test.req)
 		assert.Len(t, errors, test.expectedErrLen)

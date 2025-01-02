@@ -139,6 +139,7 @@ func (d Dependencies) SubItems(hub *Hub) func(func(*Item) bool) {
 				if s == nil {
 					continue
 				}
+
 				if !yield(s) {
 					return
 				}
@@ -272,6 +273,7 @@ func (i *Item) CurrentDependencies() Dependencies {
 	if errors.Is(err, fs.ErrNotExist) {
 		return i.Dependencies
 	}
+
 	if err != nil {
 		// a file might be corrupted, or in development
 		i.hub.logger.Warningf("can't read dependencies for %s, using index", i.FQName())
