@@ -14,9 +14,12 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 		return fmt.Errorf("can't load test: %+v", err)
 	}
 
+	cfg := cli.cfg()
+	patternDir := cfg.ConfigPaths.PatternDir
+
 	err = test.ParserAssert.LoadTest(test.ParserResultFile)
 	if err != nil {
-		if err = test.Run(); err != nil {
+		if err = test.Run(patternDir); err != nil {
 			return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 		}
 
@@ -27,7 +30,7 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 
 	err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 	if err != nil {
-		if err = test.Run(); err != nil {
+		if err = test.Run(patternDir); err != nil {
 			return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 		}
 
