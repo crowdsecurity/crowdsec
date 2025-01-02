@@ -15,6 +15,7 @@ import (
 type AppsecCollection struct {
 	collectionName string
 	Rules          []string
+	NativeRules    []string
 }
 
 var APPSEC_RULE = "appsec-rule"
@@ -88,14 +89,14 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 					if strings.TrimSpace(line) == "" {
 						continue
 					}
-					appsecCol.Rules = append(appsecCol.Rules, line)
+					appsecCol.NativeRules = append(appsecCol.NativeRules, line)
 				}
 			}
 		}
 
 		if appsecRule.SecLangRules != nil {
 			logger.Tracef("Adding inline rules %+v", appsecRule.SecLangRules)
-			appsecCol.Rules = append(appsecCol.Rules, appsecRule.SecLangRules...)
+			appsecCol.NativeRules = append(appsecCol.NativeRules, appsecRule.SecLangRules...)
 		}
 
 		if appsecRule.Rules != nil {
