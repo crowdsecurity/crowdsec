@@ -29,8 +29,6 @@ import (
 	"github.com/umahmood/haversine"
 	"github.com/wasilibs/go-re2"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -144,17 +142,19 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	}
 	// cache is enabled
 
-	if CacheCfg.Size == nil {
-		CacheCfg.Size = ptr.Of(50)
+	size := 50
+	if CacheCfg.Size != nil {
+		size = *CacheCfg.Size
 	}
 
-	gc := gcache.New(*CacheCfg.Size)
+	gc := gcache.New(size)
 
-	if CacheCfg.Strategy == nil {
-		CacheCfg.Strategy = ptr.Of("LRU")
+	strategy := "LRU"
+	if CacheCfg.Strategy != nil {
+		strategy = *CacheCfg.Strategy
 	}
 
-	switch *CacheCfg.Strategy {
+	switch strategy {
 	case "LRU":
 		gc = gc.LRU()
 	case "LFU":
@@ -162,7 +162,7 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	case "ARC":
 		gc = gc.ARC()
 	default:
-		return fmt.Errorf("unknown cache strategy '%s'", *CacheCfg.Strategy)
+		return fmt.Errorf("unknown cache strategy '%s'", strategy)
 	}
 
 	if CacheCfg.TTL != nil {

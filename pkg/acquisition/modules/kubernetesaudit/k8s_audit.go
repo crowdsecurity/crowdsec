@@ -154,7 +154,9 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 		})
 		<-t.Dying()
 		ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
-		ka.server.Shutdown(ctx)
+		if err := ka.server.Shutdown(ctx); err != nil {
+			ka.logger.Errorf("Error shutting down k8s-audit server: %s", err.Error())
+		}
 
 		return nil
 	})

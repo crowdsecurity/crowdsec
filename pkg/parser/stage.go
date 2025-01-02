@@ -114,10 +114,12 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			for _, data := range node.Data {
 				err = exprhelpers.FileInit(pctx.DataFolder, data.DestPath, data.Type)
 				if err != nil {
-					log.Error(err)
+					log.Error(err.Error())
 				}
 				if data.Type == "regexp" { //cache only makes sense for regexp
-					exprhelpers.RegexpCacheInit(data.DestPath, *data)
+					if err = exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
+						log.Error(err.Error())
+					}
 				}
 			}
 
