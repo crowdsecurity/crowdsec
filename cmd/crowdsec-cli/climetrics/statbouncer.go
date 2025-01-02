@@ -176,17 +176,20 @@ func (*statBouncer) extractRawMetrics(metrics []*ent.Metric) ([]bouncerMetricIte
 
 				if item.Name == nil {
 					logWarningOnce(warningsLogged, "missing 'name' field in metrics reported by "+bouncerName)
+
 					// no continue - keep checking the rest
 					valid = false
 				}
 
 				if item.Unit == nil {
 					logWarningOnce(warningsLogged, "missing 'unit' field in metrics reported by "+bouncerName)
+
 					valid = false
 				}
 
 				if item.Value == nil {
 					logWarningOnce(warningsLogged, "missing 'value' field in metrics reported by "+bouncerName)
+
 					valid = false
 				}
 
@@ -449,6 +452,7 @@ func (s *statBouncer) Table(out io.Writer, wantColor string, noUnit bool, showEm
 
 	for _, bouncerName := range maptools.SortedKeys(s.aggOverOrigin) {
 		s.bouncerTable(out, bouncerName, wantColor, noUnit)
+
 		found = true
 	}
 

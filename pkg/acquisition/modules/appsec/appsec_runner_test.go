@@ -3,9 +3,10 @@ package appsecacquisition
 import (
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 )
 
 func TestAppsecRuleLoad(t *testing.T) {

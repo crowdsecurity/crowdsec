@@ -16,7 +16,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v3"
 

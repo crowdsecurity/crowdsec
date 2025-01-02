@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
-
 func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
 	t := cstable.NewLight(out, wantColor).Writer
 	t.AppendHeader(table.Row{"Inband Hits", "Outband Hits"})

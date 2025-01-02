@@ -90,7 +90,6 @@ func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 func (cli *cliMachines) List(ctx context.Context, out io.Writer, db *database.Client) error {
 	// XXX: must use the provided db object, the one in the struct might be nil
 	// (calling List directly skips the PersistentPreRunE)
-
 	machines, err := db.ListMachines(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %w", err)

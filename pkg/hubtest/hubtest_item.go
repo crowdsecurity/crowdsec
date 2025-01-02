@@ -300,7 +300,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	crowdsecDaemon.Start()
 
 	// wait for the appsec port to be available
-	if _, err := IsAlive(t.AppSecHost); err != nil {
+	if _, err = IsAlive(t.AppSecHost); err != nil {
 		crowdsecLog, err2 := os.ReadFile(crowdsecLogFile)
 		if err2 != nil {
 			log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
@@ -319,7 +319,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	nucleiTargetHost := nucleiTargetParsedURL.Host
-	if _, err := IsAlive(nucleiTargetHost); err != nil {
+	if _, err = IsAlive(nucleiTargetHost); err != nil {
 		return fmt.Errorf("target is down: %w", err)
 	}
 
@@ -631,8 +631,11 @@ func (t *HubTestItem) Run(patternDir string) error {
 
 	if t.Config.LogFile != "" {
 		return t.RunWithLogFile(patternDir)
-	} else if t.Config.NucleiTemplate != "" {
+	}
+
+	if t.Config.NucleiTemplate != "" {
 		return t.RunWithNucleiTemplate()
 	}
+
 	return fmt.Errorf("log file or nuclei template must be set in '%s'", t.Name)
 }
