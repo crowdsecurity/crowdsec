@@ -167,6 +167,7 @@ func sortedVersions(raw []string) ([]string, error) {
 	for idx, r := range raw {
 		v, err := semver.NewVersion(r)
 		if err != nil {
+			// TODO: should catch this during index parsing
 			return nil, fmt.Errorf("%s: %w", r, err)
 		}
 
@@ -487,7 +488,6 @@ func (h *Hub) localSync() error {
 			continue
 		}
 
-		// XXX: versions should be validated in the hub parser
 		vs := item.versionStatus()
 		switch vs {
 		case versionUpToDate: // latest

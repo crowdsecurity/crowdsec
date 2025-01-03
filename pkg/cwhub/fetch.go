@@ -11,8 +11,8 @@ import (
 )
 
 // writeEmbeddedContentTo writes the embedded content to the specified path and checks the hash.
-// If the content is base64 encoded, it will be decoded before writing. Check for item.Content
-// before calling this method.
+// If the content is base64 encoded, it will be decoded before writing. Call this method only
+// if item.Content if not empty.
 func (i *Item) writeEmbeddedContentTo(destPath, wantHash string) error {
 	if i.Content == "" {
 		return fmt.Errorf("no embedded content for %s", i.Name)
@@ -48,7 +48,9 @@ func (i *Item) writeEmbeddedContentTo(destPath, wantHash string) error {
 }
 
 // FetchContentTo writes the last version of the item's YAML file to the specified path.
-// Returns whether the file was downloaded, and the remote url for feedback purposes.
+// If the file is embedded in the index file, it will be written directly without downloads.
+// Returns whether the file was downloaded (to inform if the security engine needs reloading)
+// and the remote url for feedback purposes.
 func (i *Item) FetchContentTo(ctx context.Context, contentProvider ContentProvider, destPath string) (bool, string, error) {
 	wantHash := i.latestHash()
 	if wantHash == "" {
