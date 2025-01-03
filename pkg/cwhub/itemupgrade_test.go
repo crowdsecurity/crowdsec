@@ -41,7 +41,6 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	remote := &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath:   ".index.json",
 	}
 
 	hub, err := NewHub(hub.local, remote, nil)
@@ -101,7 +100,6 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	remote := &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath:   ".index.json",
 	}
 
 	hub = getHubOrFail(t, hub.local, remote)
@@ -173,7 +171,6 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	remote := &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath:   ".index.json",
 	}
 
 	hub = getHubOrFail(t, hub.local, remote)

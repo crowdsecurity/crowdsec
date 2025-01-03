@@ -89,7 +89,6 @@ func HubDownloader(ctx context.Context, c *csconfig.Config) *cwhub.Downloader {
 	remote := &cwhub.Downloader{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
-		IndexPath:   ".index.json",
 	}
 
 	return remote
@@ -115,7 +114,7 @@ func Hub(c *csconfig.Config, logger *logrus.Logger) (*cwhub.Hub, error) {
 	}
 
 	if err := hub.Load(); err != nil {
-		return nil, fmt.Errorf("failed to read hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
+		return nil, err
 	}
 
 	return hub, nil

@@ -32,7 +32,7 @@ teardown() {
 	EOF
 
     rune -1 cscli hub list
-    assert_stderr --partial "failed to read hub index: parsers:author/pars1 has no index metadata."
+    assert_stderr --partial "invalid hub index: parsers:author/pars1 has no index metadata."
 }
 
 @test "malformed index - no download path" {
@@ -46,7 +46,7 @@ teardown() {
 	EOF
 
     rune -1 cscli hub list
-    assert_stderr --partial "failed to read hub index: parsers:author/pars1 has no download path."
+    assert_stderr --partial "invalid hub index: parsers:author/pars1 has no download path."
 }
 
 @test "malformed parser - no stage" {
@@ -63,7 +63,7 @@ teardown() {
 	EOF
 
     rune -1 cscli hub list -o raw
-    assert_stderr --partial "failed to read hub index: parsers:author/pars1 has no stage."
+    assert_stderr --partial "invalid hub index: parsers:author/pars1 has no stage."
 }
 
 @test "malformed parser - short path" {

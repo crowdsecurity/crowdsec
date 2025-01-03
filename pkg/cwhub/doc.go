@@ -90,7 +90,6 @@
 //	indexProvider := cwhub.Downloader{
 //		URLTemplate: "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s",
 //		Branch: "master",
-//		IndexPath: ".index.json",
 //	}
 //
 // The URLTemplate is a string that will be used to build the URL of the remote hub. It must contain two
