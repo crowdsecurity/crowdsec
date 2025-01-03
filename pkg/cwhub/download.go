@@ -19,7 +19,6 @@ type NotFoundError = downloader.NotFoundError
 type Downloader struct {
 	Branch      string
 	URLTemplate string
-	IndexPath   string
 }
 
 // IndexProvider retrieves and writes .index.json
@@ -64,7 +63,7 @@ func addURLParam(rawURL string, param string, value string) (string, error) {
 // It uses a temporary file to avoid partial downloads, and won't overwrite the original
 // if it has not changed.
 func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withContent bool, logger *logrus.Logger) (bool, error) {
-	url, err := d.urlTo(d.IndexPath)
+	url, err := d.urlTo(".index.json")
 	if err != nil {
 		return false, fmt.Errorf("failed to build hub index request: %w", err)
 	}

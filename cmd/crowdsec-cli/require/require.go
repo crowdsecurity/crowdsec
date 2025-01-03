@@ -89,7 +89,6 @@ func HubDownloader(ctx context.Context, c *csconfig.Config) *cwhub.Downloader {
 	remote := &cwhub.Downloader{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
-		IndexPath:   ".index.json",
 	}
 
 	return remote

@@ -64,7 +64,6 @@ func testHub(t *testing.T, update bool) *Hub {
 		indexProvider := &Downloader{
 			Branch:      "master",
 			URLTemplate: mockURLTemplate,
-			IndexPath:   ".index.json",
 		}
 
 		ctx := context.Background()

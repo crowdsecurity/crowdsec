@@ -49,24 +49,14 @@ func TestFetchIndex(t *testing.T) {
 	// bad branch
 
 	downloader.Branch = "dev"
-	downloader.IndexPath = ".index.json"
 
 	downloaded, err := downloader.FetchIndex(ctx, destPath, withContent, discard)
 	require.ErrorAs(t, err, &notFoundError)
 	assert.False(t, downloaded)
 
-	// bad path
-
-	downloader.Branch = "main"
-	downloader.IndexPath = "index.txt"
-
-	downloaded, err = downloader.FetchIndex(ctx, destPath, withContent, discard)
-	require.ErrorAs(t, err, &notFoundError)
-	assert.False(t, downloaded)
-
 	// ok
 
-	downloader.IndexPath = ".index.json"
+	downloader.Branch = "main"
 
 	downloaded, err = downloader.FetchIndex(ctx, destPath, withContent, discard)
 	require.NoError(t, err)
@@ -151,7 +141,6 @@ func TestFetchContent(t *testing.T) {
 	// bad path
 
 	hubDownloader.Branch = "main"
-	hubDownloader.IndexPath = "collections/linux.yaml"
 
 	downloaded, url, err = hubDownloader.FetchContent(ctx, "collections/linux.yaml", destPath, wantHash, discard)
 	assert.Empty(t, url)

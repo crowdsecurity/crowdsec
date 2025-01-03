@@ -22,7 +22,6 @@ func TestInitHubUpdate(t *testing.T) {
 	indexProvider := &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath:   ".index.json",
 	}
 
 	err = hub.Update(ctx, indexProvider, false)
@@ -56,7 +55,6 @@ func TestUpdateIndex(t *testing.T) {
 	indexProvider := &Downloader{
 		URLTemplate: "x",
 		Branch:      "",
-		IndexPath:   "",
 	}
 
 	err = hub.Update(ctx, indexProvider, false)
@@ -68,7 +66,6 @@ func TestUpdateIndex(t *testing.T) {
 	indexProvider = &Downloader{
 		URLTemplate: "https://baddomain/crowdsecurity/%s/%s",
 		Branch:      "master",
-		IndexPath:   ".index.json",
 	}
 
 	err = hub.Update(ctx, indexProvider, false)
@@ -82,7 +79,6 @@ func TestUpdateIndex(t *testing.T) {
 	indexProvider = &Downloader{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath:   ".index.json",
 	}
 
 	hub.local.HubIndexFile = "/does/not/exist/index.json"
