@@ -82,8 +82,8 @@ teardown() {
     new_hub=$(jq <"$INDEX_PATH" 'del(.parsers."crowdsecurity/smb-logs") | del (.scenarios."crowdsecurity/mysql-bf")')
     echo "$new_hub" >"$INDEX_PATH"
     rune -0 cscli hub list --error
-    assert_stderr --partial "can't find crowdsecurity/smb-logs in parsers, required by crowdsecurity/smb"
-    assert_stderr --partial "can't find crowdsecurity/mysql-bf in scenarios, required by crowdsecurity/mysql"
+    assert_stderr --partial "can't find parsers:crowdsecurity/smb-logs, required by crowdsecurity/smb"
+    assert_stderr --partial "can't find scenarios:crowdsecurity/mysql-bf, required by crowdsecurity/mysql"
 }
 
 @test "loading hub reports tainted items (subitem is tainted)" {
