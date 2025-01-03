@@ -93,7 +93,8 @@ func TestFetchIndex(t *testing.T) {
 
 	downloader.URLTemplate = "http://x/%s/%s"
 	downloaded, err = downloader.FetchIndex(ctx, destPath, !withContent, discard)
-	cstest.AssertErrorContains(t, err, `Get "http://x/main/.index.json": dial tcp: lookup x: no such host`)
+	// can be no such host, server misbehaving, etc
+	cstest.AssertErrorContains(t, err, `Get "http://x/main/.index.json": dial tcp: lookup x`)
 	assert.False(t, downloaded)
 
 }

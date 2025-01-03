@@ -19,7 +19,7 @@ import (
 // testHubCfg creates an empty hub structure in a temporary directory
 // and returns its configuration object.
 //
-// This allow the reuse of the temporary directory / hub content for multiple instances
+// This allow the reuse of the hub content for multiple instances
 // of the Hub object.
 func testHubCfg(t *testing.T) *csconfig.LocalHubCfg {
 	tempDir := t.TempDir()
