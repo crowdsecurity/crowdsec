@@ -58,7 +58,7 @@ func (h *Hub) Load() error {
 	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
 
 	if err := h.parseIndex(); err != nil {
-		return fmt.Errorf("failed to parse hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
+		return fmt.Errorf("invalid hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
 	return h.localSync()
