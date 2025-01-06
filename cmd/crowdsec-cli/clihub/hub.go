@@ -213,7 +213,11 @@ func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 		Long: `
 Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if you want the latest versions available.
 `,
-		// TODO: Example
+		Example: `# Upgrade all the collections, scenarios etc. to the latest version in the downloaded index. Update data files too.
+cscli hub upgrade
+
+# Upgrade tainted items as well; force re-download of data files.
+cscli hub upgrade --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
