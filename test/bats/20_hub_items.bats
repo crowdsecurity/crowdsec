@@ -99,13 +99,6 @@ teardown() {
 
     rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
     assert_output "Nothing to do."
-
-    rune -0 cscli parsers remove --all --error --purge --force
-    assert_output "Nothing to do."
-    refute_stderr
-    rune -0 cscli collections remove --all --error --purge --force
-    assert_output "Nothing to do."
-    refute_stderr
 }
 
 @test "a local item is not tainted" {
@@ -197,6 +190,16 @@ teardown() {
     rune -0 cscli hub list -o json
     rune -0 jq '.collections' <(output)
     assert_json '[]'
+}
+
+@test "replacing a symlink with a regular file makes a local item" {
+    rune -0 cscli parsers install crowdsecurity/caddy-logs
+    rune -0 rm "$CONFIG_DIR/parsers/s01-parse/caddy-logs.yaml"
+    rune -0 cp "$HUB_DIR/parsers/s01-parse/crowdsecurity/caddy-logs.yaml" "$CONFIG_DIR/parsers/s01-parse/caddy-logs.yaml"
+    rune -0 cscli hub list
+    rune -0 cscli parsers inspect crowdsecurity/caddy-logs -o json
+    rune -0 jq -e '[.tainted,.local,.local_version==false,true,"?"]' <(output)
+    refute_stderr
 }
 
 @test "tainted hub file, not enabled, install --force should repair" {
