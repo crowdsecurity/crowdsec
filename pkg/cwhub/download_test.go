@@ -24,6 +24,7 @@ func TestFetchIndex(t *testing.T) {
 		if r.URL.Path != "/main/.index.json" {
 			w.WriteHeader(http.StatusNotFound)
 		}
+
 		if r.URL.Query().Get("with_content") == "true" {
 			_, err := w.Write([]byte(`Hi I'm an index with content`))
 			assert.NoError(t, err)
@@ -85,7 +86,7 @@ func TestFetchIndex(t *testing.T) {
 	assert.Equal(t, "Hi I'm a minified index", string(content))
 
 	// bad domain name
-	
+
 	downloader.URLTemplate = "x/%s/%s"
 	downloaded, err = downloader.FetchIndex(ctx, destPath, !withContent, discard)
 	cstest.AssertErrorContains(t, err, `Get "x/main/.index.json": unsupported protocol scheme ""`)
@@ -96,7 +97,6 @@ func TestFetchIndex(t *testing.T) {
 	// can be no such host, server misbehaving, etc
 	cstest.AssertErrorContains(t, err, `Get "http://x/main/.index.json": dial tcp: lookup x`)
 	assert.False(t, downloaded)
-
 }
 
 func TestFetchContent(t *testing.T) {
@@ -107,9 +107,10 @@ func TestFetchContent(t *testing.T) {
 	remotePath := "collections/crowdsecurity/linux.yaml"
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/main/" + remotePath {
+		if r.URL.Path != "/main/"+remotePath {
 			w.WriteHeader(http.StatusNotFound)
 		}
+
 		_, err := w.Write([]byte(wantContent))
 		assert.NoError(t, err)
 	}))
@@ -157,7 +158,7 @@ func TestFetchContent(t *testing.T) {
 	assert.Equal(t, wantURL, url)
 	require.NoError(t, err)
 	assert.False(t, downloaded)
-	cstest.RequireLogContains(t, hook, "hash mismatch: expected 1234, got " + wantHash)
+	cstest.RequireLogContains(t, hook, "hash mismatch: expected 1234, got "+wantHash)
 
 	// ok
 

@@ -62,7 +62,7 @@ func testHubOld(t *testing.T, update bool) *Hub {
 		}
 
 		ctx := context.Background()
-		err := hub.Update(ctx, indexProvider, false)
+		err = hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
 	}
 

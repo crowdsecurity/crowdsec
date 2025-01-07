@@ -19,7 +19,6 @@ have separate preparation and execution methods.
     addition of commands, handles dependencies between them, and orchestrates their
     execution. ActionPlan also provides a mechanism for interactive confirmation and dry-run.
 
-
 To perform operations on hub items, create an ActionPlan and add the desired
 Commands to it. Once all commands are added, execute the ActionPlan to perform
 the operations in the correct order, handling dependencies and user confirmations.

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"testing"
 	"path/filepath"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,6 +54,7 @@ func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJson string) (*H
 	hub, err := NewHub(localCfg, nil)
 	require.NoError(t, err)
 	err = hub.Load()
+
 	return hub, err
 }
 
@@ -94,7 +95,6 @@ func TestIndexUnknownItemType(t *testing.T) {
 
 func TestHubUpdate(t *testing.T) {
 	// update an empty hub with a index containing a parser.
-
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
 
@@ -119,7 +119,8 @@ func TestHubUpdate(t *testing.T) {
 		if r.URL.Path != "/main/.index.json" {
 			w.WriteHeader(http.StatusNotFound)
 		}
-		_, err := w.Write([]byte(index1))
+
+		_, err = w.Write([]byte(index1))
 		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
@@ -127,7 +128,7 @@ func TestHubUpdate(t *testing.T) {
 	ctx := context.Background()
 
 	downloader := &Downloader{
-		Branch: "main",
+		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
@@ -149,16 +150,13 @@ func TestHubUpdateInvalidTemplate(t *testing.T) {
 	ctx := context.Background()
 
 	downloader := &Downloader{
-		Branch: "main",
+		Branch:      "main",
 		URLTemplate: "x",
 	}
 
 	err = hub.Update(ctx, downloader, true)
 	cstest.RequireErrorMessage(t, err, "failed to build hub index request: invalid URL template 'x'")
 }
-
-
-
 
 func TestHubUpdateCannotWrite(t *testing.T) {
 	hub, err := testHub(t, nil, "{}")
@@ -185,7 +183,8 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 		if r.URL.Path != "/main/.index.json" {
 			w.WriteHeader(http.StatusNotFound)
 		}
-		_, err := w.Write([]byte(index1))
+
+		_, err = w.Write([]byte(index1))
 		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
@@ -193,7 +192,7 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 	ctx := context.Background()
 
 	downloader := &Downloader{
-		Branch: "main",
+		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
@@ -205,7 +204,6 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 
 func TestHubUpdateAfterLoad(t *testing.T) {
 	// Update() can't be called after Load() if the hub is not completely empty.
-
 	index1 := `
 {
   "parsers": {
@@ -246,7 +244,8 @@ func TestHubUpdateAfterLoad(t *testing.T) {
 		if r.URL.Path != "/main/.index.json" {
 			w.WriteHeader(http.StatusNotFound)
 		}
-		_, err := w.Write([]byte(index2))
+
+		_, err = w.Write([]byte(index2))
 		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
@@ -254,7 +253,7 @@ func TestHubUpdateAfterLoad(t *testing.T) {
 	ctx := context.Background()
 
 	downloader := &Downloader{
-		Branch: "main",
+		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
