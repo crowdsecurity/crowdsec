@@ -351,10 +351,8 @@ func TestSetFromYaml(t *testing.T) {
 }
 
 func TestSetFromYamlFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "test")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "test")
 	require.NoError(t, err)
-
-	defer os.Remove(tmpfile.Name())
 
 	// write the config file
 	_, err = tmpfile.WriteString("- experimental1")

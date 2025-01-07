@@ -60,7 +60,7 @@ func TestSetupHelperProcess(t *testing.T) {
 func tempYAML(t *testing.T, content string) os.File {
 	t.Helper()
 	require := require.New(t)
-	file, err := os.CreateTemp("", "")
+	file, err := os.CreateTemp(t.TempDir(), "")
 	require.NoError(err)
 
 	_, err = file.WriteString(dedent.Dedent(content))

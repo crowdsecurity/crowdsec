@@ -26,7 +26,7 @@ const TestFolder = "tests"
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp("", "*sqlite")
+	dbPath, err := os.CreateTemp(t.TempDir(), "*sqlite")
 	require.NoError(t, err)
 
 	ctx := context.Background()
