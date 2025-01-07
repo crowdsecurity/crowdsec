@@ -36,7 +36,7 @@ func (h *Hub) GetDataDir() string {
 // and check for unmanaged items.
 func NewHub(local *csconfig.LocalHubCfg, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
-		return nil, errors.New("no hub configuration found")
+		return nil, errors.New("no hub configuration provided")
 	}
 
 	if logger == nil {
@@ -58,14 +58,10 @@ func (h *Hub) Load() error {
 	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
 
 	if err := h.parseIndex(); err != nil {
-		return err
+		return fmt.Errorf("invalid hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
-	if err := h.localSync(); err != nil {
-		return fmt.Errorf("failed to sync hub items: %w", err)
-	}
-
-	return nil
+	return h.localSync()
 }
 
 // parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections.
@@ -153,12 +149,14 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
+var ErrUpdateAfterSync = errors.New("cannot update hub index after load/sync")
+
 // Update downloads the latest version of the index and writes it to disk if it changed.
-// It cannot be called after Load() unless the hub is completely empty.
+// It cannot be called after Load() unless the index was completely empty.
 func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) error {
-	if len(h.pathIndex) > 0 {
+	if len(h.items) > 0 {
 		// if this happens, it's a bug.
-		return errors.New("cannot update hub after items have been loaded")
+		return ErrUpdateAfterSync
 	}
 
 	downloaded, err := indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)

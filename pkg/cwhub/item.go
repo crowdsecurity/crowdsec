@@ -11,8 +11,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	yaml "gopkg.in/yaml.v3"
-
-	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 const (
@@ -44,62 +42,6 @@ type HubItems map[string]map[string]*Item
 type ItemVersion struct {
 	Digest     string `json:"digest,omitempty" yaml:"digest,omitempty"`
 	Deprecated bool   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-}
-
-// ItemState is used to keep the local state (i.e. at runtime) of an item.
-// This data is not stored in the index, but is displayed with "cscli ... inspect".
-type ItemState struct {
-	LocalPath            string   `json:"local_path,omitempty" yaml:"local_path,omitempty"`
-	LocalVersion         string   `json:"local_version,omitempty" yaml:"local_version,omitempty"`
-	LocalHash            string   `json:"local_hash,omitempty" yaml:"local_hash,omitempty"`
-	Installed            bool     `json:"installed"`
-	Downloaded           bool     `json:"downloaded"`
-	UpToDate             bool     `json:"up_to_date"`
-	Tainted              bool     `json:"tainted"`
-	TaintedBy            []string `json:"tainted_by,omitempty" yaml:"tainted_by,omitempty"`
-	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
-}
-
-// IsLocal returns true if the item has been create by a user (not downloaded from the hub).
-func (s *ItemState) IsLocal() bool {
-	return s.Installed && !s.Downloaded
-}
-
-// Text returns the status of the item as a string (eg. "enabled,update-available").
-func (s *ItemState) Text() string {
-	ret := "disabled"
-
-	if s.Installed {
-		ret = "enabled"
-	}
-
-	if s.IsLocal() {
-		ret += ",local"
-	}
-
-	if s.Tainted {
-		ret += ",tainted"
-	} else if !s.UpToDate && !s.IsLocal() {
-		ret += ",update-available"
-	}
-
-	return ret
-}
-
-// Emoji returns the status of the item as an emoji (eg. emoji.Warning).
-func (s *ItemState) Emoji() string {
-	switch {
-	case s.IsLocal():
-		return emoji.House
-	case !s.Installed:
-		return emoji.Prohibited
-	case s.Tainted || (!s.UpToDate && !s.IsLocal()):
-		return emoji.Warning
-	case s.Installed:
-		return emoji.CheckMark
-	default:
-		return emoji.QuestionMark
-	}
 }
 
 type Dependencies struct {
@@ -292,49 +234,11 @@ func (i *Item) CurrentDependencies() Dependencies {
 }
 
 func (i *Item) logMissingSubItems() {
-	if !i.HasSubItems() {
-		return
-	}
-
-	for _, subName := range i.Parsers {
-		if i.hub.GetItem(PARSERS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
-		}
-	}
-
-	for _, subName := range i.Scenarios {
-		if i.hub.GetItem(SCENARIOS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
-		}
-	}
-
-	for _, subName := range i.PostOverflows {
-		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
-		}
-	}
-
-	for _, subName := range i.Contexts {
-		if i.hub.GetItem(CONTEXTS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, CONTEXTS, i.Name)
-		}
-	}
-
-	for _, subName := range i.AppsecConfigs {
-		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
-		}
-	}
-
-	for _, subName := range i.AppsecRules {
-		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
-		}
-	}
-
-	for _, subName := range i.Collections {
-		if i.hub.GetItem(COLLECTIONS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
+	for _, sub := range i.CurrentDependencies().byType() {
+		for _, subName := range sub.itemNames {
+			if i.hub.GetItem(sub.typeName, subName) == nil {
+				i.hub.logger.Errorf("can't find %s:%s, required by %s", sub.typeName, subName, i.Name)
+			}
 		}
 	}
 }

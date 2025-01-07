@@ -108,6 +108,7 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 			if len(subsHub) < 4 {
 				return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
 			}
+
 			stage = subsHub[1]
 			fauthor = subsHub[2]
 			fname = subsHub[3]
@@ -167,6 +168,7 @@ func sortedVersions(raw []string) ([]string, error) {
 	for idx, r := range raw {
 		v, err := semver.NewVersion(r)
 		if err != nil {
+			// TODO: should catch this during index parsing
 			return nil, fmt.Errorf("%s: %w", r, err)
 		}
 
@@ -461,13 +463,12 @@ func removeDuplicates(sl []string) []string {
 
 // localSync updates the hub state with downloaded, installed and local items.
 func (h *Hub) localSync() error {
-	err := h.syncDir(h.local.InstallDir)
-	if err != nil {
-		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
+	if err := h.syncDir(h.local.InstallDir); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", h.local.InstallDir, err)
 	}
 
-	if err = h.syncDir(h.local.HubDir); err != nil {
-		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
+	if err := h.syncDir(h.local.HubDir); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", h.local.HubDir, err)
 	}
 
 	warnings := make([]string, 0)
