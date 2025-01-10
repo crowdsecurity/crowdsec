@@ -40,6 +40,7 @@ func TestItemStateText(t *testing.T) {
 			ItemState{
 				Installed:  true,
 				UpToDate:   false,
+				local:      true,
 				Tainted:    false,
 				Downloaded: false,
 			},

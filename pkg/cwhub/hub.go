@@ -171,6 +171,7 @@ func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withConte
 	return nil
 }
 
+// addItem adds an item to the hub. It silently replaces an existing item with the same type and name.
 func (h *Hub) addItem(item *Item) {
 	if h.items[item.Type] == nil {
 		h.items[item.Type] = make(map[string]*Item)

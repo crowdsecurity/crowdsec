@@ -63,7 +63,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 				continue
 			}
 
-			listHubItemTable(out, wantColor, "\n"+strings.ToUpper(itemType), items[itemType])
+			listHubItemTable(out, wantColor, strings.ToUpper(itemType), items[itemType])
 
 			nothingToDisplay = false
 		}
