@@ -567,12 +567,14 @@ func removeDuplicates(sl []string) []string {
 
 // localSync updates the hub state with downloaded, installed and local items.
 func (h *Hub) localSync() error {
-	if err := h.syncDir(h.local.InstallDir); err != nil {
-		return fmt.Errorf("failed to sync %s: %w", h.local.InstallDir, err)
-	}
-
+	// add downloaded files first, so they can find the place in the index
+	// before it's overridden by local items in case of name collision
 	if err := h.syncDir(h.local.HubDir); err != nil {
 		return fmt.Errorf("failed to sync %s: %w", h.local.HubDir, err)
+	}
+
+	if err := h.syncDir(h.local.InstallDir); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", h.local.InstallDir, err)
 	}
 
 	warnings := make([]string, 0)

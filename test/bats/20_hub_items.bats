@@ -81,7 +81,7 @@ teardown() {
     rune -0 cscli collections install crowdsecurity/sshd
     rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics
     # XXX: this must be triggered during parse, not sync
-    assert_stderr "Error: failed to sync $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version"
+    assert_stderr "Error: failed to sync $HUB_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version"
 }
 
 @test "removing or purging an item already removed by hand" {

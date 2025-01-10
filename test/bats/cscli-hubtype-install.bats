@@ -286,7 +286,7 @@ teardown() {
     rune -0 cscli parsers list -o json
     rune -0 jq -e '.installed,.local==true,true' <(output)
     rune -0 cscli parsers list
-    assert_stderr --partial "multiple parsers named crowdsecurity/sshd-logs: ignoring $CONFIG_DIR/parsers/s01-parse/one.yaml"
+    assert_stderr --partial "multiple parsers named crowdsecurity/whitelists: ignoring $CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 }
 
 @test "conflicting item names: both local, the last one wins" {
@@ -295,7 +295,7 @@ teardown() {
     echo "name: crowdsecurity/whitelists" > "$CONFIG_DIR/parsers/s02-enrich/two.yaml"
     rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
     rune -0 jq -r '.local_path' <(output)
-    assert_output --partial "/parsers/s02-enrich/one.yaml"
+    assert_output --partial "/parsers/s02-enrich/two.yaml"
     rune -0 cscli parsers list
-    assert_stderr --partial "multiple parsers named crowdsecurity/whitelists: ignoring $CONFIG_DIR/parsers/s02-enrich/two.yaml"
+    assert_stderr --partial "multiple parsers named crowdsecurity/whitelists: ignoring $CONFIG_DIR/parsers/s02-enrich/one.yaml"
 }
