@@ -52,9 +52,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 		MaxAge: &maxAge,
 	}
 
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	tempDir := t.TempDir()
 
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
@@ -102,9 +100,7 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 		MaxAge: &maxAge,
 	}
 
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	tempDir := t.TempDir()
 
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
@@ -367,9 +363,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		MaxAge: &maxAge,
 	}
 
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	tempDir := t.TempDir()
 
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
@@ -420,9 +414,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		MaxAge: &maxAge,
 	}
 
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	tempDir := t.TempDir()
 
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
