@@ -46,7 +46,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			// here we can bucketify with parsed
 			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
 			if err != nil {
-				log.Errorf("bucketify failed for: %v", parsed)
+				log.Errorf("bucketify failed for: %v with %s", parsed, err)
 				continue
 			}
 
