@@ -64,7 +64,6 @@ type apic struct {
 	pullTomb      tomb.Tomb
 	metricsTomb   tomb.Tomb
 	startup       bool
-	credentials   *csconfig.ApiCredentialsCfg
 	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
@@ -186,7 +185,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		dbClient:                  dbClient,
 		mu:                        sync.Mutex{},
 		startup:                   true,
-		credentials:               config.Credentials,
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
 		metricsTomb:               tomb.Tomb{},
