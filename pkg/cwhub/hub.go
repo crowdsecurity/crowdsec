@@ -22,7 +22,6 @@ type Hub struct {
 	items     HubItems // Items read from HubDir and InstallDir
 	pathIndex map[string]*Item
 	local     *csconfig.LocalHubCfg
-	remote    *RemoteHubCfg
 	logger    *logrus.Logger
 	Warnings  []string // Warnings encountered during sync
 }
@@ -35,10 +34,9 @@ func (h *Hub) GetDataDir() string {
 // NewHub returns a new Hub instance with local and (optionally) remote configuration.
 // The hub is not synced automatically. Load() must be called to read the index, sync the local state,
 // and check for unmanaged items.
-// All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
-func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, logger *logrus.Logger) (*Hub, error) {
+func NewHub(local *csconfig.LocalHubCfg, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
-		return nil, errors.New("no hub configuration found")
+		return nil, errors.New("no hub configuration provided")
 	}
 
 	if logger == nil {
@@ -48,7 +46,6 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, logger *logrus.Lo
 
 	hub := &Hub{
 		local:     local,
-		remote:    remote,
 		logger:    logger,
 		pathIndex: make(map[string]*Item, 0),
 	}
@@ -61,14 +58,10 @@ func (h *Hub) Load() error {
 	h.logger.Debugf("loading hub idx %s", h.local.HubIndexFile)
 
 	if err := h.parseIndex(); err != nil {
-		return fmt.Errorf("failed to load hub index: %w", err)
+		return fmt.Errorf("invalid hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
-	if err := h.localSync(); err != nil {
-		return fmt.Errorf("failed to sync hub items: %w", err)
-	}
-
-	return nil
+	return h.localSync()
 }
 
 // parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections.
@@ -82,20 +75,24 @@ func (h *Hub) parseIndex() error {
 		return fmt.Errorf("failed to parse index: %w", err)
 	}
 
-	h.logger.Debugf("%d item types in hub index", len(ItemTypes))
-
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		h.logger.Tracef("%s: %d items", itemType, len(h.GetItemMap(itemType)))
-
 		for name, item := range h.GetItemMap(itemType) {
+			if item == nil {
+				// likely defined as empty object or null in the index file
+				return fmt.Errorf("%s:%s has no index metadata", itemType, name)
+			}
+
+			if item.RemotePath == "" {
+				return fmt.Errorf("%s:%s has no download path", itemType, name)
+			}
+
+			if (itemType == PARSERS || itemType == POSTOVERFLOWS) && item.Stage == "" {
+				return fmt.Errorf("%s:%s has no stage", itemType, name)
+			}
+
 			item.hub = h
 			item.Name = name
-
-			// if the item has no (redundant) author, take it from the json key
-			if item.Author == "" && strings.Contains(name, "/") {
-				item.Author = strings.Split(name, "/")[0]
-			}
 
 			item.Type = itemType
 			item.FileName = path.Base(item.RemotePath)
@@ -152,23 +149,23 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
-// Update downloads the latest version of the index and writes it to disk if it changed. It cannot be called after Load()
-// unless the hub is completely empty.
-func (h *Hub) Update(ctx context.Context) error {
-	if len(h.pathIndex) > 0 {
+var ErrUpdateAfterSync = errors.New("cannot update hub index after load/sync")
+
+// Update downloads the latest version of the index and writes it to disk if it changed.
+// It cannot be called after Load() unless the index was completely empty.
+func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) error {
+	if len(h.items) > 0 {
 		// if this happens, it's a bug.
-		return errors.New("cannot update hub after items have been loaded")
+		return ErrUpdateAfterSync
 	}
 
-	downloaded, err := h.remote.fetchIndex(ctx, h.local.HubIndexFile)
+	downloaded, err := indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
 	if err != nil {
 		return err
 	}
 
-	if downloaded {
-		h.logger.Infof("Wrote index to %s", h.local.HubIndexFile)
-	} else {
-		h.logger.Info("hub index is up to date")
+	if !downloaded {
+		fmt.Println("Nothing to do, the hub index is up to date.")
 	}
 
 	return nil
@@ -236,6 +233,7 @@ func (h *Hub) GetItemsByType(itemType string, sorted bool) []*Item {
 	}
 
 	idx := 0
+
 	for _, item := range items {
 		ret[idx] = item
 		idx += 1
@@ -267,6 +265,7 @@ func (h *Hub) GetInstalledListForAPI() []string {
 	ret := make([]string, len(scenarios)+len(appsecRules))
 
 	idx := 0
+
 	for _, item := range scenarios {
 		ret[idx] = item.Name
 		idx += 1

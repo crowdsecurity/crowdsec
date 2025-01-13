@@ -105,6 +105,10 @@ func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo
 		fname := subsHub[2]
 
 		if ftype == PARSERS || ftype == POSTOVERFLOWS {
+			if len(subsHub) < 4 {
+				return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
+			}
+
 			stage = subsHub[1]
 			fauthor = subsHub[2]
 			fname = subsHub[3]
@@ -164,6 +168,7 @@ func sortedVersions(raw []string) ([]string, error) {
 	for idx, r := range raw {
 		v, err := semver.NewVersion(r)
 		if err != nil {
+			// TODO: should catch this during index parsing
 			return nil, fmt.Errorf("%s: %w", r, err)
 		}
 
@@ -308,17 +313,12 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		// if we are walking hub dir, just mark present files as downloaded
 		if info.inhub {
-			// wrong author
-			if info.fauthor != item.Author {
-				continue
-			}
-
 			// not the item we're looking for
 			if !item.validPath(info.fauthor, info.fname) {
 				continue
 			}
 
-			src, err := item.downloadPath()
+			src, err := item.DownloadPath()
 			if err != nil {
 				return err
 			}
@@ -364,7 +364,7 @@ func (i *Item) checkSubItemVersions() []string {
 	// ensure all the sub-items are installed, or tag the parent as tainted
 	i.hub.logger.Tracef("checking submembers of %s installed:%t", i.Name, i.State.Installed)
 
-	for _, sub := range i.SubItems() {
+	for sub := range i.CurrentDependencies().SubItems(i.hub) {
 		i.hub.logger.Tracef("check %s installed:%t", sub.Name, sub.State.Installed)
 
 		if !i.State.Installed {
@@ -463,13 +463,12 @@ func removeDuplicates(sl []string) []string {
 
 // localSync updates the hub state with downloaded, installed and local items.
 func (h *Hub) localSync() error {
-	err := h.syncDir(h.local.InstallDir)
-	if err != nil {
-		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
+	if err := h.syncDir(h.local.InstallDir); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", h.local.InstallDir, err)
 	}
 
-	if err = h.syncDir(h.local.HubDir); err != nil {
-		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
+	if err := h.syncDir(h.local.HubDir); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", h.local.HubDir, err)
 	}
 
 	warnings := make([]string, 0)

@@ -56,13 +56,11 @@ func toUNCPath(path string) (string, error) {
 	return uncPath, nil
 }
 
-func setupUnixSocketWithPrefix(socket string, urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
+func setupUnixSocketWithPrefix(t *testing.T, socket string, urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
 	var err error
 	if runtime.GOOS == "windows" {
 		socket, err = toUNCPath(socket)
-		if err != nil {
-			log.Fatalf("converting to UNC path: %s", err)
-		}
+		require.NoError(t, err, "converting to UNC path")
 	}
 
 	mux = http.NewServeMux()
@@ -103,7 +101,8 @@ func TestNewClientOk(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +119,7 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
-	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	apiURL, err := url.Parse(urlx)
@@ -140,7 +139,8 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +176,8 @@ func TestNewClientKo(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +203,8 @@ func TestNewDefaultClient(t *testing.T) {
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		assert.NoError(t, err)
 	})
 
 	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
@@ -215,7 +217,7 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
-	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	apiURL, err := url.Parse(urlx)
@@ -230,7 +232,8 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		assert.NoError(t, err)
 	})
 
 	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
@@ -268,7 +271,8 @@ func TestNewClientRegisterOK(t *testing.T) {
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
@@ -293,14 +297,15 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
-	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	/*mock login*/
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	apiURL, err := url.Parse(urlx)
@@ -333,7 +338,8 @@ func TestNewClientBadAnswer(t *testing.T) {
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`bad`))
+		_, err := w.Write([]byte(`bad`))
+		assert.NoError(t, err)
 	})
 
 	apiURL, err := url.Parse(urlx + "/")

@@ -11,8 +11,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var conditionalExprCache map[string]vm.Program
-var conditionalExprCacheLock sync.Mutex
+var (
+	conditionalExprCache     map[string]vm.Program
+	conditionalExprCacheLock sync.Mutex
+)
 
 type ConditionalOverflow struct {
 	ConditionalFilter        string

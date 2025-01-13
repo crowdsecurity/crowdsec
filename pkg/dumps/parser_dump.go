@@ -145,25 +145,25 @@ func (t *tree) processEvents(parserResults ParserResults) {
 }
 
 func (t *tree) processBuckets(bucketPour BucketPourInfo) {
-	for bname, evtlist := range bucketPour {
-		for _, evt := range evtlist {
-			if evt.Line.Raw == "" {
+	for bname, events := range bucketPour {
+		for i := range events {
+			if events[i].Line.Raw == "" {
 				continue
 			}
 
 			// it might be bucket overflow being reprocessed, skip this
-			if _, ok := t.state[evt.Line.Time]; !ok {
-				t.state[evt.Line.Time] = make(map[string]map[string]ParserResult)
-				t.assoc[evt.Line.Time] = evt.Line.Raw
+			if _, ok := t.state[events[i].Line.Time]; !ok {
+				t.state[events[i].Line.Time] = make(map[string]map[string]ParserResult)
+				t.assoc[events[i].Line.Time] = events[i].Line.Raw
 			}
 
-			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// there is a trick: to know if an event successfully exit the parsers, we check if it reached the pour() phase
 			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
-			if _, ok := t.state[evt.Line.Time]["buckets"]; !ok {
-				t.state[evt.Line.Time]["buckets"] = make(map[string]ParserResult)
+			if _, ok := t.state[events[i].Line.Time]["buckets"]; !ok {
+				t.state[events[i].Line.Time]["buckets"] = make(map[string]ParserResult)
 			}
 
-			t.state[evt.Line.Time]["buckets"][bname] = ParserResult{Success: true}
+			t.state[events[i].Line.Time]["buckets"][bname] = ParserResult{Success: true}
 		}
 	}
 }

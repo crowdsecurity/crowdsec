@@ -205,8 +205,8 @@ func reverse(s []longpollclient.Event) []longpollclient.Event {
 	return a
 }
 
-func (p *Papi) PullOnce(since time.Time, sync bool) error {
-	events, err := p.Client.PullOnce(since)
+func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
+	events, err := p.Client.PullOnce(ctx, since)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 
 	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
 
-	for event := range p.Client.Start(lastTimestamp) {
+	for event := range p.Client.Start(ctx, lastTimestamp) {
 		logger := p.Logger.WithField("request-id", event.RequestId)
 		// update last timestamp in database
 		newTime := time.Now().UTC()

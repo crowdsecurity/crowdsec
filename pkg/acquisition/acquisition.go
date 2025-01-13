@@ -16,6 +16,7 @@ import (
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -116,7 +117,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (*DataSource, error) {
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (DataSource, error) {
 	// we dump it back to []byte, because we want to decode the yaml blob twice:
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
@@ -140,10 +141,10 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 	}
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
-		return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
+		return nil, err
 	}
 
-	return &dataSrc, nil
+	return dataSrc, nil
 }
 
 // detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
@@ -164,8 +165,6 @@ func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 }
 
 func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
-	var sources []DataSource
-
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
@@ -197,9 +196,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
 
-	sources = append(sources, dataSrc)
-
-	return sources, nil
+	return []DataSource{dataSrc}, nil
 }
 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
@@ -236,7 +233,16 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			return nil, err
 		}
 
-		dec := yaml.NewDecoder(yamlFile)
+		defer yamlFile.Close()
+
+		acquisContent, err := io.ReadAll(yamlFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", acquisFile, err)
+		}
+
+		expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
+
+		dec := yaml.NewDecoder(strings.NewReader(expandedAcquis))
 		dec.SetStrict(true)
 
 		idx := -1
@@ -249,7 +255,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			err = dec.Decode(&sub)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					return nil, fmt.Errorf("failed to yaml decode %s: %w", acquisFile, err)
+					return nil, fmt.Errorf("failed to parse %s: %w", acquisFile, err)
 				}
 
 				log.Tracef("End of yaml file")
@@ -259,6 +265,12 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 
 			// for backward compat ('type' was not mandatory, detect it)
 			if guessType := detectBackwardCompatAcquis(sub); guessType != "" {
+				log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
+
+				if sub.Source != "" && sub.Source != guessType {
+					log.Warnf("datasource type mismatch in %s (position %d): found '%s' but should probably be '%s'", acquisFile, idx, sub.Source, guessType)
+				}
+
 				sub.Source = guessType
 			}
 			// it's an empty item, skip it
@@ -270,18 +282,18 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 
 				if sub.Source != "docker" {
 					// docker is the only source that can be empty
-					return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
+					return nil, fmt.Errorf("missing labels in %s (position %d)", acquisFile, idx)
 				}
 			}
 
 			if sub.Source == "" {
-				return nil, fmt.Errorf("data source type is empty ('source') in %s (position: %d)", acquisFile, idx)
+				return nil, fmt.Errorf("data source type is empty ('source') in %s (position %d)", acquisFile, idx)
 			}
 
 			// pre-check that the source is valid
 			_, err := GetDataSourceIface(sub.Source)
 			if err != nil {
-				return nil, fmt.Errorf("in file %s (position: %d) - %w", acquisFile, idx, err)
+				return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
 			}
 
 			uniqueId := uuid.NewString()
@@ -295,19 +307,19 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 					continue
 				}
 
-				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
+				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position %d): %w", sub.Source, acquisFile, idx, err)
 			}
 
 			if sub.TransformExpr != "" {
 				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 				if err != nil {
-					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position: %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
+					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 				}
 
 				transformRuntimes[uniqueId] = vm
 			}
 
-			sources = append(sources, *src)
+			sources = append(sources, src)
 		}
 	}
 
@@ -326,7 +338,8 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
-				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+				var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+				if !errors.As(err, &alreadyRegisteredErr) {
 					return fmt.Errorf("could not register metrics for datasource %s: %w", sources[i].GetName(), err)
 				}
 				// ignore the error
@@ -335,6 +348,21 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 	}
 
 	return nil
+}
+
+// There's no need for an actual deep copy
+// The event is almost empty, we are mostly interested in allocating new maps for Parsed/Meta/...
+func copyEvent(evt types.Event, line string) types.Event {
+	evtCopy := types.MakeEvent(evt.ExpectMode == types.TIMEMACHINE, evt.Type, evt.Process)
+	evtCopy.Line = evt.Line
+	evtCopy.Line.Raw = line
+	evtCopy.Line.Labels = make(map[string]string)
+
+	for k, v := range evt.Line.Labels {
+		evtCopy.Line.Labels[k] = v
+	}
+
+	return evtCopy
 }
 
 func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
@@ -363,8 +391,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 			switch v := out.(type) {
 			case string:
 				logger.Tracef("transform expression returned %s", v)
-				evt.Line.Raw = v
-				output <- evt
+				output <- copyEvent(evt, v)
 			case []interface{}:
 				logger.Tracef("transform expression returned %v", v) //nolint:asasalint // We actually want to log the slice content
 
@@ -377,15 +404,13 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 						continue
 					}
 
-					evt.Line.Raw = l
-					output <- evt
+					output <- copyEvent(evt, l)
 				}
 			case []string:
 				logger.Tracef("transform expression returned %v", v)
 
 				for _, line := range v {
-					evt.Line.Raw = line
-					output <- evt
+					output <- copyEvent(evt, line)
 				}
 			default:
 				logger.Errorf("transform expression returned an invalid type %T, sending event as-is", out)

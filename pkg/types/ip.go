@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -23,7 +22,8 @@ func LastAddress(n net.IPNet) net.IP {
 			ip[6] | ^n.Mask[6], ip[7] | ^n.Mask[7], ip[8] | ^n.Mask[8],
 			ip[9] | ^n.Mask[9], ip[10] | ^n.Mask[10], ip[11] | ^n.Mask[11],
 			ip[12] | ^n.Mask[12], ip[13] | ^n.Mask[13], ip[14] | ^n.Mask[14],
-			ip[15] | ^n.Mask[15]}
+			ip[15] | ^n.Mask[15],
+		}
 	}
 
 	return net.IPv4(
@@ -38,7 +38,7 @@ func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
 	if strings.Contains(anyIP, "/") {
 		_, net, err := net.ParseCIDR(anyIP)
 		if err != nil {
-			return -1, 0, 0, 0, 0, fmt.Errorf("while parsing range %s: %w", anyIP, err)
+			return -1, 0, 0, 0, 0, fmt.Errorf("invalid ip range '%s': %w", anyIP, err)
 		}
 
 		return Range2Ints(*net)
@@ -46,12 +46,12 @@ func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
 
 	ip := net.ParseIP(anyIP)
 	if ip == nil {
-		return -1, 0, 0, 0, 0, errors.New("invalid address")
+		return -1, 0, 0, 0, 0, fmt.Errorf("invalid ip address '%s'", anyIP)
 	}
 
 	sz, start, end, err := IP2Ints(ip)
 	if err != nil {
-		return -1, 0, 0, 0, 0, fmt.Errorf("while parsing ip %s: %w", anyIP, err)
+		return -1, 0, 0, 0, 0, fmt.Errorf("invalid ip address '%s': %w", anyIP, err)
 	}
 
 	return sz, start, end, start, end, nil

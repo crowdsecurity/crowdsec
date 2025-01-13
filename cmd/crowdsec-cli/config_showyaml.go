@@ -15,7 +15,7 @@ func (cli *cliConfig) newShowYAMLCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "show-yaml",
 		Short:             "Displays merged config.yaml + config.yaml.local",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.showYAML()

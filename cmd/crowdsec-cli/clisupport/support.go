@@ -314,7 +314,7 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 		ctx,
 		http.MethodGet,
 		fmt.Sprintf(
-			"http://%s/debug/pprof/%s?debug=1",
+			"http://%s/debug/pprof/%s",
 			net.JoinHostPort(
 				prometheusCfg.ListenAddr,
 				strconv.Itoa(prometheusCfg.ListenPort),
@@ -491,9 +491,9 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		skipAgent = true
 	}
 
-	hub, err := require.Hub(cfg, nil, nil)
+	hub, err := require.Hub(cfg, nil)
 	if err != nil {
-		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
+		log.Warn("Could not init hub, running on LAPI? Hub related information will not be collected")
 		// XXX: lapi status check requires scenarios, will return an error
 	}
 

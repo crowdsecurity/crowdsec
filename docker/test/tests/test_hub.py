@@ -17,7 +17,7 @@ def test_preinstalled_hub(crowdsec, flavor):
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log("*Starting processing data*")
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
-        res = cs.cont.exec_run('cscli hub list -o json')
+        res = cs.cont.exec_run('cscli hub list -o json', stderr=False)
         assert res.exit_code == 0
         j = json.loads(res.output)
         collections = {c['name']: c for c in j['collections']}

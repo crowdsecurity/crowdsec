@@ -100,7 +100,6 @@ func GetFSType(path string) (string, error) {
 	var buf unix.Statfs_t
 
 	err := unix.Statfs(path, &buf)
-
 	if err != nil {
 		return "", err
 	}

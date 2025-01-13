@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -81,7 +82,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			dsn:         "journalctl://filters=%ZZ",
-			expectedErr: "could not parse journalctl DSN : invalid URL escape \"%ZZ\"",
+			expectedErr: "could not parse journalctl DSN: invalid URL escape \"%ZZ\"",
 		},
 		{
 			dsn:         "journalctl://filters=_UID=42?log_level=warn",
@@ -191,6 +192,7 @@ journalctl_filter:
 
 func TestStreaming(t *testing.T) {
 	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -267,10 +269,11 @@ journalctl_filter:
 		}
 
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 
 		output, _ := exec.Command("pgrep", "-x", "journalctl").CombinedOutput()
-		if string(output) != "" {
+		if len(output) != 0 {
 			t.Fatalf("Found a journalctl process after killing the tomb !")
 		}
 

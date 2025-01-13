@@ -210,7 +210,6 @@ func (c *SmokeItem) GetFalsePositives() []string {
 }
 
 func (c *SmokeItem) IsFalsePositive() bool {
-
 	if c.Classifications.FalsePositives != nil {
 		if len(c.Classifications.FalsePositives) > 0 {
 			return true
@@ -284,7 +283,6 @@ func (c *FireItem) GetFalsePositives() []string {
 }
 
 func (c *FireItem) IsFalsePositive() bool {
-
 	if c.Classifications.FalsePositives != nil {
 		if len(c.Classifications.FalsePositives) > 0 {
 			return true

@@ -116,7 +116,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	})
 	bucketWg.Wait()
 
-	apiClient, err := AuthenticatedLAPIClient(*cConfig.API.Client.Credentials, hub)
+	apiClient, err := AuthenticatedLAPIClient(context.TODO(), *cConfig.API.Client.Credentials, hub)
 	if err != nil {
 		return err
 	}

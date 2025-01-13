@@ -68,7 +68,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		EncryptionType: "ssltls",
 		AuthType:       "login",
 		SenderEmail:    "crowdsec@crowdsec.local",
-		HeloHost:	"localhost",
+		HeloHost:       "localhost",
 	}
 
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
