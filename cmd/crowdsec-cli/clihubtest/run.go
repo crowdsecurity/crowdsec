@@ -42,12 +42,14 @@ func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost stri
 	// set timezone to avoid DST issues
 	os.Setenv("TZ", "UTC")
 
+	patternDir := cfg.ConfigPaths.PatternDir
+
 	for _, test := range hubPtr.Tests {
 		if cfg.Cscli.Output == "human" {
 			log.Infof("Running test '%s'", test.Name)
 		}
 
-		err := test.Run()
+		err := test.Run(patternDir)
 		if err != nil {
 			log.Errorf("running test '%s' failed: %+v", test.Name, err)
 		}

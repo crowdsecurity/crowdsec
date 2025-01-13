@@ -63,7 +63,8 @@ func GenSubObject(t *testing.T, i int) []byte {
 
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
-	gz.Write(body)
+	_, err = gz.Write(body)
+	require.NoError(t, err)
 	gz.Close()
 	// AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
 	// localstack does not do it, so let's just write a raw gzipped stream
@@ -198,7 +199,8 @@ stream_name: stream-1-shard`,
 		}
 
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 	}
 }
 
@@ -246,7 +248,8 @@ stream_name: stream-2-shards`,
 		}
 		assert.Equal(t, test.count, c)
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 	}
 }
 
@@ -290,7 +293,8 @@ from_subscription: true`,
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
 		}
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 	}
 }
 

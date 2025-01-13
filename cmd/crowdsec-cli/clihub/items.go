@@ -63,7 +63,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 				continue
 			}
 
-			listHubItemTable(out, wantColor, "\n"+strings.ToUpper(itemType), items[itemType])
+			listHubItemTable(out, wantColor, strings.ToUpper(itemType), items[itemType])
 
 			nothingToDisplay = false
 		}
@@ -105,7 +105,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 			return fmt.Errorf("failed to parse: %w", err)
 		}
 
-		out.Write(x)
+		fmt.Fprint(out, string(x))
 	case "raw":
 		csvwriter := csv.NewWriter(out)
 

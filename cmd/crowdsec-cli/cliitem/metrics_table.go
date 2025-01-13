@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
-
 func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
 	t := cstable.NewLight(out, wantColor).Writer
 	t.AppendHeader(table.Row{"Inband Hits", "Outband Hits"})
@@ -20,8 +19,8 @@ func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metric
 		strconv.Itoa(metrics["outband_hits"]),
 	})
 
-	io.WriteString(out, fmt.Sprintf("\n - (AppSec Rule) %s:\n", itemName))
-	io.WriteString(out, t.Render()+"\n")
+	t.SetTitle("(AppSec) " + itemName)
+	fmt.Fprintln(out, t.Render())
 }
 
 func scenarioMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {
@@ -40,8 +39,8 @@ func scenarioMetricsTable(out io.Writer, wantColor string, itemName string, metr
 		strconv.Itoa(metrics["underflow"]),
 	})
 
-	io.WriteString(out, fmt.Sprintf("\n - (Scenario) %s:\n", itemName))
-	io.WriteString(out, t.Render()+"\n")
+	t.SetTitle("(Scenario) " + itemName)
+	fmt.Fprintln(out, t.Render())
 }
 
 func parserMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]map[string]int) {
@@ -65,7 +64,7 @@ func parserMetricsTable(out io.Writer, wantColor string, itemName string, metric
 	}
 
 	if showTable {
-		io.WriteString(out, fmt.Sprintf("\n - (Parser) %s:\n", itemName))
-		io.WriteString(out, t.Render()+"\n")
+		t.SetTitle("(Parser) " + itemName)
+		fmt.Fprintln(out, t.Render())
 	}
 }

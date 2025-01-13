@@ -24,10 +24,12 @@ func TestApiAuth(t *testing.T) {
 		if r.Header.Get("X-Api-Key") == "ixu" {
 			assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`null`))
+			_, err := w.Write([]byte(`null`))
+			assert.NoError(t, err)
 		} else {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(`{"message":"access forbidden"}`))
+			_, err := w.Write([]byte(`{"message":"access forbidden"}`))
+			assert.NoError(t, err)
 		}
 	})
 

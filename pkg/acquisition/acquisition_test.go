@@ -217,6 +217,7 @@ wowo: ajsajasjas
 
 func TestLoadAcquisitionFromFile(t *testing.T) {
 	appendMockSource()
+	t.Setenv("TEST_ENV", "test_value2")
 
 	tests := []struct {
 		TestName      string
@@ -282,6 +283,13 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			},
 			ExpectedError: "while configuring datasource of type file from test_files/bad_filetype.yaml",
 		},
+		{
+			TestName: "from_env",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/env.yaml"},
+			},
+			ExpectedLen: 1,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
@@ -293,6 +301,13 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			}
 
 			assert.Len(t, dss, tc.ExpectedLen)
+			if tc.TestName == "from_env" {
+				mock := dss[0].Dump().(*MockSource)
+				assert.Equal(t, "test_value2", mock.Toto)
+				assert.Equal(t, "foobar", mock.Labels["test"])
+				assert.Equal(t, "${NON_EXISTING}", mock.Labels["non_existing"])
+				assert.Equal(t, log.InfoLevel, mock.logger.Logger.Level)
+			}
 		})
 	}
 }

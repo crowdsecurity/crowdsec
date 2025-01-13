@@ -25,8 +25,8 @@ type HubTest struct {
 	NucleiTargetHost          string
 	AppSecHost                string
 
-	HubIndex *cwhub.Hub
-	Tests    []*HubTestItem
+	HubIndex   *cwhub.Hub
+	Tests      []*HubTestItem
 }
 
 const (

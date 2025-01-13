@@ -71,10 +71,14 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 				return fmt.Errorf("collection %s not found", collection)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
+				return err
+			}
 
 			if !downloadOnly {
-				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
+				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -84,10 +88,14 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 				return fmt.Errorf("parser %s not found", parser)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
+				return err
+			}
 
 			if !downloadOnly {
-				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
+				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -97,10 +105,14 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 				return fmt.Errorf("scenario %s not found", scenario)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
+				return err
+			}
 
 			if !downloadOnly {
-				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
+				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -110,10 +122,14 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 				return fmt.Errorf("postoverflow %s not found", postoverflow)
 			}
 
-			plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction))
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
+				return err
+			}
 
 			if !downloadOnly {
-				plan.AddCommand(hubops.NewEnableCommand(item, forceAction))
+				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+					return err
+				}
 			}
 		}
 	}

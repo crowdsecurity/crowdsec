@@ -44,7 +44,7 @@ func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendHeader(table.Row{"Name", "Status", "Version"})
 		t.SetTitle(itemType)
 		t.AppendRows(rows)
-		io.WriteString(out, t.Render()+"\n")
+		fmt.Fprintln(out, t.Render())
 	}
 }
 
@@ -80,7 +80,7 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Collections", coll.Name})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	fmt.Fprintln(out, t.Render())
 }
 
 func (cli *cliMachines) inspect(machine *ent.Machine) error {
