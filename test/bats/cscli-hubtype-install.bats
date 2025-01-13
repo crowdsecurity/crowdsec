@@ -267,3 +267,35 @@ teardown() {
     assert_line 'enabling contexts:crowdsecurity/bf_base'
     assert_line 'enabling collections:crowdsecurity/sshd'
 }
+
+@test "a local item can override an official one, if it's not installed" {
+    mkdir -p "$CONFIG_DIR/parsers/s02-enrich"
+    rune -0 cscli parsers install crowdsecurity/whitelists --download-only
+    echo "name: crowdsecurity/whitelists" > "$CONFIG_DIR/parsers/s02-enrich/hi.yaml"
+    # no warning
+    rune -0 cscli parsers list
+    refute_stderr
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e '.installed,.local==true,true' <(output)
+}
+
+@test "conflicting item names: local and non local - the local one has priority" {
+    mkdir -p "$CONFIG_DIR/parsers/s02-enrich"
+    rune -0 cscli parsers install crowdsecurity/whitelists
+    echo "name: crowdsecurity/whitelists" > "$CONFIG_DIR/parsers/s02-enrich/hi.yaml"
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e '.installed,.local==true,true' <(output)
+    rune -0 cscli parsers list
+    assert_stderr --partial "multiple parsers named crowdsecurity/whitelists: ignoring $CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+}
+
+@test "conflicting item names: both local, the last one wins" {
+    mkdir -p "$CONFIG_DIR/parsers/s02-enrich"
+    echo "name: crowdsecurity/whitelists" > "$CONFIG_DIR/parsers/s02-enrich/one.yaml"
+    echo "name: crowdsecurity/whitelists" > "$CONFIG_DIR/parsers/s02-enrich/two.yaml"
+    rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
+    rune -0 jq -r '.local_path' <(output)
+    assert_output --partial "/parsers/s02-enrich/two.yaml"
+    rune -0 cscli parsers list
+    assert_stderr --partial "multiple parsers named crowdsecurity/whitelists: ignoring $CONFIG_DIR/parsers/s02-enrich/one.yaml"
+}
