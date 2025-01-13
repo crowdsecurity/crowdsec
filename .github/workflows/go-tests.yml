@@ -120,7 +120,7 @@ jobs:
           - "9428:9428"
         options: >-
           --name=victorialogs1
-          --health-cmd "wget -q -O - http://localhost:9428/"
+          --health-cmd "curl -s http://localhost:9428/health | grep OK"
           --health-interval 30s
           --health-timeout 10s
           --health-retries 5
