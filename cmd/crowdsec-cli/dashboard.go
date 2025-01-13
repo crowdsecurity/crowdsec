@@ -36,10 +36,11 @@ var (
 	metabaseConfigFile   = "metabase.yaml"
 	metabaseImage        = "metabase/metabase:v0.46.6.1"
 	/**/
-	metabaseListenAddress = "127.0.0.1"
-	metabaseListenPort    = "3000"
-	metabaseContainerID   = "crowdsec-metabase"
-	crowdsecGroup         = "crowdsec"
+	metabaseListenAddress                 = "127.0.0.1"
+	metabaseListenPort                    = "3000"
+	metabaseContainerID                   = "crowdsec-metabase"
+	metabaseContainerEnvironmentVariables []string
+	crowdsecGroup                         = "crowdsec"
 
 	forceYes bool
 
@@ -166,7 +167,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err = cli.chownDatabase(dockerGroup.Gid); err != nil {
 				return err
 			}
-			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
+			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid, metabaseContainerID, metabaseImage, metabaseContainerEnvironmentVariables)
 			if err != nil {
 				return err
 			}
@@ -193,6 +194,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	flags.BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	// flags.StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	flags.StringVar(&metabasePassword, "password", "", "metabase password")
+	flags.StringSliceVarP(&metabaseContainerEnvironmentVariables, "env", "e", nil, "Additional environment variables to pass to the metabase container")
 
 	return cmd
 }
