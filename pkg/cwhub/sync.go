@@ -74,16 +74,16 @@ func isPathInside(path, dir string) (bool, error) {
 // scanning the hub (/etc/crowdsec/hub/*) and install (/etc/crowdsec/*) directories.
 // Only directories for the known types are scanned.
 type itemSpec struct {
-	path    string  // full path to the file (or link)
-	fname   string  // name of the item:
-			// for local item, taken from the file content or defaults to the filename (including extension)
-			// for non-local items, always {author}/{name}
-	stage   string  // stage for parsers and overflows
-	ftype   string  // type, plural (collections, contexts etc.)
-	fauthor string  // author - empty for local items
-	inhub   bool    // true if the spec comes from the hub dir
-	target  string  // the target of path if it's a link, otherwise == path
-	local   bool    // is this a spec for a local item?
+	path  string // full path to the file (or link)
+	fname string // name of the item:
+	// for local item, taken from the file content or defaults to the filename (including extension)
+	// for non-local items, always {author}/{name}
+	stage   string // stage for parsers and overflows
+	ftype   string // type, plural (collections, contexts etc.)
+	fauthor string // author - empty for local items
+	inhub   bool   // true if the spec comes from the hub dir
+	target  string // the target of path if it's a link, otherwise == path
+	local   bool   // is this a spec for a local item?
 }
 
 func newHubItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
@@ -316,8 +316,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error
 }
 
 func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget string) (*Item, error) {
-	// look for the matching item
-
+	// look for the matching index entry
 	tot := 0
 	for range h.GetItemMap(spec.ftype) {
 		tot++
@@ -499,11 +498,12 @@ func (h *Hub) syncDir(dir string) error {
 		}
 
 		// wrap itemVisit to collect spec results
-		var specCollector = func(path string, f os.DirEntry, err error) error {
+		specCollector := func(path string, f os.DirEntry, err error) error {
 			spec, err := h.itemVisit(path, f, err)
 			if err == nil && spec != nil {
 				specs = append(specs, spec)
 			}
+
 			if errors.Is(err, ErrSkipPath) {
 				return nil
 			}
@@ -522,6 +522,7 @@ func (h *Hub) syncDir(dir string) error {
 		if spec.local {
 			continue
 		}
+
 		if err := h.addItemFromSpec(spec); err != nil {
 			return err
 		}
@@ -531,6 +532,7 @@ func (h *Hub) syncDir(dir string) error {
 		if !spec.local {
 			continue
 		}
+
 		if err := h.addItemFromSpec(spec); err != nil {
 			return err
 		}
