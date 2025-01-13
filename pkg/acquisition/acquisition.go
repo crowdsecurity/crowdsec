@@ -16,6 +16,7 @@ import (
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -232,7 +233,16 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			return nil, err
 		}
 
-		dec := yaml.NewDecoder(yamlFile)
+		defer yamlFile.Close()
+
+		acquisContent, err := io.ReadAll(yamlFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", acquisFile, err)
+		}
+
+		expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
+
+		dec := yaml.NewDecoder(strings.NewReader(expandedAcquis))
 		dec.SetStrict(true)
 
 		idx := -1
@@ -328,7 +338,8 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
-				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+				var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+				if !errors.As(err, &alreadyRegisteredErr) {
 					return fmt.Errorf("could not register metrics for datasource %s: %w", sources[i].GetName(), err)
 				}
 				// ignore the error

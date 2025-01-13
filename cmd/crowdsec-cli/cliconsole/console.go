@@ -114,7 +114,7 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		}
 	}
 
-	hub, err := require.Hub(cfg, nil, nil)
+	hub, err := require.Hub(cfg, nil)
 	if err != nil {
 		return err
 	}

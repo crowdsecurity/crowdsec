@@ -47,7 +47,7 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	fmt.Fprint(out, t.Render())
 }
 
 func (cli *cliBouncers) inspect(bouncer *ent.Bouncer) error {

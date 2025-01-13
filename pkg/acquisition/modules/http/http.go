@@ -16,7 +16,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v3"
 
@@ -36,8 +35,8 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"path", "src"})
 
 type HttpConfiguration struct {
-	//IPFilter                        []string          `yaml:"ip_filter"`
-	//ChunkSize                         *int64             `yaml:"chunk_size"`
+	// IPFilter                       []string           `yaml:"ip_filter"`
+	// ChunkSize                      *int64             `yaml:"chunk_size"`
 	ListenAddr                        string             `yaml:"listen_addr"`
 	Path                              string             `yaml:"path"`
 	AuthType                          string             `yaml:"auth_type"`
@@ -76,6 +75,7 @@ func (h *HTTPSource) GetUuid() string {
 
 func (h *HTTPSource) UnmarshalConfig(yamlConfig []byte) error {
 	h.Config = HttpConfiguration{}
+
 	err := yaml.Unmarshal(yamlConfig, &h.Config)
 	if err != nil {
 		return fmt.Errorf("cannot parse %s datasource configuration: %w", dataSourceName, err)
@@ -96,6 +96,7 @@ func (hc *HttpConfiguration) Validate() error {
 	if hc.Path == "" {
 		hc.Path = "/"
 	}
+
 	if hc.Path[0] != '/' {
 		return errors.New("path must start with /")
 	}
@@ -106,9 +107,11 @@ func (hc *HttpConfiguration) Validate() error {
 		if hc.BasicAuth == nil {
 			return errors.New(baseErr + " basic_auth is not provided")
 		}
+
 		if hc.BasicAuth.Username == "" {
 			return errors.New(baseErr + " username is not provided")
 		}
+
 		if hc.BasicAuth.Password == "" {
 			return errors.New(baseErr + " password is not provided")
 		}
@@ -128,6 +131,7 @@ func (hc *HttpConfiguration) Validate() error {
 		if hc.TLS.ServerCert == "" {
 			return errors.New("server_cert is required")
 		}
+
 		if hc.TLS.ServerKey == "" {
 			return errors.New("server_key is required")
 		}
@@ -156,6 +160,7 @@ func (hc *HttpConfiguration) Validate() error {
 func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
 	h.logger = logger
 	h.metricsLevel = MetricsLevel
+
 	err := h.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -210,6 +215,7 @@ func (hc *HttpConfiguration) NewTLSConfig() (*tls.Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load server cert/key: %w", err)
 		}
+
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 
@@ -227,6 +233,7 @@ func (hc *HttpConfiguration) NewTLSConfig() (*tls.Config, error) {
 		if caCertPool == nil {
 			caCertPool = x509.NewCertPool()
 		}
+
 		caCertPool.AppendCertsFromPEM(caCert)
 		tlsConfig.ClientCAs = caCertPool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
@@ -241,10 +248,12 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 		if !ok {
 			return errors.New("missing basic auth")
 		}
+
 		if username != hc.BasicAuth.Username || password != hc.BasicAuth.Password {
 			return errors.New("invalid basic auth")
 		}
 	}
+
 	if hc.AuthType == "headers" {
 		for key, value := range *hc.Headers {
 			if r.Header.Get(key) != value {
@@ -252,6 +261,7 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -280,6 +290,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 	}
 
 	decoder := json.NewDecoder(reader)
+
 	for {
 		var message json.RawMessage
 
@@ -287,7 +298,9 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			if err == io.EOF {
 				break
 			}
+
 			w.WriteHeader(http.StatusBadRequest)
+
 			return fmt.Errorf("failed to decode: %w", err)
 		}
 
@@ -328,11 +341,13 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
+
 		if err := authorizeRequest(r, &h.Config); err != nil {
 			h.logger.Errorf("failed to authorize request from '%s': %s", r.RemoteAddr, err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+
 		err := h.processRequest(w, r, &h.Config, out)
 		if err != nil {
 			h.logger.Errorf("failed to process request from '%s': %s", r.RemoteAddr, err)
@@ -344,6 +359,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 				w.Header().Set(key, value)
 			}
 		}
+
 		if h.Config.CustomStatusCode != nil {
 			w.WriteHeader(*h.Config.CustomStatusCode)
 		} else {
@@ -367,25 +383,30 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		if err != nil {
 			return fmt.Errorf("failed to create tls config: %w", err)
 		}
+
 		h.logger.Tracef("tls config: %+v", tlsConfig)
 		h.Server.TLSConfig = tlsConfig
 	}
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/server")
+
 		if h.Config.TLS != nil {
 			h.logger.Infof("start https server on %s", h.Config.ListenAddr)
+
 			err := h.Server.ListenAndServeTLS(h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
 				return fmt.Errorf("https server failed: %w", err)
 			}
 		} else {
 			h.logger.Infof("start http server on %s", h.Config.ListenAddr)
+
 			err := h.Server.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
 				return fmt.Errorf("http server failed: %w", err)
 			}
 		}
+
 		return nil
 	})
 

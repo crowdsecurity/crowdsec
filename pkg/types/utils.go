@@ -16,21 +16,40 @@ var (
 	logLevel     log.Level
 )
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
-	/*Configure logs*/
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool) error {
+	if format == "" {
+		format = "text"
+	}
+
+	switch format {
+	case "text":
+		logFormatter = &log.TextFormatter{
+			TimestampFormat: time.RFC3339,
+			FullTimestamp:   true,
+			ForceColors:     forceColors,
+		}
+	case "json":
+		logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
+	default:
+		return fmt.Errorf("unknown log_format '%s'", format)
+	}
+
 	if cfgMode == "file" {
 		_maxsize := 500
 		if maxSize != 0 {
 			_maxsize = maxSize
 		}
+
 		_maxfiles := 3
 		if maxFiles != 0 {
 			_maxfiles = maxFiles
 		}
+
 		_maxage := 28
 		if maxAge != 0 {
 			_maxage = maxAge
 		}
+
 		_compress := true
 		if compress != nil {
 			_compress = *compress
@@ -47,10 +66,11 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
+
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
 	log.SetFormatter(logFormatter)
+
 	return nil
 }
 
@@ -63,7 +83,9 @@ func ConfigureLogger(clog *log.Logger) error {
 	if logFormatter != nil {
 		clog.SetFormatter(logFormatter)
 	}
+
 	clog.SetLevel(logLevel)
+
 	return nil
 }
 
@@ -76,6 +98,8 @@ func IsNetworkFS(path string) (bool, string, error) {
 	if err != nil {
 		return false, "", err
 	}
+
 	fsType = strings.ToLower(fsType)
+
 	return fsType == "nfs" || fsType == "cifs" || fsType == "smb" || fsType == "smb2", fsType, nil
 }
