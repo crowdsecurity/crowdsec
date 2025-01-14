@@ -155,14 +155,14 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
-func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
 
 	w.logger = logger
-	w.metricsLevel = MetricsLevel
+	w.metricsLevel = metricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {

@@ -154,13 +154,13 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := cw.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
 
-	cw.metricsLevel = MetricsLevel
+	cw.metricsLevel = metricsLevel
 
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 

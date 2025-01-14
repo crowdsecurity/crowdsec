@@ -133,28 +133,28 @@ func Init(databaseClient *database.Client) error {
 	return nil
 }
 
-func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
+func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 	// cache is explicitly disabled
-	if CacheCfg.Cache != nil && !*CacheCfg.Cache {
+	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
 		return nil
 	}
 	// cache is implicitly disabled if no cache config is provided
-	if CacheCfg.Strategy == nil && CacheCfg.TTL == nil && CacheCfg.Size == nil {
+	if cacheCfg.Strategy == nil && cacheCfg.TTL == nil && cacheCfg.Size == nil {
 		return nil
 	}
 	// cache is enabled
 
-	if CacheCfg.Size == nil {
-		CacheCfg.Size = ptr.Of(50)
+	if cacheCfg.Size == nil {
+		cacheCfg.Size = ptr.Of(50)
 	}
 
-	gc := gcache.New(*CacheCfg.Size)
+	gc := gcache.New(*cacheCfg.Size)
 
-	if CacheCfg.Strategy == nil {
-		CacheCfg.Strategy = ptr.Of("LRU")
+	if cacheCfg.Strategy == nil {
+		cacheCfg.Strategy = ptr.Of("LRU")
 	}
 
-	switch *CacheCfg.Strategy {
+	switch *cacheCfg.Strategy {
 	case "LRU":
 		gc = gc.LRU()
 	case "LFU":
@@ -162,11 +162,11 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	case "ARC":
 		gc = gc.ARC()
 	default:
-		return fmt.Errorf("unknown cache strategy '%s'", *CacheCfg.Strategy)
+		return fmt.Errorf("unknown cache strategy '%s'", *cacheCfg.Strategy)
 	}
 
-	if CacheCfg.TTL != nil {
-		gc.Expiration(*CacheCfg.TTL)
+	if cacheCfg.TTL != nil {
+		gc.Expiration(*cacheCfg.TTL)
 	}
 
 	cache := gc.Build()

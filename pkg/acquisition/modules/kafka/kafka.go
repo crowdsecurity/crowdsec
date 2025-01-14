@@ -85,9 +85,9 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	return err
 }
 
-func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	k.logger = logger
-	k.metricsLevel = MetricsLevel
+	k.metricsLevel = metricsLevel
 
 	k.logger.Debugf("start configuring %s source", dataSourceName)
 
