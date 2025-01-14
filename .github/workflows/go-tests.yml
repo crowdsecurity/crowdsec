@@ -115,7 +115,7 @@ jobs:
           --health-start-period 30s
 
       victorialogs:
-        image: victoriametrics/victoria-logs:v0.40.0-victorialogs
+        image: victoriametrics/victoria-logs:1.5.0-victorialogs
         ports:
           - "9428:9428"
         options: >-
