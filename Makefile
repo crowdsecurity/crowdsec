@@ -138,6 +138,7 @@ COMPONENTS := \
 	datasource_journalctl \
 	datasource_kinesis \
 	datasource_loki \
+	datasource_victorialogs \
 	datasource_s3 \
 	datasource_syslog \
 	datasource_wineventlog \
