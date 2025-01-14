@@ -167,7 +167,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err = cli.chownDatabase(dockerGroup.Gid); err != nil {
 				return err
 			}
-			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid, metabaseContainerID, metabaseImage, metabaseContainerEnvironmentVariables)
+			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress,
+				metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid,
+				metabaseContainerID, metabaseImage, metabaseContainerEnvironmentVariables)
 			if err != nil {
 				return err
 			}

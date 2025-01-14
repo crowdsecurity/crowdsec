@@ -50,9 +50,8 @@ func resolveSymlink(path string) (string, error) {
 }
 
 // isPathInside checks if a path is inside the given directory
-// it can return false negatives if the filesystem is case insensitive
 func isPathInside(path, dir string) (bool, error) {
-	absFilePath, err := filepath.Abs(path)
+	absFile, err := filepath.Abs(path)
 	if err != nil {
 		return false, err
 	}
@@ -62,103 +61,145 @@ func isPathInside(path, dir string) (bool, error) {
 		return false, err
 	}
 
-	return strings.HasPrefix(absFilePath, absDir), nil
+	rel, err := filepath.Rel(absDir, absFile)
+	if err != nil {
+		return false, err
+	}
+
+	return !strings.HasPrefix(rel, ".."), nil
 }
 
-// information used to create a new Item, from a file path.
-type itemFileInfo struct {
-	fname   string
-	stage   string
-	ftype   string
-	fauthor string
-	inhub   bool
+// itemSpec contains some information needed to complete the items
+// after they have been parsed from the index. itemSpecs are created by
+// scanning the hub (/etc/crowdsec/hub/*) and install (/etc/crowdsec/*) directories.
+// Only directories for the known types are scanned.
+type itemSpec struct {
+	path  string // full path to the file (or link)
+	fname string // name of the item:
+	// for local item, taken from the file content or defaults to the filename (including extension)
+	// for non-local items, always {author}/{name}
+	stage   string // stage for parsers and overflows
+	ftype   string // type, plural (collections, contexts etc.)
+	fauthor string // author - empty for local items
+	inhub   bool   // true if the spec comes from the hub dir
+	target  string // the target of path if it's a link, otherwise == path
+	local   bool   // is this a spec for a local item?
 }
 
-func (h *Hub) getItemFileInfo(path string, logger *logrus.Logger) (*itemFileInfo, error) {
-	var ret *itemFileInfo
+func newHubItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
+	// .../hub/parsers/s00-raw/crowdsecurity/skip-pretag.yaml
+	// .../hub/scenarios/crowdsecurity/ssh_bf.yaml
+	// .../hub/profiles/crowdsecurity/linux.yaml
+	if len(subs) < 3 {
+		return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
+	}
 
-	hubDir := h.local.HubDir
-	installDir := h.local.InstallDir
+	ftype := subs[0]
+	if !slices.Contains(ItemTypes, ftype) {
+		// this doesn't really happen anymore, because we only scan the {hubtype} directories
+		return nil, fmt.Errorf("unknown configuration type '%s'", ftype)
+	}
 
-	subsHub := relativePathComponents(path, hubDir)
-	subsInstall := relativePathComponents(path, installDir)
+	stage := ""
+	fauthor := subs[1]
+	fname := subs[2]
 
-	switch {
-	case len(subsHub) > 0:
-		logger.Tracef("in hub dir")
-
-		// .../hub/parsers/s00-raw/crowdsecurity/skip-pretag.yaml
-		// .../hub/scenarios/crowdsecurity/ssh_bf.yaml
-		// .../hub/profiles/crowdsecurity/linux.yaml
-		if len(subsHub) < 3 {
-			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
+	if ftype == PARSERS || ftype == POSTOVERFLOWS {
+		if len(subs) < 4 {
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
 
-		ftype := subsHub[0]
-		if !slices.Contains(ItemTypes, ftype) {
-			// this doesn't really happen anymore, because we only scan the {hubtype} directories
-			return nil, fmt.Errorf("unknown configuration type '%s'", ftype)
+		stage = subs[1]
+		fauthor = subs[2]
+		fname = subs[3]
+	}
+
+	spec := itemSpec{
+		path:    path,
+		inhub:   true,
+		ftype:   ftype,
+		stage:   stage,
+		fauthor: fauthor,
+		fname:   fname,
+	}
+
+	return &spec, nil
+}
+
+func newInstallItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
+	logger.Tracef("%s in install dir", path)
+
+	// .../config/parser/stage/file.yaml
+	// .../config/postoverflow/stage/file.yaml
+	// .../config/scenarios/scenar.yaml
+	// .../config/collections/linux.yaml //file is empty
+
+	if len(subs) < 2 {
+		return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
+	}
+
+	// this can be in any number of subdirs, we join them to compose the item name
+
+	ftype := subs[0]
+	stage := ""
+	fname := strings.Join(subs[1:], "/")
+
+	if ftype == PARSERS || ftype == POSTOVERFLOWS {
+		stage = subs[1]
+		fname = strings.Join(subs[2:], "/")
+	}
+
+	spec := itemSpec{
+		path:    path,
+		inhub:   false,
+		ftype:   ftype,
+		stage:   stage,
+		fauthor: "",
+		fname:   fname,
+	}
+
+	return &spec, nil
+}
+
+func newItemSpec(path, hubDir, installDir string, logger *logrus.Logger) (*itemSpec, error) {
+	var (
+		spec *itemSpec
+		err  error
+	)
+
+	if subs := relativePathComponents(path, hubDir); len(subs) > 0 {
+		spec, err = newHubItemSpec(path, subs, logger)
+		if err != nil {
+			return nil, err
 		}
-
-		stage := ""
-		fauthor := subsHub[1]
-		fname := subsHub[2]
-
-		if ftype == PARSERS || ftype == POSTOVERFLOWS {
-			if len(subsHub) < 4 {
-				return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsHub))
-			}
-
-			stage = subsHub[1]
-			fauthor = subsHub[2]
-			fname = subsHub[3]
+	} else if subs := relativePathComponents(path, installDir); len(subs) > 0 {
+		spec, err = newInstallItemSpec(path, subs, logger)
+		if err != nil {
+			return nil, err
 		}
+	}
 
-		ret = &itemFileInfo{
-			inhub:   true,
-			ftype:   ftype,
-			stage:   stage,
-			fauthor: fauthor,
-			fname:   fname,
-		}
-
-	case len(subsInstall) > 0:
-		logger.Tracef("in install dir")
-
-		// .../config/parser/stage/file.yaml
-		// .../config/postoverflow/stage/file.yaml
-		// .../config/scenarios/scenar.yaml
-		// .../config/collections/linux.yaml //file is empty
-
-		if len(subsInstall) < 2 {
-			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subsInstall))
-		}
-
-		// this can be in any number of subdirs, we join them to compose the item name
-
-		ftype := subsInstall[0]
-		stage := ""
-		fname := strings.Join(subsInstall[1:], "/")
-
-		if ftype == PARSERS || ftype == POSTOVERFLOWS {
-			stage = subsInstall[1]
-			fname = strings.Join(subsInstall[2:], "/")
-		}
-
-		ret = &itemFileInfo{
-			inhub:   false,
-			ftype:   ftype,
-			stage:   stage,
-			fauthor: "",
-			fname:   fname,
-		}
-	default:
+	if spec == nil {
 		return nil, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
 	}
 
-	logger.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
+	// follow the link to see if it falls in the hub directory
+	// if it's not a link, target == path
+	spec.target, err = resolveSymlink(spec.path)
+	if err != nil {
+		// target does not exist, the user might have removed the file
+		// or switched to a hub branch without it; or symlink loop
+		return nil, err
+	}
 
-	return ret, nil
+	targetInHub, err := isPathInside(spec.target, hubDir)
+	if err != nil {
+		return nil, ErrSkipPath
+	}
+
+	spec.local = !targetInHub
+
+	return spec, nil
 }
 
 // sortedVersions returns the input data, sorted in reverse order (new, old) by semver.
@@ -185,7 +226,7 @@ func sortedVersions(raw []string) ([]string, error) {
 	return ret, nil
 }
 
-func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
+func newLocalItem(h *Hub, path string, spec *itemSpec) (*Item, error) {
 	type localItemName struct {
 		Name string `yaml:"name"`
 	}
@@ -194,12 +235,13 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
 
 	item := &Item{
 		hub:      h,
-		Name:     info.fname,
-		Stage:    info.stage,
-		Type:     info.ftype,
+		Name:     spec.fname,
+		Stage:    spec.stage,
+		Type:     spec.ftype,
 		FileName: fileName,
 		State: ItemState{
 			LocalPath: path,
+			local:     true,
 			Installed: true,
 			UpToDate:  true,
 		},
@@ -225,22 +267,25 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
 	return item, nil
 }
 
-func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
+// A sentinel to skip regular files because "nil, nil" is ambiguous. Returning SkipDir with files would skip the rest of the directory.
+var ErrSkipPath = errors.New("sentinel")
+
+func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error) {
 	if err != nil {
 		h.logger.Debugf("while syncing hub dir: %s", err)
 		// there is a path error, we ignore the file
-		return nil
+		return nil, ErrSkipPath
+	}
+
+	// permission errors, files removed while reading, etc.
+	if f == nil {
+		return nil, ErrSkipPath
 	}
 
 	// only happens if the current working directory was removed (!)
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return err
-	}
-
-	// permission errors, files removed while reading, etc.
-	if f == nil {
-		return nil
+		return nil, err
 	}
 
 	if f.IsDir() {
@@ -249,101 +294,125 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		// - double dot prefix is used by k8s to mount config maps
 		if strings.HasPrefix(f.Name(), ".") {
 			h.logger.Tracef("skipping hidden directory %s", path)
-			return filepath.SkipDir
+			return nil, filepath.SkipDir
 		}
 
 		// keep traversing
-		return nil
+		return nil, nil
 	}
 
 	// we only care about YAML files
 	if !isYAMLFileName(f.Name()) {
-		return nil
+		return nil, ErrSkipPath
 	}
 
-	info, err := h.getItemFileInfo(path, h.logger)
+	spec, err := newItemSpec(path, h.local.HubDir, h.local.InstallDir, h.logger)
 	if err != nil {
 		h.logger.Warningf("Ignoring file %s: %s", path, err)
-		return nil
+		return nil, ErrSkipPath
 	}
 
-	// follow the link to see if it falls in the hub directory
-	// if it's not a link, target == path
-	target, err := resolveSymlink(path)
-	if err != nil {
-		// target does not exist, the user might have removed the file
-		// or switched to a hub branch without it; or symlink loop
-		h.logger.Warningf("Ignoring file %s: %s", path, err)
-		return nil
+	return spec, nil
+}
+
+func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget string) (*Item, error) {
+	// look for the matching index entry
+	tot := 0
+	for range h.GetItemMap(spec.ftype) {
+		tot++
 	}
 
-	targetInHub, err := isPathInside(target, h.local.HubDir)
-	if err != nil {
-		h.logger.Warningf("Ignoring file %s: %s", path, err)
-		return nil
-	}
-
-	// local (custom) item if the file or link target is not inside the hub dir
-	if !targetInHub {
-		h.logger.Tracef("%s is a local file, skip", path)
-
-		item, err := newLocalItem(h, path, info)
-		if err != nil {
-			return err
-		}
-
-		h.addItem(item)
-
-		return nil
-	}
-
-	hubpath := target
-
-	// try to find which configuration item it is
-	h.logger.Tracef("check [%s] of %s", info.fname, info.ftype)
-
-	for _, item := range h.GetItemMap(info.ftype) {
-		if info.fname != item.FileName {
+	for _, item := range h.GetItemMap(spec.ftype) {
+		if spec.fname != item.FileName {
 			continue
 		}
 
-		if item.Stage != info.stage {
+		if item.Stage != spec.stage {
 			continue
 		}
 
-		// if we are walking hub dir, just mark present files as downloaded
-		if info.inhub {
+		// Downloaded item, in the hub dir.
+		if spec.inhub {
 			// not the item we're looking for
-			if !item.validPath(info.fauthor, info.fname) {
+			if !item.validPath(spec.fauthor, spec.fname) {
 				continue
 			}
 
 			src, err := item.DownloadPath()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			if path == src {
+			if spec.path == src {
 				h.logger.Tracef("marking %s as downloaded", item.Name)
 				item.State.Downloaded = true
 			}
-		} else if !hasPathSuffix(hubpath, item.RemotePath) {
+		} else if !hasPathSuffix(symlinkTarget, item.RemotePath) {
 			// wrong file
 			// <type>/<stage>/<author>/<name>.yaml
 			continue
 		}
 
-		err := item.setVersionState(path, info.inhub)
+		err := item.setVersionState(spec.path, spec.inhub)
+		if err != nil {
+			return nil, err
+		}
+
+		return item, nil
+	}
+
+	return nil, nil
+}
+
+// addItemFromSpec adds an item to the hub based on the spec, or updates it if already present.
+//
+// When the item is:
+//
+// Local - an itemSpec instance is created while scanning the install directory
+// and an Item instance will be added to the hub.items map.
+//
+// Not downloaded, not installed - an Item instance is already on hub.items (decoded from index) and left untouched.
+//
+// Downloaded, not installed - an Item instance is on hub.items (decoded from index) and an itemSpec instance is created
+// to complete it (i.e. set version and state flags).
+//
+// Downloaded, installed - an Item instance is on hub.items and is complemented with two itemSpecs: one from the file
+// on the hub directory, one from the link in the install directory.
+func (h *Hub) addItemFromSpec(spec *itemSpec) error {
+	var (
+		item *Item
+		err  error
+	)
+
+	// Local item: links outside the hub directory.
+	// We add it, or overwrite the existing one if it happened to have the same name.
+	if spec.local {
+		item, err = newLocalItem(h, spec.path, spec)
 		if err != nil {
 			return err
 		}
 
-		h.pathIndex[path] = item
+		// we now have the name declared in the file (for local),
+		// see if there's another installed item of the same name
+		theOtherItem := h.GetItem(spec.ftype, item.Name)
+		if theOtherItem != nil {
+			if theOtherItem.State.Installed {
+				h.logger.Warnf("multiple %s named %s: ignoring %s", spec.ftype, item.Name, theOtherItem.State.LocalPath)
+			}
+		}
+	} else {
+		item, err = updateNonLocalItem(h, spec.path, spec, spec.target)
+		if err != nil {
+			return err
+		}
+	}
 
+	if item == nil {
+		h.logger.Infof("Ignoring file %s of type %s", spec.path, spec.ftype)
 		return nil
 	}
 
-	h.logger.Infof("Ignoring file %s of type %s", path, info.ftype)
+	h.addItem(item)
 
 	return nil
 }
@@ -411,6 +480,8 @@ func (i *Item) checkSubItemVersions() []string {
 
 // syncDir scans a directory for items, and updates the Hub state accordingly.
 func (h *Hub) syncDir(dir string) error {
+	specs := []*itemSpec{}
+
 	// For each, scan PARSERS, POSTOVERFLOWS... and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
@@ -423,11 +494,46 @@ func (h *Hub) syncDir(dir string) error {
 
 		// explicit check for non existing directory, avoid spamming log.Debug
 		if _, err = os.Stat(cpath); os.IsNotExist(err) {
-			h.logger.Tracef("directory %s doesn't exist, skipping", cpath)
 			continue
 		}
 
-		if err = filepath.WalkDir(cpath, h.itemVisit); err != nil {
+		// wrap itemVisit to collect spec results
+		specCollector := func(path string, f os.DirEntry, err error) error {
+			spec, err := h.itemVisit(path, f, err)
+			if err == nil && spec != nil {
+				specs = append(specs, spec)
+			}
+
+			if errors.Is(err, ErrSkipPath) {
+				return nil
+			}
+
+			return err
+		}
+
+		if err = filepath.WalkDir(cpath, specCollector); err != nil {
+			return err
+		}
+	}
+
+	// add non-local items first, so they can find the place in the index
+	// before it's overridden by local items in case of name collision
+	for _, spec := range specs {
+		if spec.local {
+			continue
+		}
+
+		if err := h.addItemFromSpec(spec); err != nil {
+			return err
+		}
+	}
+
+	for _, spec := range specs {
+		if !spec.local {
+			continue
+		}
+
+		if err := h.addItemFromSpec(spec); err != nil {
 			return err
 		}
 	}
@@ -463,12 +569,14 @@ func removeDuplicates(sl []string) []string {
 
 // localSync updates the hub state with downloaded, installed and local items.
 func (h *Hub) localSync() error {
-	if err := h.syncDir(h.local.InstallDir); err != nil {
-		return fmt.Errorf("failed to sync %s: %w", h.local.InstallDir, err)
-	}
-
+	// add downloaded files first, so they can find the place in the index
+	// before it's overridden by local items in case of name collision
 	if err := h.syncDir(h.local.HubDir); err != nil {
 		return fmt.Errorf("failed to sync %s: %w", h.local.HubDir, err)
+	}
+
+	if err := h.syncDir(h.local.InstallDir); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", h.local.InstallDir, err)
 	}
 
 	warnings := make([]string, 0)
