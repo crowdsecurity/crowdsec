@@ -40,7 +40,7 @@ type cliItem struct {
 	listHelp      cliHelp
 }
 
-func (cli cliItem) NewCommand() *cobra.Command {
+func (cli *cliItem) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               cmp.Or(cli.help.use, cli.name+" <action> [item]..."),
 		Short:             cmp.Or(cli.help.short, "Manage hub "+cli.name),
@@ -60,7 +60,7 @@ func (cli cliItem) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) list(args []string, all bool) error {
+func (cli *cliItem) list(args []string, all bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cli.cfg(), log.StandardLogger())
@@ -78,7 +78,7 @@ func (cli cliItem) list(args []string, all bool) error {
 	return clihub.ListItems(color.Output, cfg.Cscli.Color, []string{cli.name}, items, false, cfg.Cscli.Output)
 }
 
-func (cli cliItem) newListCmd() *cobra.Command {
+func (cli *cliItem) newListCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{

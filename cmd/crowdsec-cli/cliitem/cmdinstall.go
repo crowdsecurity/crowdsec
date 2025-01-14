@@ -42,7 +42,7 @@ func suggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) str
 	return msg
 }
 
-func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
+func (cli *cliItem) install(ctx context.Context, args []string, yes bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -114,7 +114,7 @@ func compAllItems(itemType string, args []string, toComplete string, cfg configG
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli cliItem) newInstallCmd() *cobra.Command {
+func (cli *cliItem) newInstallCmd() *cobra.Command {
 	var (
 		yes          bool
 		dryRun       bool
