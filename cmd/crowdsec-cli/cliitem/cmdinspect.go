@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff bool, rev bool, noMetrics bool) error {
+func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff bool, rev bool, noMetrics bool) error {
 	cfg := cli.cfg()
 
 	if rev && !diff {
@@ -71,7 +71,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 }
 
 // return the diff between the installed version and the latest version
-func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
+func (cli *cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.IsInstalled() {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -113,7 +113,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvid
 	return fmt.Sprintf("%s", diff), nil
 }
 
-func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
+func (cli *cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
 	if !item.State.IsInstalled() {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
@@ -159,7 +159,7 @@ func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvid
 	return strings.Join(ret, "\n")
 }
 
-func (cli cliItem) newInspectCmd() *cobra.Command {
+func (cli *cliItem) newInspectCmd() *cobra.Command {
 	var (
 		url       string
 		diff      bool

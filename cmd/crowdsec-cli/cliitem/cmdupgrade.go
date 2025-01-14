@@ -14,7 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
-func (cli cliItem) upgradePlan(hub *cwhub.Hub, contentProvider cwhub.ContentProvider, args []string, force bool, all bool) (*hubops.ActionPlan, error) {
+func (cli *cliItem) upgradePlan(hub *cwhub.Hub, contentProvider cwhub.ContentProvider, args []string, force bool, all bool) (*hubops.ActionPlan, error) {
 	plan := hubops.NewActionPlan(hub)
 
 	if all {
@@ -45,7 +45,7 @@ func (cli cliItem) upgradePlan(hub *cwhub.Hub, contentProvider cwhub.ContentProv
 	return plan, nil
 }
 
-func (cli cliItem) upgrade(ctx context.Context, args []string, interactive bool, dryRun bool, force bool, all bool) error {
+func (cli *cliItem) upgrade(ctx context.Context, args []string, interactive bool, dryRun bool, force bool, all bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -74,7 +74,7 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, interactive bool,
 	return nil
 }
 
-func (cli cliItem) newUpgradeCmd() *cobra.Command {
+func (cli *cliItem) newUpgradeCmd() *cobra.Command {
 	var (
 		interactive bool
 		dryRun      bool
