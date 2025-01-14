@@ -25,7 +25,7 @@ func lookupLatest(ctx context.Context) (string, error) {
 
 	url := "https://version.crowdsec.net/latest"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("unable to create request for %s: %w", url, err)
 	}

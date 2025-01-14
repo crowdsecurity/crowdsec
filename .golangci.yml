@@ -214,7 +214,6 @@ linters-settings:
     disabled-checks:
       - typeDefFirst
       - paramTypeCombine
-      - httpNoBody
       - ifElseChain
       - importShadow
       - hugeParam

@@ -41,7 +41,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 			url += fmt.Sprintf("%s=%s&", k, v)
 		}
 	}
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequest(method, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
