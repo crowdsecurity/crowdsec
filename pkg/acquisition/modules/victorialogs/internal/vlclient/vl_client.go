@@ -179,7 +179,7 @@ func (lc *VLClient) readResponse(ctx context.Context, resp *http.Response, c cha
 		b, err := br.ReadBytes('\n')
 		if err != nil {
 			if errors.Is(err, bufio.ErrBufferFull) {
-				lc.Logger.Info("skipping line number #%d: line too long", n)
+				lc.Logger.Infof("skipping line number #%d: line too long", n)
 				continue
 			}
 			if errors.Is(err, io.EOF) {
