@@ -12,19 +12,22 @@ import (
 )
 
 func TestListFilesAtPath(t *testing.T) {
-	dir, err := os.MkdirTemp("", "test-listfiles")
+	dir := t.TempDir()
+
+	f, err := os.Create(filepath.Join(dir, "notification-gitter"))
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		os.RemoveAll(dir)
-	})
-	_, err = os.Create(filepath.Join(dir, "notification-gitter"))
+	require.NoError(t, f.Close())
+
+	f, err = os.Create(filepath.Join(dir, "slack"))
 	require.NoError(t, err)
-	_, err = os.Create(filepath.Join(dir, "slack"))
-	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
 	err = os.Mkdir(filepath.Join(dir, "somedir"), 0o755)
 	require.NoError(t, err)
-	_, err = os.Create(filepath.Join(dir, "somedir", "inner"))
+
+	f, err = os.Create(filepath.Join(dir, "somedir", "inner"))
 	require.NoError(t, err)
+	require.NoError(t, f.Close())
 
 	tests := []struct {
 		name        string

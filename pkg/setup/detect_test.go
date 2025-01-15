@@ -60,8 +60,13 @@ func TestSetupHelperProcess(t *testing.T) {
 func tempYAML(t *testing.T, content string) os.File {
 	t.Helper()
 	require := require.New(t)
-	file, err := os.CreateTemp("", "")
+	file, err := os.CreateTemp(t.TempDir(), "")
 	require.NoError(err)
+
+	t.Cleanup(func() {
+		require.NoError(file.Close())
+		require.NoError(os.Remove(file.Name()))
+	})
 
 	_, err = file.WriteString(dedent.Dedent(content))
 	require.NoError(err)
@@ -249,7 +254,6 @@ func TestListSupported(t *testing.T) {
 			t.Parallel()
 
 			f := tempYAML(t, tc.yml)
-			defer os.Remove(f.Name())
 
 			supported, err := setup.ListSupported(&f)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -375,7 +379,6 @@ func TestDetectSimpleRule(t *testing.T) {
 	      - false
 	  ugly:
 	`)
-	defer os.Remove(f.Name())
 
 	detected, err := setup.Detect(&f, setup.DetectOptions{})
 	require.NoError(err)
@@ -421,7 +424,6 @@ detect:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f.Name())
 
 			detected, err := setup.Detect(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -514,7 +516,6 @@ detect:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f.Name())
 
 			detected, err := setup.Detect(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -542,7 +543,6 @@ func TestDetectForcedUnit(t *testing.T) {
 	      journalctl_filter:
 	        - _SYSTEMD_UNIT=crowdsec-setup-forced.service
 	`)
-	defer os.Remove(f.Name())
 
 	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
 	require.NoError(err)
@@ -580,7 +580,6 @@ func TestDetectForcedProcess(t *testing.T) {
 	    when:
 	      - ProcessRunning("foobar")
 	`)
-	defer os.Remove(f.Name())
 
 	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
 	require.NoError(err)
@@ -610,7 +609,6 @@ func TestDetectSkipService(t *testing.T) {
 	    when:
 	      - ProcessRunning("foobar")
 	`)
-	defer os.Remove(f.Name())
 
 	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
 	require.NoError(err)
@@ -825,7 +823,6 @@ func TestDetectForcedOS(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f.Name())
 
 			detected, err := setup.Detect(&f, setup.DetectOptions{ForcedOS: tc.forced})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -1009,7 +1006,6 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			defer os.Remove(f.Name())
 			detected, err := setup.Detect(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(tc.expected, detected)

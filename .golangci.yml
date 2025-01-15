@@ -460,3 +460,14 @@ issues:
         - revive
       path: "pkg/types/utils.go"
       text: "argument-limit: .*"
+
+    # need some cleanup first: to create db in memory and share the client, not the config
+    - linters:
+        - usetesting
+      path: "pkg/apiserver/(.+)_test.go"
+      text: "os.MkdirTemp.* could be replaced by t.TempDir.*"
+
+    - linters:
+        - usetesting
+      path: "pkg/apiserver/(.+)_test.go"
+      text: "os.CreateTemp.* could be replaced by os.CreateTemp.*"
