@@ -60,18 +60,6 @@ teardown() {
     refute_output --partial "Crowdsec"
 }
 
-@test "no agent: cscli config backup" {
-    config_disable_agent
-    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
-    rune -0 cscli config backup "$backupdir"
-    assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "$backupdir"
-
-    assert_stderr --partial "failed to backup config"
-    assert_stderr --partial "file exists"
-    rm -rf -- "${backupdir:?}"
-}
-
 @test "no agent: lapi status should be ok" {
     config_disable_agent
     ./instance-crowdsec start
