@@ -62,6 +62,7 @@ linters-settings:
           - "!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go"
           - "!**/pkg/acquisition/modules/loki/loki.go"
           - "!**/pkg/acquisition/modules/loki/timestamp_test.go"
+          - "!**/pkg/acquisition/modules/victorialogs/victorialogs.go"
           - "!**/pkg/acquisition/modules/s3/s3.go"
           - "!**/pkg/acquisition/modules/syslog/syslog.go"
           - "!**/pkg/acquisition/modules/wineventlog/wineventlog_windows.go"
