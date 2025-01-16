@@ -20,6 +20,11 @@ linters-settings:
      - (*os/exec.Cmd).Wait
      - (*os.Process).Kill
      - (*text/template.Template).ExecuteTemplate
+     - syscall.FreeLibrary
+     - golang.org/x/sys/windows.CloseHandle
+     - golang.org/x/sys/windows.ResetEvent
+     - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
+     - (*golang.org/x/sys/windows/svc/mgr.Mgr).Disconnect
 
      - (github.com/bluele/gcache.Cache).Set
      - (github.com/gin-gonic/gin.ResponseWriter).WriteString
