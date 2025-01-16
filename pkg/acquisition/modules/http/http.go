@@ -339,12 +339,14 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		if r.Method != http.MethodPost {
 			h.logger.Errorf("method not allowed: %s", r.Method)
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
 			return
 		}
 
 		if err := authorizeRequest(r, &h.Config); err != nil {
 			h.logger.Errorf("failed to authorize request from '%s': %s", r.RemoteAddr, err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+
 			return
 		}
 
