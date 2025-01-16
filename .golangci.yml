@@ -5,6 +5,37 @@ run:
     - expr_debug
 
 linters-settings:
+  errcheck:
+    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+    # Such cases aren't reported by default.
+    # Default: false
+    check-type-assertions: false
+    # List of functions to exclude from checking, where each entry is a single function to exclude.
+    # See https://github.com/kisielk/errcheck#excluding-functions for details.
+    exclude-functions:
+     - (*bytes.Buffer).ReadFrom   # TODO:
+     - io.Copy                    # TODO:
+     - (net/http.ResponseWriter).Write    # TODO:
+     - (*os/exec.Cmd).Start
+     - (*os/exec.Cmd).Wait
+     - (*os.Process).Kill
+     - (*text/template.Template).ExecuteTemplate
+     - syscall.FreeLibrary
+     - golang.org/x/sys/windows.CloseHandle
+     - golang.org/x/sys/windows.ResetEvent
+     - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
+     - (*golang.org/x/sys/windows/svc/mgr.Mgr).Disconnect
+
+     - (github.com/bluele/gcache.Cache).Set
+     - (github.com/gin-gonic/gin.ResponseWriter).WriteString
+     - (*github.com/segmentio/kafka-go.Reader).SetOffsetAt
+     - (*gopkg.in/tomb.v2.Tomb).Wait
+
+     - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterArgs
+     - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterBody
+     - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterHeaders
+     - (*github.com/crowdsecurity/crowdsec/pkg/longpollclient.LongPollClient).Stop
+
   gci:
     sections:
      - standard
@@ -317,10 +348,6 @@ issues:
     - linters:
         - govet
       text: "shadow: declaration of \"(err|ctx)\" shadows declaration"
-
-    - linters:
-        - errcheck
-      text: "Error return value of `.*` is not checked"
 
     # Will fix, trivial - just beware of merge conflicts
 
