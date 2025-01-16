@@ -143,11 +143,11 @@ jobs:
         go generate ./...
         protoc --version
         if [[ $(git status --porcelain) ]]; then
-          echo "Error: Uncommitted changes found after running 'make generate'. Please commit all generated code."
+          echo "Error: Uncommitted changes found after running 'go generate'. Please commit all generated code."
           git diff
           exit 1
         else
-          echo "No changes detected after running 'make generate'."
+          echo "No changes detected after running 'go generate'."
         fi
 
     - name: Create localstack streams
