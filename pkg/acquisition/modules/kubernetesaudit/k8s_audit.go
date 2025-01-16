@@ -97,9 +97,9 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
+func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
 	ka.logger = logger
-	ka.metricsLevel = MetricsLevel
+	ka.metricsLevel = metricsLevel
 
 	err := ka.UnmarshalConfig(config)
 	if err != nil {

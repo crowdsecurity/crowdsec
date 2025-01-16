@@ -155,14 +155,14 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
-func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
 
 	w.logger = logger
-	w.metricsLevel = MetricsLevel
+	w.metricsLevel = metricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {
@@ -180,7 +180,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
-	//we keep the datasource name
+	// we keep the datasource name
 	appsecCfg.Name = w.config.Name
 
 	// let's load the associated appsec_config:
@@ -275,6 +275,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
+
 			t.Go(func() error {
 				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
 				return runner.Run(t)
@@ -285,16 +286,20 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 			if w.config.ListenSocket != "" {
 				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
 				_ = os.RemoveAll(w.config.ListenSocket)
+
 				listener, err := net.Listen("unix", w.config.ListenSocket)
 				if err != nil {
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
+
 				defer listener.Close()
+
 				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
 					err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
 				} else {
 					err = w.server.Serve(listener)
 				}
+
 				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
@@ -304,8 +309,10 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 		})
 		t.Go(func() error {
 			var err error
+
 			if w.config.ListenAddr != "" {
 				w.logger.Infof("creating TCP server on %s", w.config.ListenAddr)
+
 				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
 					err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
 				} else {
@@ -324,6 +331,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
 		w.server.Shutdown(ctx)
+
 		return nil
 	})
 
@@ -354,11 +362,13 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Errorf("Error performing request: %s", err)
 		return false
 	}
+
 	defer resp.Body.Close()
 
 	return resp.StatusCode == http.StatusOK
@@ -371,17 +381,21 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
 	clientIP := r.Header.Get(appsec.IPHeaderName)
 	remoteIP := r.RemoteAddr
+
 	if apiKey == "" {
 		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
 		rw.WriteHeader(http.StatusUnauthorized)
+
 		return
 	}
+
 	expiration, exists := w.AuthCache.Get(apiKey)
 	// if the apiKey is not in cache or has expired, just recheck the auth
 	if !exists || time.Now().After(expiration) {
 		if !w.IsAuth(apiKey) {
 			rw.WriteHeader(http.StatusUnauthorized)
 			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
+
 			return
 		}
 
@@ -394,8 +408,10 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.logger.Errorf("%s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
+
 	parsedRequest.AppsecEngine = w.config.Name
 
 	logger := w.logger.WithFields(log.Fields{

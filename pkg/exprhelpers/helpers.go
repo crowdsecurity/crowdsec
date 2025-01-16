@@ -129,32 +129,34 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
+
 	XMLCacheInit()
+
 	return nil
 }
 
-func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
+func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 	// cache is explicitly disabled
-	if CacheCfg.Cache != nil && !*CacheCfg.Cache {
+	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
 		return nil
 	}
 	// cache is implicitly disabled if no cache config is provided
-	if CacheCfg.Strategy == nil && CacheCfg.TTL == nil && CacheCfg.Size == nil {
+	if cacheCfg.Strategy == nil && cacheCfg.TTL == nil && cacheCfg.Size == nil {
 		return nil
 	}
 	// cache is enabled
 
-	if CacheCfg.Size == nil {
-		CacheCfg.Size = ptr.Of(50)
+	if cacheCfg.Size == nil {
+		cacheCfg.Size = ptr.Of(50)
 	}
 
-	gc := gcache.New(*CacheCfg.Size)
+	gc := gcache.New(*cacheCfg.Size)
 
-	if CacheCfg.Strategy == nil {
-		CacheCfg.Strategy = ptr.Of("LRU")
+	if cacheCfg.Strategy == nil {
+		cacheCfg.Strategy = ptr.Of("LRU")
 	}
 
-	switch *CacheCfg.Strategy {
+	switch *cacheCfg.Strategy {
 	case "LRU":
 		gc = gc.LRU()
 	case "LFU":
@@ -162,11 +164,11 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	case "ARC":
 		gc = gc.ARC()
 	default:
-		return fmt.Errorf("unknown cache strategy '%s'", *CacheCfg.Strategy)
+		return fmt.Errorf("unknown cache strategy '%s'", *cacheCfg.Strategy)
 	}
 
-	if CacheCfg.TTL != nil {
-		gc.Expiration(*CacheCfg.TTL)
+	if cacheCfg.TTL != nil {
+		gc.Expiration(*cacheCfg.TTL)
 	}
 
 	cache := gc.Build()
@@ -240,6 +242,7 @@ func Distinct(params ...any) (any, error) {
 	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
 		return nil, nil
 	}
+
 	array := params[0].([]interface{})
 	if array == nil {
 		return []interface{}{}, nil
@@ -254,6 +257,7 @@ func Distinct(params ...any) (any, error) {
 			ret = append(ret, val)
 		}
 	}
+
 	return ret, nil
 }
 
@@ -282,8 +286,10 @@ func flatten(args []interface{}, v reflect.Value) []interface{} {
 }
 
 func existsInFileMaps(filename string, ftype string) (bool, error) {
-	ok := false
 	var err error
+
+	ok := false
+
 	switch ftype {
 	case "regex", "regexp":
 		if fflag.Re2RegexpInfileSupport.IsEnabled() {
@@ -296,10 +302,11 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 	default:
 		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
 	}
+
 	return ok, err
 }
 
-//Expr helpers
+// Expr helpers
 
 // func Get(arr []string, index int) string {
 func Get(params ...any) (any, error) {
@@ -315,10 +322,12 @@ func Get(params ...any) (any, error) {
 func Atof(params ...any) (any, error) {
 	x := params[0].(string)
 	log.Debugf("debug atof %s", x)
+
 	ret, err := strconv.ParseFloat(x, 64)
 	if err != nil {
 		log.Warningf("Atof : can't convert float '%s' : %v", x, err)
 	}
+
 	return ret, nil
 }
 
@@ -340,22 +349,28 @@ func Distance(params ...any) (any, error) {
 	long1 := params[1].(string)
 	lat2 := params[2].(string)
 	long2 := params[3].(string)
+
 	lat1f, err := strconv.ParseFloat(lat1, 64)
 	if err != nil {
 		log.Warningf("lat1 is not a float : %v", err)
+
 		return 0.0, fmt.Errorf("lat1 is not a float : %v", err)
 	}
+
 	long1f, err := strconv.ParseFloat(long1, 64)
 	if err != nil {
 		log.Warningf("long1 is not a float : %v", err)
+
 		return 0.0, fmt.Errorf("long1 is not a float : %v", err)
 	}
+
 	lat2f, err := strconv.ParseFloat(lat2, 64)
 	if err != nil {
 		log.Warningf("lat2 is not a float : %v", err)
 
 		return 0.0, fmt.Errorf("lat2 is not a float : %v", err)
 	}
+
 	long2f, err := strconv.ParseFloat(long2, 64)
 	if err != nil {
 		log.Warningf("long2 is not a float : %v", err)
@@ -363,7 +378,7 @@ func Distance(params ...any) (any, error) {
 		return 0.0, fmt.Errorf("long2 is not a float : %v", err)
 	}
 
-	//either set of coordinates is 0,0, return 0 to avoid FPs
+	// either set of coordinates is 0,0, return 0 to avoid FPs
 	if (lat1f == 0.0 && long1f == 0.0) || (lat2f == 0.0 && long2f == 0.0) {
 		log.Warningf("one of the coordinates is 0,0, returning 0")
 		return 0.0, nil
@@ -373,6 +388,7 @@ func Distance(params ...any) (any, error) {
 	second := haversine.Coord{Lat: lat2f, Lon: long2f}
 
 	_, km := haversine.Distance(first, second)
+
 	return km, nil
 }
 
