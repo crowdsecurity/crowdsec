@@ -8,7 +8,7 @@ import (
 
 func (cli *cliConfig) newBackupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "backup",
+		Use:               "backup",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			configDir := cli.cfg().ConfigPaths.ConfigDir

@@ -8,7 +8,7 @@ import (
 
 func (cli *cliConfig) newRestoreCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "restore",
+		Use:               "restore",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			configDir := cli.cfg().ConfigPaths.ConfigDir
