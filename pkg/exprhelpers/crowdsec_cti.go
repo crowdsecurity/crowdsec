@@ -29,29 +29,29 @@ var (
 
 var ctiClient *cticlient.CrowdsecCTIClient
 
-func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.Level) error {
-	if Key == nil || *Key == "" {
+func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.Level) error {
+	if key == nil || *key == "" {
 		log.Warningf("CTI API key not set or empty, CTI will not be available")
 		return cticlient.ErrDisabled
 	}
-	CTIApiKey = *Key
-	if Size == nil {
-		Size = new(int)
-		*Size = 1000
+	CTIApiKey = *key
+	if size == nil {
+		size = new(int)
+		*size = 1000
 	}
-	if TTL == nil {
-		TTL = new(time.Duration)
-		*TTL = 5 * time.Minute
+	if ttl == nil {
+		ttl = new(time.Duration)
+		*ttl = 5 * time.Minute
 	}
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
 		return fmt.Errorf("while configuring datasource logger: %w", err)
 	}
-	if LogLevel != nil {
-		clog.SetLevel(*LogLevel)
+	if logLevel != nil {
+		clog.SetLevel(*logLevel)
 	}
 	subLogger := clog.WithField("type", "crowdsec-cti")
-	CrowdsecCTIInitCache(*Size, *TTL)
+	CrowdsecCTIInitCache(*size, *ttl)
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(CTIApiKey), cticlient.WithLogger(subLogger))
 	CTIApiEnabled = true
 	return nil

@@ -51,17 +51,6 @@ teardown() {
     assert_output --regexp "Global:.*Crowdsec.*cscli:.*Local API Server:"
 }
 
-@test "no agent: cscli config backup" {
-    config_disable_capi
-    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
-    rune -0 cscli config backup "$backupdir"
-    assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "$backupdir"
-    assert_stderr --partial "failed to backup config"
-    assert_stderr --partial "file exists"
-    rm -rf -- "${backupdir:?}"
-}
-
 @test "without capi: cscli lapi status -> success" {
     config_disable_capi
     ./instance-crowdsec start

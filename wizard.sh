@@ -21,11 +21,8 @@ DOCKER_MODE="false"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
 CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
-CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
-CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
-LAPI_LOG_FILE="/var/log/crowdsec_api.log"
 CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 CROWDSEC_CONSOLE_DIR="${CROWDSEC_PATH}/console"
 
@@ -34,8 +31,6 @@ CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
 CLIENT_SECRETS="local_api_credentials.yaml"
 LAPI_SECRETS="online_api_credentials.yaml"
-
-CONSOLE_FILE="console.yaml"
 
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
@@ -90,9 +85,6 @@ EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
 SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
 FILE_PLUGIN_CONFIG="./cmd/notification-file/file.yaml"
 
-
-BACKUP_DIR=$(mktemp -d)
-rm -rf -- "$BACKUP_DIR"
 
 log_info() {
     msg=$1
@@ -426,27 +418,20 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/contexts" || exit
     mkdir -p "${CROWDSEC_CONSOLE_DIR}" || exit
 
-    # tmp
-    mkdir -p /tmp/data
     mkdir -p /etc/crowdsec/hub/
-    install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
 
-    ## end tmp
+    # Don't overwrite existing files
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" ]] && install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/${LAPI_SECRETS}" ]] && install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/config.yaml" ]]     && install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/dev.yaml" ]]        && install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/user.yaml" ]]       && install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/acquis.yaml" ]]     && install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/profiles.yaml" ]]   && install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/simulation.yaml" ]] && install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/console.yaml" ]]    && install -v -m 644 -D ./config/console.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/context.yaml" ]]    && install -v -m 644 -D ./config/context.yaml "${CROWDSEC_CONSOLE_DIR}" > /dev/null || exit
 
-    install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/"${CONSOLE_FILE}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/context.yaml "${CROWDSEC_CONSOLE_DIR}" 1> /dev/null || exit
-
-    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
-    if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
-    fi
     install_bins
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
@@ -471,23 +456,12 @@ update_full() {
         log_err "Cscli binary '$CSCLI_BIN' not found. Please build it with 'make build'" && exit
     fi
 
-    log_info "Backing up existing configuration"
-    ${CSCLI_BIN_INSTALLED} config backup ${BACKUP_DIR}
-    log_info "Saving default database content if exist"
-    if [[ -f "/var/lib/crowdsec/data/crowdsec.db" ]]; then
-        cp /var/lib/crowdsec/data/crowdsec.db ${BACKUP_DIR}/crowdsec.db
-    fi
-    log_info "Cleanup existing crowdsec configuration"
+    log_info "Removing old binaries"
     uninstall_crowdsec
     log_info "Installing crowdsec"
     install_crowdsec
-    log_info "Restoring configuration"
+    log_info "Updating hub"
     ${CSCLI_BIN_INSTALLED} hub update
-    ${CSCLI_BIN_INSTALLED} config restore ${BACKUP_DIR}
-    log_info "Restoring saved database if exist"
-    if [[ -f "${BACKUP_DIR}/crowdsec.db" ]]; then
-        cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
-    fi
     log_info "Finished, restarting"
     systemctl restart crowdsec || log_fatal "Failed to restart crowdsec"
 }
@@ -565,15 +539,6 @@ uninstall_crowdsec() {
     ${CSCLI_BIN} dashboard remove -f -y >/dev/null
     delete_bins
 
-    # tmp
-    rm -rf /tmp/data/
-    ## end tmp
-
-    find /etc/crowdsec -maxdepth 1 -mindepth 1 | grep -v "bouncer" | xargs rm -rf || echo ""
-    rm -f ${CROWDSEC_LOG_FILE} || echo ""
-    rm -f ${LAPI_LOG_FILE} || echo ""
-    rm -f ${CROWDSEC_DB_PATH} || echo ""
-    rm -rf ${CROWDSEC_LIB_DIR} || echo ""
     rm -rf ${CROWDSEC_USR_DIR} || echo ""
     rm -f ${SYSTEMD_PATH_FILE} || echo ""
     log_info "crowdsec successfully uninstalled"
@@ -765,12 +730,11 @@ usage() {
       echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
       echo "    ./wizard.sh -n|--noop                        Do nothing"
-
-      exit 0
 }
 
 if [[ $# -eq 0 ]]; then
-usage
+    usage
+    exit 0
 fi
 
 while [[ $# -gt 0 ]]

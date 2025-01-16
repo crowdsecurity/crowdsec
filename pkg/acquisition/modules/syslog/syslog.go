@@ -124,10 +124,10 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
-	s.metricsLevel = MetricsLevel
+	s.metricsLevel = metricsLevel
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
