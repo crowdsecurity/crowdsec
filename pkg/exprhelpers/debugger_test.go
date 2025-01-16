@@ -1,3 +1,4 @@
+//go:build expr_debug
 package exprhelpers
 
 import (

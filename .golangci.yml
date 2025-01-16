@@ -1,5 +1,9 @@
 # https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
 
+run:
+  build-tags:
+    - expr_debug
+
 linters-settings:
   gci:
     sections:
