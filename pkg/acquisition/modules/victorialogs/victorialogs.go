@@ -248,7 +248,7 @@ func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan types.Event,
 
 	respChan, err := l.getResponseChan(ctx, false)
 	if err != nil {
-		return fmt.Errorf("error when starting aquisition: %w", err)
+		return fmt.Errorf("error when starting acquisition: %w", err)
 	}
 
 	for {
