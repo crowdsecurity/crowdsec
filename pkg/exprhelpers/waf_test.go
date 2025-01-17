@@ -44,7 +44,8 @@ func TestJA4H(t *testing.T) {
 			headers: map[string]string{
 				"User-Agent": "Mozilla/5.0",
 			},
-			expectedHash: "ge11cn000000_45823eaac0c8_1fdb2a115b53_1fdb2a115b53",
+			expectedHash: "ge11cn000000_45823eaac0c8_1fdb2a115b53_a80c75bef44e",
+			// "ge11cn000000_45823eaac0c8_1fdb2a115b53_1fdb2a115b53", old hash by other ja4h lib that didnt include cookies values in end hash
 		},
 	}
 

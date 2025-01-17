@@ -173,7 +173,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/leodido/go-urn v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/lum8rjack/go-ja4h v0.0.0-20240524204220-1f2973d9f2d0 // indirect
 	github.com/magefile/mage v1.15.1-0.20230912152418-9f54e0f83e2a // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

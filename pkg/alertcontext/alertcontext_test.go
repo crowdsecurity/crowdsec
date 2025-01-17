@@ -365,7 +365,7 @@ func TestAppsecEventToContext(t *testing.T) {
 					"Foobar":     {"test1", "test2"},
 				},
 				Proto:  "HTTP/1.1",
-				Method: "GET",
+				Method: http.MethodGet,
 			},
 			expectedResult: []*models.MetaItems0{
 				{
