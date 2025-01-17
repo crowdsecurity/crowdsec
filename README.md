@@ -21,11 +21,13 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
 </p>
 
+<details open>
+
 ## Features & Advantages
 
 ### CrowdSec Community Blocklist
 
-[![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-77961ce8a87efef069bb40bb584944dc.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
+[![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-1e7678f47cb672122cc847d068b6eadf.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
 
 ### Console - Monitoring & Automation of your security stack
 
@@ -33,7 +35,7 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 
 ### Multiple Platforms support
 
-[![Multiple Platforms support](https://doc.crowdsec.net/assets/images/visualizer-summary-c8087e2eaef65d110bad6a7f274cf953.png)](https://doc.crowdsec.net/)
+[![Multiple Platforms support](https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/supported_platforms.png)](https://doc.crowdsec.net/)
 
 
 ## Outnumbering hackers all together
@@ -41,6 +43,8 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 By sharing the threat they faced, all users are protecting each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyze logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
 CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most contexts, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
+
+</details>
 
 ## Installation
 
