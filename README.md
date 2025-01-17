@@ -18,18 +18,22 @@
 _CrowdSec is an open-source and participative security solution offering crowdsourced server detection and protection against malicious IPs. Detect and block with our Security Engine, contribute to the network, and enjoy our real-time community blocklist._
 
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema" idth="400" height="260"/>
+<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
 </p>
 
-<details open>
-<summary>
 ## Features & Advantages
-</summary> <br />
 
-<!-- should we do one image per feature for it to be more visual ?-->
-- [CrowdSourced Community Blocklist](https://doc.crowdsec.net)
-- ...
-</details>
+### CrowdSec Community Blocklist
+
+[![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-77961ce8a87efef069bb40bb584944dc.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
+
+### Console - Monitoring & Automation of your security stack
+
+[![CrowdSec Console](https://doc.crowdsec.net/assets/images/visualizer-summary-c8087e2eaef65d110bad6a7f274cf953.png)](https://doc.crowdsec.net/u/console/intro)
+
+### Multiple Platforms support
+
+[![Multiple Platforms support](https://doc.crowdsec.net/assets/images/visualizer-summary-c8087e2eaef65d110bad6a7f274cf953.png)](https://doc.crowdsec.net/)
 
 
 ## Outnumbering hackers all together
@@ -39,7 +43,6 @@ By sharing the threat they faced, all users are protecting each-others (hence th
 CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most contexts, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
 
 ## Installation
-
 
 <!-- make this an image with link ?-->
 
