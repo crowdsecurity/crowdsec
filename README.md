@@ -23,6 +23,10 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 
 ## Features & Advantages
 
+### Versatile Security Engine
+
+CrowdSec Security Engine offers behavioral detection features based on logs, Web Application Firewall capabilities and active remedation thanks to the Remediation Components.
+
 ### CrowdSec Community Blocklist
 
 <a href="https://doc.crowdsec.net/docs/next/central_api/community_blocklist">
