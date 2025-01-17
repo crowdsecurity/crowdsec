@@ -27,12 +27,13 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 
 ### CrowdSec Community Blocklist
 
-The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. CrowdSec proactively block the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
+<a href="https://doc.crowdsec.net/docs/next/central_api/community_blocklist">
 
 The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. CrowdSec proactively block the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
 
-The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. CrowdSec proactively block the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
+[![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-1e7678f47cb672122cc847d068b6eadf.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
 
+</a>
 
 ### Console - Monitoring & Automation of your security stack
 
