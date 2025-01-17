@@ -9,6 +9,5 @@ import (
 // JA4H(req *http.Request) string
 func JA4H(params ...any) (any, error) {
 	req := params[0].(*http.Request)
-	test := j4ah.JA4H(req)
-	return test, nil
+	return j4ah.JA4H(req), nil
 }
