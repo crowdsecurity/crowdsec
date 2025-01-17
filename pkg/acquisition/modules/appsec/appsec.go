@@ -446,7 +446,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		logger.Errorf("unable to serialize response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
-		if err := rw.Write(body); err != nil {
+		if _, err := rw.Write(body); err != nil {
 			logger.Errorf("unable to write response: %s", err)
 		}
 	}
