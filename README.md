@@ -25,7 +25,7 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 
 ### Versatile Security Engine
 
-CrowdSec Security Engine offers behavioral detection features based on logs, Web Application Firewall capabilities and active remedation thanks to the Remediation Components.
+[CrowdSec Security Engine](https://doc.crowdsec.net/docs/next/intro/) offers [behavioral detection features based on logs](https://doc.crowdsec.net/docs/next/log_processor/intro), [Web Application Firewall capabilities](https://doc.crowdsec.net/docs/next/appsec/intro) and active remedation thanks to the [Remediation Components](https://doc.crowdsec.net/u/bouncers/intro). Find the existing scenarios relevant to your configuration [on the hub](https://app.crowdsec.net/hub).
 
 ### CrowdSec Community Blocklist
 
