@@ -217,6 +217,18 @@ func (c *SmokeItem) GetFalsePositives() []string {
 	return ret
 }
 
+func (c *SmokeItem) GetClassifications() []string {
+	ret := make([]string, 0)
+
+	if c.Classifications.Classifications != nil {
+		for _, b := range c.Classifications.Classifications {
+			ret = append(ret, b.Name)
+		}
+	}
+
+	return ret
+}
+
 func (c *SmokeItem) IsFalsePositive() bool {
 	if c.Classifications.FalsePositives != nil {
 		if len(c.Classifications.FalsePositives) > 0 {
@@ -287,6 +299,18 @@ func (c *FireItem) GetFalsePositives() []string {
 			ret = append(ret, b.Name)
 		}
 	}
+	return ret
+}
+
+func (c *FireItem) GetClassifications() []string {
+	ret := make([]string, 0)
+
+	if c.Classifications.Classifications != nil {
+		for _, b := range c.Classifications.Classifications {
+			ret = append(ret, b.Name)
+		}
+	}
+
 	return ret
 }
 
