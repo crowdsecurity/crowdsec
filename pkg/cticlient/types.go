@@ -64,6 +64,9 @@ type CTIReferences struct {
 type SmokeItem struct {
 	IpRangeScore         int                 `json:"ip_range_score"`
 	Ip                   string              `json:"ip"`
+	Reputation           string              `json:"reputation"`
+	BackgroundNoise      string              `json:"background_noise"`
+	Confidence           string              `json:"confidence"`
 	IpRange              *string             `json:"ip_range"`
 	AsName               *string             `json:"as_name"`
 	AsNum                *int                `json:"as_num"`
