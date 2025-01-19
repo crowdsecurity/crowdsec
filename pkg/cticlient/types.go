@@ -80,6 +80,7 @@ type SmokeItem struct {
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
 	References           []CTIReferences     `json:"references"`
+	CVEs                 []string            `json:"cves"`
 	IsOk                 bool                `json:"-"`
 }
 
@@ -123,6 +124,10 @@ type FireItem struct {
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
 	References           []CTIReferences     `json:"references"`
+	CVEs                 []string            `json:"cves"`
+	Reputation           string              `json:"reputation"`
+	BackgroundNoise      string              `json:"background_noise"`
+	Confidence           string              `json:"confidence"`
 	State                string              `json:"state"`
 	Expiration           CustomTime          `json:"expiration"`
 }
