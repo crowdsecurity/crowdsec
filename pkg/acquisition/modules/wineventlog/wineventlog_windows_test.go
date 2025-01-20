@@ -7,18 +7,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
-	exprhelpers.Init(nil)
+	err := exprhelpers.Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
 		config      string
@@ -62,7 +66,8 @@ xpath_query: test`,
 }
 
 func TestQueryBuilder(t *testing.T) {
-	exprhelpers.Init(nil)
+	err := exprhelpers.Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
 		config        string
@@ -111,23 +116,26 @@ event_level: bla`,
 	}
 	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
-		f := WinEventLogSource{}
-		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		q, err := f.buildXpathQuery()
-		if test.expectedErr != "" {
-			if err == nil {
-				t.Fatalf("expected error '%s' but got none", test.expectedErr)
+		t.Run(test.config, func(t *testing.T) {
+			f := WinEventLogSource{}
+
+			err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+			if test.expectedErr != "" {
+				return
 			}
-			assert.Contains(t, err.Error(), test.expectedErr)
-		} else {
+
+			q, err := f.buildXpathQuery()
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedQuery, q)
-		}
+		})
 	}
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	exprhelpers.Init(nil)
+	err := exprhelpers.Init(nil)
+	require.NoError(t, err)
+
 	ctx := context.Background()
 
 	tests := []struct {
@@ -185,8 +193,13 @@ event_ids:
 		to := &tomb.Tomb{}
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
-		f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		f.StreamingAcquisition(ctx, c, to)
+
+		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+		require.NoError(t, err)
+
+		err = f.StreamingAcquisition(ctx, c, to)
+		require.NoError(t, err)
+
 		time.Sleep(time.Second)
 		lines := test.expectedLines
 		go func() {
@@ -261,7 +274,8 @@ func TestOneShotAcquisition(t *testing.T) {
 		},
 	}
 
-	exprhelpers.Init(nil)
+	err := exprhelpers.Init(nil)
+	require.NoError(t, err)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -269,14 +283,12 @@ func TestOneShotAcquisition(t *testing.T) {
 			to := &tomb.Tomb{}
 			c := make(chan types.Event)
 			f := WinEventLogSource{}
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
 
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+			cstest.AssertErrorContains(t, err, test.expectedConfigureErr)
 			if test.expectedConfigureErr != "" {
-				assert.Contains(t, err.Error(), test.expectedConfigureErr)
 				return
 			}
-
-			require.NoError(t, err)
 
 			go func() {
 				for {

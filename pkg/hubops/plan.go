@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	isatty "github.com/mattn/go-isatty"
 	"github.com/fatih/color"
+	isatty "github.com/mattn/go-isatty"
 
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
@@ -59,13 +59,13 @@ func UniqueKey(c Command) string {
 type ActionPlan struct {
 	// hold the list of Commands to be executed as part of the action plan.
 	// If a command is skipped (i.e. calling Prepare() returned false), it won't be included in the slice.
-	commands     []Command
+	commands []Command
 
 	// Tracks unique commands
 	commandsTracker map[string]struct{}
 
 	// A reference to the Hub instance, required for dependency lookup.
-	hub          *cwhub.Hub
+	hub *cwhub.Hub
 
 	// Indicates whether a reload of the CrowdSec service is required after executing the action plan.
 	ReloadNeeded bool
@@ -73,7 +73,7 @@ type ActionPlan struct {
 
 func NewActionPlan(hub *cwhub.Hub) *ActionPlan {
 	return &ActionPlan{
-		hub: hub,
+		hub:             hub,
 		commandsTracker: make(map[string]struct{}),
 	}
 }

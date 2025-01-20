@@ -23,7 +23,8 @@ func TestAlertsListAsMachine(t *testing.T) {
 	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	log.Printf("URL is %s", urlx)
@@ -202,7 +203,8 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 	log.Printf("URL is %s", urlx)
 
@@ -368,13 +370,15 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`["3"]`))
+		_, err := w.Write([]byte(`["3"]`))
+		assert.NoError(t, err)
 	})
 
 	log.Printf("URL is %s", urlx)
@@ -408,14 +412,16 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"0 deleted alerts"}`))
+		_, err := w.Write([]byte(`{"message":"0 deleted alerts"}`))
+		assert.NoError(t, err)
 	})
 
 	log.Printf("URL is %s", urlx)

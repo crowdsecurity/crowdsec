@@ -222,7 +222,7 @@ func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig
 	return nil
 }
 
-func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) error {
+func (c *Client) FlushAlerts(ctx context.Context, maxAge string, maxItems int) error {
 	var (
 		deletedByAge    int
 		deletedByNbItem int
@@ -247,22 +247,22 @@ func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) e
 
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 
-	if MaxAge != "" {
+	if maxAge != "" {
 		filter := map[string][]string{
-			"created_before": {MaxAge},
+			"created_before": {maxAge},
 		}
 
 		nbDeleted, err := c.DeleteAlertWithFilter(ctx, filter)
 		if err != nil {
 			c.Log.Warningf("FlushAlerts (max age): %s", err)
-			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", MaxAge, err)
+			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", maxAge, err)
 		}
 
 		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
 		deletedByAge = nbDeleted
 	}
 
-	if MaxItems > 0 {
+	if maxItems > 0 {
 		// We get the highest id for the alerts
 		// We subtract MaxItems to avoid deleting alerts that are not old enough
 		// This gives us the oldest alert that we want to keep
@@ -282,7 +282,7 @@ func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) e
 		}
 
 		if len(lastAlert) != 0 {
-			maxid := lastAlert[0].ID - MaxItems
+			maxid := lastAlert[0].ID - maxItems
 
 			c.Log.Debugf("FlushAlerts (max id): %d", maxid)
 
@@ -299,12 +299,12 @@ func (c *Client) FlushAlerts(ctx context.Context, MaxAge string, MaxItems int) e
 
 	if deletedByNbItem > 0 {
 		c.Log.Infof("flushed %d/%d alerts because the max number of alerts has been reached (%d max)",
-			deletedByNbItem, totalAlerts, MaxItems)
+			deletedByNbItem, totalAlerts, maxItems)
 	}
 
 	if deletedByAge > 0 {
 		c.Log.Infof("flushed %d/%d alerts because they were created %s ago or more",
-			deletedByAge, totalAlerts, MaxAge)
+			deletedByAge, totalAlerts, maxAge)
 	}
 
 	return nil

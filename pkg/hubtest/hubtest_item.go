@@ -300,7 +300,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	crowdsecDaemon.Start()
 
 	// wait for the appsec port to be available
-	if _, err := IsAlive(t.AppSecHost); err != nil {
+	if _, err = IsAlive(t.AppSecHost); err != nil {
 		crowdsecLog, err2 := os.ReadFile(crowdsecLogFile)
 		if err2 != nil {
 			log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
@@ -319,7 +319,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	nucleiTargetHost := nucleiTargetParsedURL.Host
-	if _, err := IsAlive(nucleiTargetHost); err != nil {
+	if _, err = IsAlive(nucleiTargetHost); err != nil {
 		return fmt.Errorf("target is down: %w", err)
 	}
 
@@ -382,7 +382,7 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithLogFile() error {
+func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
@@ -417,11 +417,9 @@ func (t *HubTestItem) RunWithLogFile() error {
 		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
 	}
 
-	crowdsecPatternsFolder := csconfig.DefaultConfigPath("patterns")
-
 	// copy template patterns folder to runtime folder
-	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
+	if err = CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
+		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
 	}
 
 	// install the hub in the runtime folder
@@ -566,7 +564,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	return nil
 }
 
-func (t *HubTestItem) Run() error {
+func (t *HubTestItem) Run(patternDir string) error {
 	var err error
 
 	t.Success = false
@@ -596,11 +594,9 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
 	}
 
-	crowdsecPatternsFolder := csconfig.DefaultConfigPath("patterns")
-
 	// copy template patterns folder to runtime folder
-	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
+	if err = CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
+		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
 	}
 
 	// create the appsec-configs dir
@@ -634,9 +630,12 @@ func (t *HubTestItem) Run() error {
 	}
 
 	if t.Config.LogFile != "" {
-		return t.RunWithLogFile()
-	} else if t.Config.NucleiTemplate != "" {
+		return t.RunWithLogFile(patternDir)
+	}
+
+	if t.Config.NucleiTemplate != "" {
 		return t.RunWithNucleiTemplate()
 	}
+
 	return fmt.Errorf("log file or nuclei template must be set in '%s'", t.Name)
 }

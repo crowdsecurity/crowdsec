@@ -16,6 +16,7 @@ import (
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -232,7 +233,16 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			return nil, err
 		}
 
-		dec := yaml.NewDecoder(yamlFile)
+		defer yamlFile.Close()
+
+		acquisContent, err := io.ReadAll(yamlFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s: %w", acquisFile, err)
+		}
+
+		expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
+
+		dec := yaml.NewDecoder(strings.NewReader(expandedAcquis))
 		dec.SetStrict(true)
 
 		idx := -1
@@ -355,13 +365,13 @@ func copyEvent(evt types.Event, line string) types.Event {
 	return evtCopy
 }
 
-func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
+func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
 	logger.Infof("transformer started")
 
 	for {
 		select {
-		case <-AcquisTomb.Dying():
+		case <-acquisTomb.Dying():
 			logger.Debugf("transformer is dying")
 			return
 		case evt := <-transformChan:
@@ -410,7 +420,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 	}
 }
 
-func StartAcquisition(ctx context.Context, sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+func StartAcquisition(ctx context.Context, sources []DataSource, output chan types.Event, acquisTomb *tomb.Tomb) error {
 	// Don't wait if we have no sources, as it will hang forever
 	if len(sources) == 0 {
 		return nil
@@ -420,7 +430,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 		subsrc := sources[i] // ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
-		AcquisTomb.Go(func() error {
+		acquisTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/acquis")
 
 			var err error
@@ -439,21 +449,21 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 					"datasource": subsrc.GetName(),
 				})
 
-				AcquisTomb.Go(func() error {
-					transform(outChan, output, AcquisTomb, transformRuntime, transformLogger)
+				acquisTomb.Go(func() error {
+					transform(outChan, output, acquisTomb, transformRuntime, transformLogger)
 					return nil
 				})
 			}
 
 			if subsrc.GetMode() == configuration.TAIL_MODE {
-				err = subsrc.StreamingAcquisition(ctx, outChan, AcquisTomb)
+				err = subsrc.StreamingAcquisition(ctx, outChan, acquisTomb)
 			} else {
-				err = subsrc.OneShotAcquisition(ctx, outChan, AcquisTomb)
+				err = subsrc.OneShotAcquisition(ctx, outChan, acquisTomb)
 			}
 
 			if err != nil {
 				// if one of the acqusition returns an error, we kill the others to properly shutdown
-				AcquisTomb.Kill(err)
+				acquisTomb.Kill(err)
 			}
 
 			return nil
@@ -461,7 +471,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 	}
 
 	/*return only when acquisition is over (cat) or never (tail)*/
-	err := AcquisTomb.Wait()
+	err := acquisTomb.Wait()
 
 	return err
 }
