@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -e
-
-# Source debconf library.
-. /usr/share/debconf/confmodule
-
-echo "You can always run the configuration again interactively by using '/usr/share/crowdsec/wizard.sh -c'"
