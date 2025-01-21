@@ -8,83 +8,47 @@
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec/actions/workflows/go-tests.yml/badge.svg">
 <img src="https://github.com/crowdsecurity/crowdsec/actions/workflows/bats.yml/badge.svg">
-<a href="https://codecov.io/gh/crowdsecurity/crowdsec">
-  <img src="https://codecov.io/gh/crowdsecurity/crowdsec/branch/master/graph/badge.svg?token=CQGSPNY3PT"/>
-</a>
-<img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
-<a href="https://pkg.go.dev/github.com/crowdsecurity/crowdsec"><img src="https://pkg.go.dev/badge/github.com/crowdsecurity/crowdsec.svg" alt="Go Reference"></a>
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
-<img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_parsers_badge.json">
-<img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_scenarios_badge.json">
-<a href="https://hub.docker.com/r/crowdsecurity/crowdsec">
-  <img src="https://img.shields.io/docker/pulls/crowdsecurity/crowdsec?logo=docker">
-</a>
 <a href="https://discord.com/invite/crowdsec">
   <img src="https://img.shields.io/discord/921520481163673640?label=Discord&logo=discord">
 </a>
+<img src="https://img.shields.io/twitter/follow/Crowd_Security?style=social">
 </p>
+
+_CrowdSec is an open-source and participative security solution offering crowdsourced server detection and protection against malicious IPs. Detect and block with our Security Engine, contribute to the network, and enjoy our real-time community blocklist._
 
 <p align="center">
-:computer: <a href="https://app.crowdsec.net">Console (WebApp)</a>
-:books: <a href="https://doc.crowdsec.net">Documentation</a>
-:diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">Configuration Hub</a>
-:speech_balloon: <a href="https://discourse.crowdsec.net">Discourse (Forum)</a>
-:speech_balloon: <a href="https://discord.gg/crowdsec">Discord (Live Chat)</a>
+<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
 </p>
 
+## Features & Advantages
 
-:dancer: This is a community-driven project, <a href="https://forms.gle/ZQBQcptG2wYGajRX8">we need your feedback</a>.
+### Versatile Security Engine
 
-## <TL;DR>
+[CrowdSec Security Engine](https://doc.crowdsec.net/docs/next/intro/) is an all-in-one [IDS/IPS](https://doc.crowdsec.net/docs/next/log_processor/intro) and [WAF](https://doc.crowdsec.net/docs/next/appsec/intro).
 
-CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), it uses Grok patterns to parse logs and YAML scenarios to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM-based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/docs/faq) or read below for more.
+It detects bad behaviors by analyzing log sources and HTTP requests, and allows active remedation thanks to the [Remediation Components](https://doc.crowdsec.net/u/bouncers/intro).
 
-## 2 mins install
+[Detection rules are available on our hub](https://hub.crowdsec.net) under MIT license.
 
-Installing it through the [Package system](https://doc.crowdsec.net/docs/getting_started/install_crowdsec) of your OS is the easiest way to proceed. 
-Otherwise, you can install it from source.
+### CrowdSec Community Blocklist
 
-### From package (Debian)
+<a href="https://doc.crowdsec.net/docs/next/central_api/community_blocklist">
 
-```sh
-curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
-sudo apt-get update
-sudo apt-get install crowdsec
-```
+The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. The Security Engine proactively block the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
 
-### From package (rhel/centos/amazon linux)
+[![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-1e7678f47cb672122cc847d068b6eadf.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
 
-```sh
-curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.rpm.sh | sudo bash
-sudo yum install crowdsec
-```
+</a>
 
-### From package (FreeBSD)
+### Console - Monitoring & Automation of your security stack
 
-```
-sudo pkg update
-sudo pkg install crowdsec
-```
+[![CrowdSec Console](https://doc.crowdsec.net/assets/images/visualizer-summary-c8087e2eaef65d110bad6a7f274cf953.png)](https://doc.crowdsec.net/u/console/intro)
 
-### From source
+### Multiple Platforms support
 
-```sh
-wget https://github.com/crowdsecurity/crowdsec/releases/latest/download/crowdsec-release.tgz
-tar xzvf crowdsec-release.tgz
-cd crowdsec-v* && sudo ./wizard.sh -i
-```
+[![Multiple Platforms support](https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/supported_platforms.png)](https://doc.crowdsec.net/)
 
-## :information_source: About the CrowdSec project
-
-Crowdsec is an open-source, lightweight software, detecting peers with aggressive behaviors to prevent them from accessing your systems. Its user-friendly design and assistance offer a low technical barrier of entry and nevertheless a high security gain.
-
-The architecture is as follows :
-
-<p align="center">
- <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_architecture.png" alt="CrowdSec" title="CrowdSec"/>
-</p>
-
-Once an unwanted behavior is detected, deal with it through a [bouncer](https://app.crowdsec.net/hub/remediation-components). The aggressive IP, scenario triggered and timestamp are sent for curation, to avoid poisoning & false positives. (This can be disabled). If verified, this IP is then redistributed to all CrowdSec users running the same scenario.
 
 ## Outnumbering hackers all together
 
@@ -92,72 +56,18 @@ By sharing the threat they faced, all users are protecting each-others (hence th
 
 CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most contexts, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
 
-## :point_right: What it is not
+## Installation
 
-CrowdSec is not a SIEM, storing your logs (neither locally nor remotely). Your data are analyzed locally and forgotten.
+<!-- make this an image with link ?-->
 
-Signals sent to the curation platform are limited to the very strict minimum: IP, Scenario, Timestamp. They are only used to allow the system to spot new rogue IPs, and rule out false positives or poisoning attempts.
-
-## :arrow_down: Install it !
-
-Crowdsec is available for various platforms :
-
- - [Use our debian repositories](https://doc.crowdsec.net/docs/getting_started/install_crowdsec) or the [official debian packages](https://packages.debian.org/search?keywords=crowdsec&searchon=names&suite=stable&section=all)
- - An [image](https://hub.docker.com/r/crowdsecurity/crowdsec) is available for docker
- - [Prebuilt release packages](https://github.com/crowdsecurity/crowdsec/releases) are also available (suitable for `amd64`)
- - You can as well [build it from source](https://doc.crowdsec.net/docs/user_guides/building)
-
-Or look directly at [installation documentation](https://doc.crowdsec.net/docs/getting_started/install_crowdsec) for other methods and platforms.
-
-## :tada: Key benefits
-
-### Fast assisted installation, no technical barrier
-
-<details open>
-  <summary>Initial configuration is automated, providing functional out-of-the-box setup</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_install.gif?raw=true">
-</details>
-
-### Out of the box detection
-
-<details>
-  <summary>Baseline detection is effective out-of-the-box, no fine-tuning required (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/out-of-the-box-protection.gif?raw=true">
-</details>
-
-### Easy bouncer deployment
-
-<details>
-  <summary>It's trivial to add bouncers to enforce decisions of crowdsec (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/blocker-installation.gif?raw=true">
-</details>
-
-### Easy dashboard access
-
-<details>
-  <summary>It's easy to deploy a metabase interface to view your data simply with cscli (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/cscli-metabase.gif?raw=true">
-</details>
-
-### Hot & Cold logs
-
-<details>
-  <summary>Process cold logs, for forensic, tests and chasing false positives & false negatives (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/forensic-mode.gif?raw=true">
-</details>
+[Follow our documentation to install CrowdSec in a few minutes on Linux, Windows, Docker, OpnSense, Kubernetes, and more.](https://doc.crowdsec.net/)
 
 
-## 📦 About this repository
+## Resources
 
-This repository contains the code for the two main components of crowdsec :
- - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristics to logs. This is the component in charge of "detecting" the attacks
- - `cscli` : the cli tool mainly used to interact with crowdsec : ban/unban/view current bans, enable/disable parsers and scenarios.
-
-
-## Contributing
-
-If you wish to contribute to the core of crowdsec, you are welcome to open a PR in this repository.
-
-If you wish to add a new parser, scenario or collection, please open a PR in the [hub repository](https://github.com/crowdsecurity/hub).
-
-If you wish to contribute to the documentation, please open a PR in the [documentation repository](http://github.com/crowdsecurity/crowdsec-docs).
+ - [Console](https://app.crowdsec.net): Supercharge your CrowdSec setup with visualization, management capabilities, extra blocklists and premium features.
+ - [Documentation](https://doc.crowdsec.net): Learn how to exploit your CrowdSec setup to deter more attacks.
+ - [Discord](https://discord.gg/crowdsec): A question or a suggestion? This is the place.
+ - [Hub](https://hub.crowdsec.net): Improve your stack protection, find the relevant remediation components for your infrastructure.
+ - [CrowdSec Academy](https://academy.crowdsec.net/): Learn and grow with our courses.
+ - [Corporate Website](https://crowdsec.net): For everything else.
