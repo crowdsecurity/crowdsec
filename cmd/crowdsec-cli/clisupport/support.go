@@ -290,7 +290,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 
 	cfg := cli.cfg()
 
-	config, err := os.ReadFile(*cfg.FilePath)
+	config, err := os.ReadFile(cfg.FilePath)
 	if err != nil {
 		return fmt.Errorf("could not read config file: %w", err)
 	}
@@ -491,9 +491,9 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		skipAgent = true
 	}
 
-	hub, err := require.Hub(cfg, nil, nil)
+	hub, err := require.Hub(cfg, nil)
 	if err != nil {
-		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
+		log.Warn("Could not init hub, running on LAPI? Hub related information will not be collected")
 		// XXX: lapi status check requires scenarios, will return an error
 	}
 

@@ -27,7 +27,7 @@ func LAPI(c *csconfig.Config) error {
 
 func CAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient == nil {
-		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", *c.FilePath)
+		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", c.FilePath)
 	}
 
 	return nil
@@ -82,15 +82,13 @@ func Notifications(c *csconfig.Config) error {
 	return nil
 }
 
-// RemoteHub returns the configuration required to download hub index and items: url, branch, etc.
-func RemoteHub(ctx context.Context, c *csconfig.Config) *cwhub.RemoteHubCfg {
+func HubDownloader(ctx context.Context, c *csconfig.Config) *cwhub.Downloader {
 	// set branch in config, and log if necessary
 	branch := HubBranch(ctx, c)
 	urlTemplate := HubURLTemplate(c)
-	remote := &cwhub.RemoteHubCfg{
+	remote := &cwhub.Downloader{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
-		IndexPath:   ".index.json",
 	}
 
 	return remote
@@ -98,7 +96,7 @@ func RemoteHub(ctx context.Context, c *csconfig.Config) *cwhub.RemoteHubCfg {
 
 // Hub initializes the hub. If a remote configuration is provided, it can be used to download the index and items.
 // If no remote parameter is provided, the hub can only be used for local operations.
-func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg, logger *logrus.Logger) (*cwhub.Hub, error) {
+func Hub(c *csconfig.Config, logger *logrus.Logger) (*cwhub.Hub, error) {
 	local := c.Hub
 
 	if local == nil {
@@ -110,13 +108,13 @@ func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg, logger *logrus.Logger) 
 		logger.SetOutput(io.Discard)
 	}
 
-	hub, err := cwhub.NewHub(local, remote, logger)
+	hub, err := cwhub.NewHub(local, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := hub.Load(); err != nil {
-		return nil, fmt.Errorf("failed to read Hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
+		return nil, err
 	}
 
 	return hub, nil
