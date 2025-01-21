@@ -170,7 +170,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
+func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, noSimu *bool, contained *bool, printMachine bool) error {
 	var err error
 
 	*filter.ScopeEquals, err = clialert.SanitizeScope(*filter.ScopeEquals, *filter.IPEquals, *filter.RangeEquals)
@@ -181,7 +181,7 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 	filter.ActiveDecisionEquals = new(bool)
 	*filter.ActiveDecisionEquals = true
 
-	if NoSimu != nil && *NoSimu {
+	if noSimu != nil && *noSimu {
 		filter.IncludeSimulated = new(bool)
 	}
 	/* nullify the empty entries to avoid bad filter */
@@ -290,7 +290,7 @@ cscli decisions list -r 1.2.3.0/24
 cscli decisions list -s crowdsecurity/ssh-bf
 cscli decisions list --origin lists --scenario list_name
 `,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.list(cmd.Context(), filter, NoSimu, contained, printMachine)
@@ -416,7 +416,7 @@ cscli decisions add --ip 1.2.3.4 --duration 24h --type captcha
 cscli decisions add --scope username --value foobar
 `,
 		/*TBD : fix long and example*/
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType)

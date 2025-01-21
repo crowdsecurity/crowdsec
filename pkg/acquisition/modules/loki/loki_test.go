@@ -34,6 +34,7 @@ func TestConfiguration(t *testing.T) {
 		password     string
 		waitForReady time.Duration
 		delayFor     time.Duration
+		noReadyCheck bool
 		testName     string
 	}{
 		{
@@ -99,6 +100,19 @@ query: >
 mode: tail
 source: loki
 url: http://localhost:3100/
+no_ready_check: true
+query: >
+        {server="demo"}
+`,
+			expectedErr:  "",
+			testName:     "Correct config with no_ready_check",
+			noReadyCheck: true,
+		},
+		{
+			config: `
+mode: tail
+source: loki
+url: http://localhost:3100/
 auth:
   username: foo
   password: bar
@@ -148,6 +162,8 @@ query: >
 					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 				}
 			}
+
+			assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
 		})
 	}
 }
@@ -164,6 +180,7 @@ func TestConfigureDSN(t *testing.T) {
 		scheme       string
 		waitForReady time.Duration
 		delayFor     time.Duration
+		noReadyCheck bool
 	}{
 		{
 			name:        "Wrong scheme",
@@ -202,10 +219,11 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:         "Correct DSN",
-			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s`,
+			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s&no_ready_check=true`,
 			expectedErr:  "",
 			waitForReady: 5 * time.Second,
 			delayFor:     1 * time.Second,
+			noReadyCheck: true,
 		},
 		{
 			name:   "SSL DSN",
@@ -256,6 +274,9 @@ func TestConfigureDSN(t *testing.T) {
 				t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 			}
 		}
+
+		assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
+
 	}
 }
 
@@ -312,6 +333,8 @@ func feedLoki(ctx context.Context, logger *log.Entry, n int, title string) error
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -346,8 +369,6 @@ since: 1h
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		ctx := context.Background()
-
 		err = feedLoki(ctx, subLogger, 20, title)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
@@ -366,7 +387,7 @@ since: 1h
 
 		lokiTomb := tomb.Tomb{}
 
-		err = lokiSource.OneShotAcquisition(out, &lokiTomb)
+		err = lokiSource.OneShotAcquisition(ctx, out, &lokiTomb)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}

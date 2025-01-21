@@ -25,7 +25,7 @@ func TestCreateMachine(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Equal(t, `{"message":"invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
 
 	// Create machine with invalid input
 	w = httptest.NewRecorder()
@@ -34,7 +34,7 @@ func TestCreateMachine(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	assert.Equal(t, `{"message":"validation failure list:\nmachine_id in body is required\npassword in body is required"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"validation failure list:\nmachine_id in body is required\npassword in body is required"}`, w.Body.String())
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
@@ -144,7 +144,7 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
-	assert.Equal(t, `{"message":"user 'test': user already exist"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"user 'test': user already exist"}`, w.Body.String())
 }
 
 func TestAutoRegistration(t *testing.T) {

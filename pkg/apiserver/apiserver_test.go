@@ -24,6 +24,7 @@ import (
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -62,6 +63,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:    "http://127.0.0.1:8080",
+		LogLevel:     ptr.Of(log.DebugLevel),
 		DbConfig:     &dbconfig,
 		ProfilesPath: "./tests/profiles.yaml",
 		ConsoleConfig: &csconfig.ConsoleConfig{
@@ -206,6 +208,18 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 	return ""
 }
 
+func GetBouncers(t *testing.T, config *csconfig.DatabaseCfg) []*ent.Bouncer {
+	ctx := context.Background()
+
+	dbClient, err := database.NewClient(ctx, config)
+	require.NoError(t, err)
+
+	bouncers, err := dbClient.ListBouncers(ctx)
+	require.NoError(t, err)
+
+	return bouncers
+}
+
 func GetAlertReaderFromFile(t *testing.T, path string) *strings.Reader {
 	alertContentBytes, err := os.ReadFile(path)
 	require.NoError(t, err)
@@ -290,7 +304,7 @@ func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.Datab
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)
 	require.NoError(t, err)
 
-	_, err = dbClient.CreateBouncer(ctx, "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
+	_, err = dbClient.CreateBouncer(ctx, "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType, false)
 	require.NoError(t, err)
 
 	return apiKey
@@ -373,7 +387,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -425,7 +439,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.ErrorLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)

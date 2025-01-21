@@ -136,7 +136,10 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
+	+--------------------------+
+	| Bouncer Metrics (testbou |
+	| ncer) since 2024-02-08 1 |
+	| 3:35:16 +0000 UTC        |
 	+--------+-----------------+
 	| Origin |       foo       |
 	|        | dogyear | pound |
@@ -226,7 +229,8 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
+	+-------------------------------------------------------------------------------------------+
+	| Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC                         |
 	+----------------------------------+------------------+-------------------+-----------------+
 	| Origin                           | active_decisions |      dropped      |       foo       |
 	|                                  |        IPs       |  bytes  | packets | dogyear | pound |
@@ -309,7 +313,8 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC:
+	+-------------------------------------------------------------------------------------------+
+	| Bouncer Metrics (testbouncer) since 2024-02-08 13:35:16 +0000 UTC                         |
 	+----------------------------------+------------------+-------------------+-----------------+
 	| Origin                           | active_decisions |      dropped      |       foo       |
 	|                                  |        IPs       |  bytes  | packets | dogyear | pound |
@@ -365,7 +370,9 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer) since 2024-02-09 03:40:00 +0000 UTC:
+	+-----------------------------------------------+
+	| Bouncer Metrics (testbouncer) since 2024-02-0 |
+	| 9 03:40:00 +0000 UTC                          |
 	+--------------------------+--------+-----------+
 	| Origin                   |   ima  | notagauge |
 	|                          | second |    inch   |
@@ -417,7 +424,9 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (testbouncer) since 2024-02-09 03:40:00 +0000 UTC:
+	+---------------------------------------------+
+	| Bouncer Metrics (testbouncer) since 2024-02 |
+	| -09 03:40:00 +0000 UTC                      |
 	+--------------------------+------------------+
 	| Origin                   | active_decisions |
 	|                          |        IPs       |
@@ -502,7 +511,9 @@ teardown() {
 
     rune -0 cscli metrics show bouncers
     assert_output - <<-EOT
-	Bouncer Metrics (bouncer1) since 2024-02-08 13:35:16 +0000 UTC:
+	+--------------------------------------------------------------+
+	| Bouncer Metrics (bouncer1) since 2024-02-08 13:35:16 +0000 U |
+	| TC                                                           |
 	+----------------------------+---------+-----------------------+
 	| Origin                     | dropped |       processed       |
 	|                            |  bytes  |   bytes   |  packets  |
@@ -512,8 +523,9 @@ teardown() {
 	+----------------------------+---------+-----------+-----------+
 	|                      Total |   1.80k |    12.34k |       100 |
 	+----------------------------+---------+-----------+-----------+
-
-	Bouncer Metrics (bouncer2) since 2024-02-08 10:48:36 +0000 UTC:
+	+------------------------------------------------+
+	| Bouncer Metrics (bouncer2) since 2024-02-08 10 |
+	| :48:36 +0000 UTC                               |
 	+----------------------------+-------------------+
 	| Origin                     |      dropped      |
 	|                            |  bytes  | packets |

@@ -17,9 +17,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var serialized map[string]Leaky
-var BucketPourCache map[string][]types.Event
-var BucketPourTrack bool
+var (
+	serialized      map[string]Leaky
+	BucketPourCache map[string][]types.Event
+	BucketPourTrack bool
+)
 
 /*
 The leaky routines lifecycle are based on "real" time.
@@ -243,7 +245,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 }
 
 func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
-
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 
 	/* the bucket doesn't exist, create it !*/
@@ -283,9 +284,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 var orderEvent map[string]*sync.WaitGroup
 
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
-	var (
-		ok, condition, poured bool
-	)
+	var ok, condition, poured bool
 
 	if BucketPourTrack {
 		if BucketPourCache == nil {

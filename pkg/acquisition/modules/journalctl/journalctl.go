@@ -53,31 +53,36 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 		txt := scanner.Text()
 		out <- txt
 	}
+
 	if errChan != nil && scanner.Err() != nil {
 		errChan <- scanner.Err()
 		close(errChan)
 		// the error is already consumed by runJournalCtl
 		return nil //nolint:nilerr
 	}
+
 	if errChan != nil {
 		close(errChan)
 	}
+
 	return nil
 }
 
-func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+	ctx, cancel := context.WithCancel(ctx)
 
 	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		cancel()
-		return fmt.Errorf("could not get journalctl stdout: %s", err)
+		return fmt.Errorf("could not get journalctl stdout: %w", err)
 	}
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		cancel()
-		return fmt.Errorf("could not get journalctl stderr: %s", err)
+		return fmt.Errorf("could not get journalctl stderr: %w", err)
 	}
 
 	stderrChan := make(chan string)
@@ -87,6 +92,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	logger := j.logger.WithField("src", j.src)
 
 	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
+
 	err = cmd.Start()
 	if err != nil {
 		cancel()
@@ -109,9 +115,11 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		cmd.Wait()
 		return errors.New("failed to create stderr scanner")
 	}
+
 	t.Go(func() error {
 		return readLine(stdoutscanner, stdoutChan, errChan)
 	})
+
 	t.Go(func() error {
 		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
 		return readLine(stderrScanner, stderrChan, nil)
@@ -123,6 +131,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
 			cmd.Wait() // avoid zombie process
+
 			return nil
 		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
@@ -133,15 +142,13 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Src = j.src
 			l.Process = true
 			l.Module = j.GetName()
+
 			if j.metricsLevel != configuration.METRICS_NONE {
 				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			}
-			var evt types.Event
-			if !j.config.UseTimeMachine {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+
+			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)
@@ -152,6 +159,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 				logger.Debugf("errChan is closed, quitting")
 				t.Kill(nil)
 			}
+
 			if errScanner != nil {
 				t.Kill(errScanner)
 			}
@@ -173,6 +181,7 @@ func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
 
 func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	j.config = JournalCtlConfiguration{}
+
 	err := yaml.UnmarshalStrict(yamlConfig, &j.config)
 	if err != nil {
 		return fmt.Errorf("cannot parse JournalCtlSource configuration: %w", err)
@@ -192,15 +201,18 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	if len(j.config.Filters) == 0 {
 		return errors.New("journalctl_filter is required")
 	}
-	j.args = append(args, j.config.Filters...)
-	j.src = fmt.Sprintf("journalctl-%s", strings.Join(j.config.Filters, "."))
+
+	args = append(args, j.config.Filters...)
+
+	j.args = args
+	j.src = "journalctl-%s" + strings.Join(j.config.Filters, ".")
 
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	j.logger = logger
-	j.metricsLevel = MetricsLevel
+	j.metricsLevel = metricsLevel
 
 	err := j.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -229,8 +241,9 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 
 	params, err := url.ParseQuery(qs)
 	if err != nil {
-		return fmt.Errorf("could not parse journalctl DSN : %s", err)
+		return fmt.Errorf("could not parse journalctl DSN: %w", err)
 	}
+
 	for key, value := range params {
 		switch key {
 		case "filters":
@@ -239,10 +252,12 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 			if len(value) != 1 {
 				return errors.New("expected zero or one value for 'log_level'")
 			}
+
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
 				return fmt.Errorf("unknown level %s: %w", value[0], err)
 			}
+
 			j.logger.Logger.SetLevel(lvl)
 		case "since":
 			j.args = append(j.args, "--since", value[0])
@@ -250,7 +265,9 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 			return fmt.Errorf("unsupported key %s in journalctl DSN", key)
 		}
 	}
+
 	j.args = append(j.args, j.config.Filters...)
+
 	return nil
 }
 
@@ -262,18 +279,21 @@ func (j *JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
-func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
-	err := j.runJournalCtl(out, t)
+
+	err := j.runJournalCtl(ctx, out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
+
 	return err
 }
 
 func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
-		return j.runJournalCtl(out, t)
+		return j.runJournalCtl(ctx, out, t)
 	})
+
 	return nil
 }
 

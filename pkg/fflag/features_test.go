@@ -351,10 +351,8 @@ func TestSetFromYaml(t *testing.T) {
 }
 
 func TestSetFromYamlFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "test")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "test")
 	require.NoError(t, err)
-
-	defer os.Remove(tmpfile.Name())
 
 	// write the config file
 	_, err = tmpfile.WriteString("- experimental1")
@@ -376,11 +374,13 @@ func TestGetEnabledFeatures(t *testing.T) {
 
 	feat1, err := fr.GetFeature("new_standard")
 	require.NoError(t, err)
-	feat1.Set(true)
+	err = feat1.Set(true)
+	require.Error(t, err, "the flag is deprecated")
 
 	feat2, err := fr.GetFeature("experimental1")
 	require.NoError(t, err)
-	feat2.Set(true)
+	err = feat2.Set(true)
+	require.NoError(t, err)
 
 	expected := []string{
 		"experimental1",

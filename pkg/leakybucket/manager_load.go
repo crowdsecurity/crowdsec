@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -201,44 +200,41 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
 
-	switch bucketFactory.ScopeType.Scope {
-	case types.Undefined:
+	return compileScopeFilter(bucketFactory)
+}
+
+func compileScopeFilter(bucketFactory *BucketFactory) error {
+	if bucketFactory.ScopeType.Scope == types.Undefined {
 		bucketFactory.ScopeType.Scope = types.Ip
-	case types.Ip:
-	case types.Range:
-		var (
-			runTimeFilter *vm.Program
-			err           error
-		)
-
-		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
-				return fmt.Errorf("error compiling the scope filter: %w", err)
-			}
-
-			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
-		}
-
-	default:
-		// Compile the scope filter
-		var (
-			runTimeFilter *vm.Program
-			err           error
-		)
-
-		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
-				return fmt.Errorf("error compiling the scope filter: %w", err)
-			}
-
-			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
-		}
 	}
+
+	if bucketFactory.ScopeType.Scope == types.Ip {
+		if bucketFactory.ScopeType.Filter != "" {
+			return errors.New("filter is not allowed for IP scope")
+		}
+
+		return nil
+	}
+
+	if bucketFactory.ScopeType.Scope == types.Range && bucketFactory.ScopeType.Filter == "" {
+		return nil
+	}
+
+	if bucketFactory.ScopeType.Filter == "" {
+		return errors.New("filter is mandatory for non-IP, non-Range scope")
+	}
+
+	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+	if err != nil {
+		return fmt.Errorf("error compiling the scope filter: %w", err)
+	}
+
+	bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
 		response chan types.Event
@@ -246,18 +242,15 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 
 	response = make(chan types.Event, 1)
 
-	for _, f := range files {
-		log.Debugf("Loading '%s'", f)
+	for _, item := range scenarios {
+		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
-			log.Debugf("Skipping %s : not a yaml file", f)
-			continue
-		}
+		itemPath := item.State.LocalPath
 
 		// process the yaml
-		bucketConfigurationFile, err := os.Open(f)
+		bucketConfigurationFile, err := os.Open(itemPath)
 		if err != nil {
-			log.Errorf("Can't access leaky configuration file %s", f)
+			log.Errorf("Can't access leaky configuration file %s", itemPath)
 			return nil, nil, err
 		}
 
@@ -271,8 +264,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					log.Errorf("Bad yaml in %s: %v", f, err)
-					return nil, nil, fmt.Errorf("bad yaml in %s: %w", f, err)
+					log.Errorf("Bad yaml in %s: %v", itemPath, err)
+					return nil, nil, fmt.Errorf("bad yaml in %s: %w", itemPath, err)
 				}
 
 				log.Tracef("End of yaml file")
@@ -288,7 +281,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			}
 			// check compat
 			if bucketFactory.FormatVersion == "" {
-				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
+				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, itemPath)
 				bucketFactory.FormatVersion = "1.0"
 			}
 
@@ -302,21 +295,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 				continue
 			}
 
-			bucketFactory.Filename = filepath.Clean(f)
+			bucketFactory.Filename = filepath.Clean(itemPath)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 
-			hubItem := hub.GetItemByPath(bucketFactory.Filename)
-			if hubItem == nil {
-				log.Errorf("scenario %s (%s) could not be found in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
-			} else {
-				if cscfg.SimulationConfig != nil {
-					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
-				}
-
-				bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
-				bucketFactory.hash = hubItem.State.LocalHash
+			if cscfg.SimulationConfig != nil {
+				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(item.Name)
 			}
+
+			bucketFactory.ScenarioVersion = item.State.LocalVersion
+			bucketFactory.hash = item.State.LocalHash
 
 			bucketFactory.wgDumpState = buckets.wgDumpState
 			bucketFactory.wgPour = buckets.wgPour
@@ -348,7 +336,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err := types.ConfigureLogger(clog); err != nil {
+		if err = types.ConfigureLogger(clog); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
@@ -470,7 +458,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		}
 
 		if data.Type == "regexp" { // cache only makes sense for regexp
-			exprhelpers.RegexpCacheInit(data.DestPath, *data)
+			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
+				bucketFactory.logger.Error(err.Error())
+			}
 		}
 	}
 
@@ -496,7 +486,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		return fmt.Errorf("can't parse state file %s: %w", file, err)
 	}
 
-	for k, v := range state {
+	for k := range state {
 		var tbucket *Leaky
 
 		log.Debugf("Reloading bucket %s", k)
@@ -509,30 +499,30 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		found := false
 
 		for _, h := range bucketFactories {
-			if h.Name != v.Name {
+			if h.Name != state[k].Name {
 				continue
 			}
 
 			log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 			// check in which mode the bucket was
-			if v.Mode == types.TIMEMACHINE {
+			if state[k].Mode == types.TIMEMACHINE {
 				tbucket = NewTimeMachine(h)
-			} else if v.Mode == types.LIVE {
+			} else if state[k].Mode == types.LIVE {
 				tbucket = NewLeaky(h)
 			} else {
-				log.Errorf("Unknown bucket type : %d", v.Mode)
+				log.Errorf("Unknown bucket type : %d", state[k].Mode)
 			}
 			/*Trying to restore queue state*/
-			tbucket.Queue = v.Queue
+			tbucket.Queue = state[k].Queue
 			/*Trying to set the limiter to the saved values*/
-			tbucket.Limiter.Load(v.SerializedState)
+			tbucket.Limiter.Load(state[k].SerializedState)
 			tbucket.In = make(chan *types.Event)
 			tbucket.Mapkey = k
 			tbucket.Signal = make(chan bool, 1)
-			tbucket.First_ts = v.First_ts
-			tbucket.Last_ts = v.Last_ts
-			tbucket.Ovflw_ts = v.Ovflw_ts
-			tbucket.Total_count = v.Total_count
+			tbucket.First_ts = state[k].First_ts
+			tbucket.Last_ts = state[k].Last_ts
+			tbucket.Ovflw_ts = state[k].Ovflw_ts
+			tbucket.Total_count = state[k].Total_count
 			buckets.Bucket_map.Store(k, tbucket)
 			h.tomb.Go(func() error {
 				return LeakRoutine(tbucket)
@@ -545,7 +535,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 		}
 
 		if !found {
-			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(v))
+			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(state[k]))
 		}
 	}
 

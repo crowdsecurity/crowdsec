@@ -69,7 +69,10 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 			ShareCustomScenarios:  ptr.Of(false),
 			ShareContext:          ptr.Of(false),
 		},
-		isPulling: make(chan bool, 1),
+		isPulling:      make(chan bool, 1),
+		shareSignals:   true,
+		pullBlocklists: true,
+		pullCommunity:  true,
 	}
 }
 
@@ -200,6 +203,11 @@ func TestNewAPIC(t *testing.T) {
 				Login:    "foo",
 				Password: "bar",
 			},
+			Sharing: ptr.Of(true),
+			PullConfig: csconfig.CapiPullConfig{
+				Community:  ptr.Of(true),
+				Blocklists: ptr.Of(true),
+			},
 		}
 	}
 
@@ -253,44 +261,6 @@ func TestNewAPIC(t *testing.T) {
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
-}
-
-func TestAPICHandleDeletedDecisions(t *testing.T) {
-	ctx := context.Background()
-	api := getAPIC(t, ctx)
-	_, deleteCounters := makeAddAndDeleteCounters()
-
-	decision1 := api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("ban").
-		SetScope("IP").
-		SetValue("1.2.3.4").
-		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
-
-	api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("ban").
-		SetScope("IP").
-		SetValue("1.2.3.4").
-		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
-
-	assertTotalDecisionCount(t, ctx, api.dbClient, 2)
-
-	nbDeleted, err := api.HandleDeletedDecisions([]*models.Decision{{
-		Value:    ptr.Of("1.2.3.4"),
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Type:     &decision1.Type,
-		Scenario: ptr.Of("crowdsec/test"),
-		Scope:    ptr.Of("IP"),
-	}}, deleteCounters)
-
-	require.NoError(t, err)
-	assert.Equal(t, 2, nbDeleted)
-	assert.Equal(t, 2, deleteCounters[types.CAPIOrigin]["all"])
 }
 
 func TestAPICGetMetrics(t *testing.T) {
@@ -1231,6 +1201,7 @@ func TestShouldShareAlert(t *testing.T) {
 	tests := []struct {
 		name          string
 		consoleConfig *csconfig.ConsoleConfig
+		shareSignals  bool
 		alert         *models.Alert
 		expectedRet   bool
 		expectedTrust string
@@ -1241,6 +1212,7 @@ func TestShouldShareAlert(t *testing.T) {
 				ShareCustomScenarios: ptr.Of(true),
 			},
 			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			shareSignals:  true,
 			expectedRet:   true,
 			expectedTrust: "custom",
 		},
@@ -1250,6 +1222,7 @@ func TestShouldShareAlert(t *testing.T) {
 				ShareCustomScenarios: ptr.Of(false),
 			},
 			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			shareSignals:  true,
 			expectedRet:   false,
 			expectedTrust: "custom",
 		},
@@ -1258,6 +1231,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: ptr.Of(true),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
@@ -1270,6 +1244,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: ptr.Of(false),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
@@ -1282,6 +1257,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: ptr.Of(true),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
@@ -1294,6 +1270,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: ptr.Of(false),
 			},
+			shareSignals: true,
 			alert: &models.Alert{
 				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
@@ -1301,11 +1278,24 @@ func TestShouldShareAlert(t *testing.T) {
 			expectedRet:   false,
 			expectedTrust: "tainted",
 		},
+		{
+			name: "manual alert should not be shared if global sharing is disabled",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareManualDecisions: ptr.Of(true),
+			},
+			shareSignals: false,
+			alert: &models.Alert{
+				Simulated:    ptr.Of(false),
+				ScenarioHash: ptr.Of("whateverHash"),
+			},
+			expectedRet:   false,
+			expectedTrust: "manual",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ret := shouldShareAlert(tc.alert, tc.consoleConfig)
+			ret := shouldShareAlert(tc.alert, tc.consoleConfig, tc.shareSignals)
 			assert.Equal(t, tc.expectedRet, ret)
 		})
 	}

@@ -66,6 +66,7 @@ func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 
 func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	k8sConfig := KubernetesAuditConfiguration{}
+
 	err := yaml.UnmarshalStrict(yamlConfig, &k8sConfig)
 	if err != nil {
 		return fmt.Errorf("cannot parse k8s-audit configuration: %w", err)
@@ -92,12 +93,13 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	if ka.config.Mode == "" {
 		ka.config.Mode = configuration.TAIL_MODE
 	}
+
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
+func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
 	ka.logger = logger
-	ka.metricsLevel = MetricsLevel
+	ka.metricsLevel = metricsLevel
 
 	err := ka.UnmarshalConfig(config)
 	if err != nil {
@@ -116,6 +118,7 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, Met
 	}
 
 	ka.mux.HandleFunc(ka.config.WebhookPath, ka.webhookHandler)
+
 	return nil
 }
 
@@ -131,12 +134,13 @@ func (ka *KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
 }
 
-func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (ka *KubernetesAuditSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
 func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	ka.outChan = out
+
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/k8s-audit/live")
 		ka.logger.Infof("Starting k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
@@ -145,13 +149,18 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 			if err != nil && err != http.ErrServerClosed {
 				return fmt.Errorf("k8s-audit server failed: %w", err)
 			}
+
 			return nil
 		})
 		<-t.Dying()
 		ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
-		ka.server.Shutdown(context.TODO())
+		if err := ka.server.Shutdown(ctx); err != nil {
+			ka.logger.Errorf("Error shutting down k8s-audit server: %s", err.Error())
+		}
+
 		return nil
 	})
+
 	return nil
 }
 
@@ -167,51 +176,58 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 	if ka.metricsLevel != configuration.METRICS_NONE {
 		requestCount.WithLabelValues(ka.addr).Inc()
 	}
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
 	ka.logger.Tracef("webhookHandler called")
+
 	var auditEvents audit.EventList
 
 	jsonBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		ka.logger.Errorf("Error reading request body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
+
 	ka.logger.Tracef("webhookHandler receveid: %s", string(jsonBody))
+
 	err = json.Unmarshal(jsonBody, &auditEvents)
 	if err != nil {
 		ka.logger.Errorf("Error decoding audit events: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 
 	remoteIP := strings.Split(r.RemoteAddr, ":")[0]
-	for _, auditEvent := range auditEvents.Items {
+
+	for idx := range auditEvents.Items {
 		if ka.metricsLevel != configuration.METRICS_NONE {
 			eventCount.WithLabelValues(ka.addr).Inc()
 		}
-		bytesEvent, err := json.Marshal(auditEvent)
+
+		bytesEvent, err := json.Marshal(auditEvents.Items[idx])
 		if err != nil {
 			ka.logger.Errorf("Error serializing audit event: %s", err)
 			continue
 		}
+
 		ka.logger.Tracef("Got audit event: %s", string(bytesEvent))
 		l := types.Line{
 			Raw:     string(bytesEvent),
 			Labels:  ka.config.Labels,
-			Time:    auditEvent.StageTimestamp.Time,
+			Time:    auditEvents.Items[idx].StageTimestamp.Time,
 			Src:     remoteIP,
 			Process: true,
 			Module:  ka.GetName(),
 		}
-		ka.outChan <- types.Event{
-			Line:       l,
-			Process:    true,
-			Type:       types.LOG,
-			ExpectMode: types.LIVE,
-		}
+		evt := types.MakeEvent(ka.config.UseTimeMachine, types.LOG, true)
+		evt.Line = l
+		ka.outChan <- evt
 	}
 }

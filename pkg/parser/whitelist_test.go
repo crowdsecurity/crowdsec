@@ -284,9 +284,9 @@ func TestWhitelistCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
 			node.Whitelist = tt.whitelist
-			node.CompileWLs()
+			_, err := node.CompileWLs()
+			require.NoError(t, err)
 			isWhitelisted := node.CheckIPsWL(tt.event)
 			if !isWhitelisted {
 				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event}, tt.event)

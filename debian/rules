@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-export DEB_VERSION=$(shell dpkg-parsechangelog | grep -E '^Version:' | cut -f 2 -d ' ')
+export DEB_VERSION=$(shell dpkg-parsechangelog -SVersion)
 export BUILD_VERSION=v${DEB_VERSION}-debian-pragmatic
 export GO111MODULE=on
 
@@ -13,7 +13,7 @@ override_dh_auto_build:
 override_dh_auto_install:
 
 	# just use the prebuilt binaries, otherwise:
-	# make build BUILD_RE_WASM=0 BUILD_STATIC=1
+	# make build BUILD_STATIC=1
 
 	mkdir -p debian/crowdsec/usr/bin
 	mkdir -p debian/crowdsec/etc/crowdsec

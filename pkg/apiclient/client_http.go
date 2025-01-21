@@ -61,9 +61,7 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		req.Header.Add("User-Agent", c.UserAgent)
 	}
 
-	if log.GetLevel() >= log.DebugLevel {
-		log.Debugf("[URL] %s %s", req.Method, req.URL)
-	}
+	log.Debugf("[URL] %s %s", req.Method, req.URL)
 
 	resp, err := c.client.Do(req)
 	if resp != nil && resp.Body != nil {
@@ -80,10 +78,11 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		}
 
 		// If the error type is *url.Error, sanitize its URL before returning.
-		if e, ok := err.(*url.Error); ok {
-			if url, err := url.Parse(e.URL); err == nil {
-				e.URL = url.String()
-				return newResponse(resp), e
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			if parsedURL, parseErr := url.Parse(urlErr.URL); parseErr == nil {
+				urlErr.URL = parsedURL.String()
+				return newResponse(resp), urlErr
 			}
 
 			return newResponse(resp), err

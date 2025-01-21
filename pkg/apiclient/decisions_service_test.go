@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -30,11 +31,12 @@ func TestDecisionsList(t *testing.T) {
 			assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 			assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]`))
+			_, err := w.Write([]byte(`[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]`))
+			assert.NoError(t, err)
 		} else {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`null`))
-			// no results
+			_, err := w.Write([]byte(`null`))
+			assert.NoError(t, err)
 		}
 	})
 
@@ -87,12 +89,14 @@ func TestDecisionsStream(t *testing.T) {
 		testMethod(t, r, http.MethodGet)
 
 		if r.Method == http.MethodGet {
-			if r.URL.RawQuery == "startup=true" {
+			if strings.Contains(r.URL.RawQuery, "startup=true") {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"deleted":null,"new":[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]}`))
+				_, err := w.Write([]byte(`{"deleted":null,"new":[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]}`))
+				assert.NoError(t, err)
 			} else {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"deleted":null,"new":null}`))
+				_, err := w.Write([]byte(`{"deleted":null,"new":null}`))
+				assert.NoError(t, err)
 			}
 		}
 	})
@@ -160,12 +164,14 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 		testMethod(t, r, http.MethodGet)
 
 		if r.Method == http.MethodGet {
-			if r.URL.RawQuery == "startup=true" {
+			if strings.Contains(r.URL.RawQuery, "startup=true") {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],"new":[{"scope":"ip", "scenario": "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'", "decisions":[{"duration":"3h59m55.756182786s","value":"1.2.3.4"}]}]}`))
+				_, err := w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],"new":[{"scope":"ip", "scenario": "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'", "decisions":[{"duration":"3h59m55.756182786s","value":"1.2.3.4"}]}]}`))
+				assert.NoError(t, err)
 			} else {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"deleted":null,"new":null}`))
+				_, err := w.Write([]byte(`{"deleted":null,"new":null}`))
+				assert.NoError(t, err)
 			}
 		}
 	})
@@ -226,9 +232,10 @@ func TestDecisionsStreamV3(t *testing.T) {
 
 		if r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],
+			_, err := w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],
 			"new":[{"scope":"ip", "scenario": "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'", "decisions":[{"duration":"3h59m55.756182786s","value":"1.2.3.4"}]}],
 			"links": {"blocklists":[{"name":"blocklist1","url":"/v3/blocklist","scope":"ip","remediation":"ban","duration":"24h"}]}}`))
+			assert.NoError(t, err)
 		}
 	})
 
@@ -302,7 +309,8 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 
 		if r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("1.2.3.4\r\n1.2.3.5"))
+			_, err := w.Write([]byte("1.2.3.4\r\n1.2.3.5"))
+			assert.NoError(t, err)
 		}
 	})
 
@@ -387,14 +395,16 @@ func TestDeleteDecisions(t *testing.T) {
 	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"nbDeleted":"1"}`))
+		_, err := w.Write([]byte(`{"nbDeleted":"1"}`))
+		assert.NoError(t, err)
 		// w.Write([]byte(`{"message":"0 deleted alerts"}`))
 	})
 
@@ -429,6 +439,8 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 		Scopes                 string
 		ScenariosContaining    string
 		ScenariosNotContaining string
+		CommunityPull          bool
+		AdditionalPull         bool
 	}
 
 	tests := []struct {
@@ -440,11 +452,17 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 		{
 			name:     "no filter",
 			expected: baseURLString + "?",
+			fields: fields{
+				CommunityPull:  true,
+				AdditionalPull: true,
+			},
 		},
 		{
 			name: "startup=true",
 			fields: fields{
-				Startup: true,
+				Startup:        true,
+				CommunityPull:  true,
+				AdditionalPull: true,
 			},
 			expected: baseURLString + "?startup=true",
 		},
@@ -455,8 +473,18 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				Scopes:                 "ip,range",
 				ScenariosContaining:    "ssh",
 				ScenariosNotContaining: "bf",
+				CommunityPull:          true,
+				AdditionalPull:         true,
 			},
 			expected: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
+		},
+		{
+			name: "pull options",
+			fields: fields{
+				CommunityPull:  false,
+				AdditionalPull: false,
+			},
+			expected: baseURLString + "?additional_pull=false&community_pull=false",
 		},
 	}
 
@@ -467,6 +495,8 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				Scopes:                 tt.fields.Scopes,
 				ScenariosContaining:    tt.fields.ScenariosContaining,
 				ScenariosNotContaining: tt.fields.ScenariosNotContaining,
+				CommunityPull:          tt.fields.CommunityPull,
+				AdditionalPull:         tt.fields.AdditionalPull,
 			}
 
 			got, err := o.addQueryParamsToURL(baseURLString)

@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
 type configGetter = func() *csconfig.Config
@@ -39,7 +42,7 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 		Example: `cscli hub list
 cscli hub update
 cscli hub upgrade`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 
@@ -55,11 +58,11 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
 	cfg := cli.cfg()
 
 	for _, v := range hub.Warnings {
-		log.Info(v)
+		fmt.Fprintln(os.Stderr, v)
 	}
 
 	for _, line := range hub.ItemStats() {
-		log.Info(line)
+		fmt.Fprintln(os.Stderr, line)
 	}
 
 	items := make(map[string][]*cwhub.Item)
@@ -87,10 +90,10 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
+			hub, err := require.Hub(cli.cfg(), log.StandardLogger())
 			if err != nil {
 				return err
 			}
@@ -100,23 +103,22 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVarP(&all, "all", "a", false, "List disabled items as well")
+	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
 
 	return cmd
 }
 
 func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	local := cli.cfg().Hub
-	remote := require.RemoteHub(ctx, cli.cfg())
-	remote.EmbedItemContent = withContent
-
 	// don't use require.Hub because if there is no index file, it would fail
-	hub, err := cwhub.NewHub(local, remote, log.StandardLogger())
+	hub, err := cwhub.NewHub(local, log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
-	if err := hub.Update(ctx); err != nil {
+	indexProvider := require.HubDownloader(ctx, cli.cfg())
+
+	if err := hub.Update(ctx, indexProvider, withContent); err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
@@ -125,7 +127,7 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	}
 
 	for _, v := range hub.Warnings {
-		log.Info(v)
+		fmt.Fprintln(os.Stderr, v)
 	}
 
 	return nil
@@ -140,10 +142,18 @@ func (cli *cliHub) newUpdateCmd() *cobra.Command {
 		Long: `
 Fetches the .index.json file from the hub, containing the list of available configs.
 `,
-		Args:              cobra.ExactArgs(0),
+		Example: `# Download the last version of the index file.
+cscli hub update
+
+# Download a 4x bigger version with all item contents (effectively pre-caching item downloads, but not data files).
+cscli hub update --with-content`,
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.update(cmd.Context(), withContent)
+			if cmd.Flags().Changed("with-content") {
+				return cli.update(cmd.Context(), withContent)
+			}
+			return cli.update(cmd.Context(), cli.cfg().Cscli.HubWithContent)
 		},
 	}
 
@@ -153,36 +163,49 @@ Fetches the .index.json file from the hub, containing the list of available conf
 	return cmd
 }
 
-func (cli *cliHub) upgrade(ctx context.Context, force bool) error {
-	hub, err := require.Hub(cli.cfg(), require.RemoteHub(ctx, cli.cfg()), log.StandardLogger())
+func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force bool) error {
+	cfg := cli.cfg()
+
+	hub, err := require.Hub(cfg, log.StandardLogger())
 	if err != nil {
 		return err
 	}
 
+	plan := hubops.NewActionPlan(hub)
+
+	contentProvider := require.HubDownloader(ctx, cfg)
+
 	for _, itemType := range cwhub.ItemTypes {
-		updated := 0
-
-		log.Infof("Upgrading %s", itemType)
-
 		for _, item := range hub.GetInstalledByType(itemType, true) {
-			didUpdate, err := item.Upgrade(ctx, force)
-			if err != nil {
+			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, force)); err != nil {
 				return err
 			}
-
-			if didUpdate {
-				updated++
-			}
 		}
+	}
 
-		log.Infof("Upgraded %d %s", updated, itemType)
+	if err := plan.AddCommand(hubops.NewDataRefreshCommand(force)); err != nil {
+		return err
+	}
+
+	verbose := (cfg.Cscli.Output == "raw")
+
+	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+		return err
+	}
+
+	if plan.ReloadNeeded {
+		fmt.Println("\n" + reload.Message)
 	}
 
 	return nil
 }
 
 func (cli *cliHub) newUpgradeCmd() *cobra.Command {
-	var force bool
+	var (
+		yes    bool
+		dryRun bool
+		force  bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "upgrade",
@@ -190,15 +213,23 @@ func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 		Long: `
 Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if you want the latest versions available.
 `,
-		Args:              cobra.ExactArgs(0),
+		Example: `# Upgrade all the collections, scenarios etc. to the latest version in the downloaded index. Update data files too.
+cscli hub upgrade
+
+# Upgrade tainted items as well; force re-download of data files.
+cscli hub upgrade --force`,
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.upgrade(cmd.Context(), force)
+			return cli.upgrade(cmd.Context(), yes, dryRun, force)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated files")
+	flags.BoolVar(&yes, "yes", false, "Confirm execution without prompt")
+	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
+	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated items; always update data files")
+	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
 
 	return cmd
 }
@@ -235,7 +266,7 @@ func (cli *cliHub) newTypesCmd() *cobra.Command {
 		Long: `
 List the types of supported hub items.
 `,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.types()

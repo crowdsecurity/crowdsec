@@ -46,6 +46,43 @@ type APIServer struct {
 	consoleConfig  *csconfig.ConsoleConfig
 }
 
+func isBrokenConnection(maybeError any) bool {
+	err, ok := maybeError.(error)
+	if !ok {
+		return false
+	}
+
+	var netOpError *net.OpError
+	if errors.As(err, &netOpError) {
+		var syscallError *os.SyscallError
+		if errors.As(netOpError.Err, &syscallError) {
+			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") ||
+			   strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
+				return true
+			}
+		}
+	}
+
+	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
+	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
+	// stolen from http2/server.go in x/net
+	var (
+		errClientDisconnected = errors.New("client disconnected")
+		errClosedBody         = errors.New("body closed by handler")
+		errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
+		errStreamClosed       = errors.New("http2: stream closed")
+	)
+
+	if errors.Is(err, errClientDisconnected) ||
+		errors.Is(err, errClosedBody) ||
+		errors.Is(err, errHandlerComplete) ||
+		errors.Is(err, errStreamClosed) {
+		return true
+	}
+
+	return false
+}
+
 func recoverFromPanic(c *gin.Context) {
 	err := recover()
 	if err == nil {
@@ -54,36 +91,7 @@ func recoverFromPanic(c *gin.Context) {
 
 	// Check for a broken connection, as it is not really a
 	// condition that warrants a panic stack trace.
-	brokenPipe := false
-
-	if ne, ok := err.(*net.OpError); ok {
-		if se, ok := ne.Err.(*os.SyscallError); ok {
-			if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
-				brokenPipe = true
-			}
-		}
-	}
-
-	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
-	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
-	if strErr, ok := err.(error); ok {
-		// stolen from http2/server.go in x/net
-		var (
-			errClientDisconnected = errors.New("client disconnected")
-			errClosedBody         = errors.New("body closed by handler")
-			errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
-			errStreamClosed       = errors.New("http2: stream closed")
-		)
-
-		if errors.Is(strErr, errClientDisconnected) ||
-			errors.Is(strErr, errClosedBody) ||
-			errors.Is(strErr, errHandlerComplete) ||
-			errors.Is(strErr, errStreamClosed) {
-			brokenPipe = true
-		}
-	}
-
-	if brokenPipe {
+	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
 	} else {
@@ -207,7 +215,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	gin.DefaultWriter = clog.Writer()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
 			param.ClientIP,
 			param.TimeStamp.Format(time.RFC1123),
 			param.Method,
@@ -255,7 +263,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 
-		if config.ConsoleConfig.IsPAPIEnabled() {
+		if config.ConsoleConfig.IsPAPIEnabled() && config.OnlineClient.Credentials.PapiURL != "" {
 			if apiClient.apiClient.IsEnrolled() {
 				log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
@@ -340,7 +348,7 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 
 	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 	if s.apic.apiClient.IsEnrolled() {
-		if s.consoleConfig.IsPAPIEnabled() {
+		if s.consoleConfig.IsPAPIEnabled() && s.papi != nil {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
 				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })

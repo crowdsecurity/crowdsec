@@ -53,6 +53,7 @@ type LokiConfiguration struct {
 	WaitForReady                      time.Duration         `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
 	Auth                              LokiAuthConfiguration `yaml:"auth"`
 	MaxFailureDuration                time.Duration         `yaml:"max_failure_duration"` // Max duration of failure before stopping the source
+	NoReadyCheck                      bool                  `yaml:"no_ready_check"`       // Bypass /ready check before starting
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -119,10 +120,10 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
+func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
 	l.Config = LokiConfiguration{}
 	l.logger = logger
-	l.metricsLevel = MetricsLevel
+	l.metricsLevel = metricsLevel
 	err := l.UnmarshalConfig(config)
 	if err != nil {
 		return err
@@ -229,6 +230,14 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		l.logger.Logger.SetLevel(level)
 	}
 
+	if noReadyCheck := params.Get("no_ready_check"); noReadyCheck != "" {
+		noReadyCheck, err := strconv.ParseBool(noReadyCheck)
+		if err != nil {
+			return fmt.Errorf("invalid no_ready_check in dsn: %w", err)
+		}
+		l.Config.NoReadyCheck = noReadyCheck
+	}
+
 	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
 	if u.User != nil {
 		l.Config.Auth.Username = u.User.Username()
@@ -261,29 +270,31 @@ func (l *LokiSource) GetName() string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (l *LokiSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	l.logger.Debug("Loki one shot acquisition")
 	l.Client.SetTomb(t)
-	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
-	defer cancel()
-	err := l.Client.Ready(readyCtx)
-	if err != nil {
-		return fmt.Errorf("loki is not ready: %w", err)
+
+	if !l.Config.NoReadyCheck {
+		readyCtx, readyCancel := context.WithTimeout(ctx, l.Config.WaitForReady)
+		defer readyCancel()
+		err := l.Client.Ready(readyCtx)
+		if err != nil {
+			return fmt.Errorf("loki is not ready: %w", err)
+		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	c := l.Client.QueryRange(ctx, false)
+	lokiCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c := l.Client.QueryRange(lokiCtx, false)
 
 	for {
 		select {
 		case <-t.Dying():
 			l.logger.Debug("Loki one shot acquisition stopped")
-			cancel()
 			return nil
 		case resp, ok := <-c:
 			if !ok {
 				l.logger.Info("Loki acquisition done, chan closed")
-				cancel()
 				return nil
 			}
 			for _, stream := range resp.Data.Result {
@@ -307,41 +318,33 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	if l.metricsLevel != configuration.METRICS_NONE {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
-	expectMode := types.LIVE
-	if l.Config.UseTimeMachine {
-		expectMode = types.TIMEMACHINE
-	}
-	out <- types.Event{
-		Line:       ll,
-		Process:    true,
-		Type:       types.LOG,
-		ExpectMode: expectMode,
-	}
+	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
+	evt.Line = ll
+	out <- evt
 }
 
 func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	l.Client.SetTomb(t)
-	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
-	defer cancel()
-	err := l.Client.Ready(readyCtx)
-	if err != nil {
-		return fmt.Errorf("loki is not ready: %w", err)
+
+	if !l.Config.NoReadyCheck {
+		readyCtx, readyCancel := context.WithTimeout(ctx, l.Config.WaitForReady)
+		defer readyCancel()
+		err := l.Client.Ready(readyCtx)
+		if err != nil {
+			return fmt.Errorf("loki is not ready: %w", err)
+		}
 	}
 	ll := l.logger.WithField("websocket_url", l.lokiWebsocket)
 	t.Go(func() error {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		respChan := l.Client.QueryRange(ctx, true)
-		if err != nil {
-			ll.Errorf("could not start loki tail: %s", err)
-			return fmt.Errorf("while starting loki tail: %w", err)
-		}
 		for {
 			select {
 			case resp, ok := <-respChan:
 				if !ok {
 					ll.Warnf("loki channel closed")
-					return err
+					return errors.New("loki channel closed")
 				}
 				for _, stream := range resp.Data.Result {
 					for _, entry := range stream.Entries {

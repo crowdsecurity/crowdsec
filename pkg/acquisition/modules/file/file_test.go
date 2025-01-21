@@ -101,6 +101,8 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	ctx := context.Background()
+
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
 
@@ -224,7 +226,7 @@ filename: test_files/test_delete.log`,
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
-			err = f.OneShotAcquisition(out, &tomb)
+			err = f.OneShotAcquisition(ctx, out, &tomb)
 			actualLines := len(out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
@@ -331,14 +333,19 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "GlobInotifyChmod",
 			afterConfigure: func() {
-				f, _ := os.Create("test_files/a.log")
-				f.Close()
+				f, err := os.Create("test_files/a.log")
+				require.NoError(t, err)
+				err = f.Close()
+				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
-				os.Chmod("test_files/a.log", 0o000)
+				err = os.Chmod("test_files/a.log", 0o000)
+				require.NoError(t, err)
 			},
 			teardown: func() {
-				os.Chmod("test_files/a.log", 0o644)
-				os.Remove("test_files/a.log")
+				err := os.Chmod("test_files/a.log", 0o644)
+				require.NoError(t, err)
+				err = os.Remove("test_files/a.log")
+				require.NoError(t, err)
 			},
 		},
 		{
@@ -351,7 +358,8 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "InotifyMkDir",
 			afterConfigure: func() {
-				os.Mkdir("test_files/pouet/", 0o700)
+				err := os.Mkdir("test_files/pouet/", 0o700)
+				require.NoError(t, err)
 			},
 			teardown: func() {
 				os.Remove("test_files/pouet/")

@@ -57,8 +57,11 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) 
 
 	return nil
 }
-func (f *MockSource) GetMode() string                                       { return f.Mode }
-func (f *MockSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSource) GetMode() string { return f.Mode }
+func (f *MockSource) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
+	return nil
+}
+
 func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return nil
 }
@@ -137,7 +140,7 @@ log_level: debug
 source: mock
 toto: test_value1
 `,
-			ExpectedError: "failed to configure datasource mock: mode ratata is not supported",
+			ExpectedError: "mode ratata is not supported",
 		},
 		{
 			TestName: "bad_type_config",
@@ -179,7 +182,8 @@ wowo: ajsajasjas
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
 			common := configuration.DataSourceCommonCfg{}
-			yaml.Unmarshal([]byte(tc.String), &common)
+			err := yaml.Unmarshal([]byte(tc.String), &common)
+			require.NoError(t, err)
 			ds, err := DataSourceConfigure(common, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
@@ -189,19 +193,19 @@ wowo: ajsajasjas
 
 			switch tc.TestName {
 			case "basic_valid_config":
-				mock := (*ds).Dump().(*MockSource)
+				mock := ds.Dump().(*MockSource)
 				assert.Equal(t, "test_value1", mock.Toto)
 				assert.Equal(t, "cat", mock.Mode)
 				assert.Equal(t, log.InfoLevel, mock.logger.Logger.Level)
 				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_debug_config":
-				mock := (*ds).Dump().(*MockSource)
+				mock := ds.Dump().(*MockSource)
 				assert.Equal(t, "test_value1", mock.Toto)
 				assert.Equal(t, "cat", mock.Mode)
 				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
 				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_tailmode_config":
-				mock := (*ds).Dump().(*MockSource)
+				mock := ds.Dump().(*MockSource)
 				assert.Equal(t, "test_value1", mock.Toto)
 				assert.Equal(t, "tail", mock.Mode)
 				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
@@ -213,6 +217,7 @@ wowo: ajsajasjas
 
 func TestLoadAcquisitionFromFile(t *testing.T) {
 	appendMockSource()
+	t.Setenv("TEST_ENV", "test_value2")
 
 	tests := []struct {
 		TestName      string
@@ -233,7 +238,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/badyaml.yaml"},
 			},
-			ExpectedError: "failed to yaml decode test_files/badyaml.yaml: yaml: unmarshal errors",
+			ExpectedError: "failed to parse test_files/badyaml.yaml: yaml: unmarshal errors",
 			ExpectedLen:   0,
 		},
 		{
@@ -269,7 +274,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
 			},
-			ExpectedError: "in file test_files/bad_source.yaml (position: 0) - unknown data source does_not_exist",
+			ExpectedError: "in file test_files/bad_source.yaml (position 0) - unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
@@ -277,6 +282,13 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 				AcquisitionFiles: []string{"test_files/bad_filetype.yaml"},
 			},
 			ExpectedError: "while configuring datasource of type file from test_files/bad_filetype.yaml",
+		},
+		{
+			TestName: "from_env",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/env.yaml"},
+			},
+			ExpectedLen: 1,
 		},
 	}
 	for _, tc := range tests {
@@ -289,6 +301,13 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			}
 
 			assert.Len(t, dss, tc.ExpectedLen)
+			if tc.TestName == "from_env" {
+				mock := dss[0].Dump().(*MockSource)
+				assert.Equal(t, "test_value2", mock.Toto)
+				assert.Equal(t, "foobar", mock.Labels["test"])
+				assert.Equal(t, "${NON_EXISTING}", mock.Labels["non_existing"])
+				assert.Equal(t, log.InfoLevel, mock.logger.Logger.Level)
+			}
 		})
 	}
 }
@@ -320,7 +339,7 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel int) err
 func (f *MockCat) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockCat) GetName() string                  { return "mock_cat" }
 func (f *MockCat) GetMode() string                  { return "cat" }
-func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
+func (f *MockCat) OneShotAcquisition(ctx context.Context, out chan types.Event, tomb *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -365,7 +384,7 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel int) er
 func (f *MockTail) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockTail) GetName() string                  { return "mock_tail" }
 func (f *MockTail) GetMode() string                  { return "tail" }
-func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
+func (f *MockTail) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("can't run in cat mode")
 }
 
@@ -507,8 +526,11 @@ func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
 	return nil
 }
-func (f *MockSourceByDSN) GetMode() string                                       { return f.Mode }
-func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSourceByDSN) GetMode() string { return f.Mode }
+func (f *MockSourceByDSN) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
+	return nil
+}
+
 func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
 	return nil
 }

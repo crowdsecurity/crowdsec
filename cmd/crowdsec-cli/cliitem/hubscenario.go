@@ -19,23 +19,87 @@ cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
 `,
 		},
 		installHelp: cliHelp{
-			example: `cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing`,
+			example: `# Install some scenarios.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing
+
+# Show the execution plan without changing anything - compact output sorted by type and name.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-run
+
+# Show the execution plan without changing anything - verbose output sorted by execution order.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-run -o raw
+
+# Download only, to be installed later.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --download-only
+
+# Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --force
+
+# Proceed without prompting.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --yes
+
+# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
 		},
 		removeHelp: cliHelp{
-			example: `cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing`,
+			example: `# Uninstall some scenarios.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
+
+# Show the execution plan without changing anything - compact output sorted by type and name.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-run
+
+# Show the execution plan without changing anything - verbose output sorted by execution order.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-run -o raw
+
+# Uninstall and also remove the downloaded files.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --purge
+
+# Remove tainted items.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --force
+
+# Proceed without prompting.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --yes
+
+# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
 		},
 		upgradeHelp: cliHelp{
-			example: `cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing`,
+			example: `# Upgrade some scenarios. If they are not currently installed, they are downloaded but not installed.
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing
+
+# Show the execution plan without changing anything - compact output sorted by type and name.
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-run
+
+# Show the execution plan without changing anything - verbose output sorted by execution order.
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-run -o raw
+
+# Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --force
+
+# Proceed without prompting.
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --yes
+
+# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
 		},
 		inspectHelp: cliHelp{
-			example: `cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/http-probing`,
+			example: `# Display metadata, state, metrics and ancestor collections of scenarios (installed or not).
+cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/http-probing
+
+# Don't collect metrics (avoid error if crowdsec is not running).
+cscli scenarios inspect crowdsecurity/ssh-bf --no-metrics
+
+# Display difference between a tainted item and the latest one.
+cscli scenarios inspect crowdsecurity/ssh-bf --diff
+
+# Reverse the above diff
+cscli scenarios inspect crowdsecurity/ssh-bf --diff --rev`,
 		},
 		listHelp: cliHelp{
-			example: `cscli scenarios list
-cscli scenarios list -a
-cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing
+			example: `# List enabled (installed) scenarios.
+cscli scenarios list
 
-List only enabled scenarios unless "-a" or names are specified.`,
+# List all available scenarios (installed or not).
+cscli scenarios list -a
+
+# List specific scenarios (installed or not).
+cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing`,
 		},
 	}
 }

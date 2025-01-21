@@ -66,7 +66,12 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		return fmt.Errorf("unable to generate machine id: %w", err)
 	}
 
-	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
+	pstr, err := idgen.GeneratePassword(idgen.PasswordLength)
+	if err != nil {
+		return err
+	}
+
+	password := strfmt.Password(pstr)
 
 	apiurl, err := url.Parse(types.CAPIBaseURL)
 	if err != nil {
@@ -225,6 +230,27 @@ func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 		fmt.Fprint(out, "Your instance is enrolled in the console\n")
 	}
 
+	switch *cfg.API.Server.OnlineClient.Sharing {
+	case true:
+		fmt.Fprint(out, "Sharing signals is enabled\n")
+	case false:
+		fmt.Fprint(out, "Sharing signals is disabled\n")
+	}
+
+	switch *cfg.API.Server.OnlineClient.PullConfig.Community {
+	case true:
+		fmt.Fprint(out, "Pulling community blocklist is enabled\n")
+	case false:
+		fmt.Fprint(out, "Pulling community blocklist is disabled\n")
+	}
+
+	switch *cfg.API.Server.OnlineClient.PullConfig.Blocklists {
+	case true:
+		fmt.Fprint(out, "Pulling blocklists from the console is enabled\n")
+	case false:
+		fmt.Fprint(out, "Pulling blocklists from the console is disabled\n")
+	}
+
 	return nil
 }
 
@@ -235,7 +261,7 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, nil)
+			hub, err := require.Hub(cli.cfg(), nil)
 			if err != nil {
 				return err
 			}

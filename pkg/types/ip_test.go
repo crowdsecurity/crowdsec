@@ -8,21 +8,21 @@ import (
 )
 
 func TestIP2Int(t *testing.T) {
-
 	tEmpty := net.IP{}
+
 	_, _, _, err := IP2Ints(tEmpty)
 	if !strings.Contains(err.Error(), "unexpected len 0 for <nil>") {
 		t.Fatalf("unexpected: %s", err)
 	}
 }
+
 func TestRange2Int(t *testing.T) {
 	tEmpty := net.IPNet{}
-	//empty item
+	// empty item
 	_, _, _, _, _, err := Range2Ints(tEmpty)
 	if !strings.Contains(err.Error(), "converting first ip in range") {
 		t.Fatalf("unexpected: %s", err)
 	}
-
 }
 
 func TestAdd2Int(t *testing.T) {
@@ -181,7 +181,7 @@ func TestAdd2Int(t *testing.T) {
 		},
 		{
 			in_addr:   "xxx2",
-			exp_error: "invalid address",
+			exp_error: "invalid ip address 'xxx2'",
 		},
 	}
 
@@ -190,31 +190,37 @@ func TestAdd2Int(t *testing.T) {
 		if err != nil && test.exp_error == "" {
 			t.Fatalf("%d unexpected error : %s", idx, err)
 		}
+
 		if test.exp_error != "" {
 			if !strings.Contains(err.Error(), test.exp_error) {
 				t.Fatalf("%d unmatched error : %s != %s", idx, err, test.exp_error)
 			}
-			continue //we can skip this one
+
+			continue // we can skip this one
 		}
+
 		if sz != test.exp_sz {
 			t.Fatalf("%d unexpected size %d != %d", idx, sz, test.exp_sz)
 		}
+
 		if start_ip != test.exp_start_ip {
 			t.Fatalf("%d unexpected start_ip %d != %d", idx, start_ip, test.exp_start_ip)
 		}
+
 		if sz == 16 {
 			if start_sfx != test.exp_start_sfx {
 				t.Fatalf("%d unexpected start sfx %d != %d", idx, start_sfx, test.exp_start_sfx)
 			}
 		}
+
 		if end_ip != test.exp_end_ip {
 			t.Fatalf("%d unexpected end ip %d != %d", idx, end_ip, test.exp_end_ip)
 		}
+
 		if sz == 16 {
 			if end_sfx != test.exp_end_sfx {
 				t.Fatalf("%d unexpected end sfx %d != %d", idx, end_sfx, test.exp_end_sfx)
 			}
 		}
-
 	}
 }

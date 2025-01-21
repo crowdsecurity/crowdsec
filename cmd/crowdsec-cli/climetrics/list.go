@@ -3,7 +3,6 @@ package climetrics
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -64,7 +63,7 @@ func (cli *cliMetrics) list() error {
 			t.AppendRow(table.Row{metric.Type, metric.Title, metric.Description})
 		}
 
-		io.WriteString(out, t.Render()+"\n")
+		fmt.Fprintln(out, t.Render())
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
@@ -84,7 +83,7 @@ func (cli *cliMetrics) newListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "List available types of metrics.",
 		Long:              `List available types of metrics.`,
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.list()

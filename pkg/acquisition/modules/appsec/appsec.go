@@ -41,6 +41,7 @@ type AppsecSourceConfig struct {
 	Path                              string         `yaml:"path"`
 	Routines                          int            `yaml:"routines"`
 	AppsecConfig                      string         `yaml:"appsec_config"`
+	AppsecConfigs                     []string       `yaml:"appsec_configs"`
 	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -85,6 +86,7 @@ func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
 	ac.mu.RLock()
 	expiration, exists := ac.APIKeys[apiKey]
 	ac.mu.RUnlock()
+
 	return expiration, exists
 }
 
@@ -120,14 +122,19 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		w.config.Routines = 1
 	}
 
-	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" {
+	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" && len(w.config.AppsecConfigs) == 0 {
 		return errors.New("appsec_config or appsec_config_path must be set")
+	}
+
+	if (w.config.AppsecConfig != "" || w.config.AppsecConfigPath != "") && len(w.config.AppsecConfigs) != 0 {
+		return errors.New("appsec_config and appsec_config_path are mutually exclusive with appsec_configs")
 	}
 
 	if w.config.Name == "" {
 		if w.config.ListenSocket != "" && w.config.ListenAddr == "" {
 			w.config.Name = w.config.ListenSocket
 		}
+
 		if w.config.ListenSocket == "" {
 			w.config.Name = fmt.Sprintf("%s%s", w.config.ListenAddr, w.config.Path)
 		}
@@ -148,13 +155,14 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
-func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
+
 	w.logger = logger
-	w.metricsLevel = MetricsLevel
+	w.metricsLevel = metricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {
@@ -172,6 +180,9 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
+	// we keep the datasource name
+	appsecCfg.Name = w.config.Name
+
 	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
 		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
@@ -183,9 +194,19 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 		if err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
+	} else if len(w.config.AppsecConfigs) > 0 {
+		for _, appsecConfig := range w.config.AppsecConfigs {
+			err := appsecCfg.Load(appsecConfig)
+			if err != nil {
+				return fmt.Errorf("unable to load appsec_config: %w", err)
+			}
+		}
 	} else {
 		return errors.New("no appsec_config provided")
 	}
+
+	// Now we can set up the logger
+	appsecCfg.SetUpLogger()
 
 	w.AppsecRuntime, err = appsecCfg.Build()
 	if err != nil {
@@ -211,10 +232,12 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 			AppsecRuntime: &wrt,
 			Labels:        w.config.Labels,
 		}
+
 		err := runner.Init(appsecCfg.GetDataDir())
 		if err != nil {
 			return fmt.Errorf("unable to initialize runner: %w", err)
 		}
+
 		w.AppsecRunners[nbRoutine] = runner
 	}
 
@@ -222,6 +245,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLe
 
 	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
+
 	return nil
 }
 
@@ -237,47 +261,58 @@ func (w *AppsecSource) GetName() string {
 	return "appsec"
 }
 
-func (w *AppsecSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
+
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
 
 		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
+
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
+
 			t.Go(func() error {
 				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
 				return runner.Run(t)
 			})
 		}
+
 		t.Go(func() error {
 			if w.config.ListenSocket != "" {
 				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
 				_ = os.RemoveAll(w.config.ListenSocket)
+
 				listener, err := net.Listen("unix", w.config.ListenSocket)
 				if err != nil {
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
+
 				defer listener.Close()
+
 				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
 					err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
 				} else {
 					err = w.server.Serve(listener)
 				}
-				if err != nil && err != http.ErrServerClosed {
+
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
+
 			return nil
 		})
 		t.Go(func() error {
 			var err error
+
 			if w.config.ListenAddr != "" {
 				w.logger.Infof("creating TCP server on %s", w.config.ListenAddr)
+
 				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
 					err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
 				} else {
@@ -288,15 +323,21 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 					return fmt.Errorf("appsec server failed: %w", err)
 				}
 			}
+
 			return nil
 		})
 		<-t.Dying()
 		w.logger.Info("Shutting down Appsec server")
 		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
-		w.server.Shutdown(context.TODO())
+
+		if err := w.server.Shutdown(ctx); err != nil {
+			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
+		}
+
 		return nil
 	})
+
 	return nil
 }
 
@@ -324,11 +365,13 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Errorf("Error performing request: %s", err)
 		return false
 	}
+
 	defer resp.Body.Close()
 
 	return resp.StatusCode == http.StatusOK
@@ -341,17 +384,21 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
 	clientIP := r.Header.Get(appsec.IPHeaderName)
 	remoteIP := r.RemoteAddr
+
 	if apiKey == "" {
 		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
 		rw.WriteHeader(http.StatusUnauthorized)
+
 		return
 	}
+
 	expiration, exists := w.AuthCache.Get(apiKey)
 	// if the apiKey is not in cache or has expired, just recheck the auth
 	if !exists || time.Now().After(expiration) {
 		if !w.IsAuth(apiKey) {
 			rw.WriteHeader(http.StatusUnauthorized)
 			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
+
 			return
 		}
 
@@ -364,8 +411,10 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.logger.Errorf("%s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
+
 	parsedRequest.AppsecEngine = w.config.Name
 
 	logger := w.logger.WithFields(log.Fields{
@@ -391,11 +440,14 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	logger.Debugf("Response: %+v", appsecResponse)
 
 	rw.WriteHeader(statusCode)
+
 	body, err := json.Marshal(appsecResponse)
 	if err != nil {
 		logger.Errorf("unable to serialize response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
-		rw.Write(body)
+		if _, err := rw.Write(body); err != nil {
+			logger.Errorf("unable to write response: %s", err)
+		}
 	}
 }

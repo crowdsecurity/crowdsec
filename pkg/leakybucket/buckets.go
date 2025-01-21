@@ -25,5 +25,4 @@ func NewBuckets() *Buckets {
 
 func GetKey(bucketCfg BucketFactory, stackkey string) string {
 	return fmt.Sprintf("%x", sha1.Sum([]byte(bucketCfg.Filter+stackkey+bucketCfg.Name)))
-
 }

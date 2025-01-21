@@ -68,7 +68,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 		return nil, err // unsupported database caught here
 	}
 
-	if config.Type == "sqlite" {
+	if config.Type == "sqlite" && config.DbPath != ":memory:" {
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err = os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0o600)

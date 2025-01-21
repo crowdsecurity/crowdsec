@@ -84,7 +84,7 @@ func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
-func (s *SyslogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
@@ -124,10 +124,10 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
-	s.metricsLevel = MetricsLevel
+	s.metricsLevel = metricsLevel
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -235,11 +235,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			l.Time = ts
 			l.Src = syslogLine.Client
 			l.Process = true
-			if !s.config.UseTimeMachine {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-			} else {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			}
+			evt := types.MakeEvent(s.config.UseTimeMachine, types.LOG, true)
+			evt.Line = l
+			out <- evt
 		}
 	}
 }

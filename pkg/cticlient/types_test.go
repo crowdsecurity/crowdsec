@@ -40,8 +40,14 @@ func getSampleSmokeItem() SmokeItem {
 			DaysAge:   1,
 		},
 		Classifications: CTIClassifications{
-			FalsePositives:  []CTIClassification{},
-			Classifications: []CTIClassification{},
+			FalsePositives: []CTIClassification{},
+			Classifications: []CTIClassification{
+				{
+					Name:        "profile:likely_botnet",
+					Label:       "Likely Botnet",
+					Description: "IP appears to be a botnet.",
+				},
+			},
 		},
 		AttackDetails: []*CTIAttackDetails{
 			{
@@ -101,6 +107,7 @@ func TestBasicSmokeItem(t *testing.T) {
 	assert.Equal(t, 3, item.GetBackgroundNoiseScore())
 	assert.Equal(t, []string{}, item.GetFalsePositives())
 	assert.False(t, item.IsFalsePositive())
+	assert.Equal(t, []string{"profile:likely_botnet"}, item.GetClassifications())
 }
 
 func TestEmptySmokeItem(t *testing.T) {
@@ -112,4 +119,5 @@ func TestEmptySmokeItem(t *testing.T) {
 	assert.Equal(t, 0, item.GetBackgroundNoiseScore())
 	assert.Equal(t, []string{}, item.GetFalsePositives())
 	assert.False(t, item.IsFalsePositive())
+	assert.Equal(t, []string{}, item.GetClassifications())
 }

@@ -10,8 +10,7 @@ type Processor interface {
 	AfterBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
 }
 
-type DumbProcessor struct {
-}
+type DumbProcessor struct{}
 
 func (d *DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
 	return nil
