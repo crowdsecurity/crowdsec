@@ -65,7 +65,7 @@ CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.
 
 ## Resources
 
- - [Console](https://app.crowdsec.net): Supercharge your CrowdSec setup with visualization, management capabilities and premium features.
+ - [Console](https://app.crowdsec.net): Supercharge your CrowdSec setup with visualization, management capabilities, extra blocklists and premium features.
  - [Documentation](https://doc.crowdsec.net): Learn how to exploit your CrowdSec setup to deter more attacks.
  - [Discord](https://discord.gg/crowdsec): A question or a suggestion? This is the place.
  - [Hub](https://hub.crowdsec.net): Improve your stack protection, find the relevant remediation components for your infrastructure.
