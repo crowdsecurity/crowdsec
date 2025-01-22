@@ -2,6 +2,7 @@ package cwversion
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
@@ -57,10 +58,19 @@ func FullString() string {
 	return ret
 }
 
-// VersionStrip remove the tag from the version string, used to match with a hub branch
-func VersionStrip() string {
-	ret := strings.Split(version.Version, "~")
-	ret = strings.Split(ret[0], "-")
+// StripTags removes any tag (-rc, ~foo3, .r1, etc) from a version string
+func StripTags(version string) string {
+	reVersion := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)`)
+	ret := reVersion.FindStringSubmatch(version)
+
+	if len(ret) == 0 {
+		return version
+	}
 
 	return ret[0]
+}
+
+// BaseVersion returns the version number used to match a hub branch.
+func BaseVersion() string {
+	return StripTags(version.Version)
 }
