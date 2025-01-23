@@ -35,6 +35,7 @@ type AppsecRunner struct {
 func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
+	discarded := 0
 
 	for _, collection := range collections {
 		// Dedup *our* rules
@@ -43,14 +44,15 @@ func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, lo
 				rulesArr = append(rulesArr, rule)
 				dedupRules[rule] = struct{}{}
 			} else {
+				discarded++
 				logger.Debugf("Discarding duplicate rule : %s", rule)
 			}
 		}
 		// Don't mess up with native modsec rules
 		rulesArr = append(rulesArr, collection.NativeRules...)
 	}
-	if len(rulesArr) != len(dedupRules) {
-		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
+	if discarded > 0 {
+		logger.Warningf("%d rules were discarded as they were duplicates", discarded)
 	}
 
 	return strings.Join(rulesArr, "\n")
