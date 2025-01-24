@@ -8,24 +8,30 @@ import (
 	"strings"
 )
 
+// see: https://github.com/FoxIO-LLC/ja4/blob/main/technical_details/JA4H.png
+// [JA4H_a]_[JA4H_b]_[JA4H_c]_[JA4H_d]
+
+// JA4H_a:
+// [httpMethod] [httpVersion] [hasCookie] [hasReferer] [countHeaders] [primaryLanguage]
+//  2         2         1         1            2              4               12
+
+// JA4H_b: [headers hash]
+
+// JA4H_c: [cookie name hash]
+
 const truncatedHashLength = 12
 const defaultLang = "0000"
 
 // httpMethod extracts the first two lowercase characters of the HTTP method.
 func httpMethod(method string) string {
-	if len(method) < 2 {
-		return strings.ToLower(method)
-	}
-	return strings.ToLower(method[:2])
+	l := min(len(method), 2)
+	return strings.ToLower(method[:l])
 }
 
 // httpVersion extracts the version number from the HTTP protocol.
-func httpVersion(proto string) string {
-	parts := strings.Split(proto, "/")
-	if len(parts) != 2 {
-		return strings.ReplaceAll(parts[0], ".", "")
-	}
-	return strings.ReplaceAll(parts[1], ".", "")
+// The version is truncated to one digit each, but I believe the  http server will control this anyway.
+func httpVersion(major int, minor int) string {
+	return fmt.Sprintf("%d%d", major%10, minor%10)
 }
 
 // hasCookie checks if the request has any cookies.
@@ -45,7 +51,7 @@ func hasReferer(referer string) string {
 }
 
 // countHeaders counts the headers, excluding specific ones like Cookie and Referer.
-func countHeaders(headers http.Header) int {
+func countHeaders(headers http.Header) string {
 	count := len(headers)
 	if headers.Get("Cookie") != "" {
 		count--
@@ -53,26 +59,28 @@ func countHeaders(headers http.Header) int {
 	if headers.Get("Referer") != "" {
 		count--
 	}
-	return count
+	//header len needs to be on 2 chars: 3 -> 03 // 100 -> 99
+	return fmt.Sprintf("%02d", min(count, 99))
 }
 
 // primaryLanguage extracts the first four characters of the primary Accept-Language header.
 func primaryLanguage(headers http.Header) string {
-	lang := headers.Get("Accept-Language")
+	lang := strings.ToLower(headers.Get("Accept-Language"))
 	if lang == "" {
 		return defaultLang
 	}
-	clean := strings.ReplaceAll(lang, "-", "")
-	lower := strings.ToLower(clean)
-	first := strings.Split(lower, ",")[0] + "0000"
-	return first[:4]
+	//cf. https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L13
+	lang = strings.ReplaceAll(lang, "-", "")
+	lang = strings.ReplaceAll(lang, ";", ",")
+
+	return strings.Split(lang, ",")[0] + strings.Repeat("0", 4-len(lang))
 }
 
 // jA4H_a generates a summary fingerprint for the HTTP request.
 func jA4H_a(req *http.Request) string {
-	return fmt.Sprintf("%s%s%s%s%02d%s",
+	return fmt.Sprintf("%s%s%s%s%s%s",
 		httpMethod(req.Method),
-		httpVersion(req.Proto),
+		httpVersion(req.ProtoMajor, req.ProtoMinor),
 		hasCookie(req),
 		hasReferer(req.Referer()),
 		countHeaders(req.Header),
@@ -82,15 +90,19 @@ func jA4H_a(req *http.Request) string {
 
 // jA4H_b computes a truncated SHA256 hash of sorted header names.
 func jA4H_b(req *http.Request) string {
+
+	// The reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27)
+	// discards referer and headers **starting with "cookie"**
 	headers := make([]string, 0, len(req.Header))
 	for name := range req.Header {
+		if strings.HasPrefix(strings.ToLower(name), "cookie") || strings.ToLower(name) == "referer" {
+			continue
+		}
 		headers = append(headers, name)
 	}
 	sort.Strings(headers)
-	allHeaders := strings.Join(headers, "")
 
-	hash := sha256.Sum256([]byte(allHeaders))
-	return fmt.Sprintf("%x", hash)[:truncatedHashLength]
+	return hashTruncated(strings.Join(headers, ""))
 }
 
 // hashTruncated computes a truncated SHA256 hash for the given input.
