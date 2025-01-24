@@ -458,7 +458,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		}
 
 		if data.Type == "regexp" { // cache only makes sense for regexp
-			exprhelpers.RegexpCacheInit(data.DestPath, *data)
+			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
+				bucketFactory.logger.Error(err.Error())
+			}
 		}
 	}
 

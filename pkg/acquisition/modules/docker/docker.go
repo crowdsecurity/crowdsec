@@ -136,9 +136,9 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	d.logger = logger
-	d.metricsLevel = MetricsLevel
+	d.metricsLevel = metricsLevel
 
 	err := d.UnmarshalConfig(yamlConfig)
 	if err != nil {

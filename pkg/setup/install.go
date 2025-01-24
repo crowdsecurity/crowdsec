@@ -192,7 +192,9 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 				return "", fmt.Errorf("while writing to %s: %w", ad.AcquisFilename, err)
 			}
 
-			f.Sync()
+			if err = f.Sync(); err != nil {
+				return "", fmt.Errorf("while syncing %s: %w", ad.AcquisFilename, err)
+			}
 
 			continue
 		}

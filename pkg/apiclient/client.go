@@ -125,8 +125,8 @@ func NewClient(config *Config) (*ApiClient, error) {
 	return c, nil
 }
 
-func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
-	transport, baseURL := createTransport(URL)
+func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
+	transport, baseURL := createTransport(url)
 
 	if client == nil {
 		client = &http.Client{}

@@ -85,9 +85,9 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	return err
 }
 
-func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	k.logger = logger
-	k.metricsLevel = MetricsLevel
+	k.metricsLevel = metricsLevel
 
 	k.logger.Debugf("start configuring %s source", dataSourceName)
 
@@ -160,6 +160,7 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
 			continue
 		}
+
 		k.logger.Tracef("got message: %s", string(m.Value))
 		l := types.Line{
 			Raw:     string(m.Value),
@@ -170,9 +171,11 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 			Module:  k.GetName(),
 		}
 		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
+
 		if k.metricsLevel != configuration.METRICS_NONE {
 			linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		}
+
 		evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
 		evt.Line = l
 		out <- evt
