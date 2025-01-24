@@ -24,6 +24,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
+type cliDecisions struct {
+	client *apiclient.ApiClient
+	cfg    configGetter
+}
+
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	spamLimit := make(map[string]bool)
@@ -113,13 +120,6 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	}
 
 	return nil
-}
-
-type configGetter func() *csconfig.Config
-
-type cliDecisions struct {
-	client *apiclient.ApiClient
-	cfg    configGetter
 }
 
 func New(cfg configGetter) *cliDecisions {
