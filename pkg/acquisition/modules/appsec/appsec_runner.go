@@ -40,13 +40,13 @@ func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, lo
 	for _, collection := range collections {
 		// Dedup *our* rules
 		for _, rule := range collection.Rules {
-			if _, ok := dedupRules[rule]; !ok {
-				rulesArr = append(rulesArr, rule)
-				dedupRules[rule] = struct{}{}
-			} else {
-				discarded++
-				logger.Debugf("Discarding duplicate rule : %s", rule)
+			if _, ok := dedupRules[rule]; ok {
+  				discarded++
+  				logger.Debugf("Discarding duplicate rule : %s", rule)
+  				continue
 			}
+			rulesArr = append(rulesArr, rule)
+			dedupRules[rule] = struct{}{}
 		}
 		// Don't mess up with native modsec rules
 		rulesArr = append(rulesArr, collection.NativeRules...)
