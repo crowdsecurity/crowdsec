@@ -6,9 +6,8 @@ Test agent-lapi and cscli-lapi communication via TLS, on the same container.
 
 import uuid
 
-from pytest_cs import Status
-
 import pytest
+from pytest_cs import Status
 
 pytestmark = pytest.mark.docker
 

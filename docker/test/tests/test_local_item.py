@@ -4,8 +4,8 @@
 Test bind-mounting local items
 """
 
-from http import HTTPStatus
 import json
+from http import HTTPStatus
 
 import pytest
 

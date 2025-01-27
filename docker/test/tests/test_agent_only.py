@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from http import HTTPStatus
 import random
+from http import HTTPStatus
 
 import pytest
 

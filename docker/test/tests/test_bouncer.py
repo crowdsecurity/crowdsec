@@ -5,8 +5,8 @@ Test bouncer management: pre-installed, run-time installation and removal.
 """
 
 import hashlib
-from http import HTTPStatus
 import json
+from http import HTTPStatus
 
 import pytest
 

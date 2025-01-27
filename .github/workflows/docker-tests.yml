@@ -68,7 +68,7 @@ jobs:
       - name: Lint and run the tests
         run: |
           cd docker/test
-          uv sync --all-extras --dev
+          uv sync --all-extras --dev --locked
           uv run ruff check
           uv run pytest tests -n 1 --durations=0 --color=yes
         env:

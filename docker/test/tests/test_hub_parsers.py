@@ -4,8 +4,8 @@
 Test parser management
 """
 
-from http import HTTPStatus
 import json
+from http import HTTPStatus
 
 import pytest
 

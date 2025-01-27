@@ -2,9 +2,8 @@
 
 import datetime
 
-from pytest_cs import Status
-
 import pytest
+from pytest_cs import Status
 
 pytestmark = pytest.mark.docker
 

@@ -4,8 +4,8 @@
 Test pre-installed hub items.
 """
 
-from http import HTTPStatus
 import json
+from http import HTTPStatus
 
 import pytest
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 from http import HTTPStatus
-import yaml
 
 import pytest
+import yaml
 
 pytestmark = pytest.mark.docker
 
