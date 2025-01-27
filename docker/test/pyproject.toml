@@ -18,7 +18,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-pytest-cs = { git = "ssh://git@github.com/crowdsecurity/pytest-cs.git" }
+pytest-cs = { git = "https://github.com/crowdsecurity/pytest-cs" }
 
 [tool.ruff]
 

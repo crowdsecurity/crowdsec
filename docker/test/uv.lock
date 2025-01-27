@@ -116,7 +116,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pytest", specifier = ">=8.3.4" },
-    { name = "pytest-cs", git = "ssh://git@github.com/crowdsecurity/pytest-cs.git" },
+    { name = "pytest-cs", git = "https://github.com/crowdsecurity/pytest-cs" },
     { name = "pytest-dotenv", specifier = ">=0.5.2" },
     { name = "pytest-xdist", specifier = ">=3.6.1" },
 ]
@@ -394,7 +394,7 @@ wheels = [
 [[package]]
 name = "pytest-cs"
 version = "0.7.20"
-source = { git = "ssh://git@github.com/crowdsecurity/pytest-cs.git#73380b837a80337f361414bebbaf4b914713c4ae" }
+source = { git = "https://github.com/crowdsecurity/pytest-cs#73380b837a80337f361414bebbaf4b914713c4ae" }
 dependencies = [
     { name = "docker" },
     { name = "psutil" },
