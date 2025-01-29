@@ -298,12 +298,20 @@ func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan types.Even
 	if err != nil {
 		return fmt.Errorf("VictoriaLogs is not ready: %w", err)
 	}
-	t.Go(func() error {
-		lctx, cancel := context.WithCancel(ctx)
-		defer cancel()
 
+	lctx, clientCancel := context.WithCancel(ctx)
+	//Don't defer clientCancel(), the client outlives this function call
+
+	t.Go(func() error {
+		<-t.Dying()
+		clientCancel()
+		return nil
+	})
+
+	t.Go(func() error {
 		respChan, err := l.getResponseChan(lctx, true)
 		if err != nil {
+			clientCancel()
 			l.logger.Errorf("could not start VictoriaLogs tail: %s", err)
 			return fmt.Errorf("while starting VictoriaLogs tail: %w", err)
 		}
@@ -312,10 +320,12 @@ func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan types.Even
 			case resp, ok := <-respChan:
 				if !ok {
 					l.logger.Warnf("VictoriaLogs channel closed")
+					clientCancel()
 					return err
 				}
 				l.readOneEntry(resp, l.Config.Labels, out)
 			case <-t.Dying():
+				clientCancel()
 				return nil
 			}
 		}

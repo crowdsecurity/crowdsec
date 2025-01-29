@@ -269,7 +269,11 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 	)
 	for {
 		resp, err = lc.Get(ctx, u)
+		lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil, nil
+			}
 			if ok := lc.shouldRetry(); !ok {
 				return nil, fmt.Errorf("error querying range: %w", err)
 			}
@@ -327,6 +331,8 @@ func (lc *VLClient) Get(ctx context.Context, url string) (*http.Response, error)
 	for k, v := range lc.requestHeaders {
 		request.Header.Add(k, v)
 	}
+
+	lc.Logger.Debugf("GET %s", url)
 
 	return lc.client.Do(request)
 }
