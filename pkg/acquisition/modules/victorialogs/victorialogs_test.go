@@ -219,9 +219,9 @@ func TestConfigureDSN(t *testing.T) {
 func feedVLogs(ctx context.Context, logger *log.Entry, n int, title string) error {
 	bb := bytes.NewBuffer(nil)
 	for i := range n {
-		bb.WriteString(fmt.Sprintf(
+		fmt.Fprintf(bb,
 			`{ "_time": %q,"_msg":"Log line #%d %v", "server": "demo", "key": %q}
-`, time.Now().Format(time.RFC3339), i, title, title))
+`, time.Now().Format(time.RFC3339), i, title, title)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://127.0.0.1:9428/insert/jsonline?_stream_fields=server,key", bb)
@@ -284,6 +284,7 @@ since: 1h
 		logger := log.New()
 		subLogger := logger.WithField("type", "victorialogs")
 		vlSource := victorialogs.VLSource{}
+
 		err := vlSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
@@ -431,6 +432,7 @@ query: >
 
 func TestStopStreaming(t *testing.T) {
 	ctx := context.Background()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
