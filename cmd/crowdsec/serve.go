@@ -419,7 +419,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
+		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)
 	}

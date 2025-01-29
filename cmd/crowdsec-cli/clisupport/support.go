@@ -290,7 +290,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 
 	cfg := cli.cfg()
 
-	config, err := os.ReadFile(*cfg.FilePath)
+	config, err := os.ReadFile(cfg.FilePath)
 	if err != nil {
 		return fmt.Errorf("could not read config file: %w", err)
 	}

@@ -102,9 +102,9 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	f.logger = logger
-	f.metricsLevel = MetricsLevel
+	f.metricsLevel = metricsLevel
 
 	err := f.UnmarshalConfig(yamlConfig)
 	if err != nil {

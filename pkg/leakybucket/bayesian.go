@@ -31,9 +31,9 @@ type BayesianBucket struct {
 	DumbProcessor
 }
 
-func updateProbability(prior, probGivenEvil, ProbGivenBenign float32) float32 {
+func updateProbability(prior, probGivenEvil, probGivenBenign float32) float32 {
 	numerator := probGivenEvil * prior
-	denominator := numerator + ProbGivenBenign*(1-prior)
+	denominator := numerator + probGivenBenign*(1-prior)
 
 	return numerator / denominator
 }

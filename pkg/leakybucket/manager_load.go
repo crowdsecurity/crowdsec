@@ -300,7 +300,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 			bucketFactory.ret = response
 
 			if cscfg.SimulationConfig != nil {
-				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(item.Name)
+				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(bucketFactory.Name)
 			}
 
 			bucketFactory.ScenarioVersion = item.State.LocalVersion
@@ -458,7 +458,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		}
 
 		if data.Type == "regexp" { // cache only makes sense for regexp
-			exprhelpers.RegexpCacheInit(data.DestPath, *data)
+			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
+				bucketFactory.logger.Error(err.Error())
+			}
 		}
 	}
 

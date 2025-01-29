@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )

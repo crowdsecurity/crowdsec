@@ -210,9 +210,9 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	j.logger = logger
-	j.metricsLevel = MetricsLevel
+	j.metricsLevel = metricsLevel
 
 	err := j.UnmarshalConfig(yamlConfig)
 	if err != nil {
