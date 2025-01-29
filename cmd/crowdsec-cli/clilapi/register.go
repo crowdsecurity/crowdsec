@@ -87,8 +87,8 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
 
-	if reload.UserMessage() != "" {
-		log.Warning(reload.UserMessage())
+	if msg := reload.UserMessage(); msg != "" {
+		log.Warning(msg)
 	}
 
 	return nil

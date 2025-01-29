@@ -250,8 +250,8 @@ Disable given information push to the central API.`,
 				log.Infof("%v have been disabled", args)
 			}
 
-			if reload.UserMessage() != "" {
-				log.Info(reload.UserMessage())
+			if msg := reload.UserMessage(); msg != "" {
+				log.Info(msg)
 			}
 
 			return nil

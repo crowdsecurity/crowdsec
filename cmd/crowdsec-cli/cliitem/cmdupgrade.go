@@ -66,8 +66,8 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun 
 		return err
 	}
 
-	if plan.ReloadNeeded && reload.UserMessage() != "" {
-		fmt.Println("\n" + reload.UserMessage())
+	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+		fmt.Println("\n" + msg)
 	}
 
 	return nil
