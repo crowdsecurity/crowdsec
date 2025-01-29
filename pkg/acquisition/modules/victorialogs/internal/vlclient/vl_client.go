@@ -66,13 +66,6 @@ func (lc *VLClient) SetTomb(t *tomb.Tomb) {
 	lc.t = t
 }
 
-func (lc *VLClient) resetFailStart() {
-	if !lc.failStart.IsZero() {
-		log.Infof("VictoriaLogs is back after %s", time.Since(lc.failStart))
-	}
-	lc.failStart = time.Time{}
-}
-
 func (lc *VLClient) shouldRetry() bool {
 	if lc.failStart.IsZero() {
 		lc.Logger.Warningf("VictoriaLogs is not available, will retry for %s", lc.config.FailMaxDuration)
