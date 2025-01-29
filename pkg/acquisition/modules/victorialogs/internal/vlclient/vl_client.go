@@ -98,7 +98,7 @@ func (lc *VLClient) decreaseTicker(ticker *time.Ticker) {
 	}
 }
 
-func (lc *VLClient) queryRange(ctx context.Context, uri string, c chan *Log, infinite bool) error {
+func (lc *VLClient) doQueryRange(ctx context.Context, uri string, c chan *Log, infinite bool) error {
 	lc.currentTickerInterval = 100 * time.Millisecond
 	ticker := time.NewTicker(lc.currentTickerInterval)
 	defer ticker.Stop()
@@ -318,7 +318,7 @@ func (lc *VLClient) QueryRange(ctx context.Context, infinite bool) chan *Log {
 
 	lc.Logger.Infof("Connecting to %s", u)
 	lc.t.Go(func() error {
-		return lc.queryRange(ctx, u, c, infinite)
+		return lc.doQueryRange(ctx, u, c, infinite)
 	})
 	return c
 }

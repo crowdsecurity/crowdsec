@@ -106,10 +106,10 @@ func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *VLSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
+func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
 	l.Config = VLConfiguration{}
 	l.logger = logger
-	l.metricsLevel = MetricsLevel
+	l.metricsLevel = metricsLevel
 	err := l.UnmarshalConfig(config)
 	if err != nil {
 		return err
