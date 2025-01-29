@@ -275,7 +275,7 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 				return nil, nil
 			}
 			if ok := lc.shouldRetry(); !ok {
-				return nil, fmt.Errorf("error querying range: %w", err)
+				return nil, fmt.Errorf("error tailing logs: %w", err)
 			}
 			continue
 		}
@@ -283,7 +283,7 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		lc.Logger.Warnf("bad HTTP response code for query range: %d", resp.StatusCode)
+		lc.Logger.Warnf("bad HTTP response code for tail request: %d", resp.StatusCode)
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if ok := lc.shouldRetry(); !ok {
