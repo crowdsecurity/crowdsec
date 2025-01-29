@@ -123,7 +123,9 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		fmt.Println(string(apiConfigDump))
 	}
 
-	log.Warning(reload.Message)
+	if reload.UserMessage() != "" {
+		log.Warning(reload.UserMessage())
+	}
 
 	return nil
 }

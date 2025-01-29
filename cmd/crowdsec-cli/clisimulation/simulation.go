@@ -47,8 +47,8 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
-			if cmd.Name() != "status" {
-				log.Info(reload.Message)
+			if cmd.Name() != "status" && reload.UserMessage() != "" {
+				log.Info(reload.UserMessage())
 			}
 		},
 	}

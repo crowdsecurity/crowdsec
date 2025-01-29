@@ -104,8 +104,8 @@ func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun b
 		return err
 	}
 
-	if plan.ReloadNeeded {
-		fmt.Println("\n" + reload.Message)
+	if plan.ReloadNeeded && reload.UserMessage() != "" {
+		fmt.Println("\n" + reload.UserMessage())
 	}
 
 	return nil
