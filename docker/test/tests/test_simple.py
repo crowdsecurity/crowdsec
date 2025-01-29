@@ -13,4 +13,4 @@ def test_crowdsec(crowdsec, flavor):
                 matcher.fnmatch_lines(["*Starting processing data*"])
         res = cs.cont.exec_run('sh -c "echo $CI_TESTING"')
         assert res.exit_code == 0
-        assert 'true' == res.output.decode().strip()
+        assert "true" == res.output.decode().strip()
