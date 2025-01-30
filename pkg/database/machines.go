@@ -34,14 +34,6 @@ func (c *Client) MachineUpdateBaseMetrics(ctx context.Context, machineID string,
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
 
-	var heartbeat time.Time
-
-	if len(baseMetrics.Metrics) == 0 {
-		heartbeat = time.Now().UTC()
-	} else {
-		heartbeat = time.Unix(*baseMetrics.Metrics[0].Meta.UtcNowTimestamp, 0)
-	}
-
 	hubState := map[string][]schema.ItemState{}
 	for itemType, items := range hubItems {
 		hubState[itemType] = []schema.ItemState{}
@@ -61,7 +53,6 @@ func (c *Client) MachineUpdateBaseMetrics(ctx context.Context, machineID string,
 		SetOsname(*os.Name).
 		SetOsversion(*os.Version).
 		SetFeatureflags(features).
-		SetLastHeartbeat(heartbeat).
 		SetHubstate(hubState).
 		SetDatasources(datasources).
 		Save(ctx)

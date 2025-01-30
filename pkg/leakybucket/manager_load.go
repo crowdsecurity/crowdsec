@@ -300,7 +300,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 			bucketFactory.ret = response
 
 			if cscfg.SimulationConfig != nil {
-				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(item.Name)
+				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(bucketFactory.Name)
 			}
 
 			bucketFactory.ScenarioVersion = item.State.LocalVersion

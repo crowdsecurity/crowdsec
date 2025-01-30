@@ -78,7 +78,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 				alertItem.Source.Cn,
 				alertItem.Source.GetAsNumberName(),
 				decisionsFromAlert(alertItem),
-				*alertItem.StartAt,
+				alertItem.CreatedAt,
 			}
 			if printMachine {
 				row = append(row, alertItem.MachineID)

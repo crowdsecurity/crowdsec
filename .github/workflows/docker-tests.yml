@@ -49,28 +49,30 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
-      - name: "Setup Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-          cache: 'pipenv'
-
-      - name: "Install dependencies"
-        run: |
-          cd docker/test
-          python -m pip install --upgrade pipenv wheel
-          pipenv install --deploy
-
       - name: "Create Docker network"
         run: docker network create net-test
 
-      - name: "Run tests"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 0.5.24
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "./docker/test/.python-version"
+
+      # running serially to reduce test flakiness
+      - name: Lint and run the tests
+        run: |
+          cd docker/test
+          uv sync --all-extras --dev --locked
+          uv run ruff check
+          uv run pytest tests -n 1 --durations=0 --color=yes
         env:
           CROWDSEC_TEST_VERSION: test
           CROWDSEC_TEST_FLAVORS: ${{ matrix.flavor }}
           CROWDSEC_TEST_NETWORK: net-test
           CROWDSEC_TEST_TIMEOUT: 90
-        # running serially to reduce test flakiness
-        run: |
-          cd docker/test
-          pipenv run pytest -n 1 --durations=0 --color=yes
