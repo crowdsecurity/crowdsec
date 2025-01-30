@@ -405,11 +405,22 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Distinct != "" {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
+		bucketFactory.logger.Infof("Compiling distinct '%s'", bucketFactory.Distinct)
+		//we're compiling and discarding the expression to be able to detect it during loading
+		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("invalid distinct '%s' in %s: %w", bucketFactory.Distinct, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.CancelOnFilter != "" {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
+		//we're compiling and discarding the expression to be able to detect it during loading
+		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", bucketFactory.CancelOnFilter, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.OverflowFilter != "" {
@@ -439,6 +450,11 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.ConditionalOverflow != "" {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+		//we're compiling and discarding the expression to be able to detect it during loading
+		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("invalid condition '%s' in %s: %w", bucketFactory.ConditionalOverflow, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.BayesianThreshold != 0 {
