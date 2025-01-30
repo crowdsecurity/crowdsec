@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-FROM golang:1.23-alpine3.20 AS build
+FROM docker.io/golang:1.23-alpine3.20 AS build
 
 ARG BUILD_VERSION
 
@@ -31,7 +31,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_
     # In case we need to remove agents here..
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
-FROM alpine:latest AS slim
+FROM docker.io/alpine:latest AS slim
 
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash rsync && \
     mkdir -p /staging/etc/crowdsec && \
