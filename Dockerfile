@@ -1,4 +1,3 @@
-# vim: set ft=dockerfile:
 FROM docker.io/golang:1.23-alpine3.20 AS build
 
 ARG BUILD_VERSION
