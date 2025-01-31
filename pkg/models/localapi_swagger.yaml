@@ -719,6 +719,120 @@ paths:
       security:
       - APIKeyAuthorizer: []
       - JWTAuthorizer: []
+  /allowlists:
+    get:
+      description: Get a list of all allowlists
+      summary: getAllowlists
+      tags:
+        - watchers
+      operationId: getAllowlists
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/GetAllowlistsResponse'
+          headers: {}
+  /allowlists/{allowlist_name}:
+    get:
+      description: Get a specific allowlist
+      summary: getAllowlist
+      tags:
+        - watchers
+      operationId: getAllowlist
+      produces:
+        - application/json
+      parameters:
+        - name: allowlist_name
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/GetAllowlistResponse'
+          headers: {}
+        '404':
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+    head:
+      description: Get a specific allowlist
+      summary: getAllowlist
+      tags:
+        - watchers
+      operationId: headAllowlist
+      produces:
+        - application/json
+      parameters:
+        - name: allowlist_name
+          in: path
+          required: true
+          type: string
+          description: ''
+        - name: with_content
+          in: query
+          required: false
+          type: boolean
+          description: 'if true, the content of the allowlist will be returned as well'
+      responses:
+        '200':
+          description: successful operation
+          headers: {}
+        '404':
+          description: "404 response"
+  /allowlists/check/{ip_or_range}:
+    get:
+      description: Check if an IP or range is in an allowlist
+      summary: checkAllowlist
+      tags:
+        - watchers
+      operationId: checkAllowlist
+      produces:
+        - application/json
+      parameters:
+        - name: ip_or_range
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/CheckAllowlistResponse'
+          headers: {}
+        '400':
+          description: "missing ip_or_range"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+    head:
+      description: Check if an IP or range is in an allowlist
+      summary: checkAllowlist
+      tags:
+        - watchers
+      operationId: headCheckAllowlist
+      produces:
+        - application/json
+      parameters:
+        - name: ip_or_range
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: IP or range is in an allowlist
+          headers: {}
+        '204':
+          description: "IP or range is not in an allowlist"
+        '400':
+          description: "missing ip_or_range"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 definitions:
   WatcherRegistrationRequest:
     title: WatcherRegistrationRequest
@@ -1220,6 +1334,68 @@ definitions:
       status:
         type: string
         description: status of the hub item (official, custom, tainted, etc.)
+  GetAllowlistsResponse:
+    title: GetAllowlistsResponse
+    type: array
+    items:
+      $ref: '#/definitions/GetAllowlistResponse'
+  GetAllowlistResponse:
+    title: GetAllowlistResponse
+    type: object
+    properties:
+      name:
+        type: string
+        description: name of the allowlist
+      allowlist_id:
+        type: string
+        description: id of the allowlist
+      description:
+        type: string
+        description: description of the allowlist
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/AllowlistItem'
+        description: items in the allowlist
+      created_at:
+        type: string
+        format: date-time
+        description: creation date of the allowlist
+      updated_at:
+        type: string
+        format: date-time
+        description: last update date of the allowlist
+      console_managed:
+        type: boolean
+        description: true if the allowlist is managed by the console
+  AllowlistItem:
+    title: AllowlistItem
+    type: object
+    properties:
+      value:
+        type: string
+        description: value of the allowlist item
+      description:
+        type: string
+        description: description of the allowlist item
+      created_at:
+        type: string
+        format: date-time
+        description: creation date of the allowlist item
+      expiration:
+        type: string
+        format: date-time
+        description: expiration date of the allowlist item
+  CheckAllowlistResponse:
+    title: CheckAllowlistResponse
+    type: object
+    properties:
+      allowlisted:
+        type: boolean
+        description: 'true if the IP or range is in the allowlist'
+      reason:
+        type: string
+        description: 'item that matched the provided value'
   ErrorResponse:
     type: "object"
     required:

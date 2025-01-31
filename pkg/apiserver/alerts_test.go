@@ -16,7 +16,13 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+)
+
+const (
+	passwordAuthType = "password"
+	apiKeyAuthType   = "apikey"
 )
 
 type LAPI struct {
@@ -24,19 +30,21 @@ type LAPI struct {
 	loginResp  models.WatcherAuthResponse
 	bouncerKey string
 	DBConfig   *csconfig.DatabaseCfg
+	DBClient   *database.Client
 }
 
 func SetupLAPITest(t *testing.T, ctx context.Context) LAPI {
 	t.Helper()
 	router, loginResp, config := InitMachineTest(t, ctx)
 
-	APIKey := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+	APIKey, dbClient := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 
 	return LAPI{
 		router:     router,
 		loginResp:  loginResp,
 		bouncerKey: APIKey,
 		DBConfig:   config.API.Server.DbConfig,
+		DBClient:   dbClient,
 	}
 }
 
@@ -51,9 +59,9 @@ func (l *LAPI) RecordResponse(t *testing.T, ctx context.Context, verb string, ur
 	require.NoError(t, err)
 
 	switch authType {
-	case "apikey":
+	case apiKeyAuthType:
 		req.Header.Add("X-Api-Key", l.bouncerKey)
-	case "password":
+	case passwordAuthType:
 		AddAuthHeaders(req, l.loginResp)
 	default:
 		t.Fatal("auth type not supported")

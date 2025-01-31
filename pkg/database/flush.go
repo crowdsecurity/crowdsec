@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
@@ -114,6 +115,13 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 	}
 
 	metricsJob.SingletonMode()
+
+	allowlistsJob, err := scheduler.Every(flushInterval).Do(c.flushAllowlists, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("while starting FlushAllowlists scheduler: %w", err)
+	}
+
+	allowlistsJob.SingletonMode()
 
 	scheduler.StartAsync()
 
@@ -308,4 +316,18 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge string, maxItems int) e
 	}
 
 	return nil
+}
+
+func (c *Client) flushAllowlists(ctx context.Context) {
+	deleted, err := c.Ent.AllowListItem.Delete().Where(
+		allowlistitem.ExpiresAtLTE(time.Now().UTC()),
+	).Exec(ctx)
+	if err != nil {
+		c.Log.Errorf("while flushing allowlists: %s", err)
+		return
+	}
+
+	if deleted > 0 {
+		c.Log.Debugf("flushed %d allowlists", deleted)
+	}
 }

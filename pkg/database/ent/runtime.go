@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -56,6 +58,30 @@ func init() {
 	alertDescSimulated := alertFields[21].Descriptor()
 	// alert.DefaultSimulated holds the default value on creation for the simulated field.
 	alert.DefaultSimulated = alertDescSimulated.Default.(bool)
+	allowlistFields := schema.AllowList{}.Fields()
+	_ = allowlistFields
+	// allowlistDescCreatedAt is the schema descriptor for created_at field.
+	allowlistDescCreatedAt := allowlistFields[0].Descriptor()
+	// allowlist.DefaultCreatedAt holds the default value on creation for the created_at field.
+	allowlist.DefaultCreatedAt = allowlistDescCreatedAt.Default.(func() time.Time)
+	// allowlistDescUpdatedAt is the schema descriptor for updated_at field.
+	allowlistDescUpdatedAt := allowlistFields[1].Descriptor()
+	// allowlist.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	allowlist.DefaultUpdatedAt = allowlistDescUpdatedAt.Default.(func() time.Time)
+	// allowlist.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	allowlist.UpdateDefaultUpdatedAt = allowlistDescUpdatedAt.UpdateDefault.(func() time.Time)
+	allowlistitemFields := schema.AllowListItem{}.Fields()
+	_ = allowlistitemFields
+	// allowlistitemDescCreatedAt is the schema descriptor for created_at field.
+	allowlistitemDescCreatedAt := allowlistitemFields[0].Descriptor()
+	// allowlistitem.DefaultCreatedAt holds the default value on creation for the created_at field.
+	allowlistitem.DefaultCreatedAt = allowlistitemDescCreatedAt.Default.(func() time.Time)
+	// allowlistitemDescUpdatedAt is the schema descriptor for updated_at field.
+	allowlistitemDescUpdatedAt := allowlistitemFields[1].Descriptor()
+	// allowlistitem.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	allowlistitem.DefaultUpdatedAt = allowlistitemDescUpdatedAt.Default.(func() time.Time)
+	// allowlistitem.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	allowlistitem.UpdateDefaultUpdatedAt = allowlistitemDescUpdatedAt.UpdateDefault.(func() time.Time)
 	bouncerFields := schema.Bouncer{}.Fields()
 	_ = bouncerFields
 	// bouncerDescCreatedAt is the schema descriptor for created_at field.

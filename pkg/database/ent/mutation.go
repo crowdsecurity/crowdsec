@@ -12,6 +12,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -33,15 +35,17 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAlert      = "Alert"
-	TypeBouncer    = "Bouncer"
-	TypeConfigItem = "ConfigItem"
-	TypeDecision   = "Decision"
-	TypeEvent      = "Event"
-	TypeLock       = "Lock"
-	TypeMachine    = "Machine"
-	TypeMeta       = "Meta"
-	TypeMetric     = "Metric"
+	TypeAlert         = "Alert"
+	TypeAllowList     = "AllowList"
+	TypeAllowListItem = "AllowListItem"
+	TypeBouncer       = "Bouncer"
+	TypeConfigItem    = "ConfigItem"
+	TypeDecision      = "Decision"
+	TypeEvent         = "Event"
+	TypeLock          = "Lock"
+	TypeMachine       = "Machine"
+	TypeMeta          = "Meta"
+	TypeMetric        = "Metric"
 )
 
 // AlertMutation represents an operation that mutates the Alert nodes in the graph.
@@ -2450,6 +2454,1950 @@ func (m *AlertMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Alert edge %s", name)
+}
+
+// AllowListMutation represents an operation that mutates the AllowList nodes in the graph.
+type AllowListMutation struct {
+	config
+	op                     Op
+	typ                    string
+	id                     *int
+	created_at             *time.Time
+	updated_at             *time.Time
+	name                   *string
+	from_console           *bool
+	description            *string
+	allowlist_id           *string
+	clearedFields          map[string]struct{}
+	allowlist_items        map[int]struct{}
+	removedallowlist_items map[int]struct{}
+	clearedallowlist_items bool
+	done                   bool
+	oldValue               func(context.Context) (*AllowList, error)
+	predicates             []predicate.AllowList
+}
+
+var _ ent.Mutation = (*AllowListMutation)(nil)
+
+// allowlistOption allows management of the mutation configuration using functional options.
+type allowlistOption func(*AllowListMutation)
+
+// newAllowListMutation creates new mutation for the AllowList entity.
+func newAllowListMutation(c config, op Op, opts ...allowlistOption) *AllowListMutation {
+	m := &AllowListMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAllowList,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAllowListID sets the ID field of the mutation.
+func withAllowListID(id int) allowlistOption {
+	return func(m *AllowListMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *AllowList
+		)
+		m.oldValue = func(ctx context.Context) (*AllowList, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().AllowList.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAllowList sets the old AllowList of the mutation.
+func withAllowList(node *AllowList) allowlistOption {
+	return func(m *AllowListMutation) {
+		m.oldValue = func(context.Context) (*AllowList, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AllowListMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AllowListMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AllowListMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AllowListMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().AllowList.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *AllowListMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *AllowListMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the AllowList entity.
+// If the AllowList object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *AllowListMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *AllowListMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *AllowListMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the AllowList entity.
+// If the AllowList object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *AllowListMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetName sets the "name" field.
+func (m *AllowListMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *AllowListMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the AllowList entity.
+// If the AllowList object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *AllowListMutation) ResetName() {
+	m.name = nil
+}
+
+// SetFromConsole sets the "from_console" field.
+func (m *AllowListMutation) SetFromConsole(b bool) {
+	m.from_console = &b
+}
+
+// FromConsole returns the value of the "from_console" field in the mutation.
+func (m *AllowListMutation) FromConsole() (r bool, exists bool) {
+	v := m.from_console
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFromConsole returns the old "from_console" field's value of the AllowList entity.
+// If the AllowList object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListMutation) OldFromConsole(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFromConsole is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFromConsole requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFromConsole: %w", err)
+	}
+	return oldValue.FromConsole, nil
+}
+
+// ResetFromConsole resets all changes to the "from_console" field.
+func (m *AllowListMutation) ResetFromConsole() {
+	m.from_console = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *AllowListMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *AllowListMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the AllowList entity.
+// If the AllowList object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *AllowListMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[allowlist.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *AllowListMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[allowlist.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *AllowListMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, allowlist.FieldDescription)
+}
+
+// SetAllowlistID sets the "allowlist_id" field.
+func (m *AllowListMutation) SetAllowlistID(s string) {
+	m.allowlist_id = &s
+}
+
+// AllowlistID returns the value of the "allowlist_id" field in the mutation.
+func (m *AllowListMutation) AllowlistID() (r string, exists bool) {
+	v := m.allowlist_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAllowlistID returns the old "allowlist_id" field's value of the AllowList entity.
+// If the AllowList object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListMutation) OldAllowlistID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAllowlistID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAllowlistID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAllowlistID: %w", err)
+	}
+	return oldValue.AllowlistID, nil
+}
+
+// ClearAllowlistID clears the value of the "allowlist_id" field.
+func (m *AllowListMutation) ClearAllowlistID() {
+	m.allowlist_id = nil
+	m.clearedFields[allowlist.FieldAllowlistID] = struct{}{}
+}
+
+// AllowlistIDCleared returns if the "allowlist_id" field was cleared in this mutation.
+func (m *AllowListMutation) AllowlistIDCleared() bool {
+	_, ok := m.clearedFields[allowlist.FieldAllowlistID]
+	return ok
+}
+
+// ResetAllowlistID resets all changes to the "allowlist_id" field.
+func (m *AllowListMutation) ResetAllowlistID() {
+	m.allowlist_id = nil
+	delete(m.clearedFields, allowlist.FieldAllowlistID)
+}
+
+// AddAllowlistItemIDs adds the "allowlist_items" edge to the AllowListItem entity by ids.
+func (m *AllowListMutation) AddAllowlistItemIDs(ids ...int) {
+	if m.allowlist_items == nil {
+		m.allowlist_items = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.allowlist_items[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAllowlistItems clears the "allowlist_items" edge to the AllowListItem entity.
+func (m *AllowListMutation) ClearAllowlistItems() {
+	m.clearedallowlist_items = true
+}
+
+// AllowlistItemsCleared reports if the "allowlist_items" edge to the AllowListItem entity was cleared.
+func (m *AllowListMutation) AllowlistItemsCleared() bool {
+	return m.clearedallowlist_items
+}
+
+// RemoveAllowlistItemIDs removes the "allowlist_items" edge to the AllowListItem entity by IDs.
+func (m *AllowListMutation) RemoveAllowlistItemIDs(ids ...int) {
+	if m.removedallowlist_items == nil {
+		m.removedallowlist_items = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.allowlist_items, ids[i])
+		m.removedallowlist_items[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAllowlistItems returns the removed IDs of the "allowlist_items" edge to the AllowListItem entity.
+func (m *AllowListMutation) RemovedAllowlistItemsIDs() (ids []int) {
+	for id := range m.removedallowlist_items {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// AllowlistItemsIDs returns the "allowlist_items" edge IDs in the mutation.
+func (m *AllowListMutation) AllowlistItemsIDs() (ids []int) {
+	for id := range m.allowlist_items {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAllowlistItems resets all changes to the "allowlist_items" edge.
+func (m *AllowListMutation) ResetAllowlistItems() {
+	m.allowlist_items = nil
+	m.clearedallowlist_items = false
+	m.removedallowlist_items = nil
+}
+
+// Where appends a list predicates to the AllowListMutation builder.
+func (m *AllowListMutation) Where(ps ...predicate.AllowList) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AllowListMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AllowListMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.AllowList, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AllowListMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AllowListMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (AllowList).
+func (m *AllowListMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AllowListMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.created_at != nil {
+		fields = append(fields, allowlist.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, allowlist.FieldUpdatedAt)
+	}
+	if m.name != nil {
+		fields = append(fields, allowlist.FieldName)
+	}
+	if m.from_console != nil {
+		fields = append(fields, allowlist.FieldFromConsole)
+	}
+	if m.description != nil {
+		fields = append(fields, allowlist.FieldDescription)
+	}
+	if m.allowlist_id != nil {
+		fields = append(fields, allowlist.FieldAllowlistID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AllowListMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case allowlist.FieldCreatedAt:
+		return m.CreatedAt()
+	case allowlist.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case allowlist.FieldName:
+		return m.Name()
+	case allowlist.FieldFromConsole:
+		return m.FromConsole()
+	case allowlist.FieldDescription:
+		return m.Description()
+	case allowlist.FieldAllowlistID:
+		return m.AllowlistID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AllowListMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case allowlist.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case allowlist.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case allowlist.FieldName:
+		return m.OldName(ctx)
+	case allowlist.FieldFromConsole:
+		return m.OldFromConsole(ctx)
+	case allowlist.FieldDescription:
+		return m.OldDescription(ctx)
+	case allowlist.FieldAllowlistID:
+		return m.OldAllowlistID(ctx)
+	}
+	return nil, fmt.Errorf("unknown AllowList field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AllowListMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case allowlist.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case allowlist.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case allowlist.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case allowlist.FieldFromConsole:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFromConsole(v)
+		return nil
+	case allowlist.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case allowlist.FieldAllowlistID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAllowlistID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AllowList field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AllowListMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AllowListMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AllowListMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown AllowList numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AllowListMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(allowlist.FieldDescription) {
+		fields = append(fields, allowlist.FieldDescription)
+	}
+	if m.FieldCleared(allowlist.FieldAllowlistID) {
+		fields = append(fields, allowlist.FieldAllowlistID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AllowListMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AllowListMutation) ClearField(name string) error {
+	switch name {
+	case allowlist.FieldDescription:
+		m.ClearDescription()
+		return nil
+	case allowlist.FieldAllowlistID:
+		m.ClearAllowlistID()
+		return nil
+	}
+	return fmt.Errorf("unknown AllowList nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AllowListMutation) ResetField(name string) error {
+	switch name {
+	case allowlist.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case allowlist.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case allowlist.FieldName:
+		m.ResetName()
+		return nil
+	case allowlist.FieldFromConsole:
+		m.ResetFromConsole()
+		return nil
+	case allowlist.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case allowlist.FieldAllowlistID:
+		m.ResetAllowlistID()
+		return nil
+	}
+	return fmt.Errorf("unknown AllowList field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AllowListMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.allowlist_items != nil {
+		edges = append(edges, allowlist.EdgeAllowlistItems)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AllowListMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case allowlist.EdgeAllowlistItems:
+		ids := make([]ent.Value, 0, len(m.allowlist_items))
+		for id := range m.allowlist_items {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AllowListMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedallowlist_items != nil {
+		edges = append(edges, allowlist.EdgeAllowlistItems)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AllowListMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case allowlist.EdgeAllowlistItems:
+		ids := make([]ent.Value, 0, len(m.removedallowlist_items))
+		for id := range m.removedallowlist_items {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AllowListMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedallowlist_items {
+		edges = append(edges, allowlist.EdgeAllowlistItems)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AllowListMutation) EdgeCleared(name string) bool {
+	switch name {
+	case allowlist.EdgeAllowlistItems:
+		return m.clearedallowlist_items
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AllowListMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown AllowList unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AllowListMutation) ResetEdge(name string) error {
+	switch name {
+	case allowlist.EdgeAllowlistItems:
+		m.ResetAllowlistItems()
+		return nil
+	}
+	return fmt.Errorf("unknown AllowList edge %s", name)
+}
+
+// AllowListItemMutation represents an operation that mutates the AllowListItem nodes in the graph.
+type AllowListItemMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	created_at       *time.Time
+	updated_at       *time.Time
+	expires_at       *time.Time
+	comment          *string
+	value            *string
+	start_ip         *int64
+	addstart_ip      *int64
+	end_ip           *int64
+	addend_ip        *int64
+	start_suffix     *int64
+	addstart_suffix  *int64
+	end_suffix       *int64
+	addend_suffix    *int64
+	ip_size          *int64
+	addip_size       *int64
+	clearedFields    map[string]struct{}
+	allowlist        map[int]struct{}
+	removedallowlist map[int]struct{}
+	clearedallowlist bool
+	done             bool
+	oldValue         func(context.Context) (*AllowListItem, error)
+	predicates       []predicate.AllowListItem
+}
+
+var _ ent.Mutation = (*AllowListItemMutation)(nil)
+
+// allowlistitemOption allows management of the mutation configuration using functional options.
+type allowlistitemOption func(*AllowListItemMutation)
+
+// newAllowListItemMutation creates new mutation for the AllowListItem entity.
+func newAllowListItemMutation(c config, op Op, opts ...allowlistitemOption) *AllowListItemMutation {
+	m := &AllowListItemMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAllowListItem,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAllowListItemID sets the ID field of the mutation.
+func withAllowListItemID(id int) allowlistitemOption {
+	return func(m *AllowListItemMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *AllowListItem
+		)
+		m.oldValue = func(ctx context.Context) (*AllowListItem, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().AllowListItem.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAllowListItem sets the old AllowListItem of the mutation.
+func withAllowListItem(node *AllowListItem) allowlistitemOption {
+	return func(m *AllowListItemMutation) {
+		m.oldValue = func(context.Context) (*AllowListItem, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AllowListItemMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AllowListItemMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AllowListItemMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AllowListItemMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().AllowListItem.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *AllowListItemMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *AllowListItemMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *AllowListItemMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *AllowListItemMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *AllowListItemMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *AllowListItemMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *AllowListItemMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *AllowListItemMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ClearExpiresAt clears the value of the "expires_at" field.
+func (m *AllowListItemMutation) ClearExpiresAt() {
+	m.expires_at = nil
+	m.clearedFields[allowlistitem.FieldExpiresAt] = struct{}{}
+}
+
+// ExpiresAtCleared returns if the "expires_at" field was cleared in this mutation.
+func (m *AllowListItemMutation) ExpiresAtCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldExpiresAt]
+	return ok
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *AllowListItemMutation) ResetExpiresAt() {
+	m.expires_at = nil
+	delete(m.clearedFields, allowlistitem.FieldExpiresAt)
+}
+
+// SetComment sets the "comment" field.
+func (m *AllowListItemMutation) SetComment(s string) {
+	m.comment = &s
+}
+
+// Comment returns the value of the "comment" field in the mutation.
+func (m *AllowListItemMutation) Comment() (r string, exists bool) {
+	v := m.comment
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldComment returns the old "comment" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldComment(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldComment is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldComment requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldComment: %w", err)
+	}
+	return oldValue.Comment, nil
+}
+
+// ClearComment clears the value of the "comment" field.
+func (m *AllowListItemMutation) ClearComment() {
+	m.comment = nil
+	m.clearedFields[allowlistitem.FieldComment] = struct{}{}
+}
+
+// CommentCleared returns if the "comment" field was cleared in this mutation.
+func (m *AllowListItemMutation) CommentCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldComment]
+	return ok
+}
+
+// ResetComment resets all changes to the "comment" field.
+func (m *AllowListItemMutation) ResetComment() {
+	m.comment = nil
+	delete(m.clearedFields, allowlistitem.FieldComment)
+}
+
+// SetValue sets the "value" field.
+func (m *AllowListItemMutation) SetValue(s string) {
+	m.value = &s
+}
+
+// Value returns the value of the "value" field in the mutation.
+func (m *AllowListItemMutation) Value() (r string, exists bool) {
+	v := m.value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldValue returns the old "value" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldValue(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValue: %w", err)
+	}
+	return oldValue.Value, nil
+}
+
+// ResetValue resets all changes to the "value" field.
+func (m *AllowListItemMutation) ResetValue() {
+	m.value = nil
+}
+
+// SetStartIP sets the "start_ip" field.
+func (m *AllowListItemMutation) SetStartIP(i int64) {
+	m.start_ip = &i
+	m.addstart_ip = nil
+}
+
+// StartIP returns the value of the "start_ip" field in the mutation.
+func (m *AllowListItemMutation) StartIP() (r int64, exists bool) {
+	v := m.start_ip
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartIP returns the old "start_ip" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldStartIP(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartIP is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartIP requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartIP: %w", err)
+	}
+	return oldValue.StartIP, nil
+}
+
+// AddStartIP adds i to the "start_ip" field.
+func (m *AllowListItemMutation) AddStartIP(i int64) {
+	if m.addstart_ip != nil {
+		*m.addstart_ip += i
+	} else {
+		m.addstart_ip = &i
+	}
+}
+
+// AddedStartIP returns the value that was added to the "start_ip" field in this mutation.
+func (m *AllowListItemMutation) AddedStartIP() (r int64, exists bool) {
+	v := m.addstart_ip
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStartIP clears the value of the "start_ip" field.
+func (m *AllowListItemMutation) ClearStartIP() {
+	m.start_ip = nil
+	m.addstart_ip = nil
+	m.clearedFields[allowlistitem.FieldStartIP] = struct{}{}
+}
+
+// StartIPCleared returns if the "start_ip" field was cleared in this mutation.
+func (m *AllowListItemMutation) StartIPCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldStartIP]
+	return ok
+}
+
+// ResetStartIP resets all changes to the "start_ip" field.
+func (m *AllowListItemMutation) ResetStartIP() {
+	m.start_ip = nil
+	m.addstart_ip = nil
+	delete(m.clearedFields, allowlistitem.FieldStartIP)
+}
+
+// SetEndIP sets the "end_ip" field.
+func (m *AllowListItemMutation) SetEndIP(i int64) {
+	m.end_ip = &i
+	m.addend_ip = nil
+}
+
+// EndIP returns the value of the "end_ip" field in the mutation.
+func (m *AllowListItemMutation) EndIP() (r int64, exists bool) {
+	v := m.end_ip
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndIP returns the old "end_ip" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldEndIP(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndIP is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndIP requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndIP: %w", err)
+	}
+	return oldValue.EndIP, nil
+}
+
+// AddEndIP adds i to the "end_ip" field.
+func (m *AllowListItemMutation) AddEndIP(i int64) {
+	if m.addend_ip != nil {
+		*m.addend_ip += i
+	} else {
+		m.addend_ip = &i
+	}
+}
+
+// AddedEndIP returns the value that was added to the "end_ip" field in this mutation.
+func (m *AllowListItemMutation) AddedEndIP() (r int64, exists bool) {
+	v := m.addend_ip
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearEndIP clears the value of the "end_ip" field.
+func (m *AllowListItemMutation) ClearEndIP() {
+	m.end_ip = nil
+	m.addend_ip = nil
+	m.clearedFields[allowlistitem.FieldEndIP] = struct{}{}
+}
+
+// EndIPCleared returns if the "end_ip" field was cleared in this mutation.
+func (m *AllowListItemMutation) EndIPCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldEndIP]
+	return ok
+}
+
+// ResetEndIP resets all changes to the "end_ip" field.
+func (m *AllowListItemMutation) ResetEndIP() {
+	m.end_ip = nil
+	m.addend_ip = nil
+	delete(m.clearedFields, allowlistitem.FieldEndIP)
+}
+
+// SetStartSuffix sets the "start_suffix" field.
+func (m *AllowListItemMutation) SetStartSuffix(i int64) {
+	m.start_suffix = &i
+	m.addstart_suffix = nil
+}
+
+// StartSuffix returns the value of the "start_suffix" field in the mutation.
+func (m *AllowListItemMutation) StartSuffix() (r int64, exists bool) {
+	v := m.start_suffix
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartSuffix returns the old "start_suffix" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldStartSuffix(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartSuffix is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartSuffix requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartSuffix: %w", err)
+	}
+	return oldValue.StartSuffix, nil
+}
+
+// AddStartSuffix adds i to the "start_suffix" field.
+func (m *AllowListItemMutation) AddStartSuffix(i int64) {
+	if m.addstart_suffix != nil {
+		*m.addstart_suffix += i
+	} else {
+		m.addstart_suffix = &i
+	}
+}
+
+// AddedStartSuffix returns the value that was added to the "start_suffix" field in this mutation.
+func (m *AllowListItemMutation) AddedStartSuffix() (r int64, exists bool) {
+	v := m.addstart_suffix
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStartSuffix clears the value of the "start_suffix" field.
+func (m *AllowListItemMutation) ClearStartSuffix() {
+	m.start_suffix = nil
+	m.addstart_suffix = nil
+	m.clearedFields[allowlistitem.FieldStartSuffix] = struct{}{}
+}
+
+// StartSuffixCleared returns if the "start_suffix" field was cleared in this mutation.
+func (m *AllowListItemMutation) StartSuffixCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldStartSuffix]
+	return ok
+}
+
+// ResetStartSuffix resets all changes to the "start_suffix" field.
+func (m *AllowListItemMutation) ResetStartSuffix() {
+	m.start_suffix = nil
+	m.addstart_suffix = nil
+	delete(m.clearedFields, allowlistitem.FieldStartSuffix)
+}
+
+// SetEndSuffix sets the "end_suffix" field.
+func (m *AllowListItemMutation) SetEndSuffix(i int64) {
+	m.end_suffix = &i
+	m.addend_suffix = nil
+}
+
+// EndSuffix returns the value of the "end_suffix" field in the mutation.
+func (m *AllowListItemMutation) EndSuffix() (r int64, exists bool) {
+	v := m.end_suffix
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndSuffix returns the old "end_suffix" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldEndSuffix(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndSuffix is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndSuffix requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndSuffix: %w", err)
+	}
+	return oldValue.EndSuffix, nil
+}
+
+// AddEndSuffix adds i to the "end_suffix" field.
+func (m *AllowListItemMutation) AddEndSuffix(i int64) {
+	if m.addend_suffix != nil {
+		*m.addend_suffix += i
+	} else {
+		m.addend_suffix = &i
+	}
+}
+
+// AddedEndSuffix returns the value that was added to the "end_suffix" field in this mutation.
+func (m *AllowListItemMutation) AddedEndSuffix() (r int64, exists bool) {
+	v := m.addend_suffix
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearEndSuffix clears the value of the "end_suffix" field.
+func (m *AllowListItemMutation) ClearEndSuffix() {
+	m.end_suffix = nil
+	m.addend_suffix = nil
+	m.clearedFields[allowlistitem.FieldEndSuffix] = struct{}{}
+}
+
+// EndSuffixCleared returns if the "end_suffix" field was cleared in this mutation.
+func (m *AllowListItemMutation) EndSuffixCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldEndSuffix]
+	return ok
+}
+
+// ResetEndSuffix resets all changes to the "end_suffix" field.
+func (m *AllowListItemMutation) ResetEndSuffix() {
+	m.end_suffix = nil
+	m.addend_suffix = nil
+	delete(m.clearedFields, allowlistitem.FieldEndSuffix)
+}
+
+// SetIPSize sets the "ip_size" field.
+func (m *AllowListItemMutation) SetIPSize(i int64) {
+	m.ip_size = &i
+	m.addip_size = nil
+}
+
+// IPSize returns the value of the "ip_size" field in the mutation.
+func (m *AllowListItemMutation) IPSize() (r int64, exists bool) {
+	v := m.ip_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIPSize returns the old "ip_size" field's value of the AllowListItem entity.
+// If the AllowListItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AllowListItemMutation) OldIPSize(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIPSize is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIPSize requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIPSize: %w", err)
+	}
+	return oldValue.IPSize, nil
+}
+
+// AddIPSize adds i to the "ip_size" field.
+func (m *AllowListItemMutation) AddIPSize(i int64) {
+	if m.addip_size != nil {
+		*m.addip_size += i
+	} else {
+		m.addip_size = &i
+	}
+}
+
+// AddedIPSize returns the value that was added to the "ip_size" field in this mutation.
+func (m *AllowListItemMutation) AddedIPSize() (r int64, exists bool) {
+	v := m.addip_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearIPSize clears the value of the "ip_size" field.
+func (m *AllowListItemMutation) ClearIPSize() {
+	m.ip_size = nil
+	m.addip_size = nil
+	m.clearedFields[allowlistitem.FieldIPSize] = struct{}{}
+}
+
+// IPSizeCleared returns if the "ip_size" field was cleared in this mutation.
+func (m *AllowListItemMutation) IPSizeCleared() bool {
+	_, ok := m.clearedFields[allowlistitem.FieldIPSize]
+	return ok
+}
+
+// ResetIPSize resets all changes to the "ip_size" field.
+func (m *AllowListItemMutation) ResetIPSize() {
+	m.ip_size = nil
+	m.addip_size = nil
+	delete(m.clearedFields, allowlistitem.FieldIPSize)
+}
+
+// AddAllowlistIDs adds the "allowlist" edge to the AllowList entity by ids.
+func (m *AllowListItemMutation) AddAllowlistIDs(ids ...int) {
+	if m.allowlist == nil {
+		m.allowlist = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.allowlist[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAllowlist clears the "allowlist" edge to the AllowList entity.
+func (m *AllowListItemMutation) ClearAllowlist() {
+	m.clearedallowlist = true
+}
+
+// AllowlistCleared reports if the "allowlist" edge to the AllowList entity was cleared.
+func (m *AllowListItemMutation) AllowlistCleared() bool {
+	return m.clearedallowlist
+}
+
+// RemoveAllowlistIDs removes the "allowlist" edge to the AllowList entity by IDs.
+func (m *AllowListItemMutation) RemoveAllowlistIDs(ids ...int) {
+	if m.removedallowlist == nil {
+		m.removedallowlist = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.allowlist, ids[i])
+		m.removedallowlist[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAllowlist returns the removed IDs of the "allowlist" edge to the AllowList entity.
+func (m *AllowListItemMutation) RemovedAllowlistIDs() (ids []int) {
+	for id := range m.removedallowlist {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// AllowlistIDs returns the "allowlist" edge IDs in the mutation.
+func (m *AllowListItemMutation) AllowlistIDs() (ids []int) {
+	for id := range m.allowlist {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAllowlist resets all changes to the "allowlist" edge.
+func (m *AllowListItemMutation) ResetAllowlist() {
+	m.allowlist = nil
+	m.clearedallowlist = false
+	m.removedallowlist = nil
+}
+
+// Where appends a list predicates to the AllowListItemMutation builder.
+func (m *AllowListItemMutation) Where(ps ...predicate.AllowListItem) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AllowListItemMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AllowListItemMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.AllowListItem, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AllowListItemMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AllowListItemMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (AllowListItem).
+func (m *AllowListItemMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AllowListItemMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.created_at != nil {
+		fields = append(fields, allowlistitem.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, allowlistitem.FieldUpdatedAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, allowlistitem.FieldExpiresAt)
+	}
+	if m.comment != nil {
+		fields = append(fields, allowlistitem.FieldComment)
+	}
+	if m.value != nil {
+		fields = append(fields, allowlistitem.FieldValue)
+	}
+	if m.start_ip != nil {
+		fields = append(fields, allowlistitem.FieldStartIP)
+	}
+	if m.end_ip != nil {
+		fields = append(fields, allowlistitem.FieldEndIP)
+	}
+	if m.start_suffix != nil {
+		fields = append(fields, allowlistitem.FieldStartSuffix)
+	}
+	if m.end_suffix != nil {
+		fields = append(fields, allowlistitem.FieldEndSuffix)
+	}
+	if m.ip_size != nil {
+		fields = append(fields, allowlistitem.FieldIPSize)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AllowListItemMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case allowlistitem.FieldCreatedAt:
+		return m.CreatedAt()
+	case allowlistitem.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case allowlistitem.FieldExpiresAt:
+		return m.ExpiresAt()
+	case allowlistitem.FieldComment:
+		return m.Comment()
+	case allowlistitem.FieldValue:
+		return m.Value()
+	case allowlistitem.FieldStartIP:
+		return m.StartIP()
+	case allowlistitem.FieldEndIP:
+		return m.EndIP()
+	case allowlistitem.FieldStartSuffix:
+		return m.StartSuffix()
+	case allowlistitem.FieldEndSuffix:
+		return m.EndSuffix()
+	case allowlistitem.FieldIPSize:
+		return m.IPSize()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AllowListItemMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case allowlistitem.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case allowlistitem.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case allowlistitem.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	case allowlistitem.FieldComment:
+		return m.OldComment(ctx)
+	case allowlistitem.FieldValue:
+		return m.OldValue(ctx)
+	case allowlistitem.FieldStartIP:
+		return m.OldStartIP(ctx)
+	case allowlistitem.FieldEndIP:
+		return m.OldEndIP(ctx)
+	case allowlistitem.FieldStartSuffix:
+		return m.OldStartSuffix(ctx)
+	case allowlistitem.FieldEndSuffix:
+		return m.OldEndSuffix(ctx)
+	case allowlistitem.FieldIPSize:
+		return m.OldIPSize(ctx)
+	}
+	return nil, fmt.Errorf("unknown AllowListItem field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AllowListItemMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case allowlistitem.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case allowlistitem.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case allowlistitem.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	case allowlistitem.FieldComment:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetComment(v)
+		return nil
+	case allowlistitem.FieldValue:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetValue(v)
+		return nil
+	case allowlistitem.FieldStartIP:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartIP(v)
+		return nil
+	case allowlistitem.FieldEndIP:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndIP(v)
+		return nil
+	case allowlistitem.FieldStartSuffix:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartSuffix(v)
+		return nil
+	case allowlistitem.FieldEndSuffix:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndSuffix(v)
+		return nil
+	case allowlistitem.FieldIPSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIPSize(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AllowListItem field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AllowListItemMutation) AddedFields() []string {
+	var fields []string
+	if m.addstart_ip != nil {
+		fields = append(fields, allowlistitem.FieldStartIP)
+	}
+	if m.addend_ip != nil {
+		fields = append(fields, allowlistitem.FieldEndIP)
+	}
+	if m.addstart_suffix != nil {
+		fields = append(fields, allowlistitem.FieldStartSuffix)
+	}
+	if m.addend_suffix != nil {
+		fields = append(fields, allowlistitem.FieldEndSuffix)
+	}
+	if m.addip_size != nil {
+		fields = append(fields, allowlistitem.FieldIPSize)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AllowListItemMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case allowlistitem.FieldStartIP:
+		return m.AddedStartIP()
+	case allowlistitem.FieldEndIP:
+		return m.AddedEndIP()
+	case allowlistitem.FieldStartSuffix:
+		return m.AddedStartSuffix()
+	case allowlistitem.FieldEndSuffix:
+		return m.AddedEndSuffix()
+	case allowlistitem.FieldIPSize:
+		return m.AddedIPSize()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AllowListItemMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case allowlistitem.FieldStartIP:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStartIP(v)
+		return nil
+	case allowlistitem.FieldEndIP:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddEndIP(v)
+		return nil
+	case allowlistitem.FieldStartSuffix:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStartSuffix(v)
+		return nil
+	case allowlistitem.FieldEndSuffix:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddEndSuffix(v)
+		return nil
+	case allowlistitem.FieldIPSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddIPSize(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AllowListItem numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AllowListItemMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(allowlistitem.FieldExpiresAt) {
+		fields = append(fields, allowlistitem.FieldExpiresAt)
+	}
+	if m.FieldCleared(allowlistitem.FieldComment) {
+		fields = append(fields, allowlistitem.FieldComment)
+	}
+	if m.FieldCleared(allowlistitem.FieldStartIP) {
+		fields = append(fields, allowlistitem.FieldStartIP)
+	}
+	if m.FieldCleared(allowlistitem.FieldEndIP) {
+		fields = append(fields, allowlistitem.FieldEndIP)
+	}
+	if m.FieldCleared(allowlistitem.FieldStartSuffix) {
+		fields = append(fields, allowlistitem.FieldStartSuffix)
+	}
+	if m.FieldCleared(allowlistitem.FieldEndSuffix) {
+		fields = append(fields, allowlistitem.FieldEndSuffix)
+	}
+	if m.FieldCleared(allowlistitem.FieldIPSize) {
+		fields = append(fields, allowlistitem.FieldIPSize)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AllowListItemMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AllowListItemMutation) ClearField(name string) error {
+	switch name {
+	case allowlistitem.FieldExpiresAt:
+		m.ClearExpiresAt()
+		return nil
+	case allowlistitem.FieldComment:
+		m.ClearComment()
+		return nil
+	case allowlistitem.FieldStartIP:
+		m.ClearStartIP()
+		return nil
+	case allowlistitem.FieldEndIP:
+		m.ClearEndIP()
+		return nil
+	case allowlistitem.FieldStartSuffix:
+		m.ClearStartSuffix()
+		return nil
+	case allowlistitem.FieldEndSuffix:
+		m.ClearEndSuffix()
+		return nil
+	case allowlistitem.FieldIPSize:
+		m.ClearIPSize()
+		return nil
+	}
+	return fmt.Errorf("unknown AllowListItem nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AllowListItemMutation) ResetField(name string) error {
+	switch name {
+	case allowlistitem.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case allowlistitem.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case allowlistitem.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	case allowlistitem.FieldComment:
+		m.ResetComment()
+		return nil
+	case allowlistitem.FieldValue:
+		m.ResetValue()
+		return nil
+	case allowlistitem.FieldStartIP:
+		m.ResetStartIP()
+		return nil
+	case allowlistitem.FieldEndIP:
+		m.ResetEndIP()
+		return nil
+	case allowlistitem.FieldStartSuffix:
+		m.ResetStartSuffix()
+		return nil
+	case allowlistitem.FieldEndSuffix:
+		m.ResetEndSuffix()
+		return nil
+	case allowlistitem.FieldIPSize:
+		m.ResetIPSize()
+		return nil
+	}
+	return fmt.Errorf("unknown AllowListItem field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AllowListItemMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.allowlist != nil {
+		edges = append(edges, allowlistitem.EdgeAllowlist)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AllowListItemMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case allowlistitem.EdgeAllowlist:
+		ids := make([]ent.Value, 0, len(m.allowlist))
+		for id := range m.allowlist {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AllowListItemMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedallowlist != nil {
+		edges = append(edges, allowlistitem.EdgeAllowlist)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AllowListItemMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case allowlistitem.EdgeAllowlist:
+		ids := make([]ent.Value, 0, len(m.removedallowlist))
+		for id := range m.removedallowlist {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AllowListItemMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedallowlist {
+		edges = append(edges, allowlistitem.EdgeAllowlist)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AllowListItemMutation) EdgeCleared(name string) bool {
+	switch name {
+	case allowlistitem.EdgeAllowlist:
+		return m.clearedallowlist
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AllowListItemMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown AllowListItem unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AllowListItemMutation) ResetEdge(name string) error {
+	switch name {
+	case allowlistitem.EdgeAllowlist:
+		m.ResetAllowlist()
+		return nil
+	}
+	return fmt.Errorf("unknown AllowListItem edge %s", name)
 }
 
 // BouncerMutation represents an operation that mutates the Bouncer nodes in the graph.
