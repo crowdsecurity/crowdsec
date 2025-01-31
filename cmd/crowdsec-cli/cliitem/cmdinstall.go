@@ -88,8 +88,8 @@ func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun 
 		log.Error(err)
 	}
 
-	if plan.ReloadNeeded {
-		fmt.Println("\n" + reload.Message)
+	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+		fmt.Println("\n" + msg)
 	}
 
 	return nil

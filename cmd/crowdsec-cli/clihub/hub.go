@@ -193,8 +193,8 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 		return err
 	}
 
-	if plan.ReloadNeeded {
-		fmt.Println("\n" + reload.Message)
+	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+		fmt.Println("\n" + msg)
 	}
 
 	return nil
