@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"strconv"
 
@@ -202,6 +203,10 @@ func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *h
 					}
 				}
 			default:
+				r := reflect.ValueOf(output)
+				if r.IsZero() || r.IsNil() {
+					continue
+				}
 				val := fmt.Sprintf("%v", output)
 				if val != "" && !slices.Contains(tmpContext[key], val) {
 					tmpContext[key] = append(tmpContext[key], val)
