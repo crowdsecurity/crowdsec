@@ -176,6 +176,7 @@ if [ $1 == 1 ]; then
     fi
 
     cscli hub update
+    cscli hub upgrade
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
     GREEN='\033[0;32m'
