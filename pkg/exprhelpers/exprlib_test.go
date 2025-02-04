@@ -3,7 +3,6 @@ package exprhelpers
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -26,15 +25,12 @@ const TestFolder = "tests"
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp("", "*sqlite")
-	require.NoError(t, err)
-
 	ctx := context.Background()
 
 	testDBClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
+		DbPath: ":memory:",
 	})
 	require.NoError(t, err)
 

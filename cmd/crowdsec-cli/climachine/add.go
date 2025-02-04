@@ -65,12 +65,17 @@ func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword 
 			return errors.New("please specify a password with --password or use --auto")
 		}
 
-		machinePassword = idgen.GeneratePassword(idgen.PasswordLength)
+		machinePassword, err = idgen.GeneratePassword(idgen.PasswordLength)
+		if err != nil {
+			return err
+		}
 	} else if machinePassword == "" && interactive {
 		qs := &survey.Password{
 			Message: "Please provide a password for the machine:",
 		}
-		survey.AskOne(qs, &machinePassword)
+		if err := survey.AskOne(qs, &machinePassword); err != nil {
+			return err
+		}
 	}
 
 	password := strfmt.Password(machinePassword)
@@ -144,9 +149,9 @@ cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 	flags.VarP(&password, "password", "p", "machine password to login to the API")
 	flags.StringVarP(&dumpFile, "file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
 	flags.StringVarP(&apiURL, "url", "u", "", "URL of the local API")
-	flags.BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "interactive mode to enter the password")
 	flags.BoolVarP(&autoAdd, "auto", "a", false, "automatically generate password (and username if not provided)")
-	flags.BoolVar(&force, "force", false, "will force add the machine if it already exist")
+	flags.BoolVar(&force, "force", false, "will force add the machine if it already exists")
 
 	return cmd
 }

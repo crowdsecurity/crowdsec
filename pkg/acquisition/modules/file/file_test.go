@@ -333,14 +333,19 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "GlobInotifyChmod",
 			afterConfigure: func() {
-				f, _ := os.Create("test_files/a.log")
-				f.Close()
+				f, err := os.Create("test_files/a.log")
+				require.NoError(t, err)
+				err = f.Close()
+				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
-				os.Chmod("test_files/a.log", 0o000)
+				err = os.Chmod("test_files/a.log", 0o000)
+				require.NoError(t, err)
 			},
 			teardown: func() {
-				os.Chmod("test_files/a.log", 0o644)
-				os.Remove("test_files/a.log")
+				err := os.Chmod("test_files/a.log", 0o644)
+				require.NoError(t, err)
+				err = os.Remove("test_files/a.log")
+				require.NoError(t, err)
 			},
 		},
 		{
@@ -353,7 +358,8 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "InotifyMkDir",
 			afterConfigure: func() {
-				os.Mkdir("test_files/pouet/", 0o700)
+				err := os.Mkdir("test_files/pouet/", 0o700)
+				require.NoError(t, err)
 			},
 			teardown: func() {
 				os.Remove("test_files/pouet/")

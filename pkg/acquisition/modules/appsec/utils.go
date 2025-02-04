@@ -296,6 +296,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			"hash":          hash,
 			"version":       version,
 			"matched_zones": matchedZones,
+			"logdata":       rule.Data(),
 		}
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 	}

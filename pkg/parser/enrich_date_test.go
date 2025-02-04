@@ -40,6 +40,38 @@ func TestDateParse(t *testing.T) {
 			},
 			expected: "2011-12-17T08:17:43Z",
 		},
+		{
+			name: "ISO 8601, no timezone",
+			evt: types.Event{
+				StrTime:       "2024-11-26T20:13:32",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32Z",
+		},
+		{
+			name: "ISO 8601, no timezone, milliseconds",
+			evt: types.Event{
+				StrTime:       "2024-11-26T20:13:32.123",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32.123Z",
+		},
+		{
+			name: "ISO 8601, no timezone, microseconds",
+			evt: types.Event{
+				StrTime:       "2024-11-26T20:13:32.123456",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32.123456Z",
+		},
+		{
+			name: "ISO 8601, no timezone, nanoseconds",
+			evt: types.Event{
+				StrTime:       "2024-11-26T20:13:32.123456789",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32.123456789Z",
+		},
 	}
 
 	logger := log.WithField("test", "test")

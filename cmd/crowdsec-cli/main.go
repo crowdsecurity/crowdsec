@@ -19,6 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliallowlists"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconfig"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clidecision"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
@@ -93,7 +94,6 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 		"help",
 		"completion",
 		"version",
-		"hubtest",
 	}
 
 	if !slices.Contains(noNeedConfig, command) {
@@ -148,7 +148,10 @@ func (cli *cliRoot) initialize() error {
 		return fmt.Errorf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
 
-	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp:       true,
+		DisableLevelTruncation: true,
+	})
 
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
@@ -258,7 +261,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
-	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
+	cmd.AddCommand(cliconfig.New(cli.cfg).NewCommand(func() string { return mergedConfig }))
 	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
@@ -307,6 +310,8 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatal(err)
+		red := color.New(color.FgRed).SprintFunc()
+		fmt.Fprintln(os.Stderr, red("Error:"), err)
+		os.Exit(1)
 	}
 }

@@ -37,7 +37,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	fmt.Fprintln(out, t.Render())
 }
 
 func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
@@ -71,7 +71,6 @@ func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 func (cli *cliBouncers) List(ctx context.Context, out io.Writer, db *database.Client) error {
 	// XXX: must use the provided db object, the one in the struct might be nil
 	// (calling List directly skips the PersistentPreRunE)
-
 	bouncers, err := db.ListBouncers(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
