@@ -68,6 +68,8 @@ if [ "$1" = configure ]; then
 
     echo Updating hub
     /usr/bin/cscli hub update
+    /usr/bin/cscli hub upgrade
+
     if [ "$COLLECTIONS" = true ]; then
         set +e
         CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
