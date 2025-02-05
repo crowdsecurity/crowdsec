@@ -170,7 +170,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
+func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, noSimu *bool, contained *bool, printMachine bool) error {
 	var err error
 
 	*filter.ScopeEquals, err = clialert.SanitizeScope(*filter.ScopeEquals, *filter.IPEquals, *filter.RangeEquals)
@@ -181,7 +181,7 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 	filter.ActiveDecisionEquals = new(bool)
 	*filter.ActiveDecisionEquals = true
 
-	if NoSimu != nil && *NoSimu {
+	if noSimu != nil && *noSimu {
 		filter.IncludeSimulated = new(bool)
 	}
 	/* nullify the empty entries to avoid bad filter */

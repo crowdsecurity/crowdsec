@@ -42,7 +42,6 @@ jobs:
           DEBUG: ""
           LAMBDA_EXECUTOR: ""
           KINESIS_ERROR_PROBABILITY: ""
-          DOCKER_HOST: unix:///var/run/docker.sock
           KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
           LOCALSTACK_HOST: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
           # e.g sqs url will get localhost if we don't set this env to map our service
@@ -115,6 +114,17 @@ jobs:
           --health-retries 5
           --health-start-period 30s
 
+      victorialogs:
+        image: victoriametrics/victoria-logs:v1.5.0-victorialogs
+        ports:
+          - "9428:9428"
+        options: >-
+          --name=victorialogs1
+          --health-cmd "wget -q -O - http://0.0.0.0:9428"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 30s
     steps:
 
     - name: Check out CrowdSec repository
@@ -126,7 +136,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.23"
+        go-version-file: go.mod
 
     - name: Run "go generate" and check for changes
       run: |
@@ -144,11 +154,11 @@ jobs:
         go generate ./...
         protoc --version
         if [[ $(git status --porcelain) ]]; then
-          echo "Error: Uncommitted changes found after running 'make generate'. Please commit all generated code."
+          echo "Error: Uncommitted changes found after running 'go generate'. Please commit all generated code."
           git diff
           exit 1
         else
-          echo "No changes detected after running 'make generate'."
+          echo "No changes detected after running 'go generate'."
         fi
 
     - name: Create localstack streams
@@ -190,6 +200,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.61
+        version: v1.63
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

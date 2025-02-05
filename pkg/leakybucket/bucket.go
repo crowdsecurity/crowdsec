@@ -204,7 +204,6 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 /* for now mimic a leak routine */
 //LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
 func LeakRoutine(leaky *Leaky) error {
-
 	var (
 		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
@@ -317,7 +316,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 				alert, err = NewAlert(leaky, ofw)
 				if err != nil {
-					log.Errorf("%s", err)
+					log.Error(err)
 				}
 				for _, f := range leaky.BucketConfig.processors {
 					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)

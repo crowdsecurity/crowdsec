@@ -41,7 +41,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		log.SetLevel(log.WarnLevel)
 	}
 	inbandRules := []string{}
+	nativeInbandRules := []string{}
 	outofbandRules := []string{}
+	nativeOutofbandRules := []string{}
 	InChan := make(chan appsec.ParsedRequest)
 	OutChan := make(chan types.Event)
 
@@ -56,8 +58,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		inbandRules = append(inbandRules, strRule)
 
 	}
-	inbandRules = append(inbandRules, test.inband_native_rules...)
-	outofbandRules = append(outofbandRules, test.outofband_native_rules...)
+	nativeInbandRules = append(nativeInbandRules, test.inband_native_rules...)
+	nativeOutofbandRules = append(nativeOutofbandRules, test.outofband_native_rules...)
 	for ridx, rule := range test.outofband_rules {
 		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
 		if err != nil {
@@ -66,7 +68,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		outofbandRules = append(outofbandRules, strRule)
 	}
 
-	appsecCfg := appsec.AppsecConfig{Logger: logger,
+	appsecCfg := appsec.AppsecConfig{
+		Logger:                 logger,
 		OnLoad:                 test.on_load,
 		PreEval:                test.pre_eval,
 		PostEval:               test.post_eval,
@@ -75,13 +78,14 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		UserBlockedHTTPCode:    test.UserBlockedHTTPCode,
 		UserPassedHTTPCode:     test.UserPassedHTTPCode,
 		DefaultRemediation:     test.DefaultRemediation,
-		DefaultPassAction:      test.DefaultPassAction}
+		DefaultPassAction:      test.DefaultPassAction,
+	}
 	AppsecRuntime, err := appsecCfg.Build()
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
-	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules}}
-	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules}}
+	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules, NativeRules: nativeInbandRules}}
+	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules, NativeRules: nativeOutofbandRules}}
 	appsecRunnerUUID := uuid.New().String()
 	//we copy AppsecRutime for each runner
 	wrt := *AppsecRuntime
@@ -96,7 +100,13 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	}
 	err = runner.Init("/tmp/")
 	if err != nil {
+		if !test.expected_load_ok {
+			return
+		}
 		t.Fatalf("unable to initialize runner : %s", err)
+	}
+	if !test.expected_load_ok {
+		t.Fatalf("expected load to fail but it didn't")
 	}
 
 	if test.afterload_asserts != nil {

@@ -1,0 +1,41 @@
+[project]
+name = "crowdsec-docker-tests"
+version = "0.1.0"
+description = "Docker tests for Crowdsec"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=8.3.4",
+    "pytest-cs",
+    "pytest-dotenv>=0.5.2",
+    "pytest-xdist>=3.6.1",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+    "ruff>=0.9.3",
+]
+
+[tool.uv.sources]
+pytest-cs = { git = "https://github.com/crowdsecurity/pytest-cs" }
+
+[tool.ruff]
+
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C90", # macabe
+]
+
+ignore = [
+    "B008", # do not perform function calls in argument defaults
+]

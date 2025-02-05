@@ -154,13 +154,13 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := cw.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
 
-	cw.metricsLevel = MetricsLevel
+	cw.metricsLevel = metricsLevel
 
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 
@@ -330,9 +330,12 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
 								if LastIngestionTime.Before(oldest) {
 									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().UTC().Add(-*cw.Config.MaxStreamAge))
+
 									hasMoreStreams = false
+
 									return false
 								}
+
 								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
 								// the stream has been updated recently, check if we should monitor it
 								var expectMode int
@@ -341,6 +344,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 								} else {
 									expectMode = types.TIMEMACHINE
 								}
+
 								monitorStream := LogStreamTailConfig{
 									GroupName:                  cw.Config.GroupName,
 									StreamName:                 *event.LogStreamName,
@@ -354,16 +358,20 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 								out <- monitorStream
 							}
 						}
+
 						if lastPage {
 							cw.logger.Tracef("reached last page")
+
 							hasMoreStreams = false
 						}
+
 						return true
 					},
 				)
 				if err != nil {
 					return fmt.Errorf("while describing group %s: %w", cw.Config.GroupName, err)
 				}
+
 				cw.logger.Tracef("after DescribeLogStreamsPagesWithContext")
 			}
 		}
@@ -373,12 +381,14 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 // LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
 func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStreamTailConfig, outChan chan types.Event) error {
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
+
 	pollDeadStreamInterval := time.NewTicker(def_PollDeadStreamInterval)
 
 	for {
 		select {
 		case newStream := <-in: //nolint:govet // copylocks won't matter if the tomb is not initialized
 			shouldCreate := true
+
 			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
 
 			if cw.Config.StreamName != nil && newStream.StreamName != *cw.Config.StreamName {
@@ -402,12 +412,16 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 					if !stream.t.Alive() {
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
 						cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
+
 						if cw.metricsLevel != configuration.METRICS_NONE {
 							openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
 						}
+
 						break
 					}
+
 					shouldCreate = false
+
 					break
 				}
 			}
@@ -417,19 +431,23 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 				if cw.metricsLevel != configuration.METRICS_NONE {
 					openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
 				}
+
 				newStream.t = tomb.Tomb{}
 				newStream.logger = cw.logger.WithField("stream", newStream.StreamName)
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
 				newStream.t.Go(func() error {
 					return cw.TailLogStream(ctx, &newStream, outChan)
 				})
+
 				cw.monitoredStreams = append(cw.monitoredStreams, &newStream)
 			}
 		case <-pollDeadStreamInterval.C:
 			newMonitoredStreams := cw.monitoredStreams[:0]
+
 			for idx, stream := range cw.monitoredStreams {
 				if !cw.monitoredStreams[idx].t.Alive() {
 					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
+
 					if cw.metricsLevel != configuration.METRICS_NONE {
 						openedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
 					}
@@ -437,20 +455,25 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 					newMonitoredStreams = append(newMonitoredStreams, stream)
 				}
 			}
+
 			cw.monitoredStreams = newMonitoredStreams
 		case <-cw.t.Dying():
 			cw.logger.Infof("LogStreamManager for %s is dying, %d alive streams", cw.Config.GroupName, len(cw.monitoredStreams))
+
 			for idx, stream := range cw.monitoredStreams {
 				if cw.monitoredStreams[idx].t.Alive() {
 					cw.logger.Debugf("killing stream %s", stream.StreamName)
 					cw.monitoredStreams[idx].t.Kill(nil)
+
 					if err := cw.monitoredStreams[idx].t.Wait(); err != nil {
 						cw.logger.Debugf("error while waiting for death of %s : %s", stream.StreamName, err)
 					}
 				}
 			}
+
 			cw.monitoredStreams = nil
 			cw.logger.Debugf("routine cleanup done, return")
+
 			return nil
 		}
 	}
@@ -458,12 +481,14 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 
 func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
+
 	lastReadMessage := time.Now().UTC()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
 	// resume at existing index if we already had
 	streamIndexMutex.Lock()
 	v := cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName]
 	streamIndexMutex.Unlock()
+
 	if v != "" {
 		cfg.logger.Debugf("restarting on index %s", v)
 		startFrom = &v
@@ -474,7 +499,9 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 		select {
 		case <-ticker.C:
 			cfg.logger.Tracef("entering loop")
+
 			hasMorePages := true
+
 			for hasMorePages {
 				/*for the first call, we only consume the last item*/
 				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
@@ -489,36 +516,44 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 					func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
 						cfg.logger.Tracef("%d results, last:%t", len(page.Events), lastPage)
 						startFrom = page.NextForwardToken
+
 						if page.NextForwardToken != nil {
 							streamIndexMutex.Lock()
 							cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName] = *page.NextForwardToken
 							streamIndexMutex.Unlock()
 						}
+
 						if lastPage { /*wait another ticker to check on new log availability*/
 							cfg.logger.Tracef("last page")
+
 							hasMorePages = false
 						}
+
 						if len(page.Events) > 0 {
 							lastReadMessage = time.Now().UTC()
 						}
+
 						for _, event := range page.Events {
 							evt, err := cwLogToEvent(event, cfg)
 							if err != nil {
 								cfg.logger.Warningf("cwLogToEvent error, discarded event : %s", err)
 							} else {
 								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
+
 								if cw.metricsLevel != configuration.METRICS_NONE {
 									linesRead.With(prometheus.Labels{"group": cfg.GroupName, "stream": cfg.StreamName}).Inc()
 								}
 								outChan <- evt
 							}
 						}
+
 						return true
 					},
 				)
 				if err != nil {
 					newerr := fmt.Errorf("while reading %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
 					cfg.logger.Warningf("err : %s", newerr)
+
 					return newerr
 				}
 				cfg.logger.Tracef("done reading GetLogEventsPagesWithContext")

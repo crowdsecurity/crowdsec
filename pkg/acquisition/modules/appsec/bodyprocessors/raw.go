@@ -9,8 +9,7 @@ import (
 	"github.com/crowdsecurity/coraza/v3/experimental/plugins/plugintypes"
 )
 
-type rawBodyProcessor struct {
-}
+type rawBodyProcessor struct{}
 
 type setterInterface interface {
 	Set(string)
@@ -33,9 +32,7 @@ func (*rawBodyProcessor) ProcessResponse(reader io.Reader, v plugintypes.Transac
 	return nil
 }
 
-var (
-	_ plugintypes.BodyProcessor = &rawBodyProcessor{}
-)
+var _ plugintypes.BodyProcessor = &rawBodyProcessor{}
 
 //nolint:gochecknoinits //Coraza recommends to use init() for registering plugins
 func init() {

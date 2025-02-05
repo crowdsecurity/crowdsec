@@ -3,7 +3,6 @@ package appsec
 import "testing"
 
 func TestBodyDumper(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		req    *ParsedRequest
@@ -159,7 +158,6 @@ func TestBodyDumper(t *testing.T) {
 	}
 
 	for idx, test := range tests {
-
 		t.Run(test.name, func(t *testing.T) {
 			orig_dr := test.req.DumpRequest()
 			result := test.filter(orig_dr).GetFilteredRequest()
@@ -177,5 +175,4 @@ func TestBodyDumper(t *testing.T) {
 			}
 		})
 	}
-
 }

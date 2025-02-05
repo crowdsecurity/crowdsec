@@ -30,7 +30,7 @@ var globalConfig = Config{}
 // Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
 	// just a path to ourselves :p
-	FilePath     *string             `yaml:"-"`
+	FilePath     string              `yaml:"-"`
 	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
 	Prometheus   *PrometheusCfg      `yaml:"prometheus,omitempty"`
@@ -45,9 +45,10 @@ type Config struct {
 	Hub          *LocalHubCfg        `yaml:"-"`
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool) (*Config, string, error) {
+// NewConfig
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
-	patcher.SetQuiet(inCli)
+	patcher.SetQuiet(quiet)
 
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
@@ -56,7 +57,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool
 
 	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
-		FilePath:     &configFile,
+		FilePath:     configFile,
 		DisableAgent: disableAgent,
 		DisableAPI:   disableAPI,
 	}

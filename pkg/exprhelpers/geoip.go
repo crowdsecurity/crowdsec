@@ -14,7 +14,6 @@ func GeoIPEnrich(params ...any) (any, error) {
 	parsedIP := net.ParseIP(ip)
 
 	city, err := geoIPCityReader.City(parsedIP)
-
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +30,6 @@ func GeoIPASNEnrich(params ...any) (any, error) {
 
 	parsedIP := net.ParseIP(ip)
 	asn, err := geoIPASNReader.ASN(parsedIP)
-
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +48,6 @@ func GeoIPRangeEnrich(params ...any) (any, error) {
 
 	parsedIP := net.ParseIP(ip)
 	rangeIP, ok, err := geoIPRangeReader.LookupNetwork(parsedIP, &dummy)
-
 	if err != nil {
 		return nil, err
 	}

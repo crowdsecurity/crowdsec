@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -66,6 +65,40 @@ teardown() {
         --err "Starting processing data" \
         "$CROWDSEC"
     refute_output
+}
+
+@test "crowdsec - log format" {
+    # fail early
+    config_disable_lapi
+    config_disable_agent
+
+    config_set '.common.log_media="stdout"'
+
+    config_set '.common.log_format=""'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --partial 'level=fatal msg="you must run at least the API Server or crowdsec"'
+
+    config_set '.common.log_format="text"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --partial 'level=fatal msg="you must run at least the API Server or crowdsec"'
+
+    config_set '.common.log_format="json"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    rune -0 jq -c 'select(.msg=="you must run at least the API Server or crowdsec") | .level' <(stderr | grep "^{")
+    assert_output '"fatal"'
+
+    # If log_media='file', a hook to stderr is added only for fatal messages,
+    # with a predefined formatter (level + msg, no timestamp, ignore log_format)
+
+    config_set '.common.log_media="file"'
+
+    config_set '.common.log_format="text"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --regexp 'FATAL.* you must run at least the API Server or crowdsec$'
+
+    config_set '.common.log_format="json"'
+    rune -0 wait-for --err "you must run at least the API Server or crowdsec" "$CROWDSEC"
+    assert_stderr --regexp 'FATAL.* you must run at least the API Server or crowdsec$'
 }
 
 @test "CS_LAPI_SECRET not strong enough" {
@@ -137,6 +170,8 @@ teardown() {
 
     rune -0 ./instance-crowdsec stop
 }
+
+# TODO: move acquisition tests to test/bats/crowdsec-acquisition.bats
 
 @test "crowdsec (error if the acquisition_path file is defined but missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
@@ -278,7 +313,7 @@ teardown() {
     # if filenames are missing, it won't be able to detect source type
     config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "failed to configure datasource file: no filename or filenames configuration provided"
+    assert_stderr --partial "while configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
 
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'

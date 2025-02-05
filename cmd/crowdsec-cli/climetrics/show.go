@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
@@ -99,6 +103,17 @@ cscli metrics list; cscli metrics list -o json
 cscli metrics show acquisition parsers scenarios stash -o json`,
 		// Positional args are optional
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			ms := NewMetricStore()
+			ret := []string{}
+			for _, section := range maptools.SortedKeys(ms) {
+				if !slices.Contains(args, section) && strings.Contains(section, toComplete) {
+					ret = append(ret, section)
+				}
+			}
+
+			return ret, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			args = expandAlias(args)
 			return cli.show(cmd.Context(), args, url, noUnit)

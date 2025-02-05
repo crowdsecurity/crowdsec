@@ -143,18 +143,15 @@ rm -rf %{buildroot}
 
 #systemctl stop crowdsec || true
 
-if [ $1 == 2 ];then  
-    if [[ ! -d /var/lib/crowdsec/backup ]]; then
-        cscli config backup /var/lib/crowdsec/backup
-    fi
-fi
+#if [ $1 == 2 ]; then
+#    upgrade pre-install here
+#fi
 
 
 %post -p /bin/bash
 
 #install
 if [ $1 == 1 ]; then
-
     if [ ! -f "/var/lib/crowdsec/data/crowdsec.db" ] ; then
         touch /var/lib/crowdsec/data/crowdsec.db
     fi
@@ -179,27 +176,21 @@ if [ $1 == 1 ]; then
     fi
 
     cscli hub update
+    cscli hub upgrade
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
-    echo "Get started with CrowdSec:"
-    echo " * Detailed guides are available in our documentation: https://docs.crowdsec.net"
-    echo " * Configuration items created by the community can be found at the Hub: https://hub.crowdsec.net"
-    echo " * Gain insights into your use of CrowdSec with the help of the console https://app.crowdsec.net"
+    GREEN='\033[0;32m'
+    BOLD='\033[1m'
+    RESET='\033[0m'
 
-#upgrade
-elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
-    cscli config restore /var/lib/crowdsec/backup
-    if [ $? == 0 ]; then
-       rm -rf /var/lib/crowdsec/backup
-    fi
-
-    if [[ -f %{_sysconfdir}/crowdsec/online_api_credentials.yaml ]] ; then
-        chmod 600 %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-    fi
-    
-    if [[ -f %{_sysconfdir}/crowdsec/local_api_credentials.yaml ]] ; then
-        chmod 600 %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-    fi
+    echo -e "${BOLD}Get started with CrowdSec:${RESET}"
+    echo -e " * Go further by following our ${BOLD}post installation steps${RESET} : ${GREEN}${BOLD}https://docs.crowdsec.net/u/getting_started/next_steps${RESET}"
+    echo -e "===================================================================================================================="
+    echo -e " * Install a ${BOLD}remediation component${RESET} to block attackers: ${GREEN}${BOLD}https://docs.crowdsec.net/u/bouncers/intro${RESET}"
+    echo -e "===================================================================================================================="
+    echo -e " * Find more ${BOLD}collections${RESET}, ${BOLD}parsers${RESET} and ${BOLD}scenarios${RESET} created by the community with the Hub: ${GREEN}${BOLD}https://hub.crowdsec.net${RESET}"
+    echo -e "===================================================================================================================="
+    echo -e " * Subscribe to ${BOLD}additional blocklists${RESET}, ${BOLD}visualize${RESET} your alerts and more with the console: ${GREEN}${BOLD}https://app.crowdsec.net${RESET}"
 fi
 
 %systemd_post %{name}.service
