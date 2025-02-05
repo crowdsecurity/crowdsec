@@ -394,8 +394,6 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	var err error
 
-	ctx := gctx.Request.Context()
-
 	streamStartTime := time.Now().UTC()
 
 	bouncerInfo, err := getBouncerFromContext(gctx)
@@ -426,7 +424,8 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 
 	if err == nil {
 		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
-		if err := c.DBClient.UpdateBouncerLastPull(ctx, streamStartTime, bouncerInfo.ID); err != nil {
+		// Do not reuse the context provided by gin because we already have sent the response to the client, so there's a chance for it to already be canceled
+		if err := c.DBClient.UpdateBouncerLastPull(context.Background(), streamStartTime, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}
 	}

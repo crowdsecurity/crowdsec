@@ -86,7 +86,7 @@ func alertDecisionsTable(out io.Writer, wantColor string, alert *models.Alert) {
 	}
 
 	if foundActive {
-		fmt.Printf(" - Active Decisions  :\n")
+		t.Writer.SetTitle("Active Decisions")
 		t.Render() // Send output
 	}
 }

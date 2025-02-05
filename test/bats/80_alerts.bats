@@ -89,7 +89,7 @@ teardown() {
     assert_line --regexp "^ - AS *: *$"
     assert_line --regexp "^ - Begin *: .*$"
     assert_line --regexp "^ - End *: .*$"
-    assert_line --regexp "^ - Active Decisions *:$"
+    assert_line --regexp "^\| Active Decisions *\|$"
     assert_line --regexp "^.* ID .* scope:value .* action .* expiration .* created_at .*$"
     assert_line --regexp "^.* Ip:10.20.30.40 .* ban .*$"
 

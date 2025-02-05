@@ -57,6 +57,12 @@ func main() {
 			})
 		}
 	}
-	csvWriter.Write(csvHeader)
-	csvWriter.WriteAll(allItems)
+
+	if err = csvWriter.Write(csvHeader); err != nil {
+		panic(err)
+	}
+
+	if err = csvWriter.WriteAll(allItems); err != nil {
+		panic(err)
+	}
 }

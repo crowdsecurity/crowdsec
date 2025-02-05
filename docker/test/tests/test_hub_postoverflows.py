@@ -4,8 +4,9 @@
 Test postoverflow management
 """
 
-from http import HTTPStatus
 import json
+from http import HTTPStatus
+
 import pytest
 
 pytestmark = pytest.mark.docker
@@ -13,24 +14,20 @@ pytestmark = pytest.mark.docker
 
 def test_install_two_postoverflows(crowdsec, flavor):
     """Test installing postoverflows at startup"""
-    it1 = 'crowdsecurity/cdn-whitelist'
-    it2 = 'crowdsecurity/ipv6_to_range'
-    env = {
-        'POSTOVERFLOWS': f'{it1} {it2}'
-    }
+    it1 = "crowdsecurity/cdn-whitelist"
+    it2 = "crowdsecurity/ipv6_to_range"
+    env = {"POSTOVERFLOWS": f"{it1} {it2}"}
     with crowdsec(flavor=flavor, environment=env) as cs:
-        cs.wait_for_log([
-            f'*postoverflows install "{it1}"*',
-            f'*postoverflows install "{it2}"*',
-            "*Starting processing data*"
-        ])
-        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
-        res = cs.cont.exec_run('cscli postoverflows list -o json')
+        cs.wait_for_log(
+            [f'*postoverflows install "{it1}"*', f'*postoverflows install "{it2}"*', "*Starting processing data*"]
+        )
+        cs.wait_for_http(8080, "/health", want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run("cscli postoverflows list -o json")
         assert res.exit_code == 0
         j = json.loads(res.output)
-        items = {c['name']: c for c in j['postoverflows']}
-        assert items[it1]['status'] == 'enabled'
-        assert items[it2]['status'] == 'enabled'
+        items = {c["name"]: c for c in j["postoverflows"]}
+        assert items[it1]["status"] == "enabled"
+        assert items[it2]["status"] == "enabled"
 
 
 def test_disable_postoverflow():
@@ -40,18 +37,18 @@ def test_disable_postoverflow():
 
 def test_install_and_disable_postoverflow(crowdsec, flavor):
     """Declare a postoverflow to install AND disable: disable wins"""
-    it = 'crowdsecurity/cdn-whitelist'
+    it = "crowdsecurity/cdn-whitelist"
     env = {
-        'POSTOVERFLOWS': it,
-        'DISABLE_POSTOVERFLOWS': it,
+        "POSTOVERFLOWS": it,
+        "DISABLE_POSTOVERFLOWS": it,
     }
     with crowdsec(flavor=flavor, environment=env) as cs:
         cs.wait_for_log("*Starting processing data*")
-        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
-        res = cs.cont.exec_run('cscli postoverflows list -o json')
+        cs.wait_for_http(8080, "/health", want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run("cscli postoverflows list -o json")
         assert res.exit_code == 0
         j = json.loads(res.output)
-        items = {c['name'] for c in j['postoverflows']}
+        items = {c["name"] for c in j["postoverflows"]}
         assert it not in items
         logs = cs.log_lines()
         # check that there was no attempt to install

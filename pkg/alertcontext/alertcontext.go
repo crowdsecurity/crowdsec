@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"strconv"
 
@@ -16,9 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const (
-	MaxContextValueLen = 4000
-)
+const MaxContextValueLen = 4000
 
 var alertContext = Context{}
 
@@ -34,7 +33,8 @@ func ValidateContextExpr(key string, expressions []string) error {
 		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{
 			"evt":   &types.Event{},
 			"match": &types.MatchedRule{},
-			"req":   &http.Request{}})...)
+			"req":   &http.Request{},
+		})...)
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %w", expression, err)
 		}
@@ -79,7 +79,8 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{
 				"evt":   &types.Event{},
 				"match": &types.MatchedRule{},
-				"req":   &http.Request{}})...)
+				"req":   &http.Request{},
+			})...)
 			if err != nil {
 				return fmt.Errorf("compilation of '%s' context value failed: %w", value, err)
 			}
@@ -114,6 +115,7 @@ func TruncateContextMap(contextMap map[string][]string, contextValueLen int) ([]
 		}
 		metas = append(metas, &meta)
 	}
+
 	return metas, errors
 }
 
@@ -150,20 +152,19 @@ func TruncateContext(values []string, contextValueLen int) (string, error) {
 }
 
 func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
-
 	var errors []error
 
-	//if we're evaluating context for appsec event, match and request will be present.
-	//otherwise, only evt will be.
+	// if we're evaluating context for appsec event, match and request will be present.
+	// otherwise, only evt will be.
 	if match == nil {
 		match = types.NewMatchedRule()
 	}
+
 	if request == nil {
 		request = &http.Request{}
 	}
 
 	for key, values := range alertContext.ContextToSendCompiled {
-
 		if _, ok := tmpContext[key]; !ok {
 			tmpContext[key] = make([]string, 0)
 		}
@@ -176,6 +177,7 @@ func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *h
 				errors = append(errors, fmt.Errorf("failed to get value for %s: %w", key, err))
 				continue
 			}
+
 			switch out := output.(type) {
 			case string:
 				val = out
@@ -201,6 +203,10 @@ func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *h
 					}
 				}
 			default:
+				r := reflect.ValueOf(output)
+				if r.IsZero() || r.IsNil() {
+					continue
+				}
 				val := fmt.Sprintf("%v", output)
 				if val != "" && !slices.Contains(tmpContext[key], val) {
 					tmpContext[key] = append(tmpContext[key], val)
@@ -208,6 +214,7 @@ func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *h
 			}
 		}
 	}
+
 	return errors
 }
 
@@ -237,8 +244,8 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 
 	tmpContext := make(map[string][]string)
 
-	for _, evt := range events {
-		tmpErrors := EvalAlertContextRules(evt, nil, nil, tmpContext)
+	for i := range events {
+		tmpErrors := EvalAlertContextRules(events[i], nil, nil, tmpContext)
 		errors = append(errors, tmpErrors...)
 	}
 

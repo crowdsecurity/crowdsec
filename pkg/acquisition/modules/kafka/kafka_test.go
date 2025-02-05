@@ -194,7 +194,8 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 			}
 			require.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
-			tomb.Wait()
+			err = tomb.Wait()
+			require.NoError(t, err)
 		})
 	}
 }
@@ -271,7 +272,8 @@ tls:
 			}
 			require.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
-			tomb.Wait()
+			err = tomb.Wait()
+			require.NoError(t, err)
 		})
 	}
 }

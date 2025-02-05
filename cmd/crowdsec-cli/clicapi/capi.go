@@ -66,7 +66,12 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		return fmt.Errorf("unable to generate machine id: %w", err)
 	}
 
-	password := strfmt.Password(idgen.GeneratePassword(idgen.PasswordLength))
+	pstr, err := idgen.GeneratePassword(idgen.PasswordLength)
+	if err != nil {
+		return err
+	}
+
+	password := strfmt.Password(pstr)
 
 	apiurl, err := url.Parse(types.CAPIBaseURL)
 	if err != nil {
@@ -118,7 +123,9 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		fmt.Println(string(apiConfigDump))
 	}
 
-	log.Warning(reload.Message)
+	if msg := reload.UserMessage(); msg != "" {
+		log.Warning(msg)
+	}
 
 	return nil
 }
@@ -256,7 +263,7 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil, nil)
+			hub, err := require.Hub(cli.cfg(), nil)
 			if err != nil {
 				return err
 			}
