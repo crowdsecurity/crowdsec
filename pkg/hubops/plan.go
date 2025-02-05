@@ -2,7 +2,9 @@ package hubops
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -203,7 +205,11 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		Default: true,
 	}
 
+	// in case of EOF, it's likely been closed by the package manager (freebsd?), ignore it
 	if err := survey.AskOne(prompt, &answer); err != nil {
+		if errors.Is(err, io.EOF) {
+			return prompt.Default, nil
+		}
 		return false, err
 	}
 
