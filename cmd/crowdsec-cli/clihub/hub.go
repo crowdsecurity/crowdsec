@@ -221,8 +221,7 @@ cscli hub upgrade --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
 cscli hub upgrade --interactive
-cscli hub upgrade -i
-		`,
+cscli hub upgrade -i`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
