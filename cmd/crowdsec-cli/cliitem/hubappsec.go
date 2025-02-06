@@ -43,10 +43,9 @@ cscli appsec-configs install crowdsecurity/virtual-patching --download-only
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli appsec-configs install crowdsecurity/virtual-patching --force
 
-# Proceed without prompting.
-cscli appsec-configs install crowdsecurity/virtual-patching --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli appsec-configs install crowdsecurity/virtual-patching -i
+cscli appsec-configs install crowdsecurity/virtual-patching --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some appsec-configs.
@@ -64,10 +63,9 @@ cscli appsec-configs remove crowdsecurity/virtual-patching --purge
 # Remove tainted items.
 cscli appsec-configs remove crowdsecurity/virtual-patching --force
 
-# Proceed without prompting.
-cscli appsec-configs remove crowdsecurity/virtual-patching --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli appsec-configs remove crowdsecurity/virtual-patching -i
+cscli appsec-configs remove crowdsecurity/virtual-patching --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some appsec-configs. If they are not currently installed, they are downloaded but not installed.
@@ -82,10 +80,9 @@ cscli appsec-configs upgrade crowdsecurity/virtual-patching --dry-run -o raw
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli appsec-configs upgrade crowdsecurity/virtual-patching --force
 
-# Proceed without prompting.
-cscli appsec-configs upgrade crowdsecurity/virtual-patching --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli appsec-configs upgrade crowdsecurity/virtual-patching -i
+cscli appsec-configs upgrade crowdsecurity/virtual-patching --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state, metrics and ancestor collections of appsec-configs (installed or not).
@@ -183,10 +180,9 @@ cscli appsec-rules install crowdsecurity/crs --download-only
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli appsec-rules install crowdsecurity/crs --force
 
-# Proceed without prompting.
-cscli appsec-rules install crowdsecurity/crs --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli appsec-rules install crowdsecurity/crs -i
+cscli appsec-rules install crowdsecurity/crs --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some appsec-rules.
@@ -204,10 +200,9 @@ cscli appsec-rules remove crowdsecurity/crs --purge
 # Remove tainted items.
 cscli appsec-rules remove crowdsecurity/crs --force
 
-# Proceed without prompting.
-cscli appsec-rules remove crowdsecurity/crs --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli appsec-rules remove crowdsecurity/crs -i
+cscli appsec-rules remove crowdsecurity/crs --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some appsec-rules. If they are not currently installed, they are downloaded but not installed.
@@ -222,10 +217,9 @@ cscli appsec-rules upgrade crowdsecurity/crs --dry-run -o raw
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli appsec-rules upgrade crowdsecurity/crs --force
 
-# Proceed without prompting.
-cscli appsec-rules upgrade crowdsecurity/crs --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli appsec-rules upgrade crowdsecurity/crs -i
+cscli appsec-rules upgrade crowdsecurity/crs --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state, metrics and ancestor collections of appsec-rules (installed or not).
