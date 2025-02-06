@@ -45,7 +45,7 @@ func (cli cliItem) upgradePlan(hub *cwhub.Hub, contentProvider cwhub.ContentProv
 	return plan, nil
 }
 
-func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun bool, force bool, all bool) error {
+func (cli cliItem) upgrade(ctx context.Context, args []string, interactive bool, dryRun bool, force bool, all bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -62,7 +62,7 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun 
 
 	verbose := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, verbose); err != nil {
 		return err
 	}
 
@@ -75,10 +75,10 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, yes bool, dryRun 
 
 func (cli cliItem) newUpgradeCmd() *cobra.Command {
 	var (
-		yes    bool
-		dryRun bool
-		all    bool
-		force  bool
+		interactive bool
+		dryRun      bool
+		all         bool
+		force       bool
 	)
 
 	cmd := &cobra.Command{
@@ -91,16 +91,16 @@ func (cli cliItem) newUpgradeCmd() *cobra.Command {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.upgrade(cmd.Context(), args, yes, dryRun, force, all)
+			return cli.upgrade(cmd.Context(), args, interactive, dryRun, force, all)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVarP(&yes, "yes", "y", false, "Confirm execution without prompt")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "Ask for confirmation before proceeding")
 	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVarP(&all, "all", "a", false, "Upgrade all the "+cli.name)
 	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated files")
-	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
+	cmd.MarkFlagsMutuallyExclusive("interactive", "dry-run")
 
 	return cmd
 }

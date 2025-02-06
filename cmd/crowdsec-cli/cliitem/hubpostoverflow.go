@@ -34,10 +34,9 @@ cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns --dow
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns --force
 
-# Proceed without prompting.
-cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns -i
+cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some postoverflows.
@@ -55,10 +54,9 @@ cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns --purg
 # Remove tainted items.
 cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns --force
 
-# Proceed without prompting.
-cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns -i
+cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some postoverflows. If they are not currently installed, they are downloaded but not installed.
@@ -73,10 +71,9 @@ cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdnss --dr
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdnss --force
 
-# Proceed without prompting.
-cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdnss --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdnss -i
+cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdnss --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state and ancestor collections of postoverflows (installed or not).
