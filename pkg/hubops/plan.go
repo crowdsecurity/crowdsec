@@ -192,6 +192,7 @@ func (p *ActionPlan) compactDescription() string {
 }
 
 func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
+	// user provided an --interactive flag, but we go with the defaults if it's not a tty
 	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
 		return true, nil
 	}
@@ -205,11 +206,13 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		Default: true,
 	}
 
-	// in case of EOF, it's likely been closed by the package manager (freebsd?), ignore it
+	// in case of EOF, it's likely stdin has been closed in a script or package manager,
+	// we can't do anything but go with the default
 	if err := survey.AskOne(prompt, &answer); err != nil {
 		if errors.Is(err, io.EOF) {
 			return prompt.Default, nil
 		}
+
 		return false, err
 	}
 
@@ -218,9 +221,7 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 	return answer, nil
 }
 
-func (p *ActionPlan) Execute(ctx context.Context, confirm bool, dryRun bool, verbose bool) error {
-	var err error
-
+func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, verbose bool) error {
 	if len(p.commands) == 0 {
 		// XXX: show skipped commands, warnings?
 		fmt.Println("Nothing to do.")
@@ -234,16 +235,16 @@ func (p *ActionPlan) Execute(ctx context.Context, confirm bool, dryRun bool, ver
 		return nil
 	}
 
-	if !confirm {
-		confirm, err = p.Confirm(verbose)
+	if interactive {
+		answer, err := p.Confirm(verbose)
 		if err != nil {
 			return err
 		}
-	}
 
-	if !confirm {
-		fmt.Println("Operation canceled.")
-		return nil
+		if !answer {
+			fmt.Println("Operation canceled.")
+			return nil
+		}
 	}
 
 	for _, c := range p.commands {
