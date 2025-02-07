@@ -11,7 +11,6 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
-	isatty "github.com/mattn/go-isatty"
 
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
@@ -192,11 +191,6 @@ func (p *ActionPlan) compactDescription() string {
 }
 
 func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
-	// user provided an --interactive flag, but we go with the defaults if it's not a tty
-	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
-		return true, nil
-	}
-
 	fmt.Println("The following actions will be performed:\n" + p.Description(verbose))
 
 	var answer bool
@@ -206,9 +200,15 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		Default: true,
 	}
 
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return prompt.Default, err
+	}
+	defer tty.Close()
+
 	// in case of EOF, it's likely stdin has been closed in a script or package manager,
 	// we can't do anything but go with the default
-	if err := survey.AskOne(prompt, &answer); err != nil {
+	if err := survey.AskOne(prompt, &answer, survey.WithStdio(tty, tty, tty)); err != nil {
 		if errors.Is(err, io.EOF) {
 			return prompt.Default, nil
 		}
@@ -228,13 +228,6 @@ func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool,
 		return nil
 	}
 
-	if dryRun {
-		fmt.Println("Action plan:\n" + p.Description(verbose))
-		fmt.Println("Dry run, no action taken.")
-
-		return nil
-	}
-
 	if interactive {
 		answer, err := p.Confirm(verbose)
 		if err != nil {
@@ -243,6 +236,12 @@ func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool,
 
 		if !answer {
 			fmt.Println("Operation canceled.")
+			return nil
+		}
+	} else {
+		fmt.Println("Action plan:\n" + p.Description(verbose))
+		if dryRun {
+			fmt.Println("Dry run, no action taken.")
 			return nil
 		}
 	}

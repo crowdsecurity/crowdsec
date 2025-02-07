@@ -112,7 +112,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	flags := cmd.Flags()
 	flags.BoolVarP(&interactive, "interactive", "i", false, "Ask for confirmation before proceeding")
 	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
-	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
+	cmd.MarkFlagsMutuallyExclusive("interactive", "dry-run")
 
 	return cmd
 }
