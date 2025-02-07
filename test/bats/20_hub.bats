@@ -115,11 +115,17 @@ teardown() {
 
 @test "cscli hub upgrade (up to date)" {
     rune -0 cscli hub upgrade
-    refute_output
+    assert_output - <<-EOT
+	Action plan:
+	🔄 check & update data files
+	EOT
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs
     rune -0 cscli hub upgrade --force
-    refute_output
+    assert_output - <<-EOT
+	Action plan:
+	🔄 check & update data files
+	EOT
     skip "todo: data files are re-downloaded with --force"
 }
 
@@ -129,6 +135,8 @@ teardown() {
     rune -0 cscli hub upgrade
     assert_output - <<-EOT
 	collections:foo.yaml - not downloading local item
+	Action plan:
+	🔄 check & update data files
 	EOT
 }
 
