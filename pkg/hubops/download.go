@@ -114,6 +114,10 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 		}
 
 		for _, dataS := range data.Data {
+			if dataS.SourceURL == "" {
+				continue
+			}
+
 			// XXX: check context cancellation
 			destPath, err := cwhub.SafePath(dataFolder, dataS.DestPath)
 			if err != nil {
