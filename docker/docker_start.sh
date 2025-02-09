@@ -447,9 +447,31 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     fi
 done
 
-if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+## Enable console features
+if [ "$ENABLE_CONSOLE_ALL" != "" ]; then
     # shellcheck disable=SC2086
-    cscli console enable console_management
+    cscli console enable -a
+else
+    if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli console enable console_management
+    fi
+    if [ "$ENABLE_CONSOLE_CONTEXT" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli console enable context
+    fi
+    if [ "$ENABLE_CONSOLE_TAINTED" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli console enable tainted
+    fi
+    if [ "$ENABLE_CONSOLE_MANUAL" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli console enable manual
+    fi
+    if [ "$ENABLE_CONSOLE_CUSTOM" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli console enable custom
+    fi
 fi
 
 ## Register bouncers via secrets (Swarm only)
