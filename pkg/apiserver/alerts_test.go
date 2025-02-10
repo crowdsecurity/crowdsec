@@ -9,8 +9,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -144,6 +146,56 @@ func TestCreateAlert(t *testing.T) {
 	w = lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, `["1"]`, w.Body.String())
+}
+
+func TestCreateAllowlistedAlert(t *testing.T) {
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+
+	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", false)
+	require.NoError(t, err)
+	lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
+		{
+			Value: "10.0.0.0/24",
+		},
+		{
+			Value:      "192.168.0.0/24",
+			Expiration: strfmt.DateTime(time.Now().Add(-time.Hour)), //Expired item
+		},
+		{
+			Value: "127.0.0.1",
+		},
+	})
+
+	// Create Alert with allowlisted IP
+	alertContent := GetAlertReaderFromFile(t, "./tests/alert_allowlisted.json")
+	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	//We should have no alert as the IP is allowlisted
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "null", w.Body.String())
+
+	// Create Alert with expired allowlisted IP
+	alertContent = GetAlertReaderFromFile(t, "./tests/alert_allowlisted_expired.json")
+	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	//We should have an alert as the IP is allowlisted but the item is expired
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "192.168.0.42")
+
+	// Create Alert with allowlisted IP but with decisions (manual ban)
+	alertContent = GetAlertReaderFromFile(t, "./tests/alert_sample.json")
+	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	//We should have an alert as the IP is allowlisted but the alert has decisions
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "127.0.0.1")
 }
 
 func TestCreateAlertChannels(t *testing.T) {
