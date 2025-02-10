@@ -154,7 +154,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 
 	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", false)
 	require.NoError(t, err)
-	lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
+	err = lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
 		{
 			Value: "10.0.0.0/24",
 		},
@@ -166,6 +166,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 			Value: "127.0.0.1",
 		},
 	})
+	require.NoError(t, err)
 
 	// Create Alert with allowlisted IP
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_allowlisted.json")

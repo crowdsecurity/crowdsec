@@ -654,6 +654,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	if data.Links != nil {
 		log.Debugf("Received %d blocklists links", len(data.Links.Blocklists))
+		log.Debugf("Received %d allowlists links", len(data.Links.Allowlists))
 	}
 
 	addCounters, deleteCounters := makeAddAndDeleteCounters()
