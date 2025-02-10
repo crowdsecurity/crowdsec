@@ -158,7 +158,7 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 	}
 
 	if !list.FromConsole && fromConsole {
-		c.Log.Infof("marking allowlist %s as managed from console", list.Name)
+		c.Log.Infof("marking allowlist %s as managed from console and replacing its content", list.Name)
 		err = c.Ent.AllowList.Update().SetFromConsole(fromConsole).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
 			return fmt.Errorf("unable to update allowlist: %w", err)
