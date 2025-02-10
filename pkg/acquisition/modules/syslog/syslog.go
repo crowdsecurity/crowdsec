@@ -27,6 +27,7 @@ type SyslogConfiguration struct {
 	Port                              int    `yaml:"listen_port,omitempty"`
 	Addr                              string `yaml:"listen_addr,omitempty"`
 	MaxMessageLen                     int    `yaml:"max_message_len,omitempty"`
+	DisableRFCParser                  bool   `yaml:"disable_rfc_parser,omitempty"` // if true, we don't try to be smart and just remove the PRI
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -204,26 +205,38 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			if s.metricsLevel != configuration.METRICS_NONE {
 				linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
 			}
-			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
-			err := p.Parse(syslogLine.Message)
-			if err != nil {
-				logger.Debugf("could not parse as RFC3164 (%s)", err)
-				p2 := rfc5424.NewRFC5424Parser()
-				err = p2.Parse(syslogLine.Message)
+			if !s.config.DisableRFCParser {
+				p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
+				err := p.Parse(syslogLine.Message)
 				if err != nil {
-					logger.Errorf("could not parse message: %s", err)
-					logger.Debugf("could not parse as RFC5424 (%s) : %s", err, syslogLine.Message)
-					continue
-				}
-				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
-				if s.metricsLevel != configuration.METRICS_NONE {
-					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+					logger.Debugf("could not parse as RFC3164 (%s)", err)
+					p2 := rfc5424.NewRFC5424Parser()
+					err = p2.Parse(syslogLine.Message)
+					if err != nil {
+						logger.Errorf("could not parse message: %s", err)
+						logger.Debugf("could not parse as RFC5424 (%s) : %s", err, syslogLine.Message)
+						continue
+					}
+					line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
+					if s.metricsLevel != configuration.METRICS_NONE {
+						linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+					}
+				} else {
+					line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
+					if s.metricsLevel != configuration.METRICS_NONE {
+						linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+					}
 				}
 			} else {
-				line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
-				if s.metricsLevel != configuration.METRICS_NONE {
-					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+				msgStr := string(syslogLine.Message)
+				// We get the index of the end of PRI
+				index := strings.Index(msgStr, ">")
+				if index == -1 {
+					logger.Errorf("could not find PRI in message")
+					continue
 				}
+				// We set the line to be the message without the PRI
+				line = msgStr[index+1:]
 			}
 
 			line = strings.TrimSuffix(line, "\n")
