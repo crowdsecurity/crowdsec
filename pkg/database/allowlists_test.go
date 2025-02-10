@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -15,12 +14,10 @@ import (
 func getDBClient(t *testing.T, ctx context.Context) *Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp(t.TempDir(), "*sqlite")
-	require.NoError(t, err)
 	dbClient, err := NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
+		DbPath: ":memory:",
 	})
 	require.NoError(t, err)
 
