@@ -691,7 +691,7 @@ func TestAPICWhitelists(t *testing.T) {
 	require.Len(t, allowlists, 1)
 	require.Equal(t, "allowlist1", allowlists[0].Name)
 	require.Equal(t, "test", allowlists[0].Description)
-	require.Equal(t, true, allowlists[0].FromConsole)
+	require.True(t, allowlists[0].FromConsole)
 
 	assertTotalDecisionCount(t, ctx, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
