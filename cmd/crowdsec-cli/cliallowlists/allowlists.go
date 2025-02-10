@@ -167,7 +167,7 @@ func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAll
 	return nil
 }
 
-func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowlistsResponse) {
+func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
 	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 	t.AppendHeader(table.Row{"Name", "Description", "Creation Date", "Updated at", "Managed by Console", "Size"})
 
@@ -175,10 +175,16 @@ func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowli
 		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, allowlist.ConsoleManaged, len(allowlist.Items)})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	_, err := io.WriteString(out, t.Render()+"\n")
+
+	if err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+
+	return nil
 }
 
-func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetAllowlistResponse) {
+func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetAllowlistResponse) error {
 	infoTable := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 	infoTable.SetTitle("Allowlist: " + allowlist.Name)
 	infoTable.SetColumnConfigs([]table.ColumnConfig{
@@ -204,8 +210,17 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
 	}
 
-	io.WriteString(out, infoTable.Render()+"\n")
-	io.WriteString(out, contentTable.Render()+"\n")
+	_, err := io.WriteString(out, infoTable.Render()+"\n")
+	if err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+
+	_, err = io.WriteString(out, contentTable.Render()+"\n")
+	if err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+
+	return nil
 }
 
 func (cli *cliAllowLists) NewCommand() *cobra.Command {
@@ -250,7 +265,7 @@ func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
 
 	flags.StringP("description", "d", "", "description of the allowlist")
 
-	cmd.MarkFlagRequired("description")
+	_ = cmd.MarkFlagRequired("description")
 
 	return cmd
 }
@@ -314,7 +329,7 @@ func (cli *cliAllowLists) list(cmd *cobra.Command, out io.Writer) error {
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		cli.listHuman(out, allowlists)
+		return cli.listHuman(out, allowlists)
 	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
@@ -413,7 +428,7 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 	flags.StringP("expiration", "e", "", "expiration duration")
 	flags.StringP("comment", "d", "", "comment for the value")
 
-	cmd.MarkFlagRequired("value")
+	_ = cmd.MarkFlagRequired("value")
 
 	return cmd
 }
@@ -577,7 +592,7 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 
 	flags.StringSliceP("value", "v", nil, "value to remove from the allowlist")
 
-	cmd.MarkFlagRequired("value")
+	_ = cmd.MarkFlagRequired("value")
 
 	return cmd
 }

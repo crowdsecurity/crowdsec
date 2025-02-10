@@ -41,7 +41,7 @@ func TestGetAllowlist(t *testing.T) {
 
 	require.NoError(t, err)
 
-	lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
+	err = lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
 		{
 			Value: "1.2.3.4",
 		},
@@ -50,6 +50,8 @@ func TestGetAllowlist(t *testing.T) {
 			Expiration: strfmt.DateTime(time.Now().Add(-time.Hour)), // expired
 		},
 	})
+
+	require.NoError(t, err)
 
 	w := lapi.RecordResponse(t, ctx, http.MethodGet, "/v1/allowlists/test?with_content=true", emptyBody, passwordAuthType)
 
@@ -73,7 +75,7 @@ func TestCheckInAllowlist(t *testing.T) {
 
 	require.NoError(t, err)
 
-	lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
+	err = lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
 		{
 			Value: "1.2.3.4",
 		},
@@ -82,6 +84,8 @@ func TestCheckInAllowlist(t *testing.T) {
 			Expiration: strfmt.DateTime(time.Now().Add(-time.Hour)), // expired
 		},
 	})
+
+	require.NoError(t, err)
 
 	// GET request, should return 200 and status in body
 	w := lapi.RecordResponse(t, ctx, http.MethodGet, "/v1/allowlists/check/1.2.3.4", emptyBody, passwordAuthType)
