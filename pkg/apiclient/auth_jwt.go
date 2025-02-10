@@ -193,11 +193,6 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return resp, fmt.Errorf("performing jwt auth: %w", err)
 		}
 
-		if log.GetLevel() >= log.TraceLevel {
-			dump, _ := httputil.DumpResponse(resp, true)
-			log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
-		}
-
 		if resp != nil {
 			log.Debugf("resp-jwt: %d", resp.StatusCode)
 		}
