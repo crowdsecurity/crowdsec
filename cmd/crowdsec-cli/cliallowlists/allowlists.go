@@ -547,7 +547,7 @@ func (cli *cliAllowLists) inspect(cmd *cobra.Command, args []string, out io.Writ
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		cli.listContentHuman(out, allowlist)
+		return cli.listContentHuman(out, allowlist)
 	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
