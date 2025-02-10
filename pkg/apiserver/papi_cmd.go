@@ -220,7 +220,7 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		ctx := context.TODO()
 
 		if forcePullMsg.Blocklist == nil && forcePullMsg.Allowlist == nil {
-			p.Logger.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+			p.Logger.Infof("Received force_pull command from PAPI, pulling community, 3rd-party blocklists and allowlists")
 
 			err = p.apic.PullTop(ctx, true)
 			if err != nil {
