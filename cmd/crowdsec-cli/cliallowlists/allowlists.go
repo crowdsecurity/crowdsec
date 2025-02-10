@@ -123,18 +123,33 @@ func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowli
 }
 
 func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetAllowlistResponse) {
-	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
-	t.AppendHeader(table.Row{"Value", "Comment", "Expiration", "Created at"})
+	infoTable := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
+	infoTable.SetTitle("Allowlist: " + allowlist.Name)
+	infoTable.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+
+	contentTable := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
+	contentTable.AppendHeader(table.Row{"Value", "Comment", "Expiration", "Created at"})
+
+	infoTable.AppendRows([]table.Row{
+		{"Name", allowlist.Name},
+		{"Description", allowlist.Description},
+		{"Creation Date", allowlist.CreatedAt},
+		{"Updated at", allowlist.UpdatedAt},
+		{"Managed by Console", allowlist.ConsoleManaged},
+	})
 
 	for _, content := range allowlist.Items {
 		expiration := "never"
 		if !time.Time(content.Expiration).IsZero() {
 			expiration = content.Expiration.String()
 		}
-		t.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
+		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	io.WriteString(out, infoTable.Render()+"\n")
+	io.WriteString(out, contentTable.Render()+"\n")
 }
 
 func (cli *cliAllowLists) NewCommand() *cobra.Command {
