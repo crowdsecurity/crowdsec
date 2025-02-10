@@ -452,25 +452,25 @@ if [ "$ENABLE_CONSOLE_ALL" != "" ]; then
     # shellcheck disable=SC2086
     cscli console enable -a
 else
+    CONSOLE_FLAGS=""
     if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
-        # shellcheck disable=SC2086
-        cscli console enable console_management
+        CONSOLE_FLAGS="$CONSOLE_FLAGS console_management"
     fi
     if [ "$ENABLE_CONSOLE_CONTEXT" != "" ]; then
-        # shellcheck disable=SC2086
-        cscli console enable context
+        CONSOLE_FLAGS="$CONSOLE_FLAGS context"
     fi
     if [ "$ENABLE_CONSOLE_TAINTED" != "" ]; then
-        # shellcheck disable=SC2086
-        cscli console enable tainted
+        CONSOLE_FLAGS="$CONSOLE_FLAGS tainted"
     fi
     if [ "$ENABLE_CONSOLE_MANUAL" != "" ]; then
-        # shellcheck disable=SC2086
-        cscli console enable manual
+        CONSOLE_FLAGS="$CONSOLE_FLAGS manual"
     fi
     if [ "$ENABLE_CONSOLE_CUSTOM" != "" ]; then
-        # shellcheck disable=SC2086
-        cscli console enable custom
+        CONSOLE_FLAGS="$CONSOLE_FLAGS custom"
+    fi
+    if [ "$CONSOLE_FLAGS" != "" ]; then
+       # shellcheck disable=SC2086
+       cscli console enable$CONSOLE_FLAGS
     fi
 fi
 
