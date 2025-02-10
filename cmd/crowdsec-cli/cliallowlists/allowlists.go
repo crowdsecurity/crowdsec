@@ -39,6 +39,7 @@ func New(cfg configGetter) *cliAllowLists {
 }
 
 // validAllowlists returns a list of valid allowlists name for command completion
+// Used for completion in cscli by commands that allow editing (add), so it excludes allowlists managed by console
 func (cli *cliAllowLists) validAllowlists(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var err error
 
@@ -75,6 +76,8 @@ func (cli *cliAllowLists) validAllowlists(cmd *cobra.Command, args []string, toC
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
+// Used for completion in cscli
+// This version returns a list of all allowlists, including those managed by console (for completion in read-only commands, such as inspect)
 func (cli *cliAllowLists) validAllowlistsWithConsole(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var err error
 
