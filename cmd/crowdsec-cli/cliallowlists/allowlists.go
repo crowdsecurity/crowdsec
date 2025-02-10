@@ -1,12 +1,14 @@
 package cliallowlists
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,6 +114,57 @@ func (cli *cliAllowLists) validAllowlistsWithConsole(cmd *cobra.Command, args []
 	}
 
 	return ret, cobra.ShellCompDirectiveNoFileComp
+}
+
+func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
+	csvwriter := csv.NewWriter(out)
+
+	err := csvwriter.Write([]string{"name", "description", "created_at", "updated_at", "console_managed", "size"})
+
+	if err != nil {
+		return fmt.Errorf("failed to write raw header: %w", err)
+	}
+
+	for _, allowlist := range *allowlists {
+		createdAt := time.Time(allowlist.CreatedAt).Format(time.RFC3339)
+		updatedAt := time.Time(allowlist.UpdatedAt).Format(time.RFC3339)
+		consoleManaged := strconv.FormatBool(allowlist.ConsoleManaged)
+		itemsCount := strconv.Itoa(len(allowlist.Items))
+		err := csvwriter.Write([]string{allowlist.Name, allowlist.Description, createdAt, updatedAt, consoleManaged, itemsCount})
+		if err != nil {
+			return fmt.Errorf("failed to write raw: %w", err)
+		}
+	}
+
+	csvwriter.Flush()
+
+	return nil
+}
+
+func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAllowlistResponse) error {
+	csvwriter := csv.NewWriter(out)
+
+	err := csvwriter.Write([]string{"name", "description", "value", "comment", "expiration", "created_at", "console_managed"})
+
+	if err != nil {
+		return fmt.Errorf("failed to write raw header: %w", err)
+	}
+
+	for _, item := range allowlist.Items {
+		createdAt := time.Time(item.CreatedAt).Format(time.RFC3339)
+		expiration := "never"
+		if !time.Time(item.Expiration).IsZero() {
+			expiration = time.Time(item.Expiration).Format(time.RFC3339)
+		}
+		err := csvwriter.Write([]string{allowlist.Name, allowlist.Description, item.Value, item.Description, expiration, createdAt, strconv.FormatBool(allowlist.ConsoleManaged)})
+		if err != nil {
+			return fmt.Errorf("failed to write raw: %w", err)
+		}
+	}
+
+	csvwriter.Flush()
+
+	return nil
 }
 
 func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowlistsResponse) {
@@ -272,7 +325,7 @@ func (cli *cliAllowLists) list(cmd *cobra.Command, out io.Writer) error {
 
 		return nil
 	case "raw":
-		//return cli.listCSV(out, allowlists)
+		return cli.listCSV(out, allowlists)
 	}
 
 	return nil
@@ -490,7 +543,7 @@ func (cli *cliAllowLists) inspect(cmd *cobra.Command, args []string, out io.Writ
 
 		return nil
 	case "raw":
-		//return cli.listCSV(out, allowlists)
+		return cli.listCSVContent(out, allowlist)
 	}
 
 	return nil
