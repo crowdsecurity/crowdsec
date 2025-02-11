@@ -28,7 +28,6 @@ func (c *Client) CreateAllowList(ctx context.Context, name string, description s
 }
 
 func (c *Client) DeleteAllowList(ctx context.Context, name string, fromConsole bool) error {
-
 	nbDeleted, err := c.Ent.AllowListItem.Delete().Where(allowlistitem.HasAllowlistWith(allowlist.NameEQ(name), allowlist.FromConsoleEQ(fromConsole))).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to delete allowlist items: %w", err)
@@ -56,6 +55,7 @@ func (c *Client) ListAllowLists(ctx context.Context, withContent bool) ([]*ent.A
 	if withContent {
 		q = q.WithAllowlistItems()
 	}
+
 	result, err := q.All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list allowlists: %w", err)
@@ -69,6 +69,7 @@ func (c *Client) GetAllowList(ctx context.Context, name string, withContent bool
 	if withContent {
 		q = q.WithAllowlistItems()
 	}
+
 	result, err := q.First(ctx)
 	if err != nil {
 		return nil, err
@@ -84,13 +85,15 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 	c.Log.Tracef("values: %+v", items)
 
 	for _, item := range items {
-		//FIXME: wrap this in a transaction
+		// FIXME: wrap this in a transaction
 		c.Log.Debugf("adding value %s to allowlist %s", item.Value, list.Name)
+
 		sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(item.Value)
 		if err != nil {
 			c.Log.Errorf("unable to parse value %s: %s", item.Value, err)
 			continue
 		}
+
 		query := c.Ent.AllowListItem.Create().
 			SetValue(item.Value).
 			SetIPSize(int64(sz)).
@@ -111,12 +114,13 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 
 		c.Log.Debugf("Updating allowlist %s with value %s (exp: %s)", list.Name, item.Value, item.Expiration)
 
-		//We don't have a clean way to handle name conflict from the console, so use id
+		// We don't have a clean way to handle name conflict from the console, so use id
 		err = c.Ent.AllowList.Update().AddAllowlistItems(content).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
 			c.Log.Errorf("unable to add value to allowlist: %s", err)
 			continue
 		}
+
 		successCount++
 	}
 
@@ -133,7 +137,6 @@ func (c *Client) RemoveFromAllowlist(ctx context.Context, list *ent.AllowList, v
 		allowlistitem.HasAllowlistWith(allowlist.IDEQ(list.ID)),
 		allowlistitem.ValueIn(values...),
 	).Exec(ctx)
-
 	if err != nil {
 		return 0, fmt.Errorf("unable to remove values from allowlist: %w", err)
 	}
@@ -146,19 +149,18 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 	c.Log.Tracef("items: %+v", items)
 
 	_, err := c.Ent.AllowListItem.Delete().Where(allowlistitem.HasAllowlistWith(allowlist.IDEQ(list.ID))).Exec(ctx)
-
 	if err != nil {
 		return fmt.Errorf("unable to delete allowlist contents: %w", err)
 	}
 
 	err = c.AddToAllowlist(ctx, list, items)
-
 	if err != nil {
 		return fmt.Errorf("unable to add values to allowlist: %w", err)
 	}
 
 	if !list.FromConsole && fromConsole {
 		c.Log.Infof("marking allowlist %s as managed from console and replacing its content", list.Name)
+
 		err = c.Ent.AllowList.Update().SetFromConsole(fromConsole).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
 			return fmt.Errorf("unable to update allowlist: %w", err)
@@ -175,7 +177,6 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 		- value is an IP/range in a range in allowlist
 		- value is a range and an IP/range belonging to it is in allowlist
 	*/
-
 	sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(value)
 	if err != nil {
 		return false, "", fmt.Errorf("unable to parse value %s: %w", value, err)
@@ -248,11 +249,11 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 	}
 
 	allowed, err := query.First(ctx)
-
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, "", nil
 		}
+
 		return false, "", fmt.Errorf("unable to check if value is allowlisted: %w", err)
 	}
 
@@ -265,8 +266,11 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 		return nil, nil, fmt.Errorf("unable to get allowlists: %w", err)
 	}
 
-	var ips []net.IP
-	var nets []*net.IPNet
+	var (
+		ips []net.IP
+		nets []*net.IPNet
+	)
+
 	for _, allowlist := range allowlists {
 		for _, item := range allowlist.Edges.AllowlistItems {
 			if item.ExpiresAt.IsZero() || item.ExpiresAt.After(time.Now().UTC()) {
@@ -276,6 +280,7 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 						c.Log.Errorf("unable to parse CIDR %s: %s", item.Value, err)
 						continue
 					}
+
 					nets = append(nets, ipNet)
 				} else {
 					ip := net.ParseIP(item.Value)
@@ -283,6 +288,7 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 						c.Log.Errorf("unable to parse IP %s", item.Value)
 						continue
 					}
+
 					ips = append(ips, ip)
 				}
 			}

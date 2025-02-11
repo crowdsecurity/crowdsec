@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func getDBClient(t *testing.T, ctx context.Context) *Client {
@@ -25,7 +26,6 @@ func getDBClient(t *testing.T, ctx context.Context) *Client {
 }
 
 func TestCheckAllowlist(t *testing.T) {
-
 	ctx := context.Background()
 	dbClient := getDBClient(t, ctx)
 

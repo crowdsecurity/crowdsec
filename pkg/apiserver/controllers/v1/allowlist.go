@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
@@ -18,7 +19,6 @@ func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
 	}
 
 	allowlisted, reason, err := c.DBClient.IsAllowlisted(gctx.Request.Context(), value)
-
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -30,6 +30,7 @@ func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
 		} else {
 			gctx.Status(http.StatusNoContent)
 		}
+
 		return
 	}
 
@@ -47,7 +48,6 @@ func (c *Controller) GetAllowlists(gctx *gin.Context) {
 	withContent := params.Get("with_content") == "true"
 
 	allowlists, err := c.DBClient.ListAllowLists(gctx.Request.Context(), withContent)
-
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -57,11 +57,13 @@ func (c *Controller) GetAllowlists(gctx *gin.Context) {
 
 	for _, allowlist := range allowlists {
 		items := make([]*models.AllowlistItem, 0)
+
 		if withContent {
 			for _, item := range allowlist.Edges.AllowlistItems {
 				if !item.ExpiresAt.IsZero() && item.ExpiresAt.Before(time.Now()) {
 					continue
 				}
+
 				items = append(items, &models.AllowlistItem{
 					CreatedAt:   strfmt.DateTime(item.CreatedAt),
 					Description: item.Comment,
@@ -70,6 +72,7 @@ func (c *Controller) GetAllowlists(gctx *gin.Context) {
 				})
 			}
 		}
+
 		resp = append(resp, &models.GetAllowlistResponse{
 			AllowlistID:    allowlist.AllowlistID,
 			Name:           allowlist.Name,
@@ -91,7 +94,6 @@ func (c *Controller) GetAllowlist(gctx *gin.Context) {
 	withContent := params.Get("with_content") == "true"
 
 	allowlistModel, err := c.DBClient.GetAllowList(gctx.Request.Context(), allowlist, withContent)
-
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -104,6 +106,7 @@ func (c *Controller) GetAllowlist(gctx *gin.Context) {
 			if !item.ExpiresAt.IsZero() && item.ExpiresAt.Before(time.Now()) {
 				continue
 			}
+
 			items = append(items, &models.AllowlistItem{
 				CreatedAt:   strfmt.DateTime(item.CreatedAt),
 				Description: item.Comment,
