@@ -281,6 +281,10 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			return fmt.Errorf("message for '%s' contains bad data format: missing allowlist name", message.Header.OperationType)
 		}
 
+		if unsubscribeMsg.Id == "" {
+			return fmt.Errorf("message for '%s' contains bad data format: missing allowlist id", message.Header.OperationType)
+		}
+
 		p.Logger.Infof("Received allowlist_unsubscribe command from PAPI, unsubscribing from allowlist %s", unsubscribeMsg.Name)
 
 		err = p.DBClient.DeleteAllowListByID(ctx, unsubscribeMsg.Name, unsubscribeMsg.Id, true)
