@@ -16,7 +16,7 @@ func TestAllowlistList(t *testing.T) {
 	ctx := context.Background()
 	lapi := SetupLAPITest(t, ctx)
 
-	_, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", false)
+	_, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
 
 	require.NoError(t, err)
 
@@ -37,7 +37,7 @@ func TestGetAllowlist(t *testing.T) {
 	ctx := context.Background()
 	lapi := SetupLAPITest(t, ctx)
 
-	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", false)
+	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
 
 	require.NoError(t, err)
 
@@ -71,7 +71,7 @@ func TestCheckInAllowlist(t *testing.T) {
 	ctx := context.Background()
 	lapi := SetupLAPITest(t, ctx)
 
-	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", false)
+	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
 
 	require.NoError(t, err)
 

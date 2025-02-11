@@ -152,7 +152,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 	ctx := context.Background()
 	lapi := SetupLAPITest(t, ctx)
 
-	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", false)
+	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
 	require.NoError(t, err)
 	err = lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
 		{

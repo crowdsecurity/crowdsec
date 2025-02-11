@@ -281,7 +281,8 @@ func (cli *cliAllowLists) create(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	description := cmd.Flag("description").Value.String()
 
-	_, err := cli.db.CreateAllowList(cmd.Context(), name, description, false)
+	_, err := cli.db.CreateAllowList(cmd.Context(), name, description, "", false)
+
 	if err != nil {
 		return err
 	}

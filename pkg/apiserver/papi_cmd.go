@@ -254,11 +254,12 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			p.Logger.Infof("Received allowlist force_pull command from PAPI, pulling allowlist %s", *forcePullMsg.Allowlist.Name)
 
 			err = p.apic.PullAllowlist(ctx, &modelscapi.AllowlistLink{
-				Name:      forcePullMsg.Allowlist.Name,
-				URL:       forcePullMsg.Allowlist.URL,
-				ID:        forcePullMsg.Allowlist.ID,
-				CreatedAt: forcePullMsg.Allowlist.CreatedAt,
-				UpdatedAt: forcePullMsg.Allowlist.UpdatedAt,
+				Name:        forcePullMsg.Allowlist.Name,
+				URL:         forcePullMsg.Allowlist.URL,
+				ID:          forcePullMsg.Allowlist.ID,
+				CreatedAt:   forcePullMsg.Allowlist.CreatedAt,
+				UpdatedAt:   forcePullMsg.Allowlist.UpdatedAt,
+				Description: forcePullMsg.Allowlist.Description,
 			}, true)
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %w", err)
@@ -282,7 +283,8 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 
 		p.Logger.Infof("Received allowlist_unsubscribe command from PAPI, unsubscribing from allowlist %s", unsubscribeMsg.Name)
 
-		err = p.DBClient.DeleteAllowList(ctx, unsubscribeMsg.Name, true)
+		err = p.DBClient.DeleteAllowListByID(ctx, unsubscribeMsg.Name, unsubscribeMsg.Id, true)
+
 		if err != nil {
 			if !ent.IsNotFound(err) {
 				return err

@@ -772,7 +772,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 			items = append(items, j)
 		}
 
-		list, err := a.dbClient.GetAllowList(ctx, *link.Name, false)
+		list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
 
 		if err != nil {
 			if !ent.IsNotFound(err) {
@@ -782,7 +782,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		}
 
 		if list == nil {
-			list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, true)
+			list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, *link.ID, true)
 			if err != nil {
 				log.Errorf("while creating allowlist %s: %s", *link.Name, err)
 				continue
@@ -793,6 +793,14 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		if err != nil {
 			log.Errorf("while replacing allowlist %s: %s", *link.Name, err)
 			continue
+		}
+
+		if list.Name != *link.Name || list.Description != description {
+			err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
+			if err != nil {
+				log.Errorf("while updating allowlist meta %s: %s", *link.Name, err)
+				continue
+			}
 		}
 
 		log.Infof("Allowlist %s updated", *link.Name)

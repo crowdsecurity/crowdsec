@@ -14,11 +14,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func (c *Client) CreateAllowList(ctx context.Context, name string, description string, fromConsole bool) (*ent.AllowList, error) {
+func (c *Client) CreateAllowList(ctx context.Context, name string, description string, allowlistID string, fromConsole bool) (*ent.AllowList, error) {
 	allowlist, err := c.Ent.AllowList.Create().
 		SetName(name).
 		SetFromConsole(fromConsole).
 		SetDescription(description).
+		SetAllowlistID(allowlistID).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create allowlist: %w", err)
@@ -38,6 +39,30 @@ func (c *Client) DeleteAllowList(ctx context.Context, name string, fromConsole b
 	nbDeleted, err = c.Ent.AllowList.
 		Delete().
 		Where(allowlist.NameEQ(name), allowlist.FromConsoleEQ(fromConsole)).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to delete allowlist: %w", err)
+	}
+
+	if nbDeleted == 0 {
+		return fmt.Errorf("allowlist %s not found", name)
+	}
+
+	return nil
+}
+
+func (c *Client) DeleteAllowListByID(ctx context.Context, name string, allowlistID string, fromConsole bool) error {
+
+	nbDeleted, err := c.Ent.AllowListItem.Delete().Where(allowlistitem.HasAllowlistWith(allowlist.AllowlistIDEQ(allowlistID), allowlist.FromConsoleEQ(fromConsole))).Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to delete allowlist items: %w", err)
+	}
+
+	c.Log.Debugf("deleted %d items from allowlist %s", nbDeleted, name)
+
+	nbDeleted, err = c.Ent.AllowList.
+		Delete().
+		Where(allowlist.AllowlistIDEQ(allowlistID), allowlist.FromConsoleEQ(fromConsole)).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to delete allowlist: %w", err)
@@ -70,6 +95,19 @@ func (c *Client) GetAllowList(ctx context.Context, name string, withContent bool
 		q = q.WithAllowlistItems()
 	}
 
+	result, err := q.First(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (c *Client) GetAllowListByID(ctx context.Context, allowlistID string, withContent bool) (*ent.AllowList, error) {
+	q := c.Ent.AllowList.Query().Where(allowlist.AllowlistIDEQ(allowlistID))
+	if withContent {
+		q = q.WithAllowlistItems()
+	}
 	result, err := q.First(ctx)
 	if err != nil {
 		return nil, err
@@ -142,6 +180,18 @@ func (c *Client) RemoveFromAllowlist(ctx context.Context, list *ent.AllowList, v
 	}
 
 	return nbDeleted, nil
+}
+
+func (c *Client) UpdateAllowlistMeta(ctx context.Context, allowlistID string, name string, description string) error {
+	c.Log.Debugf("updating allowlist %s meta", name)
+
+	err := c.Ent.AllowList.Update().Where(allowlist.AllowlistIDEQ(allowlistID)).SetName(name).SetDescription(description).Exec(ctx)
+
+	if err != nil {
+		return fmt.Errorf("unable to update allowlist: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem, fromConsole bool) error {

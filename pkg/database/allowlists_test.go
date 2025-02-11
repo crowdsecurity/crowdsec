@@ -29,7 +29,7 @@ func TestCheckAllowlist(t *testing.T) {
 	ctx := context.Background()
 	dbClient := getDBClient(t, ctx)
 
-	allowlist, err := dbClient.CreateAllowList(ctx, "test", "test", false)
+	allowlist, err := dbClient.CreateAllowList(ctx, "test", "test", "", false)
 
 	require.NoError(t, err)
 

@@ -13,7 +13,7 @@ const (
 	PAPIPermissionsUrl = "/permissions"
 )
 
-const CAPIBaseURL = "https://api.crowdsec.net/"
+const CAPIBaseURL = "https://api.dev.crowdsec.net/"
 
 const (
 	CscliOrigin                       = "cscli"
