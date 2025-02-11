@@ -35,6 +35,20 @@ func (alu *AllowListUpdate) SetUpdatedAt(t time.Time) *AllowListUpdate {
 	return alu
 }
 
+// SetName sets the "name" field.
+func (alu *AllowListUpdate) SetName(s string) *AllowListUpdate {
+	alu.mutation.SetName(s)
+	return alu
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (alu *AllowListUpdate) SetNillableName(s *string) *AllowListUpdate {
+	if s != nil {
+		alu.SetName(*s)
+	}
+	return alu
+}
+
 // SetFromConsole sets the "from_console" field.
 func (alu *AllowListUpdate) SetFromConsole(b bool) *AllowListUpdate {
 	alu.mutation.SetFromConsole(b)
@@ -46,6 +60,26 @@ func (alu *AllowListUpdate) SetNillableFromConsole(b *bool) *AllowListUpdate {
 	if b != nil {
 		alu.SetFromConsole(*b)
 	}
+	return alu
+}
+
+// SetDescription sets the "description" field.
+func (alu *AllowListUpdate) SetDescription(s string) *AllowListUpdate {
+	alu.mutation.SetDescription(s)
+	return alu
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (alu *AllowListUpdate) SetNillableDescription(s *string) *AllowListUpdate {
+	if s != nil {
+		alu.SetDescription(*s)
+	}
+	return alu
+}
+
+// ClearDescription clears the value of the "description" field.
+func (alu *AllowListUpdate) ClearDescription() *AllowListUpdate {
+	alu.mutation.ClearDescription()
 	return alu
 }
 
@@ -138,8 +172,14 @@ func (alu *AllowListUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := alu.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlist.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if value, ok := alu.mutation.Name(); ok {
+		_spec.SetField(allowlist.FieldName, field.TypeString, value)
+	}
 	if value, ok := alu.mutation.FromConsole(); ok {
 		_spec.SetField(allowlist.FieldFromConsole, field.TypeBool, value)
+	}
+	if value, ok := alu.mutation.Description(); ok {
+		_spec.SetField(allowlist.FieldDescription, field.TypeString, value)
 	}
 	if alu.mutation.DescriptionCleared() {
 		_spec.ClearField(allowlist.FieldDescription, field.TypeString)
@@ -218,6 +258,20 @@ func (aluo *AllowListUpdateOne) SetUpdatedAt(t time.Time) *AllowListUpdateOne {
 	return aluo
 }
 
+// SetName sets the "name" field.
+func (aluo *AllowListUpdateOne) SetName(s string) *AllowListUpdateOne {
+	aluo.mutation.SetName(s)
+	return aluo
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (aluo *AllowListUpdateOne) SetNillableName(s *string) *AllowListUpdateOne {
+	if s != nil {
+		aluo.SetName(*s)
+	}
+	return aluo
+}
+
 // SetFromConsole sets the "from_console" field.
 func (aluo *AllowListUpdateOne) SetFromConsole(b bool) *AllowListUpdateOne {
 	aluo.mutation.SetFromConsole(b)
@@ -229,6 +283,26 @@ func (aluo *AllowListUpdateOne) SetNillableFromConsole(b *bool) *AllowListUpdate
 	if b != nil {
 		aluo.SetFromConsole(*b)
 	}
+	return aluo
+}
+
+// SetDescription sets the "description" field.
+func (aluo *AllowListUpdateOne) SetDescription(s string) *AllowListUpdateOne {
+	aluo.mutation.SetDescription(s)
+	return aluo
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (aluo *AllowListUpdateOne) SetNillableDescription(s *string) *AllowListUpdateOne {
+	if s != nil {
+		aluo.SetDescription(*s)
+	}
+	return aluo
+}
+
+// ClearDescription clears the value of the "description" field.
+func (aluo *AllowListUpdateOne) ClearDescription() *AllowListUpdateOne {
+	aluo.mutation.ClearDescription()
 	return aluo
 }
 
@@ -351,8 +425,14 @@ func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, 
 	if value, ok := aluo.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlist.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if value, ok := aluo.mutation.Name(); ok {
+		_spec.SetField(allowlist.FieldName, field.TypeString, value)
+	}
 	if value, ok := aluo.mutation.FromConsole(); ok {
 		_spec.SetField(allowlist.FieldFromConsole, field.TypeBool, value)
+	}
+	if value, ok := aluo.mutation.Description(); ok {
+		_spec.SetField(allowlist.FieldDescription, field.TypeString, value)
 	}
 	if aluo.mutation.DescriptionCleared() {
 		_spec.ClearField(allowlist.FieldDescription, field.TypeString)

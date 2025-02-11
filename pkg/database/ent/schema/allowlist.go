@@ -23,9 +23,9 @@ func (AllowList) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow),
-		field.String("name").Immutable(),
+		field.String("name"),
 		field.Bool("from_console"),
-		field.String("description").Optional().Immutable(),
+		field.String("description").Optional(),
 		field.String("allowlist_id").Optional().Immutable(),
 	}
 }
