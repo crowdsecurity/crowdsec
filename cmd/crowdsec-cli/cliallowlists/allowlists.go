@@ -469,7 +469,7 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 	}
 
 	if allowlist.FromConsole {
-		return fmt.Errorf("allowlist %s is managed by console, cannot update with cscli. Please visit https://app.crowdsec.net/allowlists/%s to update.", name, allowlist.AllowlistID)
+		return fmt.Errorf("allowlist %s is managed by console, cannot update with cscli. Please visit https://app.crowdsec.net/allowlists/%s to update", name, allowlist.AllowlistID)
 	}
 
 	toAdd := make([]*models.AllowlistItem, 0)
@@ -624,7 +624,7 @@ func (cli *cliAllowLists) remove(cmd *cobra.Command, args []string) error {
 	}
 
 	if allowlist.FromConsole {
-		return fmt.Errorf("allowlist %s is managed by console, cannot delete with cscli. Please visit https://app.crowdsec.net/allowlists/%s to delete.", name, allowlist.AllowlistID)
+		return fmt.Errorf("allowlist %s is managed by console, cannot delete with cscli. Please visit https://app.crowdsec.net/allowlists/%s to delete", name, allowlist.AllowlistID)
 	}
 
 	toRemove := make([]string, 0)
