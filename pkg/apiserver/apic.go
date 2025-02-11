@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -739,12 +740,19 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 	}
 
 	for _, link := range allowlistsLinks {
-		if link.URL == nil {
-			log.Warningf("allowlist has no URL")
-			continue
+		if log.GetLevel() >= log.TraceLevel {
+			log.Tracef("allowlist body: %+v", spew.Sdump(link))
 		}
 		if link.Name == nil {
 			log.Warningf("allowlist has no name")
+			continue
+		}
+		if link.URL == nil {
+			log.Warningf("allowlist %s has no URL", *link.Name)
+			continue
+		}
+		if link.ID == nil {
+			log.Warningf("allowlist %s has no ID", *link.Name)
 			continue
 		}
 
