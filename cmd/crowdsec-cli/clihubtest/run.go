@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"strings"
 
@@ -16,8 +17,21 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost string, args []string) error {
+// bucketIndexFor returns the bucket index for a given string.
+func bucketIndexFor(s string, numBuckets uint32) uint32 {
+	hasher := fnv.New32a()
+	_, _ = hasher.Write([]byte(s))
+
+	return hasher.Sum32() % numBuckets
+}
+
+
+func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost string, args []string, batch uint32, batchTotal uint32) error {
 	cfg := cli.cfg()
+
+	if batch > 0 {
+		runAll = true
+	}
 
 	if !runAll && len(args) == 0 {
 		return errors.New("please provide test to run or --all flag")
@@ -45,8 +59,16 @@ func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost stri
 	patternDir := cfg.ConfigPaths.PatternDir
 
 	for _, test := range hubPtr.Tests {
+		if batch != 0 {
+			// only run the test if it's in the right bucket
+			if batch != bucketIndexFor(test.Name, batchTotal) {
+				continue
+			}
+
+		}
+
 		if cfg.Cscli.Output == "human" {
-			log.Infof("Running test '%s'", test.Name)
+			fmt.Printf("Running test '%s'", test.Name)
 		}
 
 		err := test.Run(patternDir)
@@ -105,6 +127,8 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 		forceClean       bool
 		nucleiTargetHost string
 		appSecHost       string
+		batch            uint32
+		batchTotal       uint32
 	)
 
 	cmd := &cobra.Command{
@@ -112,7 +136,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.run(runAll, nucleiTargetHost, appSecHost, args)
+			return cli.run(runAll, nucleiTargetHost, appSecHost, args, batch, batchTotal)
 		},
 		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -142,7 +166,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 				testResult[test.Name] = test.Success
 				if test.Success {
 					if cfg.Cscli.Output == "human" {
-						log.Infof("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
+						fmt.Printf("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
 					}
 					if !noClean {
 						if err := test.Clean(); err != nil {
@@ -210,6 +234,8 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&nucleiTargetHost, "target", hubtest.DefaultNucleiTarget, "Target for AppSec Test")
 	cmd.Flags().StringVar(&appSecHost, "host", hubtest.DefaultAppsecHost, "Address to expose AppSec for hubtest")
 	cmd.Flags().BoolVar(&runAll, "all", false, "Run all tests")
+	cmd.Flags().Uint32Var(&batch, "batch", 0, "Run <num> batch")
+	cmd.Flags().Uint32Var(&batchTotal, "batch-total", 0, "Split tests in <num> batches")
 
 	return cmd
 }
