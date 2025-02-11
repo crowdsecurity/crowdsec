@@ -169,10 +169,10 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 func ManagementCmd(message *Message, p *Papi, sync bool) error {
 	ctx := context.TODO()
 
-	/*if sync {
+	if sync {
 		p.Logger.Infof("Ignoring management command from PAPI in sync mode")
 		return nil
-	}*/
+	}
 
 	switch message.Header.OperationCmd {
 	case "blocklist_unsubscribe":
