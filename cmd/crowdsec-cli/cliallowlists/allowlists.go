@@ -12,18 +12,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/go-openapi/strfmt"
+	"github.com/jedib0t/go-pretty/v6/table"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/go-cs-lib/cstime"
-	"github.com/fatih/color"
-	"github.com/go-openapi/strfmt"
-	"github.com/jedib0t/go-pretty/v6/table"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 type configGetter = func() *csconfig.Config
@@ -120,7 +122,6 @@ func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlist
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"name", "description", "created_at", "updated_at", "console_managed", "size"})
-
 	if err != nil {
 		return fmt.Errorf("failed to write raw header: %w", err)
 	}
@@ -130,6 +131,7 @@ func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlist
 		updatedAt := time.Time(allowlist.UpdatedAt).Format(time.RFC3339)
 		consoleManaged := strconv.FormatBool(allowlist.ConsoleManaged)
 		itemsCount := strconv.Itoa(len(allowlist.Items))
+
 		err := csvwriter.Write([]string{allowlist.Name, allowlist.Description, createdAt, updatedAt, consoleManaged, itemsCount})
 		if err != nil {
 			return fmt.Errorf("failed to write raw: %w", err)
@@ -145,7 +147,6 @@ func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAll
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"name", "description", "value", "comment", "expiration", "created_at", "console_managed"})
-
 	if err != nil {
 		return fmt.Errorf("failed to write raw header: %w", err)
 	}
@@ -153,9 +154,11 @@ func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAll
 	for _, item := range allowlist.Items {
 		createdAt := time.Time(item.CreatedAt).Format(time.RFC3339)
 		expiration := "never"
+
 		if !time.Time(item.Expiration).IsZero() {
 			expiration = time.Time(item.Expiration).Format(time.RFC3339)
 		}
+
 		err := csvwriter.Write([]string{allowlist.Name, allowlist.Description, item.Value, item.Description, expiration, createdAt, strconv.FormatBool(allowlist.ConsoleManaged)})
 		if err != nil {
 			return fmt.Errorf("failed to write raw: %w", err)
@@ -176,7 +179,6 @@ func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowli
 	}
 
 	_, err := io.WriteString(out, t.Render()+"\n")
-
 	if err != nil {
 		return fmt.Errorf("failed to write output: %w", err)
 	}
@@ -207,6 +209,7 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 		if !time.Time(content.Expiration).IsZero() {
 			expiration = content.Expiration.String()
 		}
+
 		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
 	}
 
@@ -237,6 +240,7 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 	cmd.AddCommand(cli.newAddCmd())
 	cmd.AddCommand(cli.newRemoveCmd())
 	cmd.AddCommand(cli.newInspectCmd())
+
 	return cmd
 }
 
@@ -249,13 +253,16 @@ func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
+
 			if err = require.LAPI(cfg); err != nil {
 				return err
 			}
+
 			cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 		RunE: cli.create,
@@ -275,7 +282,6 @@ func (cli *cliAllowLists) create(cmd *cobra.Command, args []string) error {
 	description := cmd.Flag("description").Value.String()
 
 	_, err := cli.db.CreateAllowList(cmd.Context(), name, description, false)
-
 	if err != nil {
 		return err
 	}
@@ -360,10 +366,12 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 			if err = require.LAPI(cfg); err != nil {
 				return err
 			}
+
 			cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 		RunE: cli.delete,
@@ -374,8 +382,8 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 
 func (cli *cliAllowLists) delete(cmd *cobra.Command, args []string) error {
 	name := args[0]
-	list, err := cli.db.GetAllowList(cmd.Context(), name, false)
 
+	list, err := cli.db.GetAllowList(cmd.Context(), name, false)
 	if err != nil {
 		return err
 	}
@@ -417,6 +425,7 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 		RunE: cli.add,
@@ -434,7 +443,6 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 }
 
 func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
-
 	var expiration time.Duration
 
 	name := args[0]
@@ -455,7 +463,6 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 	}
 
 	allowlist, err := cli.db.GetAllowList(cmd.Context(), name, true)
-
 	if err != nil {
 		return fmt.Errorf("unable to get allowlist: %w", err)
 	}
@@ -468,18 +475,23 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 
 	for _, v := range values {
 		found := false
+
 		for _, item := range allowlist.Edges.AllowlistItems {
 			if item.Value == v {
 				found = true
+
 				log.Warnf("value %s already in allowlist", v)
+
 				break
 			}
 		}
+
 		if !found {
 			expTS := time.Time{}
 			if expiration != 0 {
 				expTS = time.Now().UTC().Add(expiration)
 			}
+
 			toAdd = append(toAdd, &models.AllowlistItem{Value: v, Description: comment, Expiration: strfmt.DateTime(expTS)})
 		}
 	}
@@ -492,7 +504,6 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 	log.Debugf("adding %d values to allowlist %s", len(toAdd), name)
 
 	err = cli.db.AddToAllowlist(cmd.Context(), allowlist, toAdd)
-
 	if err != nil {
 		return fmt.Errorf("unable to add values to allowlist: %w", err)
 	}
@@ -539,8 +550,8 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 
 func (cli *cliAllowLists) inspect(cmd *cobra.Command, args []string, out io.Writer) error {
 	name := args[0]
-	allowlist, _, err := cli.client.Allowlists.Get(cmd.Context(), name, apiclient.AllowlistGetOpts{WithContent: true})
 
+	allowlist, _, err := cli.client.Allowlists.Get(cmd.Context(), name, apiclient.AllowlistGetOpts{WithContent: true})
 	if err != nil {
 		return fmt.Errorf("unable to get allowlist: %w", err)
 	}
@@ -583,6 +594,7 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 		RunE: cli.remove,
@@ -599,14 +611,13 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 
 func (cli *cliAllowLists) remove(cmd *cobra.Command, args []string) error {
 	name := args[0]
-	values, err := cmd.Flags().GetStringSlice("value")
 
+	values, err := cmd.Flags().GetStringSlice("value")
 	if err != nil {
 		return err
 	}
 
 	allowlist, err := cli.db.GetAllowList(cmd.Context(), name, true)
-
 	if err != nil {
 		return fmt.Errorf("unable to get allowlist: %w", err)
 	}
@@ -619,12 +630,14 @@ func (cli *cliAllowLists) remove(cmd *cobra.Command, args []string) error {
 
 	for _, v := range values {
 		found := false
+
 		for _, item := range allowlist.Edges.AllowlistItems {
 			if item.Value == v {
 				found = true
 				break
 			}
 		}
+
 		if found {
 			toRemove = append(toRemove, v)
 		}
@@ -637,7 +650,6 @@ func (cli *cliAllowLists) remove(cmd *cobra.Command, args []string) error {
 	log.Debugf("removing %d values from allowlist %s", len(toRemove), name)
 
 	nbDeleted, err := cli.db.RemoveFromAllowlist(cmd.Context(), allowlist, toRemove...)
-
 	if err != nil {
 		return fmt.Errorf("unable to remove values from allowlist: %w", err)
 	}

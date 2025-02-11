@@ -57,7 +57,6 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*par
 			context.TODO(), cConfig.API.Client.Credentials.URL, cConfig.API.Client.Credentials.PapiURL,
 			cConfig.API.Client.Credentials.Login, cConfig.API.Client.Credentials.Password,
 			hub.GetInstalledListForAPI())
-
 		if err != nil {
 			return nil, nil, fmt.Errorf("while initializing LAPIClient: %w", err)
 		}

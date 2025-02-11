@@ -182,6 +182,7 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		}
 
 		unsubscribeMsg := blocklistUnsubscribe{}
+
 		if err := json.Unmarshal(data, &unsubscribeMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
@@ -228,7 +229,6 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			}
 		} else if forcePullMsg.Blocklist != nil {
 			err = forcePullMsg.Blocklist.Validate(strfmt.Default)
-
 			if err != nil {
 				return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 			}
@@ -247,7 +247,6 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			}
 		} else if forcePullMsg.Allowlist != nil {
 			err = forcePullMsg.Allowlist.Validate(strfmt.Default)
-
 			if err != nil {
 				return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 			}
@@ -284,13 +283,14 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		p.Logger.Infof("Received allowlist_unsubscribe command from PAPI, unsubscribing from allowlist %s", unsubscribeMsg.Name)
 
 		err = p.DBClient.DeleteAllowList(ctx, unsubscribeMsg.Name, true)
-
 		if err != nil {
 			if !ent.IsNotFound(err) {
 				return err
 			}
+
 			p.Logger.Warningf("Allowlist %s not found", unsubscribeMsg.Name)
 		}
+
 		return nil
 	default:
 		return fmt.Errorf("unknown command '%s' for operation type '%s'", message.Header.OperationCmd, message.Header.OperationType)
