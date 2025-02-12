@@ -26,6 +26,7 @@ func (AllowList) Fields() []ent.Field {
 		field.String("name"),
 		field.Bool("from_console"),
 		field.String("description").Optional(),
+		// XXX: we already have allow_lists.id, is there a better name?
 		field.String("allowlist_id").Optional().Immutable(),
 	}
 }

@@ -26,8 +26,8 @@ func (AllowListItem) Fields() []ent.Field {
 		field.Time("expires_at").
 			Optional(),
 		field.String("comment").Optional().Immutable(),
-		field.String("value").Immutable(), //For textual representation of the IP/range
-		//Use the same fields as the decision table
+		field.String("value").Immutable(), // For textual representation of the IP/range
+		// Use the same fields as the decision table
 		field.Int64("start_ip").Optional().Immutable(),
 		field.Int64("end_ip").Optional().Immutable(),
 		field.Int64("start_suffix").Optional().Immutable(),

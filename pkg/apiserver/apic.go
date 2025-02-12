@@ -392,6 +392,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 			send = cache[pageStart:]
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
+			// XXX: defer in a loop?
 			defer cancel()
 
 			_, _, err := a.apiClient.Signal.Add(ctx, &send)
@@ -406,6 +407,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 		send = cache[pageStart:pageEnd]
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
+		// XXX: defer in a loop?
 		defer cancel()
 
 		_, _, err := a.apiClient.Signal.Add(ctx, &send)
@@ -743,14 +745,17 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		if log.GetLevel() >= log.TraceLevel {
 			log.Tracef("allowlist body: %+v", spew.Sdump(link))
 		}
+
 		if link.Name == nil {
 			log.Warningf("allowlist has no name")
 			continue
 		}
+
 		if link.URL == nil {
 			log.Warningf("allowlist %s has no URL", *link.Name)
 			continue
 		}
+
 		if link.ID == nil {
 			log.Warningf("allowlist %s has no ID", *link.Name)
 			continue
@@ -770,6 +775,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 
 		scanner := bufio.NewScanner(resp.Body)
 		items := make([]*models.AllowlistItem, 0)
+
 		for scanner.Scan() {
 			item := scanner.Text()
 			j := &models.AllowlistItem{}
@@ -777,11 +783,11 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 				log.Errorf("while unmarshalling allowlist item: %s", err)
 				continue
 			}
+
 			items = append(items, j)
 		}
 
 		list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
-
 		if err != nil {
 			if !ent.IsNotFound(err) {
 				log.Errorf("while getting allowlist %s: %s", *link.Name, err)
@@ -797,11 +803,13 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 			}
 		}
 
-		err = a.dbClient.ReplaceAllowlist(ctx, list, items, true)
+		added, err := a.dbClient.ReplaceAllowlist(ctx, list, items, true)
 		if err != nil {
 			log.Errorf("while replacing allowlist %s: %s", *link.Name, err)
 			continue
 		}
+
+		log.Infof("added %d values to allowlist %s", added, list.Name)
 
 		if list.Name != *link.Name || list.Description != description {
 			err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
@@ -853,9 +861,7 @@ func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []net.IP, 
 }
 
 func (a *apic) ApplyApicWhitelists(ctx context.Context, decisions []*models.Decision) []*models.Decision {
-
 	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC(ctx)
-
 	if err != nil {
 		log.Errorf("while getting allowlists content: %s", err)
 	}

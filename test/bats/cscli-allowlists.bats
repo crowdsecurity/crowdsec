@@ -1,0 +1,219 @@
+#!/usr/bin/env bats
+
+# NOTE:
+# - user needs to have a server running to list/inspect allowlists, but not to create one (direct to db)
+#   I understand why, but users won't. could make a difference in automated deployments
+#
+# - inspect multiple lists -> 1 value table?
+
+set -u
+
+setup_file() {
+    load "../lib/setup_file.sh"
+}
+
+teardown_file() {
+    load "../lib/teardown_file.sh"
+}
+
+setup() {
+    load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
+    ./instance-data load
+    ./instance-crowdsec start
+}
+
+teardown() {
+    ./instance-crowdsec stop
+}
+
+#----------
+
+@test "cscli allowlists list (empty)" {
+    rune -0 cscli allowlists list
+    assert_output - <<-EOT
+	---------------------------------------------------------------------
+	 Name  Description  Created at  Updated at  Managed by Console  Size 
+	---------------------------------------------------------------------
+	---------------------------------------------------------------------
+	EOT
+
+    rune -0 cscli allowlists list -o raw
+    assert_output 'name,description,created_at,updated_at,console_managed,size'
+
+    rune -0 cscli allowlists list -o json
+    assert_json '[]'
+
+    # sub-command alias, like "decisions", "collections..."
+    rune -0 cscli allowlist list -o json
+    assert_json '[]'
+
+    # requires LAPI
+    ./instance-crowdsec stop
+    rune -1 wait-for --err 'error while performing request' "$CSCLI" allowlists list
+}
+
+@test "cscli allowlists create" {
+    rune -1 cscli allowlist create
+    assert_stderr 'Error: accepts 1 arg(s), received 0'
+
+    rune -1 cscli allowlist create foo
+    assert_stderr 'Error: required flag(s) "description" not set'
+
+    rune -0 cscli allowlist create foo -d "A Foo"
+    assert_output "allowlist 'foo' created successfully"
+
+    rune -1 cscli allowlist create foo -d "Another Foo"
+    # XXX: this could be wrapped and more readable
+    assert_stderr "Error: unable to create allowlist: ent: constraint failed: UNIQUE constraint failed: allow_lists.name"
+
+    rune -0 cscli allowlists list -o json
+    rune -0 jq 'del(.[].created_at) | del(.[].updated_at)' <(output)
+    assert_json '[{"description":"A Foo","items":[],"name":"foo"}]'
+
+    rune -0 cscli allowlist create Foo -d "Another Foo"
+    # XXX: do we want to keep it case sensitive?
+    assert_output "allowlist 'Foo' created successfully"
+}
+
+@test "cscli allowlists add" {
+    rune -1 cscli allowlist add
+    assert_stderr 'Error: requires at least 2 arg(s), only received 0'
+
+    rune -1 cscli allowlist add foo
+    assert_stderr 'Error: requires at least 2 arg(s), only received 1'
+
+    rune -1 cscli allowlist add foo bar
+    assert_stderr 'Error: unable to get allowlist: ent: allow_list not found'
+
+    rune -0 cscli allowlist create foo -d 'a foo'
+
+    rune -0 cscli allowlist add foo bar
+    # XXX: here we should return an error?
+    # and it's currently displayed as ERRO[0000] -- client logger has not formatter?
+    assert_stderr --partial "unable to parse value bar: invalid ip address 'bar'"
+    assert_output 'added 0 values to allowlist foo'
+
+    rune -0 cscli allowlist add foo 1.1.1.256
+    # XXX: redundant?
+    assert_stderr --partial "unable to parse value 1.1.1.256: invalid ip address '1.1.1.256'"
+    assert_output 'added 0 values to allowlist foo'
+
+    rune -0 cscli allowlist add foo 1.1.1.1/2/3
+    assert_stderr --partial "unable to parse value 1.1.1.1/2/3: invalid ip range '1.1.1.1/2/3': invalid CIDR address: 1.1.1.1/2/3"
+    assert_output 'added 0 values to allowlist foo'
+
+    rune -0 cscli allowlist add foo 1.2.3.4
+    refute_stderr
+    assert_output 'added 1 values to allowlist foo'
+
+    rune -0 cscli allowlist add foo 1.2.3.4
+    assert_stderr --partial 'level=warning msg="value 1.2.3.4 already in allowlist"'
+    # XXX: we already have warning(s) above. change to print "no new values for allowlist" ?
+    assert_stderr --partial 'level=warning msg="no value to add to allowlist"'
+    refute_output
+
+    rune -0 cscli allowlist add foo 5.6.7.8/24 9.10.11.12
+    assert_output 'added 2 values to allowlist foo'
+
+    # comment and expiration are applied to all values
+    rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e toto
+    assert_stderr 'Error: time: invalid duration "toto"'
+    refute_output
+
+    rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e '1 day'
+    refute_output
+    assert_stderr 'Error: strconv.Atoi: parsing "1 ": invalid syntax'
+
+    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d'
+    assert_output 'added 1 values to allowlist foo'
+    refute_stderr
+
+    rune -0 cscli allowlist add foo 10.20.30.40 -d comment -e '30m'
+    assert_output 'added 1 values to allowlist foo'
+    refute_stderr
+}
+
+@test "cscli allowlists delete" {
+    # XXX: no confusion between delete/remove ?
+    rune -1 cscli allowlist delete
+    assert_stderr 'Error: accepts 1 arg(s), received 0'
+
+    rune -1 cscli allowlist delete does-not-exist
+    # XXX: wrap this too or not?
+    assert_stderr 'Error: ent: allow_list not found'
+
+    rune -0 cscli allowlist create foo -d "A Foo"
+    rune -0 cscli allowlist add foo 1.2.3.4
+
+    rune -0 cscli allowlist delete foo
+    assert_output "allowlist 'foo' deleted successfully"
+    refute_stderr
+}
+
+@test "cscli allowlists inspect" {
+    rune -1 cscli allowlist inspect
+    assert_stderr 'Error: accepts 1 arg(s), received 0'
+
+    rune -0 cscli allowlist create foo -d "A Foo"
+    assert_output "allowlist 'foo' created successfully"
+
+    rune -0 cscli allowlist add foo 1.2.3.4
+
+    rune -0 cscli allowlist inspect foo
+    assert_output - --regexp <<-EOT
+	---------------------.*
+	 Allowlist: foo      .*
+	---------------------.*
+	 Name                foo   .*
+	 Description         A Foo .*
+	 Created at          .*
+	 Updated at          .*
+	 Managed by Console  false .*
+	---------------------.*
+	------------------------------------------.*
+	 Value    Comment  Expiration  Created at .*
+	------------------------------------------.*
+	 1.2.3.4           never       .*
+	------------------------------------------.*
+	EOT
+
+    rune -0 cscli allowlist inspect foo -o raw
+    assert_output - --regexp <<-EOT
+	name,description,value,comment,expiration,created_at,console_managed
+	foo,A Foo,1.2.3.4,,never,.*,false
+	EOT
+
+    rune -0 cscli allowlist inspect foo -o json
+    rune -0 jq 'del(.created_at) | del(.updated_at) | del(.items.[].created_at) | del(.items.[].expiration)' <(output)
+    assert_json '{"description":"A Foo","items":[{"value":"1.2.3.4"}],"name":"foo"}'
+}
+
+@test "cscli allowlists remove" {
+    rune -1 cscli allowlist remove
+    assert_stderr 'Error: requires at least 2 arg(s), only received 0'
+
+    rune -1 cscli allowlist remove foo
+    assert_stderr 'Error: requires at least 2 arg(s), only received 1'
+
+    rune -1 cscli allowlist remove foo 1.2.3.4
+    assert_stderr 'Error: unable to get allowlist: ent: allow_list not found'
+
+    rune -0 cscli allowlist create foo -d 'a foo'
+    # no error, should be ok
+    rune -0 cscli allowlist remove foo 1.2.3.4
+    # XXX: redundant
+    assert_stderr --partial 'level=warning msg="no value to remove from allowlist"'
+    assert_output 'removed 0 values from allowlist foo'
+
+    rune -0 cscli allowlist add foo 1.2.3.4 5.6.7.8
+    rune -0 cscli allowlist remove foo 1.2.3.4
+    assert_output 'removed 1 values from allowlist foo'
+
+    rune -0 cscli allowlist remove foo 1.2.3.4 5.6.7.8
+    refute_stderr
+    assert_output 'removed 1 values from allowlist foo'
+    rune -0 cscli allowlist inspect foo -o json
+    rune -0 jq 'del(.created_at) | del(.updated_at) | del(.items.[].created_at) | del(.items.[].expiration)' <(output)
+    assert_json '{"description":"a foo","items":[],"name":"foo"}'
+}

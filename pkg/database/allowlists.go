@@ -116,8 +116,8 @@ func (c *Client) GetAllowListByID(ctx context.Context, allowlistID string, withC
 	return result, nil
 }
 
-func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem) error {
-	successCount := 0
+func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem) (int, error) {
+	added := 0
 
 	c.Log.Debugf("adding %d values to allowlist %s", len(items), list.Name)
 	c.Log.Tracef("values: %+v", items)
@@ -159,12 +159,10 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 			continue
 		}
 
-		successCount++
+		added++
 	}
 
-	c.Log.Infof("added %d values to allowlist %s", successCount, list.Name)
-
-	return nil
+	return added, nil
 }
 
 func (c *Client) RemoveFromAllowlist(ctx context.Context, list *ent.AllowList, values ...string) (int, error) {
@@ -194,18 +192,18 @@ func (c *Client) UpdateAllowlistMeta(ctx context.Context, allowlistID string, na
 	return nil
 }
 
-func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem, fromConsole bool) error {
+func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem, fromConsole bool) (int, error) {
 	c.Log.Debugf("replacing values in allowlist %s", list.Name)
 	c.Log.Tracef("items: %+v", items)
 
 	_, err := c.Ent.AllowListItem.Delete().Where(allowlistitem.HasAllowlistWith(allowlist.IDEQ(list.ID))).Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("unable to delete allowlist contents: %w", err)
+		return 0, fmt.Errorf("unable to delete allowlist contents: %w", err)
 	}
 
-	err = c.AddToAllowlist(ctx, list, items)
+	added, err := c.AddToAllowlist(ctx, list, items)
 	if err != nil {
-		return fmt.Errorf("unable to add values to allowlist: %w", err)
+		return 0, fmt.Errorf("unable to add values to allowlist: %w", err)
 	}
 
 	if !list.FromConsole && fromConsole {
@@ -213,11 +211,11 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 
 		err = c.Ent.AllowList.Update().SetFromConsole(fromConsole).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
-			return fmt.Errorf("unable to update allowlist: %w", err)
+			return 0, fmt.Errorf("unable to update allowlist: %w", err)
 		}
 	}
 
-	return nil
+	return added, nil
 }
 
 func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string, error) {
