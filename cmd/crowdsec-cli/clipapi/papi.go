@@ -134,7 +134,7 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
 
-	t.Go(papi.SyncDecisions)
+	t.Go(func() error { return papi.SyncDecisions(ctx) })
 
 	err = papi.PullOnce(ctx, time.Time{}, true)
 	if err != nil {

@@ -101,6 +101,7 @@ func (pb *PluginBroker) Kill() {
 
 func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
+	ctx := context.TODO()
 	pb.watcher.Start(&tomb.Tomb{})
 	for {
 		select {
@@ -121,7 +122,7 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 					threshold = 1
 				}
 				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
-					if err := pb.pushNotificationsToPlugin(pluginName, chunk); err != nil {
+					if err := pb.pushNotificationsToPlugin(ctx, pluginName, chunk); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
 				}
@@ -144,7 +145,7 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 					pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 					pluginMutex.Unlock()
 
-					if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
+					if err := pb.pushNotificationsToPlugin(ctx, pluginName, tmpAlerts); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
 				}
@@ -316,7 +317,25 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	return raw.(protobufs.NotifierServer), nil
 }
 
-func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
+func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message string) error {
+	timeout := pb.pluginConfigByName[pluginName].TimeOut
+	ctxTimeout, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	plugin := pb.notificationPluginByName[pluginName]
+
+	_, err := plugin.Notify(
+		ctxTimeout,
+		&protobufs.Notification{
+			Text: message,
+			Name: pluginName,
+		},
+	)
+
+	return err
+}
+
+func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginName string, alerts []*models.Alert) error {
 	log.WithField("plugin", pluginName).Debugf("pushing %d alerts to plugin", len(alerts))
 	if len(alerts) == 0 {
 		return nil
@@ -326,21 +345,14 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 	if err != nil {
 		return err
 	}
-	plugin := pb.notificationPluginByName[pluginName]
+
 	backoffDuration := time.Second
+
 	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), pb.pluginConfigByName[pluginName].TimeOut)
-		defer cancel()
-		_, err = plugin.Notify(
-			ctx,
-			&protobufs.Notification{
-				Text: message,
-				Name: pluginName,
-			},
-		)
-		if err == nil {
+		if err = pb.tryNotify(ctx, pluginName, message); err == nil {
 			return nil
 		}
+
 		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
 		time.Sleep(backoffDuration)
 		backoffDuration *= 2
