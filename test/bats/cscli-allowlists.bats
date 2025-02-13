@@ -1,11 +1,5 @@
 #!/usr/bin/env bats
 
-# NOTE:
-# - user needs to have a server running to list/inspect allowlists, but not to create one (direct to db)
-#   I understand why, but users won't. could make a difference in automated deployments
-#
-# - inspect multiple lists -> 1 value table?
-
 set -u
 
 setup_file() {
