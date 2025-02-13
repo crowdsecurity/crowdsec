@@ -363,6 +363,18 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
+func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsRequestItem) error {
+	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
@@ -377,42 +389,21 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	*/
 	var (
 		cache []*models.AddSignalsRequestItem = *cacheOrig
-		send  models.AddSignalsRequest
 	)
 
-	bulkSize := 50
-	pageStart := 0
-	pageEnd := bulkSize
+	batchSize := 50
 
-	for {
-		if pageEnd >= len(cache) {
-			send = cache[pageStart:]
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	for start := 0; start < len(cache); start += batchSize {
+		end := start + batchSize
 
-			defer cancel()
-
-			_, _, err := a.apiClient.Signal.Add(ctx, &send)
-			if err != nil {
-				log.Errorf("sending signal to central API: %s", err)
-				return
-			}
-
-			break
+		if end > len(cache) {
+			end = len(cache)
 		}
 
-		send = cache[pageStart:pageEnd]
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-
-		defer cancel()
-
-		_, _, err := a.apiClient.Signal.Add(ctx, &send)
-		if err != nil {
-			// we log it here as well, because the return value of func might be discarded
+		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
+			return
 		}
-
-		pageStart += bulkSize
-		pageEnd += bulkSize
 	}
 }
 
