@@ -368,11 +368,7 @@ func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsReques
 	defer cancel()
 
 	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
@@ -387,9 +383,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 
 	I don't know enough about gin to tell how much of an issue it can be.
 	*/
-	var (
-		cache []*models.AddSignalsRequestItem = *cacheOrig
-	)
+	var cache []*models.AddSignalsRequestItem = *cacheOrig
 
 	batchSize := 50
 
