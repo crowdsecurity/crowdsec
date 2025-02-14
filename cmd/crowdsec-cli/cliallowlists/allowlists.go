@@ -481,7 +481,7 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 	}
 
 	if len(toAdd) == 0 {
-		log.Warn("no value to add to allowlist")
+		fmt.Printf("no new values for allowlist")
 		return nil
 	}
 

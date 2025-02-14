@@ -131,8 +131,12 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 	c.Log.Debugf("adding %d values to allowlist %s", len(items), list.Name)
 	c.Log.Tracef("values: %+v", items)
 
+	txClient, err := c.Ent.Tx(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("error creating transaction: %w", err)
+	}
+
 	for _, item := range items {
-		// FIXME: wrap this in a transaction
 		c.Log.Debugf("adding value %s to allowlist %s", item.Value, list.Name)
 
 		sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(item.Value)
@@ -141,7 +145,7 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 			continue
 		}
 
-		query := c.Ent.AllowListItem.Create().
+		query := txClient.AllowListItem.Create().
 			SetValue(item.Value).
 			SetIPSize(int64(sz)).
 			SetStartIP(start_ip).
@@ -156,19 +160,24 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 
 		content, err := query.Save(ctx)
 		if err != nil {
-			c.Log.Errorf("unable to add value to allowlist: %s", err)
+			return 0, rollbackOnError(txClient, err, "unable to add value to allowlist")
 		}
 
 		c.Log.Debugf("Updating allowlist %s with value %s (exp: %s)", list.Name, item.Value, item.Expiration)
 
 		// We don't have a clean way to handle name conflict from the console, so use id
-		err = c.Ent.AllowList.Update().AddAllowlistItems(content).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
+		err = txClient.AllowList.Update().AddAllowlistItems(content).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
 			c.Log.Errorf("unable to add value to allowlist: %s", err)
 			continue
 		}
 
 		added++
+	}
+
+	err = txClient.Commit()
+	if err != nil {
+		return 0, rollbackOnError(txClient, err, "error committing transaction")
 	}
 
 	return added, nil

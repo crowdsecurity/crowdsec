@@ -77,7 +77,6 @@ teardown() {
     assert_json '[{"description":"A Foo","items":[],"name":"foo"}]'
 
     rune -0 cscli allowlist create Foo -d "Another Foo"
-    # XXX: do we want to keep it case sensitive?
     assert_output "allowlist 'Foo' created successfully"
 }
 
@@ -95,7 +94,7 @@ teardown() {
 
     rune -0 cscli allowlist add foo bar
     # XXX: here we should return an error?
-    # and it's currently displayed as ERRO[0000] -- client logger has not formatter?
+    # and it's currently displayed as ERRO[0000] -- client logger has no formatter?
     assert_stderr --partial "unable to parse value bar: invalid ip address 'bar'"
     assert_output 'added 0 values to allowlist foo'
 
