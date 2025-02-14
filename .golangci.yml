@@ -213,7 +213,6 @@ linters-settings:
   gocritic:
     enable-all: true
     disabled-checks:
-      - typeDefFirst
       - paramTypeCombine
       - httpNoBody
       - ifElseChain
