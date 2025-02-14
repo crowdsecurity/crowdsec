@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from http import HTTPStatus
 
 import pytest
@@ -7,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_use_wal_default(crowdsec, flavor):
+def test_use_wal_default(crowdsec, flavor: str) -> None:
     """Test USE_WAL default"""
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log("*Starting processing data*")
@@ -18,7 +16,7 @@ def test_use_wal_default(crowdsec, flavor):
         assert "false" in stdout
 
 
-def test_use_wal_true(crowdsec, flavor):
+def test_use_wal_true(crowdsec, flavor: str) -> None:
     """Test USE_WAL=true"""
     env = {
         "USE_WAL": "true",
@@ -32,7 +30,7 @@ def test_use_wal_true(crowdsec, flavor):
         assert "true" in stdout
 
 
-def test_use_wal_false(crowdsec, flavor):
+def test_use_wal_false(crowdsec, flavor: str) -> None:
     """Test USE_WAL=false"""
     env = {
         "USE_WAL": "false",

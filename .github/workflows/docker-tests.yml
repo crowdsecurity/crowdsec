@@ -70,6 +70,7 @@ jobs:
           cd docker/test
           uv sync --all-extras --dev --locked
           uv run ruff check
+          uv run basedpyright
           uv run pytest tests -n 1 --durations=0 --color=yes
         env:
           CROWDSEC_TEST_VERSION: test

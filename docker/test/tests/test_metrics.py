@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from http import HTTPStatus
 
 import pytest
@@ -7,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_metrics_port_default(crowdsec, flavor):
+def test_metrics_port_default(crowdsec, flavor: str) -> None:
     """Test metrics"""
     metrics_port = 6060
     with crowdsec(flavor=flavor) as cs:
@@ -23,7 +21,7 @@ def test_metrics_port_default(crowdsec, flavor):
         assert "# HELP cs_info Information about Crowdsec." in stdout
 
 
-def test_metrics_port_default_ipv6(crowdsec, flavor):
+def test_metrics_port_default_ipv6(crowdsec, flavor: str) -> None:
     """Test metrics (ipv6)"""
     pytest.skip("ipv6 not supported yet")
     port = 6060
@@ -39,7 +37,7 @@ def test_metrics_port_default_ipv6(crowdsec, flavor):
         assert "# HELP cs_info Information about Crowdsec." in stdout
 
 
-def test_metrics_port(crowdsec, flavor):
+def test_metrics_port(crowdsec, flavor: str) -> None:
     """Test metrics (custom METRICS_PORT)"""
     port = 7070
     env = {"METRICS_PORT": port}
@@ -55,7 +53,7 @@ def test_metrics_port(crowdsec, flavor):
         assert "# HELP cs_info Information about Crowdsec." in stdout
 
 
-def test_metrics_port_ipv6(crowdsec, flavor):
+def test_metrics_port_ipv6(crowdsec, flavor: str) -> None:
     """Test metrics (custom METRICS_PORT, ipv6)"""
     pytest.skip("ipv6 not supported yet")
     port = 7070

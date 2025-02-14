@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from http import HTTPStatus
 
 import pytest
@@ -7,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_no_capi(crowdsec, flavor):
+def test_no_capi(crowdsec, flavor: str) -> None:
     """Test no CAPI (disabled by default in tests)"""
 
     env = {
@@ -26,7 +24,7 @@ def test_no_capi(crowdsec, flavor):
         assert not any("Registration to online API done" in line for line in logs)
 
 
-def test_capi(crowdsec, flavor):
+def test_capi(crowdsec, flavor: str) -> None:
     """Test CAPI"""
 
     env = {

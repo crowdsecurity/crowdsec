@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from http import HTTPStatus
 
 import pytest
@@ -7,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_no_agent(crowdsec, flavor):
+def test_no_agent(crowdsec, flavor: str) -> None:
     """Test DISABLE_AGENT=true"""
     env = {
         "DISABLE_AGENT": "true",
@@ -21,7 +19,7 @@ def test_no_agent(crowdsec, flavor):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_machine_register(crowdsec, flavor, tmp_path_factory):
+def test_machine_register(crowdsec, flavor: str, tmp_path_factory: pytest.TempPathFactory) -> None:
     """A local agent is always registered for use by cscli"""
 
     data_dir = tmp_path_factory.mktemp("data")

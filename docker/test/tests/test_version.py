@@ -1,11 +1,9 @@
-#!/usr/bin/env python
-
 import pytest
 
 pytestmark = pytest.mark.docker
 
 
-def test_version_docker_platform(crowdsec, flavor):
+def test_version_docker_platform(crowdsec, flavor: str) -> None:
     with crowdsec(flavor=flavor) as cs:
         for waiter in cs.log_waiters():
             with waiter as matcher:

@@ -1,10 +1,10 @@
-#!/usr/bin/env python
-
 """
 Test agent-lapi and cscli-lapi communication via TLS, on the same container.
 """
 
+import pathlib
 import uuid
+from collections.abc import Callable
 
 import pytest
 from pytest_cs import Status
@@ -12,7 +12,7 @@ from pytest_cs import Status
 pytestmark = pytest.mark.docker
 
 
-def test_missing_key_file(crowdsec, flavor):
+def test_missing_key_file(crowdsec, flavor: str) -> None:
     """Test that cscli and agent can communicate to LAPI with TLS"""
 
     env = {
@@ -24,7 +24,7 @@ def test_missing_key_file(crowdsec, flavor):
         cs.wait_for_log("*local API server stopped with error: missing TLS key file*")
 
 
-def test_missing_cert_file(crowdsec, flavor):
+def test_missing_cert_file(crowdsec, flavor: str) -> None:
     """Test that cscli and agent can communicate to LAPI with TLS"""
 
     env = {
@@ -36,7 +36,7 @@ def test_missing_cert_file(crowdsec, flavor):
         cs.wait_for_log("*local API server stopped with error: missing TLS cert file*")
 
 
-def test_tls_missing_ca(crowdsec, flavor, certs_dir):
+def test_tls_missing_ca(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Missing CA cert, unknown authority"""
 
     env = {
@@ -54,7 +54,7 @@ def test_tls_missing_ca(crowdsec, flavor, certs_dir):
         cs.wait_for_log("*certificate signed by unknown authority*")
 
 
-def test_tls_legacy_var(crowdsec, flavor, certs_dir):
+def test_tls_legacy_var(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Test server-only certificate, legacy variables"""
 
     env = {
@@ -79,7 +79,7 @@ def test_tls_legacy_var(crowdsec, flavor, certs_dir):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_tls_mutual_monolith(crowdsec, flavor, certs_dir):
+def test_tls_mutual_monolith(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Server and client certificates, on the same container"""
 
     env = {
@@ -106,7 +106,7 @@ def test_tls_mutual_monolith(crowdsec, flavor, certs_dir):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_tls_lapi_var(crowdsec, flavor, certs_dir):
+def test_tls_lapi_var(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Test server-only certificate, lapi variables"""
 
     env = {
@@ -136,7 +136,7 @@ def test_tls_lapi_var(crowdsec, flavor, certs_dir):
 # we must set insecure_skip_verify to true to use it
 
 
-def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
+def test_tls_split_lapi_agent(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Server-only certificate, split containers"""
 
     rand = uuid.uuid1()
@@ -188,7 +188,7 @@ def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
             assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
+def test_tls_mutual_split_lapi_agent(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Server and client certificates, split containers"""
 
     rand = uuid.uuid1()
@@ -238,7 +238,7 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
             assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_tls_client_ou(crowdsec, flavor, certs_dir):
+def test_tls_client_ou(crowdsec, flavor: str, certs_dir: Callable[..., pathlib.Path]) -> None:
     """Check behavior of client certificate vs AGENTS_ALLOWED_OU"""
 
     rand = uuid.uuid1()

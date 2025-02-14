@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-
 import pytest
 from pytest_cs import Status
 
 pytestmark = pytest.mark.docker
 
 
-def test_no_agent(crowdsec, flavor):
+def test_no_agent(crowdsec, flavor: str) -> None:
     """Test DISABLE_LOCAL_API=true (failing stand-alone container)"""
     env = {
         "DISABLE_LOCAL_API": "true",

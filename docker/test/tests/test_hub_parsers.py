@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test parser management
 """
@@ -12,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_install_two_parsers(crowdsec, flavor):
+def test_install_two_parsers(crowdsec, flavor: str) -> None:
     """Test installing parsers at startup"""
     it1 = "crowdsecurity/cpanel-logs"
     it2 = "crowdsecurity/cowrie-logs"
@@ -29,7 +27,7 @@ def test_install_two_parsers(crowdsec, flavor):
 
 
 # XXX check that the parser is preinstalled by default
-def test_disable_parser(crowdsec, flavor):
+def test_disable_parser(crowdsec, flavor: str) -> None:
     """Test removing a pre-installed parser at startup"""
     it = "crowdsecurity/whitelists"
     env = {"DISABLE_PARSERS": it}
@@ -48,7 +46,7 @@ def test_disable_parser(crowdsec, flavor):
         assert it not in items
 
 
-def test_install_and_disable_parser(crowdsec, flavor):
+def test_install_and_disable_parser(crowdsec, flavor: str) -> None:
     """Declare a parser to install AND disable: disable wins"""
     it = "crowdsecurity/cpanel-logs"
     env = {

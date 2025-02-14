@@ -1,10 +1,7 @@
-#!/usr/bin/env python
-
 """
 Test bouncer management: pre-installed, run-time installation and removal.
 """
 
-import hashlib
 import json
 from http import HTTPStatus
 
@@ -13,12 +10,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def hex512(s):
-    """Return the sha512 hash of a string as a hex string"""
-    return hashlib.sha512(s.encode()).hexdigest()
-
-
-def test_register_bouncer_env(crowdsec, flavor):
+def test_register_bouncer_env(crowdsec, flavor: str) -> None:
     """Test installing bouncers at startup, from envvar"""
 
     env = {"BOUNCER_KEY_bouncer1name": "bouncer1key", "BOUNCER_KEY_bouncer2name": "bouncer2key"}

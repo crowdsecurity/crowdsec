@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from http import HTTPStatus
 
 import pytest
@@ -7,7 +5,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_local_api_url_default(crowdsec, flavor):
+def test_local_api_url_default(crowdsec, flavor: str) -> None:
     """Test LOCAL_API_URL (default)"""
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log(["*CrowdSec Local API listening on *:8080*", "*Starting processing data*"])
@@ -19,7 +17,7 @@ def test_local_api_url_default(crowdsec, flavor):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_local_api_url(crowdsec, flavor):
+def test_local_api_url(crowdsec, flavor: str) -> None:
     """Test LOCAL_API_URL (custom)"""
     env = {"LOCAL_API_URL": "http://127.0.0.1:8080"}
     with crowdsec(flavor=flavor, environment=env) as cs:
@@ -32,7 +30,7 @@ def test_local_api_url(crowdsec, flavor):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_local_api_url_ipv6(crowdsec, flavor):
+def test_local_api_url_ipv6(crowdsec, flavor: str) -> None:
     """Test LOCAL_API_URL (custom with ipv6)"""
     pytest.skip("ipv6 not supported yet")
 
