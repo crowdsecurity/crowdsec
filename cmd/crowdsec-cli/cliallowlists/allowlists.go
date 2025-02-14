@@ -170,13 +170,14 @@ func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowli
 	t.AppendHeader(table.Row{"Name", "Description", "Created at", "Updated at", "Managed by Console", "Size"})
 
 	for _, allowlist := range *allowlists {
-		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, allowlist.ConsoleManaged, len(allowlist.Items)})
+		managed := "no"
+		if allowlist.ConsoleManaged {
+			managed = "yes"
+		}
+		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, managed, len(allowlist.Items)})
 	}
 
-	_, err := io.WriteString(out, t.Render()+"\n")
-	if err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
+	fmt.Fprintln(out, t.Render())
 
 	return nil
 }
@@ -191,12 +192,16 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	contentTable := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 	contentTable.AppendHeader(table.Row{"Value", "Comment", "Expiration", "Created at"})
 
+	managed := "no"
+	if allowlist.ConsoleManaged {
+		managed = "yes"
+	}
 	infoTable.AppendRows([]table.Row{
 		{"Name", allowlist.Name},
 		{"Description", allowlist.Description},
 		{"Created at", allowlist.CreatedAt},
 		{"Updated at", allowlist.UpdatedAt},
-		{"Managed by Console", allowlist.ConsoleManaged},
+		{"Managed by Console", managed},
 	})
 
 	for _, content := range allowlist.Items {
@@ -208,15 +213,8 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
 	}
 
-	_, err := io.WriteString(out, infoTable.Render()+"\n")
-	if err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-
-	_, err = io.WriteString(out, contentTable.Render()+"\n")
-	if err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
+	fmt.Fprintln(out, infoTable.Render())
+	fmt.Fprintln(out, contentTable.Render())
 
 	return nil
 }
@@ -382,10 +380,6 @@ func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name 
 		return err
 	}
 
-	if list == nil {
-		return fmt.Errorf("allowlist %s not found", name)
-	}
-
 	if list.FromConsole {
 		return fmt.Errorf("allowlist %s is managed by console, cannot delete with cscli", name)
 	}
@@ -454,7 +448,7 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
-		return fmt.Errorf("unable to get allowlist: %w", err)
+		return err
 	}
 
 	if allowlist.FromConsole {
@@ -599,7 +593,7 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name string, values []string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
-		return fmt.Errorf("unable to get allowlist: %w", err)
+		return err
 	}
 
 	if allowlist.FromConsole {

@@ -42,6 +42,18 @@ teardown() {
     rune -0 cscli allowlist list -o json
     assert_json '[]'
 
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 1.1.1.1
+
+    rune -0 cscli allowlists list
+    assert_output - --regexp <<-EOT
+	--------------------.*
+	 Name  Description  .* Managed by Console  Size 
+	--------------------.*
+	 foo   a foo        .* no                     1 
+	--------------------.*
+	EOT
+
     # requires LAPI
     ./instance-crowdsec stop
     rune -1 wait-for --err 'error while performing request' "$CSCLI" allowlists list
@@ -58,8 +70,7 @@ teardown() {
     assert_output "allowlist 'foo' created successfully"
 
     rune -1 cscli allowlist create foo -d "Another Foo"
-    # XXX: this could be wrapped and more readable
-    assert_stderr "Error: unable to create allowlist: ent: constraint failed: UNIQUE constraint failed: allow_lists.name"
+    assert_stderr "Error: allowlist 'foo' already exists"
 
     rune -0 cscli allowlists list -o json
     rune -0 jq 'del(.[].created_at) | del(.[].updated_at)' <(output)
@@ -78,7 +89,7 @@ teardown() {
     assert_stderr 'Error: requires at least 2 arg(s), only received 1'
 
     rune -1 cscli allowlist add foo bar
-    assert_stderr 'Error: unable to get allowlist: ent: allow_list not found'
+    assert_stderr "Error: allowlist 'foo' not found"
 
     rune -0 cscli allowlist create foo -d 'a foo'
 
@@ -129,13 +140,11 @@ teardown() {
 }
 
 @test "cscli allowlists delete" {
-    # XXX: no confusion between delete/remove ?
     rune -1 cscli allowlist delete
     assert_stderr 'Error: accepts 1 arg(s), received 0'
 
     rune -1 cscli allowlist delete does-not-exist
-    # XXX: wrap this too or not?
-    assert_stderr 'Error: ent: allow_list not found'
+    assert_stderr "Error: allowlist 'does-not-exist' not found"
 
     rune -0 cscli allowlist create foo -d "A Foo"
     rune -0 cscli allowlist add foo 1.2.3.4
@@ -163,7 +172,7 @@ teardown() {
 	 Description         A Foo .*
 	 Created at          .*
 	 Updated at          .*
-	 Managed by Console  false .*
+	 Managed by Console  no .*
 	---------------------.*
 	------------------------------------------.*
 	 Value    Comment  Expiration  Created at .*
@@ -191,7 +200,7 @@ teardown() {
     assert_stderr 'Error: requires at least 2 arg(s), only received 1'
 
     rune -1 cscli allowlist remove foo 1.2.3.4
-    assert_stderr 'Error: unable to get allowlist: ent: allow_list not found'
+    assert_stderr "Error: allowlist 'foo' not found"
 
     rune -0 cscli allowlist create foo -d 'a foo'
     # no error, should be ok

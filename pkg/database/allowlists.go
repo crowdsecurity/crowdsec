@@ -6,6 +6,8 @@ import (
 	"net"
 	"strings"
 	"time"
+	
+	"entgo.io/ent/dialect/sql/sqlgraph"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
@@ -22,6 +24,10 @@ func (c *Client) CreateAllowList(ctx context.Context, name string, description s
 		SetAllowlistID(allowlistID).
 		Save(ctx)
 	if err != nil {
+		if sqlgraph.IsUniqueConstraintError(err) {
+			return nil, fmt.Errorf("allowlist '%s' already exists", name)
+
+		}
 		return nil, fmt.Errorf("unable to create allowlist: %w", err)
 	}
 
@@ -97,6 +103,9 @@ func (c *Client) GetAllowList(ctx context.Context, name string, withContent bool
 
 	result, err := q.First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("allowlist '%s' not found", name)
+		}
 		return nil, err
 	}
 
