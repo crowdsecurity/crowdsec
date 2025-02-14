@@ -214,6 +214,7 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	}
 
 	fmt.Fprintln(out, infoTable.Render())
+	fmt.Fprintln(out)
 	fmt.Fprintln(out, contentTable.Render())
 
 	return nil
@@ -389,7 +390,7 @@ func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name 
 		return err
 	}
 
-	fmt.Printf("allowlist '%s' deleted successfully", name)
+	fmt.Printf("allowlist '%s' deleted successfully\n", name)
 
 	return nil
 }
@@ -481,18 +482,18 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 	}
 
 	if len(toAdd) == 0 {
-		fmt.Printf("no new values for allowlist")
+		fmt.Println("no new values for allowlist")
 		return nil
 	}
-
-	log.Debugf("adding %d values to allowlist %s", len(toAdd), name)
 
 	added, err := db.AddToAllowlist(ctx, allowlist, toAdd)
 	if err != nil {
 		return fmt.Errorf("unable to add values to allowlist: %w", err)
 	}
 
-	fmt.Printf("added %d values to allowlist %s", added, name)
+	if added > 0 {
+		fmt.Printf("added %d values to allowlist %s\n", added, name)
+	}
 
 	return nil
 }
@@ -509,6 +510,7 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
+
 			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
 				return fmt.Errorf("parsing api url: %w", err)
@@ -618,17 +620,18 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	}
 
 	if len(toRemove) == 0 {
-		log.Warn("no value to remove from allowlist")
+		fmt.Println("no value to remove from allowlist")
+		return nil
 	}
 
-	log.Debugf("removing %d values from allowlist %s", len(toRemove), name)
-
-	nbDeleted, err := db.RemoveFromAllowlist(ctx, allowlist, toRemove...)
+	deleted, err := db.RemoveFromAllowlist(ctx, allowlist, toRemove...)
 	if err != nil {
 		return fmt.Errorf("unable to remove values from allowlist: %w", err)
 	}
 
-	fmt.Printf("removed %d values from allowlist %s", nbDeleted, name)
+	if deleted > 0 {
+		fmt.Printf("removed %d values from allowlist %s", deleted, name)
+	}
 
 	return nil
 }

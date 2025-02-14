@@ -141,7 +141,7 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 
 		sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(item.Value)
 		if err != nil {
-			c.Log.Errorf("unable to parse value %s: %s", item.Value, err)
+			c.Log.Error(err)
 			continue
 		}
 
@@ -245,7 +245,7 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 	*/
 	sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(value)
 	if err != nil {
-		return false, "", fmt.Errorf("unable to parse value %s: %w", value, err)
+		return false, "", err
 	}
 
 	c.Log.Debugf("checking if %s is allowlisted", value)
