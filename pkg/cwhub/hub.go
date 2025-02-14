@@ -153,24 +153,13 @@ var ErrUpdateAfterSync = errors.New("cannot update hub index after load/sync")
 
 // Update downloads the latest version of the index and writes it to disk if it changed.
 // It cannot be called after Load() unless the index was completely empty.
-func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) error {
+func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) (bool, error) {
 	if len(h.items) > 0 {
 		// if this happens, it's a bug.
-		return ErrUpdateAfterSync
+		return false, ErrUpdateAfterSync
 	}
 
-	downloaded, err := indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
-	if err != nil {
-		return err
-	}
-
-	if !downloaded {
-		// use logger and the message will be silenced in the cron job
-		// (no mail if nothing happened)
-		h.logger.Info("Nothing to do, the hub index is up to date.")
-	}
-
-	return nil
+	return indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
 }
 
 // addItem adds an item to the hub. It silently replaces an existing item with the same type and name.

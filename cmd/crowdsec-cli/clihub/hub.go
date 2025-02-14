@@ -118,8 +118,13 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 
 	indexProvider := require.HubDownloader(ctx, cli.cfg())
 
-	if err := hub.Update(ctx, indexProvider, withContent); err != nil {
+	updated, err := hub.Update(ctx, indexProvider, withContent)
+	if err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
+	}
+
+	if !updated && (log.StandardLogger().Level >= log.InfoLevel) {
+		fmt.Println("Nothing to do, the hub index is up to date.")
 	}
 
 	if err := hub.Load(); err != nil {
@@ -187,9 +192,10 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 		return err
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		return err
 	}
 

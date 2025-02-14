@@ -294,11 +294,12 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 		return err
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
-
 	contentProvider := require.HubDownloader(ctx, cfg)
 
-	return setup.InstallHubItems(ctx, hub, contentProvider, input, interactive, dryRun, verbose)
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
+
+	return setup.InstallHubItems(ctx, hub, contentProvider, input, interactive, dryRun, showPlan, verbosePlan)
 }
 
 func (cli *cliSetup) validate(fromFile string) error {
