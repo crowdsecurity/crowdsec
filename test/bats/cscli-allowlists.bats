@@ -95,17 +95,16 @@ teardown() {
     rune -0 cscli allowlist add foo bar
     # XXX: here we should return an error?
     # and it's currently displayed as ERRO[0000] -- client logger has no formatter?
-    assert_stderr --partial "unable to parse value bar: invalid ip address 'bar'"
-    assert_output 'added 0 values to allowlist foo'
+    assert_stderr --partial "level=error msg=\"invalid ip address 'bar'\""
+    refute_output
 
     rune -0 cscli allowlist add foo 1.1.1.256
-    # XXX: redundant?
-    assert_stderr --partial "unable to parse value 1.1.1.256: invalid ip address '1.1.1.256'"
-    assert_output 'added 0 values to allowlist foo'
+    assert_stderr --partial "level=error msg=\"invalid ip address '1.1.1.256'\""
+    refute_output
 
     rune -0 cscli allowlist add foo 1.1.1.1/2/3
-    assert_stderr --partial "unable to parse value 1.1.1.1/2/3: invalid ip range '1.1.1.1/2/3': invalid CIDR address: 1.1.1.1/2/3"
-    assert_output 'added 0 values to allowlist foo'
+    assert_stderr --partial "level=error msg=\"invalid ip range '1.1.1.1/2/3': invalid CIDR address: 1.1.1.1/2/3\""
+    refute_output
 
     rune -0 cscli allowlist add foo 1.2.3.4
     refute_stderr
@@ -113,9 +112,7 @@ teardown() {
 
     rune -0 cscli allowlist add foo 1.2.3.4
     assert_stderr --partial 'level=warning msg="value 1.2.3.4 already in allowlist"'
-    # XXX: we already have warning(s) above. change to print "no new values for allowlist" ?
-    assert_stderr --partial 'level=warning msg="no value to add to allowlist"'
-    refute_output
+    assert_output 'no new values for allowlist'
 
     rune -0 cscli allowlist add foo 5.6.7.8/24 9.10.11.12
     assert_output 'added 2 values to allowlist foo'
@@ -204,9 +201,7 @@ teardown() {
     rune -0 cscli allowlist create foo -d 'a foo'
     # no error, should be ok
     rune -0 cscli allowlist remove foo 1.2.3.4
-    # XXX: redundant
-    assert_stderr --partial 'level=warning msg="no value to remove from allowlist"'
-    assert_output 'removed 0 values from allowlist foo'
+    assert_output 'no value to remove from allowlist'
 
     rune -0 cscli allowlist add foo 1.2.3.4 5.6.7.8
     rune -0 cscli allowlist remove foo 1.2.3.4

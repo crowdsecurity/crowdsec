@@ -392,7 +392,6 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 			send = cache[pageStart:]
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
-			// XXX: defer in a loop?
 			defer cancel()
 
 			_, _, err := a.apiClient.Signal.Add(ctx, &send)
@@ -407,7 +406,6 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 		send = cache[pageStart:pageEnd]
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
-		// XXX: defer in a loop?
 		defer cancel()
 
 		_, _, err := a.apiClient.Signal.Add(ctx, &send)
