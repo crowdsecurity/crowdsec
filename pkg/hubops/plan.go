@@ -11,7 +11,6 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
-	isatty "github.com/mattn/go-isatty"
 
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
@@ -192,11 +191,6 @@ func (p *ActionPlan) compactDescription() string {
 }
 
 func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
-	// user provided an --interactive flag, but we go with the defaults if it's not a tty
-	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
-		return true, nil
-	}
-
 	fmt.Println("The following actions will be performed:\n" + p.Description(verbose))
 
 	var answer bool
@@ -206,9 +200,15 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		Default: true,
 	}
 
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return prompt.Default, nil
+	}
+	defer tty.Close()
+
 	// in case of EOF, it's likely stdin has been closed in a script or package manager,
 	// we can't do anything but go with the default
-	if err := survey.AskOne(prompt, &answer); err != nil {
+	if err := survey.AskOne(prompt, &answer, survey.WithStdio(tty, tty, tty)); err != nil {
 		if errors.Is(err, io.EOF) {
 			return prompt.Default, nil
 		}
@@ -221,28 +221,33 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 	return answer, nil
 }
 
-func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, verbose bool) error {
+func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, alwaysShowPlan bool, verbosePlan bool) error {
+	// interactive: show action plan, ask for confirm
+	// dry-run: show action plan, no prompt, no action
+	// alwaysShowPlan: print plan even if interactive and dry-run are false
+	// verbosePlan: plan summary is displaying each step in order
 	if len(p.commands) == 0 {
-		// XXX: show skipped commands, warnings?
 		fmt.Println("Nothing to do.")
 		return nil
 	}
 
-	if dryRun {
-		fmt.Println("Action plan:\n" + p.Description(verbose))
-		fmt.Println("Dry run, no action taken.")
-
-		return nil
-	}
-
 	if interactive {
-		answer, err := p.Confirm(verbose)
+		answer, err := p.Confirm(verbosePlan)
 		if err != nil {
 			return err
 		}
 
 		if !answer {
 			fmt.Println("Operation canceled.")
+			return nil
+		}
+	} else {
+		if dryRun || alwaysShowPlan {
+			fmt.Println("Action plan:\n" + p.Description(verbosePlan))
+		}
+
+		if dryRun {
+			fmt.Println("Dry run, no action taken.")
 			return nil
 		}
 	}
