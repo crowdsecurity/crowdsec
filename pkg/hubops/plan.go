@@ -221,15 +221,18 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 	return answer, nil
 }
 
-func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, verbose bool) error {
+func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, alwaysShowPlan bool, verbosePlan bool) error {
+	// interactive: show action plan, ask for confirm
+	// dry-run: show action plan, no prompt, no action
+	// alwaysShowPlan: print plan even if interactive and dry-run are false
+	// verbosePlan: plan summary is displaying each step in order
 	if len(p.commands) == 0 {
-		// XXX: show skipped commands, warnings?
 		fmt.Println("Nothing to do.")
 		return nil
 	}
 
 	if interactive {
-		answer, err := p.Confirm(verbose)
+		answer, err := p.Confirm(verbosePlan)
 		if err != nil {
 			return err
 		}
@@ -239,7 +242,10 @@ func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool,
 			return nil
 		}
 	} else {
-		fmt.Println("Action plan:\n" + p.Description(verbose))
+		if dryRun || alwaysShowPlan {
+			fmt.Println("Action plan:\n" + p.Description(verbosePlan))
+		}
+
 		if dryRun {
 			fmt.Println("Dry run, no action taken.")
 			return nil

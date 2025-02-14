@@ -109,8 +109,12 @@ teardown() {
     rune -0 cscli hub update
     assert_output "Downloading $INDEX_PATH"
     rune -0 cscli hub update
+    assert_output "Nothing to do, the hub index is up to date."
+
+    # hub update must honor the --error flag to be silent in noop cron jobs
+    rune -0 cscli hub update --error
     refute_output
-    assert_stderr 'level=info msg="Nothing to do, the hub index is up to date."'
+    refute_stderr
 }
 
 @test "cscli hub upgrade (up to date)" {
@@ -126,6 +130,12 @@ teardown() {
 	Action plan:
 	🔄 check & update data files
 	EOT
+
+    # hub upgrade must honor the --error flag to be silent in noop cron jobs
+    rune -0 cscli hub upgrade --error
+    refute_output
+    refute_stderr
+
     skip "todo: data files are re-downloaded with --force"
 }
 
