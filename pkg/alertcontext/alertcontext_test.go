@@ -8,9 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestNewAlertContext(t *testing.T) {
@@ -229,6 +230,7 @@ func TestValidateContextExpr(t *testing.T) {
 	}
 	for _, test := range tests {
 		fmt.Printf("Running test '%s'\n", test.name)
+
 		err := ValidateContextExpr(test.key, test.exprs)
 		if test.expectedErr == nil {
 			require.NoError(t, err)
@@ -348,16 +350,62 @@ func TestAppsecEventToContext(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		//reset cache
+		// reset cache
 		alertContext = Context{}
-		//compile
+		// compile
 		if err := NewAlertContext(test.contextToSend, 100); err != nil {
 			t.Fatalf("failed to compile %s: %s", test.name, err)
 		}
-		//run
+		// run
 
 		metas, errors := AppsecEventToContext(test.match, test.req)
 		assert.Len(t, errors, test.expectedErrLen)
 		assert.ElementsMatch(t, test.expectedResult, metas)
+	}
+}
+
+func TestEvalAlertContextRules(t *testing.T) {
+	tests := []struct {
+		name           string
+		contextToSend  map[string][]string
+		event          types.Event
+		match          types.MatchedRule
+		req            *http.Request
+		expectedResult map[string][]string
+		expectedErrLen int
+	}{
+		{
+			name: "no appsec match",
+			contextToSend: map[string][]string{
+				"source_ip": {"evt.Parsed.source_ip"},
+				"id":        {"match.id"},
+			},
+			event: types.Event{
+				Parsed: map[string]string{
+					"source_ip":      "1.2.3.4",
+					"source_machine": "mymachine",
+					"uri":            "/test/test/test/../../../../../../../../",
+				},
+			},
+			expectedResult: map[string][]string{
+				"source_ip": {"1.2.3.4"},
+				"id":        {},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			contextDict := make(map[string][]string)
+
+			alertContext = Context{}
+			if err := NewAlertContext(test.contextToSend, 100); err != nil {
+				t.Fatalf("failed to compile %s: %s", test.name, err)
+			}
+
+			errs := EvalAlertContextRules(test.event, &test.match, test.req, contextDict)
+			assert.Len(t, errs, test.expectedErrLen)
+			assert.Equal(t, test.expectedResult, contextDict)
+		})
 	}
 }

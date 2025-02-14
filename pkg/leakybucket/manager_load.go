@@ -300,7 +300,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 			bucketFactory.ret = response
 
 			if cscfg.SimulationConfig != nil {
-				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(item.Name)
+				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(bucketFactory.Name)
 			}
 
 			bucketFactory.ScenarioVersion = item.State.LocalVersion
@@ -405,11 +405,22 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Distinct != "" {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
+		bucketFactory.logger.Infof("Compiling distinct '%s'", bucketFactory.Distinct)
+		//we're compiling and discarding the expression to be able to detect it during loading
+		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("invalid distinct '%s' in %s: %w", bucketFactory.Distinct, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.CancelOnFilter != "" {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
+		//we're compiling and discarding the expression to be able to detect it during loading
+		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", bucketFactory.CancelOnFilter, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.OverflowFilter != "" {
@@ -439,6 +450,11 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.ConditionalOverflow != "" {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+		//we're compiling and discarding the expression to be able to detect it during loading
+		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("invalid condition '%s' in %s: %w", bucketFactory.ConditionalOverflow, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.BayesianThreshold != 0 {
@@ -458,7 +474,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		}
 
 		if data.Type == "regexp" { // cache only makes sense for regexp
-			exprhelpers.RegexpCacheInit(data.DestPath, *data)
+			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
+				bucketFactory.logger.Error(err.Error())
+			}
 		}
 	}
 

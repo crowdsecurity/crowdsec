@@ -1,4 +1,3 @@
-# vim: set ft=dockerfile:
 FROM rust:1.70.0-bullseye AS rust_build
 
 WORKDIR /
@@ -15,7 +14,7 @@ RUN git clone https://github.com/daulet/tokenizers.git /tokenizer && \
     cargo build --release && \
     cp target/release/libtokenizers.a /tokenizer/libtokenizers.a
 
-FROM golang:1.23-bookworm AS build
+FROM docker.io/golang:1.23-bookworm AS build
 
 ARG BUILD_VERSION
 ARG ONNXRUNTIME_VERSION=1.18.1
@@ -82,7 +81,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=0 \
     # In case we need to remove agents here..
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
-FROM debian:bookworm-slim AS slim
+FROM docker.io/debian:bookworm-slim AS slim
 
 ARG ONNXRUNTIME_VERSION=1.18.1
 

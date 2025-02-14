@@ -60,9 +60,6 @@ func (u *Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *
 }
 
 func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
-	var err error
-	var compiledExpr *vm.Program
-
 	if uniqExprCache == nil {
 		uniqExprCache = make(map[string]vm.Program)
 	}
@@ -74,14 +71,17 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	} else {
 		uniqExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return err
+		}
 		u.DistinctCompiled = compiledExpr
 		uniqExprCacheLock.Lock()
 		uniqExprCache[bucketFactory.Distinct] = *compiledExpr
 		uniqExprCacheLock.Unlock()
 	}
 	u.KeyCache = make(map[string]bool)
-	return err
+	return nil
 }
 
 // getElement computes a string from an event and a filter

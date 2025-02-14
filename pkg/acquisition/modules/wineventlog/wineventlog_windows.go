@@ -287,9 +287,9 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	w.logger = logger
-	w.metricsLevel = MetricsLevel
+	w.metricsLevel = metricsLevel
 
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {

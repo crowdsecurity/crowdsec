@@ -353,7 +353,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
 				continue
 			}
-			cache.SetKey(stash.Name, key, value, &stash.TTLVal)
+			if err = cache.SetKey(stash.Name, key, value, &stash.TTLVal); err != nil {
+				clog.Warningf("failed to store data in cache: %s", err.Error())
+			}
 		}
 	}
 

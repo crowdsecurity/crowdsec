@@ -20,6 +20,6 @@ func listHubItemTable(out io.Writer, wantColor string, title string, items []*cw
 		t.AppendRow(table.Row{item.Name, status, item.State.LocalVersion, item.State.LocalPath})
 	}
 
-	io.WriteString(out, title+"\n")
-	io.WriteString(out, t.Render()+"\n")
+	t.SetTitle(title)
+	fmt.Fprintln(out, t.Render())
 }

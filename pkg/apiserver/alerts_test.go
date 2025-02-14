@@ -142,7 +142,8 @@ func TestCreateAlertChannels(t *testing.T) {
 	ctx := context.Background()
 	apiServer, config := NewAPIServer(t, ctx)
 	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
-	apiServer.InitController()
+	err := apiServer.InitController()
+	require.NoError(t, err)
 
 	loginResp := LoginToTestAPI(t, ctx, apiServer.router, config)
 	lapi := LAPI{router: apiServer.router, loginResp: loginResp}

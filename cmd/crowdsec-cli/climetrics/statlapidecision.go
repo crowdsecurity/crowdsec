@@ -1,6 +1,7 @@
 package climetrics
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 
@@ -57,8 +58,7 @@ func (s statLapiDecision) Table(out io.Writer, wantColor string, noUnit bool, sh
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		io.WriteString(out, title+":\n")
-		io.WriteString(out, t.Render()+"\n")
-		io.WriteString(out, "\n")
+		t.SetTitle(title)
+		fmt.Fprintln(out, t.Render())
 	}
 }
