@@ -12,9 +12,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliallowlists"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconfig"
@@ -166,6 +168,8 @@ func (cli *cliRoot) initialize() error {
 		}
 	}
 
+	csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
+
 	return nil
 }
 
@@ -282,6 +286,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliitem.NewContext(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
+	cmd.AddCommand(cliallowlists.New(cli.cfg).NewCommand())
 
 	cli.addSetup(cmd)
 

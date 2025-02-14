@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -23,7 +24,7 @@ import (
 )
 
 // initCrowdsec prepares the log processor service
-func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []acquisition.DataSource, error) {
+func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*parser.Parsers, []acquisition.DataSource, error) {
 	var err error
 
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
@@ -49,6 +50,16 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []
 	// can be nerfed by a build flag
 	if err = LoadAppsecRules(hub); err != nil {
 		return nil, nil, err
+	}
+
+	if !testMode {
+		err = apiclient.InitLAPIClient(
+			context.TODO(), cConfig.API.Client.Credentials.URL, cConfig.API.Client.Credentials.PapiURL,
+			cConfig.API.Client.Credentials.Login, cConfig.API.Client.Credentials.Password,
+			hub.GetInstalledListForAPI())
+		if err != nil {
+			return nil, nil, fmt.Errorf("while initializing LAPIClient: %w", err)
+		}
 	}
 
 	datasources, err := LoadAcquisition(cConfig)
@@ -116,7 +127,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	})
 	bucketWg.Wait()
 
-	apiClient, err := AuthenticatedLAPIClient(context.TODO(), *cConfig.API.Client.Credentials, hub)
+	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
 		return err
 	}

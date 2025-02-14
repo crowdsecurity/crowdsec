@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-openapi/strfmt"
 	"github.com/jarcoal/httpmock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -615,6 +616,16 @@ func TestAPICWhitelists(t *testing.T) {
 							},
 						},
 					},
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: ptr.Of("crowdsecurity/test1"),
+						Scope:    ptr.Of("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    ptr.Of("10.2.3.4"), // wl by allowlist that we pull at the same time
+								Duration: ptr.Of("24h"),
+							},
+						},
+					},
 				},
 				Links: &modelscapi.GetDecisionsStreamResponseLinks{
 					Blocklists: []*modelscapi.BlocklistLink{
@@ -633,6 +644,15 @@ func TestAPICWhitelists(t *testing.T) {
 							Duration:    ptr.Of("24h"),
 						},
 					},
+					Allowlists: []*modelscapi.AllowlistLink{
+						{
+							URL:         ptr.Of("http://api.crowdsec.net/allowlist1"),
+							Name:        ptr.Of("allowlist1"),
+							ID:          ptr.Of("1"),
+							Description: ptr.Of("test"),
+							CreatedAt:   ptr.Of(strfmt.DateTime(time.Now())),
+						},
+					},
 				},
 			},
 		),
@@ -644,6 +664,10 @@ func TestAPICWhitelists(t *testing.T) {
 
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist2", httpmock.NewStringResponder(
 		200, "1.2.3.7",
+	))
+
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/allowlist1", httpmock.NewStringResponder(
+		200, `{"value":"10.2.3.4"}`,
 	))
 
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -660,6 +684,14 @@ func TestAPICWhitelists(t *testing.T) {
 	api.apiClient = apic
 	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
+
+	allowlists, err := api.dbClient.ListAllowLists(ctx, true)
+	require.NoError(t, err)
+
+	require.Len(t, allowlists, 1)
+	require.Equal(t, "allowlist1", allowlists[0].Name)
+	require.Equal(t, "test", allowlists[0].Description)
+	require.True(t, allowlists[0].FromConsole)
 
 	assertTotalDecisionCount(t, ctx, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
@@ -701,6 +733,10 @@ func TestAPICWhitelists(t *testing.T) {
 
 	if _, ok := decisionIP["9.2.3.4"]; ok {
 		t.Errorf("9.2.3.4 is whitelisted")
+	}
+
+	if _, ok := decisionIP["10.2.3.4"]; ok {
+		t.Errorf("10.2.3.4 is whitelisted")
 	}
 
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)
