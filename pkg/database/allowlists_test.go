@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -33,7 +34,7 @@ func TestCheckAllowlist(t *testing.T) {
 
 	require.NoError(t, err)
 
-	err = dbClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
+	added, err := dbClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
 		{
 			CreatedAt: strfmt.DateTime(time.Now()),
 			Value:     "1.2.3.4",
@@ -58,6 +59,7 @@ func TestCheckAllowlist(t *testing.T) {
 	})
 
 	require.NoError(t, err)
+	assert.Equal(t, 5, added)
 
 	// Exatch match
 	allowlisted, reason, err := dbClient.IsAllowlisted(ctx, "1.2.3.4")

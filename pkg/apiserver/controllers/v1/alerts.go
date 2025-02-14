@@ -129,17 +129,19 @@ func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) (bo
 	if len(alert.Decisions) > 0 {
 		return false, ""
 	}
+
 	if alert.Source.Scope != nil && (*alert.Source.Scope == types.Ip || *alert.Source.Scope == types.Range) && // Allowlist only works for IP/range
 		alert.Source.Value != nil { // Is this possible ?
 		isAllowlisted, reason, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
 		if err == nil && isAllowlisted {
 			return true, reason
 		} else if err != nil {
-			//FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
+			// FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
 			log.Errorf("error while checking allowlist: %s", err)
 			return false, ""
 		}
 	}
+
 	return false, ""
 }
 
@@ -216,6 +218,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 
 			alertsToSave = append(alertsToSave, alert)
+
 			continue
 		}
 

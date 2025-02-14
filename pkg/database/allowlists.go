@@ -6,6 +6,8 @@ import (
 	"net"
 	"strings"
 	"time"
+	
+	"entgo.io/ent/dialect/sql/sqlgraph"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
@@ -22,6 +24,10 @@ func (c *Client) CreateAllowList(ctx context.Context, name string, description s
 		SetAllowlistID(allowlistID).
 		Save(ctx)
 	if err != nil {
+		if sqlgraph.IsUniqueConstraintError(err) {
+			return nil, fmt.Errorf("allowlist '%s' already exists", name)
+
+		}
 		return nil, fmt.Errorf("unable to create allowlist: %w", err)
 	}
 
@@ -97,6 +103,9 @@ func (c *Client) GetAllowList(ctx context.Context, name string, withContent bool
 
 	result, err := q.First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("allowlist '%s' not found", name)
+		}
 		return nil, err
 	}
 
@@ -116,23 +125,27 @@ func (c *Client) GetAllowListByID(ctx context.Context, allowlistID string, withC
 	return result, nil
 }
 
-func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem) error {
-	successCount := 0
+func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem) (int, error) {
+	added := 0
 
 	c.Log.Debugf("adding %d values to allowlist %s", len(items), list.Name)
 	c.Log.Tracef("values: %+v", items)
 
+	txClient, err := c.Ent.Tx(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("error creating transaction: %w", err)
+	}
+
 	for _, item := range items {
-		// FIXME: wrap this in a transaction
 		c.Log.Debugf("adding value %s to allowlist %s", item.Value, list.Name)
 
 		sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(item.Value)
 		if err != nil {
-			c.Log.Errorf("unable to parse value %s: %s", item.Value, err)
+			c.Log.Error(err)
 			continue
 		}
 
-		query := c.Ent.AllowListItem.Create().
+		query := txClient.AllowListItem.Create().
 			SetValue(item.Value).
 			SetIPSize(int64(sz)).
 			SetStartIP(start_ip).
@@ -147,24 +160,27 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 
 		content, err := query.Save(ctx)
 		if err != nil {
-			c.Log.Errorf("unable to add value to allowlist: %s", err)
+			return 0, rollbackOnError(txClient, err, "unable to add value to allowlist")
 		}
 
 		c.Log.Debugf("Updating allowlist %s with value %s (exp: %s)", list.Name, item.Value, item.Expiration)
 
 		// We don't have a clean way to handle name conflict from the console, so use id
-		err = c.Ent.AllowList.Update().AddAllowlistItems(content).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
+		err = txClient.AllowList.Update().AddAllowlistItems(content).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
 			c.Log.Errorf("unable to add value to allowlist: %s", err)
 			continue
 		}
 
-		successCount++
+		added++
 	}
 
-	c.Log.Infof("added %d values to allowlist %s", successCount, list.Name)
+	err = txClient.Commit()
+	if err != nil {
+		return 0, rollbackOnError(txClient, err, "error committing transaction")
+	}
 
-	return nil
+	return added, nil
 }
 
 func (c *Client) RemoveFromAllowlist(ctx context.Context, list *ent.AllowList, values ...string) (int, error) {
@@ -194,18 +210,18 @@ func (c *Client) UpdateAllowlistMeta(ctx context.Context, allowlistID string, na
 	return nil
 }
 
-func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem, fromConsole bool) error {
+func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, items []*models.AllowlistItem, fromConsole bool) (int, error) {
 	c.Log.Debugf("replacing values in allowlist %s", list.Name)
 	c.Log.Tracef("items: %+v", items)
 
 	_, err := c.Ent.AllowListItem.Delete().Where(allowlistitem.HasAllowlistWith(allowlist.IDEQ(list.ID))).Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("unable to delete allowlist contents: %w", err)
+		return 0, fmt.Errorf("unable to delete allowlist contents: %w", err)
 	}
 
-	err = c.AddToAllowlist(ctx, list, items)
+	added, err := c.AddToAllowlist(ctx, list, items)
 	if err != nil {
-		return fmt.Errorf("unable to add values to allowlist: %w", err)
+		return 0, fmt.Errorf("unable to add values to allowlist: %w", err)
 	}
 
 	if !list.FromConsole && fromConsole {
@@ -213,11 +229,11 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 
 		err = c.Ent.AllowList.Update().SetFromConsole(fromConsole).Where(allowlist.IDEQ(list.ID)).Exec(ctx)
 		if err != nil {
-			return fmt.Errorf("unable to update allowlist: %w", err)
+			return 0, fmt.Errorf("unable to update allowlist: %w", err)
 		}
 	}
 
-	return nil
+	return added, nil
 }
 
 func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string, error) {
@@ -229,7 +245,7 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 	*/
 	sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(value)
 	if err != nil {
-		return false, "", fmt.Errorf("unable to parse value %s: %w", value, err)
+		return false, "", err
 	}
 
 	c.Log.Debugf("checking if %s is allowlisted", value)

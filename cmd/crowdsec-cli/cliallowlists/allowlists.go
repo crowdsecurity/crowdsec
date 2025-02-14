@@ -1,6 +1,7 @@
 package cliallowlists
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -28,12 +29,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-type configGetter = func() *csconfig.Config
+type configGetter func() *csconfig.Config
 
 type cliAllowLists struct {
-	db     *database.Client
-	client *apiclient.ApiClient
-	cfg    configGetter
+	cfg configGetter
 }
 
 func New(cfg configGetter) *cliAllowLists {
@@ -50,20 +49,18 @@ func (cli *cliAllowLists) validAllowlists(cmd *cobra.Command, args []string, toC
 	cfg := cli.cfg()
 	ctx := cmd.Context()
 
-	// need to load config and db because PersistentPreRunE is not called for completions
-
 	if err = require.LAPI(cfg); err != nil {
 		cobra.CompError("unable to load LAPI " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	cli.db, err = require.DBClient(ctx, cfg.DbConfig)
+	db, err := require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
 		cobra.CompError("unable to load dbclient " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	allowlists, err := cli.db.ListAllowLists(ctx, false)
+	allowlists, err := db.ListAllowLists(ctx, false)
 	if err != nil {
 		cobra.CompError("unable to list allowlists " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -88,20 +85,18 @@ func (cli *cliAllowLists) validAllowlistsWithConsole(cmd *cobra.Command, args []
 	cfg := cli.cfg()
 	ctx := cmd.Context()
 
-	// need to load config and db because PersistentPreRunE is not called for completions
-
 	if err = require.LAPI(cfg); err != nil {
 		cobra.CompError("unable to load LAPI " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	cli.db, err = require.DBClient(ctx, cfg.DbConfig)
+	db, err := require.DBClient(ctx, cfg.DbConfig)
 	if err != nil {
 		cobra.CompError("unable to load dbclient " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	allowlists, err := cli.db.ListAllowLists(ctx, false)
+	allowlists, err := db.ListAllowLists(ctx, false)
 	if err != nil {
 		cobra.CompError("unable to list allowlists " + err.Error())
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -172,16 +167,17 @@ func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAll
 
 func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
 	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
-	t.AppendHeader(table.Row{"Name", "Description", "Creation Date", "Updated at", "Managed by Console", "Size"})
+	t.AppendHeader(table.Row{"Name", "Description", "Created at", "Updated at", "Managed by Console", "Size"})
 
 	for _, allowlist := range *allowlists {
-		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, allowlist.ConsoleManaged, len(allowlist.Items)})
+		managed := "no"
+		if allowlist.ConsoleManaged {
+			managed = "yes"
+		}
+		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, managed, len(allowlist.Items)})
 	}
 
-	_, err := io.WriteString(out, t.Render()+"\n")
-	if err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
+	fmt.Fprintln(out, t.Render())
 
 	return nil
 }
@@ -196,12 +192,16 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	contentTable := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
 	contentTable.AppendHeader(table.Row{"Value", "Comment", "Expiration", "Created at"})
 
+	managed := "no"
+	if allowlist.ConsoleManaged {
+		managed = "yes"
+	}
 	infoTable.AppendRows([]table.Row{
 		{"Name", allowlist.Name},
 		{"Description", allowlist.Description},
-		{"Creation Date", allowlist.CreatedAt},
+		{"Created at", allowlist.CreatedAt},
 		{"Updated at", allowlist.UpdatedAt},
-		{"Managed by Console", allowlist.ConsoleManaged},
+		{"Managed by Console", managed},
 	})
 
 	for _, content := range allowlist.Items {
@@ -213,15 +213,9 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
 	}
 
-	_, err := io.WriteString(out, infoTable.Render()+"\n")
-	if err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-
-	_, err = io.WriteString(out, contentTable.Render()+"\n")
-	if err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
+	fmt.Fprintln(out, infoTable.Render())
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, contentTable.Render())
 
 	return nil
 }
@@ -230,6 +224,7 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "allowlists [action]",
 		Short:             "Manage centralized allowlists",
+		Aliases:           []string{"allowlist"},
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 	}
@@ -245,12 +240,14 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 }
 
 func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
+	var description string
+
 	cmd := &cobra.Command{
 		Use:     "create [allowlist_name]",
 		Example: "cscli allowlists create my_allowlist -d 'my allowlist description'",
 		Short:   "Create a new allowlist",
 		Args:    cobra.ExactArgs(1),
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			cfg := cli.cfg()
 
@@ -258,36 +255,33 @@ func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
 				return err
 			}
 
-			cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+			db, err := require.DBClient(cmd.Context(), cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return nil
+			name := args[0]
+
+			return cli.create(cmd.Context(), db, name, description)
 		},
-		RunE: cli.create,
 	}
 
 	flags := cmd.Flags()
 
-	flags.StringP("description", "d", "", "description of the allowlist")
+	flags.StringVarP(&description, "description", "d", "", "description of the allowlist")
 
 	_ = cmd.MarkFlagRequired("description")
 
 	return cmd
 }
 
-func (cli *cliAllowLists) create(cmd *cobra.Command, args []string) error {
-	name := args[0]
-	description := cmd.Flag("description").Value.String()
-
-	_, err := cli.db.CreateAllowList(cmd.Context(), name, description, "", false)
-
+func (cli *cliAllowLists) create(ctx context.Context, db *database.Client, name string, description string) error {
+	_, err := db.CreateAllowList(ctx, name, description, "", false)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("allowlist '%s' created successfully", name)
+	fmt.Printf("allowlist '%s' created successfully\n", name)
 
 	return nil
 }
@@ -298,17 +292,18 @@ func (cli *cliAllowLists) newListCmd() *cobra.Command {
 		Example: `cscli allowlists list`,
 		Short:   "List all allowlists",
 		Args:    cobra.NoArgs,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
+
 			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			cli.client, err = apiclient.NewClient(&apiclient.Config{
+			client, err := apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
@@ -318,18 +313,16 @@ func (cli *cliAllowLists) newListCmd() *cobra.Command {
 				return fmt.Errorf("creating api client: %w", err)
 			}
 
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.list(cmd, color.Output)
+			return cli.list(cmd.Context(), client, color.Output)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliAllowLists) list(cmd *cobra.Command, out io.Writer) error {
-	allowlists, _, err := cli.client.Allowlists.List(cmd.Context(), apiclient.AllowlistListOpts{WithContent: true})
+func (cli *cliAllowLists) list(ctx context.Context, client *apiclient.ApiClient, out io.Writer) error {
+	// not db?
+	allowlists, _, err := client.Allowlists.List(ctx, apiclient.AllowlistListOpts{WithContent: true})
 	if err != nil {
 		return err
 	}
@@ -360,7 +353,7 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 		Example:           `cscli allowlists delete my_allowlist`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cli.validAllowlists,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			cfg := cli.cfg()
 
@@ -368,53 +361,53 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+			ctx := cmd.Context()
+
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return nil
+			return cli.delete(ctx, db, args[0])
 		},
-		RunE: cli.delete,
 	}
 
 	return cmd
 }
 
-func (cli *cliAllowLists) delete(cmd *cobra.Command, args []string) error {
-	name := args[0]
-
-	list, err := cli.db.GetAllowList(cmd.Context(), name, false)
+func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name string) error {
+	list, err := db.GetAllowList(ctx, name, false)
 	if err != nil {
 		return err
-	}
-
-	if list == nil {
-		return fmt.Errorf("allowlist %s not found", name)
 	}
 
 	if list.FromConsole {
 		return fmt.Errorf("allowlist %s is managed by console, cannot delete with cscli", name)
 	}
 
-	err = cli.db.DeleteAllowList(cmd.Context(), name, false)
+	err = db.DeleteAllowList(ctx, name, false)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("allowlist '%s' deleted successfully", name)
+	fmt.Printf("allowlist '%s' deleted successfully\n", name)
 
 	return nil
 }
 
 func (cli *cliAllowLists) newAddCmd() *cobra.Command {
+	var (
+		expirationStr string
+		comment       string
+	)
+
 	cmd := &cobra.Command{
-		Use:               "add [allowlist_name] --value [value] [-e expiration] [-d comment]",
-		Short:             "Add content an allowlist",
-		Example:           `cscli allowlists add my_allowlist --value 1.2.3.4 --value 2.3.4.5 -e 1h -d "my comment"`,
-		Args:              cobra.ExactArgs(1),
+		Use:               "add [allowlist_name] [value...] [-e expiration] [-d comment]",
+		Short:             "Add content to an allowlist",
+		Example:           `cscli allowlists add my_allowlist 1.2.3.4 2.3.4.5 -e 1h -d "my comment"`,
+		Args:              cobra.MinimumNArgs(2),
 		ValidArgsFunction: cli.validAllowlists,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			cfg := cli.cfg()
 
@@ -422,50 +415,41 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 				return err
 			}
 
-			cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+			ctx := cmd.Context()
+
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return nil
+			var expiration time.Duration
+
+			if expirationStr != "" {
+				expiration, err = cstime.ParseDuration(expirationStr)
+				if err != nil {
+					return err
+				}
+			}
+
+			name := args[0]
+			values := args[1:]
+
+			return cli.add(ctx, db, name, values, expiration, comment)
 		},
-		RunE: cli.add,
 	}
 
 	flags := cmd.Flags()
 
-	flags.StringSliceP("value", "v", nil, "value to add to the allowlist")
-	flags.StringP("expiration", "e", "", "expiration duration")
-	flags.StringP("comment", "d", "", "comment for the value")
-
-	_ = cmd.MarkFlagRequired("value")
+	flags.StringVarP(&expirationStr, "expiration", "e", "", "expiration duration")
+	flags.StringVarP(&comment, "comment", "d", "", "comment for the value")
 
 	return cmd
 }
 
-func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
-	var expiration time.Duration
-
-	name := args[0]
-	values, err := cmd.Flags().GetStringSlice("value")
-	comment := cmd.Flag("comment").Value.String()
-
+func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
+	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
 		return err
-	}
-
-	expirationStr := cmd.Flag("expiration").Value.String()
-
-	if expirationStr != "" {
-		expiration, err = cstime.ParseDuration(expirationStr)
-		if err != nil {
-			return err
-		}
-	}
-
-	allowlist, err := cli.db.GetAllowList(cmd.Context(), name, true)
-	if err != nil {
-		return fmt.Errorf("unable to get allowlist: %w", err)
 	}
 
 	if allowlist.FromConsole {
@@ -498,15 +482,17 @@ func (cli *cliAllowLists) add(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(toAdd) == 0 {
-		log.Warn("no value to add to allowlist")
+		fmt.Println("no new values for allowlist")
 		return nil
 	}
 
-	log.Debugf("adding %d values to allowlist %s", len(toAdd), name)
-
-	err = cli.db.AddToAllowlist(cmd.Context(), allowlist, toAdd)
+	added, err := db.AddToAllowlist(ctx, allowlist, toAdd)
 	if err != nil {
 		return fmt.Errorf("unable to add values to allowlist: %w", err)
+	}
+
+	if added > 0 {
+		fmt.Printf("added %d values to allowlist %s\n", added, name)
 	}
 
 	return nil
@@ -519,17 +505,18 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 		Short:             "Inspect an allowlist",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cli.validAllowlistsWithConsole,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
+
 			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			cli.client, err = apiclient.NewClient(&apiclient.Config{
+			client, err := apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
@@ -539,20 +526,17 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 				return fmt.Errorf("creating api client: %w", err)
 			}
 
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.inspect(cmd, args, color.Output)
+			name := args[0]
+
+			return cli.inspect(cmd.Context(), client, name, color.Output)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliAllowLists) inspect(cmd *cobra.Command, args []string, out io.Writer) error {
-	name := args[0]
-
-	allowlist, _, err := cli.client.Allowlists.Get(cmd.Context(), name, apiclient.AllowlistGetOpts{WithContent: true})
+func (cli *cliAllowLists) inspect(ctx context.Context, client *apiclient.ApiClient, name string, out io.Writer) error {
+	allowlist, _, err := client.Allowlists.Get(ctx, name, apiclient.AllowlistGetOpts{WithContent: true})
 	if err != nil {
 		return fmt.Errorf("unable to get allowlist: %w", err)
 	}
@@ -579,11 +563,11 @@ func (cli *cliAllowLists) inspect(cmd *cobra.Command, args []string, out io.Writ
 func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "remove [allowlist_name] --value [value]",
-		Short:             "remove content from an allowlist",
-		Example:           `cscli allowlists remove my_allowlist --value 1.2.3.4 --value 2.3.4.5"`,
-		Args:              cobra.ExactArgs(1),
+		Short:             "Remove content from an allowlist",
+		Example:           `cscli allowlists remove my_allowlist 1.2.3.4 2.3.4.5"`,
+		Args:              cobra.MinimumNArgs(2),
 		ValidArgsFunction: cli.validAllowlists,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			cfg := cli.cfg()
 
@@ -591,36 +575,27 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 				return err
 			}
 
-			cli.db, err = require.DBClient(cmd.Context(), cfg.DbConfig)
+			ctx := cmd.Context()
+
+			db, err := require.DBClient(ctx, cfg.DbConfig)
 			if err != nil {
 				return err
 			}
 
-			return nil
+			name := args[0]
+			values := args[1:]
+
+			return cli.remove(ctx, db, name, values)
 		},
-		RunE: cli.remove,
 	}
-
-	flags := cmd.Flags()
-
-	flags.StringSliceP("value", "v", nil, "value to remove from the allowlist")
-
-	_ = cmd.MarkFlagRequired("value")
 
 	return cmd
 }
 
-func (cli *cliAllowLists) remove(cmd *cobra.Command, args []string) error {
-	name := args[0]
-
-	values, err := cmd.Flags().GetStringSlice("value")
+func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name string, values []string) error {
+	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
 		return err
-	}
-
-	allowlist, err := cli.db.GetAllowList(cmd.Context(), name, true)
-	if err != nil {
-		return fmt.Errorf("unable to get allowlist: %w", err)
 	}
 
 	if allowlist.FromConsole {
@@ -645,17 +620,18 @@ func (cli *cliAllowLists) remove(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(toRemove) == 0 {
-		log.Warn("no value to remove from allowlist")
+		fmt.Println("no value to remove from allowlist")
+		return nil
 	}
 
-	log.Debugf("removing %d values from allowlist %s", len(toRemove), name)
-
-	nbDeleted, err := cli.db.RemoveFromAllowlist(cmd.Context(), allowlist, toRemove...)
+	deleted, err := db.RemoveFromAllowlist(ctx, allowlist, toRemove...)
 	if err != nil {
 		return fmt.Errorf("unable to remove values from allowlist: %w", err)
 	}
 
-	log.Infof("removed %d values from allowlist %s", nbDeleted, name)
+	if deleted > 0 {
+		fmt.Printf("removed %d values from allowlist %s", deleted, name)
+	}
 
 	return nil
 }

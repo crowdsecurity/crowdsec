@@ -127,7 +127,6 @@ func (c *Controller) NewV1() error {
 		jwtAuth.GET("/allowlists/:allowlist_name", c.HandlerV1.GetAllowlist)
 		jwtAuth.GET("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.HEAD("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
-
 	}
 
 	apiKeyAuth := groupV1.Group("")
