@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -32,8 +33,6 @@ const (
 )
 
 var DefaultAuthCacheDuration = (1 * time.Minute)
-var negativeAllowlistCacheDuration = (5 * time.Minute)
-var positiveAllowlistCacheDuration = (5 * time.Minute)
 
 // configuration structure of the acquis for the application security engine
 type AppsecSourceConfig struct {
@@ -52,37 +51,26 @@ type AppsecSourceConfig struct {
 
 // runtime structure of AppsecSourceConfig
 type AppsecSource struct {
-	metricsLevel   int
-	config         AppsecSourceConfig
-	logger         *log.Entry
-	mux            *http.ServeMux
-	server         *http.Server
-	outChan        chan types.Event
-	InChan         chan appsec.ParsedRequest
-	AppsecRuntime  *appsec.AppsecRuntimeConfig
-	AppsecConfigs  map[string]appsec.AppsecConfig
-	lapiURL        string
-	AuthCache      AuthCache
-	AppsecRunners  []AppsecRunner // one for each go-routine
-	allowlistCache allowlistCache
-	apiClient      *apiclient.ApiClient
+	metricsLevel          int
+	config                AppsecSourceConfig
+	logger                *log.Entry
+	mux                   *http.ServeMux
+	server                *http.Server
+	outChan               chan types.Event
+	InChan                chan appsec.ParsedRequest
+	AppsecRuntime         *appsec.AppsecRuntimeConfig
+	AppsecConfigs         map[string]appsec.AppsecConfig
+	lapiURL               string
+	AuthCache             AuthCache
+	AppsecRunners         []AppsecRunner // one for each go-routine
+	apiClient             *apiclient.ApiClient
+	appsecAllowlistClient *allowlists.AppsecAllowlist
 }
 
 // Struct to handle cache of authentication
 type AuthCache struct {
 	APIKeys map[string]time.Time
 	mu      sync.RWMutex
-}
-
-// FIXME: auth and allowlist should probably be merged to a common structure
-type allowlistCache struct {
-	mu        sync.RWMutex
-	allowlist map[string]allowlistCacheEntry
-}
-
-type allowlistCacheEntry struct {
-	allowlisted bool
-	expiration  time.Time
 }
 
 func NewAuthCache() AuthCache {
@@ -104,30 +92,6 @@ func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
 	ac.mu.RUnlock()
 
 	return expiration, exists
-}
-
-func NewAllowlistCache() allowlistCache {
-	return allowlistCache{
-		allowlist: make(map[string]allowlistCacheEntry, 0),
-		mu:        sync.RWMutex{},
-	}
-}
-
-func (ac *allowlistCache) Set(value string, allowlisted bool, expiration time.Time) {
-	ac.mu.Lock()
-	ac.allowlist[value] = allowlistCacheEntry{
-		allowlisted: allowlisted,
-		expiration:  expiration,
-	}
-	ac.mu.Unlock()
-}
-
-func (ac *allowlistCache) Get(value string) (bool, time.Time, bool) {
-	ac.mu.RLock()
-	entry, exists := ac.allowlist[value]
-	ac.mu.RUnlock()
-
-	return entry.allowlisted, entry.expiration, exists
 }
 
 // @tko + @sbl : we might want to get rid of that or improve it
@@ -260,17 +224,24 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
 
+	w.apiClient, err = apiclient.GetLAPIClient()
+	if err != nil {
+		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+	}
+	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.apiClient, w.logger)
+
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		// we copy AppsecRutime for each runner
+		// we copy AppsecRuntime for each runner
 		wrt := *w.AppsecRuntime
 		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
-			inChan:        w.InChan,
-			UUID:          appsecRunnerUUID,
-			logger:        w.logger.WithField("runner_uuid", appsecRunnerUUID),
-			AppsecRuntime: &wrt,
-			Labels:        w.config.Labels,
+			inChan:                 w.InChan,
+			UUID:                   appsecRunnerUUID,
+			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
+			AppsecRuntime:          &wrt,
+			Labels:                 w.config.Labels,
+			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
 
 		err := runner.Init(appsecCfg.GetDataDir())
@@ -285,12 +256,6 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
-
-	w.apiClient, err = apiclient.GetLAPIClient()
-	if err != nil {
-		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
-	}
-	w.allowlistCache = NewAllowlistCache()
 
 	return nil
 }
@@ -313,6 +278,8 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
+
+	w.appsecAllowlistClient.StartRefresh(t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
@@ -423,33 +390,6 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func (w *AppsecSource) isAllowlisted(ctx context.Context, value string, query bool) bool {
-	var err error
-
-	allowlisted, expiration, exists := w.allowlistCache.Get(value)
-	if exists && !time.Now().After(expiration) {
-		return allowlisted
-	}
-
-	if !query {
-		return false
-	}
-
-	allowlisted, _, err = w.apiClient.Allowlists.CheckIfAllowlisted(ctx, value)
-	if err != nil {
-		w.logger.Errorf("unable to check if %s is allowlisted: %s", value, err)
-		return false
-	}
-
-	if allowlisted {
-		w.allowlistCache.Set(value, allowlisted, time.Now().Add(positiveAllowlistCacheDuration))
-	} else {
-		w.allowlistCache.Set(value, allowlisted, time.Now().Add(negativeAllowlistCacheDuration))
-	}
-
-	return allowlisted
-}
-
 // should this be in the runner ?
 func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	w.logger.Debugf("Received request from '%s' on %s", r.RemoteAddr, r.URL.Path)
@@ -477,25 +417,6 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 
 		// apiKey is valid, store it in cache
 		w.AuthCache.Set(apiKey, time.Now().Add(*w.config.AuthCacheDuration))
-	}
-
-	// check if the client IP is allowlisted
-	if w.isAllowlisted(r.Context(), clientIP, false) {
-		w.logger.Infof("%s is allowlisted by LAPI, not processing", clientIP)
-		statusCode, appsecResponse := w.AppsecRuntime.GenerateResponse(appsec.AppsecTempResponse{
-			InBandInterrupt:    false,
-			OutOfBandInterrupt: false,
-			Action:             appsec.AllowRemediation,
-		}, w.logger)
-		body, err := json.Marshal(appsecResponse)
-		if err != nil {
-			w.logger.Errorf("unable to serialize response: %s", err)
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rw.WriteHeader(statusCode)
-		rw.Write(body)
-		return
 	}
 
 	// parse the request only once
