@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test pre-installed hub items.
 """
@@ -12,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_preinstalled_hub(crowdsec, flavor):
+def test_preinstalled_hub(crowdsec, flavor: str) -> None:
     """Test hub objects installed in the entrypoint"""
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log("*Starting processing data*")

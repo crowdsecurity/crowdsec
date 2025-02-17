@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import datetime
 
 import pytest
@@ -8,19 +6,19 @@ from pytest_cs import Status
 pytestmark = pytest.mark.docker
 
 
-def test_cold_logs(crowdsec, tmp_path_factory, flavor):
+def test_cold_logs(crowdsec, tmp_path_factory: pytest.TempPathFactory, flavor: str) -> None:
     env = {
         "DSN": "file:///var/log/toto.log",
     }
 
     logs = tmp_path_factory.mktemp("logs")
 
-    now = datetime.datetime.now() - datetime.timedelta(minutes=1)
-    with open(logs / "toto.log", "w") as f:
+    now = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(minutes=1)
+    with (logs / "toto.log").open("w") as f:
         # like date '+%b %d %H:%M:%S' but in python
         for i in range(10):
             ts = (now + datetime.timedelta(seconds=i)).strftime("%b %d %H:%M:%S")
-            f.write(ts + " sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424\n")
+            _ = f.write(ts + " sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424\n")
 
     volumes = {
         logs / "toto.log": {"bind": "/var/log/toto.log", "mode": "ro"},
@@ -44,7 +42,7 @@ def test_cold_logs(crowdsec, tmp_path_factory, flavor):
         )
 
 
-def test_cold_logs_missing_dsn(crowdsec, flavor):
+def test_cold_logs_missing_dsn(crowdsec, flavor: str) -> None:
     env = {
         "TYPE": "syslog",
     }

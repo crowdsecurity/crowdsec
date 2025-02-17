@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test basic behavior of all the image variants
 """
@@ -11,7 +9,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_cscli_lapi(crowdsec, flavor):
+def test_cscli_lapi(crowdsec, flavor: str) -> None:
     """Test if cscli can talk to lapi"""
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log("*Starting processing data*")
@@ -23,7 +21,7 @@ def test_cscli_lapi(crowdsec, flavor):
 
 
 @pytest.mark.skip(reason="currently broken by hub upgrade")
-def test_flavor_content(crowdsec, flavor):
+def test_flavor_content(crowdsec, flavor: str) -> None:
     """Test flavor contents"""
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log("*Starting processing data*")
