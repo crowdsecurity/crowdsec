@@ -72,17 +72,17 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				raw := []string{
-					fmt.Sprintf("%d", decisionItem.ID),
+					strconv.FormatInt(decisionItem.ID, 10),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Value,
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
 					alertItem.Source.GetAsNumberName(),
-					fmt.Sprintf("%d", *alertItem.EventsCount),
+					strconv.FormatInt(int64(*alertItem.EventsCount), 10),
 					*decisionItem.Duration,
-					fmt.Sprintf("%t", *decisionItem.Simulated),
-					fmt.Sprintf("%d", alertItem.ID),
+					strconv.FormatBool(*decisionItem.Simulated),
+					strconv.FormatInt(alertItem.ID, 10),
 				}
 				if printMachine {
 					raw = append(raw, alertItem.MachineID)
