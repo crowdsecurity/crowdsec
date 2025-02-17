@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var SyncInterval = time.Second * 10
+const SyncInterval = time.Second * 10
 
 const PapiPullKey = "papi:last_pull"
 
