@@ -109,7 +109,8 @@ teardown() {
     rune -0 cscli hub update
     assert_output "Downloading $INDEX_PATH"
     rune -0 cscli hub update
-    assert_output "Nothing to do, the hub index is up to date."
+    refute_output
+    assert_stderr 'level=info msg="Nothing to do, the hub index is up to date."'
 }
 
 @test "cscli hub upgrade (up to date)" {

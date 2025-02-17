@@ -219,6 +219,7 @@ filename: test_files/test_delete.log`,
 
 			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.expectedConfigErr)
+
 			if tc.expectedConfigErr != "" {
 				return
 			}
@@ -226,18 +227,19 @@ filename: test_files/test_delete.log`,
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
+
 			err = f.OneShotAcquisition(ctx, out, &tomb)
-			actualLines := len(out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
-				assert.Equal(t, tc.expectedLines, actualLines)
+				assert.Len(t, out, tc.expectedLines)
 			}
 
 			if tc.expectedOutput != "" {
 				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
 				hook.Reset()
 			}
+
 			if tc.teardown != nil {
 				tc.teardown()
 			}
@@ -391,6 +393,7 @@ force_inotify: true`, testPattern),
 			}
 
 			actualLines := 0
+
 			if tc.expectedLines != 0 {
 				go func() {
 					for {

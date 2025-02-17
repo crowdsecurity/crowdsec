@@ -34,10 +34,9 @@ cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs --downloa
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs --force
 
-# Proceed without prompting.
-cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs -i
+cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some parsers.
@@ -55,10 +54,9 @@ cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs --purge
 # Remove tainted items.
 cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs --force
 
-# Proceed without prompting.
-cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs -i
+cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some parsers. If they are not currently installed, they are downloaded but not installed.
@@ -73,10 +71,9 @@ cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs --dry-run
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs --force
 
-# Proceed without prompting.
-cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs -i
+cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state, metrics and ancestor collections of parsers (installed or not).

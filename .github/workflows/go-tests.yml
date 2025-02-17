@@ -184,11 +184,9 @@ jobs:
       run: |
         make build BUILD_PROFILE=minimal
 
-    - name: Run tests again, dynamic
+    - name: Ensure we can do a dynamic build, without tests
       run: |
         make clean build
-        set -o pipefail
-        make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
