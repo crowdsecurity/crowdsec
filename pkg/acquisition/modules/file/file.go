@@ -353,7 +353,7 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 			continue
 		}
 
-		if err := fd.Close(); err != nil {
+		if err = fd.Close(); err != nil {
 			f.logger.Errorf("unable to close %s : %s", file, err)
 			continue
 		}
@@ -381,6 +381,7 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 
 			if networkFS {
 				f.logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
+
 				pollFile = true
 			}
 		}
