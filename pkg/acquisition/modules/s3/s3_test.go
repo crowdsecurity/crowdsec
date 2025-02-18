@@ -208,7 +208,7 @@ func (msqs mockSQSClientNotif) DeleteMessage(input *sqs.DeleteMessageInput) (*sq
 }
 
 func TestDSNAcquis(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name               string
 		dsn                string
@@ -273,7 +273,7 @@ func TestDSNAcquis(t *testing.T) {
 }
 
 func TestListPolling(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name          string
 		config        string
@@ -350,7 +350,7 @@ prefix: foo/
 }
 
 func TestSQSPoll(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name          string
 		config        string

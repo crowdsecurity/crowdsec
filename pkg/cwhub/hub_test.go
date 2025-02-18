@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -94,6 +93,7 @@ func TestIndexUnknownItemType(t *testing.T) {
 }
 
 func TestHubUpdate(t *testing.T) {
+	ctx := t.Context()
 	// update an empty hub with a index containing a parser.
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
@@ -125,8 +125,6 @@ func TestHubUpdate(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	ctx := context.Background()
-
 	downloader := &Downloader{
 		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
@@ -144,10 +142,9 @@ func TestHubUpdate(t *testing.T) {
 }
 
 func TestHubUpdateInvalidTemplate(t *testing.T) {
+	ctx := t.Context()
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	downloader := &Downloader{
 		Branch:      "main",
@@ -159,6 +156,7 @@ func TestHubUpdateInvalidTemplate(t *testing.T) {
 }
 
 func TestHubUpdateCannotWrite(t *testing.T) {
+	ctx := t.Context()
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
 
@@ -189,8 +187,6 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	ctx := context.Background()
-
 	downloader := &Downloader{
 		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
@@ -203,6 +199,7 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 }
 
 func TestHubUpdateAfterLoad(t *testing.T) {
+	ctx := t.Context()
 	// Update() can't be called after Load() if the hub is not completely empty.
 	index1 := `
 {
@@ -249,8 +246,6 @@ func TestHubUpdateAfterLoad(t *testing.T) {
 		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
-
-	ctx := context.Background()
 
 	downloader := &Downloader{
 		Branch:      "main",

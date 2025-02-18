@@ -96,7 +96,7 @@ func AddAuthHeaders(request *http.Request, authResponse models.WatcherAuthRespon
 }
 
 func TestSimulatedAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_minibulk+simul.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_minibulk+simul.json")
@@ -115,7 +115,7 @@ func TestSimulatedAlert(t *testing.T) {
 }
 
 func TestCreateAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	// Create Alert with invalid format
 
@@ -139,7 +139,7 @@ func TestCreateAlert(t *testing.T) {
 }
 
 func TestCreateAlertChannels(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	apiServer, config := NewAPIServer(t, ctx)
 	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
 	err := apiServer.InitController()
@@ -168,7 +168,7 @@ func TestCreateAlertChannels(t *testing.T) {
 }
 
 func TestAlertListFilters(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_ssh-bf.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_ssh-bf.json")
@@ -337,7 +337,7 @@ func TestAlertListFilters(t *testing.T) {
 }
 
 func TestAlertBulkInsert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	// insert a bulk of 20 alerts to trigger bulk insert
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_bulk.json")
@@ -348,7 +348,7 @@ func TestAlertBulkInsert(t *testing.T) {
 }
 
 func TestListAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	// List Alert with invalid filter
@@ -365,7 +365,7 @@ func TestListAlert(t *testing.T) {
 }
 
 func TestCreateAlertErrors(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_sample.json")
 
@@ -387,7 +387,7 @@ func TestCreateAlertErrors(t *testing.T) {
 }
 
 func TestDeleteAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 
@@ -411,7 +411,7 @@ func TestDeleteAlert(t *testing.T) {
 }
 
 func TestDeleteAlertByID(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 
@@ -435,7 +435,7 @@ func TestDeleteAlertByID(t *testing.T) {
 }
 
 func TestDeleteAlertTrustedIPS(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := LoadTestConfig(t)
 	// IPv6 mocking doesn't seem to work.
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}

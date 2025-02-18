@@ -128,7 +128,7 @@ func createTopic(topic string, broker string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -201,7 +201,7 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}

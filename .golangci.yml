@@ -503,6 +503,11 @@ issues:
       path: "pkg/apiserver/(.+)_test.go"
       text: "os.MkdirTemp.* could be replaced by t.TempDir.*"
 
+#    - linters:
+#        - usetesting
+#      path: "(.+)_test.go"
+#      text: "context.Background.*"
+
     - linters:
         - usetesting
       path: "pkg/apiserver/(.+)_test.go"

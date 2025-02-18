@@ -1,7 +1,6 @@
 package cloudwatchacquisition
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -79,7 +78,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestWatchLogGroupForStreams(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -518,7 +517,7 @@ stream_name: test_stream`),
 }
 
 func TestConfiguration(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -637,7 +636,7 @@ func TestConfigureByDSN(t *testing.T) {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")

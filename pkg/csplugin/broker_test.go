@@ -4,7 +4,6 @@ package csplugin
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -54,7 +53,7 @@ func (s *PluginSuite) writeconfig(config PluginConfig) {
 }
 
 func (s *PluginSuite) TestBrokerInit() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -144,7 +143,7 @@ func (s *PluginSuite) TestBrokerInit() {
 }
 
 func (s *PluginSuite) TestBrokerNoThreshold() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	var alerts []models.Alert
 
@@ -191,7 +190,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	// test grouping by "time"
 	DefaultEmptyTicker = 50 * time.Millisecond
@@ -230,7 +229,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 }
 
 func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -271,7 +270,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 }
 
 func (s *PluginSuite) TestBrokerRunGroupThreshold() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	// test grouping by "size"
 	DefaultEmptyTicker = 50 * time.Millisecond
 
@@ -326,7 +325,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunTimeThreshold() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -362,7 +361,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 }
 
 func (s *PluginSuite) TestBrokerRunSimple() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
