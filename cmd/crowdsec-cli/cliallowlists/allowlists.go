@@ -564,9 +564,9 @@ func (cli *cliAllowLists) inspect(ctx context.Context, client *apiclient.ApiClie
 
 func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "remove [allowlist_name] --value [value]",
+		Use:               "remove [allowlist_name] [value]",
 		Short:             "Remove content from an allowlist",
-		Example:           `cscli allowlists remove my_allowlist 1.2.3.4 2.3.4.5"`,
+		Example:           `cscli allowlists remove my_allowlist 1.2.3.4 2.3.4.5`,
 		Args:              cobra.MinimumNArgs(2),
 		ValidArgsFunction: cli.validAllowlists,
 		RunE: func(cmd *cobra.Command, args []string) error {
