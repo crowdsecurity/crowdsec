@@ -262,7 +262,7 @@ func Distinct(params ...any) (any, error) {
 }
 
 func FlattenDistinct(params ...any) (any, error) {
-	return Distinct(flatten(nil, reflect.ValueOf(params))) //nolint:asasalint
+	return Distinct(flatten(nil, reflect.ValueOf(params)))
 }
 
 func Flatten(params ...any) (any, error) {

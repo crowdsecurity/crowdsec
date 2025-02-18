@@ -240,7 +240,7 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - exportloopref
+    - tenv
 
     #
     # Redundant
