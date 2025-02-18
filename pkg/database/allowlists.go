@@ -6,7 +6,7 @@ import (
 	"net"
 	"strings"
 	"time"
-	
+
 	"entgo.io/ent/dialect/sql/sqlgraph"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -314,7 +314,7 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 		)
 	}
 
-	allowed, err := query.First(ctx)
+	allowed, err := query.WithAllowlist().First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, "", nil
@@ -323,7 +323,14 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 		return false, "", fmt.Errorf("unable to check if value is allowlisted: %w", err)
 	}
 
-	return true, allowed.Value, nil
+	allowlistName := allowed.Edges.Allowlist[0].Name
+	reason := allowed.Value + " from " + allowlistName
+
+	if allowed.Comment != "" {
+		reason += " (" + allowed.Comment + ")"
+	}
+
+	return true, reason, nil
 }
 
 func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*net.IPNet, error) {
@@ -333,7 +340,7 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 	}
 
 	var (
-		ips []net.IP
+		ips  []net.IP
 		nets []*net.IPNet
 	)
 
