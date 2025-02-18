@@ -237,8 +237,8 @@ func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) erro
 
 func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 
-	if r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP) {
-		r.logger.Infof("%s is allowlisted, skipping", request.ClientIP)
+	if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
+		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, reason)
 		return
 	}
 
@@ -297,8 +297,8 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 
 func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 
-	if r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP) {
-		r.logger.Infof("%s is allowlisted, skipping", request.ClientIP)
+	if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
+		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, reason)
 		return
 	}
 

@@ -58,9 +58,9 @@ func TestAppsecAllowlist(t *testing.T) {
 
 		w.WriteHeader(http.StatusOK)
 
-		_, err = w.Write([]byte(`[{"allowlist_id":"xxxx","console_managed":false,"created_at":"2025-02-11T14:47:35.839Z","description":"test_desc2",
-		"items":[{"created_at":"2025-02-12T09:32:53.939Z","description":"sdfsdaf","expiration":"0001-01-01T00:00:00.000Z","value":"5.4.3.2"},
-		{"created_at":"2025-02-12T09:32:53.939Z","description":"sdfsdaf","expiration":"0001-01-01T00:00:00.000Z","value":"5.4.4.0/24"}]}]`))
+		_, err = w.Write([]byte(`[{"name": "list1", "allowlist_id":"xxxx","console_managed":false,"created_at":"2025-02-11T14:47:35.839Z","description":"test_desc2",
+		"items":[{"created_at":"2025-02-12T09:32:53.939Z","description":"desc_ip","expiration":"0001-01-01T00:00:00.000Z","value":"5.4.3.2"},
+		{"created_at":"2025-02-12T09:32:53.939Z","description":"desc_range","expiration":"0001-01-01T00:00:00.000Z","value":"5.4.4.0/24"}]}]`))
 		assert.NoError(t, err)
 	})
 
@@ -69,14 +69,17 @@ func TestAppsecAllowlist(t *testing.T) {
 	err = allowlistClient.FetchAllowlists()
 	require.NoError(t, err)
 
-	res := allowlistClient.IsAllowlisted("1.2.3.4")
+	res, reason := allowlistClient.IsAllowlisted("1.2.3.4")
 	assert.False(t, res)
+	assert.Empty(t, reason)
 
-	res = allowlistClient.IsAllowlisted("5.4.3.2")
+	res, reason = allowlistClient.IsAllowlisted("5.4.3.2")
 	assert.True(t, res)
+	assert.Equal(t, "5.4.3.2 from list1 (desc_ip)", reason)
 
-	res = allowlistClient.IsAllowlisted("5.4.4.42")
+	res, reason = allowlistClient.IsAllowlisted("5.4.4.42")
 	assert.True(t, res)
+	assert.Equal(t, "5.4.4.0/24 from list1 (desc_range)", reason)
 
 	assert.Len(t, allowlistClient.ips, 1)
 	assert.Len(t, allowlistClient.ranges, 1)
