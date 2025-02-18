@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test bind-mounting local items
 """
@@ -12,14 +10,14 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_inject_local_item(crowdsec, tmp_path_factory, flavor):
+def test_inject_local_item(crowdsec, tmp_path_factory: pytest.TempPathFactory, flavor: str) -> None:
     """Test mounting a custom whitelist at startup"""
 
     localitems = tmp_path_factory.mktemp("localitems")
     custom_whitelists = localitems / "custom_whitelists.yaml"
 
-    with open(custom_whitelists, "w") as f:
-        f.write('{"whitelist":{"reason":"Good IPs","ip":["1.2.3.4"]}}')
+    with custom_whitelists.open("w") as f:
+        _ = f.write('{"whitelist":{"reason":"Good IPs","ip":["1.2.3.4"]}}')
 
     volumes = {custom_whitelists: {"bind": "/etc/crowdsec/parsers/s02-enrich/custom_whitelists.yaml"}}
 

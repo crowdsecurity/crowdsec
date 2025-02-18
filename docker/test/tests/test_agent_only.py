@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-import random
+import secrets
 from http import HTTPStatus
 
 import pytest
@@ -8,8 +6,8 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_split_lapi_agent(crowdsec, flavor):
-    rand = str(random.randint(0, 10000))
+def test_split_lapi_agent(crowdsec, flavor: str) -> None:
+    rand = str(secrets.randbelow(10000))
     lapiname = f"lapi-{rand}"
     agentname = f"agent-{rand}"
 

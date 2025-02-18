@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test scenario management
 """
@@ -12,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_install_two_scenarios(crowdsec, flavor):
+def test_install_two_scenarios(crowdsec, flavor: str) -> None:
     """Test installing scenarios at startup"""
     it1 = "crowdsecurity/cpanel-bf-attempt"
     it2 = "crowdsecurity/asterisk_bf"
@@ -28,7 +26,7 @@ def test_install_two_scenarios(crowdsec, flavor):
         assert items[it2]["status"] == "enabled"
 
 
-def test_disable_scenario(crowdsec, flavor):
+def test_disable_scenario(crowdsec, flavor: str) -> None:
     """Test removing a pre-installed scenario at startup"""
     it = "crowdsecurity/ssh-bf"
     env = {"DISABLE_SCENARIOS": it}
@@ -42,7 +40,7 @@ def test_disable_scenario(crowdsec, flavor):
         assert it not in items
 
 
-def test_install_and_disable_scenario(crowdsec, flavor):
+def test_install_and_disable_scenario(crowdsec, flavor: str) -> None:
     """Declare a scenario to install AND disable: disable wins"""
     it = "crowdsecurity/asterisk_bf"
     env = {

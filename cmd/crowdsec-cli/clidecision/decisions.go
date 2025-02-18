@@ -24,6 +24,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
+type cliDecisions struct {
+	client *apiclient.ApiClient
+	cfg    configGetter
+}
+
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	spamLimit := make(map[string]bool)
@@ -65,17 +72,17 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				raw := []string{
-					fmt.Sprintf("%d", decisionItem.ID),
+					strconv.FormatInt(decisionItem.ID, 10),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Value,
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
 					alertItem.Source.GetAsNumberName(),
-					fmt.Sprintf("%d", *alertItem.EventsCount),
+					strconv.FormatInt(int64(*alertItem.EventsCount), 10),
 					*decisionItem.Duration,
-					fmt.Sprintf("%t", *decisionItem.Simulated),
-					fmt.Sprintf("%d", alertItem.ID),
+					strconv.FormatBool(*decisionItem.Simulated),
+					strconv.FormatInt(alertItem.ID, 10),
 				}
 				if printMachine {
 					raw = append(raw, alertItem.MachineID)
@@ -113,13 +120,6 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	}
 
 	return nil
-}
-
-type configGetter func() *csconfig.Config
-
-type cliDecisions struct {
-	client *apiclient.ApiClient
-	cfg    configGetter
 }
 
 func New(cfg configGetter) *cliDecisions {

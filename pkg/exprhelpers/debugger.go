@@ -17,7 +17,7 @@ type ExprRuntimeDebug struct {
 	Outputs []OpOutput
 }
 
-var IndentStep = 4
+const IndentStep = 4
 
 // we use this struct to store the output of the expr runtime
 type OpOutput struct {
