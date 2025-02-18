@@ -3,6 +3,7 @@ package appsec
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -277,17 +278,19 @@ func (r *ReqDumpFilter) ToJSON() error {
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
 func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
 	var err error
-	contentLength := r.ContentLength
-	if contentLength < 0 {
-		contentLength = 0
-	}
-	body := make([]byte, contentLength)
-	if r.Body != nil {
-		_, err = io.ReadFull(r.Body, body)
+	var buf bytes.Buffer
+	var body []byte
+
+	if r.Body != nil && r.Body != http.NoBody {
+		_, err = buf.ReadFrom(r.Body)
 		if err != nil {
-			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				log.Errorf("Unexpected EOF while reading body, still proceeding")
+			} else {
+				return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
+			}
 		}
-		// reset the original body back as it's been read, i'm not sure its needed?
+		body = buf.Bytes()
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	}
