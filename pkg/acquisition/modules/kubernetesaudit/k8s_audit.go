@@ -118,7 +118,9 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, met
 		Protocols: &http.Protocols{},
 	}
 
-	ka.server.Protocols.SetHTTP2(false)
+	ka.server.Protocols.SetHTTP1(true)
+	ka.server.Protocols.SetUnencryptedHTTP2(true)
+	ka.server.Protocols.SetHTTP2(true)
 
 	ka.mux.HandleFunc(ka.config.WebhookPath, ka.webhookHandler)
 
