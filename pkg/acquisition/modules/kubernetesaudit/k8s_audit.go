@@ -113,9 +113,12 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, met
 	ka.mux = http.NewServeMux()
 
 	ka.server = &http.Server{
-		Addr:    ka.addr,
-		Handler: ka.mux,
+		Addr:      ka.addr,
+		Handler:   ka.mux,
+		Protocols: &http.Protocols{},
 	}
+
+	ka.server.Protocols.SetHTTP2(false)
 
 	ka.mux.HandleFunc(ka.config.WebhookPath, ka.webhookHandler)
 

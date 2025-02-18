@@ -173,9 +173,12 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	w.mux = http.NewServeMux()
 
 	w.server = &http.Server{
-		Addr:    w.config.ListenAddr,
-		Handler: w.mux,
+		Addr:      w.config.ListenAddr,
+		Handler:   w.mux,
+		Protocols: &http.Protocols{},
 	}
+
+	w.server.Protocols.SetHTTP2(false)
 
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}

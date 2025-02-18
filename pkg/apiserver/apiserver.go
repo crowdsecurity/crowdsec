@@ -384,7 +384,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		Addr:      s.URL,
 		Handler:   s.router,
 		TLSConfig: tlsCfg,
+		Protocols: &http.Protocols{},
 	}
+
+	s.httpServer.Protocols.SetHTTP2(false)
 
 	ctx := context.TODO()
 
