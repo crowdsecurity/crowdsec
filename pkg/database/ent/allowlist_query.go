@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -85,7 +86,7 @@ func (alq *AllowListQuery) QueryAllowlistItems() *AllowListItemQuery {
 // First returns the first AllowList entity from the query.
 // Returns a *NotFoundError when no AllowList was found.
 func (alq *AllowListQuery) First(ctx context.Context) (*AllowList, error) {
-	nodes, err := alq.Limit(1).All(setContextOp(ctx, alq.ctx, "First"))
+	nodes, err := alq.Limit(1).All(setContextOp(ctx, alq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (alq *AllowListQuery) FirstX(ctx context.Context) *AllowList {
 // Returns a *NotFoundError when no AllowList ID was found.
 func (alq *AllowListQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = alq.Limit(1).IDs(setContextOp(ctx, alq.ctx, "FirstID")); err != nil {
+	if ids, err = alq.Limit(1).IDs(setContextOp(ctx, alq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -131,7 +132,7 @@ func (alq *AllowListQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one AllowList entity is found.
 // Returns a *NotFoundError when no AllowList entities are found.
 func (alq *AllowListQuery) Only(ctx context.Context) (*AllowList, error) {
-	nodes, err := alq.Limit(2).All(setContextOp(ctx, alq.ctx, "Only"))
+	nodes, err := alq.Limit(2).All(setContextOp(ctx, alq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +160,7 @@ func (alq *AllowListQuery) OnlyX(ctx context.Context) *AllowList {
 // Returns a *NotFoundError when no entities are found.
 func (alq *AllowListQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = alq.Limit(2).IDs(setContextOp(ctx, alq.ctx, "OnlyID")); err != nil {
+	if ids, err = alq.Limit(2).IDs(setContextOp(ctx, alq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -184,7 +185,7 @@ func (alq *AllowListQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of AllowLists.
 func (alq *AllowListQuery) All(ctx context.Context) ([]*AllowList, error) {
-	ctx = setContextOp(ctx, alq.ctx, "All")
+	ctx = setContextOp(ctx, alq.ctx, ent.OpQueryAll)
 	if err := alq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -206,7 +207,7 @@ func (alq *AllowListQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if alq.ctx.Unique == nil && alq.path != nil {
 		alq.Unique(true)
 	}
-	ctx = setContextOp(ctx, alq.ctx, "IDs")
+	ctx = setContextOp(ctx, alq.ctx, ent.OpQueryIDs)
 	if err = alq.Select(allowlist.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -224,7 +225,7 @@ func (alq *AllowListQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (alq *AllowListQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, alq.ctx, "Count")
+	ctx = setContextOp(ctx, alq.ctx, ent.OpQueryCount)
 	if err := alq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -242,7 +243,7 @@ func (alq *AllowListQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (alq *AllowListQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, alq.ctx, "Exist")
+	ctx = setContextOp(ctx, alq.ctx, ent.OpQueryExist)
 	switch _, err := alq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -559,7 +560,7 @@ func (algb *AllowListGroupBy) Aggregate(fns ...AggregateFunc) *AllowListGroupBy 
 
 // Scan applies the selector query and scans the result into the given value.
 func (algb *AllowListGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, algb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, algb.build.ctx, ent.OpQueryGroupBy)
 	if err := algb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -607,7 +608,7 @@ func (als *AllowListSelect) Aggregate(fns ...AggregateFunc) *AllowListSelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (als *AllowListSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, als.ctx, "Select")
+	ctx = setContextOp(ctx, als.ctx, ent.OpQuerySelect)
 	if err := als.prepareQuery(ctx); err != nil {
 		return err
 	}
