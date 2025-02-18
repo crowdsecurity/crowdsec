@@ -26,8 +26,8 @@ func (c *Client) CreateAllowList(ctx context.Context, name string, description s
 	if err != nil {
 		if sqlgraph.IsUniqueConstraintError(err) {
 			return nil, fmt.Errorf("allowlist '%s' already exists", name)
-
 		}
+
 		return nil, fmt.Errorf("unable to create allowlist: %w", err)
 	}
 
@@ -58,7 +58,6 @@ func (c *Client) DeleteAllowList(ctx context.Context, name string, fromConsole b
 }
 
 func (c *Client) DeleteAllowListByID(ctx context.Context, name string, allowlistID string, fromConsole bool) error {
-
 	nbDeleted, err := c.Ent.AllowListItem.Delete().Where(allowlistitem.HasAllowlistWith(allowlist.AllowlistIDEQ(allowlistID), allowlist.FromConsoleEQ(fromConsole))).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to delete allowlist items: %w", err)
@@ -106,6 +105,7 @@ func (c *Client) GetAllowList(ctx context.Context, name string, withContent bool
 		if ent.IsNotFound(err) {
 			return nil, fmt.Errorf("allowlist '%s' not found", name)
 		}
+
 		return nil, err
 	}
 
@@ -117,6 +117,7 @@ func (c *Client) GetAllowListByID(ctx context.Context, allowlistID string, withC
 	if withContent {
 		q = q.WithAllowlistItems()
 	}
+
 	result, err := q.First(ctx)
 	if err != nil {
 		return nil, err
@@ -202,7 +203,6 @@ func (c *Client) UpdateAllowlistMeta(ctx context.Context, allowlistID string, na
 	c.Log.Debugf("updating allowlist %s meta", name)
 
 	err := c.Ent.AllowList.Update().Where(allowlist.AllowlistIDEQ(allowlistID)).SetName(name).SetDescription(description).Exec(ctx)
-
 	if err != nil {
 		return fmt.Errorf("unable to update allowlist: %w", err)
 	}

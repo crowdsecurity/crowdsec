@@ -287,9 +287,7 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 
 		p.Logger.Infof("Received allowlist_unsubscribe command from PAPI, unsubscribing from allowlist %s", unsubscribeMsg.Name)
 
-		err = p.DBClient.DeleteAllowListByID(ctx, unsubscribeMsg.Name, unsubscribeMsg.Id, true)
-
-		if err != nil {
+		if err := p.DBClient.DeleteAllowListByID(ctx, unsubscribeMsg.Name, unsubscribeMsg.Id, true); err != nil {
 			if !ent.IsNotFound(err) {
 				return err
 			}

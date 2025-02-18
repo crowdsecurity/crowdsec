@@ -41,6 +41,7 @@ func NewAppsecAllowlist(client *apiclient.ApiClient, logger *log.Entry) *AppsecA
 
 func (a *AppsecAllowlist) FetchAllowlists() error {
 	a.logger.Debug("fetching allowlists")
+
 	allowlists, _, err := a.LAPIClient.Allowlists.List(context.TODO(), apiclient.AllowlistListOpts{WithContent: true})
 	if err != nil {
 		return err
@@ -50,6 +51,7 @@ func (a *AppsecAllowlist) FetchAllowlists() error {
 	defer a.lock.Unlock()
 	a.ranges = []net.IPNet{}
 	a.ips = []net.IP{}
+
 	for _, allowlist := range *allowlists {
 		for _, item := range allowlist.Items {
 			if strings.Contains(item.Value, "/") {
@@ -57,19 +59,23 @@ func (a *AppsecAllowlist) FetchAllowlists() error {
 				if err != nil {
 					continue
 				}
+
 				a.ranges = append(a.ranges, *ipNet)
 			} else {
 				ip := net.ParseIP(item.Value)
 				if ip == nil {
 					return nil
 				}
+
 				a.ips = append(a.ips, ip)
 			}
 		}
 	}
+
 	a.logger.Debugf("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
 	a.logger.Tracef("allowlisted ips: %+v", a.ips)
 	a.logger.Tracef("allowlisted ranges: %+v", a.ranges)
+
 	return nil
 }
 

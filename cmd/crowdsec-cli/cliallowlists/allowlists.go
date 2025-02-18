@@ -174,6 +174,7 @@ func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowli
 		if allowlist.ConsoleManaged {
 			managed = "yes"
 		}
+
 		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, managed, len(allowlist.Items)})
 	}
 
@@ -196,6 +197,7 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	if allowlist.ConsoleManaged {
 		managed = "yes"
 	}
+
 	infoTable.AppendRows([]table.Row{
 		{"Name", allowlist.Name},
 		{"Description", allowlist.Description},

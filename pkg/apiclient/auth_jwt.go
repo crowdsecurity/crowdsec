@@ -61,6 +61,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
+
 	err = enc.Encode(auth)
 	if err != nil {
 		return fmt.Errorf("could not encode jwt auth body: %w", err)
@@ -186,7 +187,6 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		resp, err = t.transport().RoundTrip(clonedReq)
-
 		if err != nil {
 			// we had an error (network error for example), reset the token?
 			t.ResetToken()

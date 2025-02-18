@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
 
 func setup() (*http.ServeMux, string, func()) {
@@ -47,7 +47,7 @@ func TestAppsecAllowlist(t *testing.T) {
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err = w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
 	})
 
@@ -55,8 +55,10 @@ func TestAppsecAllowlist(t *testing.T) {
 		if r.URL.Query().Get("with_content") != "true" {
 			t.Errorf("with_content not set")
 		}
+
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`[{"allowlist_id":"xxxx","console_managed":false,"created_at":"2025-02-11T14:47:35.839Z","description":"test_desc2",
+
+		_, err = w.Write([]byte(`[{"allowlist_id":"xxxx","console_managed":false,"created_at":"2025-02-11T14:47:35.839Z","description":"test_desc2",
 		"items":[{"created_at":"2025-02-12T09:32:53.939Z","description":"sdfsdaf","expiration":"0001-01-01T00:00:00.000Z","value":"5.4.3.2"},
 		{"created_at":"2025-02-12T09:32:53.939Z","description":"sdfsdaf","expiration":"0001-01-01T00:00:00.000Z","value":"5.4.4.0/24"}]}]`))
 		assert.NoError(t, err)
