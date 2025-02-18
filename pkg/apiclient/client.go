@@ -72,7 +72,6 @@ type service struct {
 }
 
 func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login string, password string, scenarios []string) error {
-
 	if lapiClient != nil {
 		return errors.New("client already initialized")
 	}
@@ -130,6 +129,7 @@ func GetLAPIClient() (*ApiClient, error) {
 	if lapiClient == nil {
 		return nil, errors.New("client not initialized")
 	}
+
 	return lapiClient, nil
 }
 

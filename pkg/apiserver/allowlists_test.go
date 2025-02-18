@@ -7,9 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func TestAllowlistList(t *testing.T) {
@@ -41,7 +43,7 @@ func TestGetAllowlist(t *testing.T) {
 
 	require.NoError(t, err)
 
-	err = lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
+	added, err := lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
 		{
 			Value: "1.2.3.4",
 		},
@@ -52,6 +54,7 @@ func TestGetAllowlist(t *testing.T) {
 	})
 
 	require.NoError(t, err)
+	assert.Equal(t, 1, added)
 
 	w := lapi.RecordResponse(t, ctx, http.MethodGet, "/v1/allowlists/test?with_content=true", emptyBody, passwordAuthType)
 
@@ -75,7 +78,7 @@ func TestCheckInAllowlist(t *testing.T) {
 
 	require.NoError(t, err)
 
-	err = lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
+	added, err := lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
 		{
 			Value: "1.2.3.4",
 		},
@@ -86,6 +89,7 @@ func TestCheckInAllowlist(t *testing.T) {
 	})
 
 	require.NoError(t, err)
+	assert.Equal(t, 1, added)
 
 	// GET request, should return 200 and status in body
 	w := lapi.RecordResponse(t, ctx, http.MethodGet, "/v1/allowlists/check/1.2.3.4", emptyBody, passwordAuthType)

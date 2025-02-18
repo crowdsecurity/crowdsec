@@ -154,26 +154,27 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 
 	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
 	require.NoError(t, err)
-	err = lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
+	added, err := lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
 		{
 			Value: "10.0.0.0/24",
 		},
 		{
 			Value:      "192.168.0.0/24",
-			Expiration: strfmt.DateTime(time.Now().Add(-time.Hour)), //Expired item
+			Expiration: strfmt.DateTime(time.Now().Add(-time.Hour)), // Expired item
 		},
 		{
 			Value: "127.0.0.1",
 		},
 	})
 	require.NoError(t, err)
+	assert.Equal(t, 1, added)
 
 	// Create Alert with allowlisted IP
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_allowlisted.json")
 	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, http.StatusCreated, w.Code)
 
-	//We should have no alert as the IP is allowlisted
+	// We should have no alert as the IP is allowlisted
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -183,7 +184,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, http.StatusCreated, w.Code)
 
-	//We should have an alert as the IP is allowlisted but the item is expired
+	// We should have an alert as the IP is allowlisted but the item is expired
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "192.168.0.42")
@@ -193,7 +194,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, http.StatusCreated, w.Code)
 
-	//We should have an alert as the IP is allowlisted but the alert has decisions
+	// We should have an alert as the IP is allowlisted but the alert has decisions
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "127.0.0.1")
