@@ -167,7 +167,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, 1, added)
+	assert.Equal(t, 3, added)
 
 	// Create Alert with allowlisted IP
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_allowlisted.json")
