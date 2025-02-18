@@ -21,6 +21,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -248,7 +249,7 @@ func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
 		Use:     "create [allowlist_name]",
 		Example: "cscli allowlists create my_allowlist -d 'my allowlist description'",
 		Short:   "Create a new allowlist",
-		Args:    cobra.ExactArgs(1),
+		Args:    args.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			cfg := cli.cfg()
@@ -353,7 +354,7 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 		Use:               "delete [allowlist_name]",
 		Short:             "Delete an allowlist",
 		Example:           `cscli allowlists delete my_allowlist`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		ValidArgsFunction: cli.validAllowlists,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
@@ -407,7 +408,7 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 		Use:               "add [allowlist_name] [value...] [-e expiration] [-d comment]",
 		Short:             "Add content to an allowlist",
 		Example:           `cscli allowlists add my_allowlist 1.2.3.4 2.3.4.5 -e 1h -d "my comment"`,
-		Args:              cobra.MinimumNArgs(2),
+		Args:              args.MinimumNArgs(2),
 		ValidArgsFunction: cli.validAllowlists,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
@@ -505,7 +506,7 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 		Use:               "inspect [allowlist_name]",
 		Example:           `cscli allowlists inspect my_allowlist`,
 		Short:             "Inspect an allowlist",
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		ValidArgsFunction: cli.validAllowlistsWithConsole,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := cli.cfg()
@@ -567,8 +568,9 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 		Use:               "remove [allowlist_name] [value]",
 		Short:             "Remove content from an allowlist",
 		Example:           `cscli allowlists remove my_allowlist 1.2.3.4 2.3.4.5`,
-		Args:              cobra.MinimumNArgs(2),
+		Args:              args.MinimumNArgs(2),
 		ValidArgsFunction: cli.validAllowlists,
+		SilenceUsage:      false,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			cfg := cli.cfg()
