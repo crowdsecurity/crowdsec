@@ -64,7 +64,7 @@ func TestAppsecAllowlist(t *testing.T) {
 
 	allowlistClient := NewAppsecAllowlist(client, log.NewEntry(log.StandardLogger()))
 
-	err = allowlistClient.fetchAllowlists()
+	err = allowlistClient.FetchAllowlists()
 	require.NoError(t, err)
 
 	res := allowlistClient.IsAllowlisted("1.2.3.4")
@@ -79,7 +79,7 @@ func TestAppsecAllowlist(t *testing.T) {
 	assert.Len(t, allowlistClient.ips, 1)
 	assert.Len(t, allowlistClient.ranges, 1)
 
-	err = allowlistClient.fetchAllowlists()
+	err = allowlistClient.FetchAllowlists()
 	require.NoError(t, err)
 
 	// No duplicates should be added

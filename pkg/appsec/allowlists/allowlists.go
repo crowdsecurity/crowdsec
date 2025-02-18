@@ -32,14 +32,14 @@ func NewAppsecAllowlist(client *apiclient.ApiClient, logger *log.Entry) *AppsecA
 		ranges:     []net.IPNet{},
 	}
 
-	if err := a.fetchAllowlists(); err != nil {
+	if err := a.FetchAllowlists(); err != nil {
 		a.logger.Errorf("failed to fetch allowlists: %s", err)
 	}
 
 	return a
 }
 
-func (a *AppsecAllowlist) fetchAllowlists() error {
+func (a *AppsecAllowlist) FetchAllowlists() error {
 	a.logger.Debug("fetching allowlists")
 	allowlists, _, err := a.LAPIClient.Allowlists.List(context.TODO(), apiclient.AllowlistListOpts{WithContent: true})
 	if err != nil {
@@ -79,7 +79,7 @@ func (a *AppsecAllowlist) updateAllowlists() error {
 	for {
 		select {
 		case <-ticker.C:
-			if err := a.fetchAllowlists(); err != nil {
+			if err := a.FetchAllowlists(); err != nil {
 				a.logger.Errorf("failed to fetch allowlists: %s", err)
 			}
 		case <-a.tomb.Dying():
