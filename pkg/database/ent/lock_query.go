@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -60,7 +61,7 @@ func (lq *LockQuery) Order(o ...lock.OrderOption) *LockQuery {
 // First returns the first Lock entity from the query.
 // Returns a *NotFoundError when no Lock was found.
 func (lq *LockQuery) First(ctx context.Context) (*Lock, error) {
-	nodes, err := lq.Limit(1).All(setContextOp(ctx, lq.ctx, "First"))
+	nodes, err := lq.Limit(1).All(setContextOp(ctx, lq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func (lq *LockQuery) FirstX(ctx context.Context) *Lock {
 // Returns a *NotFoundError when no Lock ID was found.
 func (lq *LockQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = lq.Limit(1).IDs(setContextOp(ctx, lq.ctx, "FirstID")); err != nil {
+	if ids, err = lq.Limit(1).IDs(setContextOp(ctx, lq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -106,7 +107,7 @@ func (lq *LockQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Lock entity is found.
 // Returns a *NotFoundError when no Lock entities are found.
 func (lq *LockQuery) Only(ctx context.Context) (*Lock, error) {
-	nodes, err := lq.Limit(2).All(setContextOp(ctx, lq.ctx, "Only"))
+	nodes, err := lq.Limit(2).All(setContextOp(ctx, lq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (lq *LockQuery) OnlyX(ctx context.Context) *Lock {
 // Returns a *NotFoundError when no entities are found.
 func (lq *LockQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = lq.Limit(2).IDs(setContextOp(ctx, lq.ctx, "OnlyID")); err != nil {
+	if ids, err = lq.Limit(2).IDs(setContextOp(ctx, lq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -159,7 +160,7 @@ func (lq *LockQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Locks.
 func (lq *LockQuery) All(ctx context.Context) ([]*Lock, error) {
-	ctx = setContextOp(ctx, lq.ctx, "All")
+	ctx = setContextOp(ctx, lq.ctx, ent.OpQueryAll)
 	if err := lq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (lq *LockQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if lq.ctx.Unique == nil && lq.path != nil {
 		lq.Unique(true)
 	}
-	ctx = setContextOp(ctx, lq.ctx, "IDs")
+	ctx = setContextOp(ctx, lq.ctx, ent.OpQueryIDs)
 	if err = lq.Select(lock.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func (lq *LockQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (lq *LockQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, lq.ctx, "Count")
+	ctx = setContextOp(ctx, lq.ctx, ent.OpQueryCount)
 	if err := lq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -217,7 +218,7 @@ func (lq *LockQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (lq *LockQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, lq.ctx, "Exist")
+	ctx = setContextOp(ctx, lq.ctx, ent.OpQueryExist)
 	switch _, err := lq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -449,7 +450,7 @@ func (lgb *LockGroupBy) Aggregate(fns ...AggregateFunc) *LockGroupBy {
 
 // Scan applies the selector query and scans the result into the given value.
 func (lgb *LockGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, lgb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, lgb.build.ctx, ent.OpQueryGroupBy)
 	if err := lgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -497,7 +498,7 @@ func (ls *LockSelect) Aggregate(fns ...AggregateFunc) *LockSelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (ls *LockSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, ls.ctx, "Select")
+	ctx = setContextOp(ctx, ls.ctx, ent.OpQuerySelect)
 	if err := ls.prepareQuery(ctx); err != nil {
 		return err
 	}
