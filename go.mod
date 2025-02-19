@@ -1,10 +1,6 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.23.6
-
-// Don't use the toolchain directive to avoid uncontrolled downloads during
-// a build, especially in sandboxed environments (freebsd, gentoo...).
-// toolchain go1.21.3
+go 1.24.0
 
 require (
 	entgo.io/ent v0.14.2
