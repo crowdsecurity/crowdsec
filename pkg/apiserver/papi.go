@@ -345,13 +345,10 @@ func (p *Papi) sendDeletedDecisionsBatch(ctx context.Context, decisions []models
 	}
 
 	return nil
-
 }
 
 func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.DecisionsDeleteRequest) {
-	var (
-		cache []models.DecisionsDeleteRequestItem = *cacheOrig
-	)
+	var cache []models.DecisionsDeleteRequestItem = *cacheOrig
 
 	batchSize := 50
 

@@ -35,7 +35,7 @@ import (
 const (
 	// delta values must be smaller than the interval
 	pullIntervalDefault       = time.Hour * 2
-	pullIntervalDelta         = 5 * time.Minute
+	pullIntervalDelta         = time.Minute * 5
 	pushIntervalDefault       = time.Second * 10
 	pushIntervalDelta         = time.Second * 7
 	metricsIntervalDefault    = time.Minute * 30
@@ -368,6 +368,7 @@ func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsReques
 	defer cancel()
 
 	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
+
 	return err
 }
 

@@ -323,7 +323,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
 		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, tomb, response, orderEvent, cscfg.SimulationConfig)
-	        if err != nil {
+		if err != nil {
 			return nil, nil, err
 		}
 
