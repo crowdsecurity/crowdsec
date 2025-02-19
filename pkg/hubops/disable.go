@@ -10,12 +10,7 @@ import (
 
 // RemoveInstallLink removes the item's symlink between the installation directory and the local hub.
 func RemoveInstallLink(i *cwhub.Item) error {
-	syml, err := i.InstallPath()
-	if err != nil {
-		return err
-	}
-
-	stat, err := os.Lstat(syml)
+	stat, err := os.Lstat(i.State.LocalPath)
 	if err != nil {
 		return err
 	}
@@ -25,7 +20,7 @@ func RemoveInstallLink(i *cwhub.Item) error {
 		return fmt.Errorf("%s isn't managed by hub", i.Name)
 	}
 
-	hubpath, err := os.Readlink(syml)
+	hubpath, err := os.Readlink(i.State.LocalPath)
 	if err != nil {
 		return fmt.Errorf("while reading symlink: %w", err)
 	}
@@ -39,7 +34,7 @@ func RemoveInstallLink(i *cwhub.Item) error {
 		return fmt.Errorf("%s isn't managed by hub", i.Name)
 	}
 
-	if err := os.Remove(syml); err != nil {
+	if err := os.Remove(i.State.LocalPath); err != nil {
 		return fmt.Errorf("while removing symlink: %w", err)
 	}
 

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/downloader"
@@ -86,7 +85,7 @@ type itemSpec struct {
 	local   bool   // is this a spec for a local item?
 }
 
-func newHubItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
+func newHubItemSpec(path string, subs []string) (*itemSpec, error) {
 	// .../hub/parsers/s00-raw/crowdsecurity/skip-pretag.yaml
 	// .../hub/scenarios/crowdsecurity/ssh_bf.yaml
 	// .../hub/profiles/crowdsecurity/linux.yaml
@@ -126,9 +125,7 @@ func newHubItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpe
 	return &spec, nil
 }
 
-func newInstallItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
-	logger.Tracef("%s in install dir", path)
-
+func newInstallItemSpec(path string, subs []string) (*itemSpec, error) {
 	// .../config/parser/stage/file.yaml
 	// .../config/postoverflow/stage/file.yaml
 	// .../config/scenarios/scenar.yaml
@@ -161,19 +158,19 @@ func newInstallItemSpec(path string, subs []string, logger *logrus.Logger) (*ite
 	return &spec, nil
 }
 
-func newItemSpec(path, hubDir, installDir string, logger *logrus.Logger) (*itemSpec, error) {
+func newItemSpec(path, hubDir, installDir string) (*itemSpec, error) {
 	var (
 		spec *itemSpec
 		err  error
 	)
 
 	if subs := relativePathComponents(path, hubDir); len(subs) > 0 {
-		spec, err = newHubItemSpec(path, subs, logger)
+		spec, err = newHubItemSpec(path, subs)
 		if err != nil {
 			return nil, err
 		}
 	} else if subs := relativePathComponents(path, installDir); len(subs) > 0 {
-		spec, err = newInstallItemSpec(path, subs, logger)
+		spec, err = newInstallItemSpec(path, subs)
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +303,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error
 		return nil, ErrSkipPath
 	}
 
-	spec, err := newItemSpec(path, h.local.HubDir, h.local.InstallDir, h.logger)
+	spec, err := newItemSpec(path, h.local.HubDir, h.local.InstallDir)
 	if err != nil {
 		h.logger.Warningf("Ignoring file %s: %s", path, err)
 		return nil, ErrSkipPath
@@ -323,10 +320,6 @@ func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget strin
 	}
 
 	for _, item := range h.GetItemMap(spec.ftype) {
-		if spec.fname != item.FileName {
-			continue
-		}
-
 		if item.Stage != spec.stage {
 			continue
 		}
@@ -405,6 +398,8 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 		if err != nil {
 			return err
 		}
+
+		item.State.LocalPath = spec.path
 	}
 
 	if item == nil {
@@ -653,7 +648,6 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 		i.hub.logger.Tracef("got tainted match for %s: %s", i.Name, path)
 
 		if !inhub {
-			i.State.LocalPath = path
 			i.State.Installed = true
 		}
 
@@ -669,7 +663,6 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 
 	if !inhub {
 		i.hub.logger.Tracef("found exact match for %s, version is %s, latest is %s", i.Name, i.State.LocalVersion, i.Version)
-		i.State.LocalPath = path
 		i.State.Tainted = false
 		// if we're walking the hub, present file doesn't means installed file
 		i.State.Installed = true
