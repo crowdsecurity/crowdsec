@@ -213,7 +213,6 @@ linters-settings:
   gocritic:
     enable-all: true
     disabled-checks:
-      - typeDefFirst
       - paramTypeCombine
       - httpNoBody
       - ifElseChain
@@ -241,7 +240,7 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - exportloopref
+    - tenv
 
     #
     # Redundant
@@ -494,6 +493,11 @@ issues:
       text: "argument-limit: .*"
 
     # need some cleanup first: to create db in memory and share the client, not the config
+    - linters:
+        - usetesting
+      path: "(.+)_test.go"
+      text: "context.Background.*"
+
     - linters:
         - usetesting
       path: "pkg/apiserver/(.+)_test.go"

@@ -113,9 +113,14 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, met
 	ka.mux = http.NewServeMux()
 
 	ka.server = &http.Server{
-		Addr:    ka.addr,
-		Handler: ka.mux,
+		Addr:      ka.addr,
+		Handler:   ka.mux,
+		Protocols: &http.Protocols{},
 	}
+
+	ka.server.Protocols.SetHTTP1(true)
+	ka.server.Protocols.SetUnencryptedHTTP2(true)
+	ka.server.Protocols.SetHTTP2(true)
 
 	ka.mux.HandleFunc(ka.config.WebhookPath, ka.webhookHandler)
 
@@ -154,6 +159,7 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 		})
 		<-t.Dying()
 		ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
+
 		if err := ka.server.Shutdown(ctx); err != nil {
 			ka.logger.Errorf("Error shutting down k8s-audit server: %s", err.Error())
 		}
