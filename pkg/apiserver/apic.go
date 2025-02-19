@@ -184,6 +184,10 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
 	var err error
 
+	if apicWhitelist == nil {
+		apicWhitelist = &csconfig.CapiWhitelist{}
+	}
+
 	ret := &apic{
 		AlertsAddChan:             make(chan []*models.Alert),
 		dbClient:                  dbClient,
