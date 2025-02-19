@@ -385,7 +385,7 @@ func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name 
 	}
 
 	if list.FromConsole {
-		return fmt.Errorf("allowlist %s is managed by console, cannot delete with cscli", name)
+		return fmt.Errorf("allowlist %s is managed by console, cannot delete with cscli. Please visit https://app.crowdsec.net/allowlists/%s to unsubscribe", name, list.AllowlistID)
 	}
 
 	err = db.DeleteAllowList(ctx, name, false)
