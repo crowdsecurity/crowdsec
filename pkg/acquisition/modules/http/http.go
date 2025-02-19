@@ -372,8 +372,8 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	})
 
 	h.Server = &http.Server{
-		Addr:    h.Config.ListenAddr,
-		Handler: mux,
+		Addr:      h.Config.ListenAddr,
+		Handler:   mux,
 		Protocols: &http.Protocols{},
 	}
 
