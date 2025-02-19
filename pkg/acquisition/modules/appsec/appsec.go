@@ -20,7 +20,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -49,18 +51,20 @@ type AppsecSourceConfig struct {
 
 // runtime structure of AppsecSourceConfig
 type AppsecSource struct {
-	metricsLevel  int
-	config        AppsecSourceConfig
-	logger        *log.Entry
-	mux           *http.ServeMux
-	server        *http.Server
-	outChan       chan types.Event
-	InChan        chan appsec.ParsedRequest
-	AppsecRuntime *appsec.AppsecRuntimeConfig
-	AppsecConfigs map[string]appsec.AppsecConfig
-	lapiURL       string
-	AuthCache     AuthCache
-	AppsecRunners []AppsecRunner // one for each go-routine
+	metricsLevel          int
+	config                AppsecSourceConfig
+	logger                *log.Entry
+	mux                   *http.ServeMux
+	server                *http.Server
+	outChan               chan types.Event
+	InChan                chan appsec.ParsedRequest
+	AppsecRuntime         *appsec.AppsecRuntimeConfig
+	AppsecConfigs         map[string]appsec.AppsecConfig
+	lapiURL               string
+	AuthCache             AuthCache
+	AppsecRunners         []AppsecRunner // one for each go-routine
+	apiClient             *apiclient.ApiClient
+	appsecAllowlistClient *allowlists.AppsecAllowlist
 }
 
 // Struct to handle cache of authentication
@@ -225,17 +229,24 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
 
+	w.apiClient, err = apiclient.GetLAPIClient()
+	if err != nil {
+		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+	}
+	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.apiClient, w.logger)
+
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		// we copy AppsecRutime for each runner
+		// we copy AppsecRuntime for each runner
 		wrt := *w.AppsecRuntime
 		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
-			inChan:        w.InChan,
-			UUID:          appsecRunnerUUID,
-			logger:        w.logger.WithField("runner_uuid", appsecRunnerUUID),
-			AppsecRuntime: &wrt,
-			Labels:        w.config.Labels,
+			inChan:                 w.InChan,
+			UUID:                   appsecRunnerUUID,
+			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
+			AppsecRuntime:          &wrt,
+			Labels:                 w.config.Labels,
+			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
 
 		err := runner.Init(appsecCfg.GetDataDir())
@@ -272,6 +283,8 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
+
+	w.appsecAllowlistClient.StartRefresh(t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")

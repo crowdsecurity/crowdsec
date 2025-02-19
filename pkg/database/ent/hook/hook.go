@@ -21,6 +21,30 @@ func (f AlertFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AlertMutation", m)
 }
 
+// The AllowListFunc type is an adapter to allow the use of ordinary
+// function as AllowList mutator.
+type AllowListFunc func(context.Context, *ent.AllowListMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AllowListFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AllowListMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AllowListMutation", m)
+}
+
+// The AllowListItemFunc type is an adapter to allow the use of ordinary
+// function as AllowListItem mutator.
+type AllowListItemFunc func(context.Context, *ent.AllowListItemMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AllowListItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AllowListItemMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AllowListItemMutation", m)
+}
+
 // The BouncerFunc type is an adapter to allow the use of ordinary
 // function as Bouncer mutator.
 type BouncerFunc func(context.Context, *ent.BouncerMutation) (ent.Value, error)

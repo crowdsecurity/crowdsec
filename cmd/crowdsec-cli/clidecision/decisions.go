@@ -317,7 +317,8 @@ cscli decisions list --origin lists --scenario list_name
 	return cmd
 }
 
-func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
+//nolint:revive // we'll reduce the number of args later
+func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string, bypassAllowlist bool) error {
 	alerts := models.AddAlertsRequest{}
 	origin := types.CscliOrigin
 	capacity := int32(0)
@@ -348,6 +349,15 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 
 	if addReason == "" {
 		addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
+	}
+
+	if !bypassAllowlist && (addScope == types.Ip || addScope == types.Range) {
+		resp, _, err := cli.client.Allowlists.CheckIfAllowlistedWithReason(ctx, addValue)
+		if err != nil {
+			log.Errorf("Cannot check if %s is in allowlist: %s", addValue, err)
+		} else if resp.Allowlisted {
+			return fmt.Errorf("%s is allowlisted by item %s, use --bypass-allowlist to add the decision anyway", addValue, resp.Reason)
+		}
 	}
 
 	decision := models.Decision{
@@ -398,13 +408,14 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 
 func (cli *cliDecisions) newAddCmd() *cobra.Command {
 	var (
-		addIP       string
-		addRange    string
-		addDuration string
-		addValue    string
-		addScope    string
-		addReason   string
-		addType     string
+		addIP           string
+		addRange        string
+		addDuration     string
+		addValue        string
+		addScope        string
+		addReason       string
+		addType         string
+		bypassAllowlist bool
 	)
 
 	cmd := &cobra.Command{
@@ -419,7 +430,7 @@ cscli decisions add --scope username --value foobar
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType)
+			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType, bypassAllowlist)
 		},
 	}
 
@@ -432,6 +443,7 @@ cscli decisions add --scope username --value foobar
 	flags.StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
 	flags.StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	flags.StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+	flags.BoolVarP(&bypassAllowlist, "bypass-allowlist", "B", false, "Add decision even if value is in allowlist")
 
 	return cmd
 }

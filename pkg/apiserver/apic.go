@@ -1,7 +1,9 @@
 package apiserver
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -14,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -180,6 +183,10 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 
 func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
 	var err error
+
+	if apicWhitelist == nil {
+		apicWhitelist = &csconfig.CapiWhitelist{}
+	}
 
 	ret := &apic{
 		AlertsAddChan:             make(chan []*models.Alert),
@@ -638,6 +645,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	if data.Links != nil {
 		log.Debugf("Received %d blocklists links", len(data.Links.Blocklists))
+		log.Debugf("Received %d allowlists links", len(data.Links.Allowlists))
 	}
 
 	addCounters, deleteCounters := makeAddAndDeleteCounters()
@@ -650,11 +658,20 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
+	// Update allowlists before processing decisions
+	if data.Links != nil {
+		if len(data.Links.Allowlists) > 0 {
+			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
+				return fmt.Errorf("while updating allowlists: %w", err)
+			}
+		}
+	}
+
 	if len(data.New) > 0 {
 		// create one alert for community blocklist using the first decision
 		decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
 		// apply APIC specific whitelists
-		decisions = a.ApplyApicWhitelists(decisions)
+		decisions = a.ApplyApicWhitelists(ctx, decisions)
 
 		alert := createAlertForDecision(decisions[0])
 		alertsFromCapi := []*models.Alert{alert}
@@ -672,9 +689,13 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		}
 	}
 
-	// update blocklists
-	if err := a.UpdateBlocklists(ctx, data.Links, addCounters, forcePull); err != nil {
-		return fmt.Errorf("while updating blocklists: %w", err)
+	// update allowlists/blocklists
+	if data.Links != nil {
+		if len(data.Links.Blocklists) > 0 {
+			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
+				return fmt.Errorf("while updating blocklists: %w", err)
+			}
+		}
 	}
 
 	return nil
@@ -683,10 +704,110 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 // we receive a link to a blocklist, we pull the content of the blocklist and we create one alert
 func (a *apic) PullBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, forcePull bool) error {
 	addCounters, _ := makeAddAndDeleteCounters()
-	if err := a.UpdateBlocklists(ctx, &modelscapi.GetDecisionsStreamResponseLinks{
-		Blocklists: []*modelscapi.BlocklistLink{blocklist},
-	}, addCounters, forcePull); err != nil {
+	if err := a.UpdateBlocklists(ctx, []*modelscapi.BlocklistLink{blocklist}, addCounters, forcePull); err != nil {
 		return fmt.Errorf("while pulling blocklist: %w", err)
+	}
+
+	return nil
+}
+
+func (a *apic) PullAllowlist(ctx context.Context, allowlist *modelscapi.AllowlistLink, forcePull bool) error {
+	if err := a.UpdateAllowlists(ctx, []*modelscapi.AllowlistLink{allowlist}, forcePull); err != nil {
+		return fmt.Errorf("while pulling allowlist: %w", err)
+	}
+
+	return nil
+}
+
+func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelscapi.AllowlistLink, forcePull bool) error {
+	if len(allowlistsLinks) == 0 {
+		return nil
+	}
+
+	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	if err != nil {
+		return fmt.Errorf("while creating default client: %w", err)
+	}
+
+	for _, link := range allowlistsLinks {
+		if log.GetLevel() >= log.TraceLevel {
+			log.Tracef("allowlist body: %+v", spew.Sdump(link))
+		}
+
+		if link.Name == nil {
+			log.Warningf("allowlist has no name")
+			continue
+		}
+
+		if link.URL == nil {
+			log.Warningf("allowlist %s has no URL", *link.Name)
+			continue
+		}
+
+		if link.ID == nil {
+			log.Warningf("allowlist %s has no ID", *link.Name)
+			continue
+		}
+
+		description := ""
+		if link.Description != nil {
+			description = *link.Description
+		}
+
+		resp, err := defaultClient.GetClient().Get(*link.URL)
+		if err != nil {
+			log.Errorf("while pulling allowlist: %s", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		scanner := bufio.NewScanner(resp.Body)
+		items := make([]*models.AllowlistItem, 0)
+
+		for scanner.Scan() {
+			item := scanner.Text()
+			j := &models.AllowlistItem{}
+			if err := json.Unmarshal([]byte(item), j); err != nil {
+				log.Errorf("while unmarshalling allowlist item: %s", err)
+				continue
+			}
+
+			items = append(items, j)
+		}
+
+		list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
+		if err != nil {
+			if !ent.IsNotFound(err) {
+				log.Errorf("while getting allowlist %s: %s", *link.Name, err)
+				continue
+			}
+		}
+
+		if list == nil {
+			list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, *link.ID, true)
+			if err != nil {
+				log.Errorf("while creating allowlist %s: %s", *link.Name, err)
+				continue
+			}
+		}
+
+		added, err := a.dbClient.ReplaceAllowlist(ctx, list, items, true)
+		if err != nil {
+			log.Errorf("while replacing allowlist %s: %s", *link.Name, err)
+			continue
+		}
+
+		log.Infof("added %d values to allowlist %s", added, list.Name)
+
+		if list.Name != *link.Name || list.Description != description {
+			err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
+			if err != nil {
+				log.Errorf("while updating allowlist meta %s: %s", *link.Name, err)
+				continue
+			}
+		}
+
+		log.Infof("Allowlist %s updated", *link.Name)
 	}
 
 	return nil
@@ -694,7 +815,7 @@ func (a *apic) PullBlocklist(ctx context.Context, blocklist *modelscapi.Blocklis
 
 // if decisions is whitelisted: return representation of the whitelist ip or cidr
 // if not whitelisted: empty string
-func (a *apic) whitelistedBy(decision *models.Decision) string {
+func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []net.IP, additionalRanges []*net.IPNet) string {
 	if decision.Value == nil {
 		return ""
 	}
@@ -712,18 +833,35 @@ func (a *apic) whitelistedBy(decision *models.Decision) string {
 		}
 	}
 
+	for _, ip := range additionalIPs {
+		if ip.Equal(ipval) {
+			return ip.String()
+		}
+	}
+
+	for _, cidr := range additionalRanges {
+		if cidr.Contains(ipval) {
+			return cidr.String()
+		}
+	}
+
 	return ""
 }
 
-func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decision {
-	if a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0 {
+func (a *apic) ApplyApicWhitelists(ctx context.Context, decisions []*models.Decision) []*models.Decision {
+	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC(ctx)
+	if err != nil {
+		log.Errorf("while getting allowlists content: %s", err)
+	}
+
+	if (a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0) && len(allowlisted_ips) == 0 && len(allowlisted_cidrs) == 0 {
 		return decisions
 	}
 	// deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
 	outIdx := 0
 
 	for _, decision := range decisions {
-		whitelister := a.whitelistedBy(decision)
+		whitelister := a.whitelistedBy(decision, allowlisted_ips, allowlisted_cidrs)
 		if whitelister != "" {
 			log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, whitelister)
 			continue
@@ -852,7 +990,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 		return nil
 	}
 	// apply APIC specific whitelists
-	decisions = a.ApplyApicWhitelists(decisions)
+	decisions = a.ApplyApicWhitelists(ctx, decisions)
 	alert := createAlertForDecision(decisions[0])
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
@@ -865,14 +1003,11 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	return nil
 }
 
-func (a *apic) UpdateBlocklists(ctx context.Context, links *modelscapi.GetDecisionsStreamResponseLinks, addCounters map[string]map[string]int, forcePull bool) error {
-	if links == nil {
+func (a *apic) UpdateBlocklists(ctx context.Context, blocklists []*modelscapi.BlocklistLink, addCounters map[string]map[string]int, forcePull bool) error {
+	if len(blocklists) == 0 {
 		return nil
 	}
 
-	if links.Blocklists == nil {
-		return nil
-	}
 	// we must use a different http client than apiClient's because the transport of apiClient is jwtTransport or here we have signed apis that are incompatibles
 	// we can use the same baseUrl as the urls are absolute and the parse will take care of it
 	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
@@ -880,7 +1015,7 @@ func (a *apic) UpdateBlocklists(ctx context.Context, links *modelscapi.GetDecisi
 		return fmt.Errorf("while creating default client: %w", err)
 	}
 
-	for _, blocklist := range links.Blocklists {
+	for _, blocklist := range blocklists {
 		if err := a.updateBlocklist(ctx, defaultClient, blocklist, addCounters, forcePull); err != nil {
 			return err
 		}
