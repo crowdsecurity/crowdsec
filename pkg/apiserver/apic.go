@@ -35,7 +35,7 @@ import (
 const (
 	// delta values must be smaller than the interval
 	pullIntervalDefault       = time.Hour * 2
-	pullIntervalDelta         = 5 * time.Minute
+	pullIntervalDelta         = time.Minute * 5
 	pushIntervalDefault       = time.Second * 10
 	pushIntervalDelta         = time.Second * 7
 	metricsIntervalDefault    = time.Minute * 30
@@ -363,6 +363,15 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
+func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsRequestItem) error {
+	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
+
+	return err
+}
+
 func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
@@ -375,44 +384,21 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 
 	I don't know enough about gin to tell how much of an issue it can be.
 	*/
-	var (
-		cache []*models.AddSignalsRequestItem = *cacheOrig
-		send  models.AddSignalsRequest
-	)
+	var cache []*models.AddSignalsRequestItem = *cacheOrig
 
-	bulkSize := 50
-	pageStart := 0
-	pageEnd := bulkSize
+	batchSize := 50
 
-	for {
-		if pageEnd >= len(cache) {
-			send = cache[pageStart:]
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	for start := 0; start < len(cache); start += batchSize {
+		end := start + batchSize
 
-			defer cancel()
-
-			_, _, err := a.apiClient.Signal.Add(ctx, &send)
-			if err != nil {
-				log.Errorf("sending signal to central API: %s", err)
-				return
-			}
-
-			break
+		if end > len(cache) {
+			end = len(cache)
 		}
 
-		send = cache[pageStart:pageEnd]
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-
-		defer cancel()
-
-		_, _, err := a.apiClient.Signal.Add(ctx, &send)
-		if err != nil {
-			// we log it here as well, because the return value of func might be discarded
+		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
+			return
 		}
-
-		pageStart += bulkSize
-		pageEnd += bulkSize
 	}
 }
 
