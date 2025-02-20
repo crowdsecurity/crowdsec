@@ -288,6 +288,7 @@ basic_auth:
 }
 
 func TestStreamingAcquisitionBasicAuth(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -306,7 +307,7 @@ basic_auth:
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
 	require.NoError(t, err)
 	req.SetBasicAuth("test", "WrongPassword")
 
@@ -321,6 +322,7 @@ basic_auth:
 }
 
 func TestStreamingAcquisitionBadHeaders(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -334,7 +336,7 @@ headers:
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "wrong")
@@ -349,6 +351,7 @@ headers:
 }
 
 func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -362,7 +365,7 @@ max_body_size: 5`), 0)
 	time.Sleep(1 * time.Second)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("testtest"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("testtest"))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -378,6 +381,7 @@ max_body_size: 5`), 0)
 }
 
 func TestStreamingAcquisitionSuccess(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -394,7 +398,7 @@ headers:
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -414,6 +418,7 @@ headers:
 }
 
 func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -432,7 +437,7 @@ custom_headers:
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -505,6 +510,7 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 }
 
 func TestStreamingAcquisitionTimeout(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -522,7 +528,7 @@ timeout: 1s`), 0)
 		body:  []byte(`{"test": "delayed_payload"}`),
 	}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -566,6 +572,7 @@ tls:
 }
 
 func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -601,7 +608,7 @@ tls:
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -622,6 +629,7 @@ tls:
 }
 
 func TestStreamingAcquisitionMTLS(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -660,7 +668,7 @@ tls:
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	resp, err := client.Do(req)
@@ -680,6 +688,7 @@ tls:
 }
 
 func TestStreamingAcquisitionGzipData(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -709,7 +718,7 @@ headers:
 
 	// send gzipped compressed data
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -733,6 +742,7 @@ headers:
 }
 
 func TestStreamingAcquisitionNDJson(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -749,7 +759,7 @@ headers:
 	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
 
 	require.NoError(t, err)
 
