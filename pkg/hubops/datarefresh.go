@@ -11,21 +11,16 @@ import (
 // XXX: TODO: temporary for hubtests, but will have to go.
 // DownloadDataIfNeeded downloads the data set for the item.
 func DownloadDataIfNeeded(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item, force bool) (bool, error) {
-	itemFilePath, err := item.InstallPath()
+	itemFile, err := os.Open(item.State.LocalPath)
 	if err != nil {
-		return false, err
-	}
-
-	itemFile, err := os.Open(itemFilePath)
-	if err != nil {
-		return false, fmt.Errorf("while opening %s: %w", itemFilePath, err)
+		return false, fmt.Errorf("while opening %s: %w", item.State.LocalPath, err)
 	}
 
 	defer itemFile.Close()
 
 	needReload, err := downloadDataSet(ctx, hub.GetDataDir(), force, itemFile)
 	if err != nil {
-		return needReload, fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
+		return needReload, fmt.Errorf("while downloading data for %s: %w", item.State.LocalPath, err)
 	}
 
 	return needReload, nil

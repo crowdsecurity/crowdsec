@@ -7,16 +7,16 @@ import (
 // ItemState is used to keep the local state (i.e. at runtime) of an item.
 // This data is not stored in the index, but is displayed with "cscli ... inspect".
 type ItemState struct {
-	LocalPath            string `json:"local_path,omitempty" yaml:"local_path,omitempty"`
-	LocalVersion         string `json:"local_version,omitempty" yaml:"local_version,omitempty"`
-	LocalHash            string `json:"local_hash,omitempty" yaml:"local_hash,omitempty"`
-	Installed            bool   `json:"installed"`
+	// Path to the install link or local file -- keep LocalPath for compatibility
+	LocalPath            string `yaml:"local_path,omitempty"`
+	LocalVersion         string `yaml:"local_version,omitempty"`
+	LocalHash            string `yaml:"local_hash,omitempty"`
+	DownloadPath         string
 	local                bool
-	Downloaded           bool     `json:"downloaded"`
-	UpToDate             bool     `json:"up_to_date"`
-	Tainted              bool     `json:"tainted"`
-	TaintedBy            []string `json:"tainted_by,omitempty" yaml:"tainted_by,omitempty"`
-	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
+	UpToDate             bool     `yaml:"up_to_date"`
+	Tainted              bool     `yaml:"tainted"`
+	TaintedBy            []string `yaml:"tainted_by,omitempty"`
+	BelongsToCollections []string `yaml:"belongs_to_collections,omitempty"`
 }
 
 // IsLocal returns true if the item has been create by a user (not downloaded from the hub).
@@ -28,7 +28,7 @@ func (s *ItemState) IsLocal() bool {
 func (s *ItemState) Text() string {
 	ret := "disabled"
 
-	if s.Installed {
+	if s.IsInstalled() {
 		ret = "enabled"
 	}
 
@@ -50,13 +50,21 @@ func (s *ItemState) Emoji() string {
 	switch {
 	case s.IsLocal():
 		return emoji.House
-	case !s.Installed:
+	case !s.IsInstalled():
 		return emoji.Prohibited
 	case s.Tainted || (!s.UpToDate && !s.IsLocal()):
 		return emoji.Warning
-	case s.Installed:
+	case s.IsInstalled():
 		return emoji.CheckMark
 	default:
 		return emoji.QuestionMark
 	}
+}
+
+func (s *ItemState) IsDownloaded() bool {
+	return s.DownloadPath != ""
+}
+
+func (s *ItemState) IsInstalled() bool {
+	return s.LocalPath != ""
 }
