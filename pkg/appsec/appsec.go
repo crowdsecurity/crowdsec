@@ -232,7 +232,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 func (wc *AppsecConfig) Load(configName string) error {
 	item := hub.GetItem(cwhub.APPSEC_CONFIGS, configName)
 
-	if item != nil && item.State.Installed {
+	if item != nil && item.State.IsInstalled() {
 		wc.Logger.Infof("loading %s", item.State.LocalPath)
 		err := wc.LoadByPath(item.State.LocalPath)
 		if err != nil {
