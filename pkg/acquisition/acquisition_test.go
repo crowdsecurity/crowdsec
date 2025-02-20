@@ -301,6 +301,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			}
 
 			assert.Len(t, dss, tc.ExpectedLen)
+
 			if tc.TestName == "from_env" {
 				mock := dss[0].Dump().(*MockSource)
 				assert.Equal(t, "test_value2", mock.Toto)

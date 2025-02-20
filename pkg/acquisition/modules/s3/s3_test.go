@@ -68,10 +68,12 @@ sqs_name: foobar
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := S3Source{}
+
 			err := f.Configure([]byte(test.config), nil, configuration.METRICS_NONE)
 			if err == nil {
 				t.Fatalf("expected error, got none")
 			}
+
 			if err.Error() != test.expectedErr {
 				t.Fatalf("expected error %s, got %s", test.expectedErr, err.Error())
 			}
@@ -113,6 +115,7 @@ polling_method: list
 		t.Run(test.name, func(t *testing.T) {
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
+
 			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())

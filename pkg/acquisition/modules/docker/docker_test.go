@@ -203,10 +203,12 @@ container_name_regexp:
 				select {
 				case <-out:
 					actualLines++
+
 					ticker.Reset(1 * time.Second)
 				case <-ticker.C:
 					log.Infof("no more lines to read")
 					dockerSource.t.Kill(nil)
+
 					return nil
 				}
 			}

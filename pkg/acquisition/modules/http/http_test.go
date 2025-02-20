@@ -226,6 +226,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	})
 	err := h.Configure(config, subLogger, metricLevel)
 	require.NoError(t, err)
+
 	tomb := tomb.Tomb{}
 	out := make(chan types.Event)
 	err = h.StreamingAcquisition(ctx, out, &tomb)

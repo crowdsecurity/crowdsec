@@ -276,7 +276,6 @@ func TestConfigureDSN(t *testing.T) {
 		}
 
 		assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
-
 	}
 }
 
@@ -364,13 +363,12 @@ since: 1h
 		logger := log.New()
 		subLogger := logger.WithField("type", "loki")
 		lokiSource := loki.LokiSource{}
-		err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
-		if err != nil {
+
+		if err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE); err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		err = feedLoki(ctx, subLogger, 20, title)
-		if err != nil {
+		if err := feedLoki(ctx, subLogger, 20, title); err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
@@ -387,8 +385,7 @@ since: 1h
 
 		lokiTomb := tomb.Tomb{}
 
-		err = lokiSource.OneShotAcquisition(ctx, out, &lokiTomb)
-		if err != nil {
+		if err := lokiSource.OneShotAcquisition(ctx, out, &lokiTomb); err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
 

@@ -90,10 +90,12 @@ webhook_path: /k8s-audit`,
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
 			err = tb.Wait()
+
 			if test.expectedErr != "" {
 				require.ErrorContains(t, err, test.expectedErr)
 				return
 			}
+
 			require.NoError(t, err)
 		})
 	}
