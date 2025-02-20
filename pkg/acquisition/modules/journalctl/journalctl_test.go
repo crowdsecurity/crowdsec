@@ -1,7 +1,6 @@
 package journalctlacquisition
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -108,7 +107,7 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -191,7 +190,7 @@ journalctl_filter:
 }
 
 func TestStreaming(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")

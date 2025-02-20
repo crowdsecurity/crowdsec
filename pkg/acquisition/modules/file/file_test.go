@@ -1,7 +1,6 @@
 package fileacquisition_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -101,7 +100,7 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
@@ -248,7 +247,7 @@ filename: test_files/test_delete.log`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
 	testPattern := "test_files/*.log"

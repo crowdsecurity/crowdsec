@@ -3,7 +3,6 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -157,7 +156,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -205,7 +204,7 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -254,7 +253,7 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")

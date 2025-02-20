@@ -49,7 +49,7 @@ func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 }
 
 func TestPluginWatcherInterval(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows because timing is not reliable")
@@ -85,7 +85,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows because timing is not reliable")

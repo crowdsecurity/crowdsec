@@ -1,7 +1,6 @@
 package apiclient
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 )
 
 func TestAlertsListAsMachine(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -183,7 +183,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	// log.Debugf("resp : -> %s", spew.Sdump(resp))
 	// log.Debugf("expected : -> %s", spew.Sdump(expected))
 	// first one returns data
-	alerts, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	alerts, resp, err := client.Alerts.List(ctx, AlertsListOpts{})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, expected, *alerts)
@@ -191,13 +191,14 @@ func TestAlertsListAsMachine(t *testing.T) {
 	// this one doesn't
 	filter := AlertsListOpts{IPEquals: ptr.Of("1.2.3.4")}
 
-	alerts, resp, err = client.Alerts.List(context.Background(), filter)
+	alerts, resp, err = client.Alerts.List(ctx, filter)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Empty(t, *alerts)
 }
 
 func TestAlertsGetAsMachine(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -354,17 +355,18 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		StopAt:  ptr.Of("2020-11-28 10:20:46.845621385 +0100 +0100"),
 	}
 
-	alerts, resp, err := client.Alerts.GetByID(context.Background(), 1)
+	alerts, resp, err := client.Alerts.GetByID(ctx, 1)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, *expected, *alerts)
 
 	// fail
-	_, _, err = client.Alerts.GetByID(context.Background(), 2)
+	_, _, err = client.Alerts.GetByID(ctx, 2)
 	cstest.RequireErrorMessage(t, err, "API error: object not found")
 }
 
 func TestAlertsCreateAsMachine(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -397,7 +399,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	defer teardown()
 
 	alert := models.AddAlertsRequest{}
-	alerts, resp, err := client.Alerts.Add(context.Background(), alert)
+	alerts, resp, err := client.Alerts.Add(ctx, alert)
 	require.NoError(t, err)
 
 	expected := &models.AddAlertsResponse{"3"}
@@ -407,6 +409,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 }
 
 func TestAlertsDeleteAsMachine(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -440,7 +443,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	defer teardown()
 
 	alert := AlertsDeleteOpts{IPEquals: ptr.Of("1.2.3.4")}
-	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
+	alerts, resp, err := client.Alerts.Delete(ctx, alert)
 	require.NoError(t, err)
 
 	expected := &models.DeleteAlertsResponse{NbDeleted: ""}

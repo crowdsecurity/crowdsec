@@ -254,7 +254,7 @@ func feedVLogs(ctx context.Context, logger *log.Entry, n int, title string) erro
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -319,6 +319,8 @@ since: 1h
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	ctx := t.Context()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -358,8 +360,6 @@ query: >
 			expectedLines: 20,
 		},
 	}
-
-	ctx := context.Background()
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -431,7 +431,7 @@ query: >
 }
 
 func TestStopStreaming(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")

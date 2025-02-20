@@ -1,7 +1,6 @@
 package apiclient
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -15,6 +14,7 @@ import (
 )
 
 func TestApiAuth(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.TraceLevel)
 
 	mux, urlx, teardown := setup()
@@ -49,7 +49,7 @@ func TestApiAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	alert := DecisionsListOpts{IPEquals: ptr.Of("1.2.3.4")}
-	_, resp, err := newcli.Decisions.List(context.Background(), alert)
+	_, resp, err := newcli.Decisions.List(ctx, alert)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 
@@ -61,7 +61,7 @@ func TestApiAuth(t *testing.T) {
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	require.NoError(t, err)
 
-	_, resp, err = newcli.Decisions.List(context.Background(), alert)
+	_, resp, err = newcli.Decisions.List(ctx, alert)
 
 	log.Infof("--> %s", err)
 
@@ -75,7 +75,7 @@ func TestApiAuth(t *testing.T) {
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	require.NoError(t, err)
 
-	_, _, err = newcli.Decisions.List(context.Background(), alert)
+	_, _, err = newcli.Decisions.List(ctx, alert)
 	require.Error(t, err)
 
 	log.Infof("--> %s", err)

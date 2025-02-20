@@ -162,7 +162,8 @@ func NewAPITest(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config
 	return router, config
 }
 
-func NewAPITestForwardedFor(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
+func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
+	ctx := t.Context()
 	config := LoadTestConfigForwardedFor(t)
 
 	os.Remove("./ent")
@@ -191,7 +192,7 @@ func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config
 }
 
 func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
@@ -209,7 +210,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 }
 
 func GetBouncers(t *testing.T, config *csconfig.DatabaseCfg) []*ent.Bouncer {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
@@ -311,7 +312,7 @@ func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.Datab
 }
 
 func TestWithWrongDBConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
 	apiServer, err := NewServer(ctx, config.API.Server)
@@ -321,7 +322,7 @@ func TestWithWrongDBConfig(t *testing.T) {
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
@@ -332,7 +333,7 @@ func TestWithWrongFlushConfig(t *testing.T) {
 }
 
 func TestUnknownPath(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
@@ -359,7 +360,7 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 */
 
 func TestLoggingDebugToFileConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	/*declare settings*/
 	maxAge := "1h"
@@ -412,7 +413,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 }
 
 func TestLoggingErrorToFileConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	/*declare settings*/
 	maxAge := "1h"

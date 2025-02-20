@@ -3,7 +3,6 @@
 package wineventlogacquisition
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -133,10 +132,10 @@ event_level: bla`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
+	ctx := t.Context()
+
 	err := exprhelpers.Init(nil)
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	tests := []struct {
 		config        string
@@ -236,7 +235,8 @@ event_ids:
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
 	tests := []struct {
 		name                 string
 		dsn                  string

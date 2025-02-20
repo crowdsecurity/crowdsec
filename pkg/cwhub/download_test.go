@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,8 +17,7 @@ import (
 )
 
 func TestFetchIndex(t *testing.T) {
-	ctx := context.Background()
-
+	ctx := t.Context()
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/main/.index.json" {
 			w.WriteHeader(http.StatusNotFound)
@@ -100,8 +98,7 @@ func TestFetchIndex(t *testing.T) {
 }
 
 func TestFetchContent(t *testing.T) {
-	ctx := context.Background()
-
+	ctx := t.Context()
 	wantContent := "{'description':'linux'}"
 	wantHash := "e557cb9e1cb051bc3b6a695e4396c5f8e0eff4b7b0d2cc09f7684e1d52ea2224"
 	remotePath := "collections/crowdsecurity/linux.yaml"

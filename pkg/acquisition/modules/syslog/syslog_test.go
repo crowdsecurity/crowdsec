@@ -1,7 +1,6 @@
 package syslogacquisition
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -82,7 +81,7 @@ func writeToSyslog(logs []string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name          string
 		config        string

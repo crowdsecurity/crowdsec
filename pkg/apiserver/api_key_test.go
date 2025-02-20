@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,7 +10,7 @@ import (
 )
 
 func TestAPIKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	router, config := NewAPITest(t, ctx)
 
 	APIKey, _ := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
