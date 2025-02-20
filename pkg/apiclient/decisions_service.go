@@ -81,7 +81,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 
 	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest(http.MethodGet, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,7 +97,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 }
 
 func (s *DecisionsService) FetchV2Decisions(ctx context.Context, url string) (*models.DecisionsStreamResponse, *Response, error) {
-	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 	scenarioDeleted := "deleted"
 	durationDeleted := "1h"
 
-	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -272,7 +272,7 @@ func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStream
 		return nil, nil, err
 	}
 
-	req, err := s.client.NewRequest(http.MethodGet, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -290,7 +290,7 @@ func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStream
 func (s *DecisionsService) StopStream(ctx context.Context) (*Response, error) {
 	u := fmt.Sprintf("%s/decisions", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +311,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 
 	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -329,7 +329,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 func (s *DecisionsService) DeleteOne(ctx context.Context, decisionID string) (*models.DeleteDecisionResponse, *Response, error) {
 	u := fmt.Sprintf("%s/decisions/%s", s.client.URLPrefix, decisionID)
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
