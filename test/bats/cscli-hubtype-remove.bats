@@ -121,8 +121,12 @@ teardown() {
 
     rune -0 cscli parsers remove crowdsecurity/whitelists
     assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 parsers: crowdsecurity/whitelists
+
 	disabling parsers:crowdsecurity/whitelists
-		
+
 	$RELOAD_MESSAGE
 	EOT
     refute_stderr
@@ -139,6 +143,12 @@ teardown() {
 
     rune -0 cscli parsers remove crowdsecurity/whitelists --purge
     assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 parsers: crowdsecurity/whitelists
+	🗑 purge (delete source)
+	 parsers: crowdsecurity/whitelists
+
 	disabling parsers:crowdsecurity/whitelists
 	purging parsers:crowdsecurity/whitelists
 		
@@ -208,6 +218,10 @@ teardown() {
 
     rune -0 cscli parsers remove crowdsecurity/whitelists --force
     assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 parsers: crowdsecurity/whitelists
+
 	disabling parsers:crowdsecurity/whitelists
 		
 	$RELOAD_MESSAGE
@@ -229,6 +243,10 @@ teardown() {
 
     rune -0 cscli parsers remove crowdsecurity/sshd-logs --force
     assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 parsers: crowdsecurity/sshd-logs
+
 	disabling parsers:crowdsecurity/sshd-logs
 		
 	$RELOAD_MESSAGE

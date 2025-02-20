@@ -57,6 +57,15 @@ install_v0() {
     printf "%s" "v0.0" > "$(jq -r '.local_path' <(cscli "$hubtype" inspect "$item_name" --no-metrics -o json))"
 }
 
+get_latest_version() {
+    local hubtype=$1
+    shift
+    local item_name=$1
+    shift
+
+    cscli "$hubtype" inspect "$item_name" -o json | jq -r '.version'
+}
+
 #----------
 
 @test "cscli <hubtype> upgrade (no argument)" {
@@ -78,9 +87,15 @@ install_v0() {
 
 @test "upgrade an item (non installed)" {
     rune -0 cscli parsers upgrade crowdsecurity/whitelists
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
+
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/whitelists ($latest_whitelists)
+
 	downloading parsers:crowdsecurity/whitelists
-		
+
 	$RELOAD_MESSAGE
 	EOT
     refute_stderr
@@ -115,15 +130,6 @@ install_v0() {
     refute_stderr
 }
 
-get_latest_version() {
-    local hubtype=$1
-    shift
-    local item_name=$1
-    shift
-
-    cscli "$hubtype" inspect "$item_name" -o json | jq -r '.version'
-}
-
 @test "upgrade an item" {
     hub_inject_v0
     install_v0 parsers crowdsecurity/whitelists
@@ -132,9 +138,14 @@ get_latest_version() {
     rune -0 jq -e '.local_version=="0.0"' <(output)
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/whitelists (0.0 -> $latest_whitelists)
+
 	downloading parsers:crowdsecurity/whitelists
-		
+
 	$RELOAD_MESSAGE
 	EOT
     refute_stderr
@@ -168,8 +179,12 @@ get_latest_version() {
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists --force
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/whitelists (? -> 0.2)
+
 	downloading parsers:crowdsecurity/whitelists
-		
+
 	$RELOAD_MESSAGE
 	EOT
     refute_stderr
@@ -202,7 +217,13 @@ get_latest_version() {
     refute_stderr
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists crowdsecurity/sshd-logs
+    latest_sshd=$(get_latest_version parsers crowdsecurity/sshd-logs)
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/sshd-logs (0.0 -> $latest_sshd), crowdsecurity/whitelists (0.0 -> $latest_whitelists)
+
 	downloading parsers:crowdsecurity/whitelists
 	downloading parsers:crowdsecurity/sshd-logs
 		
@@ -226,10 +247,14 @@ get_latest_version() {
 
     rune -0 cscli parsers upgrade --all
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/sshd-logs (0.0 -> 2.9), crowdsecurity/whitelists (0.0 -> 0.2), crowdsecurity/windows-auth (0.0 -> 0.2)
+
 	downloading parsers:crowdsecurity/sshd-logs
 	downloading parsers:crowdsecurity/whitelists
 	downloading parsers:crowdsecurity/windows-auth
-		
+
 	$RELOAD_MESSAGE
 	EOT
     refute_stderr

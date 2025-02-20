@@ -132,8 +132,9 @@ func TestHubUpdate(t *testing.T) {
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	require.NoError(t, err)
+	assert.True(t, updated)
 
 	err = hub.Load()
 	require.NoError(t, err)
@@ -154,8 +155,9 @@ func TestHubUpdateInvalidTemplate(t *testing.T) {
 		URLTemplate: "x",
 	}
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	cstest.RequireErrorMessage(t, err, "failed to build hub index request: invalid URL template 'x'")
+	assert.False(t, updated)
 }
 
 func TestHubUpdateCannotWrite(t *testing.T) {
@@ -198,8 +200,9 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 
 	hub.local.HubIndexFile = "/proc/foo/bar/baz/.index.json"
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	cstest.RequireErrorContains(t, err, "failed to create temporary download file for /proc/foo/bar/baz/.index.json")
+	assert.False(t, updated)
 }
 
 func TestHubUpdateAfterLoad(t *testing.T) {
@@ -257,6 +260,7 @@ func TestHubUpdateAfterLoad(t *testing.T) {
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	require.ErrorIs(t, err, ErrUpdateAfterSync)
+	assert.False(t, updated)
 }

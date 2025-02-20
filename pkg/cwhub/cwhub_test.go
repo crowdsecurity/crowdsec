@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -62,8 +63,9 @@ func testHubOld(t *testing.T, update bool) *Hub {
 		}
 
 		ctx := context.Background()
-		err = hub.Update(ctx, indexProvider, false)
+		updated, err := hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
+		assert.True(t, updated)
 	}
 
 	err = hub.Load()
