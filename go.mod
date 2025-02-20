@@ -35,7 +35,7 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/expr-lang/expr v1.16.9
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-co-op/gocron v1.37.0
@@ -66,13 +66,13 @@ require (
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/lithammer/dedent v1.1.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/mattn/go-sqlite3 v1.14.16
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/nxadm/tail v1.4.8
+	github.com/nxadm/tail v1.4.11
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/oschwald/geoip2-golang v1.9.0
@@ -87,10 +87,10 @@ require (
 	github.com/segmentio/kafka-go v0.4.45
 	github.com/shirou/gopsutil/v3 v3.23.5
 	github.com/sirupsen/logrus v1.9.3
-	github.com/slack-go/slack v0.12.2
+	github.com/slack-go/slack v0.16.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
@@ -154,8 +154,8 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
-	github.com/huandu/xstrings v1.3.3 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect
@@ -198,8 +198,8 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
-	github.com/spf13/cast v1.3.1 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
 	github.com/tetratelabs/wazero v1.8.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
