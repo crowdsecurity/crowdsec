@@ -116,8 +116,8 @@ type Item struct {
 // InstallPath returns the path to use for the install symlink.
 // Returns an error if an item is already installed or if the path goes outside of the install dir.
 func (i *Item) InstallPath() (string, error) {
-	if i.State.LocalPath != "" {
-		return "", fmt.Errorf("%s is already installed", i.FQName())
+	if i.State.Installed {
+		return "", fmt.Errorf("%s is already installed at %s", i.FQName(), i.State.LocalPath)
 	}
 
 	p := i.Type
