@@ -49,7 +49,7 @@ type AlertsDeleteOpts struct {
 func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest) (*models.AddAlertsResponse, *Response, error) {
 	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodPost, u, &alerts)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodPost, u, &alerts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,7 +78,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 		URI = fmt.Sprintf("%s?%s", URI, params.Encode())
 	}
 
-	req, err := s.client.NewRequest(http.MethodGet, URI, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, URI, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("building request: %w", err)
 	}
@@ -102,7 +102,7 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 
 	u := fmt.Sprintf("%s/alerts?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -120,7 +120,7 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 func (s *AlertsService) DeleteOne(ctx context.Context, alertID string) (*models.DeleteAlertsResponse, *Response, error) {
 	u := fmt.Sprintf("%s/alerts/%s", s.client.URLPrefix, alertID)
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func (s *AlertsService) DeleteOne(ctx context.Context, alertID string) (*models.
 func (s *AlertsService) GetByID(ctx context.Context, alertID int) (*models.Alert, *Response, error) {
 	u := fmt.Sprintf("%s/alerts/%d", s.client.URLPrefix, alertID)
 
-	req, err := s.client.NewRequest(http.MethodGet, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
