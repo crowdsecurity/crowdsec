@@ -131,13 +131,19 @@ func (i *Item) PathForInstall() (string, error) {
 
 // PathForDownload returns the path to use to store the item's file from the hub
 // (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
-// Raises an error if an item is already downloaded or if the path goes outside of the hub dir.
+// Raises an error if the path goes outside of the hub dir.
 func (i *Item) PathForDownload() (string, error) {
-	if i.State.IsDownloaded() {
+	path, err := SafePath(i.hub.local.HubDir, i.RemotePath)
+
+	if i.State.IsDownloaded() && path != i.State.DownloadPath {
+		// XXX: item is tainted by also at a different location than expected.
+		// user is downloading with --force so we are allowed to overwrite but
+		// should we remove the old location from here? Error, warning, more tests?
 		return "", fmt.Errorf("%s is already downloaded at %s", i.FQName(), i.State.DownloadPath)
 	}
 
-	return SafePath(i.hub.local.HubDir, i.RemotePath)
+	return path, err
+
 }
 
 // HasSubItems returns true if items of this type can have sub-items. Currently only collections.
