@@ -63,8 +63,16 @@ func (i *Item) FetchContentTo(ctx context.Context, contentProvider ContentProvid
 			return false, "", err
 		}
 
+		i.State.DownloadPath = destPath
+
 		return true, fmt.Sprintf("(embedded in %s)", i.hub.local.HubIndexFile), nil
 	}
 
-	return contentProvider.FetchContent(ctx, i.RemotePath, destPath, wantHash, i.hub.logger)
+	downloaded, _, err := contentProvider.FetchContent(ctx, i.RemotePath, destPath, wantHash, i.hub.logger)
+
+	if err == nil && downloaded {
+		i.State.DownloadPath = destPath
+	}
+
+	return downloaded, destPath, err
 }

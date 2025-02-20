@@ -43,7 +43,7 @@ func SelectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	for _, itemName := range itemNames {
 		item := hub.GetItem(itemType, itemName)
-		if installedOnly && !item.State.Installed {
+		if installedOnly && !item.State.IsInstalled() {
 			continue
 		}
 

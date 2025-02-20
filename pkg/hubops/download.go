@@ -52,7 +52,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 
 	var disableKeys []*cwhub.Item
 
-	if i.State.Installed {
+	if i.State.IsInstalled() {
 		for sub := range i.CurrentDependencies().SubItems(plan.hub) {
 			disableKeys = append(disableKeys, sub)
 			toDisable[sub] = struct{}{}
@@ -64,7 +64,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 			return false, err
 		}
 
-		if i.State.Installed {
+		if i.State.IsInstalled() {
 			// ensure the _new_ dependencies are installed too
 			if err := plan.AddCommand(NewEnableCommand(sub, c.Force)); err != nil {
 				return false, err
@@ -84,7 +84,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 		}
 	}
 
-	if i.State.Downloaded && i.State.UpToDate {
+	if i.State.IsDownloaded() && i.State.UpToDate {
 		return false, nil
 	}
 
@@ -157,7 +157,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	fmt.Printf("downloading %s\n", colorizeItemName(i.FQName()))
 
 	// ensure that target file is within target dir
-	finalPath, err := i.DownloadPath()
+	finalPath, err := i.PathForDownload()
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,6 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 		plan.ReloadNeeded = true
 	}
 
-	i.State.Downloaded = true
 	i.State.Tainted = false
 	i.State.UpToDate = true
 
@@ -208,7 +207,7 @@ func (c *DownloadCommand) Detail() string {
 
 	version := color.YellowString(i.Version)
 
-	if i.State.Downloaded {
+	if i.State.IsDownloaded() {
 		version = c.Item.State.LocalVersion + " -> " + color.YellowString(i.Version)
 	}
 

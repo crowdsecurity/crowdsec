@@ -40,7 +40,7 @@ func (c *EnableCommand) Prepare(plan *ActionPlan) (bool, error) {
 		}
 	}
 
-	if i.State.Installed {
+	if i.State.IsInstalled() {
 		return false, nil
 	}
 
@@ -49,7 +49,7 @@ func (c *EnableCommand) Prepare(plan *ActionPlan) (bool, error) {
 
 // CreateInstallLink creates a symlink between the actual config file at hub.HubDir and hub.ConfigDir.
 func CreateInstallLink(i *cwhub.Item) error {
-	dest, err := i.InstallPath()
+	dest, err := i.PathForInstall()
 	if err != nil {
 		return err
 	}
@@ -66,14 +66,13 @@ func CreateInstallLink(i *cwhub.Item) error {
 		return fmt.Errorf("failed to stat %s: %w", dest, err)
 	}
 
-	src, err := i.DownloadPath()
-	if err != nil {
-		return err
-	}
+	src := i.State.DownloadPath
 
 	if err = os.Symlink(src, dest); err != nil {
 		return fmt.Errorf("while creating symlink from %s to %s: %w", src, dest, err)
 	}
+
+	i.State.LocalPath = dest
 
 	return nil
 }
@@ -83,7 +82,7 @@ func (c *EnableCommand) Run(ctx context.Context, plan *ActionPlan) error {
 
 	fmt.Println("enabling " + colorizeItemName(i.FQName()))
 
-	if !i.State.Downloaded {
+	if !i.State.IsDownloaded() {
 		// XXX: this a warning?
 		return fmt.Errorf("can't enable %s: not downloaded", i.FQName())
 	}
@@ -94,7 +93,6 @@ func (c *EnableCommand) Run(ctx context.Context, plan *ActionPlan) error {
 
 	plan.ReloadNeeded = true
 
-	i.State.Installed = true
 	i.State.Tainted = false
 
 	return nil

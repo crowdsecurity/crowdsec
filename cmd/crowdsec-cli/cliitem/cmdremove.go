@@ -77,7 +77,7 @@ func installedParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
 	for _, parent := range item.Ancestors() {
-		if parent.State.Installed {
+		if parent.State.IsInstalled() {
 			ret = append(ret, parent.Name)
 		}
 	}
