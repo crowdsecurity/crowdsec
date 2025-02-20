@@ -183,7 +183,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 
 	client := http.Client{}
 
-	req, err := http.NewRequest(http.MethodGet, *blocklist.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *blocklist.URL, nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -192,7 +192,6 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 		req.Header.Set("If-Modified-Since", *lastPullTimestamp)
 	}
 
-	req = req.WithContext(ctx)
 	log.Debugf("[URL] %s %s", req.Method, req.URL)
 
 	// we don't use client_http Do method because we need the reader and is not provided.
