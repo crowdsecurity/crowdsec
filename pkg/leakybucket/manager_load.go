@@ -234,100 +234,109 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
-	var (
-		ret      = []BucketFactory{}
-		response chan types.Event
-	)
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig *csconfig.SimulationConfig) ([]BucketFactory, error) {
+	itemPath := item.State.LocalPath
 
-	response = make(chan types.Event, 1)
+	// process the yaml
+	bucketConfigurationFile, err := os.Open(itemPath)
+	if err != nil {
+		log.Errorf("Can't access leaky configuration file %s", itemPath)
+		return nil, err
+	}
+
+	defer bucketConfigurationFile.Close()
+	dec := yaml.NewDecoder(bucketConfigurationFile)
+	dec.SetStrict(true)
+
+	factories := []BucketFactory{}
+
+	for {
+		bucketFactory := BucketFactory{}
+
+		err = dec.Decode(&bucketFactory)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				log.Errorf("Bad yaml in %s: %v", itemPath, err)
+				return nil, fmt.Errorf("bad yaml in %s: %w", itemPath, err)
+			}
+
+			log.Tracef("End of yaml file")
+
+			break
+		}
+
+		bucketFactory.DataDir = hub.GetDataDir()
+		// check empty
+		if bucketFactory.Name == "" {
+			log.Errorf("Won't load nameless bucket")
+			return nil, errors.New("nameless bucket")
+		}
+		// check compat
+		if bucketFactory.FormatVersion == "" {
+			log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, itemPath)
+			bucketFactory.FormatVersion = "1.0"
+		}
+
+		ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check version: %w", err)
+		}
+
+		if !ok {
+			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
+			continue
+		}
+
+		bucketFactory.Filename = filepath.Clean(itemPath)
+		bucketFactory.BucketName = seed.Generate()
+		bucketFactory.ret = response
+
+		if simulationConfig != nil {
+			bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
+		}
+
+		bucketFactory.ScenarioVersion = item.State.LocalVersion
+		bucketFactory.hash = item.State.LocalHash
+
+		bucketFactory.wgDumpState = buckets.wgDumpState
+		bucketFactory.wgPour = buckets.wgPour
+
+		err = LoadBucket(&bucketFactory, tomb)
+		if err != nil {
+			log.Errorf("Failed to load bucket %s: %v", bucketFactory.Name, err)
+			return nil, fmt.Errorf("loading of %s failed: %w", bucketFactory.Name, err)
+		}
+
+		bucketFactory.orderEvent = orderEvent
+
+		factories = append(factories, bucketFactory)
+	}
+
+	return factories, nil
+}
+
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+	allFactories := []BucketFactory{}
+	response := make(chan types.Event, 1)
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		itemPath := item.State.LocalPath
-
-		// process the yaml
-		bucketConfigurationFile, err := os.Open(itemPath)
+		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, tomb, response, orderEvent, cscfg.SimulationConfig)
 		if err != nil {
-			log.Errorf("Can't access leaky configuration file %s", itemPath)
 			return nil, nil, err
 		}
 
-		defer bucketConfigurationFile.Close()
-		dec := yaml.NewDecoder(bucketConfigurationFile)
-		dec.SetStrict(true)
-
-		for {
-			bucketFactory := BucketFactory{}
-
-			err = dec.Decode(&bucketFactory)
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					log.Errorf("Bad yaml in %s: %v", itemPath, err)
-					return nil, nil, fmt.Errorf("bad yaml in %s: %w", itemPath, err)
-				}
-
-				log.Tracef("End of yaml file")
-
-				break
-			}
-
-			bucketFactory.DataDir = hub.GetDataDir()
-			// check empty
-			if bucketFactory.Name == "" {
-				log.Errorf("Won't load nameless bucket")
-				return nil, nil, errors.New("nameless bucket")
-			}
-			// check compat
-			if bucketFactory.FormatVersion == "" {
-				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, itemPath)
-				bucketFactory.FormatVersion = "1.0"
-			}
-
-			ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to check version: %w", err)
-			}
-
-			if !ok {
-				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
-				continue
-			}
-
-			bucketFactory.Filename = filepath.Clean(itemPath)
-			bucketFactory.BucketName = seed.Generate()
-			bucketFactory.ret = response
-
-			if cscfg.SimulationConfig != nil {
-				bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(bucketFactory.Name)
-			}
-
-			bucketFactory.ScenarioVersion = item.State.LocalVersion
-			bucketFactory.hash = item.State.LocalHash
-
-			bucketFactory.wgDumpState = buckets.wgDumpState
-			bucketFactory.wgPour = buckets.wgPour
-
-			err = LoadBucket(&bucketFactory, tomb)
-			if err != nil {
-				log.Errorf("Failed to load bucket %s: %v", bucketFactory.Name, err)
-				return nil, nil, fmt.Errorf("loading of %s failed: %w", bucketFactory.Name, err)
-			}
-
-			bucketFactory.orderEvent = orderEvent
-
-			ret = append(ret, bucketFactory)
-		}
+		allFactories = append(allFactories, factories...)
 	}
 
 	if err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ConsoleContextValueLength); err != nil {
 		return nil, nil, fmt.Errorf("unable to load alert context: %w", err)
 	}
 
-	log.Infof("Loaded %d scenarios", len(ret))
+	log.Infof("Loaded %d scenarios", len(allFactories))
 
-	return ret, response, nil
+	return allFactories, response, nil
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */

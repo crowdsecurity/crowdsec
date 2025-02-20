@@ -287,7 +287,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 	return nil
 }
 
-func (p *Papi) SyncDecisions() error {
+func (p *Papi) SyncDecisions(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/syncDecisionsToCAPI")
 
 	var cache models.DecisionsDeleteRequest
@@ -304,7 +304,7 @@ func (p *Papi) SyncDecisions() error {
 				return nil
 			}
 
-			go p.SendDeletedDecisions(&cache)
+			go p.SendDeletedDecisions(ctx, &cache)
 
 			return nil
 		case <-ticker.C:
@@ -315,7 +315,7 @@ func (p *Papi) SyncDecisions() error {
 				p.mu.Unlock()
 				p.Logger.Infof("sync decisions: %d deleted decisions to push", len(cacheCopy))
 
-				go p.SendDeletedDecisions(&cacheCopy)
+				go p.SendDeletedDecisions(ctx, &cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
 			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ConsoleManagement != nil && *p.consoleConfig.ConsoleManagement) {
@@ -335,45 +335,34 @@ func (p *Papi) SyncDecisions() error {
 	}
 }
 
-func (p *Papi) SendDeletedDecisions(cacheOrig *models.DecisionsDeleteRequest) {
-	var (
-		cache []models.DecisionsDeleteRequestItem = *cacheOrig
-		send  models.DecisionsDeleteRequest
-	)
+func (p *Papi) sendDeletedDecisionsBatch(ctx context.Context, decisions []models.DecisionsDeleteRequestItem) error {
+	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-	bulkSize := 50
-	pageStart := 0
-	pageEnd := bulkSize
+	_, _, err := p.apiClient.DecisionDelete.Add(ctxBatch, (*models.DecisionsDeleteRequest)(&decisions))
+	if err != nil {
+		return err
+	}
 
-	for {
-		if pageEnd >= len(cache) {
-			send = cache[pageStart:]
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	return nil
+}
 
-			defer cancel()
+func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.DecisionsDeleteRequest) {
+	var cache []models.DecisionsDeleteRequestItem = *cacheOrig
 
-			_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
-			if err != nil {
-				p.Logger.Errorf("sending deleted decisions to central API: %s", err)
-				return
-			}
+	batchSize := 50
 
-			break
+	for start := 0; start < len(cache); start += batchSize {
+		end := start + batchSize
+
+		if end > len(cache) {
+			end = len(cache)
 		}
 
-		send = cache[pageStart:pageEnd]
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
-		defer cancel()
-
-		_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
-		if err != nil {
-			// we log it here as well, because the return value of func might be discarded
+		if err := p.sendDeletedDecisionsBatch(ctx, cache[start:end]); err != nil {
 			p.Logger.Errorf("sending deleted decisions to central API: %s", err)
+			return
 		}
-
-		pageStart += bulkSize
-		pageEnd += bulkSize
 	}
 }
 
