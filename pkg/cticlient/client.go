@@ -1,6 +1,7 @@
 package cticlient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ type CrowdsecCTIClient struct {
 	Logger     *log.Entry
 }
 
-func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map[string]string) ([]byte, error) {
+func (c *CrowdsecCTIClient) doRequest(ctx context.Context, method string, endpoint string, params map[string]string) ([]byte, error) {
 	url := CTIBaseUrl + endpoint
 	if len(params) > 0 {
 		url += "?"
@@ -41,7 +42,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 			url += fmt.Sprintf("%s=%s&", k, v)
 		}
 	}
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,8 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 }
 
 func (c *CrowdsecCTIClient) GetIPInfo(ip string) (*SmokeItem, error) {
-	body, err := c.doRequest(http.MethodGet, smokeEndpoint+"/"+ip, nil)
+	ctx := context.TODO()
+	body, err := c.doRequest(ctx, http.MethodGet, smokeEndpoint+"/"+ip, nil)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return &SmokeItem{}, nil
@@ -90,9 +92,10 @@ func (c *CrowdsecCTIClient) GetIPInfo(ip string) (*SmokeItem, error) {
 }
 
 func (c *CrowdsecCTIClient) SearchIPs(ips []string) (*SearchIPResponse, error) {
+	ctx := context.TODO()
 	params := make(map[string]string)
 	params["ips"] = strings.Join(ips, ",")
-	body, err := c.doRequest(http.MethodGet, smokeEndpoint, params)
+	body, err := c.doRequest(ctx, http.MethodGet, smokeEndpoint, params)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +108,7 @@ func (c *CrowdsecCTIClient) SearchIPs(ips []string) (*SearchIPResponse, error) {
 }
 
 func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
+	ctx := context.TODO()
 	paramsMap := make(map[string]string)
 	if params.Page != nil {
 		paramsMap["page"] = fmt.Sprintf("%d", *params.Page)
@@ -116,7 +120,7 @@ func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
 		paramsMap["limit"] = fmt.Sprintf("%d", *params.Limit)
 	}
 
-	body, err := c.doRequest(http.MethodGet, fireEndpoint, paramsMap)
+	body, err := c.doRequest(ctx, http.MethodGet, fireEndpoint, paramsMap)
 	if err != nil {
 		return nil, err
 	}
