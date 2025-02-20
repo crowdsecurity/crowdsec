@@ -16,7 +16,7 @@ type DataSourceCommonCfg struct {
 	Config         map[string]interface{} `yaml:",inline"` // to keep the datasource-specific configuration directives
 }
 
-var (
+const (
 	TAIL_MODE   = "tail"
 	CAT_MODE    = "cat"
 	SERVER_MODE = "server" // No difference with tail, just a bit more verbose

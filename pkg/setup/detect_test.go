@@ -16,7 +16,7 @@ import (
 )
 
 //nolint:dupword
-var fakeSystemctlOutput = `UNIT FILE                                 STATE    VENDOR PRESET
+const fakeSystemctlOutput = `UNIT FILE                                 STATE    VENDOR PRESET
 crowdsec-setup-detect.service            enabled  enabled
 apache2.service                           enabled  enabled
 apparmor.service                          enabled  enabled

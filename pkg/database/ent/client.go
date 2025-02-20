@@ -16,6 +16,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -33,6 +35,10 @@ type Client struct {
 	Schema *migrate.Schema
 	// Alert is the client for interacting with the Alert builders.
 	Alert *AlertClient
+	// AllowList is the client for interacting with the AllowList builders.
+	AllowList *AllowListClient
+	// AllowListItem is the client for interacting with the AllowListItem builders.
+	AllowListItem *AllowListItemClient
 	// Bouncer is the client for interacting with the Bouncer builders.
 	Bouncer *BouncerClient
 	// ConfigItem is the client for interacting with the ConfigItem builders.
@@ -61,6 +67,8 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Alert = NewAlertClient(c.config)
+	c.AllowList = NewAllowListClient(c.config)
+	c.AllowListItem = NewAllowListItemClient(c.config)
 	c.Bouncer = NewBouncerClient(c.config)
 	c.ConfigItem = NewConfigItemClient(c.config)
 	c.Decision = NewDecisionClient(c.config)
@@ -159,17 +167,19 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Alert:      NewAlertClient(cfg),
-		Bouncer:    NewBouncerClient(cfg),
-		ConfigItem: NewConfigItemClient(cfg),
-		Decision:   NewDecisionClient(cfg),
-		Event:      NewEventClient(cfg),
-		Lock:       NewLockClient(cfg),
-		Machine:    NewMachineClient(cfg),
-		Meta:       NewMetaClient(cfg),
-		Metric:     NewMetricClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Alert:         NewAlertClient(cfg),
+		AllowList:     NewAllowListClient(cfg),
+		AllowListItem: NewAllowListItemClient(cfg),
+		Bouncer:       NewBouncerClient(cfg),
+		ConfigItem:    NewConfigItemClient(cfg),
+		Decision:      NewDecisionClient(cfg),
+		Event:         NewEventClient(cfg),
+		Lock:          NewLockClient(cfg),
+		Machine:       NewMachineClient(cfg),
+		Meta:          NewMetaClient(cfg),
+		Metric:        NewMetricClient(cfg),
 	}, nil
 }
 
@@ -187,17 +197,19 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Alert:      NewAlertClient(cfg),
-		Bouncer:    NewBouncerClient(cfg),
-		ConfigItem: NewConfigItemClient(cfg),
-		Decision:   NewDecisionClient(cfg),
-		Event:      NewEventClient(cfg),
-		Lock:       NewLockClient(cfg),
-		Machine:    NewMachineClient(cfg),
-		Meta:       NewMetaClient(cfg),
-		Metric:     NewMetricClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Alert:         NewAlertClient(cfg),
+		AllowList:     NewAllowListClient(cfg),
+		AllowListItem: NewAllowListItemClient(cfg),
+		Bouncer:       NewBouncerClient(cfg),
+		ConfigItem:    NewConfigItemClient(cfg),
+		Decision:      NewDecisionClient(cfg),
+		Event:         NewEventClient(cfg),
+		Lock:          NewLockClient(cfg),
+		Machine:       NewMachineClient(cfg),
+		Meta:          NewMetaClient(cfg),
+		Metric:        NewMetricClient(cfg),
 	}, nil
 }
 
@@ -227,8 +239,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
-		c.Meta, c.Metric,
+		c.Alert, c.AllowList, c.AllowListItem, c.Bouncer, c.ConfigItem, c.Decision,
+		c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
 	} {
 		n.Use(hooks...)
 	}
@@ -238,8 +250,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
-		c.Meta, c.Metric,
+		c.Alert, c.AllowList, c.AllowListItem, c.Bouncer, c.ConfigItem, c.Decision,
+		c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -250,6 +262,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *AlertMutation:
 		return c.Alert.mutate(ctx, m)
+	case *AllowListMutation:
+		return c.AllowList.mutate(ctx, m)
+	case *AllowListItemMutation:
+		return c.AllowListItem.mutate(ctx, m)
 	case *BouncerMutation:
 		return c.Bouncer.mutate(ctx, m)
 	case *ConfigItemMutation:
@@ -465,6 +481,304 @@ func (c *AlertClient) mutate(ctx context.Context, m *AlertMutation) (Value, erro
 		return (&AlertDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Alert mutation op: %q", m.Op())
+	}
+}
+
+// AllowListClient is a client for the AllowList schema.
+type AllowListClient struct {
+	config
+}
+
+// NewAllowListClient returns a client for the AllowList from the given config.
+func NewAllowListClient(c config) *AllowListClient {
+	return &AllowListClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `allowlist.Hooks(f(g(h())))`.
+func (c *AllowListClient) Use(hooks ...Hook) {
+	c.hooks.AllowList = append(c.hooks.AllowList, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `allowlist.Intercept(f(g(h())))`.
+func (c *AllowListClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AllowList = append(c.inters.AllowList, interceptors...)
+}
+
+// Create returns a builder for creating a AllowList entity.
+func (c *AllowListClient) Create() *AllowListCreate {
+	mutation := newAllowListMutation(c.config, OpCreate)
+	return &AllowListCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AllowList entities.
+func (c *AllowListClient) CreateBulk(builders ...*AllowListCreate) *AllowListCreateBulk {
+	return &AllowListCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AllowListClient) MapCreateBulk(slice any, setFunc func(*AllowListCreate, int)) *AllowListCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AllowListCreateBulk{err: fmt.Errorf("calling to AllowListClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AllowListCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AllowListCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AllowList.
+func (c *AllowListClient) Update() *AllowListUpdate {
+	mutation := newAllowListMutation(c.config, OpUpdate)
+	return &AllowListUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AllowListClient) UpdateOne(al *AllowList) *AllowListUpdateOne {
+	mutation := newAllowListMutation(c.config, OpUpdateOne, withAllowList(al))
+	return &AllowListUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AllowListClient) UpdateOneID(id int) *AllowListUpdateOne {
+	mutation := newAllowListMutation(c.config, OpUpdateOne, withAllowListID(id))
+	return &AllowListUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AllowList.
+func (c *AllowListClient) Delete() *AllowListDelete {
+	mutation := newAllowListMutation(c.config, OpDelete)
+	return &AllowListDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AllowListClient) DeleteOne(al *AllowList) *AllowListDeleteOne {
+	return c.DeleteOneID(al.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AllowListClient) DeleteOneID(id int) *AllowListDeleteOne {
+	builder := c.Delete().Where(allowlist.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AllowListDeleteOne{builder}
+}
+
+// Query returns a query builder for AllowList.
+func (c *AllowListClient) Query() *AllowListQuery {
+	return &AllowListQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAllowList},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AllowList entity by its id.
+func (c *AllowListClient) Get(ctx context.Context, id int) (*AllowList, error) {
+	return c.Query().Where(allowlist.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AllowListClient) GetX(ctx context.Context, id int) *AllowList {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryAllowlistItems queries the allowlist_items edge of a AllowList.
+func (c *AllowListClient) QueryAllowlistItems(al *AllowList) *AllowListItemQuery {
+	query := (&AllowListItemClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := al.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(allowlist.Table, allowlist.FieldID, id),
+			sqlgraph.To(allowlistitem.Table, allowlistitem.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, allowlist.AllowlistItemsTable, allowlist.AllowlistItemsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(al.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *AllowListClient) Hooks() []Hook {
+	return c.hooks.AllowList
+}
+
+// Interceptors returns the client interceptors.
+func (c *AllowListClient) Interceptors() []Interceptor {
+	return c.inters.AllowList
+}
+
+func (c *AllowListClient) mutate(ctx context.Context, m *AllowListMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AllowListCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AllowListUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AllowListUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AllowListDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AllowList mutation op: %q", m.Op())
+	}
+}
+
+// AllowListItemClient is a client for the AllowListItem schema.
+type AllowListItemClient struct {
+	config
+}
+
+// NewAllowListItemClient returns a client for the AllowListItem from the given config.
+func NewAllowListItemClient(c config) *AllowListItemClient {
+	return &AllowListItemClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `allowlistitem.Hooks(f(g(h())))`.
+func (c *AllowListItemClient) Use(hooks ...Hook) {
+	c.hooks.AllowListItem = append(c.hooks.AllowListItem, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `allowlistitem.Intercept(f(g(h())))`.
+func (c *AllowListItemClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AllowListItem = append(c.inters.AllowListItem, interceptors...)
+}
+
+// Create returns a builder for creating a AllowListItem entity.
+func (c *AllowListItemClient) Create() *AllowListItemCreate {
+	mutation := newAllowListItemMutation(c.config, OpCreate)
+	return &AllowListItemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AllowListItem entities.
+func (c *AllowListItemClient) CreateBulk(builders ...*AllowListItemCreate) *AllowListItemCreateBulk {
+	return &AllowListItemCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AllowListItemClient) MapCreateBulk(slice any, setFunc func(*AllowListItemCreate, int)) *AllowListItemCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AllowListItemCreateBulk{err: fmt.Errorf("calling to AllowListItemClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AllowListItemCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AllowListItemCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AllowListItem.
+func (c *AllowListItemClient) Update() *AllowListItemUpdate {
+	mutation := newAllowListItemMutation(c.config, OpUpdate)
+	return &AllowListItemUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AllowListItemClient) UpdateOne(ali *AllowListItem) *AllowListItemUpdateOne {
+	mutation := newAllowListItemMutation(c.config, OpUpdateOne, withAllowListItem(ali))
+	return &AllowListItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AllowListItemClient) UpdateOneID(id int) *AllowListItemUpdateOne {
+	mutation := newAllowListItemMutation(c.config, OpUpdateOne, withAllowListItemID(id))
+	return &AllowListItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AllowListItem.
+func (c *AllowListItemClient) Delete() *AllowListItemDelete {
+	mutation := newAllowListItemMutation(c.config, OpDelete)
+	return &AllowListItemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AllowListItemClient) DeleteOne(ali *AllowListItem) *AllowListItemDeleteOne {
+	return c.DeleteOneID(ali.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AllowListItemClient) DeleteOneID(id int) *AllowListItemDeleteOne {
+	builder := c.Delete().Where(allowlistitem.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AllowListItemDeleteOne{builder}
+}
+
+// Query returns a query builder for AllowListItem.
+func (c *AllowListItemClient) Query() *AllowListItemQuery {
+	return &AllowListItemQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAllowListItem},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AllowListItem entity by its id.
+func (c *AllowListItemClient) Get(ctx context.Context, id int) (*AllowListItem, error) {
+	return c.Query().Where(allowlistitem.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AllowListItemClient) GetX(ctx context.Context, id int) *AllowListItem {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryAllowlist queries the allowlist edge of a AllowListItem.
+func (c *AllowListItemClient) QueryAllowlist(ali *AllowListItem) *AllowListQuery {
+	query := (&AllowListClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ali.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(allowlistitem.Table, allowlistitem.FieldID, id),
+			sqlgraph.To(allowlist.Table, allowlist.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, allowlistitem.AllowlistTable, allowlistitem.AllowlistPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(ali.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *AllowListItemClient) Hooks() []Hook {
+	return c.hooks.AllowListItem
+}
+
+// Interceptors returns the client interceptors.
+func (c *AllowListItemClient) Interceptors() []Interceptor {
+	return c.inters.AllowListItem
+}
+
+func (c *AllowListItemClient) mutate(ctx context.Context, m *AllowListItemMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AllowListItemCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AllowListItemUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AllowListItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AllowListItemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AllowListItem mutation op: %q", m.Op())
 	}
 }
 
@@ -1599,11 +1913,11 @@ func (c *MetricClient) mutate(ctx context.Context, m *MetricMutation) (Value, er
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta,
-		Metric []ent.Hook
+		Alert, AllowList, AllowListItem, Bouncer, ConfigItem, Decision, Event, Lock,
+		Machine, Meta, Metric []ent.Hook
 	}
 	inters struct {
-		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta,
-		Metric []ent.Interceptor
+		Alert, AllowList, AllowListItem, Bouncer, ConfigItem, Decision, Event, Lock,
+		Machine, Meta, Metric []ent.Interceptor
 	}
 )

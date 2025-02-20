@@ -29,6 +29,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
+type cliAlerts struct {
+	client *apiclient.ApiClient
+	cfg    configGetter
+}
+
 func decisionsFromAlert(alert *models.Alert) string {
 	ret := ""
 	decMap := make(map[string]int)
@@ -181,13 +188,6 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	}
 
 	return nil
-}
-
-type configGetter func() *csconfig.Config
-
-type cliAlerts struct {
-	client *apiclient.ApiClient
-	cfg    configGetter
 }
 
 func New(getconfig configGetter) *cliAlerts {

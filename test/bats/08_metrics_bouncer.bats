@@ -74,7 +74,7 @@ teardown() {
     payload=$(yq -o j '.remediation_components[0].utc_startup_timestamp = "2021-09-01T00:00:00Z"' <<<"$payload")
     rune -22 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"
     assert_stderr --partial "error: 400"
-    assert_json '{message: "json: cannot unmarshal string into Go struct field AllMetrics.remediation_components of type int64"}'
+    assert_json '{message: "json: cannot unmarshal string into Go struct field AllMetrics.remediation_components.utc_startup_timestamp of type int64"}'
 
     payload=$(yq -o j '.remediation_components[0].utc_startup_timestamp = 1707399316' <<<"$payload")
     rune -0 curl-with-key '/v1/usage-metrics' -X POST --data "$payload"

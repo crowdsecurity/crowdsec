@@ -548,6 +548,37 @@ definitions:
         description: "the scope of decisions in the blocklist"
       duration:
         type: string
+  AllowlistLink:
+    type: object
+    required:
+      - name
+      - description
+      - url
+      - id
+      - created_at
+      - updated_at
+    properties:
+      name:
+        type: string
+        description: "the name of the allowlist"
+      description:
+        type: string
+        description: "the description of the allowlist"
+      url:
+        type: string
+        description: "the url from which the allowlist content can be downloaded"
+      id:
+        type: string
+        description: "the id of the allowlist"
+      created_at:
+        type: string
+        format: date-time
+        description: "the creation date of the allowlist"
+      updated_at:
+        type: string
+        format: date-time
+        description: "the last update date of the allowlist"
+      
   AddSignalsRequestItemDecisionsItem:
     type: "object"
     required:
@@ -885,4 +916,8 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/BlocklistLink"
+      allowlists:
+        type: array
+        items:
+          $ref: "#/definitions/AllowlistLink"
 

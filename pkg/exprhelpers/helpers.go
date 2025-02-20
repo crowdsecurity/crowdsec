@@ -228,7 +228,8 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
 		}
-		if scanner.Text() == "" { //skip empty lines
+
+		if scanner.Text() == "" { // skip empty lines
 			continue
 		}
 
@@ -274,7 +275,7 @@ func Distinct(params ...any) (any, error) {
 }
 
 func FlattenDistinct(params ...any) (any, error) {
-	return Distinct(flatten(nil, reflect.ValueOf(params))) //nolint:asasalint
+	return Distinct(flatten(nil, reflect.ValueOf(params)))
 }
 
 func Flatten(params ...any) (any, error) {
@@ -326,9 +327,11 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 func Get(params ...any) (any, error) {
 	arr := params[0].([]string)
 	index := params[1].(int)
+
 	if index >= len(arr) {
 		return "", nil
 	}
+
 	return arr[index], nil
 }
 
@@ -421,22 +424,26 @@ func PathEscape(params ...any) (any, error) {
 // func PathUnescape(s string) string {
 func PathUnescape(params ...any) (any, error) {
 	s := params[0].(string)
+
 	ret, err := url.PathUnescape(s)
 	if err != nil {
 		log.Debugf("unable to PathUnescape '%s': %+v", s, err)
 		return s, nil
 	}
+
 	return ret, nil
 }
 
 // func QueryUnescape(s string) string {
 func QueryUnescape(params ...any) (any, error) {
 	s := params[0].(string)
+
 	ret, err := url.QueryUnescape(s)
 	if err != nil {
 		log.Debugf("unable to QueryUnescape '%s': %+v", s, err)
 		return s, nil
 	}
+
 	return ret, nil
 }
 
@@ -446,8 +453,10 @@ func File(params ...any) (any, error) {
 	if _, ok := dataFile[filename]; ok {
 		return dataFile[filename], nil
 	}
+
 	log.Errorf("file '%s' (type:string) not found in expr library", filename)
 	log.Errorf("expr library : %s", spew.Sdump(dataFile))
+
 	return []string{}, nil
 }
 
@@ -455,13 +464,16 @@ func File(params ...any) (any, error) {
 func RegexpInFile(params ...any) (any, error) {
 	data := params[0].(string)
 	filename := params[1].(string)
+
 	var hash uint64
+
 	hasCache := false
 	matched := false
 
 	if _, ok := dataFileRegexCache[filename]; ok {
 		hasCache = true
 		hash = xxhash.Sum64String(data)
+
 		if val, err := dataFileRegexCache[filename].Get(hash); err == nil {
 			return val.(bool), nil
 		}
@@ -493,9 +505,11 @@ func RegexpInFile(params ...any) (any, error) {
 			log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
 		}
 	}
+
 	if hasCache {
 		dataFileRegexCache[filename].Set(hash, matched)
 	}
+
 	return matched, nil
 }
 
