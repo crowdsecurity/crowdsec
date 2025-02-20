@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,6 +31,7 @@ var responseByPath map[string]string
 
 // testHubOld initializes a temporary hub with an empty json file, optionally updating it.
 func testHubOld(t *testing.T, update bool) *Hub {
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	local := &csconfig.LocalHubCfg{
@@ -62,7 +62,6 @@ func testHubOld(t *testing.T, update bool) *Hub {
 			URLTemplate: mockURLTemplate,
 		}
 
-		ctx := context.Background()
 		updated, err := hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
 		assert.True(t, updated)

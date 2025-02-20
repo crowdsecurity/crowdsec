@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test collection management
 """
@@ -12,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_install_two_collections(crowdsec, flavor):
+def test_install_two_collections(crowdsec, flavor: str) -> None:
     """Test installing collections at startup"""
     it1 = "crowdsecurity/apache2"
     it2 = "crowdsecurity/asterisk"
@@ -33,7 +31,7 @@ def test_install_two_collections(crowdsec, flavor):
         )
 
 
-def test_disable_collection(crowdsec, flavor):
+def test_disable_collection(crowdsec, flavor: str) -> None:
     """Test removing a pre-installed collection at startup"""
     it = "crowdsecurity/linux"
     env = {"DISABLE_COLLECTIONS": it}
@@ -52,7 +50,7 @@ def test_disable_collection(crowdsec, flavor):
         )
 
 
-def test_install_and_disable_collection(crowdsec, flavor):
+def test_install_and_disable_collection(crowdsec, flavor: str) -> None:
     """Declare a collection to install AND disable: disable wins"""
     it = "crowdsecurity/apache2"
     env = {
@@ -73,7 +71,7 @@ def test_install_and_disable_collection(crowdsec, flavor):
 
 
 # already done in bats, prividing here as example of a somewhat complex test
-def test_taint_bubble_up(crowdsec, tmp_path_factory, flavor):
+def test_taint_bubble_up(crowdsec, flavor: str) -> None:
     coll = "crowdsecurity/nginx"
     env = {"COLLECTIONS": f"{coll}"}
 

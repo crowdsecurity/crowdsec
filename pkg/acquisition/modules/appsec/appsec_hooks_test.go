@@ -883,6 +883,40 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				require.Equal(t, http.StatusForbidden, statusCode)
 			},
 		},
+		{
+			name:             "on_match: allowlisted IP",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "5.4.3.2",
+				RemoteAddr: "5.4.3.2",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "continue"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				spew.Dump(responses)
+				spew.Dump(appsecResponse)
+
+				log.Errorf("http status : %d", statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusOK, statusCode)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

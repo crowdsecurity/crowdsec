@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -123,6 +124,27 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
+func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) (bool, string) {
+	// If we have decisions, it comes from cscli that already checked the allowlist
+	if len(alert.Decisions) > 0 {
+		return false, ""
+	}
+
+	if alert.Source.Scope != nil && (*alert.Source.Scope == types.Ip || *alert.Source.Scope == types.Range) && // Allowlist only works for IP/range
+		alert.Source.Value != nil { // Is this possible ?
+		isAllowlisted, reason, err := c.DBClient.IsAllowlisted(ctx, *alert.Source.Value)
+		if err == nil && isAllowlisted {
+			return true, reason
+		} else if err != nil {
+			// FIXME: Do we still want to process the alert normally if we can't check the allowlist ?
+			log.Errorf("error while checking allowlist: %s", err)
+			return false, ""
+		}
+	}
+
+	return false, ""
+}
+
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
@@ -141,6 +163,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	stopFlush := false
+	alertsToSave := make([]*models.Alert, 0)
 
 	for _, alert := range input {
 		// normalize scope for alert.Source and decisions
@@ -152,6 +175,11 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			if decision.Scope != nil {
 				*decision.Scope = types.NormalizeScope(*decision.Scope)
 			}
+		}
+
+		if allowlisted, reason := c.isAllowListed(ctx, alert); allowlisted {
+			log.Infof("alert source %s is allowlisted by %s, skipping", *alert.Source.Value, reason)
+			continue
 		}
 
 		alert.MachineID = machineID
@@ -188,6 +216,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			if decision.Origin != nil && *decision.Origin == types.CscliImportOrigin {
 				stopFlush = true
 			}
+
+			alertsToSave = append(alertsToSave, alert)
 
 			continue
 		}
@@ -234,13 +264,15 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				break
 			}
 		}
+
+		alertsToSave = append(alertsToSave, alert)
 	}
 
 	if stopFlush {
 		c.DBClient.CanFlush = false
 	}
 
-	alerts, err := c.DBClient.CreateAlert(ctx, machineID, input)
+	alerts, err := c.DBClient.CreateAlert(ctx, machineID, alertsToSave)
 	c.DBClient.CanFlush = true
 
 	if err != nil {
@@ -250,7 +282,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	if c.AlertsAddChan != nil {
 		select {
-		case c.AlertsAddChan <- input:
+		case c.AlertsAddChan <- alertsToSave:
 			log.Debug("alert sent to CAPI channel")
 		default:
 			log.Warning("Cannot send alert to Central API channel")

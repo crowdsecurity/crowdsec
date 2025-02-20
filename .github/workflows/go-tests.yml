@@ -198,6 +198,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.63
+        version: v1.64
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
