@@ -119,6 +119,10 @@ teardown() {
 
     rune -0 cscli scenarios remove crowdsecurity/ssh-bf
     assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 scenarios: crowdsecurity/ssh-bf
+
 	disabling scenarios:crowdsecurity/ssh-bf
 
 	$RELOAD_MESSAGE
