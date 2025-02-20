@@ -2,7 +2,6 @@ package httpacquisition
 
 import (
 	"compress/gzip"
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -221,12 +220,13 @@ func TestGetName(t *testing.T) {
 }
 
 func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel int) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
-	ctx := context.Background()
+	ctx := t.Context()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
 	})
 	err := h.Configure(config, subLogger, metricLevel)
 	require.NoError(t, err)
+
 	tomb := tomb.Tomb{}
 	out := make(chan types.Event)
 	err = h.StreamingAcquisition(ctx, out, &tomb)
