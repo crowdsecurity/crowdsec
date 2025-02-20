@@ -215,6 +215,15 @@ teardown() {
     rune -0 cscli hub list -o raw
     rune -0 cscli collections upgrade author/coll1
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 collections: author/coll1 (0.0 -> 0.1)
+	 parsers: author/pars2 (0.0)
+	✅ enable
+	 parsers: author/pars2
+	❌ disable
+	 parsers: author/pars1
+
 	downloading parsers:author/pars2
 	enabling parsers:author/pars2
 	disabling parsers:author/pars1
