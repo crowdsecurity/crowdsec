@@ -12,11 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliallowlists"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconfig"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clidecision"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
@@ -165,6 +168,8 @@ func (cli *cliRoot) initialize() error {
 		}
 	}
 
+	csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
+
 	return nil
 }
 
@@ -256,7 +261,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
-	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
+	cmd.AddCommand(cliconfig.New(cli.cfg).NewCommand(func() string { return mergedConfig }))
 	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
@@ -281,6 +286,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliitem.NewContext(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
+	cmd.AddCommand(cliallowlists.New(cli.cfg).NewCommand())
 
 	cli.addSetup(cmd)
 

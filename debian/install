@@ -3,7 +3,6 @@ config/profiles.yaml    etc/crowdsec/
 config/simulation.yaml  etc/crowdsec/
 
 config/patterns/*       etc/crowdsec/patterns
-config/crowdsec.service lib/systemd/system
 
 # Referenced configs:
 cmd/notification-slack/slack.yaml        etc/crowdsec/notifications/

@@ -42,7 +42,7 @@ func suggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) str
 	return msg
 }
 
-func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
+func (cli cliItem) install(ctx context.Context, args []string, interactive bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -78,9 +78,10 @@ func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun 
 		}
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		if !ignoreError {
 			return err
 		}
@@ -88,8 +89,8 @@ func (cli cliItem) install(ctx context.Context, args []string, yes bool, dryRun 
 		log.Error(err)
 	}
 
-	if plan.ReloadNeeded {
-		fmt.Println("\n" + reload.Message)
+	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+		fmt.Println("\n" + msg)
 	}
 
 	return nil
@@ -116,7 +117,7 @@ func compAllItems(itemType string, args []string, toComplete string, cfg configG
 
 func (cli cliItem) newInstallCmd() *cobra.Command {
 	var (
-		yes          bool
+		interactive  bool
 		dryRun       bool
 		downloadOnly bool
 		force        bool
@@ -134,17 +135,17 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 			return compAllItems(cli.name, args, toComplete, cli.cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.install(cmd.Context(), args, yes, dryRun, downloadOnly, force, ignoreError)
+			return cli.install(cmd.Context(), args, interactive, dryRun, downloadOnly, force, ignoreError)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVarP(&yes, "yes", "y", false, "Confirm execution without prompt")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "Ask for confirmation before proceeding")
 	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	flags.BoolVar(&force, "force", false, "Force install: overwrite tainted and outdated files")
 	flags.BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple "+cli.name)
-	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
+	cmd.MarkFlagsMutuallyExclusive("interactive", "dry-run")
 
 	return cmd
 }

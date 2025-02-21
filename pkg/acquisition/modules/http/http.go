@@ -157,9 +157,9 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	h.logger = logger
-	h.metricsLevel = MetricsLevel
+	h.metricsLevel = metricsLevel
 
 	err := h.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -339,12 +339,14 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		if r.Method != http.MethodPost {
 			h.logger.Errorf("method not allowed: %s", r.Method)
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
 			return
 		}
 
 		if err := authorizeRequest(r, &h.Config); err != nil {
 			h.logger.Errorf("failed to authorize request from '%s': %s", r.RemoteAddr, err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+
 			return
 		}
 
@@ -370,9 +372,14 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	})
 
 	h.Server = &http.Server{
-		Addr:    h.Config.ListenAddr,
-		Handler: mux,
+		Addr:      h.Config.ListenAddr,
+		Handler:   mux,
+		Protocols: &http.Protocols{},
 	}
+
+	h.Server.Protocols.SetHTTP1(true)
+	h.Server.Protocols.SetUnencryptedHTTP2(true)
+	h.Server.Protocols.SetHTTP2(true)
 
 	if h.Config.Timeout != nil {
 		h.Server.ReadTimeout = *h.Config.Timeout

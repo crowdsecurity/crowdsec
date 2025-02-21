@@ -1,4 +1,4 @@
-package main
+package cliconfig
 
 import (
 	"fmt"
@@ -86,7 +86,7 @@ func (cli *cliConfig) featureFlags(showRetired bool) error {
 	fmt.Println("To enable a feature you can: ")
 	fmt.Println("  - set the environment variable CROWDSEC_FEATURE_<uppercase_feature_name> to true")
 
-	featurePath, err := filepath.Abs(csconfig.GetFeatureFilePath(ConfigFilePath))
+	featurePath, err := filepath.Abs(csconfig.GetFeatureFilePath(cli.cfg().FilePath))
 	if err != nil {
 		// we already read the file, shouldn't happen
 		return err

@@ -16,7 +16,7 @@ type DecisionDeleteService service
 func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *models.DecisionsDeleteRequest) (interface{}, *Response, error) {
 	u := fmt.Sprintf("%s/decisions/delete", d.client.URLPrefix)
 
-	req, err := d.client.NewRequest(http.MethodPost, u, &deletedDecisions)
+	req, err := d.client.NewRequestWithContext(ctx, http.MethodPost, u, &deletedDecisions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("while building request: %w", err)
 	}

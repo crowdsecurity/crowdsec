@@ -1,0 +1,60 @@
+[project]
+name = "crowdsec-docker-tests"
+version = "0.1.0"
+description = "Docker tests for Crowdsec"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=8.3.4",
+    "pytest-cs",
+    "pytest-dotenv>=0.5.2",
+    "pytest-xdist>=3.6.1",
+]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.26.0",
+    "ipdb>=0.13.13",
+    "ruff>=0.9.3",
+]
+
+[tool.uv.sources]
+pytest-cs = { git = "https://github.com/crowdsecurity/pytest-cs" }
+
+[tool.ruff]
+
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "ALL"
+]
+
+ignore = [
+    "ANN",      # Missing type annotations
+    "COM",      # flake8-commas
+    "D",        # pydocstyle
+    "ERA",      # eradicate
+    "FIX",      # flake8-fixme
+    "TD",       # flake8-todos
+
+    "INP001",   # File `...` is part of an implicit namespace package. Add an `__init__.py`.
+    "E501",     # line too long
+                # ^ does not ignore comments that can't be moved to their own line, line noqa, pyright
+                #   so we take care of line lenghts only with "ruff format"
+    "PLR2004",  # Magic value used in comparison, consider replacing `...` with a constant variable
+    "S101",     # Use of 'assert' detected
+    "S603",     # `subprocess` call: check for execution of untrusted input
+    "S607",     # Starting a process with a partial executable path
+]
+
+[tool.basedpyright]
+reportUnknownArgumentType = "none"
+reportUnknownParameterType = "none"
+reportMissingParameterType = "none"
+reportMissingTypeStubs = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportUnreachable = "none"
+reportAny = "none"
+

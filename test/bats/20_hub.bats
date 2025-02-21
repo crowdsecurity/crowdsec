@@ -104,21 +104,68 @@ teardown() {
     assert_stderr --partial "crowdsecurity/sshd is tainted by missing parsers:crowdsecurity/sshd-logs"
 }
 
+@test "an install symlink can have a different name than the items it points to" {
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -r '.local_path' <(output)
+    rune -0 mv "$output" "$CONFIG_DIR/scenarios/newname.yaml"
+    rune -0 cscli hub list -o json
+    rune -0 jq -r '.scenarios.[].name' <(output)
+    assert_output 'crowdsecurity/ssh-bf'
+
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -r '.installed' <(output)
+    assert_output true
+
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf
+    assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 scenarios: crowdsecurity/ssh-bf
+
+	disabling scenarios:crowdsecurity/ssh-bf
+
+	$RELOAD_MESSAGE
+	EOT
+    refute_stderr
+
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -r '.installed' <(output)
+    assert_output false
+}
+
 @test "cscli hub update" {
     rm -f "$INDEX_PATH"
     rune -0 cscli hub update
     assert_output "Downloading $INDEX_PATH"
     rune -0 cscli hub update
     assert_output "Nothing to do, the hub index is up to date."
+
+    # hub update must honor the --error flag to be silent in noop cron jobs
+    rune -0 cscli hub update --error
+    refute_output
+    refute_stderr
 }
 
 @test "cscli hub upgrade (up to date)" {
     rune -0 cscli hub upgrade
-    refute_output
+    assert_output - <<-EOT
+	Action plan:
+	🔄 check & update data files
+	EOT
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs
     rune -0 cscli hub upgrade --force
+    assert_output - <<-EOT
+	Action plan:
+	🔄 check & update data files
+	EOT
+
+    # hub upgrade must honor the --error flag to be silent in noop cron jobs
+    rune -0 cscli hub upgrade --error
     refute_output
+    refute_stderr
+
     skip "todo: data files are re-downloaded with --force"
 }
 
@@ -128,6 +175,8 @@ teardown() {
     rune -0 cscli hub upgrade
     assert_output - <<-EOT
 	collections:foo.yaml - not downloading local item
+	Action plan:
+	🔄 check & update data files
 	EOT
 }
 

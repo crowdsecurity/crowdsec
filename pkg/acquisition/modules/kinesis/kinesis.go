@@ -161,9 +161,9 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, MetricsLevel int) error {
+func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	k.logger = logger
-	k.metricsLevel = MetricsLevel
+	k.metricsLevel = metricsLevel
 
 	err := k.UnmarshalConfig(yamlConfig)
 	if err != nil {

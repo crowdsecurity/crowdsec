@@ -34,6 +34,15 @@ teardown() {
     ./instance-crowdsec stop
 }
 
+get_latest_version() {
+    local hubtype=$1
+    shift
+    local item_name=$1
+    shift
+
+    cscli "$hubtype" inspect "$item_name" -o json | jq -r '.version'
+}
+
 #----------
 
 @test "cscli <hubtype> install (no argument)" {
@@ -55,10 +64,11 @@ teardown() {
 
 @test "install an item (dry run)" {
     rune -0 cscli parsers install crowdsecurity/whitelists --dry-run
-    assert_output - --regexp <<-EOT
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
+    assert_output - <<-EOT
 	Action plan:
 	📥 download
-	 parsers: crowdsecurity/whitelists \([0-9]+.[0-9]+\)
+	 parsers: crowdsecurity/whitelists ($latest_whitelists)
 	✅ enable
 	 parsers: crowdsecurity/whitelists
 	
@@ -71,9 +81,10 @@ teardown() {
 
 @test "install an item (dry-run, de-duplicate commands)" {
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/whitelists --dry-run --output raw
-    assert_output - --regexp <<-EOT
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
+    assert_output - <<-EOT
 	Action plan:
-	📥 download parsers:crowdsecurity/whitelists \([0-9]+.[0-9]+\)
+	📥 download parsers:crowdsecurity/whitelists ($latest_whitelists)
 	✅ enable parsers:crowdsecurity/whitelists
 	
 	Dry run, no action taken.
@@ -83,7 +94,14 @@ teardown() {
 
 @test "install an item" {
     rune -0 cscli parsers install crowdsecurity/whitelists
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/whitelists ($latest_whitelists)
+	✅ enable
+	 parsers: crowdsecurity/whitelists
+
 	downloading parsers:crowdsecurity/whitelists
 	enabling parsers:crowdsecurity/whitelists
 		
@@ -105,7 +123,12 @@ teardown() {
 @test "install an item (download only)" {
     assert_file_not_exists "$HUB_DIR/parsers/s02-enrich/crowdsecurity/whitelists.yaml"
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/whitelists ($latest_whitelists)
+
 	downloading parsers:crowdsecurity/whitelists
 		
 	$RELOAD_MESSAGE
@@ -157,7 +180,12 @@ teardown() {
     refute_stderr
 
     rune -0 cscli parsers install crowdsecurity/whitelists --force
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
     assert_output - <<-EOT
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/whitelists (? -> $latest_whitelists)
+
 	downloading parsers:crowdsecurity/whitelists
 		
 	$RELOAD_MESSAGE
@@ -178,10 +206,11 @@ teardown() {
 @test "install multiple items (some already installed)" {
     rune -0 cscli parsers install crowdsecurity/pgsql-logs
     rune -0 cscli parsers install crowdsecurity/pgsql-logs crowdsecurity/postfix-logs --dry-run
-    assert_output - --regexp <<-EOT
+    latest_postfix=$(get_latest_version parsers crowdsecurity/postfix-logs)
+    assert_output - <<-EOT
 	Action plan:
 	📥 download
-	 parsers: crowdsecurity/postfix-logs \([0-9]+.[0-9]+\)
+	 parsers: crowdsecurity/postfix-logs ($latest_postfix)
 	✅ enable
 	 parsers: crowdsecurity/postfix-logs
 	
@@ -209,11 +238,18 @@ teardown() {
     # error on one item, should still install the others
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/pgsql-logs --ignore
     refute_stderr
+    latest_pgsql=$(get_latest_version parsers crowdsecurity/pgsql-logs)
     assert_output - <<-EOT
 	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
+	Action plan:
+	📥 download
+	 parsers: crowdsecurity/pgsql-logs ($latest_pgsql)
+	✅ enable
+	 parsers: crowdsecurity/pgsql-logs
+
 	downloading parsers:crowdsecurity/pgsql-logs
 	enabling parsers:crowdsecurity/pgsql-logs
-		
+
 	$RELOAD_MESSAGE
 	EOT
     rune -0 cscli parsers inspect crowdsecurity/pgsql-logs --no-metrics -o json

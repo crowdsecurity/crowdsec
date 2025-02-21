@@ -48,7 +48,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, input []byte, yes, dryRun, verbose bool) error {
+func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, input []byte, interactive, dryRun, showPlan, verbosePlan bool) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 		}
 	}
 
-	return plan.Execute(ctx, yes, dryRun, verbose)
+	return plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
 }
 
 // marshalAcquisDocuments creates the monolithic file, or itemized files (if a directory is provided) with the acquisition documents.
@@ -192,7 +192,9 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 				return "", fmt.Errorf("while writing to %s: %w", ad.AcquisFilename, err)
 			}
 
-			f.Sync()
+			if err = f.Sync(); err != nil {
+				return "", fmt.Errorf("while syncing %s: %w", ad.AcquisFilename, err)
+			}
 
 			continue
 		}

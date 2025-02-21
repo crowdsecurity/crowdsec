@@ -27,7 +27,7 @@ func LAPI(c *csconfig.Config) error {
 
 func CAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient == nil {
-		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", *c.FilePath)
+		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", c.FilePath)
 	}
 
 	return nil

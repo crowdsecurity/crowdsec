@@ -17,37 +17,44 @@ import (
 	// load body processors via init()
 	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // that's the runtime structure of the Application security engine as seen from the acquis
 type AppsecRunner struct {
-	outChan             chan types.Event
-	inChan              chan appsec.ParsedRequest
-	UUID                string
-	AppsecRuntime       *appsec.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
-	AppsecInbandEngine  coraza.WAF
-	AppsecOutbandEngine coraza.WAF
-	Labels              map[string]string
-	logger              *log.Entry
+	outChan                chan types.Event
+	inChan                 chan appsec.ParsedRequest
+	UUID                   string
+	AppsecRuntime          *appsec.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
+	AppsecInbandEngine     coraza.WAF
+	AppsecOutbandEngine    coraza.WAF
+	Labels                 map[string]string
+	logger                 *log.Entry
+	appsecAllowlistsClient *allowlists.AppsecAllowlist
 }
 
 func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
+	discarded := 0
 
 	for _, collection := range collections {
+		// Dedup *our* rules
 		for _, rule := range collection.Rules {
-			if _, ok := dedupRules[rule]; !ok {
-				rulesArr = append(rulesArr, rule)
-				dedupRules[rule] = struct{}{}
-			} else {
+			if _, ok := dedupRules[rule]; ok {
+				discarded++
 				logger.Debugf("Discarding duplicate rule : %s", rule)
+				continue
 			}
+			rulesArr = append(rulesArr, rule)
+			dedupRules[rule] = struct{}{}
 		}
+		// Don't mess up with native modsec rules
+		rulesArr = append(rulesArr, collection.NativeRules...)
 	}
-	if len(rulesArr) != len(dedupRules) {
-		logger.Warningf("%d rules were discarded as they were duplicates", len(rulesArr)-len(dedupRules))
+	if discarded > 0 {
+		logger.Warningf("%d rules were discarded as they were duplicates", discarded)
 	}
 
 	return strings.Join(rulesArr, "\n")
@@ -229,6 +236,12 @@ func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) erro
 }
 
 func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
+
+	if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
+		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, reason)
+		return
+	}
+
 	//create the associated event for crowdsec itself
 	evt, err := EventFromRequest(request, r.Labels)
 	if err != nil {
@@ -283,6 +296,12 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 }
 
 func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
+
+	if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
+		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, reason)
+		return
+	}
+
 	evt, err := EventFromRequest(request, r.Labels)
 	if err != nil {
 		//let's not interrupt the pipeline for this

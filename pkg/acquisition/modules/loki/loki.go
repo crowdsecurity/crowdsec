@@ -120,10 +120,10 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry, MetricsLevel int) error {
+func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
 	l.Config = LokiConfiguration{}
 	l.logger = logger
-	l.metricsLevel = MetricsLevel
+	l.metricsLevel = metricsLevel
 	err := l.UnmarshalConfig(config)
 	if err != nil {
 		return err
