@@ -194,19 +194,16 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
-		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
-		if err != nil {
+		if err = appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if w.config.AppsecConfig != "" {
-		err := appsecCfg.Load(w.config.AppsecConfig)
-		if err != nil {
+		if err = appsecCfg.Load(w.config.AppsecConfig); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if len(w.config.AppsecConfigs) > 0 {
 		for _, appsecConfig := range w.config.AppsecConfigs {
-			err := appsecCfg.Load(appsecConfig)
-			if err != nil {
+			if err = appsecCfg.Load(appsecConfig); err != nil {
 				return fmt.Errorf("unable to load appsec_config: %w", err)
 			}
 		}
@@ -233,6 +230,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	if err != nil {
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
 	}
+
 	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.apiClient, w.logger)
 
 	for nbRoutine := range w.config.Routines {
@@ -371,12 +369,12 @@ func (w *AppsecSource) Dump() interface{} {
 	return w
 }
 
-func (w *AppsecSource) IsAuth(apiKey string) bool {
+func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
 	client := &http.Client{
 		Timeout: 200 * time.Millisecond,
 	}
 
-	req, err := http.NewRequest(http.MethodHead, w.lapiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, nil)
 	if err != nil {
 		log.Errorf("Error creating request: %s", err)
 		return false
@@ -397,6 +395,7 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 
 // should this be in the runner ?
 func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	w.logger.Debugf("Received request from '%s' on %s", r.RemoteAddr, r.URL.Path)
 
 	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
@@ -413,7 +412,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	expiration, exists := w.AuthCache.Get(apiKey)
 	// if the apiKey is not in cache or has expired, just recheck the auth
 	if !exists || time.Now().After(expiration) {
-		if !w.IsAuth(apiKey) {
+		if !w.IsAuth(ctx, apiKey) {
 			rw.WriteHeader(http.StatusUnauthorized)
 			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
 
