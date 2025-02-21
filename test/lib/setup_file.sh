@@ -260,16 +260,6 @@ hub_purge_all() {
 }
 export -f hub_purge_all
 
-# remove unused data from the index, to make sure we don't rely on it in any way
-hub_strip_index() {
-    local INDEX
-    INDEX=$(config_get .config_paths.index_path)
-    local hub_min
-    hub_min=$(jq <"$INDEX" 'del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
-    echo "$hub_min" >"$INDEX"
-}
-export -f hub_strip_index
-
 # remove color and style sequences from stdin
 plaintext() {
     sed -E 's/\x1B\[[0-9;]*[JKmsu]//g'
@@ -340,3 +330,17 @@ lp-get-token() {
     echo "$resp" | yq -r '.token'
 }
 export -f lp-get-token
+
+case $(uname) in
+    "Linux")
+        # shellcheck disable=SC2089
+        RELOAD_MESSAGE="Run 'sudo systemctl reload crowdsec' for the new configuration to be effective."
+        ;;
+    *)
+        # shellcheck disable=SC2089
+        RELOAD_MESSAGE="Run 'sudo service crowdsec reload' for the new configuration to be effective."
+        ;;
+esac
+
+# shellcheck disable=SC2090
+export RELOAD_MESSAGE

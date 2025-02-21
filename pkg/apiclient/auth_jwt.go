@@ -61,8 +61,8 @@ func (t *JWTTransport) refreshJwtToken() error {
 	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
-	err = enc.Encode(auth)
 
+	err = enc.Encode(auth)
 	if err != nil {
 		return fmt.Errorf("could not encode jwt auth body: %w", err)
 	}
@@ -169,7 +169,6 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-
 	var resp *http.Response
 	attemptsCount := make(map[int]int)
 
@@ -188,11 +187,6 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		resp, err = t.transport().RoundTrip(clonedReq)
-		if log.GetLevel() >= log.TraceLevel {
-			dump, _ := httputil.DumpResponse(resp, true)
-			log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
-		}
-
 		if err != nil {
 			// we had an error (network error for example), reset the token?
 			t.ResetToken()
@@ -229,7 +223,6 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 	return resp, nil
-
 }
 
 func (t *JWTTransport) Client() *http.Client {

@@ -24,6 +24,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type configGetter func() *csconfig.Config
+
+type cliDecisions struct {
+	client *apiclient.ApiClient
+	cfg    configGetter
+}
+
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	spamLimit := make(map[string]bool)
@@ -65,17 +72,17 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				raw := []string{
-					fmt.Sprintf("%d", decisionItem.ID),
+					strconv.FormatInt(decisionItem.ID, 10),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Value,
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
 					alertItem.Source.GetAsNumberName(),
-					fmt.Sprintf("%d", *alertItem.EventsCount),
+					strconv.FormatInt(int64(*alertItem.EventsCount), 10),
 					*decisionItem.Duration,
-					fmt.Sprintf("%t", *decisionItem.Simulated),
-					fmt.Sprintf("%d", alertItem.ID),
+					strconv.FormatBool(*decisionItem.Simulated),
+					strconv.FormatInt(alertItem.ID, 10),
 				}
 				if printMachine {
 					raw = append(raw, alertItem.MachineID)
@@ -113,13 +120,6 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	}
 
 	return nil
-}
-
-type configGetter func() *csconfig.Config
-
-type cliDecisions struct {
-	client *apiclient.ApiClient
-	cfg    configGetter
 }
 
 func New(cfg configGetter) *cliDecisions {
@@ -170,7 +170,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, NoSimu *bool, contained *bool, printMachine bool) error {
+func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, noSimu *bool, contained *bool, printMachine bool) error {
 	var err error
 
 	*filter.ScopeEquals, err = clialert.SanitizeScope(*filter.ScopeEquals, *filter.IPEquals, *filter.RangeEquals)
@@ -181,7 +181,7 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 	filter.ActiveDecisionEquals = new(bool)
 	*filter.ActiveDecisionEquals = true
 
-	if NoSimu != nil && *NoSimu {
+	if noSimu != nil && *noSimu {
 		filter.IncludeSimulated = new(bool)
 	}
 	/* nullify the empty entries to avoid bad filter */
@@ -317,7 +317,8 @@ cscli decisions list --origin lists --scenario list_name
 	return cmd
 }
 
-func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string) error {
+//nolint:revive // we'll reduce the number of args later
+func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string, bypassAllowlist bool) error {
 	alerts := models.AddAlertsRequest{}
 	origin := types.CscliOrigin
 	capacity := int32(0)
@@ -348,6 +349,15 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 
 	if addReason == "" {
 		addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
+	}
+
+	if !bypassAllowlist && (addScope == types.Ip || addScope == types.Range) {
+		resp, _, err := cli.client.Allowlists.CheckIfAllowlistedWithReason(ctx, addValue)
+		if err != nil {
+			log.Errorf("Cannot check if %s is in allowlist: %s", addValue, err)
+		} else if resp.Allowlisted {
+			return fmt.Errorf("%s is allowlisted by item %s, use --bypass-allowlist to add the decision anyway", addValue, resp.Reason)
+		}
 	}
 
 	decision := models.Decision{
@@ -398,13 +408,14 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 
 func (cli *cliDecisions) newAddCmd() *cobra.Command {
 	var (
-		addIP       string
-		addRange    string
-		addDuration string
-		addValue    string
-		addScope    string
-		addReason   string
-		addType     string
+		addIP           string
+		addRange        string
+		addDuration     string
+		addValue        string
+		addScope        string
+		addReason       string
+		addType         string
+		bypassAllowlist bool
 	)
 
 	cmd := &cobra.Command{
@@ -419,7 +430,7 @@ cscli decisions add --scope username --value foobar
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType)
+			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType, bypassAllowlist)
 		},
 	}
 
@@ -432,6 +443,7 @@ cscli decisions add --scope username --value foobar
 	flags.StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
 	flags.StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	flags.StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+	flags.BoolVarP(&bypassAllowlist, "bypass-allowlist", "B", false, "Add decision even if value is in allowlist")
 
 	return cmd
 }

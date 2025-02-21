@@ -85,6 +85,12 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
+type configGetter func() *csconfig.Config
+
+type cliSupport struct {
+	cfg configGetter
+}
+
 func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
@@ -290,7 +296,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 
 	cfg := cli.cfg()
 
-	config, err := os.ReadFile(*cfg.FilePath)
+	config, err := os.ReadFile(cfg.FilePath)
 	if err != nil {
 		return fmt.Errorf("could not read config file: %w", err)
 	}
@@ -314,7 +320,7 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 		ctx,
 		http.MethodGet,
 		fmt.Sprintf(
-			"http://%s/debug/pprof/%s?debug=1",
+			"http://%s/debug/pprof/%s",
 			net.JoinHostPort(
 				prometheusCfg.ListenAddr,
 				strconv.Itoa(prometheusCfg.ListenPort),
@@ -391,12 +397,6 @@ func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	}
 
 	return nil
-}
-
-type configGetter func() *csconfig.Config
-
-type cliSupport struct {
-	cfg configGetter
 }
 
 func New(cfg configGetter) *cliSupport {
@@ -491,9 +491,9 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		skipAgent = true
 	}
 
-	hub, err := require.Hub(cfg, nil, nil)
+	hub, err := require.Hub(cfg, nil)
 	if err != nil {
-		log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
+		log.Warn("Could not init hub, running on LAPI? Hub related information will not be collected")
 		// XXX: lapi status check requires scenarios, will return an error
 	}
 

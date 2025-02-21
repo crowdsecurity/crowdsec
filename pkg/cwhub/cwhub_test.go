@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -29,10 +29,10 @@ const mockURLTemplate = "https://cdn-hub.crowdsec.net/crowdsecurity/%s/%s"
 
 var responseByPath map[string]string
 
-// testHub initializes a temporary hub with an empty json file, optionally updating it.
-func testHub(t *testing.T, update bool) *Hub {
-	tmpDir, err := os.MkdirTemp("", "testhub")
-	require.NoError(t, err)
+// testHubOld initializes a temporary hub with an empty json file, optionally updating it.
+func testHubOld(t *testing.T, update bool) *Hub {
+	ctx := t.Context()
+	tmpDir := t.TempDir()
 
 	local := &csconfig.LocalHubCfg{
 		HubDir:         filepath.Join(tmpDir, "crowdsec", "hub"),
@@ -41,7 +41,7 @@ func testHub(t *testing.T, update bool) *Hub {
 		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
 	}
 
-	err = os.MkdirAll(local.HubDir, 0o700)
+	err := os.MkdirAll(local.HubDir, 0o700)
 	require.NoError(t, err)
 
 	err = os.MkdirAll(local.InstallDir, 0o700)
@@ -53,23 +53,18 @@ func testHub(t *testing.T, update bool) *Hub {
 	err = os.WriteFile(local.HubIndexFile, []byte("{}"), 0o644)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-
-	remote := &RemoteHubCfg{
-		Branch:      "master",
-		URLTemplate: mockURLTemplate,
-		IndexPath:   ".index.json",
-	}
-
-	hub, err := NewHub(local, remote, log.StandardLogger())
+	hub, err := NewHub(local, log.StandardLogger())
 	require.NoError(t, err)
 
 	if update {
-		ctx := context.Background()
-		err := hub.Update(ctx)
+		indexProvider := &Downloader{
+			Branch:      "master",
+			URLTemplate: mockURLTemplate,
+		}
+
+		updated, err := hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
+		assert.True(t, updated)
 	}
 
 	err = hub.Load()
@@ -83,16 +78,16 @@ func envSetup(t *testing.T) *Hub {
 	setResponseByPath()
 	log.SetLevel(log.DebugLevel)
 
-	defaultTransport := hubClient.Transport
+	defaultTransport := HubClient.Transport
 
 	t.Cleanup(func() {
-		hubClient.Transport = defaultTransport
+		HubClient.Transport = defaultTransport
 	})
 
 	// Mock the http client
-	hubClient.Transport = newMockTransport()
+	HubClient.Transport = newMockTransport()
 
-	hub := testHub(t, true)
+	hub := testHubOld(t, true)
 
 	return hub
 }

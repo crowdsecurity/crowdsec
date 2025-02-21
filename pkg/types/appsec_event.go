@@ -60,7 +60,6 @@ func (w AppsecEvent) GetVar(varName string) string {
 	}
 	log.Infof("var %s not found. Available variables: %+v", varName, w.Vars)
 	return ""
-
 }
 
 // getters

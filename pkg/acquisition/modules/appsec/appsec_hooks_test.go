@@ -341,7 +341,6 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 }
 
 func TestAppsecPreEvalHooks(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic pre_eval hook to disable inband rule",
@@ -403,7 +402,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
-
 			},
 		},
 		{
@@ -670,7 +668,6 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 }
 
 func TestAppsecRemediationConfigHooks(t *testing.T) {
-
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
@@ -759,6 +756,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		})
 	}
 }
+
 func TestOnMatchRemediationHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
@@ -883,6 +881,40 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
 				require.Equal(t, http.StatusForbidden, statusCode)
+			},
+		},
+		{
+			name:             "on_match: allowlisted IP",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "5.4.3.2",
+				RemoteAddr: "5.4.3.2",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "continue"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				spew.Dump(responses)
+				spew.Dump(appsecResponse)
+
+				log.Errorf("http status : %d", statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusOK, statusCode)
 			},
 		},
 	}

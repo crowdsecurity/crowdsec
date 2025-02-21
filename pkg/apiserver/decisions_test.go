@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ const (
 )
 
 func TestDeleteDecisionRange(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -22,23 +21,23 @@ func TestDeleteDecisionRange(t *testing.T) {
 	// delete by ip wrong
 	w := lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?range=1.2.3.0/24", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by range
 
 	w = lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"2"}`, w.Body.String())
 
 	// delete by range : ensure it was already deleted
 
 	w = lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?range=91.121.79.0/24", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"0"}`, w.Body.String())
 }
 
 func TestDeleteDecisionFilter(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -48,23 +47,23 @@ func TestDeleteDecisionFilter(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?ip=1.2.3.4", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by ip good
 
 	w = lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?ip=91.121.79.179", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"1"}`, w.Body.String())
 
 	// delete by scope/value
 
 	w = lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
 
 func TestDeleteDecisionFilterByScenario(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -74,17 +73,17 @@ func TestDeleteDecisionFilterByScenario(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?scenario=crowdsecurity/ssh-bff", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by scenario good
 
 	w = lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions?scenario=crowdsecurity/ssh-bf", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
+	assert.JSONEq(t, `{"nbDeleted":"2"}`, w.Body.String())
 }
 
 func TestGetDecisionFilters(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -160,7 +159,7 @@ func TestGetDecisionFilters(t *testing.T) {
 }
 
 func TestGetDecision(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -192,7 +191,7 @@ func TestGetDecision(t *testing.T) {
 }
 
 func TestDeleteDecisionByID(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -239,7 +238,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 }
 
 func TestDeleteDecision(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -259,7 +258,8 @@ func TestDeleteDecision(t *testing.T) {
 }
 
 func TestStreamStartDecisionDedup(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
 	// Ensure that at stream startup we only get the longest decision
 	lapi := SetupLAPITest(t, ctx)
 

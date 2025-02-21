@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -82,6 +83,11 @@ func TestConfigureDSN(t *testing.T) {
 	}{
 		{
 			name:        "invalid DSN",
+			dsn:         "asdfasdf",
+			expectedErr: "invalid DSN asdfasdf for docker source, must start with docker://",
+		},
+		{
+			name:        "invalid DSN scheme",
 			dsn:         "asd://",
 			expectedErr: "invalid DSN asd:// for docker source, must start with docker://",
 		},
@@ -102,16 +108,18 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:        "DSN ok with multiple parameters",
-			dsn:         fmt.Sprintf("docker://test_docker?since=42min&docker_host=%s", dockerHost),
+			dsn:         "docker://test_docker?since=42min&docker_host=" + dockerHost,
 			expectedErr: "",
 		},
 	}
 	subLogger := log.WithField("type", "docker")
 
 	for _, test := range tests {
-		f := DockerSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+		t.Run(test.name, func(t *testing.T) {
+			f := DockerSource{}
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+		})
 	}
 }
 
@@ -120,7 +128,8 @@ type mockDockerCli struct {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
@@ -177,9 +186,7 @@ container_name_regexp:
 		dockerSource := DockerSource{}
 
 		err := dockerSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
-		if err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
+		require.NoError(t, err)
 
 		dockerSource.Client = new(mockDockerCli)
 		actualLines := 0
@@ -191,36 +198,36 @@ container_name_regexp:
 		readerTomb.Go(func() error {
 			time.Sleep(1 * time.Second)
 			ticker := time.NewTicker(1 * time.Second)
+
 			for {
 				select {
 				case <-out:
 					actualLines++
+
 					ticker.Reset(1 * time.Second)
 				case <-ticker.C:
 					log.Infof("no more lines to read")
 					dockerSource.t.Kill(nil)
+
 					return nil
 				}
 			}
 		})
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		if err := readerTomb.Wait(); err != nil {
-			t.Fatal(err)
-		}
+		err = readerTomb.Wait()
+		require.NoError(t, err)
 
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
 
 		err = streamTomb.Wait()
-		if err != nil {
-			t.Fatalf("docker acquisition error: %s", err)
-		}
+		require.NoError(t, err)
 	}
 }
 
-func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
+func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
 	if readLogs {
 		return []dockerTypes.Container{}, nil
 	}
@@ -235,7 +242,7 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 	return containers, nil
 }
 
-func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
+func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
 	if readLogs {
 		return io.NopCloser(strings.NewReader("")), nil
 	}
@@ -267,9 +274,9 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 }
 
 func TestOneShot(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
-	log.Infof("Test 'TestOneShot'")
+	log.Info("Test 'TestOneShot'")
 
 	tests := []struct {
 		dsn            string
@@ -298,38 +305,39 @@ func TestOneShot(t *testing.T) {
 	}
 
 	for _, ts := range tests {
-		var (
-			subLogger *log.Entry
-			logger    *log.Logger
-		)
+		t.Run(ts.dsn, func(t *testing.T) {
+			var (
+				subLogger *log.Entry
+				logger    *log.Logger
+			)
 
-		if ts.expectedOutput != "" {
-			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithField("type", "docker")
-		} else {
-			log.SetLevel(ts.logLevel)
-			subLogger = log.WithField("type", "docker")
-		}
+			if ts.expectedOutput != "" {
+				logger.SetLevel(ts.logLevel)
+				subLogger = logger.WithField("type", "docker")
+			} else {
+				log.SetLevel(ts.logLevel)
+				subLogger = log.WithField("type", "docker")
+			}
 
-		readLogs = false
-		dockerClient := &DockerSource{}
-		labels := make(map[string]string)
-		labels["type"] = ts.logType
+			readLogs = false
+			dockerClient := &DockerSource{}
+			labels := make(map[string]string)
+			labels["type"] = ts.logType
 
-		if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, ""); err != nil {
-			t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
-		}
+			err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, "")
+			require.NoError(t, err)
 
-		dockerClient.Client = new(mockDockerCli)
-		out := make(chan types.Event, 100)
-		tomb := tomb.Tomb{}
-		err := dockerClient.OneShotAcquisition(ctx, out, &tomb)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
+			dockerClient.Client = new(mockDockerCli)
+			out := make(chan types.Event, 100)
+			tomb := tomb.Tomb{}
+			err = dockerClient.OneShotAcquisition(ctx, out, &tomb)
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		// else we do the check before actualLines is incremented ...
-		if ts.expectedLines != 0 {
-			assert.Len(t, out, ts.expectedLines)
-		}
+			// else we do the check before actualLines is incremented ...
+			if ts.expectedLines != 0 {
+				assert.Len(t, out, ts.expectedLines)
+			}
+		})
 	}
 }
 

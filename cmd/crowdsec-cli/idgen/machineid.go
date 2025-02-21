@@ -42,7 +42,11 @@ func GenerateMachineID(prefix string) (string, error) {
 	}
 
 	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
-	suffix := GeneratePassword(16)
+
+	suffix, err := GeneratePassword(16)
+	if err != nil {
+		return "", err
+	}
 
 	return prefix + suffix, nil
 }

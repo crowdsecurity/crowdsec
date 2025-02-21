@@ -10,6 +10,7 @@ type CscliCfg struct {
 	Color            string            `yaml:"color,omitempty"`
 	HubBranch        string            `yaml:"hub_branch"`
 	HubURLTemplate   string            `yaml:"__hub_url_template__,omitempty"`
+	HubWithContent   bool              `yaml:"hub_with_content,omitempty"`
 	SimulationConfig *SimulationConfig `yaml:"-"`
 	DbConfig         *DatabaseCfg      `yaml:"-"`
 

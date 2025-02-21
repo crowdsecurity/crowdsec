@@ -130,6 +130,27 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	}
 }
 
+func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
+	defer trace.CatchPanic("crowdsec/MetricsProvider.sendMetrics")
+
+	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, resp, err := m.apic.UsageMetrics.Add(ctxTime, met)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		m.logger.Warnf("timeout sending lp metrics")
+	case err != nil && resp != nil && resp.Response.StatusCode == http.StatusNotFound:
+		m.logger.Warnf("metrics endpoint not found, older LAPI?")
+	case err != nil:
+		m.logger.Warnf("failed to send lp metrics: %s", err)
+	case resp.Response.StatusCode != http.StatusCreated:
+		m.logger.Warnf("failed to send lp metrics: %s", resp.Response.Status)
+	default:
+		m.logger.Tracef("lp usage metrics sent")
+	}
+}
+
 func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
 
@@ -144,34 +165,8 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 	for {
 		select {
 		case <-ticker.C:
-			ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-
-			_, resp, err := m.apic.UsageMetrics.Add(ctxTime, met)
-			switch {
-			case errors.Is(err, context.DeadlineExceeded):
-				m.logger.Warnf("timeout sending lp metrics")
-				ticker.Reset(m.interval)
-				continue
-			case err != nil && resp != nil && resp.Response.StatusCode == http.StatusNotFound:
-				m.logger.Warnf("metrics endpoint not found, older LAPI?")
-				ticker.Reset(m.interval)
-				continue
-			case err != nil:
-				m.logger.Warnf("failed to send lp metrics: %s", err)
-				ticker.Reset(m.interval)
-				continue
-			}
-
-			if resp.Response.StatusCode != http.StatusCreated {
-				m.logger.Warnf("failed to send lp metrics: %s", resp.Response.Status)
-				ticker.Reset(m.interval)
-				continue
-			}
-
+			m.sendMetrics(ctx, met)
 			ticker.Reset(m.interval)
-
-			m.logger.Tracef("lp usage metrics sent")
 		case <-myTomb.Dying():
 			ticker.Stop()
 			return nil

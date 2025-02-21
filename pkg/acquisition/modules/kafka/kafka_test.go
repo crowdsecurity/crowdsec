@@ -128,7 +128,8 @@ func createTopic(topic string, broker string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -194,13 +195,15 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 			}
 			require.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
-			tomb.Wait()
+			err = tomb.Wait()
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
@@ -271,7 +274,8 @@ tls:
 			}
 			require.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
-			tomb.Wait()
+			err = tomb.Wait()
+			require.NoError(t, err)
 		})
 	}
 }

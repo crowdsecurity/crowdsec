@@ -1,9 +1,7 @@
 package exprhelpers
 
 import (
-	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -26,15 +24,12 @@ const TestFolder = "tests"
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp("", "*sqlite")
-	require.NoError(t, err)
-
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testDBClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
+		DbPath: ":memory:",
 	})
 	require.NoError(t, err)
 
@@ -910,6 +905,8 @@ func TestLower(t *testing.T) {
 }
 
 func TestGetDecisionsCount(t *testing.T) {
+	ctx := t.Context()
+
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
@@ -933,7 +930,7 @@ func TestGetDecisionsCount(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	if decision == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))
@@ -998,6 +995,8 @@ func TestGetDecisionsCount(t *testing.T) {
 }
 
 func TestGetDecisionsSinceCount(t *testing.T) {
+	ctx := t.Context()
+
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
@@ -1020,7 +1019,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 	if decision == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))
 	}
@@ -1038,7 +1037,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	if decision2 == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))
@@ -1121,6 +1120,8 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 }
 
 func TestGetActiveDecisionsCount(t *testing.T) {
+	ctx := t.Context()
+
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
@@ -1144,7 +1145,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	if decision == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))
@@ -1162,7 +1163,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	if expiredDecision == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))
@@ -1227,6 +1228,8 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 }
 
 func TestGetActiveDecisionsTimeLeft(t *testing.T) {
+	ctx := t.Context()
+
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
@@ -1250,7 +1253,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	if decision == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))
@@ -1268,7 +1271,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 		SetScope("IP").
 		SetValue(existingIP).
 		SetOrigin("CAPI").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	if longerDecision == nil {
 		require.Error(t, errors.New("Failed to create sample decision"))

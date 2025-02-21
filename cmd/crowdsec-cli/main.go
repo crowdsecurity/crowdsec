@@ -12,11 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliallowlists"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconfig"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconsole"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clidecision"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliexplain"
@@ -91,7 +94,6 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 		"help",
 		"completion",
 		"version",
-		"hubtest",
 	}
 
 	if !slices.Contains(noNeedConfig, command) {
@@ -146,7 +148,10 @@ func (cli *cliRoot) initialize() error {
 		return fmt.Errorf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
 
-	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp:       true,
+		DisableLevelTruncation: true,
+	})
 
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
@@ -162,6 +167,8 @@ func (cli *cliRoot) initialize() error {
 			return fmt.Errorf("output color '%s' not supported: must be one of yes, no, auto", cli.outputColor)
 		}
 	}
+
+	csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
 
 	return nil
 }
@@ -254,7 +261,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
-	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
+	cmd.AddCommand(cliconfig.New(cli.cfg).NewCommand(func() string { return mergedConfig }))
 	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
@@ -279,6 +286,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliitem.NewContext(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
+	cmd.AddCommand(cliallowlists.New(cli.cfg).NewCommand())
 
 	cli.addSetup(cmd)
 
@@ -302,6 +310,8 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatal(err)
+		red := color.New(color.FgRed).SprintFunc()
+		fmt.Fprintln(os.Stderr, red("Error:"), err)
+		os.Exit(1)
 	}
 }

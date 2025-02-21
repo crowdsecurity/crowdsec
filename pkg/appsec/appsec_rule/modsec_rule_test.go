@@ -88,7 +88,6 @@ func TestVPatchRuleString(t *testing.T) {
 			rule: CustomRule{
 				And: []CustomRule{
 					{
-
 						Zones:     []string{"ARGS"},
 						Variables: []string{"foo"},
 						Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
@@ -161,7 +160,6 @@ SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'OR AND
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, _, err := tt.rule.Convert(ModsecurityRuleType, tt.name)
-
 			if err != nil {
 				t.Errorf("Error converting rule: %s", err)
 			}

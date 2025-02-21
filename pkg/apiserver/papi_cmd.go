@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -21,25 +23,18 @@ type deleteDecisions struct {
 	Decisions []string `json:"decisions"`
 }
 
-type blocklistLink struct {
-	// blocklist name
-	Name string `json:"name"`
-	// blocklist url
-	Url string `json:"url"`
-	// blocklist remediation
-	Remediation string `json:"remediation"`
-	// blocklist scope
-	Scope string `json:"scope,omitempty"`
-	// blocklist duration
-	Duration string `json:"duration,omitempty"`
-}
-
 type forcePull struct {
-	Blocklist *blocklistLink `json:"blocklist,omitempty"`
+	Blocklist *modelscapi.BlocklistLink `json:"blocklist,omitempty"`
+	Allowlist *modelscapi.AllowlistLink `json:"allowlist,omitempty"`
 }
 
-type listUnsubscribe struct {
+type blocklistUnsubscribe struct {
 	Name string `json:"name"`
+}
+
+type allowlistUnsubscribe struct {
+	Name string `json:"name"`
+	Id   string `json:"id"`
 }
 
 func DecisionCmd(message *Message, p *Papi, sync bool) error {
@@ -186,7 +181,8 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			return err
 		}
 
-		unsubscribeMsg := listUnsubscribe{}
+		unsubscribeMsg := blocklistUnsubscribe{}
+
 		if err := json.Unmarshal(data, &unsubscribeMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
@@ -224,27 +220,82 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 
 		ctx := context.TODO()
 
-		if forcePullMsg.Blocklist == nil {
-			p.Logger.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+		if forcePullMsg.Blocklist == nil && forcePullMsg.Allowlist == nil {
+			p.Logger.Infof("Received force_pull command from PAPI, pulling community, 3rd-party blocklists and allowlists")
 
 			err = p.apic.PullTop(ctx, true)
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
-		} else {
-			p.Logger.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
+		} else if forcePullMsg.Blocklist != nil {
+			err = forcePullMsg.Blocklist.Validate(strfmt.Default)
+			if err != nil {
+				return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
+			}
+
+			p.Logger.Infof("Received blocklist force_pull command from PAPI, pulling blocklist %s", *forcePullMsg.Blocklist.Name)
 
 			err = p.apic.PullBlocklist(ctx, &modelscapi.BlocklistLink{
-				Name:        &forcePullMsg.Blocklist.Name,
-				URL:         &forcePullMsg.Blocklist.Url,
-				Remediation: &forcePullMsg.Blocklist.Remediation,
-				Scope:       &forcePullMsg.Blocklist.Scope,
-				Duration:    &forcePullMsg.Blocklist.Duration,
+				Name:        forcePullMsg.Blocklist.Name,
+				URL:         forcePullMsg.Blocklist.URL,
+				Remediation: forcePullMsg.Blocklist.Remediation,
+				Scope:       forcePullMsg.Blocklist.Scope,
+				Duration:    forcePullMsg.Blocklist.Duration,
+			}, true)
+			if err != nil {
+				return fmt.Errorf("failed to force pull operation: %w", err)
+			}
+		} else if forcePullMsg.Allowlist != nil {
+			err = forcePullMsg.Allowlist.Validate(strfmt.Default)
+			if err != nil {
+				return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
+			}
+
+			p.Logger.Infof("Received allowlist force_pull command from PAPI, pulling allowlist %s", *forcePullMsg.Allowlist.Name)
+
+			err = p.apic.PullAllowlist(ctx, &modelscapi.AllowlistLink{
+				Name:        forcePullMsg.Allowlist.Name,
+				URL:         forcePullMsg.Allowlist.URL,
+				ID:          forcePullMsg.Allowlist.ID,
+				CreatedAt:   forcePullMsg.Allowlist.CreatedAt,
+				UpdatedAt:   forcePullMsg.Allowlist.UpdatedAt,
+				Description: forcePullMsg.Allowlist.Description,
 			}, true)
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
 		}
+	case "allowlist_unsubscribe":
+		data, err := json.Marshal(message.Data)
+		if err != nil {
+			return err
+		}
+
+		unsubscribeMsg := allowlistUnsubscribe{}
+
+		if err := json.Unmarshal(data, &unsubscribeMsg); err != nil {
+			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
+		}
+
+		if unsubscribeMsg.Name == "" {
+			return fmt.Errorf("message for '%s' contains bad data format: missing allowlist name", message.Header.OperationType)
+		}
+
+		if unsubscribeMsg.Id == "" {
+			return fmt.Errorf("message for '%s' contains bad data format: missing allowlist id", message.Header.OperationType)
+		}
+
+		p.Logger.Infof("Received allowlist_unsubscribe command from PAPI, unsubscribing from allowlist %s", unsubscribeMsg.Name)
+
+		if err := p.DBClient.DeleteAllowListByID(ctx, unsubscribeMsg.Name, unsubscribeMsg.Id, true); err != nil {
+			if !ent.IsNotFound(err) {
+				return err
+			}
+
+			p.Logger.Warningf("Allowlist %s not found", unsubscribeMsg.Name)
+		}
+
+		return nil
 	default:
 		return fmt.Errorf("unknown command '%s' for operation type '%s'", message.Header.OperationCmd, message.Header.OperationType)
 	}

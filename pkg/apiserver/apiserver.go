@@ -46,10 +46,17 @@ type APIServer struct {
 	consoleConfig  *csconfig.ConsoleConfig
 }
 
-func isBrokenConnection(err any) bool {
-	if ne, ok := err.(*net.OpError); ok {
-		if se, ok := ne.Err.(*os.SyscallError); ok {
-			if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
+func isBrokenConnection(maybeError any) bool {
+	err, ok := maybeError.(error)
+	if !ok {
+		return false
+	}
+
+	var netOpError *net.OpError
+	if errors.As(err, &netOpError) {
+		var syscallError *os.SyscallError
+		if errors.As(netOpError.Err, &syscallError) {
+			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
 				return true
 			}
 		}
@@ -57,21 +64,19 @@ func isBrokenConnection(err any) bool {
 
 	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
 	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
-	if strErr, ok := err.(error); ok {
-		// stolen from http2/server.go in x/net
-		var (
-			errClientDisconnected = errors.New("client disconnected")
-			errClosedBody         = errors.New("body closed by handler")
-			errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
-			errStreamClosed       = errors.New("http2: stream closed")
-		)
+	// stolen from http2/server.go in x/net
+	var (
+		errClientDisconnected = errors.New("client disconnected")
+		errClosedBody         = errors.New("body closed by handler")
+		errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
+		errStreamClosed       = errors.New("http2: stream closed")
+	)
 
-		if errors.Is(strErr, errClientDisconnected) ||
-			errors.Is(strErr, errClosedBody) ||
-			errors.Is(strErr, errHandlerComplete) ||
-			errors.Is(strErr, errStreamClosed) {
-			return true
-		}
+	if errors.Is(err, errClientDisconnected) ||
+		errors.Is(err, errClosedBody) ||
+		errors.Is(err, errHandlerComplete) ||
+		errors.Is(err, errStreamClosed) {
+		return true
 	}
 
 	return false
@@ -209,7 +214,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	gin.DefaultWriter = clog.Writer()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
 			param.ClientIP,
 			param.TimeStamp.Format(time.RFC1123),
 			param.Method,
@@ -327,8 +332,8 @@ func (s *APIServer) papiPull(ctx context.Context) error {
 	return nil
 }
 
-func (s *APIServer) papiSync() error {
-	if err := s.papi.SyncDecisions(); err != nil {
+func (s *APIServer) papiSync(ctx context.Context) error {
+	if err := s.papi.SyncDecisions(ctx); err != nil {
 		log.Errorf("capi decisions sync: %s", err)
 		return err
 	}
@@ -346,7 +351,7 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
 				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
-				s.papi.syncTomb.Go(s.papiSync)
+				s.papi.syncTomb.Go(func() error { return s.papiSync(ctx) })
 			} else {
 				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
 			}
@@ -378,7 +383,12 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		Addr:      s.URL,
 		Handler:   s.router,
 		TLSConfig: tlsCfg,
+		Protocols: &http.Protocols{},
 	}
+
+	s.httpServer.Protocols.SetHTTP1(true)
+	s.httpServer.Protocols.SetUnencryptedHTTP2(true)
+	s.httpServer.Protocols.SetHTTP2(true)
 
 	ctx := context.TODO()
 

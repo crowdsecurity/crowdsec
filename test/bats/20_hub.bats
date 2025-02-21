@@ -20,7 +20,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_strip_index
 }
 
 teardown() {
@@ -76,15 +75,15 @@ teardown() {
     assert_stderr --partial "invalid hub item appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest version missing from index"
 
     rune -1 cscli appsec-rules install crowdsecurity/vpatch-laravel-debug-mode --force
-    assert_stderr --partial "error while installing 'crowdsecurity/vpatch-laravel-debug-mode': latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again"
+    assert_stderr --partial "appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest hash missing from index. The index file is invalid, please run 'cscli hub update' and try again"
 }
 
 @test "missing reference in hub index" {
     new_hub=$(jq <"$INDEX_PATH" 'del(.parsers."crowdsecurity/smb-logs") | del (.scenarios."crowdsecurity/mysql-bf")')
     echo "$new_hub" >"$INDEX_PATH"
     rune -0 cscli hub list --error
-    assert_stderr --partial "can't find crowdsecurity/smb-logs in parsers, required by crowdsecurity/smb"
-    assert_stderr --partial "can't find crowdsecurity/mysql-bf in scenarios, required by crowdsecurity/mysql"
+    assert_stderr --partial "can't find parsers:crowdsecurity/smb-logs, required by crowdsecurity/smb"
+    assert_stderr --partial "can't find scenarios:crowdsecurity/mysql-bf, required by crowdsecurity/mysql"
 }
 
 @test "loading hub reports tainted items (subitem is tainted)" {
@@ -108,47 +107,47 @@ teardown() {
 @test "cscli hub update" {
     rm -f "$INDEX_PATH"
     rune -0 cscli hub update
-    assert_stderr --partial "Wrote index to $INDEX_PATH"
+    assert_output "Downloading $INDEX_PATH"
     rune -0 cscli hub update
-    assert_stderr --partial "hub index is up to date"
+    assert_output "Nothing to do, the hub index is up to date."
+
+    # hub update must honor the --error flag to be silent in noop cron jobs
+    rune -0 cscli hub update --error
+    refute_output
+    refute_stderr
 }
 
-@test "cscli hub upgrade" {
+@test "cscli hub upgrade (up to date)" {
     rune -0 cscli hub upgrade
-    assert_stderr --partial "Upgrading parsers"
-    assert_stderr --partial "Upgraded 0 parsers"
-    assert_stderr --partial "Upgrading postoverflows"
-    assert_stderr --partial "Upgraded 0 postoverflows"
-    assert_stderr --partial "Upgrading scenarios"
-    assert_stderr --partial "Upgraded 0 scenarios"
-    assert_stderr --partial "Upgrading contexts"
-    assert_stderr --partial "Upgraded 0 contexts"
-    assert_stderr --partial "Upgrading collections"
-    assert_stderr --partial "Upgraded 0 collections"
-    assert_stderr --partial "Upgrading appsec-configs"
-    assert_stderr --partial "Upgraded 0 appsec-configs"
-    assert_stderr --partial "Upgrading appsec-rules"
-    assert_stderr --partial "Upgraded 0 appsec-rules"
-    assert_stderr --partial "Upgrading collections"
-    assert_stderr --partial "Upgraded 0 collections"
+    assert_output - <<-EOT
+	Action plan:
+	🔄 check & update data files
+	EOT
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs
-    rune -0 cscli hub upgrade
-    assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
-
     rune -0 cscli hub upgrade --force
-    assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
-    assert_stderr --partial "crowdsecurity/syslog-logs: updated"
-    assert_stderr --partial "Upgraded 1 parsers"
-    # this is used by the cron script to know if the hub was updated
-    assert_output --partial "updated crowdsecurity/syslog-logs"
+    assert_output - <<-EOT
+	Action plan:
+	🔄 check & update data files
+	EOT
+
+    # hub upgrade must honor the --error flag to be silent in noop cron jobs
+    rune -0 cscli hub upgrade --error
+    refute_output
+    refute_stderr
+
+    skip "todo: data files are re-downloaded with --force"
 }
 
 @test "cscli hub upgrade (with local items)" {
     mkdir -p "$CONFIG_DIR/collections"
     touch "$CONFIG_DIR/collections/foo.yaml"
     rune -0 cscli hub upgrade
-    assert_stderr --partial "not upgrading foo.yaml: local item"
+    assert_output - <<-EOT
+	collections:foo.yaml - not downloading local item
+	Action plan:
+	🔄 check & update data files
+	EOT
 }
 
 @test "cscli hub types" {

@@ -123,6 +123,10 @@ func (c *Controller) NewV1() error {
 		jwtAuth.DELETE("/decisions", c.HandlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", c.HandlerV1.DeleteDecisionById)
 		jwtAuth.GET("/heartbeat", c.HandlerV1.HeartBeat)
+		jwtAuth.GET("/allowlists", c.HandlerV1.GetAllowlists)
+		jwtAuth.GET("/allowlists/:allowlist_name", c.HandlerV1.GetAllowlist)
+		jwtAuth.GET("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
+		jwtAuth.HEAD("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 	}
 
 	apiKeyAuth := groupV1.Group("")

@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,7 +10,7 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	router, config := NewAPITest(t, ctx)
 
 	body := CreateTestMachine(t, ctx, router, "")
@@ -23,7 +22,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, `{"code":401,"message":"machine test not validated"}`, w.Body.String())
+	assert.JSONEq(t, `{"code":401,"message":"machine test not validated"}`, w.Body.String())
 
 	// Login with machine not exist
 	w = httptest.NewRecorder()
@@ -32,7 +31,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, `{"code":401,"message":"ent: machine not found"}`, w.Body.String())
+	assert.JSONEq(t, `{"code":401,"message":"ent: machine not found"}`, w.Body.String())
 
 	// Login with invalid body
 	w = httptest.NewRecorder()
@@ -41,7 +40,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, `{"code":401,"message":"missing: invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
+	assert.JSONEq(t, `{"code":401,"message":"missing: invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
 
 	// Login with invalid format
 	w = httptest.NewRecorder()
@@ -50,7 +49,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, `{"code":401,"message":"validation failure list:\npassword in body is required"}`, w.Body.String())
+	assert.JSONEq(t, `{"code":401,"message":"validation failure list:\npassword in body is required"}`, w.Body.String())
 
 	// Validate machine
 	ValidateMachine(t, ctx, "test", config.API.Server.DbConfig)
@@ -62,7 +61,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, `{"code":401,"message":"incorrect Username or Password"}`, w.Body.String())
+	assert.JSONEq(t, `{"code":401,"message":"incorrect Username or Password"}`, w.Body.String())
 
 	// Login with valid machine
 	w = httptest.NewRecorder()

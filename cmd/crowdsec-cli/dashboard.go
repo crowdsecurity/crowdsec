@@ -36,10 +36,11 @@ var (
 	metabaseConfigFile   = "metabase.yaml"
 	metabaseImage        = "metabase/metabase:v0.46.6.1"
 	/**/
-	metabaseListenAddress = "127.0.0.1"
-	metabaseListenPort    = "3000"
-	metabaseContainerID   = "crowdsec-metabase"
-	crowdsecGroup         = "crowdsec"
+	metabaseListenAddress                 = "127.0.0.1"
+	metabaseListenPort                    = "3000"
+	metabaseContainerID                   = "crowdsec-metabase"
+	metabaseContainerEnvironmentVariables []string
+	crowdsecGroup                         = "crowdsec"
 
 	forceYes bool
 
@@ -144,7 +145,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				isValid := passwordIsValid(metabasePassword)
 				for !isValid {
-					metabasePassword = idgen.GeneratePassword(16)
+					var err error
+					metabasePassword, err = idgen.GeneratePassword(16)
+					if err != nil {
+						return err
+					}
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}
@@ -162,7 +167,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err = cli.chownDatabase(dockerGroup.Gid); err != nil {
 				return err
 			}
-			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
+			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress,
+				metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid,
+				metabaseContainerID, metabaseImage, metabaseContainerEnvironmentVariables)
 			if err != nil {
 				return err
 			}
@@ -189,6 +196,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	flags.BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	// flags.StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	flags.StringVar(&metabasePassword, "password", "", "metabase password")
+	flags.StringSliceVarP(&metabaseContainerEnvironmentVariables, "env", "e", nil, "Additional environment variables to pass to the metabase container")
 
 	return cmd
 }
@@ -243,7 +251,8 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 }
 
 func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "show-password",
+	cmd := &cobra.Command{
+		Use:               "show-password",
 		Short:             "displays password of metabase.",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
@@ -457,7 +466,6 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 func (cli *cliDashboard) chownDatabase(gid string) error {
 	cfg := cli.cfg()
 	intID, err := strconv.Atoi(gid)
-
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}

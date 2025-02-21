@@ -1,7 +1,6 @@
 package syslogacquisition
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -10,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -81,7 +81,7 @@ func writeToSyslog(logs []string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name          string
 		config        string
@@ -168,7 +168,8 @@ listen_addr: 127.0.0.1`,
 			}
 			assert.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
-			tomb.Wait()
+			err = tomb.Wait()
+			require.NoError(t, err)
 		})
 	}
 }

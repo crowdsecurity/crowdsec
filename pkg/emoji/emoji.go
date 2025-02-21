@@ -11,4 +11,8 @@ const (
 	QuestionMark = "\u2753"     // ❓
 	RedCircle = "\U0001f534"    // 🔴
 	Warning = "\u26a0\ufe0f"    // ⚠️
+	InboxTray = "\U0001f4e5"    // 📥
+	DownArrow = "\u2b07"        // ⬇️
+	Wastebasket = "\U0001f5d1"  // 🗑
+	Sync = "\U0001F504"         // 🔄 official name is Anticlockwise Downwards and Upwards Open Circle Arrows and I'm not even joking
 )

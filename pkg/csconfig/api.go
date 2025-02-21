@@ -209,6 +209,36 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
+/*local api service configuration*/
+type LocalApiServerCfg struct {
+	Enable                        *bool                    `yaml:"enable"`
+	ListenURI                     string                   `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
+	ListenSocket                  string                   `yaml:"listen_socket,omitempty"`
+	TLS                           *TLSCfg                  `yaml:"tls"`
+	DbConfig                      *DatabaseCfg             `yaml:"-"`
+	LogDir                        string                   `yaml:"-"`
+	LogMedia                      string                   `yaml:"-"`
+	OnlineClient                  *OnlineApiClientCfg      `yaml:"online_client"`
+	ProfilesPath                  string                   `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
+	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
+	Profiles                      []*ProfileCfg            `yaml:"-"`
+	LogLevel                      *log.Level               `yaml:"log_level"`
+	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
+	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
+	CompressLogs                  *bool                    `yaml:"-"`
+	LogMaxSize                    int                      `yaml:"-"`
+	LogMaxAge                     int                      `yaml:"-"`
+	LogMaxFiles                   int                      `yaml:"-"`
+	LogFormat                     string                   `yaml:"-"`
+	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
+	PapiLogLevel                  *log.Level               `yaml:"papi_log_level"`
+	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
+	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
+	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
+	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
+}
+
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
 
@@ -248,35 +278,6 @@ type LocalAPIAutoRegisterCfg struct {
 	Token               string       `yaml:"token"`
 	AllowedRanges       []string     `yaml:"allowed_ranges,omitempty"`
 	AllowedRangesParsed []*net.IPNet `yaml:"-"`
-}
-
-/*local api service configuration*/
-type LocalApiServerCfg struct {
-	Enable                        *bool                    `yaml:"enable"`
-	ListenURI                     string                   `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
-	ListenSocket                  string                   `yaml:"listen_socket,omitempty"`
-	TLS                           *TLSCfg                  `yaml:"tls"`
-	DbConfig                      *DatabaseCfg             `yaml:"-"`
-	LogDir                        string                   `yaml:"-"`
-	LogMedia                      string                   `yaml:"-"`
-	OnlineClient                  *OnlineApiClientCfg      `yaml:"online_client"`
-	ProfilesPath                  string                   `yaml:"profiles_path,omitempty"`
-	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
-	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
-	Profiles                      []*ProfileCfg            `yaml:"-"`
-	LogLevel                      *log.Level               `yaml:"log_level"`
-	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
-	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
-	CompressLogs                  *bool                    `yaml:"-"`
-	LogMaxSize                    int                      `yaml:"-"`
-	LogMaxAge                     int                      `yaml:"-"`
-	LogMaxFiles                   int                      `yaml:"-"`
-	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
-	PapiLogLevel                  *log.Level               `yaml:"papi_log_level"`
-	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
-	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
-	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
-	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 }
 
 func (c *LocalApiServerCfg) ClientURL() string {
@@ -351,7 +352,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		log.Printf("push and pull to Central API disabled")
 	}
 
-	//Set default values for CAPI push/pull
+	// Set default values for CAPI push/pull
 	if c.API.Server.OnlineClient != nil {
 		if c.API.Server.OnlineClient.PullConfig.Community == nil {
 			c.API.Server.OnlineClient.PullConfig.Community = ptr.Of(true)
@@ -391,6 +392,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 	c.API.Server.CompressLogs = c.Common.CompressLogs
 	c.API.Server.LogMaxSize = c.Common.LogMaxSize
 	c.API.Server.LogMaxAge = c.Common.LogMaxAge
+	c.API.Server.LogFormat = c.Common.LogFormat
 	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
 
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {

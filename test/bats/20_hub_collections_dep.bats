@@ -20,7 +20,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_strip_index
 }
 
 teardown() {
@@ -84,18 +83,32 @@ teardown() {
     assert_stderr --partial "crowdsecurity/smb is tainted, use '--force' to remove"
 }
 
+@test "cscli collections inspect (dependencies)" {
+    rune -0 cscli collections install crowdsecurity/smb
+
+    # The inspect command must show the dependencies of the local or older version.
+    echo "{'collections': ['crowdsecurity/sshd']}" >"$CONFIG_DIR/collections/smb.yaml"
+
+    rune -0 cscli collections inspect crowdsecurity/smb --no-metrics -o json
+    rune -0 jq -e '.collections' <(output)
+    assert_json '["crowdsecurity/sshd"]'
+}
+
 @test "cscli collections (dependencies II: the revenge)" {
     rune -0 cscli collections install crowdsecurity/wireguard baudneo/gotify
     rune -0 cscli collections remove crowdsecurity/wireguard
-    assert_stderr --partial "crowdsecurity/syslog-logs was not removed because it also belongs to baudneo/gotify"
+    assert_output --regexp 'disabling collections:crowdsecurity/wireguard'
+    refute_output --regexp 'disabling parsers:crowdsecurity/syslog-logs'
     rune -0 cscli collections inspect crowdsecurity/wireguard -o json
     rune -0 jq -e '.installed==false' <(output)
+    rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
+    rune -0 jq -e '.installed==true' <(output)
 }
 
 @test "cscli collections (dependencies III: origins)" {
     # it is perfectly fine to remove an item belonging to a collection that we are removing anyway
 
-    # inject a dependency: sshd requires the syslog-logs parsers, but linux does too
+    # inject a direct dependency: sshd requires the syslog-logs parsers, but linux does too
     hub_dep=$(jq <"$INDEX_PATH" '. * {collections:{"crowdsecurity/sshd":{parsers:["crowdsecurity/syslog-logs"]}}}')
     echo "$hub_dep" >"$INDEX_PATH"
 
@@ -108,11 +121,8 @@ teardown() {
 
     # removing linux should remove syslog-logs even though sshd depends on it
     rune -0 cscli collections remove crowdsecurity/linux
-    refute_stderr --partial "crowdsecurity/syslog-logs was not removed"
-    # we must also consider indirect dependencies
-    refute_stderr --partial "crowdsecurity/ssh-bf was not removed"
-    rune -0 cscli parsers list -o json
-    rune -0 jq -e '.parsers | length == 0' <(output)
+    rune -0 cscli hub list -o json
+    rune -0 jq -e 'add | length == 0' <(output)
 }
 
 @test "cscli collections (dependencies IV: looper)" {
