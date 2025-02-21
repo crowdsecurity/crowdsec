@@ -251,6 +251,16 @@ func TestJA4H(t *testing.T) {
 			},
 			expectedHash: "ge11cn000000_e3b0c44298fc_3f3af1ecebbd_86a3f0069fcd",
 		},
+		{
+			name: "Basic GET - Multiple cookies",
+			req: func() *http.Request {
+				req, _ := http.NewRequest("GET", "http://example.com", nil)
+				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
+				req.AddCookie(&http.Cookie{Name: "baz", Value: "qux"})
+				return req
+			},
+			expectedHash: "ge11cn000000_e3b0c44298fc_bd87575d11f6_d401f362552e",
+		},
 	}
 
 	for _, test := range tests {
