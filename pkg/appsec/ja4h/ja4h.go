@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -19,8 +20,12 @@ import (
 
 // JA4H_c: [cookie name hash]
 
-const truncatedHashLength = 12
-const defaultLang = "0000"
+const (
+	truncatedHashLength = 12
+	ja4hFullHashLength  = 51
+	ja4hSubHashLength   = 12
+	defaultLang         = "0000"
+)
 
 // httpMethod extracts the first two lowercase characters of the HTTP method.
 func httpMethod(method string) string {
@@ -78,14 +83,16 @@ func primaryLanguage(headers http.Header) string {
 
 // jA4H_a generates a summary fingerprint for the HTTP request.
 func jA4H_a(req *http.Request) string {
-	return fmt.Sprintf("%s%s%s%s%s%s",
-		httpMethod(req.Method),
-		httpVersion(req.ProtoMajor, req.ProtoMinor),
-		hasCookie(req),
-		hasReferer(req.Referer()),
-		countHeaders(req.Header),
-		primaryLanguage(req.Header),
-	)
+	var builder strings.Builder
+
+	builder.Grow(ja4hSubHashLength)
+	builder.WriteString(httpMethod(req.Method))
+	builder.WriteString(httpVersion(req.ProtoMajor, req.ProtoMinor))
+	builder.WriteString(hasCookie(req))
+	builder.WriteString(hasReferer(req.Referer()))
+	builder.WriteString(countHeaders(req.Header))
+	builder.WriteString(primaryLanguage(req.Header))
+	return builder.String()
 }
 
 // jA4H_b computes a truncated SHA256 hash of sorted header names.
@@ -93,6 +100,8 @@ func jA4H_b(req *http.Request) string {
 
 	// The reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27)
 	// discards referer and headers **starting with "cookie"**
+	// If there's no headers, it hashes the empty string, instead of returning 0s
+	// like what is done for cookies. Not sure if it's intended or an oversight in the spec.
 	headers := make([]string, 0, len(req.Header))
 	for name := range req.Header {
 		if strings.HasPrefix(strings.ToLower(name), "cookie") || strings.ToLower(name) == "referer" {
@@ -112,23 +121,33 @@ func hashTruncated(input string) string {
 }
 
 // jA4H_c computes a truncated SHA256 hash of sorted cookie names.
-func jA4H_c(orderedCookies []string) string {
-	if len(orderedCookies) == 0 {
-		return strings.Repeat("0", truncatedHashLength)
-	}
-	return hashTruncated(strings.Join(orderedCookies, ","))
-}
-
-// jA4H_d computes a truncated SHA256 hash of cookie name-value pairs.
-func jA4H_d(orderedCookies []string, cookieMap map[string]string) string {
-	if len(orderedCookies) == 0 {
+func jA4H_c(cookies []*http.Cookie) string {
+	if len(cookies) == 0 {
 		return strings.Repeat("0", truncatedHashLength)
 	}
 	var builder strings.Builder
-	for _, name := range orderedCookies {
-		builder.WriteString(name)
+	for i, cookie := range cookies {
+		builder.WriteString(cookie.Name)
+		if i < len(cookies)-1 {
+			builder.WriteString(",")
+		}
+	}
+	return hashTruncated(builder.String())
+}
+
+// jA4H_d computes a truncated SHA256 hash of cookie name-value pairs.
+func jA4H_d(cookies []*http.Cookie) string {
+	if len(cookies) == 0 {
+		return strings.Repeat("0", truncatedHashLength)
+	}
+	var builder strings.Builder
+	for i, cookie := range cookies {
+		builder.WriteString(cookie.Name)
 		builder.WriteString("=")
-		builder.WriteString(cookieMap[name])
+		builder.WriteString(cookie.Value)
+		if i < len(cookies)-1 {
+			builder.WriteString(",")
+		}
 	}
 	return hashTruncated(builder.String())
 }
@@ -138,16 +157,26 @@ func JA4H(req *http.Request) string {
 	JA4H_a := jA4H_a(req)
 	JA4H_b := jA4H_b(req)
 
-	cookieMap := make(map[string]string)
-	var orderedCookies []string
-	for _, c := range req.Cookies() {
-		cookieMap[c.Name] = c.Value
-		orderedCookies = append(orderedCookies, c.Name)
-	}
-	sort.Strings(orderedCookies)
+	cookies := req.Cookies()
 
-	JA4H_c := jA4H_c(orderedCookies)
-	JA4H_d := jA4H_d(orderedCookies, cookieMap)
+	slices.SortFunc(cookies, func(a, b *http.Cookie) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 
-	return fmt.Sprintf("%s_%s_%s_%s", JA4H_a, JA4H_b, JA4H_c, JA4H_d)
+	JA4H_c := jA4H_c(cookies)
+	JA4H_d := jA4H_d(cookies)
+
+	var builder strings.Builder
+
+	//JA4H is a fixed size, allocated it all at once
+	builder.Grow(ja4hFullHashLength)
+	builder.WriteString(JA4H_a)
+	builder.WriteString("_")
+	builder.WriteString(JA4H_b)
+	builder.WriteString("_")
+	builder.WriteString(JA4H_c)
+	builder.WriteString("_")
+	builder.WriteString(JA4H_d)
+
+	return builder.String()
 }
