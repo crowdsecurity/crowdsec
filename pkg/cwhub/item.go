@@ -113,10 +113,13 @@ type Item struct {
 	Dependencies
 }
 
-// InstallPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
-// (eg. /etc/crowdsec/collections/xyz.yaml).
-// Raises an error if the path goes outside of the install dir.
+// InstallPath returns the path to use for the install symlink.
+// Returns an error if an item is already installed or if the path goes outside of the install dir.
 func (i *Item) InstallPath() (string, error) {
+	if i.State.Installed {
+		return "", fmt.Errorf("%s is already installed at %s", i.FQName(), i.State.LocalPath)
+	}
+
 	p := i.Type
 	if i.Stage != "" {
 		p = filepath.Join(p, i.Stage)
@@ -205,13 +208,7 @@ func (i *Item) CurrentDependencies() Dependencies {
 		return i.Dependencies
 	}
 
-	contentPath, err := i.InstallPath()
-	if err != nil {
-		i.hub.logger.Warningf("can't access dependencies for %s, using index", i.FQName())
-		return i.Dependencies
-	}
-
-	currentContent, err := os.ReadFile(contentPath)
+	currentContent, err := os.ReadFile(i.State.LocalPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		return i.Dependencies
 	}
