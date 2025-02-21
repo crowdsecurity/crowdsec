@@ -116,7 +116,7 @@ func jA4H_c(orderedCookies []string) string {
 	if len(orderedCookies) == 0 {
 		return strings.Repeat("0", truncatedHashLength)
 	}
-	return hashTruncated(strings.Join(orderedCookies, ""))
+	return hashTruncated(strings.Join(orderedCookies, ","))
 }
 
 // jA4H_d computes a truncated SHA256 hash of cookie name-value pairs.
