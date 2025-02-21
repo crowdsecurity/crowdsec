@@ -364,13 +364,14 @@ func TestAppsecEventToContext(t *testing.T) {
 					"User-Agent": {"test"},
 					"Foobar":     {"test1", "test2"},
 				},
-				Proto:  "HTTP/1.1",
-				Method: http.MethodGet,
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Method:     http.MethodGet,
 			},
 			expectedResult: []*models.MetaItems0{
 				{
 					Key:   "ja4h",
-					Value: "[\"ge11nn020000_10e54ee30152_000000000000_000000000000\"]",
+					Value: "[\"ge11nn020000_3a31a0f8fbf9_000000000000_000000000000\"]",
 				},
 			},
 		},
