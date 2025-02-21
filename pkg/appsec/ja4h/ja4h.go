@@ -102,7 +102,7 @@ func jA4H_b(req *http.Request) string {
 	}
 	sort.Strings(headers)
 
-	return hashTruncated(strings.Join(headers, ""))
+	return hashTruncated(strings.Join(headers, ","))
 }
 
 // hashTruncated computes a truncated SHA256 hash for the given input.
