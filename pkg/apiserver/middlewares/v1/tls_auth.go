@@ -131,9 +131,10 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 
 	okToCache := true
 
-	var validErr error
-
-	var couldCheck bool
+	var (
+		validErr   error
+		couldCheck bool
+	)
 
 	for _, chain := range c.Request.TLS.VerifiedChains {
 		validErr, couldCheck = ta.checkRevocationPath(c.Request.Context(), chain)

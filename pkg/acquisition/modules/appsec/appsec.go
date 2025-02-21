@@ -194,19 +194,16 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
-		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
-		if err != nil {
+		if err = appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if w.config.AppsecConfig != "" {
-		err := appsecCfg.Load(w.config.AppsecConfig)
-		if err != nil {
+		if err = appsecCfg.Load(w.config.AppsecConfig); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if len(w.config.AppsecConfigs) > 0 {
 		for _, appsecConfig := range w.config.AppsecConfigs {
-			err := appsecCfg.Load(appsecConfig)
-			if err != nil {
+			if err = appsecCfg.Load(appsecConfig); err != nil {
 				return fmt.Errorf("unable to load appsec_config: %w", err)
 			}
 		}
@@ -233,6 +230,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	if err != nil {
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
 	}
+
 	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.apiClient, w.logger)
 
 	for nbRoutine := range w.config.Routines {

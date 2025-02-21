@@ -45,8 +45,8 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 		return "", err
 	}
 
-	//Those 2 are a bit different
-	//They default to true, and we only want to include them if they are false
+	// Those 2 are a bit different
+	// They default to true, and we only want to include them if they are false
 
 	if params.Get("community_pull") == "true" {
 		params.Del("community_pull")

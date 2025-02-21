@@ -392,6 +392,7 @@ headers:
   key: test`), 2)
 
 	time.Sleep(1 * time.Second)
+
 	rawEvt := `{"test": "test"}`
 
 	errChan := make(chan error)
@@ -435,6 +436,7 @@ custom_headers:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
@@ -468,9 +470,11 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	if sr.index >= len(sr.body) {
 		return 0, io.EOF
 	}
+
 	time.Sleep(sr.delay) // Simulate a delay in reading
 	n := copy(p, sr.body[sr.index:])
 	sr.index += n
+
 	return n, nil
 }
 
@@ -497,10 +501,12 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 			errChan <- fmt.Errorf(`expected %s, got '%+v'`, expected, evt.Line.Raw)
 			return
 		}
+
 		if evt.Line.Src != "127.0.0.1" {
 			errChan <- fmt.Errorf("expected '127.0.0.1', got '%s'", evt.Line.Src)
 			return
 		}
+
 		if evt.Line.Module != "http" {
 			errChan <- fmt.Errorf("expected 'http', got '%s'", evt.Line.Module)
 			return
@@ -606,6 +612,7 @@ tls:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
@@ -666,6 +673,7 @@ tls:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
@@ -702,6 +710,7 @@ headers:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	var b strings.Builder
@@ -753,9 +762,10 @@ headers:
   key: test`), 2)
 
 	time.Sleep(1 * time.Second)
-	rawEvt := `{"test": "test"}`
 
+	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	client := &http.Client{}
@@ -786,10 +796,13 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 	require.NoError(t, err)
 
 	isExist := false
+
 	for _, metricFamily := range promMetrics {
 		if metricFamily.GetName() == "cs_httpsource_hits_total" {
 			isExist = true
+
 			assert.Len(t, metricFamily.GetMetric(), 1)
+
 			for _, metric := range metricFamily.GetMetric() {
 				assert.InDelta(t, float64(expected), metric.GetCounter().GetValue(), 0.000001)
 				labels := metric.GetLabel()
@@ -801,6 +814,7 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 			}
 		}
 	}
+
 	if !isExist && expected > 0 {
 		t.Fatalf("expected metric cs_httpsource_hits_total not found")
 	}
