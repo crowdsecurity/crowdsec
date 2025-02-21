@@ -1,6 +1,20 @@
-//go:build !windows && !freebsd && !linux
-
 package reload
 
-// generic message since we don't know the platform
-const Message = "Please reload the crowdsec process for the new configuration to be effective."
+import (
+	"os"
+
+	"github.com/crowdsecurity/go-cs-lib/version"
+	isatty "github.com/mattn/go-isatty"
+)
+
+func UserMessage() string {
+	if version.System == "docker" {
+		if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) {
+			return "You may need to restart the container to apply the changes."
+		}
+
+		return ""
+	}
+
+	return message
+}

@@ -118,8 +118,13 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 
 	indexProvider := require.HubDownloader(ctx, cli.cfg())
 
-	if err := hub.Update(ctx, indexProvider, withContent); err != nil {
+	updated, err := hub.Update(ctx, indexProvider, withContent)
+	if err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
+	}
+
+	if !updated && (log.StandardLogger().Level >= log.InfoLevel) {
+		fmt.Println("Nothing to do, the hub index is up to date.")
 	}
 
 	if err := hub.Load(); err != nil {
@@ -163,7 +168,7 @@ cscli hub update --with-content`,
 	return cmd
 }
 
-func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force bool) error {
+func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, force bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -187,14 +192,15 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 		return err
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		return err
 	}
 
-	if plan.ReloadNeeded {
-		fmt.Println("\n" + reload.Message)
+	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+		fmt.Println("\n" + msg)
 	}
 
 	return nil
@@ -202,9 +208,9 @@ func (cli *cliHub) upgrade(ctx context.Context, yes bool, dryRun bool, force boo
 
 func (cli *cliHub) newUpgradeCmd() *cobra.Command {
 	var (
-		yes    bool
-		dryRun bool
-		force  bool
+		interactive bool
+		dryRun      bool
+		force       bool
 	)
 
 	cmd := &cobra.Command{
@@ -217,19 +223,23 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 cscli hub upgrade
 
 # Upgrade tainted items as well; force re-download of data files.
-cscli hub upgrade --force`,
+cscli hub upgrade --force
+
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli hub upgrade --interactive
+cscli hub upgrade -i`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.upgrade(cmd.Context(), yes, dryRun, force)
+			return cli.upgrade(cmd.Context(), interactive, dryRun, force)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVar(&yes, "yes", false, "Confirm execution without prompt")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "Ask for confirmation before proceeding")
 	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated items; always update data files")
-	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
+	cmd.MarkFlagsMutuallyExclusive("interactive", "dry-run")
 
 	return cmd
 }

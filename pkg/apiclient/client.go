@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
@@ -20,6 +23,7 @@ var (
 	InsecureSkipVerify = false
 	Cert               *tls.Certificate
 	CaCertPool         *x509.CertPool
+	lapiClient         *ApiClient
 )
 
 type ApiClient struct {
@@ -36,6 +40,7 @@ type ApiClient struct {
 	Decisions      *DecisionsService
 	DecisionDelete *DecisionDeleteService
 	Alerts         *AlertsService
+	Allowlists     *AllowlistsService
 	Auth           *AuthService
 	Metrics        *MetricsService
 	Signal         *SignalService
@@ -64,6 +69,68 @@ func (a *ApiClient) IsEnrolled() bool {
 
 type service struct {
 	client *ApiClient
+}
+
+func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login string, password string, scenarios []string) error {
+	if lapiClient != nil {
+		return errors.New("client already initialized")
+	}
+
+	apiURL, err := url.Parse(apiUrl)
+	if err != nil {
+		return fmt.Errorf("parsing api url ('%s'): %w", apiURL, err)
+	}
+
+	papiURL, err := url.Parse(papiUrl)
+	if err != nil {
+		return fmt.Errorf("parsing polling api url ('%s'): %w", papiURL, err)
+	}
+
+	pwd := strfmt.Password(password)
+
+	client, err := NewClient(&Config{
+		MachineID:     login,
+		Password:      pwd,
+		Scenarios:     scenarios,
+		URL:           apiURL,
+		PapiURL:       papiURL,
+		VersionPrefix: "v1",
+		UpdateScenario: func(_ context.Context) ([]string, error) {
+			return scenarios, nil
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("new client api: %w", err)
+	}
+
+	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
+		MachineID: &login,
+		Password:  &pwd,
+		Scenarios: scenarios,
+	})
+	if err != nil {
+		return fmt.Errorf("authenticate watcher (%s): %w", login, err)
+	}
+
+	var expiration time.Time
+	if err := expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return fmt.Errorf("unable to parse jwt expiration: %w", err)
+	}
+
+	client.GetClient().Transport.(*JWTTransport).Token = authResp.Token
+	client.GetClient().Transport.(*JWTTransport).Expiration = expiration
+
+	lapiClient = client
+
+	return nil
+}
+
+func GetLAPIClient() (*ApiClient, error) {
+	if lapiClient == nil {
+		return nil, errors.New("client not initialized")
+	}
+
+	return lapiClient, nil
 }
 
 func NewClient(config *Config) (*ApiClient, error) {
@@ -115,6 +182,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
+	c.Allowlists = (*AllowlistsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
@@ -157,6 +225,7 @@ func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *htt
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
+	c.Allowlists = (*AllowlistsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)

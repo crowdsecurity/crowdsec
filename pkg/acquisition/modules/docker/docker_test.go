@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -127,7 +128,7 @@ type mockDockerCli struct {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
@@ -185,9 +186,7 @@ container_name_regexp:
 		dockerSource := DockerSource{}
 
 		err := dockerSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
-		if err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
+		require.NoError(t, err)
 
 		dockerSource.Client = new(mockDockerCli)
 		actualLines := 0
@@ -204,28 +203,27 @@ container_name_regexp:
 				select {
 				case <-out:
 					actualLines++
+
 					ticker.Reset(1 * time.Second)
 				case <-ticker.C:
 					log.Infof("no more lines to read")
 					dockerSource.t.Kill(nil)
+
 					return nil
 				}
 			}
 		})
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		if err = readerTomb.Wait(); err != nil {
-			t.Fatal(err)
-		}
+		err = readerTomb.Wait()
+		require.NoError(t, err)
 
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
 
 		err = streamTomb.Wait()
-		if err != nil {
-			t.Fatalf("docker acquisition error: %s", err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -276,9 +274,9 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 }
 
 func TestOneShot(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
-	log.Infof("Test 'TestOneShot'")
+	log.Info("Test 'TestOneShot'")
 
 	tests := []struct {
 		dsn            string
@@ -326,14 +324,13 @@ func TestOneShot(t *testing.T) {
 			labels := make(map[string]string)
 			labels["type"] = ts.logType
 
-			if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, ""); err != nil {
-				t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
-			}
+			err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, "")
+			require.NoError(t, err)
 
 			dockerClient.Client = new(mockDockerCli)
 			out := make(chan types.Event, 100)
 			tomb := tomb.Tomb{}
-			err := dockerClient.OneShotAcquisition(ctx, out, &tomb)
+			err = dockerClient.OneShotAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 			// else we do the check before actualLines is incremented ...

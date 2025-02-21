@@ -21,7 +21,6 @@ type Blackhole struct {
 func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 	duration, err := time.ParseDuration(bucketFactory.Blackhole)
 	if err != nil {
-		bucketFactory.logger.Warning("Blackhole duration not valid, using 1h")
 		return nil, fmt.Errorf("blackhole duration not valid '%s'", bucketFactory.Blackhole)
 	}
 	return &Blackhole{

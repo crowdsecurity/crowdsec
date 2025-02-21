@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestLPMetrics(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name                 string
@@ -216,7 +215,7 @@ func TestLPMetrics(t *testing.T) {
 }
 
 func TestRCMetrics(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name                 string

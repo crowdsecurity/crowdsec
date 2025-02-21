@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -31,6 +31,7 @@ var responseByPath map[string]string
 
 // testHubOld initializes a temporary hub with an empty json file, optionally updating it.
 func testHubOld(t *testing.T, update bool) *Hub {
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	local := &csconfig.LocalHubCfg{
@@ -61,9 +62,9 @@ func testHubOld(t *testing.T, update bool) *Hub {
 			URLTemplate: mockURLTemplate,
 		}
 
-		ctx := context.Background()
-		err = hub.Update(ctx, indexProvider, false)
+		updated, err := hub.Update(ctx, indexProvider, false)
 		require.NoError(t, err)
+		assert.True(t, updated)
 	}
 
 	err = hub.Load()

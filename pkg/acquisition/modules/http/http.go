@@ -372,9 +372,14 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	})
 
 	h.Server = &http.Server{
-		Addr:    h.Config.ListenAddr,
-		Handler: mux,
+		Addr:      h.Config.ListenAddr,
+		Handler:   mux,
+		Protocols: &http.Protocols{},
 	}
+
+	h.Server.Protocols.SetHTTP1(true)
+	h.Server.Protocols.SetUnencryptedHTTP2(true)
+	h.Server.Protocols.SetHTTP2(true)
 
 	if h.Config.Timeout != nil {
 		h.Server.ReadTimeout = *h.Config.Timeout

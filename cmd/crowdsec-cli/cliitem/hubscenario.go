@@ -34,10 +34,9 @@ cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --downlo
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --force
 
-# Proceed without prompting.
-cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing -i
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some scenarios.
@@ -55,10 +54,9 @@ cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --purge
 # Remove tainted items.
 cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --force
 
-# Proceed without prompting.
-cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing -i
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some scenarios. If they are not currently installed, they are downloaded but not installed.
@@ -73,10 +71,9 @@ cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --dry-ru
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --force
 
-# Proceed without prompting.
-cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing -i
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state, metrics and ancestor collections of scenarios (installed or not).

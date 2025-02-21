@@ -467,7 +467,7 @@ func (i *Item) checkSubItemVersions() []string {
 
 		if !sub.State.UpToDate {
 			i.State.UpToDate = false
-			warn = append(warn, fmt.Sprintf("%s is tainted by outdated %s", i.Name, sub.FQName()))
+			warn = append(warn, fmt.Sprintf("%s is outdated because of %s", i.Name, sub.FQName()))
 
 			continue
 		}
