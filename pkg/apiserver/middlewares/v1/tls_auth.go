@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -36,7 +37,7 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // checkRevocationPath checks a single chain against OCSP and CRL
-func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (error, bool) { //nolint:revive
+func (ta *TLSAuth) checkRevocationPath(ctx context.Context, chain []*x509.Certificate) (error, bool) { //nolint:revive
 	// if we ever fail to check OCSP or CRL, we should not cache the result
 	couldCheck := true
 
@@ -46,7 +47,7 @@ func (ta *TLSAuth) checkRevocationPath(chain []*x509.Certificate) (error, bool) 
 		cert := chain[i-1]
 		issuer := chain[i]
 
-		revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(cert, issuer)
+		revokedByOCSP, checkedByOCSP := ta.ocspChecker.isRevokedBy(ctx, cert, issuer)
 		couldCheck = couldCheck && checkedByOCSP
 
 		if revokedByOCSP && checkedByOCSP {
@@ -130,12 +131,13 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 
 	okToCache := true
 
-	var validErr error
-
-	var couldCheck bool
+	var (
+		validErr   error
+		couldCheck bool
+	)
 
 	for _, chain := range c.Request.TLS.VerifiedChains {
-		validErr, couldCheck = ta.checkRevocationPath(chain)
+		validErr, couldCheck = ta.checkRevocationPath(c.Request.Context(), chain)
 		okToCache = okToCache && couldCheck
 
 		if validErr != nil {

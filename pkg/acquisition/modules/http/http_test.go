@@ -288,6 +288,7 @@ basic_auth:
 }
 
 func TestStreamingAcquisitionBasicAuth(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -306,7 +307,7 @@ basic_auth:
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
 	require.NoError(t, err)
 	req.SetBasicAuth("test", "WrongPassword")
 
@@ -321,6 +322,7 @@ basic_auth:
 }
 
 func TestStreamingAcquisitionBadHeaders(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -334,7 +336,7 @@ headers:
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "wrong")
@@ -349,6 +351,7 @@ headers:
 }
 
 func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -362,7 +365,7 @@ max_body_size: 5`), 0)
 	time.Sleep(1 * time.Second)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("testtest"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("testtest"))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -378,6 +381,7 @@ max_body_size: 5`), 0)
 }
 
 func TestStreamingAcquisitionSuccess(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -388,13 +392,14 @@ headers:
   key: test`), 2)
 
 	time.Sleep(1 * time.Second)
+
 	rawEvt := `{"test": "test"}`
 
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -414,6 +419,7 @@ headers:
 }
 
 func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -430,9 +436,10 @@ custom_headers:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt}, errChan)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -463,9 +470,11 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	if sr.index >= len(sr.body) {
 		return 0, io.EOF
 	}
+
 	time.Sleep(sr.delay) // Simulate a delay in reading
 	n := copy(p, sr.body[sr.index:])
 	sr.index += n
+
 	return n, nil
 }
 
@@ -492,10 +501,12 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 			errChan <- fmt.Errorf(`expected %s, got '%+v'`, expected, evt.Line.Raw)
 			return
 		}
+
 		if evt.Line.Src != "127.0.0.1" {
 			errChan <- fmt.Errorf("expected '127.0.0.1', got '%s'", evt.Line.Src)
 			return
 		}
+
 		if evt.Line.Module != "http" {
 			errChan <- fmt.Errorf("expected 'http', got '%s'", evt.Line.Module)
 			return
@@ -505,6 +516,7 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 }
 
 func TestStreamingAcquisitionTimeout(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -522,7 +534,7 @@ timeout: 1s`), 0)
 		body:  []byte(`{"test": "delayed_payload"}`),
 	}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), slow)
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -566,6 +578,7 @@ tls:
 }
 
 func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -599,9 +612,10 @@ tls:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt}, errChan)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -622,6 +636,7 @@ tls:
 }
 
 func TestStreamingAcquisitionMTLS(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -658,9 +673,10 @@ tls:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt}, errChan)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddrTLS), strings.NewReader(rawEvt))
 	require.NoError(t, err)
 
 	resp, err := client.Do(req)
@@ -680,6 +696,7 @@ tls:
 }
 
 func TestStreamingAcquisitionGzipData(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -693,6 +710,7 @@ headers:
 
 	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	var b strings.Builder
@@ -709,7 +727,7 @@ headers:
 
 	// send gzipped compressed data
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
 	require.NoError(t, err)
 
 	req.Header.Add("Key", "test")
@@ -733,6 +751,7 @@ headers:
 }
 
 func TestStreamingAcquisitionNDJson(t *testing.T) {
+	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -743,13 +762,14 @@ headers:
   key: test`), 2)
 
 	time.Sleep(1 * time.Second)
-	rawEvt := `{"test": "test"}`
 
+	rawEvt := `{"test": "test"}`
 	errChan := make(chan error)
+
 	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(fmt.Sprintf("%s\n%s\n", rawEvt, rawEvt)))
 
 	require.NoError(t, err)
 
@@ -776,10 +796,13 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 	require.NoError(t, err)
 
 	isExist := false
+
 	for _, metricFamily := range promMetrics {
 		if metricFamily.GetName() == "cs_httpsource_hits_total" {
 			isExist = true
+
 			assert.Len(t, metricFamily.GetMetric(), 1)
+
 			for _, metric := range metricFamily.GetMetric() {
 				assert.InDelta(t, float64(expected), metric.GetCounter().GetValue(), 0.000001)
 				labels := metric.GetLabel()
@@ -791,6 +814,7 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 			}
 		}
 	}
+
 	if !isExist && expected > 0 {
 		t.Fatalf("expected metric cs_httpsource_hits_total not found")
 	}
