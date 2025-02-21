@@ -399,7 +399,7 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 	}
 
 	if item == nil {
-		h.logger.Infof("Ignoring file %s of type %s", spec.path, spec.ftype)
+		h.logger.Warningf("Ignoring file %s of type %s", spec.path, spec.ftype)
 		return nil
 	}
 

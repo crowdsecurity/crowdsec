@@ -136,7 +136,8 @@ func (i *Item) PathForDownload() (string, error) {
 	path, err := SafePath(i.hub.local.HubDir, i.RemotePath)
 
 	if i.State.IsDownloaded() && path != i.State.DownloadPath {
-		// XXX: item is tainted by also at a different location than expected.
+		// A hub item with the same name is at a different location.
+		// This should not happen.
 		// user is downloading with --force so we are allowed to overwrite but
 		// should we remove the old location from here? Error, warning, more tests?
 		return "", fmt.Errorf("%s is already downloaded at %s", i.FQName(), i.State.DownloadPath)
