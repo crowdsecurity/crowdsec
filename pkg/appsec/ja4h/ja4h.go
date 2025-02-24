@@ -78,9 +78,9 @@ func primaryLanguage(headers http.Header) string {
 	//cf. https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L13
 	lang = strings.ReplaceAll(lang, "-", "")
 	lang = strings.ReplaceAll(lang, ";", ",")
-	lang = lang[:min(len(lang), 4)]
 
 	value := strings.Split(lang, ",")[0]
+	value = value[:min(len(value), 4)]
 	return value + strings.Repeat("0", 4-len(value))
 }
 
