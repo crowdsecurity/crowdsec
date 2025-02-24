@@ -16,12 +16,13 @@ import (
 )
 
 const (
-	URIHeaderName       = "X-Crowdsec-Appsec-Uri"
-	VerbHeaderName      = "X-Crowdsec-Appsec-Verb"
-	HostHeaderName      = "X-Crowdsec-Appsec-Host"
-	IPHeaderName        = "X-Crowdsec-Appsec-Ip"
-	APIKeyHeaderName    = "X-Crowdsec-Appsec-Api-Key"
-	UserAgentHeaderName = "X-Crowdsec-Appsec-User-Agent"
+	URIHeaderName         = "X-Crowdsec-Appsec-Uri"
+	VerbHeaderName        = "X-Crowdsec-Appsec-Verb"
+	HostHeaderName        = "X-Crowdsec-Appsec-Host"
+	IPHeaderName          = "X-Crowdsec-Appsec-Ip"
+	APIKeyHeaderName      = "X-Crowdsec-Appsec-Api-Key"
+	UserAgentHeaderName   = "X-Crowdsec-Appsec-User-Agent"
+	HTTPVersionHeaderName = "X-Crowdsec-Appsec-Http-Version"
 )
 
 type ParsedRequest struct {
@@ -313,6 +314,28 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 
 	userAgent := r.Header.Get(UserAgentHeaderName) //This one is optional
 
+	httpVersion := r.Header.Get(HTTPVersionHeaderName)
+	if httpVersion == "" {
+		logger.Debugf("missing '%s' header", HTTPVersionHeaderName)
+	}
+
+	if httpVersion != "" && len(httpVersion) == 2 &&
+		httpVersion[0] >= '0' && httpVersion[0] <= '9' &&
+		httpVersion[1] >= '0' && httpVersion[1] <= '9' {
+		major := httpVersion[0]
+		minor := httpVersion[1]
+
+		r.ProtoMajor = int(major - '0')
+		r.ProtoMinor = int(minor - '0')
+		if r.ProtoMajor == 2 && r.ProtoMinor == 0 {
+			r.Proto = "HTTP/2"
+		} else {
+			r.Proto = "HTTP/" + string(major) + "." + string(minor)
+		}
+	} else {
+		logger.Warnf("Invalid value %s for HTTP version header", httpVersion)
+	}
+
 	// delete those headers before coraza process the request
 	delete(r.Header, IPHeaderName)
 	delete(r.Header, HostHeaderName)
@@ -320,6 +343,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 	delete(r.Header, VerbHeaderName)
 	delete(r.Header, UserAgentHeaderName)
 	delete(r.Header, APIKeyHeaderName)
+	delete(r.Header, HTTPVersionHeaderName)
 
 	originalHTTPRequest := r.Clone(r.Context())
 	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
