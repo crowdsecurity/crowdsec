@@ -33,7 +33,7 @@ func TestJA4H_A(t *testing.T) {
 		{
 			name: "basic POST request - HTTP1.1 - no accept-language header - cookies - referer",
 			request: func() *http.Request {
-				req, _ := http.NewRequest("POST", "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodPost, "http://example.com", nil)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.Header.Set("Referer", "http://example.com")
 				return req
