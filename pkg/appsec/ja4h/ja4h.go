@@ -25,6 +25,7 @@ const (
 	ja4hFullHashLength  = 51
 	ja4hSubHashLength   = 12
 	defaultLang         = "0000"
+	emptyCookiesHash    = "000000000000"
 )
 
 // httpMethod extracts the first two lowercase characters of the HTTP method.
@@ -77,6 +78,7 @@ func primaryLanguage(headers http.Header) string {
 	//cf. https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L13
 	lang = strings.ReplaceAll(lang, "-", "")
 	lang = strings.ReplaceAll(lang, ";", ",")
+	lang = lang[:min(len(lang), 4)]
 
 	return strings.Split(lang, ",")[0] + strings.Repeat("0", 4-len(lang))
 }
@@ -123,7 +125,7 @@ func hashTruncated(input string) string {
 // jA4H_c computes a truncated SHA256 hash of sorted cookie names.
 func jA4H_c(cookies []*http.Cookie) string {
 	if len(cookies) == 0 {
-		return strings.Repeat("0", truncatedHashLength)
+		return emptyCookiesHash
 	}
 	var builder strings.Builder
 	for i, cookie := range cookies {
@@ -138,7 +140,7 @@ func jA4H_c(cookies []*http.Cookie) string {
 // jA4H_d computes a truncated SHA256 hash of cookie name-value pairs.
 func jA4H_d(cookies []*http.Cookie) string {
 	if len(cookies) == 0 {
-		return strings.Repeat("0", truncatedHashLength)
+		return emptyCookiesHash
 	}
 	var builder strings.Builder
 	for i, cookie := range cookies {

@@ -40,6 +40,15 @@ func TestJA4H_A(t *testing.T) {
 			},
 			expectedResult: "po11cr000000",
 		},
+		{
+			name: "bad accept-language header",
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req.Header.Set("Accept-Language", "aksjdhaslkdhalkjsd")
+				return req
+			},
+			expectedResult: "ge11nn01aksj",
+		},
 	}
 
 	for _, tt := range tests {
