@@ -80,7 +80,8 @@ func primaryLanguage(headers http.Header) string {
 	lang = strings.ReplaceAll(lang, ";", ",")
 	lang = lang[:min(len(lang), 4)]
 
-	return strings.Split(lang, ",")[0] + strings.Repeat("0", 4-len(lang))
+	value := strings.Split(lang, ",")[0]
+	return value + strings.Repeat("0", 4-len(value))
 }
 
 // jA4H_a generates a summary fingerprint for the HTTP request.
