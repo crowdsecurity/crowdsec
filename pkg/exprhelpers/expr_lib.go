@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
@@ -491,6 +492,13 @@ var exprFuncs = []exprCustomFunc{
 		function: GeoIPRangeEnrich,
 		signature: []interface{}{
 			new(func(string) *net.IPNet),
+		},
+	},
+	{
+		name:     "JA4H",
+		function: JA4H,
+		signature: []interface{}{
+			new(func(*http.Request) string),
 		},
 	},
 }

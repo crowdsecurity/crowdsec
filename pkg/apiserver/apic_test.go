@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-openapi/strfmt"
 	"github.com/jarcoal/httpmock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -91,9 +92,10 @@ func assertTotalDecisionCount(t *testing.T, ctx context.Context, dbClient *datab
 }
 
 func assertTotalValidDecisionCount(t *testing.T, dbClient *database.Client, count int) {
+	ctx := t.Context()
 	d := dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now()),
-	).AllX(context.Background())
+	).AllX(ctx)
 	assert.Len(t, d, count)
 }
 
@@ -107,12 +109,13 @@ func jsonMarshalX(v interface{}) []byte {
 }
 
 func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
-	d := dbClient.Ent.Alert.Query().AllX(context.Background())
+	ctx := t.Context()
+	d := dbClient.Ent.Alert.Query().AllX(ctx)
 	assert.Len(t, d, count)
 }
 
 func TestAPICCAPIPullIsOld(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	api := getAPIC(t, ctx)
 
 	isOld, err := api.CAPIPullIsOld(ctx)
@@ -143,7 +146,7 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 }
 
 func TestAPICFetchScenariosListFromDB(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name                    string
@@ -192,7 +195,7 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 }
 
 func TestNewAPIC(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var testConfig *csconfig.OnlineApiClientCfg
 
@@ -264,7 +267,7 @@ func TestNewAPIC(t *testing.T) {
 }
 
 func TestAPICGetMetrics(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cleanUp := func(api *apic) {
 		api.dbClient.Ent.Bouncer.Delete().ExecX(ctx)
@@ -522,7 +525,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 }
 
 func TestAPICWhitelists(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	api := getAPIC(t, ctx)
 	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
@@ -545,7 +548,7 @@ func TestAPICWhitelists(t *testing.T) {
 		SetScope("Ip").
 		SetScenario("crowdsecurity/ssh-bf").
 		SetUntil(time.Now().Add(time.Hour)).
-		ExecX(context.Background())
+		ExecX(ctx)
 	assertTotalDecisionCount(t, ctx, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
@@ -615,6 +618,16 @@ func TestAPICWhitelists(t *testing.T) {
 							},
 						},
 					},
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: ptr.Of("crowdsecurity/test1"),
+						Scope:    ptr.Of("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    ptr.Of("10.2.3.4"), // wl by allowlist that we pull at the same time
+								Duration: ptr.Of("24h"),
+							},
+						},
+					},
 				},
 				Links: &modelscapi.GetDecisionsStreamResponseLinks{
 					Blocklists: []*modelscapi.BlocklistLink{
@@ -633,6 +646,15 @@ func TestAPICWhitelists(t *testing.T) {
 							Duration:    ptr.Of("24h"),
 						},
 					},
+					Allowlists: []*modelscapi.AllowlistLink{
+						{
+							URL:         ptr.Of("http://api.crowdsec.net/allowlist1"),
+							Name:        ptr.Of("allowlist1"),
+							ID:          ptr.Of("1"),
+							Description: ptr.Of("test"),
+							CreatedAt:   ptr.Of(strfmt.DateTime(time.Now())),
+						},
+					},
 				},
 			},
 		),
@@ -644,6 +666,10 @@ func TestAPICWhitelists(t *testing.T) {
 
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist2", httpmock.NewStringResponder(
 		200, "1.2.3.7",
+	))
+
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/allowlist1", httpmock.NewStringResponder(
+		200, `{"value":"10.2.3.4"}`,
 	))
 
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -661,13 +687,21 @@ func TestAPICWhitelists(t *testing.T) {
 	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
+	allowlists, err := api.dbClient.ListAllowLists(ctx, true)
+	require.NoError(t, err)
+
+	require.Len(t, allowlists, 1)
+	require.Equal(t, "allowlist1", allowlists[0].Name)
+	require.Equal(t, "test", allowlists[0].Description)
+	require.True(t, allowlists[0].FromConsole)
+
 	assertTotalDecisionCount(t, ctx, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
-	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
+	alerts := api.dbClient.Ent.Alert.Query().AllX(ctx)
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background())
+		AllX(ctx)
 
 	decisionScenarioFreq := make(map[string]int)
 	decisionIP := make(map[string]int)
@@ -703,13 +737,17 @@ func TestAPICWhitelists(t *testing.T) {
 		t.Errorf("9.2.3.4 is whitelisted")
 	}
 
+	if _, ok := decisionIP["10.2.3.4"]; ok {
+		t.Errorf("10.2.3.4 is whitelisted")
+	}
+
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist2"], 1)
 	assert.Equal(t, 2, decisionScenarioFreq["crowdsecurity/test1"], 2)
 }
 
 func TestAPICPullTop(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	api := getAPIC(t, ctx)
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(types.CAPIOrigin).
@@ -806,10 +844,10 @@ func TestAPICPullTop(t *testing.T) {
 	assertTotalDecisionCount(t, ctx, api.dbClient, 5)
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
-	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
+	alerts := api.dbClient.Ent.Alert.Query().AllX(ctx)
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background())
+		AllX(ctx)
 
 	decisionScenarioFreq := make(map[string]int)
 	alertScenario := make(map[string]int)
@@ -834,7 +872,7 @@ func TestAPICPullTop(t *testing.T) {
 }
 
 func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// no decision in db, no last modified parameter.
 	api := getAPIC(t, ctx)
 
@@ -910,7 +948,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 }
 
 func TestAPICPullTopBLCacheForceCall(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
@@ -922,7 +960,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 		SetScenario("update list").
 		SetSourceScope("list:blocklist1").
 		SetSourceValue("list:blocklist1").
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(types.ListOrigin).
@@ -932,7 +970,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 		SetScenario("blocklist1").
 		SetUntil(time.Now().Add(time.Hour)).
 		SetOwnerID(alertInstance.ID).
-		ExecX(context.Background())
+		ExecX(ctx)
 
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
 		200, jsonMarshalX(
@@ -986,7 +1024,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 }
 
 func TestAPICPullBlocklistCall(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	api := getAPIC(t, ctx)
 
 	httpmock.Activate()
@@ -1020,7 +1058,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 }
 
 func TestAPICPush(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name          string
 		alerts        []*models.Alert
@@ -1112,7 +1150,7 @@ func TestAPICPush(t *testing.T) {
 }
 
 func TestAPICPull(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	api := getAPIC(t, ctx)
 	tests := []struct {
 		name                  string
@@ -1133,7 +1171,7 @@ func TestAPICPull(t *testing.T) {
 					SetPassword(testPassword.String()).
 					SetIpAddress("1.2.3.4").
 					SetScenarios("crowdsecurity/ssh-bf").
-					ExecX(context.Background())
+					ExecX(ctx)
 			},
 			expectedDecisionCount: 1,
 		},

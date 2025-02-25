@@ -45,8 +45,8 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 		return "", err
 	}
 
-	//Those 2 are a bit different
-	//They default to true, and we only want to include them if they are false
+	// Those 2 are a bit different
+	// They default to true, and we only want to include them if they are false
 
 	if params.Get("community_pull") == "true" {
 		params.Del("community_pull")
@@ -81,7 +81,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 
 	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest(http.MethodGet, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,7 +97,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 }
 
 func (s *DecisionsService) FetchV2Decisions(ctx context.Context, url string) (*models.DecisionsStreamResponse, *Response, error) {
-	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 	scenarioDeleted := "deleted"
 	durationDeleted := "1h"
 
-	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -183,7 +183,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 
 	client := http.Client{}
 
-	req, err := http.NewRequest(http.MethodGet, *blocklist.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *blocklist.URL, nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -192,7 +192,6 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 		req.Header.Set("If-Modified-Since", *lastPullTimestamp)
 	}
 
-	req = req.WithContext(ctx)
 	log.Debugf("[URL] %s %s", req.Method, req.URL)
 
 	// we don't use client_http Do method because we need the reader and is not provided.
@@ -272,7 +271,7 @@ func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStream
 		return nil, nil, err
 	}
 
-	req, err := s.client.NewRequest(http.MethodGet, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -290,7 +289,7 @@ func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStream
 func (s *DecisionsService) StopStream(ctx context.Context) (*Response, error) {
 	u := fmt.Sprintf("%s/decisions", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +310,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 
 	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -329,7 +328,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 func (s *DecisionsService) DeleteOne(ctx context.Context, decisionID string) (*models.DeleteDecisionResponse, *Response, error) {
 	u := fmt.Sprintf("%s/decisions/%s", s.client.URLPrefix, decisionID)
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}

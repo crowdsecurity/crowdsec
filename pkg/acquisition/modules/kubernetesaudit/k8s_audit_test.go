@@ -1,7 +1,6 @@
 package kubernetesauditacquisition
 
 import (
-	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -53,7 +52,7 @@ listen_addr: 0.0.0.0`,
 }
 
 func TestInvalidConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name        string
 		config      string
@@ -91,17 +90,19 @@ webhook_path: /k8s-audit`,
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
 			err = tb.Wait()
+
 			if test.expectedErr != "" {
 				require.ErrorContains(t, err, test.expectedErr)
 				return
 			}
+
 			require.NoError(t, err)
 		})
 	}
 }
 
 func TestHandler(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name               string
 		config             string

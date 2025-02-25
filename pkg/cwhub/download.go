@@ -62,6 +62,7 @@ func addURLParam(rawURL string, param string, value string) (string, error) {
 // FetchIndex downloads the index from the hub and writes it to the filesystem.
 // It uses a temporary file to avoid partial downloads, and won't overwrite the original
 // if it has not changed.
+// Return true if the file has been updated, false if already up to date.
 func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withContent bool, logger *logrus.Logger) (bool, error) {
 	url, err := d.urlTo(".index.json")
 	if err != nil {

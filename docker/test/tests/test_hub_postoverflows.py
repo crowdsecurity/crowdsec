@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Test postoverflow management
 """
@@ -12,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.docker
 
 
-def test_install_two_postoverflows(crowdsec, flavor):
+def test_install_two_postoverflows(crowdsec, flavor: str) -> None:
     """Test installing postoverflows at startup"""
     it1 = "crowdsecurity/cdn-whitelist"
     it2 = "crowdsecurity/ipv6_to_range"
@@ -30,12 +28,12 @@ def test_install_two_postoverflows(crowdsec, flavor):
         assert items[it2]["status"] == "enabled"
 
 
-def test_disable_postoverflow():
+def test_disable_postoverflow() -> None:
     """Test removing a pre-installed postoverflow at startup"""
     pytest.skip("we don't preinstall postoverflows")
 
 
-def test_install_and_disable_postoverflow(crowdsec, flavor):
+def test_install_and_disable_postoverflow(crowdsec, flavor: str) -> None:
     """Declare a postoverflow to install AND disable: disable wins"""
     it = "crowdsecurity/cdn-whitelist"
     env = {

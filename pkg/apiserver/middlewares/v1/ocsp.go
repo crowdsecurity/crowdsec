@@ -2,6 +2,7 @@ package v1
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/x509"
 	"io"
@@ -22,14 +23,14 @@ func NewOCSPChecker(logger *log.Entry) *OCSPChecker {
 	}
 }
 
-func (oc *OCSPChecker) query(server string, cert *x509.Certificate, issuer *x509.Certificate) (*ocsp.Response, error) {
+func (oc *OCSPChecker) query(ctx context.Context, server string, cert *x509.Certificate, issuer *x509.Certificate) (*ocsp.Response, error) {
 	req, err := ocsp.CreateRequest(cert, issuer, &ocsp.RequestOptions{Hash: crypto.SHA256})
 	if err != nil {
 		oc.logger.Errorf("TLSAuth: error creating OCSP request: %s", err)
 		return nil, err
 	}
 
-	httpRequest, err := http.NewRequest(http.MethodPost, server, bytes.NewBuffer(req))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, server, bytes.NewBuffer(req))
 	if err != nil {
 		oc.logger.Error("TLSAuth: cannot create HTTP request for OCSP")
 		return nil, err
@@ -69,14 +70,14 @@ func (oc *OCSPChecker) query(server string, cert *x509.Certificate, issuer *x509
 // isRevokedBy checks if the client certificate is revoked by the issuer via any of the OCSP servers present in the certificate.
 // It returns a boolean indicating if the certificate is revoked and a boolean indicating
 // if the OCSP check was successful and could be cached.
-func (oc *OCSPChecker) isRevokedBy(cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
+func (oc *OCSPChecker) isRevokedBy(ctx context.Context, cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
 	if len(cert.OCSPServer) == 0 {
 		oc.logger.Infof("TLSAuth: no OCSP Server present in client certificate, skipping OCSP verification")
 		return false, true
 	}
 
 	for _, server := range cert.OCSPServer {
-		ocspResponse, err := oc.query(server, cert, issuer)
+		ocspResponse, err := oc.query(ctx, server, cert, issuer)
 		if err != nil {
 			oc.logger.Errorf("TLSAuth: error querying OCSP server %s: %s", server, err)
 			continue

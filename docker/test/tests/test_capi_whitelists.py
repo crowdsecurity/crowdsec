@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from http import HTTPStatus
 
 import pytest
@@ -8,16 +6,12 @@ import yaml
 pytestmark = pytest.mark.docker
 
 
-def test_capi_whitelists(
-    crowdsec,
-    tmp_path_factory,
-    flavor,
-):
+def test_capi_whitelists(crowdsec, tmp_path_factory: pytest.TempPathFactory, flavor: str) -> None:
     """Test CAPI_WHITELISTS_PATH"""
     env = {"CAPI_WHITELISTS_PATH": "/path/to/whitelists.yaml"}
 
     whitelists = tmp_path_factory.mktemp("whitelists")
-    with open(whitelists / "whitelists.yaml", "w") as f:
+    with (whitelists / "whitelists.yaml").open("w") as f:
         yaml.dump({"ips": ["1.2.3.4", "2.3.4.5"], "cidrs": ["1.2.3.0/24"]}, f)
 
     volumes = {whitelists / "whitelists.yaml": {"bind": "/path/to/whitelists.yaml", "mode": "ro"}}

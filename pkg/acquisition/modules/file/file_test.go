@@ -1,7 +1,6 @@
 package fileacquisition_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -101,7 +100,7 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
@@ -219,6 +218,7 @@ filename: test_files/test_delete.log`,
 
 			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.expectedConfigErr)
+
 			if tc.expectedConfigErr != "" {
 				return
 			}
@@ -226,18 +226,19 @@ filename: test_files/test_delete.log`,
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
+
 			err = f.OneShotAcquisition(ctx, out, &tomb)
-			actualLines := len(out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
-				assert.Equal(t, tc.expectedLines, actualLines)
+				assert.Len(t, out, tc.expectedLines)
 			}
 
 			if tc.expectedOutput != "" {
 				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
 				hook.Reset()
 			}
+
 			if tc.teardown != nil {
 				tc.teardown()
 			}
@@ -246,7 +247,7 @@ filename: test_files/test_delete.log`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
 	testPattern := "test_files/*.log"
@@ -391,6 +392,7 @@ force_inotify: true`, testPattern),
 			}
 
 			actualLines := 0
+
 			if tc.expectedLines != 0 {
 				go func() {
 					for {
