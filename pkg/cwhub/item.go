@@ -144,7 +144,6 @@ func (i *Item) PathForDownload() (string, error) {
 	}
 
 	return path, err
-
 }
 
 // HasSubItems returns true if items of this type can have sub-items. Currently only collections.
@@ -189,10 +188,10 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	type Alias Item
 
 	return &struct {
-		Alias           `yaml:",inline"`
-		State ItemState `yaml:",inline"`
-		Installed bool  `yaml:"installed"`
-		Local bool      `yaml:"local"`
+		Alias     `yaml:",inline"`
+		State     ItemState `yaml:",inline"`
+		Installed bool      `yaml:"installed"`
+		Local     bool      `yaml:"local"`
 	}{
 		Alias:     Alias(i),
 		State:     i.State,
