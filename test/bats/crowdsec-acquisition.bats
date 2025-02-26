@@ -86,6 +86,9 @@ teardown() {
 	  type: appsec
 	EOT
 
-    rune -1 "$CROWDSEC" -t
+	config_set '.common.log_level="debug" | .common.log_media="stdout"'
+
+    rune -0 "$CROWDSEC" -t --trace
+
     assert_stderr --partial "Configuration test done"
 }
