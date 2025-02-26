@@ -76,3 +76,19 @@ teardown() {
     assert_stderr --partial "datasource type missing in $ACQUIS_DIR/journal.yaml (position 0): detected 'source=journalctl'"
     assert_stderr --partial "datasource type mismatch in $ACQUIS_DIR/bad.yaml (position 0): found 'docker' but should probably be 'journalctl'"
 }
+
+@test "test mode does not fail because of appsec and allowlists" {
+    rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
+    cat >"$ACQUIS_DIR/appsec.yaml" <<-EOT
+	source: appsec
+	appsec_config: crowdsecurity/virtual-patching
+	labels:
+	  type: appsec
+	EOT
+
+    config_set '.common.log_level="debug" | .common.log_media="stdout"'
+
+    rune -0 "$CROWDSEC" -t --trace
+
+    assert_stderr --partial "Configuration test done"
+}

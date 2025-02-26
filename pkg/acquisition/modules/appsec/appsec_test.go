@@ -146,10 +146,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	allowlistClient := allowlists.NewAppsecAllowlist(client, logger)
-	// In real life, allowlists updater is started by the acquisition
-	// Do it manually here as we are simulating the appsec itself
-	err = allowlistClient.FetchAllowlists()
+	allowlistClient := allowlists.NewAppsecAllowlist(logger)
+
+	err = allowlistClient.Start(t.Context(), client)
 	require.NoError(t, err)
 	runner := AppsecRunner{
 		inChan:                 InChan,
