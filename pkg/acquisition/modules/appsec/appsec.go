@@ -281,11 +281,11 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
 	}
 
-	err = w.appsecAllowlistClient.Start(apiClient)
+	err = w.appsecAllowlistClient.Start(ctx, apiClient)
 	if err != nil {
 		return fmt.Errorf("failed to fetch allowlists: %w", err)
 	}
-	w.appsecAllowlistClient.StartRefresh(t)
+	w.appsecAllowlistClient.StartRefresh(ctx, t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")

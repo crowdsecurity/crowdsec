@@ -148,7 +148,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 
 	allowlistClient := allowlists.NewAppsecAllowlist(logger)
 
-	err = allowlistClient.Start(client)
+	err = allowlistClient.Start(t.Context(), client)
 	require.NoError(t, err)
 	runner := AppsecRunner{
 		inChan:                 InChan,
