@@ -78,7 +78,7 @@ teardown() {
 }
 
 @test "test mode does not fail because of appsec and allowlists" {
-	rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
+    rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
     cat >"$ACQUIS_DIR/appsec.yaml" <<-EOT
 	source: appsec
 	appsec_config: crowdsecurity/virtual-patching
@@ -86,7 +86,7 @@ teardown() {
 	  type: appsec
 	EOT
 
-	config_set '.common.log_level="debug" | .common.log_media="stdout"'
+    config_set '.common.log_level="debug" | .common.log_media="stdout"'
 
     rune -0 "$CROWDSEC" -t --trace
 
