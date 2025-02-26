@@ -64,7 +64,10 @@ func TestAppsecAllowlist(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	allowlistClient := NewAppsecAllowlist(client, log.NewEntry(log.StandardLogger()))
+	allowlistClient := NewAppsecAllowlist(log.NewEntry(log.StandardLogger()))
+
+	err = allowlistClient.Start(client)
+	require.NoError(t, err)
 
 	err = allowlistClient.FetchAllowlists()
 	require.NoError(t, err)
