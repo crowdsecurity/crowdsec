@@ -36,19 +36,20 @@ type AppsecAllowlist struct {
 	tomb       *tomb.Tomb
 }
 
-func NewAppsecAllowlist(client *apiclient.ApiClient, logger *log.Entry) *AppsecAllowlist {
+func NewAppsecAllowlist(logger *log.Entry) *AppsecAllowlist {
 	a := &AppsecAllowlist{
-		LAPIClient: client,
-		logger:     logger.WithField("component", "appsec-allowlist"),
-		ips:        []ipAllowlist{},
-		ranges:     []rangeAllowlist{},
-	}
-
-	if err := a.FetchAllowlists(); err != nil {
-		a.logger.Errorf("failed to fetch allowlists: %s", err)
+		logger: logger.WithField("component", "appsec-allowlist"),
+		ips:    []ipAllowlist{},
+		ranges: []rangeAllowlist{},
 	}
 
 	return a
+}
+
+func (a *AppsecAllowlist) Start(client *apiclient.ApiClient) error {
+	a.LAPIClient = client
+	err := a.FetchAllowlists()
+	return err
 }
 
 func (a *AppsecAllowlist) FetchAllowlists() error {
@@ -92,6 +93,9 @@ func (a *AppsecAllowlist) FetchAllowlists() error {
 		}
 	}
 
+	if len(a.ips) != 0 || len(a.ranges) != 0 {
+		a.logger.Infof("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
+	}
 	a.logger.Debugf("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
 	a.logger.Tracef("allowlisted ips: %+v", a.ips)
 	a.logger.Tracef("allowlisted ranges: %+v", a.ranges)
