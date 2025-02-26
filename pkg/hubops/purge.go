@@ -43,7 +43,7 @@ func (c *PurgeCommand) Prepare(plan *ActionPlan) (bool, error) {
 		}
 	}
 
-	if !i.State.Downloaded {
+	if !i.State.IsDownloaded() {
 		return false, nil
 	}
 
@@ -55,20 +55,16 @@ func (c *PurgeCommand) Run(ctx context.Context, plan *ActionPlan) error {
 
 	fmt.Println("purging " + colorizeItemName(i.FQName()))
 
-	src, err := i.DownloadPath()
-	if err != nil {
-		return err
-	}
-
-	if err := os.Remove(src); err != nil {
+	if err := os.Remove(i.State.DownloadPath); err != nil {
 		if os.IsNotExist(err) {
+			i.State.DownloadPath = ""
 			return nil
 		}
 
 		return fmt.Errorf("while removing file: %w", err)
 	}
 
-	i.State.Downloaded = false
+	i.State.DownloadPath = ""
 	i.State.Tainted = false
 	i.State.UpToDate = false
 

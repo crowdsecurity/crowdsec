@@ -113,10 +113,11 @@ type Item struct {
 	Dependencies
 }
 
-// InstallPath returns the path to use for the install symlink.
+// PathForInstall returns the path to use for the install symlink
+// (eg. /etc/crowdsec/collections/xyz.yaml).
 // Returns an error if an item is already installed or if the path goes outside of the install dir.
-func (i *Item) InstallPath() (string, error) {
-	if i.State.Installed {
+func (i *Item) PathForInstall() (string, error) {
+	if i.State.IsInstalled() {
 		return "", fmt.Errorf("%s is already installed at %s", i.FQName(), i.State.LocalPath)
 	}
 
@@ -128,16 +129,21 @@ func (i *Item) InstallPath() (string, error) {
 	return SafePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
 }
 
-// DownloadPath returns the location of the actual config file in the hub
+// PathForDownload returns the path to use to store the item's file from the hub
 // (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
 // Raises an error if the path goes outside of the hub dir.
-func (i *Item) DownloadPath() (string, error) {
-	ret, err := SafePath(i.hub.local.HubDir, i.RemotePath)
-	if err != nil {
-		return "", err
+func (i *Item) PathForDownload() (string, error) {
+	path, err := SafePath(i.hub.local.HubDir, i.RemotePath)
+
+	if i.State.IsDownloaded() && path != i.State.DownloadPath {
+		// A hub item with the same name is at a different location.
+		// This should not happen.
+		// user is downloading with --force so we are allowed to overwrite but
+		// should we remove the old location from here? Error, warning, more tests?
+		return "", fmt.Errorf("%s is already downloaded at %s", i.FQName(), i.State.DownloadPath)
 	}
 
-	return ret, nil
+	return path, err
 }
 
 // HasSubItems returns true if items of this type can have sub-items. Currently only collections.
@@ -167,8 +173,8 @@ func (i Item) MarshalJSON() ([]byte, error) {
 		LocalPath:            i.State.LocalPath,
 		LocalVersion:         i.State.LocalVersion,
 		LocalHash:            i.State.LocalHash,
-		Installed:            i.State.Installed,
-		Downloaded:           i.State.Downloaded,
+		Installed:            i.State.IsInstalled(),
+		Downloaded:           i.State.IsDownloaded(),
 		UpToDate:             i.State.UpToDate,
 		Tainted:              i.State.Tainted,
 		BelongsToCollections: i.State.BelongsToCollections,
@@ -182,13 +188,15 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	type Alias Item
 
 	return &struct {
-		Alias `yaml:",inline"`
-		State ItemState `yaml:",inline"`
-		Local bool      `yaml:"local"`
+		Alias     `yaml:",inline"`
+		State     ItemState `yaml:",inline"`
+		Installed bool      `yaml:"installed"`
+		Local     bool      `yaml:"local"`
 	}{
-		Alias: Alias(i),
-		State: i.State,
-		Local: i.State.IsLocal(),
+		Alias:     Alias(i),
+		State:     i.State,
+		Installed: i.State.IsInstalled(),
+		Local:     i.State.IsLocal(),
 	}, nil
 }
 
@@ -275,7 +283,7 @@ func (i *Item) SafeToRemoveDeps() ([]*Item, error) {
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
 		for _, subParent := range sub.Ancestors() {
-			if !subParent.State.Installed {
+			if !subParent.State.IsInstalled() {
 				continue
 			}
 
