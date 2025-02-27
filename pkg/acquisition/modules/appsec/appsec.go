@@ -63,7 +63,6 @@ type AppsecSource struct {
 	lapiURL               string
 	AuthCache             AuthCache
 	AppsecRunners         []AppsecRunner // one for each go-routine
-	apiClient             *apiclient.ApiClient
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 }
 
@@ -226,12 +225,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
 
-	w.apiClient, err = apiclient.GetLAPIClient()
-	if err != nil {
-		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
-	}
-
-	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.apiClient, w.logger)
+	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.logger)
 
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
@@ -282,7 +276,16 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 
-	w.appsecAllowlistClient.StartRefresh(t)
+	apiClient, err := apiclient.GetLAPIClient()
+	if err != nil {
+		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+	}
+
+	err = w.appsecAllowlistClient.Start(ctx, apiClient)
+	if err != nil {
+		return fmt.Errorf("failed to fetch allowlists: %w", err)
+	}
+	w.appsecAllowlistClient.StartRefresh(ctx, t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
