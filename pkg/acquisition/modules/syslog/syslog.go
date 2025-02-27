@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -214,15 +215,30 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 			}
 		}
 	} else {
-		msgStr := string(syslogLine.Message)
-		// We get the index of the end of PRI
-		index := strings.Index(msgStr, ">")
-		if index == -1 {
-			logger.Errorf("could not find PRI in message")
+		if len(syslogLine.Message) < 3 {
+			logger.Errorf("malformated message, missing PRI (message too short)")
 			return ""
 		}
-		// We set the line to be the message without the PRI
-		line = msgStr[index+1:]
+		if syslogLine.Message[0] != '<' {
+			logger.Errorf("malformated message, missing PRI beginning")
+			return ""
+		}
+		priEnd := bytes.Index(syslogLine.Message, []byte(">"))
+		if priEnd == -1 {
+			logger.Errorf("malformated message, missing PRI end")
+			return ""
+		}
+		if priEnd > 4 {
+			logger.Errorf("malformated message, PRI too long")
+			return ""
+		}
+		for i := 1; i < priEnd; i++ {
+			if syslogLine.Message[i] < '0' || syslogLine.Message[i] > '9' {
+				logger.Errorf("malformated message, PRI not a number")
+				return ""
+			}
+		}
+		line = string(syslogLine.Message[priEnd+1:])
 	}
 
 	return strings.TrimSuffix(line, "\n")
