@@ -66,7 +66,7 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliConsole) enroll(ctx context.Context, key string, name string, overwrite bool, tags []string, opts []string) error {
+func (cli *cliConsole) enroll(ctx context.Context, key string, name string, overwrite bool, tags []string, enable_opts []string, disable_opts []string) error {
 	cfg := cli.cfg()
 	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
 
@@ -75,10 +75,10 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		return fmt.Errorf("could not parse CAPI URL: %w", err)
 	}
 
-	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
+	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT}
 
-	if len(opts) != 0 {
-		for _, opt := range opts {
+	if len(enable_opts) != 0 {
+		for _, opt := range enable_opts {
 			valid := false
 
 			if opt == "all" {
@@ -110,6 +110,20 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 
 			if !valid {
 				return fmt.Errorf("option %s doesn't exist", opt)
+			}
+		}
+	}
+	if len(disable_opts) != 0 {
+		for _, opt := range disable_opts {
+			if opt == "all" {
+				enableOpts = []string{}
+				break
+			}
+			for eidx, enabled_opt := range enableOpts {
+				if opt == enabled_opt {
+					enableOpts = append(enableOpts[:eidx], enableOpts[eidx+1:]...)
+					break
+				}
 			}
 		}
 	}
@@ -155,7 +169,8 @@ func (cli *cliConsole) newEnrollCmd() *cobra.Command {
 	name := ""
 	overwrite := false
 	tags := []string{}
-	opts := []string{}
+	enable_opts := []string{}
+	disable_opts := []string{}
 
 	cmd := &cobra.Command{
 		Use:   "enroll [enroll-key]",
@@ -168,13 +183,14 @@ After running this command your will need to validate the enrollment in the weba
 		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
 		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-		cscli console enroll --enable context,manual YOUR-ENROLL-KEY
+		cscli console enroll --enable console_management YOUR-ENROLL-KEY
+		cscli console enroll --disable context YOUR-ENROLL-KEY
 
 		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, opts)
+			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, enable_opts, disable_opts)
 		},
 	}
 
@@ -182,7 +198,8 @@ After running this command your will need to validate the enrollment in the weba
 	flags.StringVarP(&name, "name", "n", "", "Name to display in the console")
 	flags.BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
 	flags.StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
-	flags.StringSliceVarP(&opts, "enable", "e", opts, "Enable console options")
+	flags.StringSliceVarP(&enable_opts, "enable", "e", enable_opts, "Enable console options")
+	flags.StringSliceVarP(&disable_opts, "disable", "d", disable_opts, "Disable console options")
 
 	return cmd
 }
