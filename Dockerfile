@@ -49,7 +49,7 @@ ENTRYPOINT ["/bin/bash", "/docker_start.sh"]
 
 FROM slim AS full
 
-# Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
+# Due to the wizard using cp --update=none, we have to copy the config files directly from the source as --update=none does not exist in busybox cp
 # The files are here for reference, as users will need to mount a new version to be actually able to use notifications
 COPY --from=build \
     /go/src/crowdsec/cmd/notification-email/email.yaml \

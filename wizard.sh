@@ -509,12 +509,12 @@ install_plugins(){
     cp ${FILE_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${SENTINEL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${FILE_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp --update=none ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp --update=none ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp --update=none ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp --update=none ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp --update=none ${SENTINEL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp --update=none ${FILE_PLUGIN_CONFIG} /etc/crowdsec/notifications/
     fi
 }
 
