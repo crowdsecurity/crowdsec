@@ -120,6 +120,26 @@ listen_addr: 127.0.0.1`,
 				`<13>May 18 12:37:56 mantis sshd`,
 			},
 		},
+		{
+			name: "RFC3164 - no parsing",
+			config: `source: syslog
+listen_port: 4242
+listen_addr: 127.0.0.1
+disable_rfc_parser: true`,
+			expectedLines: 5,
+			logs: []string{
+				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2[foobar]`,
+				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2`,
+				`<13>May 18 12:37:56 mantis sshd: blabla2`,
+				`<13>May 18 12:37:56 mantis sshd`,
+				`<999>May 18 12:37:56 mantis sshd`,
+				`<1000>May 18 12:37:56 mantis sshd`,
+				`>?> asd`,
+				`<asd>asdasd`,
+				`<1a asd`,
+				`<123123>asdasd`,
+			},
+		},
 	}
 	if runtime.GOOS != "windows" {
 		tests = append(tests, struct {
