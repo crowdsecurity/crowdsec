@@ -284,11 +284,10 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 	if r.Body != nil && r.Body != http.NoBody {
 		_, err = buf.ReadFrom(r.Body)
 		if err != nil {
-			if errors.Is(err, io.ErrUnexpectedEOF) {
-				log.Errorf("Unexpected EOF while reading body, still proceeding")
-			} else {
+			if !errors.Is(err, io.ErrUnexpectedEOF) {
 				return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
 			}
+			log.Errorf("Unexpected EOF while reading body, still proceeding")
 		}
 		body = buf.Bytes()
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
