@@ -405,10 +405,6 @@ issues:
 
     - linters:
         - revive
-      path: cmd/crowdsec-cli/copyfile.go
-
-    - linters:
-        - revive
       path: pkg/hubtest/hubtest_item.go
       text: "cyclomatic: .*RunWithLogFile"
 
