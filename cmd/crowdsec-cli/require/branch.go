@@ -69,7 +69,7 @@ func chooseBranch(ctx context.Context, cfg *csconfig.Config) string {
 		return "master"
 	}
 
-	csVersion := cwversion.VersionStrip()
+	csVersion := cwversion.BaseVersion()
 	if csVersion == "" {
 		log.Warning("Crowdsec version is not set, using hub branch 'master'")
 		return "master"

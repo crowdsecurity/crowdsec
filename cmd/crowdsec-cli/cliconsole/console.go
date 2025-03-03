@@ -214,7 +214,9 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("%v have been enabled", args)
 			}
 
-			log.Info(reload.Message)
+			if reload.UserMessage() != "" {
+				log.Info(reload.UserMessage())
+			}
 
 			return nil
 		},
@@ -248,7 +250,9 @@ Disable given information push to the central API.`,
 				log.Infof("%v have been disabled", args)
 			}
 
-			log.Info(reload.Message)
+			if msg := reload.UserMessage(); msg != "" {
+				log.Info(msg)
+			}
 
 			return nil
 		},

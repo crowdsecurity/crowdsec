@@ -34,10 +34,9 @@ cscli contexts install crowdsecurity/bf_base crowdsecurity/fortinet --download-o
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli contexts install crowdsecurity/bf_base crowdsecurity/fortinet --force
 
-# Proceed without prompting.
-cscli contexts install crowdsecurity/bf_base crowdsecurity/fortinet --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli contexts install crowdsecurity/bf_base crowdsecurity/fortinet -i
+cscli contexts install crowdsecurity/bf_base crowdsecurity/fortinet --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some contexts.
@@ -55,10 +54,9 @@ cscli contexts remove crowdsecurity/bf_base crowdsecurity/fortinet --purge
 # Remove tainted items.
 cscli contexts remove crowdsecurity/bf_base crowdsecurity/fortinet --force
 
-# Proceed without prompting.
-cscli contexts remove crowdsecurity/bf_base crowdsecurity/fortinet --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli contexts remove crowdsecurity/bf_base crowdsecurity/fortinet -i
+cscli contexts remove crowdsecurity/bf_base crowdsecurity/fortinet --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some contexts. If they are not currently installed, they are downloaded but not installed.
@@ -73,10 +71,9 @@ cscli contexts upgrade crowdsecurity/bf_base crowdsecurity/fortinet --dry-run -o
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli contexts upgrade crowdsecurity/bf_base crowdsecurity/fortinet --force
 
-# Proceed without prompting.
-cscli contexts upgrade crowdsecurity/bf_base crowdsecurity/fortinet --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli contexts upgrade crowdsecurity/bf_base crowdsecurity/fortinet -i
+cscli contexts upgrade crowdsecurity/bf_base crowdsecurity/fortinet --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state and ancestor collections of contexts (installed or not).

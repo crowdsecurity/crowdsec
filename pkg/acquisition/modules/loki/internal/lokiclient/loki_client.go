@@ -205,6 +205,7 @@ func (lc *LokiClient) getURLFor(endpoint string, params map[string]string) strin
 func (lc *LokiClient) Ready(ctx context.Context) error {
 	tick := time.NewTicker(500 * time.Millisecond)
 	url := lc.getURLFor("ready", nil)
+	lc.Logger.Debugf("Using url: %s for ready check", url)
 	for {
 		select {
 		case <-ctx.Done():

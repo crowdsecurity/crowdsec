@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -94,6 +93,7 @@ func TestIndexUnknownItemType(t *testing.T) {
 }
 
 func TestHubUpdate(t *testing.T) {
+	ctx := t.Context()
 	// update an empty hub with a index containing a parser.
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
@@ -125,15 +125,14 @@ func TestHubUpdate(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	ctx := context.Background()
-
 	downloader := &Downloader{
 		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	require.NoError(t, err)
+	assert.True(t, updated)
 
 	err = hub.Load()
 	require.NoError(t, err)
@@ -144,21 +143,22 @@ func TestHubUpdate(t *testing.T) {
 }
 
 func TestHubUpdateInvalidTemplate(t *testing.T) {
+	ctx := t.Context()
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	downloader := &Downloader{
 		Branch:      "main",
 		URLTemplate: "x",
 	}
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	cstest.RequireErrorMessage(t, err, "failed to build hub index request: invalid URL template 'x'")
+	assert.False(t, updated)
 }
 
 func TestHubUpdateCannotWrite(t *testing.T) {
+	ctx := t.Context()
 	hub, err := testHub(t, nil, "{}")
 	require.NoError(t, err)
 
@@ -189,8 +189,6 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	ctx := context.Background()
-
 	downloader := &Downloader{
 		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
@@ -198,11 +196,13 @@ func TestHubUpdateCannotWrite(t *testing.T) {
 
 	hub.local.HubIndexFile = "/proc/foo/bar/baz/.index.json"
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	cstest.RequireErrorContains(t, err, "failed to create temporary download file for /proc/foo/bar/baz/.index.json")
+	assert.False(t, updated)
 }
 
 func TestHubUpdateAfterLoad(t *testing.T) {
+	ctx := t.Context()
 	// Update() can't be called after Load() if the hub is not completely empty.
 	index1 := `
 {
@@ -250,13 +250,12 @@ func TestHubUpdateAfterLoad(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	ctx := context.Background()
-
 	downloader := &Downloader{
 		Branch:      "main",
 		URLTemplate: mockServer.URL + "/%s/%s",
 	}
 
-	err = hub.Update(ctx, downloader, true)
+	updated, err := hub.Update(ctx, downloader, true)
 	require.ErrorIs(t, err, ErrUpdateAfterSync)
+	assert.False(t, updated)
 }

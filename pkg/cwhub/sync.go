@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/downloader"
@@ -86,7 +85,7 @@ type itemSpec struct {
 	local   bool   // is this a spec for a local item?
 }
 
-func newHubItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
+func newHubItemSpec(path string, subs []string) (*itemSpec, error) {
 	// .../hub/parsers/s00-raw/crowdsecurity/skip-pretag.yaml
 	// .../hub/scenarios/crowdsecurity/ssh_bf.yaml
 	// .../hub/profiles/crowdsecurity/linux.yaml
@@ -126,14 +125,11 @@ func newHubItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpe
 	return &spec, nil
 }
 
-func newInstallItemSpec(path string, subs []string, logger *logrus.Logger) (*itemSpec, error) {
-	logger.Tracef("%s in install dir", path)
-
+func newInstallItemSpec(path string, subs []string) (*itemSpec, error) {
 	// .../config/parser/stage/file.yaml
 	// .../config/postoverflow/stage/file.yaml
 	// .../config/scenarios/scenar.yaml
 	// .../config/collections/linux.yaml //file is empty
-
 	if len(subs) < 2 {
 		return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 	}
@@ -161,19 +157,19 @@ func newInstallItemSpec(path string, subs []string, logger *logrus.Logger) (*ite
 	return &spec, nil
 }
 
-func newItemSpec(path, hubDir, installDir string, logger *logrus.Logger) (*itemSpec, error) {
+func newItemSpec(path, hubDir, installDir string) (*itemSpec, error) {
 	var (
 		spec *itemSpec
 		err  error
 	)
 
 	if subs := relativePathComponents(path, hubDir); len(subs) > 0 {
-		spec, err = newHubItemSpec(path, subs, logger)
+		spec, err = newHubItemSpec(path, subs)
 		if err != nil {
 			return nil, err
 		}
 	} else if subs := relativePathComponents(path, installDir); len(subs) > 0 {
-		spec, err = newInstallItemSpec(path, subs, logger)
+		spec, err = newInstallItemSpec(path, subs)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +238,6 @@ func newLocalItem(h *Hub, path string, spec *itemSpec) (*Item, error) {
 		State: ItemState{
 			LocalPath: path,
 			local:     true,
-			Installed: true,
 			UpToDate:  true,
 		},
 	}
@@ -306,7 +301,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error
 		return nil, ErrSkipPath
 	}
 
-	spec, err := newItemSpec(path, h.local.HubDir, h.local.InstallDir, h.logger)
+	spec, err := newItemSpec(path, h.local.HubDir, h.local.InstallDir)
 	if err != nil {
 		h.logger.Warningf("Ignoring file %s: %s", path, err)
 		return nil, ErrSkipPath
@@ -323,10 +318,6 @@ func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget strin
 	}
 
 	for _, item := range h.GetItemMap(spec.ftype) {
-		if spec.fname != item.FileName {
-			continue
-		}
-
 		if item.Stage != spec.stage {
 			continue
 		}
@@ -338,14 +329,14 @@ func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget strin
 				continue
 			}
 
-			src, err := item.DownloadPath()
+			src, err := item.PathForDownload()
 			if err != nil {
 				return nil, err
 			}
 
 			if spec.path == src {
 				h.logger.Tracef("marking %s as downloaded", item.Name)
-				item.State.Downloaded = true
+				item.State.DownloadPath = src
 			}
 		} else if !hasPathSuffix(symlinkTarget, item.RemotePath) {
 			// wrong file
@@ -396,7 +387,7 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 		// see if there's another installed item of the same name
 		theOtherItem := h.GetItem(spec.ftype, item.Name)
 		if theOtherItem != nil {
-			if theOtherItem.State.Installed {
+			if theOtherItem.State.IsInstalled() {
 				h.logger.Warnf("multiple %s named %s: ignoring %s", spec.ftype, item.Name, theOtherItem.State.LocalPath)
 			}
 		}
@@ -408,7 +399,7 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 	}
 
 	if item == nil {
-		h.logger.Infof("Ignoring file %s of type %s", spec.path, spec.ftype)
+		h.logger.Warningf("Ignoring file %s of type %s", spec.path, spec.ftype)
 		return nil
 	}
 
@@ -431,12 +422,12 @@ func (i *Item) checkSubItemVersions() []string {
 	}
 
 	// ensure all the sub-items are installed, or tag the parent as tainted
-	i.hub.logger.Tracef("checking submembers of %s installed:%t", i.Name, i.State.Installed)
+	i.hub.logger.Tracef("checking submembers of %s installed:%t", i.Name, i.State.IsInstalled())
 
 	for sub := range i.CurrentDependencies().SubItems(i.hub) {
-		i.hub.logger.Tracef("check %s installed:%t", sub.Name, sub.State.Installed)
+		i.hub.logger.Tracef("check %s installed:%t", sub.Name, sub.State.IsInstalled())
 
-		if !i.State.Installed {
+		if !i.State.IsInstalled() {
 			continue
 		}
 
@@ -458,7 +449,7 @@ func (i *Item) checkSubItemVersions() []string {
 			continue
 		}
 
-		if !sub.State.Installed && i.State.Installed {
+		if !sub.State.IsInstalled() && i.State.IsInstalled() {
 			i.addTaint(sub)
 			warn = append(warn, fmt.Sprintf("%s is tainted by missing %s", i.Name, sub.FQName()))
 
@@ -467,7 +458,7 @@ func (i *Item) checkSubItemVersions() []string {
 
 		if !sub.State.UpToDate {
 			i.State.UpToDate = false
-			warn = append(warn, fmt.Sprintf("%s is tainted by outdated %s", i.Name, sub.FQName()))
+			warn = append(warn, fmt.Sprintf("%s is outdated because of %s", i.Name, sub.FQName()))
 
 			continue
 		}
@@ -593,7 +584,7 @@ func (h *Hub) localSync() error {
 			sub.State.BelongsToCollections = insertInOrderNoCase(sub.State.BelongsToCollections, item.Name)
 		}
 
-		if !item.State.Installed {
+		if !item.State.IsInstalled() {
 			continue
 		}
 
@@ -624,6 +615,10 @@ func (h *Hub) localSync() error {
 func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
+	if !inhub {
+		i.State.LocalPath = path
+	}
+
 	i.State.LocalHash, err = downloader.SHA256(path)
 	if err != nil {
 		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
@@ -652,11 +647,6 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 	if i.State.LocalVersion == "?" {
 		i.hub.logger.Tracef("got tainted match for %s: %s", i.Name, path)
 
-		if !inhub {
-			i.State.LocalPath = path
-			i.State.Installed = true
-		}
-
 		i.State.UpToDate = false
 		i.addTaint(i)
 
@@ -665,14 +655,10 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 
 	// we got an exact match, update struct
 
-	i.State.Downloaded = true
-
 	if !inhub {
 		i.hub.logger.Tracef("found exact match for %s, version is %s, latest is %s", i.Name, i.State.LocalVersion, i.Version)
-		i.State.LocalPath = path
 		i.State.Tainted = false
 		// if we're walking the hub, present file doesn't means installed file
-		i.State.Installed = true
 	}
 
 	if i.State.LocalVersion == i.Version {

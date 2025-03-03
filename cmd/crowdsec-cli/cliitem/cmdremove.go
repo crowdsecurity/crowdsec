@@ -77,7 +77,7 @@ func installedParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
 	for _, parent := range item.Ancestors() {
-		if parent.State.Installed {
+		if parent.State.IsInstalled() {
 			ret = append(ret, parent.Name)
 		}
 	}
@@ -85,7 +85,7 @@ func installedParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun bool, purge bool, force bool, all bool) error {
+func (cli cliItem) remove(ctx context.Context, args []string, interactive bool, dryRun bool, purge bool, force bool, all bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cli.cfg(), log.StandardLogger())
@@ -98,14 +98,15 @@ func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun b
 		return err
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, yes, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		return err
 	}
 
-	if plan.ReloadNeeded {
-		fmt.Println("\n" + reload.Message)
+	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+		fmt.Println("\n" + msg)
 	}
 
 	return nil
@@ -113,11 +114,11 @@ func (cli cliItem) remove(ctx context.Context, args []string, yes bool, dryRun b
 
 func (cli cliItem) newRemoveCmd() *cobra.Command {
 	var (
-		yes    bool
-		dryRun bool
-		purge  bool
-		force  bool
-		all    bool
+		interactive bool
+		dryRun      bool
+		purge       bool
+		force       bool
+		all         bool
 	)
 
 	cmd := &cobra.Command{
@@ -135,17 +136,17 @@ func (cli cliItem) newRemoveCmd() *cobra.Command {
 				return errors.New("can't specify items and '--all' at the same time")
 			}
 
-			return cli.remove(cmd.Context(), args, yes, dryRun, purge, force, all)
+			return cli.remove(cmd.Context(), args, interactive, dryRun, purge, force, all)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVarP(&yes, "yes", "y", false, "Confirm execution without prompt")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "Ask for confirmation before proceeding")
 	flags.BoolVar(&dryRun, "dry-run", false, "Don't install or remove anything; print the execution plan")
 	flags.BoolVar(&purge, "purge", false, "Delete source file too")
 	flags.BoolVar(&force, "force", false, "Force remove: remove tainted and outdated files")
 	flags.BoolVar(&all, "all", false, "Remove all the "+cli.name)
-	cmd.MarkFlagsMutuallyExclusive("yes", "dry-run")
+	cmd.MarkFlagsMutuallyExclusive("interactive", "dry-run")
 
 	return cmd
 }

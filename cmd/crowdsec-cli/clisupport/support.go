@@ -85,6 +85,12 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
+type configGetter func() *csconfig.Config
+
+type cliSupport struct {
+	cfg configGetter
+}
+
 func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
 	log.Info("Collecting prometheus metrics")
 
@@ -391,12 +397,6 @@ func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	}
 
 	return nil
-}
-
-type configGetter func() *csconfig.Config
-
-type cliSupport struct {
-	cfg configGetter
 }
 
 func New(cfg configGetter) *cliSupport {

@@ -34,10 +34,9 @@ cscli collections install crowdsecurity/http-cve crowdsecurity/iptables --downlo
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli collections install crowdsecurity/http-cve crowdsecurity/iptables --force
 
-# Proceed without prompting.
-cscli collections install crowdsecurity/http-cve crowdsecurity/iptables --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli collections install crowdsecurity/http-cve crowdsecurity/iptables -i
+cscli collections install crowdsecurity/http-cve crowdsecurity/iptables --interactive`,
 		},
 		removeHelp: cliHelp{
 			example: `# Uninstall some collections.
@@ -55,10 +54,9 @@ cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables --purge
 # Remove tainted items.
 cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables --force
 
-# Proceed without prompting.
-cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables -i
+cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables --interactive`,
 		},
 		upgradeHelp: cliHelp{
 			example: `# Upgrade some collections. If they are not currently installed, they are downloaded but not installed.
@@ -73,10 +71,9 @@ cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables --dry-ru
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
 cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables --force
 
-# Proceed without prompting.
-cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables --yes
-
-# The "--yes" parameter is implied when the command is not connected to a terminal, like pipes or scripts.`,
+# Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
+cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables -i
+cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables --interactive`,
 		},
 		inspectHelp: cliHelp{
 			example: `# Display metadata, state, metrics and dependencies of collections (installed or not).

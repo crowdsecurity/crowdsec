@@ -254,26 +254,22 @@ install_collection() {
         fi
     done
 
-    local YES=""
-
     if [[ ${SILENT} == "false" ]]; then
         COLLECTION_TO_INSTALL=($(whiptail --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
             log_err "user bailed out at collection selection"
             exit 1;
         fi;
-    else
-        YES="--yes"
     fi;
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
         # shellcheck disable=SC2248
-        ${CSCLI_BIN_INSTALLED} collections install "${collection}" --error ${YES}
+        ${CSCLI_BIN_INSTALLED} collections install "${collection}" --error
     done
 
     # shellcheck disable=SC2248
-    ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" --error ${YES}
+    ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" --error
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP addresses from being banned, feel free to remove it any time." 20 50
     fi
@@ -432,6 +428,10 @@ install_crowdsec() {
     [[ ! -f "${CROWDSEC_CONFIG_PATH}/console.yaml" ]]    && install -v -m 644 -D ./config/console.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
     [[ ! -f "${CROWDSEC_CONFIG_PATH}/context.yaml" ]]    && install -v -m 644 -D ./config/context.yaml "${CROWDSEC_CONSOLE_DIR}" > /dev/null || exit
 
+    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
+    fi
     install_bins
 
     if [[ ${DOCKER_MODE} == "false" ]]; then

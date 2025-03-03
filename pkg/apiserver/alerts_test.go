@@ -9,14 +9,22 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+)
+
+const (
+	passwordAuthType = "password"
+	apiKeyAuthType   = "apikey"
 )
 
 type LAPI struct {
@@ -24,19 +32,21 @@ type LAPI struct {
 	loginResp  models.WatcherAuthResponse
 	bouncerKey string
 	DBConfig   *csconfig.DatabaseCfg
+	DBClient   *database.Client
 }
 
 func SetupLAPITest(t *testing.T, ctx context.Context) LAPI {
 	t.Helper()
 	router, loginResp, config := InitMachineTest(t, ctx)
 
-	APIKey := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+	APIKey, dbClient := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 
 	return LAPI{
 		router:     router,
 		loginResp:  loginResp,
 		bouncerKey: APIKey,
 		DBConfig:   config.API.Server.DbConfig,
+		DBClient:   dbClient,
 	}
 }
 
@@ -51,9 +61,9 @@ func (l *LAPI) RecordResponse(t *testing.T, ctx context.Context, verb string, ur
 	require.NoError(t, err)
 
 	switch authType {
-	case "apikey":
+	case apiKeyAuthType:
 		req.Header.Add("X-Api-Key", l.bouncerKey)
-	case "password":
+	case passwordAuthType:
 		AddAuthHeaders(req, l.loginResp)
 	default:
 		t.Fatal("auth type not supported")
@@ -96,7 +106,7 @@ func AddAuthHeaders(request *http.Request, authResponse models.WatcherAuthRespon
 }
 
 func TestSimulatedAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_minibulk+simul.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_minibulk+simul.json")
@@ -115,7 +125,7 @@ func TestSimulatedAlert(t *testing.T) {
 }
 
 func TestCreateAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	// Create Alert with invalid format
 
@@ -138,8 +148,60 @@ func TestCreateAlert(t *testing.T) {
 	assert.Equal(t, `["1"]`, w.Body.String())
 }
 
-func TestCreateAlertChannels(t *testing.T) {
+func TestCreateAllowlistedAlert(t *testing.T) {
 	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+
+	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
+	require.NoError(t, err)
+	added, err := lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
+		{
+			Value: "10.0.0.0/24",
+		},
+		{
+			Value:      "192.168.0.0/24",
+			Expiration: strfmt.DateTime(time.Now().Add(-time.Hour)), // Expired item
+		},
+		{
+			Value: "127.0.0.1",
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 3, added)
+
+	// Create Alert with allowlisted IP
+	alertContent := GetAlertReaderFromFile(t, "./tests/alert_allowlisted.json")
+	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	// We should have no alert as the IP is allowlisted
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "null", w.Body.String())
+
+	// Create Alert with expired allowlisted IP
+	alertContent = GetAlertReaderFromFile(t, "./tests/alert_allowlisted_expired.json")
+	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	// We should have an alert as the IP is allowlisted but the item is expired
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "192.168.0.42")
+
+	// Create Alert with allowlisted IP but with decisions (manual ban)
+	alertContent = GetAlertReaderFromFile(t, "./tests/alert_sample.json")
+	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	// We should have an alert as the IP is allowlisted but the alert has decisions
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "127.0.0.1")
+}
+
+func TestCreateAlertChannels(t *testing.T) {
+	ctx := t.Context()
 	apiServer, config := NewAPIServer(t, ctx)
 	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
 	err := apiServer.InitController()
@@ -168,7 +230,7 @@ func TestCreateAlertChannels(t *testing.T) {
 }
 
 func TestAlertListFilters(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_ssh-bf.json")
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_ssh-bf.json")
@@ -337,7 +399,7 @@ func TestAlertListFilters(t *testing.T) {
 }
 
 func TestAlertBulkInsert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	// insert a bulk of 20 alerts to trigger bulk insert
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_bulk.json")
@@ -348,7 +410,7 @@ func TestAlertBulkInsert(t *testing.T) {
 }
 
 func TestListAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 	// List Alert with invalid filter
@@ -365,7 +427,7 @@ func TestListAlert(t *testing.T) {
 }
 
 func TestCreateAlertErrors(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	alertContent := GetAlertReaderFromFile(t, "./tests/alert_sample.json")
 
@@ -387,7 +449,7 @@ func TestCreateAlertErrors(t *testing.T) {
 }
 
 func TestDeleteAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 
@@ -411,7 +473,7 @@ func TestDeleteAlert(t *testing.T) {
 }
 
 func TestDeleteAlertByID(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
 
@@ -435,7 +497,7 @@ func TestDeleteAlertByID(t *testing.T) {
 }
 
 func TestDeleteAlertTrustedIPS(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := LoadTestConfig(t)
 	// IPv6 mocking doesn't seem to work.
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}

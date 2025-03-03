@@ -17,7 +17,7 @@ type ExprRuntimeDebug struct {
 	Outputs []OpOutput
 }
 
-var IndentStep = 4
+const IndentStep = 4
 
 // we use this struct to store the output of the expr runtime
 type OpOutput struct {
@@ -149,9 +149,9 @@ func autoQuote(v any) string {
 		// let's avoid printing long strings. it can happen ie. when we are debugging expr with `File()` or similar helpers
 		if len(x) > 40 {
 			return fmt.Sprintf("%q", x[:40]+"...")
-		} else {
-			return fmt.Sprintf("%q", x)
 		}
+
+		return fmt.Sprintf("%q", x)
 	default:
 		return fmt.Sprintf("%v", x)
 	}
