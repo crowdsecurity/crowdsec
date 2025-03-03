@@ -23,11 +23,11 @@ func ExprWrapParseQuery(params ...any) (any, error) {
 // parseQuery and parseQuery are copied net/url package, but allow semicolon in values
 func ParseQuery(query string) url.Values {
 	m := make(url.Values)
-	parseQuery(m, query)
+	ParseQueryIntoValues(m, query)
 	return m
 }
 
-func parseQuery(m url.Values, query string) {
+func ParseQueryIntoValues(m url.Values, query string) {
 	for query != "" {
 		var key string
 		key, query, _ = strings.Cut(query, "&")
