@@ -14,6 +14,12 @@ func JA4H(params ...any) (any, error) {
 	return ja4h.JA4H(req), nil
 }
 
+// just a expr wrapper for ParseQuery
+func ExprWrapParseQuery(params ...any) (any, error) {
+	query := params[0].(string)
+	return ParseQuery(query), nil
+}
+
 // parseQuery and parseQuery are copied net/url package, but allow semicolon in values
 func ParseQuery(query string) url.Values {
 	m := make(url.Values)
@@ -82,6 +88,13 @@ func unescape(input string) string {
 		res.WriteByte(ci)
 	}
 	return res.String()
+}
+
+// just a expr wrapper for ExtractQueryParam
+func ExprWrapExtractQueryParam(params ...any) (any, error) {
+	uri := params[0].(string)
+	param := params[1].(string)
+	return ExtractQueryParam(uri, param), nil
 }
 
 // ExtractQueryParam extracts values for a given query parameter from a raw URI string.
