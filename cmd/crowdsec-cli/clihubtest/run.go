@@ -111,7 +111,6 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
-		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.run(runAll, nucleiTargetHost, appSecHost, args)
