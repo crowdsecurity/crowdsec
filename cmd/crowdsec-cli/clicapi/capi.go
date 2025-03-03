@@ -40,7 +40,6 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

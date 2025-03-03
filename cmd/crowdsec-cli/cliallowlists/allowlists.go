@@ -228,7 +228,6 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 		Use:               "allowlists [action]",
 		Short:             "Manage centralized allowlists",
 		Aliases:           []string{"allowlist"},
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 	}
 

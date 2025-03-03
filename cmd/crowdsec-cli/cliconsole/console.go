@@ -45,7 +45,6 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "console [action]",
 		Short:             "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

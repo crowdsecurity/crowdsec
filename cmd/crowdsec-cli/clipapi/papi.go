@@ -35,7 +35,6 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "papi [action]",
 		Short:             "Manage interaction with Polling API (PAPI)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

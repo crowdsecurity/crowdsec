@@ -42,7 +42,6 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 		Example: `cscli hub list
 cscli hub update
 cscli hub upgrade`,
-		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 

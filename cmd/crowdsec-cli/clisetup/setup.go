@@ -35,7 +35,6 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 		Use:               "setup",
 		Short:             "Tools to configure crowdsec",
 		Long:              "Manage hub configuration and service detection",
-		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 	}
 

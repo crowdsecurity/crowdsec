@@ -409,7 +409,6 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 	}
 

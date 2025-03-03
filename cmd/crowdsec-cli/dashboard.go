@@ -64,7 +64,6 @@ func (cli *cliDashboard) NewCommand() *cobra.Command {
 		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 		`,
-		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup

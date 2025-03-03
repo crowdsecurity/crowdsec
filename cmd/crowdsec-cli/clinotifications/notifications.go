@@ -56,7 +56,6 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 		Use:               "notifications [action]",
 		Short:             "Helper for notification plugin configuration",
 		Long:              "To list/inspect/test notification template",
-		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {

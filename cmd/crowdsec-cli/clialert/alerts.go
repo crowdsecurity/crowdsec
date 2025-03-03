@@ -200,7 +200,6 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "alerts [action]",
 		Short:             "Manage alerts",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Aliases:           []string{"alert"},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
