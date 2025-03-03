@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
@@ -110,6 +111,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.run(runAll, nucleiTargetHost, appSecHost, args)

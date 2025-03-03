@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -99,7 +100,7 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Get status of the Polling API",
-		Args:              cobra.MinimumNArgs(0),
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -154,7 +155,7 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "sync",
 		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
-		Args:              cobra.MinimumNArgs(0),
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

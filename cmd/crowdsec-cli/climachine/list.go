@@ -13,6 +13,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clientinfo"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -125,7 +126,7 @@ func (cli *cliMachines) newListCmd() *cobra.Command {
 		Short:             "list all machines in the database",
 		Long:              `list all machines in the database with their status and last heartbeat`,
 		Example:           `cscli machines list`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.List(cmd.Context(), color.Output, cli.db)
