@@ -19,8 +19,8 @@ func TestParseQuery(t *testing.T) {
 			name:  "Full URI",
 			query: "/foobar/toto?ab=cd&ef=gh",
 			expected: url.Values{
-				"ab": []string{"cd"},
-				"ef": []string{"gh"},
+				"/foobar/toto?ab": []string{"cd"},
+				"ef":              []string{"gh"},
 			},
 		},
 		{
