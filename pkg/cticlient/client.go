@@ -1,6 +1,7 @@
 package cticlient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ type CrowdsecCTIClient struct {
 	Logger     *log.Entry
 }
 
-func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map[string]string) ([]byte, error) {
+func (c *CrowdsecCTIClient) doRequest(ctx context.Context, method string, endpoint string, params map[string]string) ([]byte, error) {
 	url := CTIBaseUrl + endpoint
 	if len(params) > 0 {
 		url += "?"
@@ -41,7 +42,8 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 			url += fmt.Sprintf("%s=%s&", k, v)
 		}
 	}
-	req, err := http.NewRequest(method, url, nil)
+
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -53,78 +55,103 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusForbidden {
 			return nil, ErrUnauthorized
 		}
+
 		if resp.StatusCode == http.StatusTooManyRequests {
 			return nil, ErrLimit
 		}
+
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, ErrNotFound
 		}
+
 		return nil, fmt.Errorf("unexpected http code : %s", resp.Status)
 	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	return respBody, nil
 }
 
 func (c *CrowdsecCTIClient) GetIPInfo(ip string) (*SmokeItem, error) {
-	body, err := c.doRequest(http.MethodGet, smokeEndpoint+"/"+ip, nil)
+	ctx := context.TODO()
+
+	body, err := c.doRequest(ctx, http.MethodGet, smokeEndpoint+"/"+ip, nil)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return &SmokeItem{}, nil
 		}
+
 		return nil, err
 	}
+
 	item := SmokeItem{}
+
 	err = json.Unmarshal(body, &item)
 	if err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
 func (c *CrowdsecCTIClient) SearchIPs(ips []string) (*SearchIPResponse, error) {
+	ctx := context.TODO()
 	params := make(map[string]string)
 	params["ips"] = strings.Join(ips, ",")
-	body, err := c.doRequest(http.MethodGet, smokeEndpoint, params)
+
+	body, err := c.doRequest(ctx, http.MethodGet, smokeEndpoint, params)
 	if err != nil {
 		return nil, err
 	}
+
 	searchIPResponse := SearchIPResponse{}
+
 	err = json.Unmarshal(body, &searchIPResponse)
 	if err != nil {
 		return nil, err
 	}
+
 	return &searchIPResponse, nil
 }
 
 func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
+	ctx := context.TODO()
 	paramsMap := make(map[string]string)
+
 	if params.Page != nil {
 		paramsMap["page"] = fmt.Sprintf("%d", *params.Page)
 	}
+
 	if params.Since != nil {
 		paramsMap["since"] = *params.Since
 	}
+
 	if params.Limit != nil {
 		paramsMap["limit"] = fmt.Sprintf("%d", *params.Limit)
 	}
 
-	body, err := c.doRequest(http.MethodGet, fireEndpoint, paramsMap)
+	body, err := c.doRequest(ctx, http.MethodGet, fireEndpoint, paramsMap)
 	if err != nil {
 		return nil, err
 	}
+
 	fireResponse := FireResponse{}
+
 	err = json.Unmarshal(body, &fireResponse)
 	if err != nil {
 		return nil, err
 	}
+
 	return &fireResponse, nil
 }
 
@@ -133,13 +160,16 @@ func NewCrowdsecCTIClient(options ...func(*CrowdsecCTIClient)) *CrowdsecCTIClien
 	for _, option := range options {
 		option(client)
 	}
+
 	if client.httpClient == nil {
 		client.httpClient = &http.Client{}
 	}
-	// we cannot return with a ni logger, so we set a default one
+
+	// we cannot return with a nil logger, so we set a default one
 	if client.Logger == nil {
 		client.Logger = log.NewEntry(log.New())
 	}
+
 	return client
 }
 
