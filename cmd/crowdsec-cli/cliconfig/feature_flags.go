@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -121,7 +122,7 @@ func (cli *cliConfig) newFeatureFlagsCmd() *cobra.Command {
 		Use:               "feature-flags",
 		Short:             "Displays feature flag status",
 		Long:              `Displays the supported feature flags and their current status.`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.featureFlags(showRetired)

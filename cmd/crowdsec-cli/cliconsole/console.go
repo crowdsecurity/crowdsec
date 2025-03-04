@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -45,7 +46,6 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "console [action]",
 		Short:             "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -191,7 +191,7 @@ After running this command your will need to validate the enrollment in the weba
 		cscli console enroll --disable context YOUR-ENROLL-KEY
 
 		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT}
@@ -224,7 +224,7 @@ func (cli *cliConsole) newEnableCmd() *cobra.Command {
 	var enableAll bool
 
 	cmd := &cobra.Command{
-		Use:     "enable [option]",
+		Use:     "enable [option]...",
 		Short:   "Enable a console option",
 		Example: "sudo cscli console enable tainted",
 		Long: `
@@ -277,6 +277,9 @@ Disable given information push to the central API.`,
 				}
 				log.Infof("All features have been disabled")
 			} else {
+				if len(args) == 0 {
+					return errors.New("you must specify at least one feature to disable")
+				}
 				if err := cli.setConsoleOpts(args, false); err != nil {
 					return err
 				}
@@ -300,6 +303,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		Use:               "status",
 		Short:             "Shows status of the console options",
 		Example:           `sudo cscli console status`,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

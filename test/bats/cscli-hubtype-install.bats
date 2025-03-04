@@ -47,13 +47,13 @@ get_latest_version() {
 
 @test "cscli <hubtype> install (no argument)" {
     rune -1 cscli parsers install
-    refute_output
+    assert_output --partial 'Usage:'
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 }
 
 @test "cscli <hubtype> install (aliased)" {
     rune -1 cscli parser install
-    refute_output
+    assert_output --partial 'Usage:'
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 }
 

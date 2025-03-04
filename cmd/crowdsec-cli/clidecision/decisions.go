@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -136,7 +137,6 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 		Example: `cscli decisions [action] [filter]`,
 		Aliases: []string{"decision"},
 		/*TBD example*/
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -290,7 +290,7 @@ cscli decisions list -r 1.2.3.0/24
 cscli decisions list -s crowdsecurity/ssh-bf
 cscli decisions list --origin lists --scenario list_name
 `,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.list(cmd.Context(), filter, NoSimu, contained, printMachine)
@@ -427,7 +427,7 @@ cscli decisions add --ip 1.2.3.4 --duration 24h --type captcha
 cscli decisions add --scope username --value foobar
 `,
 		/*TBD : fix long and example*/
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.add(cmd.Context(), addIP, addRange, addDuration, addValue, addScope, addReason, addType, bypassAllowlist)
@@ -532,6 +532,7 @@ func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete [options]",
 		Short:             "Delete decisions",
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"remove"},
 		Example: `cscli decisions delete -r 1.2.3.0/24

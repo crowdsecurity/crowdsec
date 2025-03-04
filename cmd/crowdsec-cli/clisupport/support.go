@@ -22,6 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
@@ -409,7 +410,6 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 	}
 
@@ -625,7 +625,7 @@ func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 		Example: `cscli support dump
 cscli support dump -f /tmp/crowdsec-support.zip
 `,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			output := cli.cfg().Cscli.Output

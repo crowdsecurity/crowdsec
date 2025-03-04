@@ -21,6 +21,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -200,7 +201,6 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "alerts [action]",
 		Short:             "Manage alerts",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Aliases:           []string{"alert"},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
@@ -352,6 +352,7 @@ cscli alerts list --origin lists
 cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
 		Long:              `List alerts with optional filters`,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.list(cmd.Context(), alertListFilter, limit, contained, printMachine)
@@ -465,7 +466,7 @@ cscli alerts delete --range 1.2.3.0/24
 cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"remove"},
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			if deleteAll {
 				return nil
@@ -545,12 +546,9 @@ func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 		Use:               `inspect "alert_id"`,
 		Short:             `Show info about an alert`,
 		Example:           `cscli alerts inspect 123`,
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				_ = cmd.Help()
-				return errors.New("missing alert_id")
-			}
 			return cli.inspect(cmd.Context(), details, args...)
 		},
 	}
@@ -572,6 +570,7 @@ func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 		Short: `Flush alerts
 /!\ This command can be used only on the same machine than the local API`,
 		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

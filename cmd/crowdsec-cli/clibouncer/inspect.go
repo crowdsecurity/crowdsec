@@ -10,6 +10,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clientinfo"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -78,7 +79,7 @@ func (cli *cliBouncers) newInspectCmd() *cobra.Command {
 		Use:               "inspect [bouncer_name]",
 		Short:             "inspect a bouncer by name",
 		Example:           `cscli bouncers inspect "bouncer1"`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validBouncerID,
 		RunE: func(cmd *cobra.Command, args []string) error {
