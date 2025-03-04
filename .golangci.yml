@@ -214,7 +214,6 @@ linters-settings:
     enable-all: true
     disabled-checks:
       - paramTypeCombine
-      - httpNoBody
       - ifElseChain
       - importShadow
       - hugeParam

@@ -183,7 +183,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 
 	client := http.Client{}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *blocklist.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *blocklist.URL, http.NoBody)
 	if err != nil {
 		return nil, false, err
 	}

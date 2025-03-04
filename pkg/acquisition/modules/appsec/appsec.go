@@ -377,7 +377,7 @@ func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
 		Timeout: 200 * time.Millisecond,
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, http.NoBody)
 	if err != nil {
 		log.Errorf("Error creating request: %s", err)
 		return false
