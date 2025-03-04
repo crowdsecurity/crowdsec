@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -396,7 +397,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		URL:                  parsedURL,
 		Proto:                r.Proto,
 		Body:                 body,
-		Args:                 ParseQuery(parsedURL.RawQuery),
+		Args:                 exprhelpers.ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,
