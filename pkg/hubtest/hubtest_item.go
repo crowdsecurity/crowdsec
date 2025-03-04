@@ -258,16 +258,19 @@ func (t *HubTestItem) Clean() error {
 }
 
 func (t *HubTestItem) RunWithNucleiTemplate() error {
-	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
-
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
 	}
 
-	if err := os.Chdir(testPath); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %w", testPath, err)
+	restoreDir, err := chdirTemp(testPath)
+	if err != nil {
+		return err
 	}
+
+	defer restoreDir()
+
+	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
 
 	// machine add
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
@@ -382,16 +385,36 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
+// chdirTemp changes the working directory to newDir and returns a function to restore it.
+func chdirTemp(dir string) (func(), error) {
+	origDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		return nil, fmt.Errorf("failed to change directory to %s: %w", dir, err)
+	}
+
+	return func() {
+		if err := os.Chdir(origDir); err != nil {
+			log.Printf("failed to restore directory: %v", err)
+		}
+	}, nil
+}
+
 func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
 	}
 
-	currentDir, err := os.Getwd() // xx
+	restoreDir, err := chdirTemp(testPath)
 	if err != nil {
-		return fmt.Errorf("can't get current directory: %+v", err)
+		return err
 	}
+
+	defer restoreDir()
 
 	// create runtime, data, hub folders
 	if err = createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
@@ -431,10 +454,6 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	logType := t.Config.LogType
 	dsn := fmt.Sprintf("file://%s", logFile)
 
-	if err = os.Chdir(testPath); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %w", testPath, err)
-	}
-
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
 		return fmt.Errorf("unable to stat log file '%s': %w", logFile, err)
@@ -473,10 +492,6 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 
 	if err != nil {
 		return fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
-	}
-
-	if err := os.Chdir(currentDir); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %w", currentDir, err)
 	}
 
 	// assert parsers
