@@ -130,7 +130,6 @@ func newInstallItemSpec(path string, subs []string) (*itemSpec, error) {
 	// .../config/postoverflow/stage/file.yaml
 	// .../config/scenarios/scenar.yaml
 	// .../config/collections/linux.yaml //file is empty
-
 	if len(subs) < 2 {
 		return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 	}
@@ -239,7 +238,6 @@ func newLocalItem(h *Hub, path string, spec *itemSpec) (*Item, error) {
 		State: ItemState{
 			LocalPath: path,
 			local:     true,
-			Installed: true,
 			UpToDate:  true,
 		},
 	}
@@ -331,14 +329,14 @@ func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget strin
 				continue
 			}
 
-			src, err := item.DownloadPath()
+			src, err := item.PathForDownload()
 			if err != nil {
 				return nil, err
 			}
 
 			if spec.path == src {
 				h.logger.Tracef("marking %s as downloaded", item.Name)
-				item.State.Downloaded = true
+				item.State.DownloadPath = src
 			}
 		} else if !hasPathSuffix(symlinkTarget, item.RemotePath) {
 			// wrong file
@@ -389,7 +387,7 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 		// see if there's another installed item of the same name
 		theOtherItem := h.GetItem(spec.ftype, item.Name)
 		if theOtherItem != nil {
-			if theOtherItem.State.Installed {
+			if theOtherItem.State.IsInstalled() {
 				h.logger.Warnf("multiple %s named %s: ignoring %s", spec.ftype, item.Name, theOtherItem.State.LocalPath)
 			}
 		}
@@ -398,12 +396,10 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 		if err != nil {
 			return err
 		}
-
-		item.State.LocalPath = spec.path
 	}
 
 	if item == nil {
-		h.logger.Infof("Ignoring file %s of type %s", spec.path, spec.ftype)
+		h.logger.Warningf("Ignoring file %s of type %s", spec.path, spec.ftype)
 		return nil
 	}
 
@@ -426,12 +422,12 @@ func (i *Item) checkSubItemVersions() []string {
 	}
 
 	// ensure all the sub-items are installed, or tag the parent as tainted
-	i.hub.logger.Tracef("checking submembers of %s installed:%t", i.Name, i.State.Installed)
+	i.hub.logger.Tracef("checking submembers of %s installed:%t", i.Name, i.State.IsInstalled())
 
 	for sub := range i.CurrentDependencies().SubItems(i.hub) {
-		i.hub.logger.Tracef("check %s installed:%t", sub.Name, sub.State.Installed)
+		i.hub.logger.Tracef("check %s installed:%t", sub.Name, sub.State.IsInstalled())
 
-		if !i.State.Installed {
+		if !i.State.IsInstalled() {
 			continue
 		}
 
@@ -453,7 +449,7 @@ func (i *Item) checkSubItemVersions() []string {
 			continue
 		}
 
-		if !sub.State.Installed && i.State.Installed {
+		if !sub.State.IsInstalled() && i.State.IsInstalled() {
 			i.addTaint(sub)
 			warn = append(warn, fmt.Sprintf("%s is tainted by missing %s", i.Name, sub.FQName()))
 
@@ -588,7 +584,7 @@ func (h *Hub) localSync() error {
 			sub.State.BelongsToCollections = insertInOrderNoCase(sub.State.BelongsToCollections, item.Name)
 		}
 
-		if !item.State.Installed {
+		if !item.State.IsInstalled() {
 			continue
 		}
 
@@ -619,6 +615,10 @@ func (h *Hub) localSync() error {
 func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
+	if !inhub {
+		i.State.LocalPath = path
+	}
+
 	i.State.LocalHash, err = downloader.SHA256(path)
 	if err != nil {
 		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
@@ -647,10 +647,6 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 	if i.State.LocalVersion == "?" {
 		i.hub.logger.Tracef("got tainted match for %s: %s", i.Name, path)
 
-		if !inhub {
-			i.State.Installed = true
-		}
-
 		i.State.UpToDate = false
 		i.addTaint(i)
 
@@ -659,13 +655,10 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 
 	// we got an exact match, update struct
 
-	i.State.Downloaded = true
-
 	if !inhub {
 		i.hub.logger.Tracef("found exact match for %s, version is %s, latest is %s", i.Name, i.State.LocalVersion, i.Version)
 		i.State.Tainted = false
 		// if we're walking the hub, present file doesn't means installed file
-		i.State.Installed = true
 	}
 
 	if i.State.LocalVersion == i.Version {

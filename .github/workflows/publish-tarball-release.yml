@@ -1,4 +1,3 @@
-# .github/workflows/build-docker-image.yml
 name: Release
 
 on:
