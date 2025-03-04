@@ -58,17 +58,20 @@ func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost stri
 
 	patternDir := cfg.ConfigPaths.PatternDir
 
+	ranTests := []*hubtest.HubTestItem{}
+
 	for _, test := range hubPtr.Tests {
 		if batch != 0 {
 			// only run the test if it's in the right bucket
 			if batch != bucketIndexFor(test.Name, batchTotal) {
 				continue
 			}
-
 		}
 
+		ranTests = append(ranTests, test)
+
 		if cfg.Cscli.Output == "human" {
-			fmt.Printf("Running test '%s'", test.Name)
+			fmt.Printf("Running test '%s'\n", test.Name)
 		}
 
 		err := test.Run(patternDir)
@@ -76,6 +79,9 @@ func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost stri
 			log.Errorf("running test '%s' failed: %+v", test.Name, err)
 		}
 	}
+
+	// in case of partial batch run, report only the tests that were actually attempted
+	hubPtr.Tests = ranTests
 
 	return nil
 }
