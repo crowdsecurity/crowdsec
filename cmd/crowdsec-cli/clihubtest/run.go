@@ -4,43 +4,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-// bucketIndexFor returns the bucket index for a given string.
-func bucketIndexFor(s string, numBuckets uint32) uint32 {
-	hasher := fnv.New32a()
-	_, _ = hasher.Write([]byte(s))
-
-	return hasher.Sum32() % numBuckets
-}
-
-
-func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost string, args []string, batch uint32, batchTotal uint32) error {
+func (cli *cliHubTest) run(all bool, nucleiTargetHost string, appSecHost string, args []string, maxJobs uint) error {
 	cfg := cli.cfg()
 
-	if batch > 0 {
-		runAll = true
-	}
-
-	if !runAll && len(args) == 0 {
+	if !all && len(args) == 0 {
 		return errors.New("please provide test to run or --all flag")
 	}
 
 	hubPtr.NucleiTargetHost = nucleiTargetHost
 	hubPtr.AppSecHost = appSecHost
 
-	if runAll {
+	if all {
 		if err := hubPtr.LoadAllTests(); err != nil {
 			return fmt.Errorf("unable to load all tests: %+v", err)
 		}
@@ -58,32 +46,20 @@ func (cli *cliHubTest) run(runAll bool, nucleiTargetHost string, appSecHost stri
 
 	patternDir := cfg.ConfigPaths.PatternDir
 
-	ranTests := []*hubtest.HubTestItem{}
+	var eg errgroup.Group
+	eg.SetLimit(int(maxJobs))
 
 	for _, test := range hubPtr.Tests {
-		if batch != 0 {
-			// only run the test if it's in the right bucket
-			if batch != bucketIndexFor(test.Name, batchTotal) {
-				continue
-			}
-		}
-
-		ranTests = append(ranTests, test)
-
 		if cfg.Cscli.Output == "human" {
 			fmt.Printf("Running test '%s'\n", test.Name)
 		}
 
-		err := test.Run(patternDir)
-		if err != nil {
-			log.Errorf("running test '%s' failed: %+v", test.Name, err)
-		}
+		eg.Go(func() error {
+			return test.Run(patternDir)
+		})
 	}
 
-	// in case of partial batch run, report only the tests that were actually attempted
-	hubPtr.Tests = ranTests
-
-	return nil
+	return eg.Wait()
 }
 
 func printParserFailures(test *hubtest.HubTestItem) {
@@ -129,20 +105,25 @@ func printScenarioFailures(test *hubtest.HubTestItem) {
 func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	var (
 		noClean          bool
-		runAll           bool
+		all              bool
 		forceClean       bool
 		nucleiTargetHost string
 		appSecHost       string
-		batch            uint32
-		batchTotal       uint32
 	)
+
+	maxJobs := uint(runtime.NumCPU())
 
 	cmd := &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.run(runAll, nucleiTargetHost, appSecHost, args, batch, batchTotal)
+			if all {
+				fmt.Printf("Running all tests (max_jobs: %d)\n", maxJobs)
+
+			}
+
+			return cli.run(all, nucleiTargetHost, appSecHost, args, maxJobs)
 		},
 		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -239,9 +220,8 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
 	cmd.Flags().StringVar(&nucleiTargetHost, "target", hubtest.DefaultNucleiTarget, "Target for AppSec Test")
 	cmd.Flags().StringVar(&appSecHost, "host", hubtest.DefaultAppsecHost, "Address to expose AppSec for hubtest")
-	cmd.Flags().BoolVar(&runAll, "all", false, "Run all tests")
-	cmd.Flags().Uint32Var(&batch, "batch", 0, "Run <num> batch")
-	cmd.Flags().Uint32Var(&batchTotal, "batch-total", 0, "Split tests in <num> batches")
+	cmd.Flags().BoolVar(&all, "all", false, "Run all tests")
+	cmd.Flags().UintVar(&maxJobs, "max-jobs", maxJobs, "Run <num> batch")
 
 	return cmd
 }
