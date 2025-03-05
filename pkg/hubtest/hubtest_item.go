@@ -176,7 +176,7 @@ func (t *HubTestItem) installHubItems(names []string, installFunc func(string) e
 	return nil
 }
 
-func (t *HubTestItem) InstallHub() error {
+func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	if err := t.installHubItems(t.Config.Parsers, t.installParser); err != nil {
 		return err
 	}
@@ -220,8 +220,6 @@ func (t *HubTestItem) InstallHub() error {
 	if err := hub.Load(); err != nil {
 		return err
 	}
-
-	ctx := context.Background()
 
 	// install data for parsers if needed
 	for _, item := range hub.GetInstalledByType(cwhub.PARSERS, true) {
@@ -384,7 +382,7 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithLogFile(patternDir string) error {
+func (t *HubTestItem) RunWithLogFile(ctx context.Context, patternDir string) error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
@@ -420,7 +418,7 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	}
 
 	// install the hub in the runtime folder
-	if err := t.InstallHub(); err != nil {
+	if err := t.InstallHub(ctx); err != nil {
 		return fmt.Errorf("unable to install hub in '%s': %w", t.RuntimeHubPath, err)
 	}
 
@@ -559,7 +557,7 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	return nil
 }
 
-func (t *HubTestItem) Run(patternDir string) error {
+func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	var err error
 
 	t.Success = false
@@ -620,12 +618,12 @@ func (t *HubTestItem) Run(patternDir string) error {
 	}
 
 	// install the hub in the runtime folder
-	if err = t.InstallHub(); err != nil {
+	if err = t.InstallHub(ctx); err != nil {
 		return fmt.Errorf("unable to install hub in '%s': %w", t.RuntimeHubPath, err)
 	}
 
 	if t.Config.LogFile != "" {
-		return t.RunWithLogFile(patternDir)
+		return t.RunWithLogFile(ctx, patternDir)
 	}
 
 	if t.Config.NucleiTemplate != "" {

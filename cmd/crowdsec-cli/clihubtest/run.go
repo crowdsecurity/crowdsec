@@ -1,6 +1,7 @@
 package clihubtest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) run(all bool, nucleiTargetHost string, appSecHost string, args []string, maxJobs uint) error {
+func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost string, appSecHost string, args []string, maxJobs uint) error {
 	cfg := cli.cfg()
 
 	if !all && len(args) == 0 {
@@ -55,7 +56,7 @@ func (cli *cliHubTest) run(all bool, nucleiTargetHost string, appSecHost string,
 		}
 
 		eg.Go(func() error {
-			return test.Run(patternDir)
+			return test.Run(ctx, patternDir)
 		})
 	}
 
@@ -117,13 +118,13 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 		Use:               "run",
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				fmt.Printf("Running all tests (max_jobs: %d)\n", maxJobs)
 
 			}
 
-			return cli.run(all, nucleiTargetHost, appSecHost, args, maxJobs)
+			return cli.run(cmd.Context(), all, nucleiTargetHost, appSecHost, args, maxJobs)
 		},
 		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
