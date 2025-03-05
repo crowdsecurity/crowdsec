@@ -37,7 +37,7 @@ func TestConfigure(t *testing.T) {
 		{
 			config: `
 foobar: bla`,
-			expectedErr: "invalid configuration: listen_addr is required",
+			expectedErr: "invalid configuration: listen_addr or listen_socket is required",
 		},
 		{
 			config: `
