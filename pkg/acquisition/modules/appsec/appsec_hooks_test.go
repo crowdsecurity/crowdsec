@@ -358,6 +358,48 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 			},
 		},
+		{
+			name:             "on_match: alert only for inband with default config",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^tot"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 3)
+				require.Equal(t, types.APPSEC, events[0].Type) // The actual alert
+				require.NotNil(t, events[0].Overflow.Alert)
+				require.Equal(t, types.LOG, events[1].Type) // The event for the inband match
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.False(t, events[1].Appsec.HasOutBandMatches)
+				require.Equal(t, types.LOG, events[2].Type) // The event for the outband match
+				require.False(t, events[2].Appsec.HasInBandMatches)
+				require.True(t, events[2].Appsec.HasOutBandMatches)
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
