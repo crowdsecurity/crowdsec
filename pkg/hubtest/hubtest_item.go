@@ -269,6 +269,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
+	cscliRegisterCmd.Env = []string{"RUNTIME="+testPath}
 
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
@@ -282,6 +283,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliBouncerCmd.Dir = testPath
+	cscliBouncerCmd.Env = []string{"RUNTIME="+testPath}
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
@@ -295,6 +297,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
 	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecDaemon.Dir = testPath
+	crowdsecDaemon.Env = []string{"RUNTIME="+testPath}
 
 	crowdsecDaemon.Start()
 
@@ -437,6 +440,7 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
+	cscliRegisterCmd.Env = []string{"RUNTIME="+testPath}
 
 	log.Debugf("%s", cscliRegisterCmd.String())
 
@@ -457,6 +461,7 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecCmd.Dir = testPath
+	crowdsecCmd.Env = []string{"RUNTIME="+testPath}
 
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
