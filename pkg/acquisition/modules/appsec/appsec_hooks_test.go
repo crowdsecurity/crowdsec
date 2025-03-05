@@ -332,6 +332,41 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 			},
 		},
+		{
+			name:             "on_match: SendAlert() with out-of-band rule",
+			expected_load_ok: true,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == false", Apply: []string{"SendAlert()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusOK, statusCode)
+				// We have both an event an overflow
+				require.Len(t, events, 2)
+				require.Equal(t, types.LOG, events[0].Type)
+				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Nil(t, events[0].Overflow.Alert)
+				require.NotNil(t, events[1].Overflow.Alert)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
