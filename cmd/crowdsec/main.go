@@ -186,9 +186,10 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
+func newLogLevel(curLevelPtr *log.Level, f *Flags) (*log.Level, bool) {
 	// mother of all defaults
 	ret := log.InfoLevel
+	logLevelViaFlag := true
 
 	// keep if already set
 	if curLevelPtr != nil {
@@ -210,14 +211,16 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	case f.LogLevelFatal:
 		ret = log.FatalLevel
 	default:
+		// We set logLevelViaFlag to false in default cause no flag was provided
+		logLevelViaFlag = false
 	}
 
 	if curLevelPtr != nil && ret == *curLevelPtr {
 		// avoid returning a new ptr to the same value
-		return curLevelPtr
+		return curLevelPtr, logLevelViaFlag
 	}
 
-	return &ret
+	return &ret, logLevelViaFlag
 }
 
 // LoadConfig returns a configuration parsed from configuration file
@@ -230,8 +233,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	if err := trace.Init(filepath.Join(cConfig.ConfigPaths.DataDir, "trace")); err != nil {
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
-
-	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
+	var logLevelViaFlag bool
+	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, flags)
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
@@ -250,7 +253,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs); err != nil {
+		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
 		return nil, err
 	}
 

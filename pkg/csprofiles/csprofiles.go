@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 type Runtime struct {
@@ -34,11 +35,10 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		runtime := &Runtime{}
 
 		xlog := log.New()
-		if err := types.ConfigureLogger(xlog); err != nil {
+		if err := types.ConfigureLogger(xlog, ptr.Of(log.InfoLevel)); err != nil {
 			return nil, fmt.Errorf("while configuring profiles-specific logger: %w", err)
 		}
 
-		xlog.SetLevel(log.InfoLevel)
 		runtime.Logger = xlog.WithFields(log.Fields{
 			"type": "profile",
 			"name": profile.Name,

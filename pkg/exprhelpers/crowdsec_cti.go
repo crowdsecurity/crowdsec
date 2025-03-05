@@ -44,11 +44,8 @@ func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.L
 		*ttl = 5 * time.Minute
 	}
 	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, logLevel); err != nil {
 		return fmt.Errorf("while configuring datasource logger: %w", err)
-	}
-	if logLevel != nil {
-		clog.SetLevel(*logLevel)
 	}
 	subLogger := clog.WithField("type", "crowdsec-cti")
 	CrowdsecCTIInitCache(*size, *ttl)

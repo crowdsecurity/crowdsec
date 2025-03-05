@@ -45,7 +45,7 @@ func ValidateContextExpr(key string, expressions []string) error {
 
 func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, nil); err != nil {
 		return fmt.Errorf("couldn't create logger for alert context: %w", err)
 	}
 

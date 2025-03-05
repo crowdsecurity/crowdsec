@@ -24,6 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -345,11 +346,10 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog); err != nil {
+		if err = types.ConfigureLogger(clog, ptr.Of(log.DebugLevel)); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
-		clog.SetLevel(log.DebugLevel)
 		bucketFactory.logger = clog.WithFields(log.Fields{
 			"cfg":  bucketFactory.BucketName,
 			"name": bucketFactory.Name,
