@@ -53,7 +53,6 @@ var (
 	// settings
 	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
-	logLevelViaFlag   bool
 )
 
 type Flags struct {
@@ -187,10 +186,10 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
+func newLogLevel(curLevelPtr *log.Level, f *Flags) (*log.Level, bool) {
 	// mother of all defaults
 	ret := log.InfoLevel
-	logLevelViaFlag = true
+	logLevelViaFlag := true
 
 	// keep if already set
 	if curLevelPtr != nil {
@@ -218,10 +217,10 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 	if curLevelPtr != nil && ret == *curLevelPtr {
 		// avoid returning a new ptr to the same value
-		return curLevelPtr
+		return curLevelPtr, logLevelViaFlag
 	}
 
-	return &ret
+	return &ret, logLevelViaFlag
 }
 
 // LoadConfig returns a configuration parsed from configuration file
@@ -234,8 +233,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	if err := trace.Init(filepath.Join(cConfig.ConfigPaths.DataDir, "trace")); err != nil {
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
-
-	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
+	var logLevelViaFlag bool
+	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, flags)
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
