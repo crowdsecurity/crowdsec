@@ -333,7 +333,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		} else {
 			r.Proto = "HTTP/" + string(major) + "." + string(minor)
 		}
-	} else {
+	} else if httpVersion != "" {
 		logger.Warnf("Invalid value %s for HTTP version header", httpVersion)
 	}
 
