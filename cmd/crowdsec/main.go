@@ -53,6 +53,7 @@ var (
 	// settings
 	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
+	logLevelViaFlag   bool
 )
 
 type Flags struct {
@@ -189,6 +190,7 @@ func (f *Flags) Parse() {
 func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	// mother of all defaults
 	ret := log.InfoLevel
+	logLevelViaFlag = true
 
 	// keep if already set
 	if curLevelPtr != nil {
@@ -210,6 +212,8 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	case f.LogLevelFatal:
 		ret = log.FatalLevel
 	default:
+		// We set logLevelViaFlag to false in default cause no flag was provided
+		logLevelViaFlag = false
 	}
 
 	if curLevelPtr != nil && ret == *curLevelPtr {
@@ -250,7 +254,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs); err != nil {
+		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
 		return nil, err
 	}
 
