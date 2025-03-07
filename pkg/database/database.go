@@ -52,12 +52,8 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	}
 	/*The logger that will be used by db operations*/
 	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
 		return nil, fmt.Errorf("while configuring db logger: %w", err)
-	}
-
-	if config.LogLevel != nil {
-		clog.SetLevel(*config.LogLevel)
 	}
 
 	entLogger := clog.WithField("context", "ent")

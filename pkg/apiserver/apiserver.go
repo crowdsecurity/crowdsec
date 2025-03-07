@@ -118,12 +118,8 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
 	clog := log.New()
 
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
 		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
-	}
-
-	if config.LogLevel != nil {
-		clog.SetLevel(*config.LogLevel)
 	}
 
 	if config.LogMedia != "file" {

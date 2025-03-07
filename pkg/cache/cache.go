@@ -59,11 +59,10 @@ func CacheInit(cfg CacheCfg) error {
 
 	clog := log.New()
 
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, cfg.LogLevel); err != nil {
 		return fmt.Errorf("while creating cache logger: %w", err)
 	}
 
-	clog.SetLevel(*cfg.LogLevel)
 	cfg.Logger = clog.WithField("cache", cfg.Name)
 
 	tmpCache := gcache.New(cfg.Size)
