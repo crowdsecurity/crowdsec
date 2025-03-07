@@ -267,7 +267,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"RUNTIME="+testPath}
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath}
 
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
@@ -281,7 +281,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliBouncerCmd.Dir = testPath
-	cscliBouncerCmd.Env = []string{"RUNTIME="+testPath}
+	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath}
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
@@ -295,7 +295,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
 	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecDaemon.Dir = testPath
-	crowdsecDaemon.Env = []string{"RUNTIME="+testPath}
+	crowdsecDaemon.Env = []string{"TESTDIR="+testPath}
 
 	crowdsecDaemon.Start()
 
@@ -438,7 +438,7 @@ func (t *HubTestItem) RunWithLogFile(ctx context.Context, patternDir string) err
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"RUNTIME="+testPath}
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath}
 
 	log.Debugf("%s", cscliRegisterCmd.String())
 
@@ -459,7 +459,7 @@ func (t *HubTestItem) RunWithLogFile(ctx context.Context, patternDir string) err
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecCmd.Dir = testPath
-	crowdsecCmd.Env = []string{"RUNTIME="+testPath}
+	crowdsecCmd.Env = []string{"TESTDIR="+testPath}
 
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
