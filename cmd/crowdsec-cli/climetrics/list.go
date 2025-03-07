@@ -11,6 +11,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 )
 
@@ -83,7 +84,7 @@ func (cli *cliMetrics) newListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "List available types of metrics.",
 		Long:              `List available types of metrics.`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.list()

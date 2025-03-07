@@ -1,20 +1,33 @@
-package appsec
-
-// This file is mostly stolen from net/url package, but with some modifications to allow less strict parsing of query strings
+package exprhelpers
 
 import (
+	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/ja4h"
 )
+
+// JA4H(req *http.Request) string
+func JA4H(params ...any) (any, error) {
+	req := params[0].(*http.Request)
+	return ja4h.JA4H(req), nil
+}
+
+// just a expr wrapper for ParseQuery
+func ExprWrapParseQuery(params ...any) (any, error) {
+	query := params[0].(string)
+	return ParseQuery(query), nil
+}
 
 // parseQuery and parseQuery are copied net/url package, but allow semicolon in values
 func ParseQuery(query string) url.Values {
 	m := make(url.Values)
-	parseQuery(m, query)
+	ParseQueryIntoValues(m, query)
 	return m
 }
 
-func parseQuery(m url.Values, query string) {
+func ParseQueryIntoValues(m url.Values, query string) {
 	for query != "" {
 		var key string
 		key, query, _ = strings.Cut(query, "&")
@@ -75,4 +88,37 @@ func unescape(input string) string {
 		res.WriteByte(ci)
 	}
 	return res.String()
+}
+
+// just a expr wrapper for ExtractQueryParam
+func ExprWrapExtractQueryParam(params ...any) (any, error) {
+	uri := params[0].(string)
+	param := params[1].(string)
+	return ExtractQueryParam(uri, param), nil
+}
+
+// ExtractQueryParam extracts values for a given query parameter from a raw URI string.
+func ExtractQueryParam(uri, param string) []string {
+	// Find the first occurrence of "?"
+	idx := strings.Index(uri, "?")
+	if idx == -1 {
+		// No query string present
+		return []string{}
+	}
+
+	// Extract the query string part
+	queryString := uri[idx+1:]
+
+	// Parse the query string using a function that supports both `&` and `;`
+	values := ParseQuery(queryString)
+
+	if values == nil {
+		// No query string present
+		return []string{}
+	}
+	// Retrieve the values for the specified parameter
+	if _, ok := values[param]; !ok {
+		return []string{}
+	}
+	return values[param]
 }

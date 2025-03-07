@@ -21,7 +21,7 @@ type enrollRequest struct {
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) 
 func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.WatcherRegistrationRequest) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodPost, u, &registration)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodPost, u, &registration)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.Watch
 
 	u := fmt.Sprintf("%s/watchers/login", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodPost, u, &auth)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodPost, u, &auth)
 	if err != nil {
 		return authResp, nil, err
 	}
@@ -71,7 +71,7 @@ func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.Watch
 func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string, name string, tags []string, overwrite bool) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers/enroll", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodPost, u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, Overwrite: overwrite})
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodPost, u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, Overwrite: overwrite})
 	if err != nil {
 		return nil, err
 	}

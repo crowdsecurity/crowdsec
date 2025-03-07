@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ type SyslogConfiguration struct {
 	Port                              int    `yaml:"listen_port,omitempty"`
 	Addr                              string `yaml:"listen_addr,omitempty"`
 	MaxMessageLen                     int    `yaml:"max_message_len,omitempty"`
+	DisableRFCParser                  bool   `yaml:"disable_rfc_parser,omitempty"` // if true, we don't try to be smart and just remove the PRI
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -182,6 +184,66 @@ func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
 	return ret
 }
 
+func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
+	var line string
+
+	logger := s.logger.WithField("client", syslogLine.Client)
+	logger.Tracef("raw: %s", syslogLine)
+	if s.metricsLevel != configuration.METRICS_NONE {
+		linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+	}
+	if !s.config.DisableRFCParser {
+		p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
+		err := p.Parse(syslogLine.Message)
+		if err != nil {
+			logger.Debugf("could not parse as RFC3164 (%s)", err)
+			p2 := rfc5424.NewRFC5424Parser()
+			err = p2.Parse(syslogLine.Message)
+			if err != nil {
+				logger.Errorf("could not parse message: %s", err)
+				logger.Debugf("could not parse as RFC5424 (%s) : %s", err, syslogLine.Message)
+				return ""
+			}
+			line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
+			if s.metricsLevel != configuration.METRICS_NONE {
+				linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+			}
+		} else {
+			line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
+			if s.metricsLevel != configuration.METRICS_NONE {
+				linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+			}
+		}
+	} else {
+		if len(syslogLine.Message) < 3 {
+			logger.Errorf("malformated message, missing PRI (message too short)")
+			return ""
+		}
+		if syslogLine.Message[0] != '<' {
+			logger.Errorf("malformated message, missing PRI beginning")
+			return ""
+		}
+		priEnd := bytes.Index(syslogLine.Message, []byte(">"))
+		if priEnd == -1 {
+			logger.Errorf("malformated message, missing PRI end")
+			return ""
+		}
+		if priEnd > 4 {
+			logger.Errorf("malformated message, PRI too long")
+			return ""
+		}
+		for i := 1; i < priEnd; i++ {
+			if syslogLine.Message[i] < '0' || syslogLine.Message[i] > '9' {
+				logger.Errorf("malformated message, PRI not a number")
+				return ""
+			}
+		}
+		line = string(syslogLine.Message[priEnd+1:])
+	}
+
+	return strings.TrimSuffix(line, "\n")
+}
+
 func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {
 	killed := false
 	for {
@@ -196,37 +258,12 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			s.logger.Info("Syslog server has exited")
 			return nil
 		case syslogLine := <-c:
-			var line string
+			line := s.parseLine(syslogLine)
+			if line == "" {
+				continue
+			}
+
 			var ts time.Time
-
-			logger := s.logger.WithField("client", syslogLine.Client)
-			logger.Tracef("raw: %s", syslogLine)
-			if s.metricsLevel != configuration.METRICS_NONE {
-				linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
-			}
-			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
-			err := p.Parse(syslogLine.Message)
-			if err != nil {
-				logger.Debugf("could not parse as RFC3164 (%s)", err)
-				p2 := rfc5424.NewRFC5424Parser()
-				err = p2.Parse(syslogLine.Message)
-				if err != nil {
-					logger.Errorf("could not parse message: %s", err)
-					logger.Debugf("could not parse as RFC5424 (%s) : %s", err, syslogLine.Message)
-					continue
-				}
-				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
-				if s.metricsLevel != configuration.METRICS_NONE {
-					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
-				}
-			} else {
-				line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
-				if s.metricsLevel != configuration.METRICS_NONE {
-					linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
-				}
-			}
-
-			line = strings.TrimSuffix(line, "\n")
 
 			l := types.Line{}
 			l.Raw = line

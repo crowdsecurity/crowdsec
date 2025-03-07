@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -102,6 +101,36 @@ teardown() {
     rune -0 rm "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
     rune -0 cscli hub list
     assert_stderr --partial "crowdsecurity/sshd is tainted by missing parsers:crowdsecurity/sshd-logs"
+}
+
+@test "an install symlink can have a different name than the items it points to" {
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -r '.local_path' <(output)
+    rune -0 mv "$output" "$CONFIG_DIR/scenarios/newname.yaml"
+    rune -0 cscli hub list -o json
+    rune -0 jq -r '.scenarios.[].name' <(output)
+    assert_output 'crowdsecurity/ssh-bf'
+
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -r '.installed' <(output)
+    assert_output true
+
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf
+    assert_output - <<-EOT
+	Action plan:
+	❌ disable
+	 scenarios: crowdsecurity/ssh-bf
+
+	disabling scenarios:crowdsecurity/ssh-bf
+
+	$RELOAD_MESSAGE
+	EOT
+    refute_stderr
+
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -r '.installed' <(output)
+    assert_output false
 }
 
 @test "cscli hub update" {

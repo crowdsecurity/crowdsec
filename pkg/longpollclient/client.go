@@ -60,7 +60,7 @@ func (c *LongPollClient) doQuery(ctx context.Context) (*http.Response, error) {
 
 	logger.Debugf("Query parameters: %s", c.url.RawQuery)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url.String(), http.NoBody)
 	if err != nil {
 		logger.Errorf("failed to create request: %s", err)
 		return nil, err

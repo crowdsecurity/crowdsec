@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -151,6 +152,7 @@ func (cli *cliHubTest) newCoverageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.coverage(showScenarioCov, showParserCov, showAppsecCov, showOnlyPercent)

@@ -228,7 +228,6 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 		Use:               "allowlists [action]",
 		Short:             "Manage centralized allowlists",
 		Aliases:           []string{"allowlist"},
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 	}
 
@@ -294,7 +293,7 @@ func (cli *cliAllowLists) newListCmd() *cobra.Command {
 		Use:     "list",
 		Example: `cscli allowlists list`,
 		Short:   "List all allowlists",
-		Args:    cobra.NoArgs,
+		Args:    args.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {

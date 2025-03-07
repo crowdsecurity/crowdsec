@@ -24,7 +24,6 @@ func (cli *cliConfig) NewCommand(mergedConfigGetter mergedConfigGetter) *cobra.C
 	cmd := &cobra.Command{
 		Use:               "config [command]",
 		Short:             "Allows to view current config",
-		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 

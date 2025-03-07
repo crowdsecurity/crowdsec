@@ -160,7 +160,7 @@ func (p *Papi) GetPermissions(ctx context.Context) (PapiPermCheckSuccess, error)
 	httpClient := p.apiClient.GetClient()
 	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, http.NoBody)
 	if err != nil {
 		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}

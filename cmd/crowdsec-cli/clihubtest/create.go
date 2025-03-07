@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -30,7 +31,7 @@ func (cli *cliHubTest) newCreateCmd() *cobra.Command {
 		Example: `cscli hubtest create my-awesome-test --type syslog
 cscli hubtest create my-nginx-custom-test --type nginx
 cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios crowdsecurity/http-probing`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			testName := args[0]

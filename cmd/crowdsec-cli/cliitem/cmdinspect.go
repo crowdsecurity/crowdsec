@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -71,7 +72,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 
 // return the diff between the installed version and the latest version
 func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
-	if !item.State.Installed {
+	if !item.State.IsInstalled() {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
 
@@ -113,7 +114,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvid
 }
 
 func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
-	if !item.State.Installed {
+	if !item.State.IsInstalled() {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
 
@@ -171,7 +172,7 @@ func (cli cliItem) newInspectCmd() *cobra.Command {
 		Short:             cmp.Or(cli.inspectHelp.short, "Inspect given "+cli.oneOrMore),
 		Long:              cmp.Or(cli.inspectHelp.long, "Inspect the state of one or more "+cli.name),
 		Example:           cli.inspectHelp.example,
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete, cli.cfg)
@@ -203,7 +204,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 		enc.SetIndent(2)
 
 		if err := enc.Encode(item); err != nil {
-			return fmt.Errorf("unable to encode item: %w", err)
+			return fmt.Errorf("unable to serialize item: %w", err)
 		}
 	case "json":
 		b, err := json.MarshalIndent(*item, "", "  ")

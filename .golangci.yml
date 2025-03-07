@@ -214,7 +214,6 @@ linters-settings:
     enable-all: true
     disabled-checks:
       - paramTypeCombine
-      - httpNoBody
       - ifElseChain
       - importShadow
       - hugeParam
@@ -402,10 +401,6 @@ issues:
         - revive
       path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
       text: "confusing-naming: Method 'QueryRange' differs only by capitalization to method 'queryRange' in the same source file"
-
-    - linters:
-        - revive
-      path: cmd/crowdsec-cli/copyfile.go
 
     - linters:
         - revive

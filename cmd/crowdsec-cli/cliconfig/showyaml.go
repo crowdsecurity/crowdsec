@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func (cli *cliConfig) showYAML(mergedConfig string) error {
@@ -15,7 +17,7 @@ func (cli *cliConfig) newShowYAMLCmd(mergedConfigGetter mergedConfigGetter) *cob
 	cmd := &cobra.Command{
 		Use:               "show-yaml",
 		Short:             "Displays merged config.yaml + config.yaml.local",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.showYAML(mergedConfigGetter())

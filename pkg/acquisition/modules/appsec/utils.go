@@ -60,8 +60,8 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 }
 
 func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
-	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
-	if !inEvt.Appsec.HasInBandMatches {
+	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
+	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil
 	}
 
