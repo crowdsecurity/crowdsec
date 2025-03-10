@@ -25,7 +25,7 @@ func lookupLatest(ctx context.Context) (string, error) {
 
 	url := "https://version.crowdsec.net/latest"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("unable to create request for %s: %w", url, err)
 	}
@@ -69,7 +69,7 @@ func chooseBranch(ctx context.Context, cfg *csconfig.Config) string {
 		return "master"
 	}
 
-	csVersion := cwversion.VersionStrip()
+	csVersion := cwversion.BaseVersion()
 	if csVersion == "" {
 		log.Warning("Crowdsec version is not set, using hub branch 'master'")
 		return "master"

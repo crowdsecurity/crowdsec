@@ -15,9 +15,10 @@ import (
 type AppsecCollection struct {
 	collectionName string
 	Rules          []string
+	NativeRules    []string
 }
 
-var APPSEC_RULE = "appsec-rule"
+const APPSEC_RULE = "appsec-rule"
 
 // to be filled w/ seb update
 type AppsecCollectionConfig struct {
@@ -76,26 +77,30 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 			for _, rulesFile := range appsecRule.SecLangFilesRules {
 				logger.Debugf("Adding rules from %s", rulesFile)
 				fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
+
 				c, err := os.ReadFile(fullPath)
 				if err != nil {
 					logger.Errorf("unable to read file %s : %s", rulesFile, err)
 					continue
 				}
+
 				for _, line := range strings.Split(string(c), "\n") {
 					if strings.HasPrefix(line, "#") {
 						continue
 					}
+
 					if strings.TrimSpace(line) == "" {
 						continue
 					}
-					appsecCol.Rules = append(appsecCol.Rules, line)
+
+					appsecCol.NativeRules = append(appsecCol.NativeRules, line)
 				}
 			}
 		}
 
 		if appsecRule.SecLangRules != nil {
 			logger.Tracef("Adding inline rules %+v", appsecRule.SecLangRules)
-			appsecCol.Rules = append(appsecCol.Rules, appsecRule.SecLangRules...)
+			appsecCol.NativeRules = append(appsecCol.NativeRules, appsecRule.SecLangRules...)
 		}
 
 		if appsecRule.Rules != nil {

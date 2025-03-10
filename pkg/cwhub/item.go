@@ -11,8 +11,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	yaml "gopkg.in/yaml.v3"
-
-	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 const (
@@ -46,62 +44,6 @@ type ItemVersion struct {
 	Deprecated bool   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
-// ItemState is used to keep the local state (i.e. at runtime) of an item.
-// This data is not stored in the index, but is displayed with "cscli ... inspect".
-type ItemState struct {
-	LocalPath            string   `json:"local_path,omitempty" yaml:"local_path,omitempty"`
-	LocalVersion         string   `json:"local_version,omitempty" yaml:"local_version,omitempty"`
-	LocalHash            string   `json:"local_hash,omitempty" yaml:"local_hash,omitempty"`
-	Installed            bool     `json:"installed"`
-	Downloaded           bool     `json:"downloaded"`
-	UpToDate             bool     `json:"up_to_date"`
-	Tainted              bool     `json:"tainted"`
-	TaintedBy            []string `json:"tainted_by,omitempty" yaml:"tainted_by,omitempty"`
-	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
-}
-
-// IsLocal returns true if the item has been create by a user (not downloaded from the hub).
-func (s *ItemState) IsLocal() bool {
-	return s.Installed && !s.Downloaded
-}
-
-// Text returns the status of the item as a string (eg. "enabled,update-available").
-func (s *ItemState) Text() string {
-	ret := "disabled"
-
-	if s.Installed {
-		ret = "enabled"
-	}
-
-	if s.IsLocal() {
-		ret += ",local"
-	}
-
-	if s.Tainted {
-		ret += ",tainted"
-	} else if !s.UpToDate && !s.IsLocal() {
-		ret += ",update-available"
-	}
-
-	return ret
-}
-
-// Emoji returns the status of the item as an emoji (eg. emoji.Warning).
-func (s *ItemState) Emoji() string {
-	switch {
-	case s.IsLocal():
-		return emoji.House
-	case !s.Installed:
-		return emoji.Prohibited
-	case s.Tainted || (!s.UpToDate && !s.IsLocal()):
-		return emoji.Warning
-	case s.Installed:
-		return emoji.CheckMark
-	default:
-		return emoji.QuestionMark
-	}
-}
-
 type Dependencies struct {
 	Parsers       []string `json:"parsers,omitempty"        yaml:"parsers,omitempty"`
 	PostOverflows []string `json:"postoverflows,omitempty"  yaml:"postoverflows,omitempty"`
@@ -114,37 +56,38 @@ type Dependencies struct {
 
 // a group of items of the same type
 type itemgroup struct {
-	typeName string
-	itemNames  []string
+	typeName  string
+	itemNames []string
 }
 
 func (d Dependencies) byType() []itemgroup {
-    return []itemgroup{
-        {PARSERS, d.Parsers},
-        {POSTOVERFLOWS, d.PostOverflows},
-        {SCENARIOS, d.Scenarios},
-        {CONTEXTS, d.Contexts},
-        {APPSEC_CONFIGS, d.AppsecConfigs},
-        {APPSEC_RULES, d.AppsecRules},
-        {COLLECTIONS, d.Collections},
-    }
+	return []itemgroup{
+		{PARSERS, d.Parsers},
+		{POSTOVERFLOWS, d.PostOverflows},
+		{SCENARIOS, d.Scenarios},
+		{CONTEXTS, d.Contexts},
+		{APPSEC_CONFIGS, d.AppsecConfigs},
+		{APPSEC_RULES, d.AppsecRules},
+		{COLLECTIONS, d.Collections},
+	}
 }
 
 // SubItems iterates over the sub-items in the struct, excluding the ones that were not found in the hub.
 func (d Dependencies) SubItems(hub *Hub) func(func(*Item) bool) {
-    return func(yield func(*Item) bool) {
-        for _, typeGroup := range d.byType() {
-            for _, name := range typeGroup.itemNames {
-                s := hub.GetItem(typeGroup.typeName, name)
-                if s == nil {
-                    continue
-                }
-                if !yield(s) {
-                    return
-                }
-            }
-        }
-    }
+	return func(yield func(*Item) bool) {
+		for _, typeGroup := range d.byType() {
+			for _, name := range typeGroup.itemNames {
+				s := hub.GetItem(typeGroup.typeName, name)
+				if s == nil {
+					continue
+				}
+
+				if !yield(s) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // Item is created from an index file and enriched with local info.
@@ -170,10 +113,14 @@ type Item struct {
 	Dependencies
 }
 
-// InstallPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
+// PathForInstall returns the path to use for the install symlink
 // (eg. /etc/crowdsec/collections/xyz.yaml).
-// Raises an error if the path goes outside of the install dir.
-func (i *Item) InstallPath() (string, error) {
+// Returns an error if an item is already installed or if the path goes outside of the install dir.
+func (i *Item) PathForInstall() (string, error) {
+	if i.State.IsInstalled() {
+		return "", fmt.Errorf("%s is already installed at %s", i.FQName(), i.State.LocalPath)
+	}
+
 	p := i.Type
 	if i.Stage != "" {
 		p = filepath.Join(p, i.Stage)
@@ -182,16 +129,21 @@ func (i *Item) InstallPath() (string, error) {
 	return SafePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
 }
 
-// DownloadPath returns the location of the actual config file in the hub
+// PathForDownload returns the path to use to store the item's file from the hub
 // (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
 // Raises an error if the path goes outside of the hub dir.
-func (i *Item) DownloadPath() (string, error) {
-	ret, err := SafePath(i.hub.local.HubDir, i.RemotePath)
-	if err != nil {
-		return "", err
+func (i *Item) PathForDownload() (string, error) {
+	path, err := SafePath(i.hub.local.HubDir, i.RemotePath)
+
+	if i.State.IsDownloaded() && path != i.State.DownloadPath {
+		// A hub item with the same name is at a different location.
+		// This should not happen.
+		// user is downloading with --force so we are allowed to overwrite but
+		// should we remove the old location from here? Error, warning, more tests?
+		return "", fmt.Errorf("%s is already downloaded at %s", i.FQName(), i.State.DownloadPath)
 	}
 
-	return ret, nil
+	return path, err
 }
 
 // HasSubItems returns true if items of this type can have sub-items. Currently only collections.
@@ -221,8 +173,8 @@ func (i Item) MarshalJSON() ([]byte, error) {
 		LocalPath:            i.State.LocalPath,
 		LocalVersion:         i.State.LocalVersion,
 		LocalHash:            i.State.LocalHash,
-		Installed:            i.State.Installed,
-		Downloaded:           i.State.Downloaded,
+		Installed:            i.State.IsInstalled(),
+		Downloaded:           i.State.IsDownloaded(),
 		UpToDate:             i.State.UpToDate,
 		Tainted:              i.State.Tainted,
 		BelongsToCollections: i.State.BelongsToCollections,
@@ -236,13 +188,15 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	type Alias Item
 
 	return &struct {
-		Alias `yaml:",inline"`
-		State ItemState `yaml:",inline"`
-		Local bool      `yaml:"local"`
+		Alias     `yaml:",inline"`
+		State     ItemState `yaml:",inline"`
+		Installed bool      `yaml:"installed"`
+		Local     bool      `yaml:"local"`
 	}{
-		Alias: Alias(i),
-		State: i.State,
-		Local: i.State.IsLocal(),
+		Alias:     Alias(i),
+		State:     i.State,
+		Installed: i.State.IsInstalled(),
+		Local:     i.State.IsLocal(),
 	}, nil
 }
 
@@ -262,16 +216,11 @@ func (i *Item) CurrentDependencies() Dependencies {
 		return i.Dependencies
 	}
 
-	contentPath, err := i.InstallPath()
-	if err != nil {
-		i.hub.logger.Warningf("can't access dependencies for %s, using index", i.FQName())
-		return i.Dependencies
-	}
-
-	currentContent, err := os.ReadFile(contentPath)
+	currentContent, err := os.ReadFile(i.State.LocalPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		return i.Dependencies
 	}
+
 	if err != nil {
 		// a file might be corrupted, or in development
 		i.hub.logger.Warningf("can't read dependencies for %s, using index", i.FQName())
@@ -285,55 +234,16 @@ func (i *Item) CurrentDependencies() Dependencies {
 		i.hub.logger.Warningf("can't parse dependencies for %s, using index", i.FQName())
 		return i.Dependencies
 	}
-	
+
 	return d
 }
 
-
 func (i *Item) logMissingSubItems() {
-	if !i.HasSubItems() {
-		return
-	}
-
-	for _, subName := range i.Parsers {
-		if i.hub.GetItem(PARSERS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
-		}
-	}
-
-	for _, subName := range i.Scenarios {
-		if i.hub.GetItem(SCENARIOS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
-		}
-	}
-
-	for _, subName := range i.PostOverflows {
-		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
-		}
-	}
-
-	for _, subName := range i.Contexts {
-		if i.hub.GetItem(CONTEXTS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, CONTEXTS, i.Name)
-		}
-	}
-
-	for _, subName := range i.AppsecConfigs {
-		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
-		}
-	}
-
-	for _, subName := range i.AppsecRules {
-		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
-		}
-	}
-
-	for _, subName := range i.Collections {
-		if i.hub.GetItem(COLLECTIONS, subName) == nil {
-			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
+	for _, sub := range i.CurrentDependencies().byType() {
+		for _, subName := range sub.itemNames {
+			if i.hub.GetItem(sub.typeName, subName) == nil {
+				i.hub.logger.Errorf("can't find %s:%s, required by %s", sub.typeName, subName, i.Name)
+			}
 		}
 	}
 }
@@ -373,7 +283,7 @@ func (i *Item) SafeToRemoveDeps() ([]*Item, error) {
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
 		for _, subParent := range sub.Ancestors() {
-			if !subParent.State.Installed {
+			if !subParent.State.IsInstalled() {
 				continue
 			}
 
@@ -404,7 +314,6 @@ func (i *Item) SafeToRemoveDeps() ([]*Item, error) {
 
 	return ret, nil
 }
-
 
 // descendants returns a list of all (direct or indirect) dependencies of the item's current version.
 func (i *Item) descendants() ([]*Item, error) {

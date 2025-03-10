@@ -2,13 +2,14 @@ package hubops
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	isatty "github.com/mattn/go-isatty"
 	"github.com/fatih/color"
 
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
@@ -59,13 +60,13 @@ func UniqueKey(c Command) string {
 type ActionPlan struct {
 	// hold the list of Commands to be executed as part of the action plan.
 	// If a command is skipped (i.e. calling Prepare() returned false), it won't be included in the slice.
-	commands     []Command
+	commands []Command
 
 	// Tracks unique commands
 	commandsTracker map[string]struct{}
 
 	// A reference to the Hub instance, required for dependency lookup.
-	hub          *cwhub.Hub
+	hub *cwhub.Hub
 
 	// Indicates whether a reload of the CrowdSec service is required after executing the action plan.
 	ReloadNeeded bool
@@ -73,7 +74,7 @@ type ActionPlan struct {
 
 func NewActionPlan(hub *cwhub.Hub) *ActionPlan {
 	return &ActionPlan{
-		hub: hub,
+		hub:             hub,
 		commandsTracker: make(map[string]struct{}),
 	}
 }
@@ -190,10 +191,6 @@ func (p *ActionPlan) compactDescription() string {
 }
 
 func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
-	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
-		return true, nil
-	}
-
 	fmt.Println("The following actions will be performed:\n" + p.Description(verbose))
 
 	var answer bool
@@ -203,7 +200,19 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		Default: true,
 	}
 
-	if err := survey.AskOne(prompt, &answer); err != nil {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return prompt.Default, nil
+	}
+	defer tty.Close()
+
+	// in case of EOF, it's likely stdin has been closed in a script or package manager,
+	// we can't do anything but go with the default
+	if err := survey.AskOne(prompt, &answer, survey.WithStdio(tty, tty, tty)); err != nil {
+		if errors.Is(err, io.EOF) {
+			return prompt.Default, nil
+		}
+
 		return false, err
 	}
 
@@ -212,32 +221,35 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 	return answer, nil
 }
 
-func (p *ActionPlan) Execute(ctx context.Context, confirm bool, dryRun bool, verbose bool) error {
-	var err error
-
+func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, alwaysShowPlan bool, verbosePlan bool) error {
+	// interactive: show action plan, ask for confirm
+	// dry-run: show action plan, no prompt, no action
+	// alwaysShowPlan: print plan even if interactive and dry-run are false
+	// verbosePlan: plan summary is displaying each step in order
 	if len(p.commands) == 0 {
-		// XXX: show skipped commands, warnings?
 		fmt.Println("Nothing to do.")
 		return nil
 	}
 
-	if dryRun {
-		fmt.Println("Action plan:\n" + p.Description(verbose))
-		fmt.Println("Dry run, no action taken.")
-
-		return nil
-	}
-
-	if !confirm {
-		confirm, err = p.Confirm(verbose)
+	if interactive {
+		answer, err := p.Confirm(verbosePlan)
 		if err != nil {
 			return err
 		}
-	}
 
-	if !confirm {
-		fmt.Println("Operation canceled.")
-		return nil
+		if !answer {
+			fmt.Println("Operation canceled.")
+			return nil
+		}
+	} else {
+		if dryRun || alwaysShowPlan {
+			fmt.Println("Action plan:\n" + p.Description(verbosePlan))
+		}
+
+		if dryRun {
+			fmt.Println("Dry run, no action taken.")
+			return nil
+		}
 	}
 
 	for _, c := range p.commands {

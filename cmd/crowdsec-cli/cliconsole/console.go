@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"slices"
 	"strings"
 
 	"github.com/fatih/color"
@@ -19,7 +20,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -43,7 +46,6 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "console [action]",
 		Short:             "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -75,45 +77,6 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		return fmt.Errorf("could not parse CAPI URL: %w", err)
 	}
 
-	enableOpts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
-
-	if len(opts) != 0 {
-		for _, opt := range opts {
-			valid := false
-
-			if opt == "all" {
-				enableOpts = csconfig.CONSOLE_CONFIGS
-				break
-			}
-
-			for _, availableOpt := range csconfig.CONSOLE_CONFIGS {
-				if opt != availableOpt {
-					continue
-				}
-
-				valid = true
-				enable := true
-
-				for _, enabledOpt := range enableOpts {
-					if opt == enabledOpt {
-						enable = false
-						continue
-					}
-				}
-
-				if enable {
-					enableOpts = append(enableOpts, opt)
-				}
-
-				break
-			}
-
-			if !valid {
-				return fmt.Errorf("option %s doesn't exist", opt)
-			}
-		}
-	}
-
 	hub, err := require.Hub(cfg, nil)
 	if err != nil {
 		return err
@@ -137,11 +100,11 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		return nil
 	}
 
-	if err := cli.setConsoleOpts(enableOpts, true); err != nil {
+	if err := cli.setConsoleOpts(opts, true); err != nil {
 		return err
 	}
 
-	for _, opt := range enableOpts {
+	for _, opt := range opts {
 		log.Infof("Enabled %s : %s", opt, csconfig.CONSOLE_CONFIGS_HELP[opt])
 	}
 
@@ -151,11 +114,67 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 	return nil
 }
 
+func optionFilterEnable(opts []string, enableOpts []string) ([]string, error) {
+	if len(enableOpts) == 0 {
+		return opts, nil
+	}
+
+	for _, opt := range enableOpts {
+		if opt == "all" {
+			opts = append(opts, csconfig.CONSOLE_CONFIGS...)
+			// keep validating the rest of the option names
+			continue
+		}
+
+		if !slices.Contains(csconfig.CONSOLE_CONFIGS, opt) {
+			return nil, fmt.Errorf("option %s doesn't exist", opt)
+		}
+
+		opts = append(opts, opt)
+	}
+
+	opts = slicetools.Deduplicate(opts)
+
+	return opts, nil
+}
+
+func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) {
+	if len(disableOpts) == 0 {
+		return opts, nil
+	}
+
+	for _, opt := range disableOpts {
+		if opt == "all" {
+			opts = []string{}
+			// keep validating the rest of the option names
+			continue
+		}
+
+		if !slices.Contains(csconfig.CONSOLE_CONFIGS, opt) {
+			return nil, fmt.Errorf("option %s doesn't exist", opt)
+		}
+
+		// discard all elements == opt
+
+		j := 0
+		for _, o := range opts {
+			if o != opt {
+				opts[j] = o
+				j++
+			}
+		}
+		opts = opts[:j]
+	}
+
+	return opts, nil
+}
+
 func (cli *cliConsole) newEnrollCmd() *cobra.Command {
 	name := ""
 	overwrite := false
 	tags := []string{}
-	opts := []string{}
+	enableOpts := []string{}
+	disableOpts := []string{}
 
 	cmd := &cobra.Command{
 		Use:   "enroll [enroll-key]",
@@ -168,12 +187,25 @@ After running this command your will need to validate the enrollment in the weba
 		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
 		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-		cscli console enroll --enable context,manual YOUR-ENROLL-KEY
+		cscli console enroll --enable console_management YOUR-ENROLL-KEY
+		cscli console enroll --disable context YOUR-ENROLL-KEY
 
 		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT}
+
+			opts, err := optionFilterEnable(opts, enableOpts)
+			if err != nil {
+				return err
+			}
+
+			opts, err = optionFilterDisable(opts, disableOpts)
+			if err != nil {
+				return err
+			}
+
 			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, opts)
 		},
 	}
@@ -182,7 +214,8 @@ After running this command your will need to validate the enrollment in the weba
 	flags.StringVarP(&name, "name", "n", "", "Name to display in the console")
 	flags.BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
 	flags.StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
-	flags.StringSliceVarP(&opts, "enable", "e", opts, "Enable console options")
+	flags.StringSliceVarP(&enableOpts, "enable", "e", enableOpts, "Enable console options")
+	flags.StringSliceVarP(&disableOpts, "disable", "d", disableOpts, "Disable console options")
 
 	return cmd
 }
@@ -191,7 +224,7 @@ func (cli *cliConsole) newEnableCmd() *cobra.Command {
 	var enableAll bool
 
 	cmd := &cobra.Command{
-		Use:     "enable [option]",
+		Use:     "enable [option]...",
 		Short:   "Enable a console option",
 		Example: "sudo cscli console enable tainted",
 		Long: `
@@ -214,7 +247,9 @@ Enable given information push to the central API. Allows to empower the console`
 				log.Infof("%v have been enabled", args)
 			}
 
-			log.Info(reload.Message)
+			if reload.UserMessage() != "" {
+				log.Info(reload.UserMessage())
+			}
 
 			return nil
 		},
@@ -242,13 +277,18 @@ Disable given information push to the central API.`,
 				}
 				log.Infof("All features have been disabled")
 			} else {
+				if len(args) == 0 {
+					return errors.New("you must specify at least one feature to disable")
+				}
 				if err := cli.setConsoleOpts(args, false); err != nil {
 					return err
 				}
 				log.Infof("%v have been disabled", args)
 			}
 
-			log.Info(reload.Message)
+			if msg := reload.UserMessage(); msg != "" {
+				log.Info(msg)
+			}
 
 			return nil
 		},
@@ -263,6 +303,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		Use:               "status",
 		Short:             "Shows status of the console options",
 		Example:           `sudo cscli console status`,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()

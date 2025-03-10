@@ -17,7 +17,7 @@ type HeartBeatService service
 func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 	u := fmt.Sprintf("%s/heartbeat", h.client.URLPrefix)
 
-	req, err := h.client.NewRequest(http.MethodGet, u, nil)
+	req, err := h.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return false, nil, err
 	}
@@ -33,7 +33,9 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/apiClient/heartbeat")
+
 		hbTimer := time.NewTicker(1 * time.Minute)
+
 		for {
 			select {
 			case <-hbTimer.C:
@@ -46,6 +48,7 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 				}
 
 				resp.Response.Body.Close()
+
 				if resp.Response.StatusCode != http.StatusOK {
 					log.Errorf("heartbeat unexpected return code: %d", resp.Response.StatusCode)
 					continue
@@ -58,6 +61,7 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 			case <-t.Dying():
 				log.Debugf("heartbeat: stopping")
 				hbTimer.Stop()
+
 				return nil
 			}
 		}

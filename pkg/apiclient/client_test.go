@@ -1,7 +1,6 @@
 package apiclient
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -84,6 +83,7 @@ func testMethod(t *testing.T, r *http.Request, want string) {
 }
 
 func TestNewClientOk(t *testing.T) {
+	ctx := t.Context()
 	mux, urlx, teardown := setup()
 	defer teardown()
 
@@ -101,7 +101,8 @@ func TestNewClientOk(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -109,12 +110,13 @@ func TestNewClientOk(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	_, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, resp, err := client.Alerts.List(ctx, AlertsListOpts{})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 }
 
 func TestNewClientOk_UnixSocket(t *testing.T) {
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
@@ -138,7 +140,8 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -146,7 +149,7 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	_, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, resp, err := client.Alerts.List(ctx, AlertsListOpts{})
 	if err != nil {
 		t.Fatalf("test Unable to list alerts : %+v", err)
 	}
@@ -157,6 +160,8 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 }
 
 func TestNewClientKo(t *testing.T) {
+	ctx := t.Context()
+
 	mux, urlx, teardown := setup()
 	defer teardown()
 
@@ -174,7 +179,8 @@ func TestNewClientKo(t *testing.T) {
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
+		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
@@ -182,13 +188,15 @@ func TestNewClientKo(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, _, err = client.Alerts.List(ctx, AlertsListOpts{})
 	cstest.RequireErrorContains(t, err, `API error: bad login/password`)
 
 	log.Printf("err-> %s", err)
 }
 
 func TestNewDefaultClient(t *testing.T) {
+	ctx := t.Context()
+
 	mux, urlx, teardown := setup()
 	defer teardown()
 
@@ -200,16 +208,19 @@ func TestNewDefaultClient(t *testing.T) {
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		assert.NoError(t, err)
 	})
 
-	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, _, err = client.Alerts.List(ctx, AlertsListOpts{})
 	cstest.RequireErrorMessage(t, err, "performing request: API error: brr")
 
 	log.Printf("err-> %s", err)
 }
 
 func TestNewDefaultClient_UnixSocket(t *testing.T) {
+	ctx := t.Context()
+
 	tmpDir := t.TempDir()
 	socket := path.Join(tmpDir, "socket")
 
@@ -228,19 +239,20 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+		assert.NoError(t, err)
 	})
 
-	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, _, err = client.Alerts.List(ctx, AlertsListOpts{})
 	assert.Contains(t, err.Error(), `performing request: API error: brr`)
 	log.Printf("err-> %s", err)
 }
 
 func TestNewClientRegisterKO(t *testing.T) {
+	ctx := t.Context()
+
 	apiURL, err := url.Parse("http://127.0.0.1:4242/")
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	_, err = RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
@@ -257,6 +269,7 @@ func TestNewClientRegisterKO(t *testing.T) {
 }
 
 func TestNewClientRegisterOK(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.TraceLevel)
 
 	mux, urlx, teardown := setup()
@@ -266,13 +279,12 @@ func TestNewClientRegisterOK(t *testing.T) {
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	client, err := RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
@@ -286,6 +298,7 @@ func TestNewClientRegisterOK(t *testing.T) {
 }
 
 func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.TraceLevel)
 
 	tmpDir := t.TempDir()
@@ -298,15 +311,14 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+		assert.NoError(t, err)
 	})
 
 	apiURL, err := url.Parse(urlx)
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
-
-	ctx := context.Background()
 
 	client, err := RegisterClient(ctx, &Config{
 		MachineID:     "test_login",
@@ -322,6 +334,7 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 }
 
 func TestNewClientBadAnswer(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.TraceLevel)
 
 	mux, urlx, teardown := setup()
@@ -331,13 +344,12 @@ func TestNewClientBadAnswer(t *testing.T) {
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`bad`))
+		_, err := w.Write([]byte(`bad`))
+		assert.NoError(t, err)
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	_, err = RegisterClient(ctx, &Config{
 		MachineID:     "test_login",

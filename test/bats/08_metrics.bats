@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -66,7 +65,7 @@ teardown() {
     rune -0 cscli metrics
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local API Metrics:"
+    assert_output --partial "Local API Metrics"
 
     rune -0 cscli metrics -o json
     rune -0 jq 'keys' <(output)
@@ -93,7 +92,7 @@ teardown() {
     assert_stderr --partial "unknown metrics type: foobar"
 
     rune -0 cscli metrics show lapi
-    assert_output --partial "Local API Metrics:"
+    assert_output --partial "Local API Metrics"
     assert_output --regexp "Route.*Method.*Hits"
     assert_output --regexp "/v1/watchers/login.*POST"
 

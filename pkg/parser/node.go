@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/grokky"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
@@ -353,7 +354,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
 				continue
 			}
-			cache.SetKey(stash.Name, key, value, &stash.TTLVal)
+			if err = cache.SetKey(stash.Name, key, value, &stash.TTLVal); err != nil {
+				clog.Warningf("failed to store data in cache: %s", err.Error())
+			}
 		}
 	}
 
@@ -460,11 +463,10 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	that will be used only for processing this node ;) */
 	if n.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog); err != nil {
+		if err = types.ConfigureLogger(clog, ptr.Of(log.DebugLevel)); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
-		clog.SetLevel(log.DebugLevel)
 		n.Logger = clog.WithField("id", n.rn)
 		n.Logger.Infof("%s has debug enabled", n.Name)
 	} else {

@@ -22,6 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
@@ -36,10 +37,11 @@ var (
 	metabaseConfigFile   = "metabase.yaml"
 	metabaseImage        = "metabase/metabase:v0.46.6.1"
 	/**/
-	metabaseListenAddress = "127.0.0.1"
-	metabaseListenPort    = "3000"
-	metabaseContainerID   = "crowdsec-metabase"
-	crowdsecGroup         = "crowdsec"
+	metabaseListenAddress                 = "127.0.0.1"
+	metabaseListenPort                    = "3000"
+	metabaseContainerID                   = "crowdsec-metabase"
+	metabaseContainerEnvironmentVariables []string
+	crowdsecGroup                         = "crowdsec"
 
 	forceYes bool
 
@@ -63,7 +65,6 @@ func (cli *cliDashboard) NewCommand() *cobra.Command {
 		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 		`,
-		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
@@ -129,7 +130,7 @@ func (cli *cliDashboard) newSetupCmd() *cobra.Command {
 		Use:               "setup",
 		Short:             "Setup a metabase container.",
 		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
@@ -166,7 +167,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err = cli.chownDatabase(dockerGroup.Gid); err != nil {
 				return err
 			}
-			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
+			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress,
+				metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid,
+				metabaseContainerID, metabaseImage, metabaseContainerEnvironmentVariables)
 			if err != nil {
 				return err
 			}
@@ -193,6 +196,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	flags.BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	// flags.StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	flags.StringVar(&metabasePassword, "password", "", "metabase password")
+	flags.StringSliceVarP(&metabaseContainerEnvironmentVariables, "env", "e", nil, "Additional environment variables to pass to the metabase container")
 
 	return cmd
 }
@@ -202,7 +206,7 @@ func (cli *cliDashboard) newStartCmd() *cobra.Command {
 		Use:               "start",
 		Short:             "Start the metabase container.",
 		Long:              `Stats the metabase container using docker.`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
@@ -233,7 +237,7 @@ func (cli *cliDashboard) newStopCmd() *cobra.Command {
 		Use:               "stop",
 		Short:             "Stops the metabase container.",
 		Long:              `Stops the metabase container using docker.`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := metabase.StopContainer(metabaseContainerID); err != nil {
@@ -250,7 +254,7 @@ func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "show-password",
 		Short:             "displays password of metabase.",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			m := metabase.Metabase{}
@@ -273,7 +277,7 @@ func (cli *cliDashboard) newRemoveCmd() *cobra.Command {
 		Use:               "remove",
 		Short:             "removes the metabase container.",
 		Long:              `removes the metabase container using docker.`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard remove

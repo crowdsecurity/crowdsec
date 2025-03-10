@@ -3,7 +3,6 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -63,7 +62,8 @@ func GenSubObject(t *testing.T, i int) []byte {
 
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
-	gz.Write(body)
+	_, err = gz.Write(body)
+	require.NoError(t, err)
 	gz.Close()
 	// AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
 	// localstack does not do it, so let's just write a raw gzipped stream
@@ -156,7 +156,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -198,12 +198,13 @@ stream_name: stream-1-shard`,
 		}
 
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 	}
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -230,6 +231,7 @@ stream_name: stream-2-shards`,
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		require.NoError(t, err)
+
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
@@ -244,14 +246,16 @@ stream_name: stream-2-shards`,
 			<-out
 			c += 1
 		}
+
 		assert.Equal(t, test.count, c)
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 	}
 }
 
 func TestFromSubscription(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
@@ -273,11 +277,13 @@ from_subscription: true`,
 		},
 	}
 	endpoint, _ := getLocalStackEndpoint()
+
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), configuration.METRICS_NONE)
 		require.NoError(t, err)
+
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
@@ -285,12 +291,15 @@ from_subscription: true`,
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(t, f.Config.StreamName, test.count, test.shards, true)
+
 		for i := range test.count {
 			e := <-out
-			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
+			assert.Equal(t, strconv.Itoa(i), e.Line.Raw)
 		}
+
 		tomb.Kill(nil)
-		tomb.Wait()
+		err = tomb.Wait()
+		require.NoError(t, err)
 	}
 }
 

@@ -13,7 +13,7 @@ type MetricsService service
 func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (interface{}, *Response, error) {
 	u := fmt.Sprintf("%s/metrics/", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest(http.MethodPost, u, &metrics)
+	req, err := s.client.NewRequestWithContext(ctx, http.MethodPost, u, &metrics)
 	if err != nil {
 		return nil, nil, err
 	}

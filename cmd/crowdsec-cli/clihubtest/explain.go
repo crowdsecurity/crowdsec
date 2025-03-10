@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error {
@@ -14,9 +16,12 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 		return fmt.Errorf("can't load test: %+v", err)
 	}
 
+	cfg := cli.cfg()
+	patternDir := cfg.ConfigPaths.PatternDir
+
 	err = test.ParserAssert.LoadTest(test.ParserResultFile)
 	if err != nil {
-		if err = test.Run(); err != nil {
+		if err = test.Run(patternDir); err != nil {
 			return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 		}
 
@@ -27,7 +32,7 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 
 	err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 	if err != nil {
-		if err = test.Run(); err != nil {
+		if err = test.Run(patternDir); err != nil {
 			return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 		}
 
@@ -55,7 +60,7 @@ func (cli *cliHubTest) newExplainCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "explain",
 		Short:             "explain [test_name]",
-		Args:              cobra.ExactArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {

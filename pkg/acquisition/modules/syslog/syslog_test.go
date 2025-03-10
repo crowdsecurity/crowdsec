@@ -1,7 +1,6 @@
 package syslogacquisition
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -10,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -81,7 +81,7 @@ func writeToSyslog(logs []string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name          string
 		config        string
@@ -118,6 +118,26 @@ listen_addr: 127.0.0.1`,
 				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2`,
 				`<13>May 18 12:37:56 mantis sshd: blabla2`,
 				`<13>May 18 12:37:56 mantis sshd`,
+			},
+		},
+		{
+			name: "RFC3164 - no parsing",
+			config: `source: syslog
+listen_port: 4242
+listen_addr: 127.0.0.1
+disable_rfc_parser: true`,
+			expectedLines: 5,
+			logs: []string{
+				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2[foobar]`,
+				`<13>May 18 12:37:56 mantis sshd[49340]: blabla2`,
+				`<13>May 18 12:37:56 mantis sshd: blabla2`,
+				`<13>May 18 12:37:56 mantis sshd`,
+				`<999>May 18 12:37:56 mantis sshd`,
+				`<1000>May 18 12:37:56 mantis sshd`,
+				`>?> asd`,
+				`<asd>asdasd`,
+				`<1a asd`,
+				`<123123>asdasd`,
 			},
 		},
 	}
@@ -168,7 +188,8 @@ listen_addr: 127.0.0.1`,
 			}
 			assert.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
-			tomb.Wait()
+			err = tomb.Wait()
+			require.NoError(t, err)
 		})
 	}
 }

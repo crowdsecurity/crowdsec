@@ -162,7 +162,8 @@ func NewAPITest(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config
 	return router, config
 }
 
-func NewAPITestForwardedFor(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
+func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
+	ctx := t.Context()
 	config := LoadTestConfigForwardedFor(t)
 
 	os.Remove("./ent")
@@ -191,7 +192,7 @@ func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config
 }
 
 func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
@@ -209,7 +210,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 }
 
 func GetBouncers(t *testing.T, config *csconfig.DatabaseCfg) []*ent.Bouncer {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
@@ -297,7 +298,7 @@ func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, to
 	return body
 }
 
-func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) string {
+func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) (string, *database.Client) {
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
@@ -307,11 +308,11 @@ func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.Datab
 	_, err = dbClient.CreateBouncer(ctx, "test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType, false)
 	require.NoError(t, err)
 
-	return apiKey
+	return apiKey, dbClient
 }
 
 func TestWithWrongDBConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
 	apiServer, err := NewServer(ctx, config.API.Server)
@@ -321,7 +322,7 @@ func TestWithWrongDBConfig(t *testing.T) {
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
@@ -332,11 +333,11 @@ func TestWithWrongFlushConfig(t *testing.T) {
 }
 
 func TestUnknownPath(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -359,7 +360,7 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 */
 
 func TestLoggingDebugToFileConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	/*declare settings*/
 	maxAge := "1h"
@@ -387,7 +388,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -395,7 +396,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -412,7 +413,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 }
 
 func TestLoggingErrorToFileConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	/*declare settings*/
 	maxAge := "1h"
@@ -439,7 +440,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.ErrorLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -447,7 +448,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)

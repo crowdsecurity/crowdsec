@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -73,7 +74,9 @@ func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword 
 		qs := &survey.Password{
 			Message: "Please provide a password for the machine:",
 		}
-		survey.AskOne(qs, &machinePassword)
+		if err := survey.AskOne(qs, &machinePassword); err != nil {
+			return err
+		}
 	}
 
 	password := strfmt.Password(machinePassword)
@@ -132,6 +135,7 @@ func (cli *cliMachines) newAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "add",
 		Short:             "add a single machine to the database",
+		Args:              args.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `cscli machines add --auto
@@ -147,9 +151,9 @@ cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 	flags.VarP(&password, "password", "p", "machine password to login to the API")
 	flags.StringVarP(&dumpFile, "file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
 	flags.StringVarP(&apiURL, "url", "u", "", "URL of the local API")
-	flags.BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "interactive mode to enter the password")
 	flags.BoolVarP(&autoAdd, "auto", "a", false, "automatically generate password (and username if not provided)")
-	flags.BoolVar(&force, "force", false, "will force add the machine if it already exist")
+	flags.BoolVar(&force, "force", false, "will force add the machine if it already exists")
 
 	return cmd
 }

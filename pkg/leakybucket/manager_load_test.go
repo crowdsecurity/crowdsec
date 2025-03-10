@@ -64,10 +64,24 @@ func TestLeakyBucketsConfig(t *testing.T) {
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true"}, true, true},
 		// leaky with invalid filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "xu"}, false, true},
+		// leaky with invalid uniq
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", Distinct: "foo"}, false, true},
+		// leaky with valid uniq
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", Distinct: "evt.Parsed.foobar"}, true, true},
 		// leaky with valid filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true"}, true, true},
 		// leaky with bad overflow filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", OverflowFilter: "xu"}, false, true},
+		// leaky with valid overflow filter
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", OverflowFilter: "true"}, true, true},
+		// leaky with invalid cancel_on filter
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", CancelOnFilter: "xu"}, false, true},
+		// leaky with valid cancel_on filter
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", CancelOnFilter: "true"}, true, true},
+		// leaky with invalid conditional overflow filter
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", ConditionalOverflow: "xu"}, false, true},
+		// leaky with valid conditional overflow filter
+		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", ConditionalOverflow: "true"}, true, true},
 	}
 
 	if err := runTest(CfgTests); err != nil {

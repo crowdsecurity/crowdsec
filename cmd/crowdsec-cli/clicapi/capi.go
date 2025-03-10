@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -40,7 +41,6 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -123,7 +123,9 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		fmt.Println(string(apiConfigDump))
 	}
 
-	log.Warning(reload.Message)
+	if msg := reload.UserMessage(); msg != "" {
+		log.Warning(msg)
+	}
 
 	return nil
 }
@@ -137,7 +139,7 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "register",
 		Short:             "Register to Central API (CAPI)",
-		Args:              cobra.MinimumNArgs(0),
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.register(cmd.Context(), capiUserPrefix, outputFile)
@@ -258,7 +260,7 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Check status with the Central API (CAPI)",
-		Args:              cobra.MinimumNArgs(0),
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), nil)

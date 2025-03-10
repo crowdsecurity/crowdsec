@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func NewCompletionCmd() *cobra.Command {
@@ -67,17 +69,17 @@ func NewCompletionCmd() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		DisableAutoGenTag:     true,
 		ValidArgs:             []string{"bash", "zsh", "powershell", "fish"},
-		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Args:                  cobra.MatchAll(args.ExactArgs(1), cobra.OnlyValidArgs),
 		Run: func(cmd *cobra.Command, args []string) {
 			switch args[0] {
 			case "bash":
-				cmd.Root().GenBashCompletion(os.Stdout)
+				_ = cmd.Root().GenBashCompletion(os.Stdout)
 			case "zsh":
-				cmd.Root().GenZshCompletion(os.Stdout)
+				_ = cmd.Root().GenZshCompletion(os.Stdout)
 			case "powershell":
-				cmd.Root().GenPowerShellCompletion(os.Stdout)
+				_ = cmd.Root().GenPowerShellCompletion(os.Stdout)
 			case "fish":
-				cmd.Root().GenFishCompletion(os.Stdout, true)
+				_ = cmd.Root().GenFishCompletion(os.Stdout, true)
 			}
 		},
 	}

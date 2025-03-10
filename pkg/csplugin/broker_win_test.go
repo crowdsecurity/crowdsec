@@ -4,7 +4,6 @@ package csplugin
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -27,7 +26,7 @@ not if it will actually reject plugins with invalid permissions
 */
 
 func (s *PluginSuite) TestBrokerInit() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -68,8 +67,8 @@ func (s *PluginSuite) TestBrokerInit() {
 }
 
 func (s *PluginSuite) TestBrokerRun() {
-	ctx := context.Background()
 	t := s.T()
+	ctx := t.Context()
 
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)

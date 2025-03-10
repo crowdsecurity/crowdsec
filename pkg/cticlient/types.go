@@ -64,6 +64,9 @@ type CTIReferences struct {
 type SmokeItem struct {
 	IpRangeScore         int                 `json:"ip_range_score"`
 	Ip                   string              `json:"ip"`
+	Reputation           string              `json:"reputation"`
+	BackgroundNoise      string              `json:"background_noise"`
+	Confidence           string              `json:"confidence"`
 	IpRange              *string             `json:"ip_range"`
 	AsName               *string             `json:"as_name"`
 	AsNum                *int                `json:"as_num"`
@@ -77,6 +80,7 @@ type SmokeItem struct {
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
 	References           []CTIReferences     `json:"references"`
+	CVEs                 []string            `json:"cves"`
 	IsOk                 bool                `json:"-"`
 }
 
@@ -120,6 +124,10 @@ type FireItem struct {
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
 	References           []CTIReferences     `json:"references"`
+	CVEs                 []string            `json:"cves"`
+	Reputation           string              `json:"reputation"`
+	BackgroundNoise      string              `json:"background_noise"`
+	Confidence           string              `json:"confidence"`
 	State                string              `json:"state"`
 	Expiration           CustomTime          `json:"expiration"`
 }
@@ -209,6 +217,18 @@ func (c *SmokeItem) GetFalsePositives() []string {
 	return ret
 }
 
+func (c *SmokeItem) GetClassifications() []string {
+	ret := make([]string, 0)
+
+	if c.Classifications.Classifications != nil {
+		for _, b := range c.Classifications.Classifications {
+			ret = append(ret, b.Name)
+		}
+	}
+
+	return ret
+}
+
 func (c *SmokeItem) IsFalsePositive() bool {
 	if c.Classifications.FalsePositives != nil {
 		if len(c.Classifications.FalsePositives) > 0 {
@@ -279,6 +299,18 @@ func (c *FireItem) GetFalsePositives() []string {
 			ret = append(ret, b.Name)
 		}
 	}
+	return ret
+}
+
+func (c *FireItem) GetClassifications() []string {
+	ret := make([]string, 0)
+
+	if c.Classifications.Classifications != nil {
+		for _, b := range c.Classifications.Classifications {
+			ret = append(ret, b.Name)
+		}
+	}
+
 	return ret
 }
 

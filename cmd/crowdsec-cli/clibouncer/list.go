@@ -13,6 +13,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -37,7 +38,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	fmt.Fprintln(out, t.Render())
 }
 
 func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
@@ -71,7 +72,6 @@ func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 func (cli *cliBouncers) List(ctx context.Context, out io.Writer, db *database.Client) error {
 	// XXX: must use the provided db object, the one in the struct might be nil
 	// (calling List directly skips the PersistentPreRunE)
-
 	bouncers, err := db.ListBouncers(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %w", err)
@@ -106,7 +106,7 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "list all bouncers within the database",
 		Example:           `cscli bouncers list`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.List(cmd.Context(), color.Output, cli.db)

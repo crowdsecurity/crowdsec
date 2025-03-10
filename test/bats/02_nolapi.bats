@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -64,18 +63,6 @@ teardown() {
     assert_output --partial "Crowdsec:"
     assert_output --partial "cscli:"
     refute_output --partial "Local API Server"
-}
-
-@test "cscli config backup" {
-    config_disable_lapi
-    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
-    rune -0 cscli config backup "$backupdir"
-    assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "$backupdir"
-    rm -rf -- "${backupdir:?}"
-
-    assert_stderr --partial "failed to backup config"
-    assert_stderr --partial "file exists"
 }
 
 @test "lapi status shouldn't be ok without api.server" {

@@ -43,7 +43,7 @@ func SelectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	for _, itemName := range itemNames {
 		item := hub.GetItem(itemType, itemName)
-		if installedOnly && !item.State.Installed {
+		if installedOnly && !item.State.IsInstalled() {
 			continue
 		}
 
@@ -63,7 +63,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 				continue
 			}
 
-			listHubItemTable(out, wantColor, "\n"+strings.ToUpper(itemType), items[itemType])
+			listHubItemTable(out, wantColor, strings.ToUpper(itemType), items[itemType])
 
 			nothingToDisplay = false
 		}
@@ -105,7 +105,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 			return fmt.Errorf("failed to parse: %w", err)
 		}
 
-		out.Write(x)
+		fmt.Fprint(out, string(x))
 	case "raw":
 		csvwriter := csv.NewWriter(out)
 

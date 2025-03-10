@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"strconv"
 
@@ -44,7 +45,7 @@ func ValidateContextExpr(key string, expressions []string) error {
 
 func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, nil); err != nil {
 		return fmt.Errorf("couldn't create logger for alert context: %w", err)
 	}
 
@@ -202,6 +203,10 @@ func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *h
 					}
 				}
 			default:
+				r := reflect.ValueOf(output)
+				if r.IsZero() || r.IsNil() {
+					continue
+				}
 				val := fmt.Sprintf("%v", output)
 				if val != "" && !slices.Contains(tmpContext[key], val) {
 					tmpContext[key] = append(tmpContext[key], val)

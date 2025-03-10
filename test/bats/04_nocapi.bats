@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -51,17 +50,6 @@ teardown() {
     assert_output --regexp "Global:.*Crowdsec.*cscli:.*Local API Server:"
 }
 
-@test "no agent: cscli config backup" {
-    config_disable_capi
-    backupdir=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
-    rune -0 cscli config backup "$backupdir"
-    assert_stderr --partial "Starting configuration backup"
-    rune -1 cscli config backup "$backupdir"
-    assert_stderr --partial "failed to backup config"
-    assert_stderr --partial "file exists"
-    rm -rf -- "${backupdir:?}"
-}
-
 @test "without capi: cscli lapi status -> success" {
     config_disable_capi
     ./instance-crowdsec start
@@ -76,5 +64,5 @@ teardown() {
     rune -0 cscli metrics
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local API Metrics:"
+    assert_output --partial "Local API Metrics"
 }

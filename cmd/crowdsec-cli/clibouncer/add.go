@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -56,7 +57,7 @@ func (cli *cliBouncers) newAddCmd() *cobra.Command {
 		Short: "add a single bouncer to the database",
 		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName --key <random-key>`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.add(cmd.Context(), args[0], key)

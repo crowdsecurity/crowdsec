@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -67,10 +66,10 @@ teardown() {
 
 @test "cscli alerts inspect" {
     rune -1 cscli alerts inspect
-    assert_stderr --partial 'missing alert_id'
+    assert_stderr 'Error: requires at least 1 arg(s), only received 0'
 
     rune -0 cscli decisions add -i 10.20.30.40 -t ban
-    rune -0 cscli alerts list -o raw <(output)
+    rune -0 cscli alerts list -o raw
     rune -0 grep 10.20.30.40 <(output)
     rune -0 cut -d, -f1 <(output)
     ALERT_ID="$output"
@@ -89,7 +88,7 @@ teardown() {
     assert_line --regexp "^ - AS *: *$"
     assert_line --regexp "^ - Begin *: .*$"
     assert_line --regexp "^ - End *: .*$"
-    assert_line --regexp "^ - Active Decisions *:$"
+    assert_line --regexp "^\| Active Decisions *\|$"
     assert_line --regexp "^.* ID .* scope:value .* action .* expiration .* created_at .*$"
     assert_line --regexp "^.* Ip:10.20.30.40 .* ban .*$"
 

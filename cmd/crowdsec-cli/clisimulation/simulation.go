@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -47,8 +48,8 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
-			if cmd.Name() != "status" {
-				log.Info(reload.Message)
+			if msg := reload.UserMessage(); msg != "" && cmd.Name() != "status" {
+				log.Info(msg)
 			}
 		},
 	}
@@ -83,7 +84,7 @@ func (cli *cliSimulation) newEnableCmd() *cobra.Command {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue
 					}
-					if !item.State.Installed {
+					if !item.State.IsInstalled() {
 						log.Warningf("'%s' isn't enabled", scenario)
 					}
 					isExcluded := slices.Contains(cli.cfg().Cscli.SimulationConfig.Exclusions, scenario)
@@ -174,6 +175,7 @@ func (cli *cliSimulation) newStatusCmd() *cobra.Command {
 		Use:               "status",
 		Short:             "Show simulation mode status",
 		Example:           `cscli simulation status`,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Run: func(_ *cobra.Command, _ []string) {
 			cli.status()

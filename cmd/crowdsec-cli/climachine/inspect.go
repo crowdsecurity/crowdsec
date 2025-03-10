@@ -11,6 +11,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clientinfo"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -44,7 +45,7 @@ func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendHeader(table.Row{"Name", "Status", "Version"})
 		t.SetTitle(itemType)
 		t.AppendRows(rows)
-		io.WriteString(out, t.Render()+"\n")
+		fmt.Fprintln(out, t.Render())
 	}
 }
 
@@ -80,7 +81,7 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Collections", coll.Name})
 	}
 
-	io.WriteString(out, t.Render()+"\n")
+	fmt.Fprintln(out, t.Render())
 }
 
 func (cli *cliMachines) inspect(machine *ent.Machine) error {
@@ -156,7 +157,7 @@ func (cli *cliMachines) newInspectCmd() *cobra.Command {
 		Use:               "inspect [machine_name]",
 		Short:             "inspect a machine by name",
 		Example:           `cscli machines inspect "machine1"`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validMachineID,
 		RunE: func(cmd *cobra.Command, args []string) error {
