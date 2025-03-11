@@ -457,7 +457,9 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			return
 		}
 
-		_ = os.RemoveAll(socket)
+		if err := os.Remove(socket); err != nil {
+			log.Errorf("can't remove socket %s: %s", socket, err)
+		}
 
 		listener, err := net.Listen("unix", socket)
 		if err != nil {
@@ -485,7 +487,9 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		}
 
 		if s.UnixSocket != "" {
-			_ = os.RemoveAll(s.UnixSocket)
+			if err := os.Remove(s.UnixSocket); err != nil {
+				log.Errorf("can't remove socket %s: %s", s.UnixSocket, err)
+			}
 		}
 	}
 
