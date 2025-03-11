@@ -2,6 +2,8 @@ package appsecacquisition
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,6 +66,7 @@ type AppsecSource struct {
 	AuthCache             AuthCache
 	AppsecRunners         []AppsecRunner // one for each go-routine
 	appsecAllowlistClient *allowlists.AppsecAllowlist
+	lapiCACertPool        *x509.CertPool
 }
 
 // Struct to handle cache of authentication
@@ -156,6 +159,28 @@ func (w *AppsecSource) GetMetrics() []prometheus.Collector {
 
 func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
+}
+
+func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, error) {
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		logger.Warnf("Error loading system CA certificates: %s", err)
+	}
+
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
+
+	if caCertPath != "" {
+		caCert, err := os.ReadFile(caCertPath)
+		if err != nil {
+			return nil, fmt.Errorf("while opening cert file: %w", err)
+		}
+
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
+
+	return caCertPool, nil
 }
 
 func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
@@ -253,6 +278,19 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
+
+	csConfig := csconfig.GetConfig()
+
+	caCertPath := ""
+
+	if csConfig.API.Server.TLS != nil {
+		caCertPath = csConfig.API.Server.TLS.CACertPath
+	}
+
+	w.lapiCACertPool, err = loadCertPool(caCertPath, w.logger)
+	if err != nil {
+		return fmt.Errorf("unable to load LAPI CA cert pool: %w", err)
+	}
 
 	return nil
 }
@@ -410,21 +448,29 @@ func (w *AppsecSource) Dump() interface{} {
 }
 
 func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
-	client := &http.Client{
-		Timeout: 200 * time.Millisecond,
-	}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, http.NoBody)
 	if err != nil {
-		log.Errorf("Error creating request: %s", err)
+		w.logger.Errorf("Error creating request: %s", err)
 		return false
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
 
+	client := &http.Client{
+		Timeout: 200 * time.Millisecond,
+	}
+
+	if w.lapiCACertPool != nil {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: w.lapiCACertPool,
+			},
+		}
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Errorf("Error performing request: %s", err)
+		w.logger.Errorf("Error performing request: %s", err)
 		return false
 	}
 
