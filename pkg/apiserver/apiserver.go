@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -458,7 +459,9 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		}
 
 		if err := os.Remove(socket); err != nil {
-			log.Errorf("can't remove socket %s: %s", socket, err)
+			if !errors.Is(err, fs.ErrNotExist) {
+				log.Errorf("can't remove socket %s: %s", socket, err)
+			}
 		}
 
 		listener, err := net.Listen("unix", socket)
@@ -488,7 +491,9 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 
 		if s.UnixSocket != "" {
 			if err := os.Remove(s.UnixSocket); err != nil {
-				log.Errorf("can't remove socket %s: %s", s.UnixSocket, err)
+				if !errors.Is(err, fs.ErrNotExist) {
+					log.Errorf("can't remove socket %s: %s", s.UnixSocket, err)
+				}
 			}
 		}
 	}

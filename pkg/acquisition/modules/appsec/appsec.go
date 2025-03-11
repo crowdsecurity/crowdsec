@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -351,7 +352,9 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		}
 
 		if err := os.Remove(w.config.ListenSocket); err != nil {
-			w.logger.Errorf("can't remove socket %s: %s", socket, err)
+			if !errors.Is(err, fs.ErrNotExist) {
+				w.logger.Errorf("can't remove socket %s: %s", socket, err)
+			}
 		}
 
 		w.logger.Infof("creating unix socket %s", socket)
@@ -395,7 +398,9 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 		if w.config.ListenSocket != "" {
 			if err := os.Remove(w.config.ListenSocket); err != nil {
-				w.logger.Errorf("can't remove socket %s: %s", w.config.ListenSocket, err)
+				if !errors.Is(err, fs.ErrNotExist) {
+					w.logger.Errorf("can't remove socket %s: %s", w.config.ListenSocket, err)
+				}
 			}
 		}
 	}
