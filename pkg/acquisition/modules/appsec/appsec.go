@@ -273,6 +273,94 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
+func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
+	defer trace.CatchPanic("crowdsec/acquis/appsec/listenAndServe")
+
+	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
+
+	var serverError = make(chan error, 2)
+
+	startServer := func(listener net.Listener, canTLS bool) {
+		var err error
+		if canTLS && (w.config.CertFilePath != "" || w.config.KeyFilePath != "") {
+			if w.config.KeyFilePath == "" {
+				serverError <- errors.New("missing TLS key file")
+				return
+			}
+
+			if w.config.CertFilePath == "" {
+				serverError <- errors.New("missing TLS cert file")
+				return
+			}
+
+			err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
+		} else {
+			err = w.server.Serve(listener)
+		}
+
+		switch {
+		case errors.Is(err, http.ErrServerClosed):
+			break
+		case err != nil:
+			serverError <- err
+		}
+	}
+
+	// Starting Unix socket listener
+	go func(socket string) {
+		if socket == "" {
+			return
+		}
+
+		_ = os.RemoveAll(socket)
+
+		w.logger.Infof("creating unix socket %s", socket)
+
+		listener, err := net.Listen("unix", socket)
+		if err != nil {
+			serverError <- fmt.Errorf("appsec server failed: %w", err)
+			return
+		}
+
+		w.logger.Infof("Appsec listening on Unix socket %s", socket)
+		startServer(listener, false)
+	}(w.config.ListenSocket)
+
+	// Starting TCP listener
+	go func(url string) {
+		if url == "" {
+			return
+		}
+
+		listener, err := net.Listen("tcp", url)
+		if err != nil {
+			serverError <- fmt.Errorf("listening on %s: %w", url, err)
+		}
+
+		w.logger.Infof("Appsec listening on %s", url)
+		startServer(listener, true)
+	}(w.config.ListenAddr)
+
+	select {
+	case err := <-serverError:
+		return err
+	case <-t.Dying():
+		w.logger.Info("Shutting down Appsec server")
+		// xx let's clean up the appsec runners :)
+		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
+
+		if err := w.server.Shutdown(ctx); err != nil {
+			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
+		}
+
+		if w.config.ListenSocket != "" {
+			_ = os.RemoveAll(w.config.ListenSocket)
+		}
+	}
+
+	return nil
+}
+
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 
@@ -290,8 +378,6 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
 
-		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
-
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
 
@@ -301,60 +387,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 			})
 		}
 
-		t.Go(func() error {
-			if w.config.ListenSocket != "" {
-				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
-				_ = os.RemoveAll(w.config.ListenSocket)
-
-				listener, err := net.Listen("unix", w.config.ListenSocket)
-				if err != nil {
-					return fmt.Errorf("appsec server failed: %w", err)
-				}
-
-				defer listener.Close()
-
-				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
-					err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
-				} else {
-					err = w.server.Serve(listener)
-				}
-
-				if err != nil && !errors.Is(err, http.ErrServerClosed) {
-					return fmt.Errorf("appsec server failed: %w", err)
-				}
-			}
-
-			return nil
-		})
-		t.Go(func() error {
-			var err error
-
-			if w.config.ListenAddr != "" {
-				w.logger.Infof("creating TCP server on %s", w.config.ListenAddr)
-
-				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
-					err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
-				} else {
-					err = w.server.ListenAndServe()
-				}
-
-				if err != nil && err != http.ErrServerClosed {
-					return fmt.Errorf("appsec server failed: %w", err)
-				}
-			}
-
-			return nil
-		})
-		<-t.Dying()
-		w.logger.Info("Shutting down Appsec server")
-		// xx let's clean up the appsec runners :)
-		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
-
-		if err := w.server.Shutdown(ctx); err != nil {
-			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
-		}
-
-		return nil
+		return w.listenAndServe(ctx, t)
 	})
 
 	return nil
