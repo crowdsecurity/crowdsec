@@ -4,13 +4,15 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func (cli *cliHubTest) newCleanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {

@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -83,7 +84,7 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer(s) from the database",
 		Example:           `cscli bouncers delete "bouncer1" "bouncer2"`,
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validBouncerID,

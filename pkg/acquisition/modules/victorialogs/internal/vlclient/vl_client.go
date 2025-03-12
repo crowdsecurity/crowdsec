@@ -370,7 +370,7 @@ func (lc *VLClient) QueryRange(ctx context.Context, infinite bool) chan *Log {
 }
 
 func (lc *VLClient) Get(ctx context.Context, url string) (*http.Response, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

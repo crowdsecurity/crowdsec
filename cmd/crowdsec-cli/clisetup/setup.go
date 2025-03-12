@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
@@ -35,7 +36,6 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 		Use:               "setup",
 		Short:             "Tools to configure crowdsec",
 		Long:              "Manage hub configuration and service detection",
-		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 	}
 
@@ -82,6 +82,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "detect",
 		Short:             "detect running services, generate a setup file",
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.detect(f)
@@ -102,7 +103,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "install-hub [setup_file] [flags]",
 		Short:             "install items from a setup file",
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.install(cmd.Context(), interactive, dryRun, args[0])
@@ -123,7 +124,7 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "datasources [setup_file] [flags]",
 		Short:             "generate datasource (acquisition) configuration from a setup file",
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.dataSources(args[0], toDir)
@@ -140,7 +141,7 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "validate [setup_file]",
 		Short:             "validate a setup file",
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.validate(args[0])

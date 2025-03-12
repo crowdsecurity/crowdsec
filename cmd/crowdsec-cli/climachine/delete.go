@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
@@ -36,7 +37,7 @@ func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 		Use:               "delete [machine_name]...",
 		Short:             "delete machine(s) by name",
 		Example:           `cscli machines delete "machine1" "machine2"`,
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.validMachineID,
