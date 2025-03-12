@@ -267,8 +267,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
 
-		err := runner.Init(appsecCfg.GetDataDir())
-		if err != nil {
+		if err = runner.Init(appsecCfg.GetDataDir()); err != nil {
 			return fmt.Errorf("unable to initialize runner: %w", err)
 		}
 
@@ -317,10 +316,11 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 
-	var serverError = make(chan error, 2)
+	serverError := make(chan error, 2)
 
 	startServer := func(listener net.Listener, canTLS bool) {
 		var err error
+
 		if canTLS && (w.config.CertFilePath != "" || w.config.KeyFilePath != "") {
 			if w.config.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
@@ -420,6 +420,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 	if err != nil {
 		return fmt.Errorf("failed to fetch allowlists: %w", err)
 	}
+
 	w.appsecAllowlistClient.StartRefresh(ctx, t)
 
 	t.Go(func() error {

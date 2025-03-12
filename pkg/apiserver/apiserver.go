@@ -412,6 +412,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 
 	startServer := func(listener net.Listener, canTLS bool) {
 		var err error
+
 		if canTLS && s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
 			if s.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
