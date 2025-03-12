@@ -367,6 +367,32 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.NotNil(t, events[1].Overflow.Alert)
 			},
 		},
+		{
+			name:             "on_match: no alert with default config",
+			expected_load_ok: true,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 1)
+				require.Equal(t, types.LOG, events[0].Type)
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
