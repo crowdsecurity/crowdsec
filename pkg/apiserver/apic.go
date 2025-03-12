@@ -854,6 +854,10 @@ func (a *apic) ApplyApicWhitelists(ctx context.Context, decisions []*models.Deci
 		log.Errorf("while getting allowlists content: %s", err)
 	}
 
+	if a.whitelists != nil {
+		log.Warn("capi_whitelists_path is deprecated, please use centralized allowlists instead. See https://docs.crowdsec.net/docs/next/local_api/centralized_allowlists.")
+	}
+
 	if (a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0) && len(allowlisted_ips) == 0 && len(allowlisted_cidrs) == 0 {
 		return decisions
 	}
