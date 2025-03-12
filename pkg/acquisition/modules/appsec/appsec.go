@@ -283,8 +283,8 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	caCertPath := ""
 
-	if csConfig.API.Server.TLS != nil {
-		caCertPath = csConfig.API.Server.TLS.CACertPath
+	if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil {
+		caCertPath = csConfig.API.Client.Credentials.CACertPath
 	}
 
 	w.lapiCACertPool, err = loadCertPool(caCertPath, w.logger)
