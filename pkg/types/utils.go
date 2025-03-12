@@ -11,12 +11,13 @@ import (
 )
 
 var (
-	logFormatter log.Formatter
-	LogOutput    *lumberjack.Logger // io.Writer
-	logLevel     log.Level
+	logFormatter    log.Formatter
+	LogOutput       *lumberjack.Logger // io.Writer
+	logLevel        log.Level
+	logLevelViaFlag bool
 )
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool, levelViaFlag bool) error {
 	if format == "" {
 		format = "text"
 	}
@@ -68,13 +69,14 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 
 	logLevel = cfgLevel
+	logLevelViaFlag = levelViaFlag
 	log.SetLevel(logLevel)
 	log.SetFormatter(logFormatter)
 
 	return nil
 }
 
-func ConfigureLogger(clog *log.Logger) error {
+func ConfigureLogger(clog *log.Logger, level *log.Level) error {
 	/*Configure logs*/
 	if LogOutput != nil {
 		clog.SetOutput(LogOutput)
@@ -85,6 +87,10 @@ func ConfigureLogger(clog *log.Logger) error {
 	}
 
 	clog.SetLevel(logLevel)
+
+	if level != nil && !logLevelViaFlag {
+		clog.SetLevel(*level)
+	}
 
 	return nil
 }

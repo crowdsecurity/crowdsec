@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"errors"
+	"net/url"
 	"testing"
 	"time"
 
@@ -157,6 +158,68 @@ func TestMatch(t *testing.T) {
 		if isOk := assert.Equal(t, test.ret, ret); !isOk {
 			t.Fatalf("pattern:%s val:%s NOK %t !=  %t", test.glob, test.val, ret, test.ret)
 		}
+	}
+}
+
+// just to verify that the function is available, real tests are in TestExtractQueryParam
+func TestExtractQueryParamExpr(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result []string
+		err    string
+	}{
+		{
+			name: "ExtractQueryParam() test: basic test",
+			env: map[string]interface{}{
+				"query": "/foo?a=1&b=2",
+			},
+			code:   "ExtractQueryParam(query, 'a')",
+			result: []string{"1"},
+		},
+	}
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+
+}
+
+// just to verify that the function is available, real tests are in TestParseQuery
+func TestParseQueryInExpr(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result url.Values
+		err    string
+	}{
+		{
+			name: "ParseQuery() test: basic test",
+			env: map[string]interface{}{
+				"query":      "a=1&b=2",
+				"ParseQuery": ParseQuery,
+			},
+			code:   "ParseQuery(query)",
+			result: url.Values{"a": {"1"}, "b": {"2"}},
+		},
+	}
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
 	}
 }
 

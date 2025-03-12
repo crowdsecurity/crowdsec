@@ -286,7 +286,6 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 				r.outChan <- *appsecOvlfw
 			}
 		}
-
 		// Should the in band match trigger an event ?
 		if r.AppsecRuntime.Response.SendEvent {
 			r.outChan <- evt
@@ -332,7 +331,9 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
 			}
-			r.outChan <- *appsecOvlfw
+			if appsecOvlfw != nil {
+				r.outChan <- *appsecOvlfw
+			}
 		}
 	}
 }

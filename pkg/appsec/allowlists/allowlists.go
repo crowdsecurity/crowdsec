@@ -62,6 +62,8 @@ func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 
 	a.lock.Lock()
 	defer a.lock.Unlock()
+	prevIPsLen := len(a.ips)
+	prevRangesLen := len(a.ranges)
 	a.ranges = []rangeAllowlist{}
 	a.ips = []ipAllowlist{}
 
@@ -93,7 +95,7 @@ func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 		}
 	}
 
-	if len(a.ips) != 0 || len(a.ranges) != 0 {
+	if (len(a.ips) != 0 || len(a.ranges) != 0) && (prevIPsLen != len(a.ips) || prevRangesLen != len(a.ranges)) {
 		a.logger.Infof("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
 	}
 	a.logger.Debugf("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))

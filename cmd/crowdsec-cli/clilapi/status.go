@@ -12,6 +12,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -99,7 +100,7 @@ func (cli *cliLapi) newStatusCmd() *cobra.Command {
 	cmdLapiStatus := &cobra.Command{
 		Use:               "status",
 		Short:             "Check authentication to Local API (LAPI)",
-		Args:              cobra.MinimumNArgs(0),
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), nil)

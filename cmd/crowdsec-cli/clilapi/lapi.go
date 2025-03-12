@@ -24,7 +24,6 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "lapi [action]",
 		Short:             "Manage interaction with Local API (LAPI)",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := cli.cfg().LoadAPIClient(); err != nil {

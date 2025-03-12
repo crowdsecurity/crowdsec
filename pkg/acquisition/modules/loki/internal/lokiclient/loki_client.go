@@ -302,7 +302,7 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 
 // Create a wrapper for http.Get to be able to set headers and auth
 func (lc *LokiClient) Get(ctx context.Context, url string) (*http.Response, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

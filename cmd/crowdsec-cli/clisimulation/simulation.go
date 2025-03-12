@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -174,6 +175,7 @@ func (cli *cliSimulation) newStatusCmd() *cobra.Command {
 		Use:               "status",
 		Short:             "Show simulation mode status",
 		Example:           `cscli simulation status`,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Run: func(_ *cobra.Command, _ []string) {
 			cli.status()

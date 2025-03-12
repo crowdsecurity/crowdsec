@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error {
@@ -58,7 +60,7 @@ func (cli *cliHubTest) newExplainCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "explain",
 		Short:             "explain [test_name]",
-		Args:              cobra.ExactArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
