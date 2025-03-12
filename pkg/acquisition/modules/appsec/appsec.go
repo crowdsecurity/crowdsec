@@ -2,9 +2,12 @@ package appsecacquisition
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -64,6 +67,7 @@ type AppsecSource struct {
 	AuthCache             AuthCache
 	AppsecRunners         []AppsecRunner // one for each go-routine
 	appsecAllowlistClient *allowlists.AppsecAllowlist
+	lapiCACertPool        *x509.CertPool
 }
 
 // Struct to handle cache of authentication
@@ -158,6 +162,28 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
+func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, error) {
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		logger.Warnf("Error loading system CA certificates: %s", err)
+	}
+
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
+
+	if caCertPath != "" {
+		caCert, err := os.ReadFile(caCertPath)
+		if err != nil {
+			return nil, fmt.Errorf("while opening cert file: %w", err)
+		}
+
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
+
+	return caCertPool, nil
+}
+
 func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -241,8 +267,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
 
-		err := runner.Init(appsecCfg.GetDataDir())
-		if err != nil {
+		if err = runner.Init(appsecCfg.GetDataDir()); err != nil {
 			return fmt.Errorf("unable to initialize runner: %w", err)
 		}
 
@@ -253,6 +278,19 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
+
+	csConfig := csconfig.GetConfig()
+
+	caCertPath := ""
+
+	if csConfig.API.Server.TLS != nil {
+		caCertPath = csConfig.API.Server.TLS.CACertPath
+	}
+
+	w.lapiCACertPool, err = loadCertPool(caCertPath, w.logger)
+	if err != nil {
+		return fmt.Errorf("unable to load LAPI CA cert pool: %w", err)
+	}
 
 	return nil
 }
@@ -273,6 +311,103 @@ func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event,
 	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
+func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
+	defer trace.CatchPanic("crowdsec/acquis/appsec/listenAndServe")
+
+	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
+
+	serverError := make(chan error, 2)
+
+	startServer := func(listener net.Listener, canTLS bool) {
+		var err error
+
+		if canTLS && (w.config.CertFilePath != "" || w.config.KeyFilePath != "") {
+			if w.config.KeyFilePath == "" {
+				serverError <- errors.New("missing TLS key file")
+				return
+			}
+
+			if w.config.CertFilePath == "" {
+				serverError <- errors.New("missing TLS cert file")
+				return
+			}
+
+			err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
+		} else {
+			err = w.server.Serve(listener)
+		}
+
+		switch {
+		case errors.Is(err, http.ErrServerClosed):
+			break
+		case err != nil:
+			serverError <- err
+		}
+	}
+
+	// Starting Unix socket listener
+	go func(socket string) {
+		if socket == "" {
+			return
+		}
+
+		if err := os.Remove(w.config.ListenSocket); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				w.logger.Errorf("can't remove socket %s: %s", socket, err)
+			}
+		}
+
+		w.logger.Infof("creating unix socket %s", socket)
+
+		listener, err := net.Listen("unix", socket)
+		if err != nil {
+			serverError <- fmt.Errorf("appsec server failed: %w", err)
+			return
+		}
+
+		w.logger.Infof("Appsec listening on Unix socket %s", socket)
+		startServer(listener, false)
+	}(w.config.ListenSocket)
+
+	// Starting TCP listener
+	go func(url string) {
+		if url == "" {
+			return
+		}
+
+		listener, err := net.Listen("tcp", url)
+		if err != nil {
+			serverError <- fmt.Errorf("listening on %s: %w", url, err)
+		}
+
+		w.logger.Infof("Appsec listening on %s", url)
+		startServer(listener, true)
+	}(w.config.ListenAddr)
+
+	select {
+	case err := <-serverError:
+		return err
+	case <-t.Dying():
+		w.logger.Info("Shutting down Appsec server")
+		// xx let's clean up the appsec runners :)
+		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
+
+		if err := w.server.Shutdown(ctx); err != nil {
+			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
+		}
+
+		if w.config.ListenSocket != "" {
+			if err := os.Remove(w.config.ListenSocket); err != nil {
+				if !errors.Is(err, fs.ErrNotExist) {
+					w.logger.Errorf("can't remove socket %s: %s", w.config.ListenSocket, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 
@@ -285,12 +420,11 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 	if err != nil {
 		return fmt.Errorf("failed to fetch allowlists: %w", err)
 	}
+
 	w.appsecAllowlistClient.StartRefresh(ctx, t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
-
-		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
@@ -301,60 +435,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 			})
 		}
 
-		t.Go(func() error {
-			if w.config.ListenSocket != "" {
-				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
-				_ = os.RemoveAll(w.config.ListenSocket)
-
-				listener, err := net.Listen("unix", w.config.ListenSocket)
-				if err != nil {
-					return fmt.Errorf("appsec server failed: %w", err)
-				}
-
-				defer listener.Close()
-
-				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
-					err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
-				} else {
-					err = w.server.Serve(listener)
-				}
-
-				if err != nil && !errors.Is(err, http.ErrServerClosed) {
-					return fmt.Errorf("appsec server failed: %w", err)
-				}
-			}
-
-			return nil
-		})
-		t.Go(func() error {
-			var err error
-
-			if w.config.ListenAddr != "" {
-				w.logger.Infof("creating TCP server on %s", w.config.ListenAddr)
-
-				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
-					err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
-				} else {
-					err = w.server.ListenAndServe()
-				}
-
-				if err != nil && err != http.ErrServerClosed {
-					return fmt.Errorf("appsec server failed: %w", err)
-				}
-			}
-
-			return nil
-		})
-		<-t.Dying()
-		w.logger.Info("Shutting down Appsec server")
-		// xx let's clean up the appsec runners :)
-		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
-
-		if err := w.server.Shutdown(ctx); err != nil {
-			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
-		}
-
-		return nil
+		return w.listenAndServe(ctx, t)
 	})
 
 	return nil
@@ -373,21 +454,29 @@ func (w *AppsecSource) Dump() interface{} {
 }
 
 func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
-	client := &http.Client{
-		Timeout: 200 * time.Millisecond,
-	}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, http.NoBody)
 	if err != nil {
-		log.Errorf("Error creating request: %s", err)
+		w.logger.Errorf("Error creating request: %s", err)
 		return false
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
 
+	client := &http.Client{
+		Timeout: 200 * time.Millisecond,
+	}
+
+	if w.lapiCACertPool != nil {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: w.lapiCACertPool,
+			},
+		}
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Errorf("Error performing request: %s", err)
+		w.logger.Errorf("Error performing request: %s", err)
 		return false
 	}
 

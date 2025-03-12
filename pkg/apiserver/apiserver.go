@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -407,15 +408,11 @@ func (s *APIServer) Run(apiReady chan bool) error {
 // it also updates the URL field with the actual address the server is listening on
 // it's meant to be run in a separate goroutine
 func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
-	var (
-		tcpListener    net.Listener
-		unixListener   net.Listener
-		err            error
-		serverError    = make(chan error, 2)
-		listenerClosed = make(chan struct{})
-	)
+	serverError := make(chan error, 2)
 
 	startServer := func(listener net.Listener, canTLS bool) {
+		var err error
+
 		if canTLS && s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
 			if s.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
@@ -441,38 +438,42 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 	}
 
 	// Starting TCP listener
-	go func() {
-		if s.URL == "" {
+	go func(url string) {
+		if url == "" {
 			return
 		}
 
-		tcpListener, err = net.Listen("tcp", s.URL)
+		listener, err := net.Listen("tcp", url)
 		if err != nil {
-			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
+			serverError <- fmt.Errorf("listening on %s: %w", url, err)
 			return
 		}
 
-		log.Infof("CrowdSec Local API listening on %s", s.URL)
-		startServer(tcpListener, true)
-	}()
+		log.Infof("CrowdSec Local API listening on %s", url)
+		startServer(listener, true)
+	}(s.URL)
 
 	// Starting Unix socket listener
-	go func() {
-		if s.UnixSocket == "" {
+	go func(socket string) {
+		if socket == "" {
 			return
 		}
 
-		_ = os.RemoveAll(s.UnixSocket)
+		if err := os.Remove(socket); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				log.Errorf("can't remove socket %s: %s", socket, err)
+			}
+		}
 
-		unixListener, err = net.Listen("unix", s.UnixSocket)
+		listener, err := net.Listen("unix", socket)
 		if err != nil {
 			serverError <- fmt.Errorf("while creating unix listener: %w", err)
 			return
 		}
 
-		log.Infof("CrowdSec Local API listening on Unix socket %s", s.UnixSocket)
-		startServer(unixListener, false)
-	}()
+		log.Infof("CrowdSec Local API listening on Unix socket %s", socket)
+		startServer(listener, false)
+	}(s.UnixSocket)
 
 	apiReady <- true
 
@@ -489,10 +490,12 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			log.Errorf("while shutting down http server: %v", err)
 		}
 
-		close(listenerClosed)
-	case <-listenerClosed:
 		if s.UnixSocket != "" {
-			_ = os.RemoveAll(s.UnixSocket)
+			if err := os.Remove(s.UnixSocket); err != nil {
+				if !errors.Is(err, fs.ErrNotExist) {
+					log.Errorf("can't remove socket %s: %s", s.UnixSocket, err)
+				}
+			}
 		}
 	}
 
