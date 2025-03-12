@@ -314,7 +314,7 @@ func TestJA4H(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			req, err := http.NewRequest(test.method, test.url, nil)
+			req, err := http.NewRequest(test.method, test.url, http.NoBody)
 			if err != nil {
 				t.Fatalf("Failed to create request: %s", err)
 			}
