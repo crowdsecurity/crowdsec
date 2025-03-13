@@ -3,6 +3,7 @@ package hubtest
 import (
 	"bufio"
 	"errors"
+	"path/filepath"
 	"fmt"
 	"io"
 	"os"
@@ -156,14 +157,16 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 	return nil
 }
 
-func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
+func (s *ScenarioAssert) RunExpression(expression string) (any, error) {
 	// debug doesn't make much sense with the ability to evaluate "on the fly"
 	// var debugFilter *exprhelpers.ExprDebugger
-	var output interface{}
+	var output any
 
-	env := map[string]interface{}{"results": *s.TestData}
+	env := map[string]any{"results": *s.TestData}
+	opts := exprhelpers.GetExprOptions(env)
+	opts = append(opts, expr.Function("basename", basename, new(func (string) string)))
+	runtimeFilter, err := expr.Compile(expression, opts...)
 
-	runtimeFilter, err := expr.Compile(expression, exprhelpers.GetExprOptions(env)...)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +177,7 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 	// dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
-	output, err = expr.Run(runtimeFilter, map[string]interface{}{"results": *s.TestData})
+	output, err = expr.Run(runtimeFilter, map[string]any{"results": *s.TestData})
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
@@ -228,7 +231,11 @@ func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 
 		for evtIndex, evt := range event.Overflow.Alert.Events {
 			for _, meta := range evt.Meta {
-				ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, Escape(meta.Value))
+				if meta.Key == "datasource_path" {
+					ret += fmt.Sprintf(`basename(results[%d].Overflow.Alert.Events[%d].GetMeta("%s")) == "%s"`+"\n", eventIndex, evtIndex, meta.Key, Escape(filepath.Base(meta.Value)))
+				} else {
+					ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, Escape(meta.Value))
+				}
 			}
 		}
 

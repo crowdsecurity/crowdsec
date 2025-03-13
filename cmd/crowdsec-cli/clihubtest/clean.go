@@ -42,9 +42,7 @@ func (cli *cliHubTest) newCleanCmd() *cobra.Command {
 			}
 
 			for _, test := range tests {
-				if err := test.Clean(); err != nil {
-					return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
-				}
+				test.Clean()
 			}
 
 			return nil

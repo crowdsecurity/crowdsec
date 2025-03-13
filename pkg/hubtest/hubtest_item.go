@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -251,8 +252,18 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	return nil
 }
 
-func (t *HubTestItem) Clean() error {
-	return os.RemoveAll(t.RuntimePath)
+func (t *HubTestItem) Clean() {
+	if err := os.RemoveAll(t.ResultsPath); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Errorf("while cleaning %s: %s", t.Name, err.Error())
+		}
+	}
+
+	if err := os.RemoveAll(t.RuntimePath); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Errorf("while cleaning %s: %s", t.Name, err.Error())
+		}
+	}
 }
 
 func (t *HubTestItem) RunWithNucleiTemplate() error {
@@ -267,7 +278,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath}
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
 
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
@@ -281,7 +292,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliBouncerCmd.Dir = testPath
-	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath}
+	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
@@ -295,7 +306,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
 	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecDaemon.Dir = testPath
-	crowdsecDaemon.Env = []string{"TESTDIR="+testPath}
+	crowdsecDaemon.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
 
 	crowdsecDaemon.Start()
 
@@ -382,44 +393,10 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithLogFile(ctx context.Context, patternDir string) error {
+func (t *HubTestItem) RunWithLogFile() error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
-	}
-
-	// create runtime, data, hub folders
-	if err := createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
-		return err
-	}
-
-	if err := Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
-		return fmt.Errorf("unable to copy .index.json file in '%s': %w", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
-	}
-
-	// copy template config file to runtime folder
-	if err := Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
-	}
-
-	// copy template profile file to runtime folder
-	if err := Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
-	}
-
-	// copy template simulation file to runtime folder
-	if err := Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
-	}
-
-	// copy template patterns folder to runtime folder
-	if err := CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
-	}
-
-	// install the hub in the runtime folder
-	if err := t.InstallHub(ctx); err != nil {
-		return fmt.Errorf("unable to install hub in '%s': %w", t.RuntimeHubPath, err)
 	}
 
 	logFile := filepath.Join(testPath, t.Config.LogFile)
@@ -438,7 +415,7 @@ func (t *HubTestItem) RunWithLogFile(ctx context.Context, patternDir string) err
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath}
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
 
 	log.Debugf("%s", cscliRegisterCmd.String())
 
@@ -459,7 +436,7 @@ func (t *HubTestItem) RunWithLogFile(ctx context.Context, patternDir string) err
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecCmd.Dir = testPath
-	crowdsecCmd.Env = []string{"TESTDIR="+testPath}
+	crowdsecCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
 
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
@@ -623,7 +600,7 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	}
 
 	if t.Config.LogFile != "" {
-		return t.RunWithLogFile(ctx, patternDir)
+		return t.RunWithLogFile()
 	}
 
 	if t.Config.NucleiTemplate != "" {
