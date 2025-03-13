@@ -1,8 +1,10 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -470,4 +472,146 @@ exclude_regexps: ["\\.gz$"]`
 
 	assert.Contains(t, hook.LastEntry().Message, expectedLogOutput)
 	hook.Reset()
+}
+
+func TestDiscoveryPollConfiguration(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  []byte
+		wantErr bool
+	}{
+		{
+			name: "valid discovery poll config",
+			config: []byte(`
+filenames:
+ - "tests/test.log"
+discovery_poll_enable: true
+discovery_poll_interval: "30s"
+mode: tail
+`),
+			wantErr: false,
+		},
+		{
+			name: "invalid poll interval",
+			config: []byte(`
+filenames:
+ - "tests/test.log"
+discovery_poll_enable: true
+discovery_poll_interval: "invalid"
+mode: tail
+`),
+			wantErr: true,
+		},
+		{
+			name: "polling disabled",
+			config: []byte(`
+filenames:
+ - "tests/test.log"
+discovery_poll_enable: false
+mode: tail
+`),
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			f := &fileacquisition.FileSource{}
+			err := f.Configure(tc.config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestDiscoveryPolling(t *testing.T) {
+	dir, err := os.MkdirTemp("", "crowdsec-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	config := []byte(fmt.Sprintf(`
+filenames:
+ - "%s/*.log"
+discovery_poll_enable: true
+discovery_poll_interval: "1s"
+mode: tail
+`, dir))
+
+	f := &fileacquisition.FileSource{}
+	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	require.NoError(t, err)
+
+	// Create channel for events
+	eventChan := make(chan types.Event)
+	tomb := tomb.Tomb{}
+
+	// Start acquisition
+	err = f.StreamingAcquisition(context.Background(), eventChan, &tomb)
+	require.NoError(t, err)
+
+	// Create a test file after a delay
+	time.Sleep(100 * time.Millisecond)
+	testFile := filepath.Join(dir, "test.log")
+	err = os.WriteFile(testFile, []byte("test line\n"), 0644)
+	require.NoError(t, err)
+
+	// Wait for polling to detect the file
+	time.Sleep(2 * time.Second)
+
+	// Verify file is being tailed
+	isTailed := f.IsTailing(testFile)
+	require.True(t, isTailed, "File should be tailed after polling")
+
+	// Cleanup
+	tomb.Kill(nil)
+	tomb.Wait()
+}
+
+func TestFileResurrectionViaPolling(t *testing.T) {
+	dir, err := os.MkdirTemp("", "crowdsec-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	testFile := filepath.Join(dir, "test.log")
+	err = os.WriteFile(testFile, []byte("test line\n"), 0644)
+	require.NoError(t, err)
+
+	config := []byte(fmt.Sprintf(`
+filenames:
+ - "%s/*.log"
+discovery_poll_enable: true
+discovery_poll_interval: "1s"
+mode: tail
+`, dir))
+
+	f := &fileacquisition.FileSource{}
+	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	require.NoError(t, err)
+
+	eventChan := make(chan types.Event)
+	tomb := tomb.Tomb{}
+
+	err = f.StreamingAcquisition(context.Background(), eventChan, &tomb)
+	require.NoError(t, err)
+
+	// Wait for initial tail setup
+	time.Sleep(100 * time.Millisecond)
+
+	// Simulate tailer death by removing it from the map
+	f.RemoveTail(testFile)
+
+	// Wait for polling to resurrect the file
+	time.Sleep(2 * time.Second)
+
+	// Verify file is being tailed again
+	isTailed := f.IsTailing(testFile)
+	require.True(t, isTailed, "File should be resurrected via polling")
+
+	// Cleanup
+	tomb.Kill(nil)
+	tomb.Wait()
 }

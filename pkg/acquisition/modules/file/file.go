@@ -395,6 +395,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	logger := f.logger.WithField("goroutine", "inotify")
 
 	// Setup polling if enabled
+	var tickerChan <-chan time.Time
 	var ticker *time.Ticker
 	if f.config.DiscoveryPollEnable {
 		interval := 30 * time.Second // default interval
@@ -407,6 +408,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			}
 		}
 		ticker = time.NewTicker(interval)
+		tickerChan = ticker.C
 		defer ticker.Stop()
 	}
 
@@ -416,18 +418,12 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			if !ok {
 				return nil
 			}
-
 			if event.Op&fsnotify.Create != fsnotify.Create {
 				continue
 			}
-
 			f.checkAndTailFile(event.Name, logger, out, t)
 
-		case <-ticker.C:
-			if !f.config.DiscoveryPollEnable {
-				continue
-			}
-
+		case <-tickerChan: // Will never trigger if tickerChan is nil
 			// Poll for all configured patterns
 			for _, pattern := range f.config.Filenames {
 				files, err := filepath.Glob(pattern)
@@ -435,7 +431,6 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Errorf("Error globbing pattern %s during poll: %s", pattern, err)
 					continue
 				}
-
 				for _, file := range files {
 					f.checkAndTailFile(file, logger, out, t)
 				}
@@ -691,4 +686,18 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	t.Kill(nil)
 
 	return nil
+}
+
+// IsTailing returns whether a given file is currently being tailed. For testing purposes.
+func (f *FileSource) IsTailing(filename string) bool {
+	f.tailMapMutex.RLock()
+	defer f.tailMapMutex.RUnlock()
+	return f.tails[filename]
+}
+
+// RemoveTail is used for testing to simulate a dead tailer. For testing purposes.
+func (f *FileSource) RemoveTail(filename string) {
+	f.tailMapMutex.Lock()
+	defer f.tailMapMutex.Unlock()
+	delete(f.tails, filename)
 }
