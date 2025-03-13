@@ -610,12 +610,14 @@ mode: tail
 
 	// Simulate tailer death by removing it from the map
 	f.RemoveTail(testFile)
+	isTailed := f.IsTailing(testFile)
+	require.False(t, isTailed, "File should be removed from the map")
 
 	// Wait for polling to resurrect the file
 	time.Sleep(2 * time.Second)
 
 	// Verify file is being tailed again
-	isTailed := f.IsTailing(testFile)
+	isTailed = f.IsTailing(testFile)
 	require.True(t, isTailed, "File should be resurrected via polling")
 
 	// Cleanup
