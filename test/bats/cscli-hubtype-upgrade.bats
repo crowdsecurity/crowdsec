@@ -177,11 +177,13 @@ get_latest_version() {
 	EOT
     refute_stderr
 
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
+
     rune -0 cscli parsers upgrade crowdsecurity/whitelists --force
     assert_output - <<-EOT
 	Action plan:
 	📥 download
-	 parsers: crowdsecurity/whitelists (? -> 0.2)
+	 parsers: crowdsecurity/whitelists (? -> $latest_whitelists)
 
 	downloading parsers:crowdsecurity/whitelists
 

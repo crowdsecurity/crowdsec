@@ -103,6 +103,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	var (
 		noClean          bool
 		all              bool
+		reportSuccess    bool
 		forceClean       bool
 		nucleiTargetHost string
 		appSecHost       string
@@ -125,7 +126,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 			cfg := cli.cfg()
 
 			success := true
-			testResult := make(map[string]bool)
+			testMap := make(map[string]*hubtest.HubTestItem)
 			for _, test := range hubPtr.Tests {
 				if test.AutoGen && !isAppsecTest {
 					if test.ParserAssert.AutoGenAssert {
@@ -144,11 +145,8 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 
 					return fmt.Errorf("please fill your assert file(s) for test '%s', exiting", test.Name)
 				}
-				testResult[test.Name] = test.Success
+				testMap[test.Name] = test
 				if test.Success {
-					if cfg.Cscli.Output == "human" {
-						fmt.Printf("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
-					}
 					if !noClean {
 						test.Clean()
 					}
@@ -177,13 +175,13 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 
 			switch cfg.Cscli.Output {
 			case "human":
-				hubTestResultTable(color.Output, cfg.Cscli.Color, testResult)
+				hubTestResultTable(color.Output, cfg.Cscli.Color, testMap, reportSuccess)
 			case "json":
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
 				jsonResult["fail"] = make([]string, 0)
-				for testName, success := range testResult {
-					if success {
+				for testName, test := range testMap {
+					if test.Success {
 						jsonResult["success"] = append(jsonResult["success"], testName)
 					} else {
 						jsonResult["fail"] = append(jsonResult["fail"], testName)
@@ -211,6 +209,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&nucleiTargetHost, "target", hubtest.DefaultNucleiTarget, "Target for AppSec Test")
 	cmd.Flags().StringVar(&appSecHost, "host", hubtest.DefaultAppsecHost, "Address to expose AppSec for hubtest")
 	cmd.Flags().BoolVar(&all, "all", false, "Run all tests")
+	cmd.Flags().BoolVar(&reportSuccess, "report-success", false, "Report successful tests too (implied with json output)")
 	cmd.Flags().UintVar(&maxJobs, "max-jobs", maxJobs, "Run <num> batch")
 
 	return cmd
