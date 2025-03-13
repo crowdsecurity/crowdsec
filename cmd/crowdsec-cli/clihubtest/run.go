@@ -197,7 +197,11 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 			}
 
 			if !success {
-				return errors.New("some tests failed")
+				if reportSuccess {
+					return errors.New("some tests failed")
+				} else {
+					return errors.New("some tests failed, use --report-success to show them all")
+				}
 			}
 
 			return nil
