@@ -533,13 +533,17 @@ func TestDiscoveryPolling(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	config := []byte(fmt.Sprintf(`
+	pattern := filepath.Join(dir, "*.log")
+	yamlConfig := fmt.Sprintf(`
 filenames:
- - "%s/*.log"
+ - '%s'
 discovery_poll_enable: true
 discovery_poll_interval: "1s"
 mode: tail
-`, dir))
+`, pattern)
+
+	fmt.Printf("Config: %s\n", yamlConfig)
+	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
 	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
@@ -553,14 +557,13 @@ mode: tail
 	err = f.StreamingAcquisition(context.Background(), eventChan, &tomb)
 	require.NoError(t, err)
 
-	// Create a test file after a delay
-	time.Sleep(100 * time.Millisecond)
+	// Create a test file
 	testFile := filepath.Join(dir, "test.log")
 	err = os.WriteFile(testFile, []byte("test line\n"), 0644)
 	require.NoError(t, err)
 
 	// Wait for polling to detect the file
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	// Verify file is being tailed
 	isTailed := f.IsTailing(testFile)
@@ -580,13 +583,17 @@ func TestFileResurrectionViaPolling(t *testing.T) {
 	err = os.WriteFile(testFile, []byte("test line\n"), 0644)
 	require.NoError(t, err)
 
-	config := []byte(fmt.Sprintf(`
+	pattern := filepath.Join(dir, "*.log")
+	yamlConfig := fmt.Sprintf(`
 filenames:
- - "%s/*.log"
+ - '%s'
 discovery_poll_enable: true
 discovery_poll_interval: "1s"
 mode: tail
-`, dir))
+`, pattern)
+
+	fmt.Printf("Config: %s\n", yamlConfig)
+	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
 	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
