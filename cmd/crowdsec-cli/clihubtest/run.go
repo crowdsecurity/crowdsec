@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 
@@ -41,9 +40,6 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 			}
 		}
 	}
-
-	// set timezone to avoid DST issues
-	os.Setenv("TZ", "UTC")
 
 	patternDir := cfg.ConfigPaths.PatternDir
 
@@ -121,7 +117,6 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				fmt.Printf("Running all tests (max_jobs: %d)\n", maxJobs)
-
 			}
 
 			return cli.run(cmd.Context(), all, nucleiTargetHost, appSecHost, args, maxJobs)
@@ -144,9 +139,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 						fmt.Println(test.ScenarioAssert.AutoGenAssertData)
 					}
 					if !noClean {
-						if err := test.Clean(); err != nil {
-							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
-						}
+						test.Clean()
 					}
 
 					return fmt.Errorf("please fill your assert file(s) for test '%s', exiting", test.Name)
@@ -157,9 +150,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 						fmt.Printf("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
 					}
 					if !noClean {
-						if err := test.Clean(); err != nil {
-							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
-						}
+						test.Clean()
 					}
 				} else {
 					success = false
@@ -169,7 +160,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 						printScenarioFailures(test)
 						if !forceClean && !noClean {
 							prompt := &survey.Confirm{
-								Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
+								Message: fmt.Sprintf("Do you want to remove runtime and result folder for '%s'?", test.Name),
 								Default: true,
 							}
 							if err := survey.AskOne(prompt, &cleanTestEnv); err != nil {
@@ -179,9 +170,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 					}
 
 					if cleanTestEnv || forceClean {
-						if err := test.Clean(); err != nil {
-							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
-						}
+						test.Clean()
 					}
 				}
 			}

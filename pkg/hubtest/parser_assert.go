@@ -154,11 +154,12 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	// debug doesn't make much sense with the ability to evaluate "on the fly"
 	// var debugFilter *exprhelpers.ExprDebugger
-	var output interface{}
+	var output any
 
-	env := map[string]interface{}{"results": *p.TestData}
-
-	runtimeFilter, err := expr.Compile(expression, exprhelpers.GetExprOptions(env)...)
+	env := map[string]any{"results": *p.TestData}
+	opts := exprhelpers.GetExprOptions(env)
+	opts = append(opts, expr.Function("basename", basename, new(func (string) string)))
+	runtimeFilter, err := expr.Compile(expression, opts...)
 	if err != nil {
 		log.Errorf("failed to compile '%s' : %s", expression, err)
 		return output, err
@@ -252,7 +253,12 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 						continue
 					}
 
-					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
+					if mkey == "datasource_path" {
+						ret += fmt.Sprintf(`basename(results["%s"]["%s"][%d].Evt.Meta["%s"]) == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
+					} else {
+						ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
+					}
+
 				}
 
 				for _, ekey := range maptools.SortedKeys(result.Evt.Enriched) {
