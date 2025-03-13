@@ -40,9 +40,11 @@ type FileConfiguration struct {
 	Filenames                         []string
 	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
 	Filename                          string
-	ForceInotify                      bool  `yaml:"force_inotify"`
-	MaxBufferSize                     int   `yaml:"max_buffer_size"`
-	PollWithoutInotify                *bool `yaml:"poll_without_inotify"`
+	ForceInotify                      bool   `yaml:"force_inotify"`
+	MaxBufferSize                     int    `yaml:"max_buffer_size"`
+	PollWithoutInotify                *bool  `yaml:"poll_without_inotify"`
+	DiscoveryPollInterval             string `yaml:"discovery_poll_interval"`
+	DiscoveryPollEnable               bool   `yaml:"discovery_poll_enable"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -97,6 +99,13 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 		}
 
 		f.exclude_regexps = append(f.exclude_regexps, re)
+	}
+
+	// Validate polling configuration if enabled
+	if f.config.DiscoveryPollEnable && f.config.DiscoveryPollInterval != "" {
+		if _, err := time.ParseDuration(f.config.DiscoveryPollInterval); err != nil {
+			return fmt.Errorf("invalid discovery_poll_interval: %w", err)
+		}
 	}
 
 	return nil
@@ -340,8 +349,66 @@ func (f *FileSource) Dump() interface{} {
 	return f
 }
 
+func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out chan types.Event, t *tomb.Tomb) error {
+	// Check if it's a directory
+	fi, err := os.Stat(filename)
+	if err != nil {
+		logger.Errorf("Could not stat() file %s, ignoring it : %s", filename, err)
+		return err
+	}
+
+	if fi.IsDir() {
+		return nil
+	}
+
+	logger.Debugf("Processing file %s", filename)
+
+	// Check if file matches any of our patterns
+	matched := false
+	for _, pattern := range f.config.Filenames {
+		logger.Debugf("Matching %s with %s", pattern, filename)
+		matched, err = filepath.Match(pattern, filename)
+		if err != nil {
+			logger.Errorf("Could not match pattern : %s", err)
+			continue
+		}
+		if matched {
+			logger.Debugf("Matched %s with %s", pattern, filename)
+			break
+		}
+	}
+
+	if !matched {
+		return nil
+	}
+
+	// Setup the tail if needed
+	if err := f.setupTailForFile(filename, out, t); err != nil {
+		logger.Errorf("Error setting up tail for file %s: %s", filename, err)
+		return err
+	}
+
+	return nil
+}
+
 func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	logger := f.logger.WithField("goroutine", "inotify")
+
+	// Setup polling if enabled
+	var ticker *time.Ticker
+	if f.config.DiscoveryPollEnable {
+		interval := 30 * time.Second // default interval
+		if f.config.DiscoveryPollInterval != "" {
+			parsedInterval, err := time.ParseDuration(f.config.DiscoveryPollInterval)
+			if err != nil {
+				logger.Warnf("Invalid discovery_poll_interval '%s', using default 30s: %s", f.config.DiscoveryPollInterval, err)
+			} else {
+				interval = parsedInterval
+			}
+		}
+		ticker = time.NewTicker(interval)
+		defer ticker.Stop()
+	}
 
 	for {
 		select {
@@ -354,38 +421,24 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				continue
 			}
 
-			fi, err := os.Stat(event.Name)
-			if err != nil {
-				logger.Errorf("Could not stat() new file %s, ignoring it : %s", event.Name, err)
+			f.checkAndTailFile(event.Name, logger, out, t)
+
+		case <-ticker.C:
+			if !f.config.DiscoveryPollEnable {
 				continue
 			}
 
-			if fi.IsDir() {
-				continue
-			}
-
-			logger.Debugf("Detected new file %s", event.Name)
-
-			matched := false
+			// Poll for all configured patterns
 			for _, pattern := range f.config.Filenames {
-				logger.Debugf("Matching %s with %s", pattern, event.Name)
-				matched, err = filepath.Match(pattern, event.Name)
+				files, err := filepath.Glob(pattern)
 				if err != nil {
-					logger.Errorf("Could not match pattern : %s", err)
+					logger.Errorf("Error globbing pattern %s during poll: %s", pattern, err)
 					continue
 				}
-				if matched {
-					logger.Debugf("Matched %s with %s", pattern, event.Name)
-					break
+
+				for _, file := range files {
+					f.checkAndTailFile(file, logger, out, t)
 				}
-			}
-
-			if !matched {
-				continue
-			}
-
-			if err := f.setupTailForFile(event.Name, out, t); err != nil {
-				logger.Errorf("Error setting up tail for new file %s: %s", event.Name, err)
 			}
 
 		case err, ok := <-f.watcher.Errors:
