@@ -156,22 +156,24 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	// var debugFilter *exprhelpers.ExprDebugger
 	var output any
 
+	logger := log.WithField("file", p.File)
+
 	env := map[string]any{"results": *p.TestData}
 	opts := exprhelpers.GetExprOptions(env)
 	opts = append(opts, expr.Function("basename", basename, new(func (string) string)))
 	runtimeFilter, err := expr.Compile(expression, opts...)
 	if err != nil {
-		log.Errorf("failed to compile '%s' : %s", expression, err)
+		logger.Errorf("failed to compile '%s': %s", expression, err)
 		return output, err
 	}
 
 	// dump opcode in trace level
-	log.Tracef("%s", runtimeFilter.Disassemble())
+	logger.Tracef("%s", runtimeFilter.Disassemble())
 
 	output, err = expr.Run(runtimeFilter, env)
 	if err != nil {
-		log.Warningf("running : %s", expression)
-		log.Warningf("runtime error : %s", err)
+		logger.Warningf("running : %s", expression)
+		logger.Warningf("runtime error: %s", err)
 
 		return output, fmt.Errorf("while running expression %s: %w", expression, err)
 	}
