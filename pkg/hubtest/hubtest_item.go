@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -19,6 +20,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
+
+var downloadMutex sync.Mutex
 
 type HubTestItemConfig struct {
 	Parsers               []string            `yaml:"parsers,omitempty"`
@@ -96,7 +99,7 @@ const (
 	DefaultAppsecHost   = "127.0.0.1:4241"
 )
 
-func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
+func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error) {
 	testPath := filepath.Join(hubTest.HubTestPath, name)
 	runtimeFolder := filepath.Join(testPath, "runtime")
 	runtimeHubFolder := filepath.Join(runtimeFolder, "hub")
@@ -143,7 +146,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 			HubDir:         runtimeHubFolder,
 			HubIndexFile:   hubTest.HubIndexFile,
 			InstallDir:     runtimeFolder,
-			InstallDataDir: filepath.Join(runtimeFolder, "data"),
+			InstallDataDir: dataDir,
 		},
 		Config:                    configFileData,
 		HubPath:                   hubTest.HubPath,
@@ -222,9 +225,13 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 		return err
 	}
 
+	// prevent concurrent downloads of the same file
+	downloadMutex.Lock()
+	defer downloadMutex.Unlock()
+
 	// install data for parsers if needed
 	for _, item := range hub.GetInstalledByType(cwhub.PARSERS, true) {
-		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
 			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
 
@@ -233,7 +240,7 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 
 	// install data for scenarios if needed
 	for _, item := range hub.GetInstalledByType(cwhub.SCENARIOS, true) {
-		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
 			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
 
@@ -242,7 +249,7 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 
 	// install data for postoverflows if needed
 	for _, item := range hub.GetInstalledByType(cwhub.POSTOVERFLOWS, true) {
-		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
 			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
 		}
 
@@ -278,7 +285,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
@@ -292,7 +299,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliBouncerCmd.Dir = testPath
-	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
+	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
@@ -306,7 +313,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
 	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecDaemon.Dir = testPath
-	crowdsecDaemon.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
+	crowdsecDaemon.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	crowdsecDaemon.Start()
 
@@ -415,7 +422,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	log.Debugf("%s", cscliRegisterCmd.String())
 
@@ -436,7 +443,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecCmd.Dir = testPath
-	crowdsecCmd.Env = []string{"TESTDIR="+testPath, "TZ=UTC"}
+	crowdsecCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
@@ -476,6 +483,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 			t.ParserAssert.AutoGenAssert = true
 		} else {
 			if err := t.ParserAssert.AssertFile(t.ParserResultFile); err != nil {
+				// TODO: no error - should not prevent running the other tests
 				return fmt.Errorf("unable to run assertion on file '%s': %w", t.ParserResultFile, err)
 			}
 		}
