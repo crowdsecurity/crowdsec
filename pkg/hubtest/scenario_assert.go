@@ -162,6 +162,8 @@ func (s *ScenarioAssert) RunExpression(expression string) (any, error) {
 	// var debugFilter *exprhelpers.ExprDebugger
 	var output any
 
+	logger := log.WithField("file", s.File)
+
 	env := map[string]any{"results": *s.TestData}
 	opts := exprhelpers.GetExprOptions(env)
 	opts = append(opts, expr.Function("basename", basename, new(func (string) string)))
@@ -171,16 +173,16 @@ func (s *ScenarioAssert) RunExpression(expression string) (any, error) {
 		return nil, err
 	}
 	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(env)); err != nil {
-	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
+	// 	logger.Warningf("Failed building debugher for %s : %s", assert, err)
 	// }
 
 	// dump opcode in trace level
-	log.Tracef("%s", runtimeFilter.Disassemble())
+	logger.Tracef("%s", runtimeFilter.Disassemble())
 
 	output, err = expr.Run(runtimeFilter, map[string]any{"results": *s.TestData})
 	if err != nil {
-		log.Warningf("running : %s", expression)
-		log.Warningf("runtime error : %s", err)
+		logger.Warningf("running : %s", expression)
+		logger.Warningf("runtime error : %s", err)
 
 		return nil, fmt.Errorf("while running expression %s: %w", expression, err)
 	}
