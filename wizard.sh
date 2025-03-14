@@ -7,7 +7,6 @@ skip_tmp_acquis() {
     [[ "${TMP_ACQUIS_FILE_SKIP}" == "skip" ]]
 }
 
-
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
@@ -35,7 +34,7 @@ LAPI_SECRETS="online_api_credentials.yaml"
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
 
-if [[ -f "/usr/bin/cscli" ]] ; then
+if [[ -f "/usr/bin/cscli" ]]; then
     CSCLI_BIN_INSTALLED="/usr/bin/cscli"
 else
     CSCLI_BIN_INSTALLED="${BIN_INSTALL_PATH}/cscli"
@@ -70,7 +69,6 @@ telnet
 smb
 "
 
-
 HTTP_PLUGIN_BINARY="./cmd/notification-http/notification-http"
 SLACK_PLUGIN_BINARY="./cmd/notification-slack/notification-slack"
 SPLUNK_PLUGIN_BINARY="./cmd/notification-splunk/notification-splunk"
@@ -84,7 +82,6 @@ SPLUNK_PLUGIN_CONFIG="./cmd/notification-splunk/splunk.yaml"
 EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
 SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
 FILE_PLUGIN_CONFIG="./cmd/notification-file/file.yaml"
-
 
 log_info() {
     msg=$1
@@ -119,47 +116,47 @@ log_dbg() {
     fi
 }
 
-detect_services () {
+detect_services() {
     DETECTED_SERVICES=()
     HMENU=()
     # list systemd services
-    SYSTEMD_SERVICES=$(systemctl  --state=enabled list-unit-files '*.service' | cut -d ' ' -f1)
+    SYSTEMD_SERVICES=$(systemctl --state=enabled list-unit-files '*.service' | cut -d ' ' -f1)
     # raw ps
     PSAX=$(ps ax -o comm=)
-    for SVC in ${SUPPORTED_SERVICES} ; do
+    for SVC in ${SUPPORTED_SERVICES}; do
         log_dbg "Checking if service '${SVC}' is running (ps+systemd)"
-        for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
+        for SRC in "${SYSTEMD_SERVICES}" "${PSAX}"; do
             echo ${SRC} | grep ${SVC} >/dev/null
             if [ $? -eq 0 ]; then
                 # on centos, apache2 is named httpd
-                if [[ ${SVC} == "httpd" ]] ; then
-                    SVC="apache2";
+                if [[ ${SVC} == "httpd" ]]; then
+                    SVC="apache2"
                 fi
                 DETECTED_SERVICES+=(${SVC})
                 HMENU+=(${SVC} "on")
                 log_dbg "Found '${SVC}' running"
-                break;
-            fi;
-        done;
-    done;
-    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]]; then
+                break
+            fi
+        done
+    done
+    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]] || [[ ${OSTYPE} == "linux" ]]; then
         DETECTED_SERVICES+=("linux")
         HMENU+=("linux" "on")
     else
         log_info "NOT A LINUX"
-    fi;
+    fi
 
     if [[ ${SILENT} == "false" ]]; then
         # we put whiptail results in an array, notice the dark magic fd redirection
         DETECTED_SERVICES=($(whiptail --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
             log_err "user bailed out at services selection"
-            exit 1;
-        fi;
+            exit 1
+        fi
         log_dbg "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
     else
         log_dbg "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
-    fi;
+    fi
 }
 
 declare -A log_input_tags
@@ -194,28 +191,28 @@ find_logs_for() {
 
     # split the line into an array with ',' separator
     OIFS=${IFS}
-    IFS=',' read -r -a a <<< "${log_locations[${SVC}]},"
+    IFS=',' read -r -a a <<<"${log_locations[${SVC}]},"
     IFS=${OIFS}
     # readarray -td, a <<<"${log_locations[${SVC}]},"; unset 'a[-1]';
     for poss_path in "${a[@]}"; do
         # Split /var/log/nginx/*.log into '/var/log/nginx' and '*.log' so we can use find
-	    path=${poss_path%/*}
-	    fname=${poss_path##*/}
-	    candidates=$(find "${path}" -type f -mtime -5 -ctime -5 -name "$fname" 2>/dev/null)
-	    # We have some candidates, add them
-	    for final_file in ${candidates} ; do
-	        log_dbg "Found logs file for '${SVC}': ${final_file}"
-	        DETECTED_LOGFILES+=(${final_file})
+        path=${poss_path%/*}
+        fname=${poss_path##*/}
+        candidates=$(find "${path}" -type f -mtime -5 -ctime -5 -name "$fname" 2>/dev/null)
+        # We have some candidates, add them
+        for final_file in ${candidates}; do
+            log_dbg "Found logs file for '${SVC}': ${final_file}"
+            DETECTED_LOGFILES+=(${final_file})
             HMENU+=(${final_file} "on")
-	    done;
-    done;
+        done
+    done
 
     if [[ ${SILENT} == "false" ]]; then
-        DETECTED_LOGFILES=($(whiptail --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
+        DETECTED_LOGFILES=($(whiptail --separate-output --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
             log_err "user bailed out at log file selection"
-            exit 1;
-        fi;
+            exit 1
+        fi
     fi
 }
 
@@ -258,9 +255,9 @@ install_collection() {
         COLLECTION_TO_INSTALL=($(whiptail --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
             log_err "user bailed out at collection selection"
-            exit 1;
-        fi;
-    fi;
+            exit 1
+        fi
+    fi
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
@@ -285,15 +282,15 @@ genyamllog() {
     shift
     local files=("${@}")
 
-    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >> ${TMP_ACQUIS_FILE}
+    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >>${TMP_ACQUIS_FILE}
 
-    echo "filenames:"  >> ${TMP_ACQUIS_FILE}
+    echo "filenames:" >>${TMP_ACQUIS_FILE}
     for fd in ${files[@]}; do
-	echo "  - ${fd}"  >> ${TMP_ACQUIS_FILE}
+        echo "  - ${fd}" >>${TMP_ACQUIS_FILE}
     done
-    echo "labels:"  >> ${TMP_ACQUIS_FILE}
-    echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
-    echo "---"  >> ${TMP_ACQUIS_FILE}
+    echo "labels:" >>${TMP_ACQUIS_FILE}
+    echo "  "${log_input_tags[${service}]} >>${TMP_ACQUIS_FILE}
+    echo "---" >>${TMP_ACQUIS_FILE}
     log_dbg "${ACQUIS_FILE_MSG}"
 }
 
@@ -301,13 +298,13 @@ genyamljournal() {
     local service="${1}"
     shift
 
-    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >> ${TMP_ACQUIS_FILE}
+    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >>${TMP_ACQUIS_FILE}
 
-    echo "journalctl_filter:"  >> ${TMP_ACQUIS_FILE}
-    echo " - _SYSTEMD_UNIT="${service}".service"  >> ${TMP_ACQUIS_FILE}
-    echo "labels:"  >> ${TMP_ACQUIS_FILE}
-    echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
-    echo "---"  >> ${TMP_ACQUIS_FILE}
+    echo "journalctl_filter:" >>${TMP_ACQUIS_FILE}
+    echo " - _SYSTEMD_UNIT="${service}".service" >>${TMP_ACQUIS_FILE}
+    echo "labels:" >>${TMP_ACQUIS_FILE}
+    echo "  "${log_input_tags[${service}]} >>${TMP_ACQUIS_FILE}
+    echo "---" >>${TMP_ACQUIS_FILE}
     log_dbg "${ACQUIS_FILE_MSG}"
 }
 
@@ -321,19 +318,19 @@ genacquisition() {
     fi
 
     log_dbg "Found following services : "${DETECTED_SERVICES[@]}
-    for PSVG in ${DETECTED_SERVICES[@]} ; do
+    for PSVG in ${DETECTED_SERVICES[@]}; do
         find_logs_for ${PSVG}
-        if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]] ; then
+        if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]]; then
             log_info "service '${PSVG}': ${DETECTED_LOGFILES[*]}"
             genyamllog ${PSVG} ${DETECTED_LOGFILES[@]}
-	elif [[ ${PSVG} != "linux" ]] ; then
-	    log_info "using journald for '${PSVG}'"
-	    genyamljournal ${PSVG}
-        fi;
+        elif [[ ${PSVG} != "linux" ]]; then
+            log_info "using journald for '${PSVG}'"
+            genyamljournal ${PSVG}
+        fi
     done
 }
 
-detect_cs_install () {
+detect_cs_install() {
     if [[ -f "$CROWDSEC_BIN_INSTALLED" ]]; then
         log_warn "Crowdsec is already installed !"
         echo ""
@@ -347,7 +344,7 @@ detect_cs_install () {
     fi
 }
 
-check_cs_version () {
+check_cs_version() {
     CURRENT_CS_VERSION=$(crowdsec -version 2>&1 | grep version | grep -Eio 'v[0-9]+.[0-9]+.[0-9]+' | cut -c 2-)
     NEW_CS_VERSION=$($CROWDSEC_BIN -version 2>&1 | grep version | grep -Eio 'v[0-9]+.[0-9]+.[0-9]+' | cut -c 2-)
     CURRENT_MAJOR_VERSION=$(echo $CURRENT_CS_VERSION | cut -d'.' -f1)
@@ -363,9 +360,9 @@ check_cs_version () {
             echo ""
             exit 1
         fi
-    elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
+    elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]]; then
         log_warn "new version ($NEW_CS_VERSION) is a minor upgrade !"
-        if [[ $ACTION != "upgrade" ]] ; then
+        if [[ $ACTION != "upgrade" ]]; then
             if [[ ${FORCE_MODE} == "false" ]]; then
                 echo ""
                 echo "We recommend to upgrade with : sudo ./wizard.sh --upgrade "
@@ -375,9 +372,9 @@ check_cs_version () {
                 exit 1
             fi
         fi
-    elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]] ; then
+    elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]]; then
         log_warn "new version ($NEW_CS_VERSION) is a patch !"
-        if [[ $ACTION != "binupgrade" ]] ; then
+        if [[ $ACTION != "binupgrade" ]]; then
             if [[ ${FORCE_MODE} == "false" ]]; then
                 echo ""
                 echo "We recommend to upgrade binaries only : sudo ./wizard.sh --binupgrade "
@@ -418,24 +415,24 @@ install_crowdsec() {
 
     # Don't overwrite existing files
     [[ ! -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" ]] && install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/${LAPI_SECRETS}" ]] && install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/config.yaml" ]]     && install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/dev.yaml" ]]        && install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/user.yaml" ]]       && install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/acquis.yaml" ]]     && install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/profiles.yaml" ]]   && install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/simulation.yaml" ]] && install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/console.yaml" ]]    && install -v -m 644 -D ./config/console.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/context.yaml" ]]    && install -v -m 644 -D ./config/context.yaml "${CROWDSEC_CONSOLE_DIR}" > /dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/${LAPI_SECRETS}" ]] && install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/config.yaml" ]] && install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/dev.yaml" ]] && install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/user.yaml" ]] && install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/acquis.yaml" ]] && install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/profiles.yaml" ]] && install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/simulation.yaml" ]] && install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/console.yaml" ]] && install -v -m 644 -D ./config/console.yaml "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
+    [[ ! -f "${CROWDSEC_CONFIG_PATH}/context.yaml" ]] && install -v -m 644 -D ./config/context.yaml "${CROWDSEC_CONSOLE_DIR}" >/dev/null || exit
 
-    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
+    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' <./config/user.yaml >${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
+        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' <./config/crowdsec.service >"${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
-	    systemctl daemon-reload
+        systemctl daemon-reload
     fi
 }
 
@@ -468,8 +465,8 @@ update_full() {
 
 install_bins() {
     log_dbg "Installing crowdsec binaries"
-    install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
-    install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
+    install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1>/dev/null || exit
+    install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1>/dev/null || exit
     which systemctl && systemctl is-active --quiet crowdsec
     if [ $? -eq 0 ]; then
         systemctl stop crowdsec
@@ -479,7 +476,7 @@ install_bins() {
 }
 
 symlink_bins() {
-    if grep -q "${BIN_INSTALL_PATH}" <<< $PATH; then
+    if grep -q "${BIN_INSTALL_PATH}" <<<$PATH; then
         log_dbg "${BIN_INSTALL_PATH} found in PATH"
     else
         ln -s "${CSCLI_BIN_INSTALLED}" /usr/bin/cscli
@@ -497,7 +494,7 @@ delete_plugins() {
     rm -rf ${CROWDSEC_PLUGIN_DIR}
 }
 
-install_plugins(){
+install_plugins() {
     mkdir -p ${CROWDSEC_PLUGIN_DIR}
     mkdir -p /etc/crowdsec/notifications
 
@@ -521,14 +518,14 @@ install_plugins(){
 check_running_bouncers() {
     # when uninstalling, check if user still has bouncers
     BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=raw | tail -n +2 | wc -l)
-    if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
+    if [[ ${BOUNCERS_COUNT} -gt 0 ]]; then
         if [[ ${FORCE_MODE} == "false" ]]; then
             echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."
             echo "WARNING : Uninstalling crowdsec with a running bouncer will let it in an unpredictable state."
             echo "WARNING : If you want to uninstall crowdsec, you should first uninstall the bouncers."
             echo "Specify --force to bypass this restriction."
             exit 1
-        fi;
+        fi
     fi
 }
 
@@ -543,7 +540,6 @@ uninstall_crowdsec() {
     rm -f ${SYSTEMD_PATH_FILE} || echo ""
     log_info "crowdsec successfully uninstalled"
 }
-
 
 function show_link {
     echo ""
@@ -567,19 +563,18 @@ main() {
 
     if [ "$1" == "install" ] || [ "$1" == "configure" ] || [ "$1" == "detect" ]; then
         if [ "${SILENT}" == "false" ]; then
-            which whiptail > /dev/null
+            which whiptail >/dev/null
             if [ $? -ne 0 ]; then
                 log_fatal "whiptail binary is needed to use the wizard in interactive mode, exiting ..."
             fi
         fi
-        which envsubst > /dev/null
+        which envsubst >/dev/null
         if [ $? -ne 0 ]; then
             log_fatal "envsubst binary is needed to use do a full install with the wizard, exiting ..."
         fi
     fi
 
-    if [[ "$1" == "binupgrade" ]];
-    then
+    if [[ "$1" == "binupgrade" ]]; then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
@@ -589,8 +584,7 @@ main() {
         return
     fi
 
-    if [[ "$1" == "upgrade" ]];
-    then
+    if [[ "$1" == "upgrade" ]]; then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
@@ -600,8 +594,7 @@ main() {
         return
     fi
 
-    if [[ "$1" == "configure" ]];
-    then
+    if [[ "$1" == "configure" ]]; then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
@@ -617,13 +610,11 @@ main() {
         return
     fi
 
-    if [[ "$1" == "noop" ]];
-    then
+    if [[ "$1" == "noop" ]]; then
         return
     fi
 
-    if [[ "$1" == "uninstall" ]];
-    then
+    if [[ "$1" == "uninstall" ]]; then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
@@ -633,8 +624,7 @@ main() {
         return
     fi
 
-    if [[ "$1" == "bininstall" ]];
-    then
+    if [[ "$1" == "bininstall" ]]; then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
@@ -648,8 +638,7 @@ main() {
         return
     fi
 
-    if [[ "$1" == "install" ]];
-    then
+    if [[ "$1" == "install" ]]; then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
@@ -664,10 +653,10 @@ main() {
 
         # detect running services
         detect_services
-        if ! [ ${#DETECTED_SERVICES[@]} -gt 0 ] ; then
+        if ! [ ${#DETECTED_SERVICES[@]} -gt 0 ]; then
             log_err "No detected or selected services, stopping."
             exit 1
-        fi;
+        fi
 
         # Generate acquisition file and move it to the right folder
         genacquisition
@@ -697,16 +686,15 @@ main() {
         return
     fi
 
-    if [[ "$1" == "detect" ]];
-    then
+    if [[ "$1" == "detect" ]]; then
         if ! skip_tmp_acquis; then
             rm -f "${TMP_ACQUIS_FILE}"
         fi
         detect_services
-        if [[ ${DETECTED_SERVICES} == "" ]] ; then
+        if [[ ${DETECTED_SERVICES} == "" ]]; then
             log_err "No detected or selected services, stopping."
             exit
-        fi;
+        fi
         log_info "Found ${#DETECTED_SERVICES[@]} supported services running:"
         genacquisition
         cat "${TMP_ACQUIS_FILE}"
@@ -719,17 +707,17 @@ main() {
 }
 
 usage() {
-      echo "Usage:"
-      echo "    ./wizard.sh -h                               Display this help message."
-      echo "    ./wizard.sh -d|--detect                      Detect running services and associated logs file"
-      echo "    ./wizard.sh -i|--install                     Assisted installation of crowdsec/cscli and collections"
-      echo "    ./wizard.sh --bininstall                     Install binaries and empty config, no wizard."
-      echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
-      echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
-      echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
-      echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
-      echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
-      echo "    ./wizard.sh -n|--noop                        Do nothing"
+    echo "Usage:"
+    echo "    ./wizard.sh -h                               Display this help message."
+    echo "    ./wizard.sh -d|--detect                      Detect running services and associated logs file"
+    echo "    ./wizard.sh -i|--install                     Assisted installation of crowdsec/cscli and collections"
+    echo "    ./wizard.sh --bininstall                     Install binaries and empty config, no wizard."
+    echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
+    echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
+    echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
+    echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
+    echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
+    echo "    ./wizard.sh -n|--noop                        Do nothing"
 }
 
 if [[ $# -eq 0 ]]; then
@@ -737,8 +725,7 @@ if [[ $# -eq 0 ]]; then
     exit 0
 fi
 
-while [[ $# -gt 0 ]]
-do
+while [[ $# -gt 0 ]]; do
     key="${1}"
     case ${key} in
     --uninstall)
@@ -753,7 +740,7 @@ do
         ACTION="upgrade"
         shift # past argument
         ;;
-    -i|--install)
+    -i | --install)
         ACTION="install"
         shift # past argument
         ;;
@@ -766,15 +753,15 @@ do
         ACTION="bininstall"
         shift # past argument
         ;;
-    -c|--configure)
+    -c | --configure)
         ACTION="configure"
         shift # past argument
         ;;
-    -d|--detect)
+    -d | --detect)
         ACTION="detect"
         shift # past argument
         ;;
-    -n|--noop)
+    -n | --noop)
         ACTION="noop"
         shift # past argument
         ;;
@@ -783,19 +770,19 @@ do
         ACTION="install"
         shift
         ;;
-    -f|--force)
+    -f | --force)
         FORCE_MODE="true"
         shift
         ;;
-    -v|--verbose)
+    -v | --verbose)
         DEBUG_MODE="true"
         shift
         ;;
-    -h|--help)
+    -h | --help)
         usage
         exit 0
         ;;
-    *)    # unknown option
+    *) # unknown option
         log_err "Unknown argument ${key}."
         usage
         exit 1
