@@ -40,9 +40,11 @@ type FileConfiguration struct {
 	Filenames                         []string
 	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
 	Filename                          string
-	ForceInotify                      bool  `yaml:"force_inotify"`
-	MaxBufferSize                     int   `yaml:"max_buffer_size"`
-	PollWithoutInotify                *bool `yaml:"poll_without_inotify"`
+	ForceInotify                      bool   `yaml:"force_inotify"`
+	MaxBufferSize                     int    `yaml:"max_buffer_size"`
+	PollWithoutInotify                *bool  `yaml:"poll_without_inotify"`
+	DiscoveryPollInterval             string `yaml:"discovery_poll_interval"`
+	DiscoveryPollEnable               bool   `yaml:"discovery_poll_enable"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -97,6 +99,13 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 		}
 
 		f.exclude_regexps = append(f.exclude_regexps, re)
+	}
+
+	// Validate polling configuration if enabled
+	if f.config.DiscoveryPollEnable && f.config.DiscoveryPollInterval != "" {
+		if _, err := time.ParseDuration(f.config.DiscoveryPollInterval); err != nil {
+			return fmt.Errorf("invalid discovery_poll_interval: %w", err)
+		}
 	}
 
 	return nil
@@ -328,87 +337,9 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 	})
 
 	for _, file := range f.files {
-		// before opening the file, check if we need to specifically avoid it. (XXX)
-		skip := false
-
-		for _, pattern := range f.exclude_regexps {
-			if pattern.MatchString(file) {
-				f.logger.Infof("file %s matches exclusion pattern %s, skipping", file, pattern.String())
-
-				skip = true
-
-				break
-			}
+		if err := f.setupTailForFile(file, out, t); err != nil {
+			f.logger.Errorf("Error setting up tail for %s: %s", file, err)
 		}
-
-		if skip {
-			continue
-		}
-
-		// cf. https://github.com/crowdsecurity/crowdsec/issues/1168
-		// do not rely on stat, reclose file immediately as it's opened by Tail
-		fd, err := os.Open(file)
-		if err != nil {
-			f.logger.Errorf("unable to read %s : %s", file, err)
-			continue
-		}
-
-		if err = fd.Close(); err != nil {
-			f.logger.Errorf("unable to close %s : %s", file, err)
-			continue
-		}
-
-		fi, err := os.Stat(file)
-		if err != nil {
-			return fmt.Errorf("could not stat file %s : %w", file, err)
-		}
-
-		if fi.IsDir() {
-			f.logger.Warnf("%s is a directory, ignoring it.", file)
-			continue
-		}
-
-		pollFile := false
-		if f.config.PollWithoutInotify != nil {
-			pollFile = *f.config.PollWithoutInotify
-		} else {
-			networkFS, fsType, err := types.IsNetworkFS(file)
-			if err != nil {
-				f.logger.Warningf("Could not get fs type for %s : %s", file, err)
-			}
-
-			f.logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
-
-			if networkFS {
-				f.logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
-
-				pollFile = true
-			}
-		}
-
-		filink, err := os.Lstat(file)
-		if err != nil {
-			f.logger.Errorf("Could not lstat() new file %s, ignoring it : %s", file, err)
-			continue
-		}
-
-		if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
-			f.logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
-		}
-
-		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: pollFile, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
-		if err != nil {
-			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
-			continue
-		}
-
-		f.tailMapMutex.Lock()
-		f.tails[file] = true
-		f.tailMapMutex.Unlock()
-		t.Go(func() error {
-			defer trace.CatchPanic("crowdsec/acquis/file/live/fsnotify")
-			return f.tailFile(out, t, tail)
-		})
 	}
 
 	return nil
@@ -418,8 +349,68 @@ func (f *FileSource) Dump() interface{} {
 	return f
 }
 
+func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out chan types.Event, t *tomb.Tomb) error {
+	// Check if it's a directory
+	fi, err := os.Stat(filename)
+	if err != nil {
+		logger.Errorf("Could not stat() file %s, ignoring it : %s", filename, err)
+		return err
+	}
+
+	if fi.IsDir() {
+		return nil
+	}
+
+	logger.Debugf("Processing file %s", filename)
+
+	// Check if file matches any of our patterns
+	matched := false
+	for _, pattern := range f.config.Filenames {
+		logger.Debugf("Matching %s with %s", pattern, filename)
+		matched, err = filepath.Match(pattern, filename)
+		if err != nil {
+			logger.Errorf("Could not match pattern : %s", err)
+			continue
+		}
+		if matched {
+			logger.Debugf("Matched %s with %s", pattern, filename)
+			break
+		}
+	}
+
+	if !matched {
+		return nil
+	}
+
+	// Setup the tail if needed
+	if err := f.setupTailForFile(filename, out, t); err != nil {
+		logger.Errorf("Error setting up tail for file %s: %s", filename, err)
+		return err
+	}
+
+	return nil
+}
+
 func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	logger := f.logger.WithField("goroutine", "inotify")
+
+	// Setup polling if enabled
+	var tickerChan <-chan time.Time
+	var ticker *time.Ticker
+	if f.config.DiscoveryPollEnable {
+		interval := 30 * time.Second // default interval
+		if f.config.DiscoveryPollInterval != "" {
+			parsedInterval, err := time.ParseDuration(f.config.DiscoveryPollInterval)
+			if err != nil {
+				logger.Warnf("Invalid discovery_poll_interval '%s', using default 30s: %s", f.config.DiscoveryPollInterval, err)
+			} else {
+				interval = parsedInterval
+			}
+		}
+		ticker = time.NewTicker(interval)
+		tickerChan = ticker.C
+		defer ticker.Stop()
+	}
 
 	for {
 		select {
@@ -427,138 +418,130 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			if !ok {
 				return nil
 			}
-
 			if event.Op&fsnotify.Create != fsnotify.Create {
 				continue
 			}
+			f.checkAndTailFile(event.Name, logger, out, t)
 
-			fi, err := os.Stat(event.Name)
-			if err != nil {
-				logger.Errorf("Could not stat() new file %s, ignoring it : %s", event.Name, err)
-				continue
-			}
-
-			if fi.IsDir() {
-				continue
-			}
-
-			logger.Debugf("Detected new file %s", event.Name)
-
-			matched := false
-
+		case <-tickerChan: // Will never trigger if tickerChan is nil
+			// Poll for all configured patterns
 			for _, pattern := range f.config.Filenames {
-				logger.Debugf("Matching %s with %s", pattern, event.Name)
-
-				matched, err = filepath.Match(pattern, event.Name)
+				files, err := filepath.Glob(pattern)
 				if err != nil {
-					logger.Errorf("Could not match pattern : %s", err)
+					logger.Errorf("Error globbing pattern %s during poll: %s", pattern, err)
 					continue
 				}
-
-				if matched {
-					logger.Debugf("Matched %s with %s", pattern, event.Name)
-					break
+				for _, file := range files {
+					f.checkAndTailFile(file, logger, out, t)
 				}
 			}
 
-			if !matched {
-				continue
-			}
-
-			// before opening the file, check if we need to specifically avoid it. (XXX)
-			skip := false
-
-			for _, pattern := range f.exclude_regexps {
-				if pattern.MatchString(event.Name) {
-					f.logger.Infof("file %s matches exclusion pattern %s, skipping", event.Name, pattern.String())
-
-					skip = true
-
-					break
-				}
-			}
-
-			if skip {
-				continue
-			}
-
-			f.tailMapMutex.RLock()
-			if f.tails[event.Name] {
-				f.tailMapMutex.RUnlock()
-				// we already have a tail on it, do not start a new one
-				logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
-
-				break
-			}
-			f.tailMapMutex.RUnlock()
-			// cf. https://github.com/crowdsecurity/crowdsec/issues/1168
-			// do not rely on stat, reclose file immediately as it's opened by Tail
-			fd, err := os.Open(event.Name)
-			if err != nil {
-				f.logger.Errorf("unable to read %s : %s", event.Name, err)
-				continue
-			}
-
-			if err = fd.Close(); err != nil {
-				f.logger.Errorf("unable to close %s : %s", event.Name, err)
-				continue
-			}
-
-			pollFile := false
-			if f.config.PollWithoutInotify != nil {
-				pollFile = *f.config.PollWithoutInotify
-			} else {
-				networkFS, fsType, err := types.IsNetworkFS(event.Name)
-				if err != nil {
-					f.logger.Warningf("Could not get fs type for %s : %s", event.Name, err)
-				}
-
-				f.logger.Debugf("fs for %s is network: %t (%s)", event.Name, networkFS, fsType)
-
-				if networkFS {
-					pollFile = true
-				}
-			}
-
-			filink, err := os.Lstat(event.Name)
-			if err != nil {
-				logger.Errorf("Could not lstat() new file %s, ignoring it : %s", event.Name, err)
-				continue
-			}
-
-			if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
-				logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", event.Name)
-			}
-
-			// Slightly different parameters for Location, as we want to read the first lines of the newly created file
-			tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: pollFile, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
-			if err != nil {
-				logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
-				break
-			}
-
-			f.tailMapMutex.Lock()
-			f.tails[event.Name] = true
-			f.tailMapMutex.Unlock()
-			t.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/tailfile")
-				return f.tailFile(out, t, tail)
-			})
 		case err, ok := <-f.watcher.Errors:
 			if !ok {
 				return nil
 			}
-
 			logger.Errorf("Error while monitoring folder: %s", err)
+
 		case <-t.Dying():
 			err := f.watcher.Close()
 			if err != nil {
 				return fmt.Errorf("could not remove all inotify watches: %w", err)
 			}
-
 			return nil
 		}
 	}
+}
+
+func (f *FileSource) setupTailForFile(file string, out chan types.Event, t *tomb.Tomb) error {
+	logger := f.logger.WithField("file", file)
+
+	// Check exclusions
+	for _, pattern := range f.exclude_regexps {
+		if pattern.MatchString(file) {
+			logger.Infof("file %s matches exclusion pattern %s, skipping", file, pattern.String())
+			return nil
+		}
+	}
+
+	// Check if we're already tailing
+	f.tailMapMutex.RLock()
+	if f.tails[file] {
+		f.tailMapMutex.RUnlock()
+		logger.Debugf("Already tailing file %s, not creating a new tail", file)
+		return nil
+	}
+	f.tailMapMutex.RUnlock()
+
+	// Validate file
+	fd, err := os.Open(file)
+	if err != nil {
+		return fmt.Errorf("unable to read %s : %s", file, err)
+	}
+	if err = fd.Close(); err != nil {
+		return fmt.Errorf("unable to close %s : %s", file, err)
+	}
+
+	fi, err := os.Stat(file)
+	if err != nil {
+		return fmt.Errorf("could not stat file %s : %w", file, err)
+	}
+	if fi.IsDir() {
+		logger.Warnf("%s is a directory, ignoring it.", file)
+		return nil
+	}
+
+	// Determine polling mode
+	pollFile := false
+	if f.config.PollWithoutInotify != nil {
+		pollFile = *f.config.PollWithoutInotify
+	} else {
+		networkFS, fsType, err := types.IsNetworkFS(file)
+		if err != nil {
+			logger.Warningf("Could not get fs type for %s : %s", file, err)
+		}
+		logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
+		if networkFS {
+			logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
+			pollFile = true
+		}
+	}
+
+	// Check symlink status
+	filink, err := os.Lstat(file)
+	if err != nil {
+		return fmt.Errorf("could not lstat() file %s: %w", file, err)
+	}
+	if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
+		logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
+	}
+
+	// Create the tailer with appropriate configuration
+	seekInfo := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
+	if f.config.Mode == configuration.CAT_MODE {
+		seekInfo.Whence = io.SeekStart
+	}
+
+	tail, err := tail.TailFile(file, tail.Config{
+		ReOpen:   true,
+		Follow:   true,
+		Poll:     pollFile,
+		Location: seekInfo,
+		Logger:   log.NewEntry(log.StandardLogger()),
+	})
+	if err != nil {
+		return fmt.Errorf("could not start tailing file %s : %w", file, err)
+	}
+
+	f.tailMapMutex.Lock()
+	f.tails[file] = true
+	f.tailMapMutex.Unlock()
+
+	t.Go(func() error {
+		defer trace.CatchPanic("crowdsec/acquis/tailfile")
+		return f.tailFile(out, t, tail)
+	})
+
+	return nil
 }
 
 func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tail) error {
@@ -585,6 +568,12 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			}
 
 			logger.Warning(errMsg)
+
+			// Just remove the dead tailer from our map and return
+			// monitorNewFiles will pick up the file again if it's recreated
+			f.tailMapMutex.Lock()
+			delete(f.tails, tail.Filename)
+			f.tailMapMutex.Unlock()
 
 			return nil
 		case line := <-tail.Lines:
@@ -697,4 +686,18 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	t.Kill(nil)
 
 	return nil
+}
+
+// IsTailing returns whether a given file is currently being tailed. For testing purposes.
+func (f *FileSource) IsTailing(filename string) bool {
+	f.tailMapMutex.RLock()
+	defer f.tailMapMutex.RUnlock()
+	return f.tails[filename]
+}
+
+// RemoveTail is used for testing to simulate a dead tailer. For testing purposes.
+func (f *FileSource) RemoveTail(filename string) {
+	f.tailMapMutex.Lock()
+	defer f.tailMapMutex.Unlock()
+	delete(f.tails, filename)
 }
