@@ -35,6 +35,7 @@ type HubTestItemConfig struct {
 	Labels                map[string]string   `yaml:"labels,omitempty"`
 	IgnoreParsers         bool                `yaml:"ignore_parsers,omitempty"`   // if we test a scenario, we don't want to assert on Parser
 	OverrideStatics       []parser.ExtraField `yaml:"override_statics,omitempty"` // Allow to override statics. Executed before s00
+	OwnDataDir            bool                `yaml:"own_data_dir,omitempty"`     // Don't share dataDir with the other tests
 }
 
 type HubTestItem struct {
@@ -45,6 +46,7 @@ type HubTestItem struct {
 	CscliPath    string
 
 	RuntimePath               string
+	RuntimeDBDir              string
 	RuntimeHubPath            string
 	RuntimeDataPath           string
 	RuntimePatternsPath       string
@@ -125,6 +127,10 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
 	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
 
+	if configFileData.OwnDataDir {
+		dataDir = filepath.Join(runtimeFolder, "data")
+	}
+
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
@@ -132,8 +138,8 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 		CscliPath:                 hubTest.CscliPath,
 		RuntimePath:               filepath.Join(testPath, "runtime"),
 		RuntimeHubPath:            runtimeHubFolder,
-		RuntimeDataPath:           filepath.Join(runtimeFolder, "data"),
 		RuntimePatternsPath:       filepath.Join(runtimeFolder, "patterns"),
+		RuntimeDBDir:             filepath.Join(runtimeFolder, "data"),
 		RuntimeConfigFilePath:     filepath.Join(runtimeFolder, "config.yaml"),
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
 		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
@@ -549,7 +555,7 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	t.ErrorsList = make([]string, 0)
 
 	// create runtime, data, hub, result folders
-	if err = createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
+	if err = createDirs([]string{t.RuntimePath, t.RuntimeDBDir, t.RuntimeHubConfig.InstallDataDir, t.RuntimeHubPath, t.ResultsPath}); err != nil {
 		return err
 	}
 
