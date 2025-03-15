@@ -127,6 +127,11 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
 	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
 
+	// force own_data_dir for backard compatibility
+	if name == "magento-ccs-by-as" || name == "magento-ccs-by-country" || name == "geoip-enrich" {
+		configFileData.OwnDataDir = true
+	}
+
 	if configFileData.OwnDataDir {
 		dataDir = filepath.Join(runtimeFolder, "data")
 	}

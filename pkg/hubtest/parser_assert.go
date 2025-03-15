@@ -151,6 +151,15 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 	return nil
 }
 
+func basenameShim(expression string) string {
+	if strings.Contains(expression, "datasource_path") && ! strings.Contains(expression, "basename(") {
+		// match everything before == and wrap it with basename()
+		match := strings.Split(expression, "==")
+		return fmt.Sprintf("basename(%s) == %s", match[0], match[1])
+	}
+	return expression
+}
+
 func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	// debug doesn't make much sense with the ability to evaluate "on the fly"
 	// var debugFilter *exprhelpers.ExprDebugger
@@ -161,6 +170,10 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	env := map[string]any{"results": *p.TestData}
 	opts := exprhelpers.GetExprOptions(env)
 	opts = append(opts, expr.Function("basename", basename, new(func (string) string)))
+
+	// wrap with basename() in case of datasource_path, for backward compatibility
+	expression = basenameShim(expression)
+
 	runtimeFilter, err := expr.Compile(expression, opts...)
 	if err != nil {
 		logger.Errorf("failed to compile '%s': %s", expression, err)

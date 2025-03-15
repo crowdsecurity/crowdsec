@@ -31,7 +31,7 @@ type HubTest struct {
 }
 
 const (
-	templateConfigFile        = "template_config.yaml"
+	templateConfigFile        = "template_config2.yaml"
 	templateSimulationFile    = "template_simulation.yaml"
 	templateProfileFile       = "template_profiles.yaml"
 	templateAcquisFile        = "template_acquis.yaml"

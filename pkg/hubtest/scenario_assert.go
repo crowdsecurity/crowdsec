@@ -167,6 +167,9 @@ func (s *ScenarioAssert) RunExpression(expression string) (any, error) {
 	env := map[string]any{"results": *s.TestData}
 	opts := exprhelpers.GetExprOptions(env)
 	opts = append(opts, expr.Function("basename", basename, new(func (string) string)))
+
+	expression = basenameShim(expression)
+
 	runtimeFilter, err := expr.Compile(expression, opts...)
 
 	if err != nil {
