@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
@@ -80,7 +81,7 @@ func (cli *cliMachines) newPruneCmd() *cobra.Command {
 		Example: `cscli machines prune
 cscli machines prune --duration 1h
 cscli machines prune --not-validated-only --force`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.prune(cmd.Context(), duration, notValidOnly, force)

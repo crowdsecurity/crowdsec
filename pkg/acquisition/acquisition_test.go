@@ -301,6 +301,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			}
 
 			assert.Len(t, dss, tc.ExpectedLen)
+
 			if tc.TestName == "from_env" {
 				mock := dss[0].Dump().(*MockSource)
 				assert.Equal(t, "test_value2", mock.Toto)
@@ -411,7 +412,7 @@ func (f *MockTail) GetUuid() string { return "" }
 // func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 func TestStartAcquisitionCat(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sources := []DataSource{
 		&MockCat{},
 	}
@@ -439,7 +440,7 @@ READLOOP:
 }
 
 func TestStartAcquisitionTail(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sources := []DataSource{
 		&MockTail{},
 	}
@@ -487,7 +488,7 @@ func (f *MockTailError) StreamingAcquisition(ctx context.Context, out chan types
 }
 
 func TestStartAcquisitionTailError(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sources := []DataSource{
 		&MockTailError{},
 	}

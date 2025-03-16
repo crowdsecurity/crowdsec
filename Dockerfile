@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.23-alpine3.21 AS build
+FROM docker.io/golang:1.24-alpine3.21 AS build
 
 ARG BUILD_VERSION
 

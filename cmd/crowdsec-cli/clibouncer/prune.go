@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
 )
 
@@ -68,7 +69,7 @@ func (cli *cliBouncers) newPruneCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "prune",
 		Short:             "prune multiple bouncers from the database",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `cscli bouncers prune -d 45m
 cscli bouncers prune -d 45m --force`,

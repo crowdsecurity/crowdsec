@@ -1,7 +1,6 @@
 package apiclient
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,6 +18,7 @@ import (
 )
 
 func TestDecisionsList(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -65,20 +65,21 @@ func TestDecisionsList(t *testing.T) {
 
 	// OK decisions
 	decisionsFilter := DecisionsListOpts{IPEquals: ptr.Of("1.2.3.4")}
-	decisions, resp, err := newcli.Decisions.List(context.Background(), decisionsFilter)
+	decisions, resp, err := newcli.Decisions.List(ctx, decisionsFilter)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, *expected, *decisions)
 
 	// Empty return
 	decisionsFilter = DecisionsListOpts{IPEquals: ptr.Of("1.2.3.5")}
-	decisions, resp, err = newcli.Decisions.List(context.Background(), decisionsFilter)
+	decisions, resp, err = newcli.Decisions.List(ctx, decisionsFilter)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Empty(t, *decisions)
 }
 
 func TestDecisionsStream(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -135,25 +136,26 @@ func TestDecisionsStream(t *testing.T) {
 		},
 	}
 
-	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
+	decisions, resp, err := newcli.Decisions.GetStream(ctx, DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, *expected, *decisions)
 
 	// and second call, we get empty lists
-	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: false})
+	decisions, resp, err = newcli.Decisions.GetStream(ctx, DecisionsStreamOpts{Startup: false})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Empty(t, decisions.New)
 	assert.Empty(t, decisions.Deleted)
 
 	// delete stream
-	resp, err = newcli.Decisions.StopStream(context.Background())
+	resp, err = newcli.Decisions.StopStream(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 }
 
 func TestDecisionsStreamV3Compatibility(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -214,13 +216,14 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	}
 
 	// GetStream is supposed to consume v3 payload and return v2 response
-	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
+	decisions, resp, err := newcli.Decisions.GetStream(ctx, DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, *expected, *decisions)
 }
 
 func TestDecisionsStreamV3(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -286,13 +289,14 @@ func TestDecisionsStreamV3(t *testing.T) {
 	}
 
 	// GetStream is supposed to consume v3 payload and return v2 response
-	decisions, resp, err := newcli.Decisions.GetStreamV3(context.Background(), DecisionsStreamOpts{Startup: true})
+	decisions, resp, err := newcli.Decisions.GetStreamV3(ctx, DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, *expected, *decisions)
 }
 
 func TestDecisionsFromBlocklist(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -349,7 +353,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 			Origin:   &torigin,
 		},
 	}
-	decisions, isModified, err := newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+	decisions, isModified, err := newcli.Decisions.GetDecisionsFromBlocklist(ctx, &modelscapi.BlocklistLink{
 		URL:         &turlBlocklist,
 		Scope:       &tscopeBlocklist,
 		Remediation: &tremediationBlocklist,
@@ -368,7 +372,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	assert.Equal(t, expected, decisions)
 
 	// test cache control
-	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(ctx, &modelscapi.BlocklistLink{
 		URL:         &turlBlocklist,
 		Scope:       &tscopeBlocklist,
 		Remediation: &tremediationBlocklist,
@@ -379,7 +383,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, isModified)
 
-	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(ctx, &modelscapi.BlocklistLink{
 		URL:         &turlBlocklist,
 		Scope:       &tscopeBlocklist,
 		Remediation: &tremediationBlocklist,
@@ -392,6 +396,8 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 }
 
 func TestDeleteDecisions(t *testing.T) {
+	ctx := t.Context()
+
 	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -424,7 +430,7 @@ func TestDeleteDecisions(t *testing.T) {
 	filters := DecisionsDeleteOpts{IPEquals: new(string)}
 	*filters.IPEquals = "1.2.3.4"
 
-	deleted, _, err := client.Decisions.Delete(context.Background(), filters)
+	deleted, _, err := client.Decisions.Delete(ctx, filters)
 	require.NoError(t, err)
 	assert.Equal(t, "1", deleted.NbDeleted)
 

@@ -40,6 +40,7 @@ const (
 
 func (h *Hook) Build(hookStage int) error {
 	ctx := map[string]interface{}{}
+
 	switch hookStage {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
@@ -50,21 +51,26 @@ func (h *Hook) Build(hookStage int) error {
 	case hookOnMatch:
 		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
+
 	opts := exprhelpers.GetExprOptions(ctx)
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
 			return fmt.Errorf("unable to compile filter %s : %w", h.Filter, err)
 		}
+
 		h.FilterExpr = program
 	}
+
 	for _, apply := range h.Apply {
 		program, err := expr.Compile(apply, opts...)
 		if err != nil {
 			return fmt.Errorf("unable to compile apply %s : %w", apply, err)
 		}
+
 		h.ApplyExpr = append(h.ApplyExpr, program)
 	}
+
 	return nil
 }
 
@@ -165,45 +171,51 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 
 	yamlFile, err := os.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("unable to read file %s : %s", file, err)
+		return fmt.Errorf("unable to read file %s : %w", file, err)
 	}
 
-	//as  LoadByPath can be called several time, we append rules/hooks, but override other options
+	// as  LoadByPath can be called several time, we append rules/hooks, but override other options
 	var tmp AppsecConfig
 
 	err = yaml.UnmarshalStrict(yamlFile, &tmp)
 	if err != nil {
-		return fmt.Errorf("unable to parse yaml file %s : %s", file, err)
+		return fmt.Errorf("unable to parse yaml file %s : %w", file, err)
 	}
 
 	if wc.Name == "" && tmp.Name != "" {
 		wc.Name = tmp.Name
 	}
 
-	//We can append rules/hooks
+	// We can append rules/hooks
 	if tmp.OutOfBandRules != nil {
 		wc.OutOfBandRules = append(wc.OutOfBandRules, tmp.OutOfBandRules...)
 	}
+
 	if tmp.InBandRules != nil {
 		wc.InBandRules = append(wc.InBandRules, tmp.InBandRules...)
 	}
+
 	if tmp.OnLoad != nil {
 		wc.OnLoad = append(wc.OnLoad, tmp.OnLoad...)
 	}
+
 	if tmp.PreEval != nil {
 		wc.PreEval = append(wc.PreEval, tmp.PreEval...)
 	}
+
 	if tmp.PostEval != nil {
 		wc.PostEval = append(wc.PostEval, tmp.PostEval...)
 	}
+
 	if tmp.OnMatch != nil {
 		wc.OnMatch = append(wc.OnMatch, tmp.OnMatch...)
 	}
+
 	if tmp.VariablesTracking != nil {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
 
-	//override other options
+	// override other options
 	wc.LogLevel = tmp.LogLevel
 
 	wc.DefaultRemediation = tmp.DefaultRemediation
@@ -216,12 +228,15 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	if tmp.InbandOptions.DisableBodyInspection {
 		wc.InbandOptions.DisableBodyInspection = true
 	}
+
 	if tmp.InbandOptions.RequestBodyInMemoryLimit != nil {
 		wc.InbandOptions.RequestBodyInMemoryLimit = tmp.InbandOptions.RequestBodyInMemoryLimit
 	}
+
 	if tmp.OutOfBandOptions.DisableBodyInspection {
 		wc.OutOfBandOptions.DisableBodyInspection = true
 	}
+
 	if tmp.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
 		wc.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBandOptions.RequestBodyInMemoryLimit
 	}
@@ -232,12 +247,14 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 func (wc *AppsecConfig) Load(configName string) error {
 	item := hub.GetItem(cwhub.APPSEC_CONFIGS, configName)
 
-	if item != nil && item.State.Installed {
+	if item != nil && item.State.IsInstalled() {
 		wc.Logger.Infof("loading %s", item.State.LocalPath)
+
 		err := wc.LoadByPath(item.State.LocalPath)
 		if err != nil {
 			return fmt.Errorf("unable to load appsec-config %s : %s", item.State.LocalPath, err)
 		}
+
 		return nil
 	}
 
@@ -254,6 +271,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	if wc.BouncerBlockedHTTPCode == 0 {
 		wc.BouncerBlockedHTTPCode = http.StatusForbidden
 	}
+
 	if wc.BouncerPassedHTTPCode == 0 {
 		wc.BouncerPassedHTTPCode = http.StatusOK
 	}
@@ -261,12 +279,15 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	if wc.UserBlockedHTTPCode == 0 {
 		wc.UserBlockedHTTPCode = http.StatusForbidden
 	}
+
 	if wc.UserPassedHTTPCode == 0 {
 		wc.UserPassedHTTPCode = http.StatusOK
 	}
+
 	if wc.DefaultPassAction == "" {
 		wc.DefaultPassAction = AllowRemediation
 	}
+
 	if wc.DefaultRemediation == "" {
 		wc.DefaultRemediation = BanRemediation
 	}
@@ -287,20 +308,25 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	// load rules
 	for _, rule := range wc.OutOfBandRules {
 		wc.Logger.Infof("loading outofband rule %s", rule)
+
 		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
 		}
+
 		ret.OutOfBandRules = append(ret.OutOfBandRules, collections...)
 	}
 
 	wc.Logger.Infof("Loaded %d outofband rules", len(ret.OutOfBandRules))
+
 	for _, rule := range wc.InBandRules {
 		wc.Logger.Infof("loading inband rule %s", rule)
+
 		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)
 		}
+
 		ret.InBandRules = append(ret.InBandRules, collections...)
 	}
 
@@ -311,10 +337,12 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
 		}
+
 		err := hook.Build(hookOnLoad)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
 		}
+
 		ret.CompiledOnLoad = append(ret.CompiledOnLoad, hook)
 	}
 
@@ -322,10 +350,12 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for pre_eval hook : %s", hook.OnSuccess)
 		}
+
 		err := hook.Build(hookPreEval)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
 		}
+
 		ret.CompiledPreEval = append(ret.CompiledPreEval, hook)
 	}
 
@@ -333,10 +363,12 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for post_eval hook : %s", hook.OnSuccess)
 		}
+
 		err := hook.Build(hookPostEval)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
 		}
+
 		ret.CompiledPostEval = append(ret.CompiledPostEval, hook)
 	}
 
@@ -344,10 +376,12 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for on_match hook : %s", hook.OnSuccess)
 		}
+
 		err := hook.Build(hookOnMatch)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
 		}
+
 		ret.CompiledOnMatch = append(ret.CompiledOnMatch, hook)
 	}
 
@@ -357,19 +391,23 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot compile variable regexp %s: %w", variable, err)
 		}
+
 		ret.CompiledVariablesTracking = append(ret.CompiledVariablesTracking, compiledVariableRule)
 	}
+
 	return ret, nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	has_match := false
+
 	for _, rule := range w.CompiledOnLoad {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec on_load filter %s : %w", rule.Filter, err)
 			}
+
 			switch t := output.(type) {
 			case bool:
 				if !t {
@@ -380,14 +418,17 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+
 			has_match = true
 		}
+
 		for _, applyExpr := range rule.ApplyExpr {
 			o, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec on_load expr: %s", err)
 				continue
 			}
+
 			switch t := o.(type) {
 			case error:
 				w.Logger.Errorf("unable to apply appsec on_load expr: %s", t)
@@ -395,21 +436,25 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 			default:
 			}
 		}
+
 		if has_match && rule.OnSuccess == "break" {
 			break
 		}
 	}
+
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
 	has_match := false
+
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec on_match filter %s : %w", rule.Filter, err)
 			}
+
 			switch t := output.(type) {
 			case bool:
 				if !t {
@@ -420,14 +465,17 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+
 			has_match = true
 		}
+
 		for _, applyExpr := range rule.ApplyExpr {
 			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec on_match expr: %s", err)
 				continue
 			}
+
 			switch t := o.(type) {
 			case error:
 				w.Logger.Errorf("unable to apply appsec on_match expr: %s", t)
@@ -435,21 +483,25 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 			default:
 			}
 		}
+
 		if has_match && rule.OnSuccess == "break" {
 			break
 		}
 	}
+
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 	has_match := false
+
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec pre_eval filter %s : %w", rule.Filter, err)
 			}
+
 			switch t := output.(type) {
 			case bool:
 				if !t {
@@ -460,6 +512,7 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+
 			has_match = true
 		}
 		// here means there is no filter or the filter matched
@@ -469,6 +522,7 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", err)
 				continue
 			}
+
 			switch t := o.(type) {
 			case error:
 				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", t)
@@ -476,6 +530,7 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 			default:
 			}
 		}
+
 		if has_match && rule.OnSuccess == "break" {
 			break
 		}
@@ -486,12 +541,14 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
 	has_match := false
+
 	for _, rule := range w.CompiledPostEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec post_eval filter %s : %w", rule.Filter, err)
 			}
+
 			switch t := output.(type) {
 			case bool:
 				if !t {
@@ -502,6 +559,7 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
+
 			has_match = true
 		}
 		// here means there is no filter or the filter matched
@@ -519,6 +577,7 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 			default:
 			}
 		}
+
 		if has_match && rule.OnSuccess == "break" {
 			break
 		}
@@ -562,6 +621,7 @@ func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(name string) error {
 func (w *AppsecRuntimeConfig) CancelEvent() error {
 	w.Logger.Debugf("canceling event")
 	w.Response.SendEvent = false
+
 	return nil
 }
 

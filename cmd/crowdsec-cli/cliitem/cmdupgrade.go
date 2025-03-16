@@ -60,9 +60,10 @@ func (cli cliItem) upgrade(ctx context.Context, args []string, interactive bool,
 		return err
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		return err
 	}
 

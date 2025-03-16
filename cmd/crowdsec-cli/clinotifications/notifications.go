@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -56,7 +57,6 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 		Use:               "notifications [action]",
 		Short:             "Helper for notification plugin configuration",
 		Long:              "To list/inspect/test notification template",
-		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
@@ -158,7 +158,7 @@ func (cli *cliNotifications) newListCmd() *cobra.Command {
 		Short:             "list notifications plugins",
 		Long:              `list notifications plugins and their status (active or not)`,
 		Example:           `cscli notifications list`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -207,7 +207,7 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 		Short:             "Inspect notifications plugin",
 		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		ValidArgsFunction: cli.notificationConfigFilter,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -272,7 +272,7 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 		Short:             "send a generic test alert to notification plugin",
 		Long:              `send a generic test alert to a notification plugin even if it is not active in profiles`,
 		Example:           `cscli notifications test [plugin_name]`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.notificationConfigFilter,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -367,7 +367,7 @@ cscli notifications reinject <alert_id>
 cscli notifications reinject <alert_id> -a '{"remediation": false,"scenario":"notification/test"}'
 cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"notification/test"}'
 `,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error

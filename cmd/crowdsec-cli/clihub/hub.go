@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -42,7 +43,6 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 		Example: `cscli hub list
 cscli hub update
 cscli hub upgrade`,
-		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 
@@ -90,7 +90,7 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), log.StandardLogger())
@@ -118,8 +118,13 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 
 	indexProvider := require.HubDownloader(ctx, cli.cfg())
 
-	if err := hub.Update(ctx, indexProvider, withContent); err != nil {
+	updated, err := hub.Update(ctx, indexProvider, withContent)
+	if err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
+	}
+
+	if !updated && (log.StandardLogger().Level >= log.InfoLevel) {
+		fmt.Println("Nothing to do, the hub index is up to date.")
 	}
 
 	if err := hub.Load(); err != nil {
@@ -147,7 +152,7 @@ cscli hub update
 
 # Download a 4x bigger version with all item contents (effectively pre-caching item downloads, but not data files).
 cscli hub update --with-content`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if cmd.Flags().Changed("with-content") {
@@ -187,9 +192,10 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 		return err
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		return err
 	}
 
@@ -222,7 +228,7 @@ cscli hub upgrade --force
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
 cscli hub upgrade --interactive
 cscli hub upgrade -i`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.upgrade(cmd.Context(), interactive, dryRun, force)
@@ -270,7 +276,7 @@ func (cli *cliHub) newTypesCmd() *cobra.Command {
 		Long: `
 List the types of supported hub items.
 `,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.types()

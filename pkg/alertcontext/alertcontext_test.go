@@ -347,6 +347,42 @@ func TestAppsecEventToContext(t *testing.T) {
 			},
 			expectedErrLen: 0,
 		},
+		{
+			name: "test JA4H - appsec event",
+			contextToSend: map[string][]string{
+				"ja4h": {"JA4H(req)"},
+			},
+			match: types.AppsecEvent{
+				MatchedRules: types.MatchedRules{
+					{
+						"id": "test",
+					},
+				},
+			},
+			req: &http.Request{
+				Header: map[string][]string{
+					"User-Agent": {"test"},
+					"Foobar":     {"test1", "test2"},
+				},
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Method:     http.MethodGet,
+			},
+			expectedResult: []*models.MetaItems0{
+				{
+					Key:   "ja4h",
+					Value: "[\"ge11nn020000_3a31a0f8fbf9_000000000000_000000000000\"]",
+				},
+			},
+		},
+		{
+			name: "test JA4H - no appsec event",
+			contextToSend: map[string][]string{
+				"ja4h": {"JA4H(req)"},
+			},
+			req:            nil,
+			expectedResult: []*models.MetaItems0{},
+		},
 	}
 
 	for _, test := range tests {

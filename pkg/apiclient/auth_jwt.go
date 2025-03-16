@@ -61,12 +61,13 @@ func (t *JWTTransport) refreshJwtToken() error {
 	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
+
 	err = enc.Encode(auth)
 	if err != nil {
 		return fmt.Errorf("could not encode jwt auth body: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
 	if err != nil {
 		return fmt.Errorf("could not create request: %w", err)
 	}
@@ -169,6 +170,7 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	var resp *http.Response
+
 	attemptsCount := make(map[int]int)
 
 	for {
@@ -186,11 +188,6 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		resp, err = t.transport().RoundTrip(clonedReq)
-		if log.GetLevel() >= log.TraceLevel {
-			dump, _ := httputil.DumpResponse(resp, true)
-			log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
-		}
-
 		if err != nil {
 			// we had an error (network error for example), reset the token?
 			t.ResetToken()
@@ -217,6 +214,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		log.Debugf("retrying request to %s", req.URL.String())
+
 		attemptsCount[resp.StatusCode]++
 		log.Infof("attempt %d out of %d", attemptsCount[resp.StatusCode], config.MaxAttempts)
 
@@ -226,6 +224,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			time.Sleep(time.Duration(backoff) * time.Second)
 		}
 	}
+
 	return resp, nil
 }
 
@@ -246,5 +245,6 @@ func (t *JWTTransport) transport() http.RoundTripper {
 	if t.Transport != nil {
 		return t.Transport
 	}
+
 	return http.DefaultTransport
 }

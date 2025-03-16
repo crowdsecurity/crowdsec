@@ -142,7 +142,7 @@ detect_services () {
             fi;
         done;
     done;
-    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]]; then
+    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]] || [[ ${OSTYPE} == "linux" ]]; then
         DETECTED_SERVICES+=("linux")
         HMENU+=("linux" "on")
     else

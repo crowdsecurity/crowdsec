@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ const (
 )
 
 func TestDeleteDecisionRange(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -38,7 +37,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 }
 
 func TestDeleteDecisionFilter(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -64,7 +63,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 }
 
 func TestDeleteDecisionFilterByScenario(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -84,7 +83,7 @@ func TestDeleteDecisionFilterByScenario(t *testing.T) {
 }
 
 func TestGetDecisionFilters(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -160,7 +159,7 @@ func TestGetDecisionFilters(t *testing.T) {
 }
 
 func TestGetDecision(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -192,7 +191,7 @@ func TestGetDecision(t *testing.T) {
 }
 
 func TestDeleteDecisionByID(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -239,7 +238,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 }
 
 func TestDeleteDecision(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// Create Valid Alert
@@ -259,7 +258,8 @@ func TestDeleteDecision(t *testing.T) {
 }
 
 func TestStreamStartDecisionDedup(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
 	// Ensure that at stream startup we only get the longest decision
 	lapi := SetupLAPITest(t, ctx)
 

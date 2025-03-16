@@ -19,11 +19,10 @@ import (
 
 // Hub is the main structure for the package.
 type Hub struct {
-	items     HubItems // Items read from HubDir and InstallDir
-	pathIndex map[string]*Item
-	local     *csconfig.LocalHubCfg
-	logger    *logrus.Logger
-	Warnings  []string // Warnings encountered during sync
+	items    HubItems // Items read from HubDir and InstallDir
+	local    *csconfig.LocalHubCfg
+	logger   *logrus.Logger
+	Warnings []string // Warnings encountered during sync
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
@@ -45,9 +44,8 @@ func NewHub(local *csconfig.LocalHubCfg, logger *logrus.Logger) (*Hub, error) {
 	}
 
 	hub := &Hub{
-		local:     local,
-		logger:    logger,
-		pathIndex: make(map[string]*Item, 0),
+		local:  local,
+		logger: logger,
 	}
 
 	return hub, nil
@@ -153,24 +151,13 @@ var ErrUpdateAfterSync = errors.New("cannot update hub index after load/sync")
 
 // Update downloads the latest version of the index and writes it to disk if it changed.
 // It cannot be called after Load() unless the index was completely empty.
-func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) error {
+func (h *Hub) Update(ctx context.Context, indexProvider IndexProvider, withContent bool) (bool, error) {
 	if len(h.items) > 0 {
 		// if this happens, it's a bug.
-		return ErrUpdateAfterSync
+		return false, ErrUpdateAfterSync
 	}
 
-	downloaded, err := indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
-	if err != nil {
-		return err
-	}
-
-	if !downloaded {
-		// use logger and the message will be silenced in the cron job
-		// (no mail if nothing happened)
-		h.logger.Info("Nothing to do, the hub index is up to date.")
-	}
-
-	return nil
+	return indexProvider.FetchIndex(ctx, h.local.HubIndexFile, withContent, h.logger)
 }
 
 // addItem adds an item to the hub. It silently replaces an existing item with the same type and name.
@@ -180,7 +167,6 @@ func (h *Hub) addItem(item *Item) {
 	}
 
 	h.items[item.Type][item.Name] = item
-	h.pathIndex[item.State.LocalPath] = item
 }
 
 // GetItemMap returns the map of items for a given type.
@@ -191,11 +177,6 @@ func (h *Hub) GetItemMap(itemType string) map[string]*Item {
 // GetItem returns an item from hub based on its type and full name (author/name).
 func (h *Hub) GetItem(itemType string, itemName string) *Item {
 	return h.GetItemMap(itemType)[itemName]
-}
-
-// GetItemByPath returns an item from hub based on its (absolute) local path.
-func (h *Hub) GetItemByPath(itemPath string) *Item {
-	return h.pathIndex[itemPath]
 }
 
 // GetItemFQ returns an item from hub based on its type and name (type:author/name).
@@ -251,7 +232,7 @@ func (h *Hub) GetInstalledByType(itemType string, sorted bool) []*Item {
 	ret := make([]*Item, 0)
 
 	for _, item := range h.GetItemsByType(itemType, sorted) {
-		if item.State.Installed {
+		if item.State.IsInstalled() {
 			ret = append(ret, item)
 		}
 	}

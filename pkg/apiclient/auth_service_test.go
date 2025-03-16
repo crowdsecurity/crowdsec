@@ -2,7 +2,6 @@ package apiclient
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -72,6 +71,7 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
  * 400, 409, 500 => Error
  */
 func TestWatcherRegister(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -92,8 +92,6 @@ func TestWatcherRegister(t *testing.T) {
 		VersionPrefix: "v1",
 	}
 
-	ctx := context.Background()
-
 	client, err := RegisterClient(ctx, &clientconfig, &http.Client{})
 	require.NoError(t, err)
 
@@ -111,6 +109,7 @@ func TestWatcherRegister(t *testing.T) {
 }
 
 func TestWatcherAuth(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -135,7 +134,7 @@ func TestWatcherAuth(t *testing.T) {
 	client, err := NewClient(clientConfig)
 	require.NoError(t, err)
 
-	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	_, _, err = client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &clientConfig.MachineID,
 		Password:  &clientConfig.Password,
 		Scenarios: clientConfig.Scenarios,
@@ -151,7 +150,7 @@ func TestWatcherAuth(t *testing.T) {
 		client, err := NewClient(clientConfig)
 		require.NoError(t, err)
 
-		_, resp, err := client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+		_, resp, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 			MachineID: &clientConfig.MachineID,
 			Password:  &clientConfig.Password,
 		})
@@ -171,6 +170,7 @@ func TestWatcherAuth(t *testing.T) {
 }
 
 func TestWatcherUnregister(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -216,13 +216,14 @@ func TestWatcherUnregister(t *testing.T) {
 	client, err := NewClient(mycfg)
 	require.NoError(t, err)
 
-	_, err = client.Auth.UnregisterWatcher(context.Background())
+	_, err = client.Auth.UnregisterWatcher(ctx)
 	require.NoError(t, err)
 
 	log.Printf("->%T", client)
 }
 
 func TestWatcherEnroll(t *testing.T) {
+	ctx := t.Context()
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -270,9 +271,9 @@ func TestWatcherEnroll(t *testing.T) {
 	client, err := NewClient(mycfg)
 	require.NoError(t, err)
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{}, false)
+	_, err = client.Auth.EnrollWatcher(ctx, "goodkey", "", []string{}, false)
 	require.NoError(t, err)
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{}, false)
+	_, err = client.Auth.EnrollWatcher(ctx, "badkey", "", []string{}, false)
 	assert.Contains(t, err.Error(), "the attachment key provided is not valid", "got %s", err.Error())
 }

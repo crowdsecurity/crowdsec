@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
@@ -18,7 +19,7 @@ func (cliVersion) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "version",
 		Short:             "Display version",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		Run: func(_ *cobra.Command, _ []string) {
 			_, _ = os.Stdout.WriteString(cwversion.FullString())

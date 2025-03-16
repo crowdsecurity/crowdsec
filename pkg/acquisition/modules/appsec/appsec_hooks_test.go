@@ -332,6 +332,67 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 			},
 		},
+		{
+			name:             "on_match: SendAlert() with out-of-band rule",
+			expected_load_ok: true,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == false", Apply: []string{"SendAlert()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "1.2.3.4",
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusOK, statusCode)
+				// We have both an event an overflow
+				require.Len(t, events, 2)
+				require.Equal(t, types.LOG, events[0].Type)
+				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Nil(t, events[0].Overflow.Alert)
+				require.NotNil(t, events[1].Overflow.Alert)
+			},
+		},
+		{
+			name:             "on_match: no alert with default config",
+			expected_load_ok: true,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 1)
+				require.Equal(t, types.LOG, events[0].Type)
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -881,6 +942,40 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
 				require.Equal(t, http.StatusForbidden, statusCode)
+			},
+		},
+		{
+			name:             "on_match: allowlisted IP",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:   "5.4.3.2",
+				RemoteAddr: "5.4.3.2",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			DefaultRemediation: appsec.AllowRemediation,
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "continue"},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				spew.Dump(responses)
+				spew.Dump(appsecResponse)
+
+				log.Errorf("http status : %d", statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusOK, statusCode)
 			},
 		},
 	}

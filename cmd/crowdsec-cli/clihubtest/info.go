@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -14,7 +15,7 @@ func (cli *cliHubTest) newInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {

@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -78,9 +79,10 @@ func (cli cliItem) install(ctx context.Context, args []string, interactive bool,
 		}
 	}
 
-	verbose := (cfg.Cscli.Output == "raw")
+	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
+	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, verbose); err != nil {
+	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
 		if !ignoreError {
 			return err
 		}
@@ -128,7 +130,7 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 		Short:             cmp.Or(cli.installHelp.short, "Install given "+cli.oneOrMore),
 		Long:              cmp.Or(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
 		Example:           cli.installHelp.example,
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cli.name, args, toComplete, cli.cfg)

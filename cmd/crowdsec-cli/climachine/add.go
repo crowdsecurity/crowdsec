@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -134,6 +135,7 @@ func (cli *cliMachines) newAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "add",
 		Short:             "add a single machine to the database",
+		Args:              args.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `cscli machines add --auto

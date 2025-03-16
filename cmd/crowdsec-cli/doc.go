@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 type cliDoc struct{}
@@ -23,7 +25,7 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "doc",
 		Short:             "Generate the documentation related to cscli commands. Target directory must exist.",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		Hidden:            true,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {

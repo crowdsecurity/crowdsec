@@ -46,7 +46,6 @@ func (cli cliItem) NewCommand() *cobra.Command {
 		Short:             cmp.Or(cli.help.short, "Manage hub "+cli.name),
 		Long:              cli.help.long,
 		Example:           cli.help.example,
-		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{cli.singular},
 		DisableAutoGenTag: true,
 	}

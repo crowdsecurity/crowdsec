@@ -353,7 +353,7 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 			continue
 		}
 
-		if err := fd.Close(); err != nil {
+		if err = fd.Close(); err != nil {
 			f.logger.Errorf("unable to close %s : %s", file, err)
 			continue
 		}
@@ -381,6 +381,7 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 
 			if networkFS {
 				f.logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
+
 				pollFile = true
 			}
 		}
@@ -562,12 +563,12 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 
 func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tail) error {
 	logger := f.logger.WithField("tail", tail.Filename)
-	logger.Debugf("-> Starting tail of %s", tail.Filename)
+	logger.Debug("-> start tailing")
 
 	for {
 		select {
 		case <-t.Dying():
-			logger.Infof("File datasource %s stopping", tail.Filename)
+			logger.Info("File datasource stopping")
 
 			if err := tail.Stop(); err != nil {
 				f.logger.Errorf("error in stop : %s", err)
@@ -576,7 +577,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 
 			return nil
 		case <-tail.Dying(): // our tailer is dying
-			errMsg := fmt.Sprintf("file reader of %s died", tail.Filename)
+			errMsg := "file reader died"
 
 			err := tail.Err()
 			if err != nil {
@@ -588,7 +589,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			return nil
 		case line := <-tail.Lines:
 			if line == nil {
-				logger.Warningf("tail for %s is empty", tail.Filename)
+				logger.Warning("tail is empty")
 				continue
 			}
 
@@ -663,7 +664,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	for scanner.Scan() {
 		select {
 		case <-t.Dying():
-			logger.Infof("File datasource %s stopping", filename)
+			logger.Info("File datasource stopping")
 			return nil
 		default:
 			if scanner.Text() == "" {

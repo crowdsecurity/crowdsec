@@ -9,6 +9,12 @@ import (
 // Alert is the predicate function for alert builders.
 type Alert func(*sql.Selector)
 
+// AllowList is the predicate function for allowlist builders.
+type AllowList func(*sql.Selector)
+
+// AllowListItem is the predicate function for allowlistitem builders.
+type AllowListItem func(*sql.Selector)
+
 // Bouncer is the predicate function for bouncer builders.
 type Bouncer func(*sql.Selector)
 
