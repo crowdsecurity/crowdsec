@@ -47,7 +47,7 @@ jobs:
           ./test/instance-data load
           git clone -b parallel-hubtests https://github.com/crowdsecurity/hub.git ./test/local/hub-tests
           cd ./test/local/hub-tests
-          cscli hubtest run --all
+          cscli hubtest run --all --max-jobs 2
 
     - name: "Collect hub coverage"
       run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
