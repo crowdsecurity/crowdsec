@@ -45,7 +45,7 @@ jobs:
       run: |
           PATH=$(pwd)/test/local/bin:$PATH
           ./test/instance-data load
-          git clone https://github.com/crowdsecurity/hub.git ./test/local/hub-tests
+          git clone -b parallel-hubtests https://github.com/crowdsecurity/hub.git ./test/local/hub-tests
           cd ./test/local/hub-tests
           cscli hubtest run --all
 
