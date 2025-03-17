@@ -363,7 +363,10 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		},
 	}
 
-	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, t.NucleiTargetHost)
+	// the value in config is relative
+	nucleiTemplate := filepath.Join(t.Path, t.Config.NucleiTemplate)
+
+	err = nucleiConfig.RunNucleiTemplate(t.Name, nucleiTemplate, t.NucleiTargetHost)
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, ErrNucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)
