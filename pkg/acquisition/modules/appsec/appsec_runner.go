@@ -355,6 +355,10 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	err := r.ProcessInBandRules(request)
 	if err != nil {
 		logger.Errorf("unable to process InBand rules: %s", err)
+		err = request.Tx.Close()
+		if err != nil {
+			logger.Errorf("unable to close inband transaction: %s", err)
+		}
 		return
 	}
 
@@ -364,6 +368,11 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	if request.Tx.IsInterrupted() {
 		r.handleInBandInterrupt(request)
+	}
+
+	err = request.Tx.Close()
+	if err != nil {
+		r.logger.Errorf("unable to close inband transaction: %s", err)
 	}
 
 	// send back the result to the HTTP handler for the InBand part
@@ -385,6 +394,10 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 		err = r.ProcessOutOfBandRules(request)
 		if err != nil {
 			logger.Errorf("unable to process OutOfBand rules: %s", err)
+			err = request.Tx.Close()
+			if err != nil {
+				logger.Errorf("unable to close outband transaction: %s", err)
+			}
 			return
 		}
 
@@ -394,6 +407,10 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 		if request.Tx.IsInterrupted() {
 			r.handleOutBandInterrupt(request)
 		}
+	}
+	err = request.Tx.Close()
+	if err != nil {
+		r.logger.Errorf("unable to close outband transaction: %s", err)
 	}
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
