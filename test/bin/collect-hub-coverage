@@ -12,13 +12,16 @@ THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck disable=SC1091
 . "${THIS_DIR}/../.environment.sh"
 
-hubdir="${LOCAL_DIR}/hub-tests"
-
 coverage() {
     "${CSCLI}" --crowdsec "${CROWDSEC}" --cscli "${CSCLI}" hubtest coverage --"$1" --percent
 }
 
-cd "${hubdir}" || die "Could not find hub test results"
+hubdir="${LOCAL_DIR}/hub-tests"
+
+hubdir="${1:-${hubdir}}"
+
+[[ -d "${hubdir}" ]] || die "Could not find hub test results in $hubdir"
+cd "${hubdir}" || die "Could not find hub test results in $hubdir"
 
 shopt -s inherit_errexit
 

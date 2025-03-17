@@ -24,13 +24,13 @@ type HubTest struct {
 	TemplateAppsecProfilePath string
 	NucleiTargetHost          string
 	AppSecHost                string
-
-	HubIndex   *cwhub.Hub
-	Tests      []*HubTestItem
+	DataDir                   string // we share this one across tests, to avoid unnecessary downloads
+	HubIndex                  *cwhub.Hub
+	Tests                     []*HubTestItem
 }
 
 const (
-	templateConfigFile        = "template_config.yaml"
+	templateConfigFile        = "template_config2.yaml"
 	templateSimulationFile    = "template_simulation.yaml"
 	templateProfileFile       = "template_profiles.yaml"
 	templateAcquisFile        = "template_acquis.yaml"
@@ -61,7 +61,7 @@ http:
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
 	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
-		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
+		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %w", err)
 	}
 
 	// we can't use hubtest without the hub
@@ -139,9 +139,15 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		return HubTest{}, err
 	}
 
+	dataDir := filepath.Join(hubPath, ".cache", "data")
+	if err = os.MkdirAll(dataDir, 0o700); err != nil {
+		return HubTest{}, fmt.Errorf("while creating data dir: %w", err)
+	}
+
 	return HubTest{
 		CrowdSecPath:           crowdsecPath,
 		CscliPath:              cscliPath,
+		DataDir:                dataDir,
 		HubPath:                hubPath,
 		HubTestPath:            HubTestPath,
 		HubIndexFile:           hubIndexFile,
@@ -155,7 +161,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 	HubTestItem := &HubTestItem{}
 
-	testItem, err := NewTest(name, h)
+	testItem, err := NewTest(name, h, h.DataDir)
 	if err != nil {
 		return HubTestItem, err
 	}

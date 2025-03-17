@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -18,6 +20,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
+
+var downloadMutex sync.Mutex
 
 type HubTestItemConfig struct {
 	Parsers               []string            `yaml:"parsers,omitempty"`
@@ -31,6 +35,7 @@ type HubTestItemConfig struct {
 	Labels                map[string]string   `yaml:"labels,omitempty"`
 	IgnoreParsers         bool                `yaml:"ignore_parsers,omitempty"`   // if we test a scenario, we don't want to assert on Parser
 	OverrideStatics       []parser.ExtraField `yaml:"override_statics,omitempty"` // Allow to override statics. Executed before s00
+	OwnDataDir            bool                `yaml:"own_data_dir,omitempty"`     // Don't share dataDir with the other tests
 }
 
 type HubTestItem struct {
@@ -41,6 +46,7 @@ type HubTestItem struct {
 	CscliPath    string
 
 	RuntimePath               string
+	RuntimeDBDir              string
 	RuntimeHubPath            string
 	RuntimeDataPath           string
 	RuntimePatternsPath       string
@@ -95,7 +101,7 @@ const (
 	DefaultAppsecHost   = "127.0.0.1:4241"
 )
 
-func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
+func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error) {
 	testPath := filepath.Join(hubTest.HubTestPath, name)
 	runtimeFolder := filepath.Join(testPath, "runtime")
 	runtimeHubFolder := filepath.Join(runtimeFolder, "hub")
@@ -121,6 +127,15 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
 	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
 
+	// force own_data_dir for backard compatibility
+	if name == "magento-ccs-by-as" || name == "magento-ccs-by-country" || name == "geoip-enrich" {
+		configFileData.OwnDataDir = true
+	}
+
+	if configFileData.OwnDataDir {
+		dataDir = filepath.Join(runtimeFolder, "data")
+	}
+
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
@@ -128,8 +143,8 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		CscliPath:                 hubTest.CscliPath,
 		RuntimePath:               filepath.Join(testPath, "runtime"),
 		RuntimeHubPath:            runtimeHubFolder,
-		RuntimeDataPath:           filepath.Join(runtimeFolder, "data"),
 		RuntimePatternsPath:       filepath.Join(runtimeFolder, "patterns"),
+		RuntimeDBDir:              filepath.Join(runtimeFolder, "data"),
 		RuntimeConfigFilePath:     filepath.Join(runtimeFolder, "config.yaml"),
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
 		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
@@ -142,7 +157,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 			HubDir:         runtimeHubFolder,
 			HubIndexFile:   hubTest.HubIndexFile,
 			InstallDir:     runtimeFolder,
-			InstallDataDir: filepath.Join(runtimeFolder, "data"),
+			InstallDataDir: dataDir,
 		},
 		Config:                    configFileData,
 		HubPath:                   hubTest.HubPath,
@@ -176,7 +191,7 @@ func (t *HubTestItem) installHubItems(names []string, installFunc func(string) e
 	return nil
 }
 
-func (t *HubTestItem) InstallHub() error {
+func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	if err := t.installHubItems(t.Config.Parsers, t.installParser); err != nil {
 		return err
 	}
@@ -221,12 +236,14 @@ func (t *HubTestItem) InstallHub() error {
 		return err
 	}
 
-	ctx := context.Background()
+	// prevent concurrent downloads of the same file
+	downloadMutex.Lock()
+	defer downloadMutex.Unlock()
 
 	// install data for parsers if needed
 	for _, item := range hub.GetInstalledByType(cwhub.PARSERS, true) {
-		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
-			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
+			return fmt.Errorf("unable to download data for parser '%s': %w", item.Name, err)
 		}
 
 		log.Debugf("parser '%s' installed successfully in runtime environment", item.Name)
@@ -234,8 +251,8 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install data for scenarios if needed
 	for _, item := range hub.GetInstalledByType(cwhub.SCENARIOS, true) {
-		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
-			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
+			return fmt.Errorf("unable to download data for parser '%s': %w", item.Name, err)
 		}
 
 		log.Debugf("scenario '%s' installed successfully in runtime environment", item.Name)
@@ -243,8 +260,8 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install data for postoverflows if needed
 	for _, item := range hub.GetInstalledByType(cwhub.POSTOVERFLOWS, true) {
-		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, true); err != nil {
-			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
+		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
+			return fmt.Errorf("unable to download data for parser '%s': %w", item.Name, err)
 		}
 
 		log.Debugf("postoverflow '%s' installed successfully in runtime environment", item.Name)
@@ -253,49 +270,61 @@ func (t *HubTestItem) InstallHub() error {
 	return nil
 }
 
-func (t *HubTestItem) Clean() error {
-	return os.RemoveAll(t.RuntimePath)
+func (t *HubTestItem) Clean() {
+	if err := os.RemoveAll(t.ResultsPath); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Errorf("while cleaning %s: %s", t.Name, err.Error())
+		}
+	}
+
+	if err := os.RemoveAll(t.RuntimePath); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Errorf("while cleaning %s: %s", t.Name, err.Error())
+		}
+	}
 }
 
 func (t *HubTestItem) RunWithNucleiTemplate() error {
-	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
-
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
 	}
 
-	if err := os.Chdir(testPath); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %w", testPath, err)
-	}
+	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
 
 	// machine add
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
+	cscliRegisterCmd.Dir = testPath
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
 			fmt.Println(string(output))
-			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			return fmt.Errorf("fail to run '%s' for test '%s': %w", cscliRegisterCmd.String(), t.Name, err)
 		}
 	}
 
 	// hardcode bouncer key
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
+	cscliBouncerCmd.Dir = testPath
+	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create bouncer: bouncer appsectests already exists") {
 			fmt.Println(string(output))
-			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			return fmt.Errorf("fail to run '%s' for test '%s': %w", cscliRegisterCmd.String(), t.Name, err)
 		}
 	}
 
 	// start crowdsec service
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
 	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
+	crowdsecDaemon.Dir = testPath
+	crowdsecDaemon.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	crowdsecDaemon.Start()
 
@@ -382,58 +411,15 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithLogFile(patternDir string) error {
+func (t *HubTestItem) RunWithLogFile() error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
 	}
 
-	currentDir, err := os.Getwd() // xx
-	if err != nil {
-		return fmt.Errorf("can't get current directory: %+v", err)
-	}
-
-	// create runtime, data, hub folders
-	if err = createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
-		return err
-	}
-
-	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
-		return fmt.Errorf("unable to copy .index.json file in '%s': %w", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
-	}
-
-	// copy template config file to runtime folder
-	if err = Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
-	}
-
-	// copy template profile file to runtime folder
-	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
-	}
-
-	// copy template simulation file to runtime folder
-	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
-	}
-
-	// copy template patterns folder to runtime folder
-	if err = CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
-	}
-
-	// install the hub in the runtime folder
-	if err = t.InstallHub(); err != nil {
-		return fmt.Errorf("unable to install hub in '%s': %w", t.RuntimeHubPath, err)
-	}
-
-	logFile := t.Config.LogFile
+	logFile := filepath.Join(testPath, t.Config.LogFile)
 	logType := t.Config.LogType
 	dsn := fmt.Sprintf("file://%s", logFile)
-
-	if err = os.Chdir(testPath); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %w", testPath, err)
-	}
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
@@ -446,6 +432,9 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
+	cscliRegisterCmd.Dir = testPath
+	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+
 	log.Debugf("%s", cscliRegisterCmd.String())
 
 	output, err := cscliRegisterCmd.CombinedOutput()
@@ -464,6 +453,9 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	}
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
+	crowdsecCmd.Dir = testPath
+	crowdsecCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
 
@@ -473,10 +465,6 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 
 	if err != nil {
 		return fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
-	}
-
-	if err := os.Chdir(currentDir); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %w", currentDir, err)
 	}
 
 	// assert parsers
@@ -506,6 +494,7 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 			t.ParserAssert.AutoGenAssert = true
 		} else {
 			if err := t.ParserAssert.AssertFile(t.ParserResultFile); err != nil {
+				// TODO: no error - should not prevent running the other tests
 				return fmt.Errorf("unable to run assertion on file '%s': %w", t.ParserResultFile, err)
 			}
 		}
@@ -564,14 +553,14 @@ func (t *HubTestItem) RunWithLogFile(patternDir string) error {
 	return nil
 }
 
-func (t *HubTestItem) Run(patternDir string) error {
+func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	var err error
 
 	t.Success = false
 	t.ErrorsList = make([]string, 0)
 
 	// create runtime, data, hub, result folders
-	if err = createDirs([]string{t.RuntimePath, t.RuntimeDataPath, t.RuntimeHubPath, t.ResultsPath}); err != nil {
+	if err = createDirs([]string{t.RuntimePath, t.RuntimeDBDir, t.RuntimeHubConfig.InstallDataDir, t.RuntimeHubPath, t.ResultsPath}); err != nil {
 		return err
 	}
 
@@ -625,12 +614,12 @@ func (t *HubTestItem) Run(patternDir string) error {
 	}
 
 	// install the hub in the runtime folder
-	if err = t.InstallHub(); err != nil {
+	if err = t.InstallHub(ctx); err != nil {
 		return fmt.Errorf("unable to install hub in '%s': %w", t.RuntimeHubPath, err)
 	}
 
 	if t.Config.LogFile != "" {
-		return t.RunWithLogFile(patternDir)
+		return t.RunWithLogFile()
 	}
 
 	if t.Config.NucleiTemplate != "" {
