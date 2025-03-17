@@ -3,6 +3,7 @@ package clihubtest
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/text"
 
@@ -11,22 +12,31 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func hubTestResultTable(out io.Writer, wantColor string, testResult map[string]bool) {
+func hubTestResultTable(out io.Writer, wantColor string, testMap map[string]*hubtest.HubTestItem, reportSuccess bool) {
 	t := cstable.NewLight(out, wantColor)
-	t.SetHeaders("Test", "Result")
+	t.SetHeaders("Test", "Result", "Assertions")
 	t.SetHeaderAlignment(text.AlignLeft)
 	t.SetAlignment(text.AlignLeft)
 
-	for testName, success := range testResult {
+	showTable := reportSuccess
+
+	for testName, test := range testMap {
 		status := emoji.CheckMarkButton
-		if !success {
+		if !test.Success {
 			status = emoji.CrossMark
+			showTable = true
 		}
 
-		t.AddRow(testName, status)
+		if !test.Success || reportSuccess {
+			t.AddRow(testName, status, strconv.Itoa(test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert))
+		}
 	}
 
-	t.Render()
+	if showTable {
+		t.Render()
+	} else {
+		fmt.Println("All tests passed, use --report-success for more details.")
+	}
 }
 
 func hubTestListTable(out io.Writer, wantColor string, tests []*hubtest.HubTestItem) {

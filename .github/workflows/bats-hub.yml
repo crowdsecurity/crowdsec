@@ -10,9 +10,6 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        test-file: ["hub-1.bats", "hub-2.bats", "hub-3.bats"]
 
     name: "Functional tests"
     runs-on: ubuntu-latest
@@ -46,11 +43,14 @@ jobs:
 
     - name: "Run hub tests"
       run: |
-          ./test/bin/generate-hub-tests
-          ./test/run-tests ./test/dyn-bats/${{ matrix.test-file }} --formatter $(pwd)/test/lib/color-formatter
+          PATH=$(pwd)/test/local/bin:$PATH
+          ./test/instance-data load
+          git clone --depth 1 https://github.com/crowdsecurity/hub.git ./hub
+          cd ./hub
+          cscli hubtest run --all --clean --max-jobs 8
 
     - name: "Collect hub coverage"
-      run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
+      run: ./test/bin/collect-hub-coverage ./hub >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
       uses: schneegans/dynamic-badges-action@v1.7.0
