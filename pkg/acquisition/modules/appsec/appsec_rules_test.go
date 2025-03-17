@@ -374,7 +374,7 @@ toto
 				// Might fail if you have artifacts from previous tests, but good enough 99% of the time
 				tmpFiles, err := filepath.Glob(filepath.Join(os.TempDir(), "crzmp*"))
 				require.NoError(t, err)
-				require.Len(t, tmpFiles, 0)
+				require.Empty(t, tmpFiles)
 			},
 		},
 		{
