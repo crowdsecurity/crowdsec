@@ -1,19 +1,19 @@
 package clihubtest
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/dumps"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 )
 
-func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error {
+func (cli *cliHubTest) explain(ctx context.Context, testName string, details bool, skipOk bool) error {
 	test, err := HubTest.LoadTestItem(testName)
 	if err != nil {
-		return fmt.Errorf("can't load test: %+v", err)
+		return fmt.Errorf("can't load test: %w", err)
 	}
 
 	cfg := cli.cfg()
@@ -21,8 +21,8 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 
 	err = test.ParserAssert.LoadTest(test.ParserResultFile)
 	if err != nil {
-		if err = test.Run(patternDir); err != nil {
-			return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
+		if err = test.Run(ctx, patternDir); err != nil {
+			return fmt.Errorf("running test '%s' failed: %w", test.Name, err)
 		}
 
 		if err = test.ParserAssert.LoadTest(test.ParserResultFile); err != nil {
@@ -32,8 +32,8 @@ func (cli *cliHubTest) explain(testName string, details bool, skipOk bool) error
 
 	err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 	if err != nil {
-		if err = test.Run(patternDir); err != nil {
-			return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
+		if err = test.Run(ctx, patternDir); err != nil {
+			return fmt.Errorf("running test '%s' failed: %w", test.Name, err)
 		}
 
 		if err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile); err != nil {
@@ -62,9 +62,10 @@ func (cli *cliHubTest) newExplainCmd() *cobra.Command {
 		Short:             "explain [test_name]",
 		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			for _, testName := range args {
-				if err := cli.explain(testName, details, skipOk); err != nil {
+				if err := cli.explain(ctx, testName, details, skipOk); err != nil {
 					return err
 				}
 			}

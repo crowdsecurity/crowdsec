@@ -177,11 +177,13 @@ get_latest_version() {
 	EOT
     refute_stderr
 
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
+
     rune -0 cscli parsers upgrade crowdsecurity/whitelists --force
     assert_output - <<-EOT
 	Action plan:
 	📥 download
-	 parsers: crowdsecurity/whitelists (? -> 0.2)
+	 parsers: crowdsecurity/whitelists (? -> $latest_whitelists)
 
 	downloading parsers:crowdsecurity/whitelists
 
@@ -245,11 +247,15 @@ get_latest_version() {
     install_v0 parsers crowdsecurity/sshd-logs
     install_v0 parsers crowdsecurity/windows-auth
 
+    latest_sshd=$(get_latest_version parsers crowdsecurity/sshd-logs)
+    latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
+    latest_windows=$(get_latest_version parsers crowdsecurity/windows-auth)
+
     rune -0 cscli parsers upgrade --all
     assert_output - <<-EOT
 	Action plan:
 	📥 download
-	 parsers: crowdsecurity/sshd-logs (0.0 -> 2.9), crowdsecurity/whitelists (0.0 -> 0.2), crowdsecurity/windows-auth (0.0 -> 0.2)
+	 parsers: crowdsecurity/sshd-logs (0.0 -> $latest_sshd), crowdsecurity/whitelists (0.0 -> $latest_whitelists), crowdsecurity/windows-auth (0.0 -> $latest_windows)
 
 	downloading parsers:crowdsecurity/sshd-logs
 	downloading parsers:crowdsecurity/whitelists

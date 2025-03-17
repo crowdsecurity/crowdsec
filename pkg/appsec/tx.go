@@ -91,3 +91,7 @@ func (t *ExtendedTransaction) MatchedRules() []types.MatchedRule {
 func (t *ExtendedTransaction) ID() string {
 	return t.Tx.ID()
 }
+
+func (t *ExtendedTransaction) Close() error {
+	return t.Tx.Close()
+}

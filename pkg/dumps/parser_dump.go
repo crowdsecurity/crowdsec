@@ -35,6 +35,8 @@ type DumpOpts struct {
 }
 
 func LoadParserDump(filepath string) (*ParserResults, error) {
+	logger := log.WithField("file", filepath)
+
 	dumpData, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -83,9 +85,9 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 
 	for idx, result := range pdump[lastStage][lastParser] {
 		if result.Evt.StrTime == "" {
-			log.Warningf("Line %d/%d is missing evt.StrTime. It is most likely a mistake as it will prevent your logs to be processed in time-machine/forensic mode.", idx, len(pdump[lastStage][lastParser]))
+			logger.Warningf("Line %d/%d is missing evt.StrTime. It is most likely a mistake as it will prevent your logs to be processed in time-machine/forensic mode.", idx, len(pdump[lastStage][lastParser]))
 		} else {
-			log.Debugf("Line %d/%d has evt.StrTime set to '%s'", idx, len(pdump[lastStage][lastParser]), result.Evt.StrTime)
+			logger.Debugf("Line %d/%d has evt.StrTime set to '%s'", idx, len(pdump[lastStage][lastParser]), result.Evt.StrTime)
 		}
 	}
 

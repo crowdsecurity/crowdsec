@@ -23,7 +23,7 @@ type Coverage struct {
 	PresentIn  map[string]bool // poorman's set
 }
 
-func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
+func (h *HubTest) GetAppsecCoverage(hubDir string) ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES)) == 0 {
 		return nil, errors.New("no appsec rules in hub index")
 	}
@@ -41,7 +41,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 	}
 
 	// parser the expressions a-la-oneagain
-	appsecTestConfigs, err := filepath.Glob(".appsec-tests/*/config.yaml")
+	appsecTestConfigs, err := filepath.Glob(filepath.Join(hubDir, ".appsec-tests", "*", "config.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("while find appsec-tests config: %w", err)
 	}
@@ -57,7 +57,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 
 		err = yaml.Unmarshal(yamlFile, configFileData)
 		if err != nil {
-			return nil, fmt.Errorf("parsing: %v", err)
+			return nil, fmt.Errorf("parsing: %w", err)
 		}
 
 		for _, appsecRulesFile := range configFileData.AppsecRules {
@@ -70,7 +70,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 
 			err = yaml.Unmarshal(yamlFile, appsecRuleData)
 			if err != nil {
-				return nil, fmt.Errorf("parsing: %v", err)
+				return nil, fmt.Errorf("parsing: %w", err)
 			}
 
 			appsecRuleName := appsecRuleData.Name
@@ -87,7 +87,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 	return coverage, nil
 }
 
-func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
+func (h *HubTest) GetParsersCoverage(hubDir string) ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.PARSERS)) == 0 {
 		return nil, errors.New("no parsers in hub index")
 	}
@@ -105,7 +105,7 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	}
 
 	// parser the expressions a-la-oneagain
-	passerts, err := filepath.Glob(".tests/*/parser.assert")
+	passerts, err := filepath.Glob(filepath.Join(hubDir, ".tests", "*", "parser.assert"))
 	if err != nil {
 		return nil, fmt.Errorf("while find parser asserts: %w", err)
 	}
@@ -173,7 +173,7 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	return coverage, nil
 }
 
-func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
+func (h *HubTest) GetScenariosCoverage(hubDir string) ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.SCENARIOS)) == 0 {
 		return nil, errors.New("no scenarios in hub index")
 	}
@@ -191,7 +191,7 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	}
 
 	// parser the expressions a-la-oneagain
-	passerts, err := filepath.Glob(".tests/*/scenario.assert")
+	passerts, err := filepath.Glob(filepath.Join(hubDir, ".tests", "*", "scenario.assert"))
 	if err != nil {
 		return nil, fmt.Errorf("while find scenario asserts: %w", err)
 	}
@@ -259,6 +259,7 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 				}
 			}
 		}
+
 		file.Close()
 	}
 
