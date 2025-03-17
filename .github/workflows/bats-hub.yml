@@ -45,7 +45,7 @@ jobs:
       run: |
           PATH=$(pwd)/test/local/bin:$PATH
           ./test/instance-data load
-          git clone -depth 1 -b parallel-hubtests https://github.com/crowdsecurity/hub.git ./hub
+          git clone --depth 1 https://github.com/crowdsecurity/hub.git ./hub
           cd ./hub
           cscli hubtest run --all --max-jobs 8
 

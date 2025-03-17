@@ -20,8 +20,8 @@ hubdir="${LOCAL_DIR}/hub-tests"
 
 hubdir="${1:-${hubdir}}"
 
-[[ -d "${hubdir}" ]] || die "Could not find hub test results"
-cd "${hubdir}" || die "Could not find hub test results"
+[[ -d "${hubdir}" ]] || die "Could not find hub test results in $hubdir"
+cd "${hubdir}" || die "Could not find hub test results in $hubdir"
 
 shopt -s inherit_errexit
 
