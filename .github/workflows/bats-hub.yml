@@ -45,12 +45,12 @@ jobs:
       run: |
           PATH=$(pwd)/test/local/bin:$PATH
           ./test/instance-data load
-          git clone -b parallel-hubtests https://github.com/crowdsecurity/hub.git ./test/local/hub-tests
+          git clone -depth 1 -b parallel-hubtests https://github.com/crowdsecurity/hub.git ./hub
           cd ./test/local/hub-tests
-          cscli hubtest run --all --max-jobs 1
+          cscli hubtest run --all --max-jobs 8
 
     - name: "Collect hub coverage"
-      run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
+      run: ./test/bin/collect-hub-coverage ./hub >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
       uses: schneegans/dynamic-badges-action@v1.7.0
