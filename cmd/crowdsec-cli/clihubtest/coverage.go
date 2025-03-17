@@ -46,7 +46,7 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 
 	// for this one we explicitly don't do for appsec
 	if err := HubTest.LoadAllTests(); err != nil {
-		return fmt.Errorf("unable to load all tests: %+v", err)
+		return fmt.Errorf("unable to load all tests: %w", err)
 	}
 
 	var err error

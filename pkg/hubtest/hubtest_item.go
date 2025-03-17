@@ -144,7 +144,7 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 		RuntimePath:               filepath.Join(testPath, "runtime"),
 		RuntimeHubPath:            runtimeHubFolder,
 		RuntimePatternsPath:       filepath.Join(runtimeFolder, "patterns"),
-		RuntimeDBDir:             filepath.Join(runtimeFolder, "data"),
+		RuntimeDBDir:              filepath.Join(runtimeFolder, "data"),
 		RuntimeConfigFilePath:     filepath.Join(runtimeFolder, "config.yaml"),
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
 		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
@@ -243,7 +243,7 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	// install data for parsers if needed
 	for _, item := range hub.GetInstalledByType(cwhub.PARSERS, true) {
 		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
-			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
+			return fmt.Errorf("unable to download data for parser '%s': %w", item.Name, err)
 		}
 
 		log.Debugf("parser '%s' installed successfully in runtime environment", item.Name)
@@ -252,7 +252,7 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	// install data for scenarios if needed
 	for _, item := range hub.GetInstalledByType(cwhub.SCENARIOS, true) {
 		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
-			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
+			return fmt.Errorf("unable to download data for parser '%s': %w", item.Name, err)
 		}
 
 		log.Debugf("scenario '%s' installed successfully in runtime environment", item.Name)
@@ -261,7 +261,7 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	// install data for postoverflows if needed
 	for _, item := range hub.GetInstalledByType(cwhub.POSTOVERFLOWS, true) {
 		if _, err := hubops.DownloadDataIfNeeded(ctx, hub, item, false); err != nil {
-			return fmt.Errorf("unable to download data for parser '%s': %+v", item.Name, err)
+			return fmt.Errorf("unable to download data for parser '%s': %w", item.Name, err)
 		}
 
 		log.Debugf("postoverflow '%s' installed successfully in runtime environment", item.Name)
@@ -302,7 +302,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
 			fmt.Println(string(output))
-			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			return fmt.Errorf("fail to run '%s' for test '%s': %w", cscliRegisterCmd.String(), t.Name, err)
 		}
 	}
 
@@ -316,7 +316,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create bouncer: bouncer appsectests already exists") {
 			fmt.Println(string(output))
-			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			return fmt.Errorf("fail to run '%s' for test '%s': %w", cscliRegisterCmd.String(), t.Name, err)
 		}
 	}
 

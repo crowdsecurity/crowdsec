@@ -61,7 +61,7 @@ func (p *ParserAssert) AutoGenFromFile(filename string) (string, error) {
 func (p *ParserAssert) LoadTest(filename string) error {
 	parserDump, err := dumps.LoadParserDump(filename)
 	if err != nil {
-		return fmt.Errorf("loading parser dump file: %+v", err)
+		return fmt.Errorf("loading parser dump file: %w", err)
 	}
 
 	p.TestData = parserDump
@@ -93,7 +93,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 
 		ok, err := p.Run(scanner.Text())
 		if err != nil {
-			return fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
+			return fmt.Errorf("unable to run assert '%s': %w", scanner.Text(), err)
 		}
 
 		p.NbAssert++
@@ -152,11 +152,12 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 }
 
 func basenameShim(expression string) string {
-	if strings.Contains(expression, "datasource_path") && ! strings.Contains(expression, "basename(") {
+	if strings.Contains(expression, "datasource_path") && !strings.Contains(expression, "basename(") {
 		// match everything before == and wrap it with basename()
 		match := strings.Split(expression, "==")
 		return fmt.Sprintf("basename(%s) == %s", match[0], match[1])
 	}
+
 	return expression
 }
 
@@ -273,7 +274,6 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					} else {
 						ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
 					}
-
 				}
 
 				for _, ekey := range maptools.SortedKeys(result.Evt.Enriched) {

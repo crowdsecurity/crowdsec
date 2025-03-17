@@ -19,6 +19,7 @@ func hubTestResultTable(out io.Writer, wantColor string, testMap map[string]*hub
 	t.SetAlignment(text.AlignLeft)
 
 	showTable := reportSuccess
+
 	for testName, test := range testMap {
 		status := emoji.CheckMarkButton
 		if !test.Success {
@@ -31,7 +32,7 @@ func hubTestResultTable(out io.Writer, wantColor string, testMap map[string]*hub
 		}
 	}
 
-	if (showTable) {
+	if showTable {
 		t.Render()
 	} else {
 		fmt.Println("All tests passed, use --report-success for more details.")

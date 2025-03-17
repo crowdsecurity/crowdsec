@@ -57,7 +57,7 @@ func (h *HubTest) GetAppsecCoverage(hubDir string) ([]Coverage, error) {
 
 		err = yaml.Unmarshal(yamlFile, configFileData)
 		if err != nil {
-			return nil, fmt.Errorf("parsing: %v", err)
+			return nil, fmt.Errorf("parsing: %w", err)
 		}
 
 		for _, appsecRulesFile := range configFileData.AppsecRules {
@@ -70,7 +70,7 @@ func (h *HubTest) GetAppsecCoverage(hubDir string) ([]Coverage, error) {
 
 			err = yaml.Unmarshal(yamlFile, appsecRuleData)
 			if err != nil {
-				return nil, fmt.Errorf("parsing: %v", err)
+				return nil, fmt.Errorf("parsing: %w", err)
 			}
 
 			appsecRuleName := appsecRuleData.Name
@@ -259,6 +259,7 @@ func (h *HubTest) GetScenariosCoverage(hubDir string) ([]Coverage, error) {
 				}
 			}
 		}
+
 		file.Close()
 	}
 

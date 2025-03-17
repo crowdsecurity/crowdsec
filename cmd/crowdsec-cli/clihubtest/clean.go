@@ -27,7 +27,7 @@ func (cli *cliHubTest) newCleanCmd() *cobra.Command {
 
 			if all {
 				if err := hubPtr.LoadAllTests(); err != nil {
-					return fmt.Errorf("unable to load all tests: %+v", err)
+					return fmt.Errorf("unable to load all tests: %w", err)
 				}
 
 				tests = hubPtr.Tests

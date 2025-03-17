@@ -30,7 +30,7 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 
 	if all {
 		if err := hubPtr.LoadAllTests(); err != nil {
-			return fmt.Errorf("unable to load all tests: %+v", err)
+			return fmt.Errorf("unable to load all tests: %w", err)
 		}
 	} else {
 		for _, testName := range args {
@@ -44,6 +44,7 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 	patternDir := cfg.ConfigPaths.PatternDir
 
 	var eg errgroup.Group
+
 	eg.SetLimit(int(maxJobs))
 
 	for _, test := range hubPtr.Tests {

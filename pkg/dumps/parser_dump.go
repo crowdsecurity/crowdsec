@@ -36,6 +36,7 @@ type DumpOpts struct {
 
 func LoadParserDump(filepath string) (*ParserResults, error) {
 	logger := log.WithField("file", filepath)
+
 	dumpData, err := os.Open(filepath)
 	if err != nil {
 		return nil, err

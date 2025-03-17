@@ -25,9 +25,8 @@ type HubTest struct {
 	NucleiTargetHost          string
 	AppSecHost                string
 	DataDir                   string // we share this one across tests, to avoid unnecessary downloads
-
-	HubIndex   *cwhub.Hub
-	Tests      []*HubTestItem
+	HubIndex                  *cwhub.Hub
+	Tests                     []*HubTestItem
 }
 
 const (
@@ -62,7 +61,7 @@ http:
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
 	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
-		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
+		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %w", err)
 	}
 
 	// we can't use hubtest without the hub
