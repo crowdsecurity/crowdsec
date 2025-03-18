@@ -384,7 +384,6 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		}
 	} else {
 		if err == nil {
-			log.Infof("Appsec test %s succeeded", t.Name)
 			t.Success = true
 		} else {
 			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
