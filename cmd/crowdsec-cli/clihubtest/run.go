@@ -47,6 +47,7 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 
 	if isAppsecTest {
 		log.Info("Appsec tests can not run in parallel: setting max_jobs=1")
+
 		maxJobs = 1
 	}
 

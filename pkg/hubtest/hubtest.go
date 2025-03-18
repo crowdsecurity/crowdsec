@@ -65,7 +65,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 	}
 
 	sharedDataDir := filepath.Join(hubPath, ".cache", "data")
-	if err := os.MkdirAll(sharedDataDir, 0o700); err != nil {
+	if err = os.MkdirAll(sharedDataDir, 0o700); err != nil {
 		return HubTest{}, fmt.Errorf("while creating data dir: %w", err)
 	}
 
