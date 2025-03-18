@@ -64,6 +64,11 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %w", err)
 	}
 
+	sharedDataDir := filepath.Join(hubPath, ".cache", "data")
+	if err = os.MkdirAll(sharedDataDir, 0o700); err != nil {
+		return HubTest{}, fmt.Errorf("while creating data dir: %w", err)
+	}
+
 	// we can't use hubtest without the hub
 	if _, err = os.Stat(hubPath); os.IsNotExist(err) {
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
@@ -90,7 +95,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			HubDir:         hubPath,
 			HubIndexFile:   hubIndexFile,
 			InstallDir:     HubTestPath,
-			InstallDataDir: HubTestPath,
+			InstallDataDir: sharedDataDir,
 		}
 
 		hub, err := cwhub.NewHub(local, nil)
@@ -105,6 +110,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		return HubTest{
 			CrowdSecPath:              crowdsecPath,
 			CscliPath:                 cscliPath,
+			DataDir:                   sharedDataDir,
 			HubPath:                   hubPath,
 			HubTestPath:               HubTestPath,
 			HubIndexFile:              hubIndexFile,
@@ -127,7 +133,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		HubDir:         hubPath,
 		HubIndexFile:   hubIndexFile,
 		InstallDir:     HubTestPath,
-		InstallDataDir: HubTestPath,
+		InstallDataDir: sharedDataDir,
 	}
 
 	hub, err := cwhub.NewHub(local, nil)
@@ -139,15 +145,10 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		return HubTest{}, err
 	}
 
-	dataDir := filepath.Join(hubPath, ".cache", "data")
-	if err = os.MkdirAll(dataDir, 0o700); err != nil {
-		return HubTest{}, fmt.Errorf("while creating data dir: %w", err)
-	}
-
 	return HubTest{
 		CrowdSecPath:           crowdsecPath,
 		CscliPath:              cscliPath,
-		DataDir:                dataDir,
+		DataDir:                sharedDataDir,
 		HubPath:                hubPath,
 		HubTestPath:            HubTestPath,
 		HubIndexFile:           hubIndexFile,
