@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/apicauth"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -38,6 +39,7 @@ const (
 	TypeAlert         = "Alert"
 	TypeAllowList     = "AllowList"
 	TypeAllowListItem = "AllowListItem"
+	TypeApicAuth      = "ApicAuth"
 	TypeBouncer       = "Bouncer"
 	TypeConfigItem    = "ConfigItem"
 	TypeDecision      = "Decision"
@@ -4398,6 +4400,440 @@ func (m *AllowListItemMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown AllowListItem edge %s", name)
+}
+
+// ApicAuthMutation represents an operation that mutates the ApicAuth nodes in the graph.
+type ApicAuthMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	token         *string
+	expiration    *time.Time
+	singleton     *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*ApicAuth, error)
+	predicates    []predicate.ApicAuth
+}
+
+var _ ent.Mutation = (*ApicAuthMutation)(nil)
+
+// apicauthOption allows management of the mutation configuration using functional options.
+type apicauthOption func(*ApicAuthMutation)
+
+// newApicAuthMutation creates new mutation for the ApicAuth entity.
+func newApicAuthMutation(c config, op Op, opts ...apicauthOption) *ApicAuthMutation {
+	m := &ApicAuthMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeApicAuth,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withApicAuthID sets the ID field of the mutation.
+func withApicAuthID(id int) apicauthOption {
+	return func(m *ApicAuthMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ApicAuth
+		)
+		m.oldValue = func(ctx context.Context) (*ApicAuth, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ApicAuth.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withApicAuth sets the old ApicAuth of the mutation.
+func withApicAuth(node *ApicAuth) apicauthOption {
+	return func(m *ApicAuthMutation) {
+		m.oldValue = func(context.Context) (*ApicAuth, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ApicAuthMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ApicAuthMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ApicAuthMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ApicAuthMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ApicAuth.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetToken sets the "token" field.
+func (m *ApicAuthMutation) SetToken(s string) {
+	m.token = &s
+}
+
+// Token returns the value of the "token" field in the mutation.
+func (m *ApicAuthMutation) Token() (r string, exists bool) {
+	v := m.token
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToken returns the old "token" field's value of the ApicAuth entity.
+// If the ApicAuth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApicAuthMutation) OldToken(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToken is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToken requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToken: %w", err)
+	}
+	return oldValue.Token, nil
+}
+
+// ResetToken resets all changes to the "token" field.
+func (m *ApicAuthMutation) ResetToken() {
+	m.token = nil
+}
+
+// SetExpiration sets the "expiration" field.
+func (m *ApicAuthMutation) SetExpiration(t time.Time) {
+	m.expiration = &t
+}
+
+// Expiration returns the value of the "expiration" field in the mutation.
+func (m *ApicAuthMutation) Expiration() (r time.Time, exists bool) {
+	v := m.expiration
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiration returns the old "expiration" field's value of the ApicAuth entity.
+// If the ApicAuth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApicAuthMutation) OldExpiration(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiration is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiration requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiration: %w", err)
+	}
+	return oldValue.Expiration, nil
+}
+
+// ResetExpiration resets all changes to the "expiration" field.
+func (m *ApicAuthMutation) ResetExpiration() {
+	m.expiration = nil
+}
+
+// SetSingleton sets the "singleton" field.
+func (m *ApicAuthMutation) SetSingleton(s string) {
+	m.singleton = &s
+}
+
+// Singleton returns the value of the "singleton" field in the mutation.
+func (m *ApicAuthMutation) Singleton() (r string, exists bool) {
+	v := m.singleton
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSingleton returns the old "singleton" field's value of the ApicAuth entity.
+// If the ApicAuth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ApicAuthMutation) OldSingleton(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSingleton is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSingleton requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSingleton: %w", err)
+	}
+	return oldValue.Singleton, nil
+}
+
+// ResetSingleton resets all changes to the "singleton" field.
+func (m *ApicAuthMutation) ResetSingleton() {
+	m.singleton = nil
+}
+
+// Where appends a list predicates to the ApicAuthMutation builder.
+func (m *ApicAuthMutation) Where(ps ...predicate.ApicAuth) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ApicAuthMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ApicAuthMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ApicAuth, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ApicAuthMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ApicAuthMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ApicAuth).
+func (m *ApicAuthMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ApicAuthMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.token != nil {
+		fields = append(fields, apicauth.FieldToken)
+	}
+	if m.expiration != nil {
+		fields = append(fields, apicauth.FieldExpiration)
+	}
+	if m.singleton != nil {
+		fields = append(fields, apicauth.FieldSingleton)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ApicAuthMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case apicauth.FieldToken:
+		return m.Token()
+	case apicauth.FieldExpiration:
+		return m.Expiration()
+	case apicauth.FieldSingleton:
+		return m.Singleton()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ApicAuthMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case apicauth.FieldToken:
+		return m.OldToken(ctx)
+	case apicauth.FieldExpiration:
+		return m.OldExpiration(ctx)
+	case apicauth.FieldSingleton:
+		return m.OldSingleton(ctx)
+	}
+	return nil, fmt.Errorf("unknown ApicAuth field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ApicAuthMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case apicauth.FieldToken:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToken(v)
+		return nil
+	case apicauth.FieldExpiration:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiration(v)
+		return nil
+	case apicauth.FieldSingleton:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSingleton(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ApicAuth field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ApicAuthMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ApicAuthMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ApicAuthMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ApicAuth numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ApicAuthMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ApicAuthMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ApicAuthMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ApicAuth nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ApicAuthMutation) ResetField(name string) error {
+	switch name {
+	case apicauth.FieldToken:
+		m.ResetToken()
+		return nil
+	case apicauth.FieldExpiration:
+		m.ResetExpiration()
+		return nil
+	case apicauth.FieldSingleton:
+		m.ResetSingleton()
+		return nil
+	}
+	return fmt.Errorf("unknown ApicAuth field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ApicAuthMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ApicAuthMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ApicAuthMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ApicAuthMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ApicAuthMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ApicAuthMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ApicAuthMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ApicAuth unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ApicAuthMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ApicAuth edge %s", name)
 }
 
 // BouncerMutation represents an operation that mutates the Bouncer nodes in the graph.

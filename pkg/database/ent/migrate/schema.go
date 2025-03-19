@@ -118,6 +118,19 @@ var (
 			},
 		},
 	}
+	// ApicAuthsColumns holds the columns for the "apic_auths" table.
+	ApicAuthsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "token", Type: field.TypeString},
+		{Name: "expiration", Type: field.TypeTime},
+		{Name: "singleton", Type: field.TypeString, Unique: true},
+	}
+	// ApicAuthsTable holds the schema information for the "apic_auths" table.
+	ApicAuthsTable = &schema.Table{
+		Name:       "apic_auths",
+		Columns:    ApicAuthsColumns,
+		PrimaryKey: []*schema.Column{ApicAuthsColumns[0]},
+	}
 	// BouncersColumns holds the columns for the "bouncers" table.
 	BouncersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -355,6 +368,7 @@ var (
 		AlertsTable,
 		AllowListsTable,
 		AllowListItemsTable,
+		ApicAuthsTable,
 		BouncersTable,
 		ConfigItemsTable,
 		DecisionsTable,

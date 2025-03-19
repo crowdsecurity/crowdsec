@@ -251,22 +251,33 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return ret, fmt.Errorf("get scenario in db: %w", err)
 	}
 
-	authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
-		MachineID: &config.Credentials.Login,
-		Password:  &password,
-		Scenarios: scenarios,
-	})
-	if err != nil {
-		return ret, fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
+	token, expiration, err := ret.dbClient.GetApicAuth(ctx)
+
+	if err != nil || time.Now().After(expiration.Add(-1*time.Minute)) {
+		log.Debugf("token is expired, re-authenticating")
+		// Nothing in the database or the token is about to expire
+		authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
+			MachineID: &config.Credentials.Login,
+			Password:  &password,
+			Scenarios: scenarios,
+		})
+		if err != nil {
+			return ret, fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
+		}
+
+		if err = ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+			return ret, fmt.Errorf("unable to parse jwt expiration: %w", err)
+		}
+
+		ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+		ret.dbClient.UpsertApicAuth(ctx, authResp.Token, ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration)
+		return ret, err
+	} else {
+		log.Debugf("token is still valid, re-using it")
+		ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
+		ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
 	}
-
-	if err = ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-		return ret, fmt.Errorf("unable to parse jwt expiration: %w", err)
-	}
-
-	ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
-
-	return ret, err
+	return ret, nil
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.

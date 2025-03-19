@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/apicauth"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -86,6 +87,7 @@ func checkColumn(table, column string) error {
 			alert.Table:         alert.ValidColumn,
 			allowlist.Table:     allowlist.ValidColumn,
 			allowlistitem.Table: allowlistitem.ValidColumn,
+			apicauth.Table:      apicauth.ValidColumn,
 			bouncer.Table:       bouncer.ValidColumn,
 			configitem.Table:    configitem.ValidColumn,
 			decision.Table:      decision.ValidColumn,
