@@ -251,7 +251,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		expiration_string *string
 		token             *string
 		expiration        time.Time
-		skip              bool = true
+		skip              = true
 	)
 	scenarios, err := a.FetchScenariosListFromDB(ctx)
 	if err != nil {
@@ -309,8 +309,14 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-		a.dbClient.SetConfigItem(ctx, "apic_token", authResp.Token)
+		err = a.dbClient.SetConfigItem(ctx, "apic_token", authResp.Token)
+		if err != nil {
+			return fmt.Errorf("while setting token in db: %w", err)
+		}
 		a.dbClient.SetConfigItem(ctx, "apic_expiration", authResp.Expire)
+		if err != nil {
+			return fmt.Errorf("while setting expiration in db: %w", err)
+		}
 	} else {
 		log.Debugf("Token found in database, skipping authentication")
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *token
