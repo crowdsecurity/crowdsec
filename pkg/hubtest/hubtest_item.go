@@ -290,7 +290,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
 	}
 
-	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
+	crowdsecLogFile := filepath.Join(t.RuntimePath, "log", "crowdsec.log")
 
 	// machine add
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
@@ -363,7 +363,10 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		},
 	}
 
-	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, t.NucleiTargetHost)
+	// the value in config is relative
+	nucleiTemplate := filepath.Join(t.Path, t.Config.NucleiTemplate)
+
+	err = nucleiConfig.RunNucleiTemplate(t.Name, nucleiTemplate, t.NucleiTargetHost)
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, ErrNucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)
@@ -381,7 +384,6 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		}
 	} else {
 		if err == nil {
-			log.Infof("Appsec test %s succeeded", t.Name)
 			t.Success = true
 		} else {
 			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
@@ -419,7 +421,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 
 	logFile := filepath.Join(testPath, t.Config.LogFile)
 	logType := t.Config.LogType
-	dsn := fmt.Sprintf("file://%s", logFile)
+	dsn := "file://" + logFile
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
@@ -441,7 +443,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
 			fmt.Println(string(output))
-			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			return fmt.Errorf("fail to run '%s' for test '%s': %w", cscliRegisterCmd.String(), t.Name, err)
 		}
 	}
 
@@ -464,7 +466,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
+		return fmt.Errorf("fail to run '%s' for test '%s': %w", crowdsecCmd.String(), t.Name, err)
 	}
 
 	// assert parsers
@@ -570,17 +572,17 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 
 	// copy template config file to runtime folder
 	if err = Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
 	}
 
 	// copy template profile file to runtime folder
 	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
 	}
 
 	// copy template simulation file to runtime folder
 	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
 	}
 
 	// copy template patterns folder to runtime folder
@@ -590,7 +592,7 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 
 	// create the appsec-configs dir
 	if err = os.MkdirAll(filepath.Join(t.RuntimePath, "appsec-configs"), os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
+		return fmt.Errorf("unable to create folder '%s': %w", t.RuntimePath, err)
 	}
 
 	// if it's an appsec rule test, we need acquis and appsec profile
@@ -599,13 +601,13 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 		log.Debugf("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
 
 		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
-			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
+			return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
 		}
 
 		log.Debugf("copying %s to %s", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"))
 		// copy template appsec-config file to runtime folder
 		if err = Copy(t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml")); err != nil {
-			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"), err)
+			return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"), err)
 		}
 	} else { // otherwise we drop a blank acquis file
 		if err = os.WriteFile(t.RuntimeAcquisFilePath, []byte(""), os.ModePerm); err != nil {
