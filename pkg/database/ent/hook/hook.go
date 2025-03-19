@@ -45,18 +45,6 @@ func (f AllowListItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Valu
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AllowListItemMutation", m)
 }
 
-// The ApicAuthFunc type is an adapter to allow the use of ordinary
-// function as ApicAuth mutator.
-type ApicAuthFunc func(context.Context, *ent.ApicAuthMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f ApicAuthFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.ApicAuthMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ApicAuthMutation", m)
-}
-
 // The BouncerFunc type is an adapter to allow the use of ordinary
 // function as Bouncer mutator.
 type BouncerFunc func(context.Context, *ent.BouncerMutation) (ent.Value, error)

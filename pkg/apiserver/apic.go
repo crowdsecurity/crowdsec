@@ -214,8 +214,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		shareSignals:              *config.Sharing,
 	}
 
-	password := strfmt.Password(config.Credentials.Password)
-
 	apiURL, err := url.Parse(config.Credentials.URL)
 	if err != nil {
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.URL, err)
@@ -233,7 +231,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
-		Password:       password,
+		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
@@ -244,40 +242,82 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while creating api client: %w", err)
 	}
 
-	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
-	// Explicit authentication will provoke a useless supplementary call to CAPI
-	scenarios, err := ret.FetchScenariosListFromDB(ctx)
+	err = ret.Authenticate(ctx, config)
+	return ret, err
+}
+
+func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
+	var (
+		expiration_string *string
+		token             *string
+		expiration        time.Time
+		skip              bool = true
+	)
+	scenarios, err := a.FetchScenariosListFromDB(ctx)
 	if err != nil {
-		return ret, fmt.Errorf("get scenario in db: %w", err)
+		return fmt.Errorf("get scenario in db: %w", err)
 	}
 
-	token, expiration, err := ret.dbClient.GetApicAuth(ctx)
+	password := strfmt.Password(config.Credentials.Password)
 
-	if err != nil || time.Now().After(expiration.Add(-1*time.Minute)) {
-		log.Debugf("token is expired, re-authenticating")
-		// Nothing in the database or the token is about to expire
-		authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
+	expiration_string, err = a.dbClient.GetConfigItem(ctx, "apic_expiration")
+	if err != nil {
+		log.Debugf("Error with database:%s", err)
+		skip = false
+	}
+
+	if expiration_string == nil {
+		skip = false
+		log.Debugf("No expiration found in database")
+	}
+
+	if skip {
+		expiration, err = time.Parse(time.RFC3339, *expiration_string)
+		if err != nil {
+			log.Debugf("unable to parse expiration date")
+			skip = false
+		}
+	}
+	if skip {
+		token, err = a.dbClient.GetConfigItem(ctx, "apic_token")
+		if err != nil {
+			log.Debugf("no token found in database")
+			skip = false
+		}
+
+		if token == nil {
+			skip = false
+			log.Debugf("No token found in database")
+		}
+	}
+
+	if !skip || time.Now().UTC().After(expiration.Add(-time.Minute*1)) {
+		log.Infof("No token found, authenticating")
+		authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 			MachineID: &config.Credentials.Login,
 			Password:  &password,
 			Scenarios: scenarios,
 		})
+
 		if err != nil {
-			return ret, fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
+			return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
 		}
 
-		if err = ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-			return ret, fmt.Errorf("unable to parse jwt expiration: %w", err)
+		if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+			return fmt.Errorf("unable to parse jwt expiration: %w", err)
 		}
 
-		ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
-		ret.dbClient.UpsertApicAuth(ctx, authResp.Token, ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration)
-		return ret, err
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+
+		a.dbClient.SetConfigItem(ctx, "apic_token", authResp.Token)
+		a.dbClient.SetConfigItem(ctx, "apic_expiration", authResp.Expire)
 	} else {
-		log.Debugf("token is still valid, re-using it")
-		ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
-		ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
+		log.Infof("Token found in database, skipping authentication")
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *token
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
 	}
-	return ret, nil
+
+	return nil
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.

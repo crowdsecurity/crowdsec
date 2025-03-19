@@ -15,9 +15,6 @@ type AllowList func(*sql.Selector)
 // AllowListItem is the predicate function for allowlistitem builders.
 type AllowListItem func(*sql.Selector)
 
-// ApicAuth is the predicate function for apicauth builders.
-type ApicAuth func(*sql.Selector)
-
 // Bouncer is the predicate function for bouncer builders.
 type Bouncer func(*sql.Selector)
 

@@ -8,7 +8,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/apicauth"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -83,12 +82,6 @@ func init() {
 	allowlistitem.DefaultUpdatedAt = allowlistitemDescUpdatedAt.Default.(func() time.Time)
 	// allowlistitem.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	allowlistitem.UpdateDefaultUpdatedAt = allowlistitemDescUpdatedAt.UpdateDefault.(func() time.Time)
-	apicauthFields := schema.ApicAuth{}.Fields()
-	_ = apicauthFields
-	// apicauthDescToken is the schema descriptor for token field.
-	apicauthDescToken := apicauthFields[0].Descriptor()
-	// apicauth.TokenValidator is a validator for the "token" field. It is called by the builders before save.
-	apicauth.TokenValidator = apicauthDescToken.Validators[0].(func(string) error)
 	bouncerFields := schema.Bouncer{}.Fields()
 	_ = bouncerFields
 	// bouncerDescCreatedAt is the schema descriptor for created_at field.

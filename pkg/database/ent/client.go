@@ -18,7 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/apicauth"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -40,8 +39,6 @@ type Client struct {
 	AllowList *AllowListClient
 	// AllowListItem is the client for interacting with the AllowListItem builders.
 	AllowListItem *AllowListItemClient
-	// ApicAuth is the client for interacting with the ApicAuth builders.
-	ApicAuth *ApicAuthClient
 	// Bouncer is the client for interacting with the Bouncer builders.
 	Bouncer *BouncerClient
 	// ConfigItem is the client for interacting with the ConfigItem builders.
@@ -72,7 +69,6 @@ func (c *Client) init() {
 	c.Alert = NewAlertClient(c.config)
 	c.AllowList = NewAllowListClient(c.config)
 	c.AllowListItem = NewAllowListItemClient(c.config)
-	c.ApicAuth = NewApicAuthClient(c.config)
 	c.Bouncer = NewBouncerClient(c.config)
 	c.ConfigItem = NewConfigItemClient(c.config)
 	c.Decision = NewDecisionClient(c.config)
@@ -176,7 +172,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Alert:         NewAlertClient(cfg),
 		AllowList:     NewAllowListClient(cfg),
 		AllowListItem: NewAllowListItemClient(cfg),
-		ApicAuth:      NewApicAuthClient(cfg),
 		Bouncer:       NewBouncerClient(cfg),
 		ConfigItem:    NewConfigItemClient(cfg),
 		Decision:      NewDecisionClient(cfg),
@@ -207,7 +202,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Alert:         NewAlertClient(cfg),
 		AllowList:     NewAllowListClient(cfg),
 		AllowListItem: NewAllowListItemClient(cfg),
-		ApicAuth:      NewApicAuthClient(cfg),
 		Bouncer:       NewBouncerClient(cfg),
 		ConfigItem:    NewConfigItemClient(cfg),
 		Decision:      NewDecisionClient(cfg),
@@ -245,8 +239,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Alert, c.AllowList, c.AllowListItem, c.ApicAuth, c.Bouncer, c.ConfigItem,
-		c.Decision, c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
+		c.Alert, c.AllowList, c.AllowListItem, c.Bouncer, c.ConfigItem, c.Decision,
+		c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
 	} {
 		n.Use(hooks...)
 	}
@@ -256,8 +250,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Alert, c.AllowList, c.AllowListItem, c.ApicAuth, c.Bouncer, c.ConfigItem,
-		c.Decision, c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
+		c.Alert, c.AllowList, c.AllowListItem, c.Bouncer, c.ConfigItem, c.Decision,
+		c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -272,8 +266,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AllowList.mutate(ctx, m)
 	case *AllowListItemMutation:
 		return c.AllowListItem.mutate(ctx, m)
-	case *ApicAuthMutation:
-		return c.ApicAuth.mutate(ctx, m)
 	case *BouncerMutation:
 		return c.Bouncer.mutate(ctx, m)
 	case *ConfigItemMutation:
@@ -787,139 +779,6 @@ func (c *AllowListItemClient) mutate(ctx context.Context, m *AllowListItemMutati
 		return (&AllowListItemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AllowListItem mutation op: %q", m.Op())
-	}
-}
-
-// ApicAuthClient is a client for the ApicAuth schema.
-type ApicAuthClient struct {
-	config
-}
-
-// NewApicAuthClient returns a client for the ApicAuth from the given config.
-func NewApicAuthClient(c config) *ApicAuthClient {
-	return &ApicAuthClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `apicauth.Hooks(f(g(h())))`.
-func (c *ApicAuthClient) Use(hooks ...Hook) {
-	c.hooks.ApicAuth = append(c.hooks.ApicAuth, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `apicauth.Intercept(f(g(h())))`.
-func (c *ApicAuthClient) Intercept(interceptors ...Interceptor) {
-	c.inters.ApicAuth = append(c.inters.ApicAuth, interceptors...)
-}
-
-// Create returns a builder for creating a ApicAuth entity.
-func (c *ApicAuthClient) Create() *ApicAuthCreate {
-	mutation := newApicAuthMutation(c.config, OpCreate)
-	return &ApicAuthCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of ApicAuth entities.
-func (c *ApicAuthClient) CreateBulk(builders ...*ApicAuthCreate) *ApicAuthCreateBulk {
-	return &ApicAuthCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *ApicAuthClient) MapCreateBulk(slice any, setFunc func(*ApicAuthCreate, int)) *ApicAuthCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &ApicAuthCreateBulk{err: fmt.Errorf("calling to ApicAuthClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*ApicAuthCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &ApicAuthCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for ApicAuth.
-func (c *ApicAuthClient) Update() *ApicAuthUpdate {
-	mutation := newApicAuthMutation(c.config, OpUpdate)
-	return &ApicAuthUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *ApicAuthClient) UpdateOne(aa *ApicAuth) *ApicAuthUpdateOne {
-	mutation := newApicAuthMutation(c.config, OpUpdateOne, withApicAuth(aa))
-	return &ApicAuthUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *ApicAuthClient) UpdateOneID(id int) *ApicAuthUpdateOne {
-	mutation := newApicAuthMutation(c.config, OpUpdateOne, withApicAuthID(id))
-	return &ApicAuthUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for ApicAuth.
-func (c *ApicAuthClient) Delete() *ApicAuthDelete {
-	mutation := newApicAuthMutation(c.config, OpDelete)
-	return &ApicAuthDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *ApicAuthClient) DeleteOne(aa *ApicAuth) *ApicAuthDeleteOne {
-	return c.DeleteOneID(aa.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ApicAuthClient) DeleteOneID(id int) *ApicAuthDeleteOne {
-	builder := c.Delete().Where(apicauth.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &ApicAuthDeleteOne{builder}
-}
-
-// Query returns a query builder for ApicAuth.
-func (c *ApicAuthClient) Query() *ApicAuthQuery {
-	return &ApicAuthQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeApicAuth},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a ApicAuth entity by its id.
-func (c *ApicAuthClient) Get(ctx context.Context, id int) (*ApicAuth, error) {
-	return c.Query().Where(apicauth.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *ApicAuthClient) GetX(ctx context.Context, id int) *ApicAuth {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *ApicAuthClient) Hooks() []Hook {
-	return c.hooks.ApicAuth
-}
-
-// Interceptors returns the client interceptors.
-func (c *ApicAuthClient) Interceptors() []Interceptor {
-	return c.inters.ApicAuth
-}
-
-func (c *ApicAuthClient) mutate(ctx context.Context, m *ApicAuthMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&ApicAuthCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&ApicAuthUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&ApicAuthUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&ApicAuthDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown ApicAuth mutation op: %q", m.Op())
 	}
 }
 
@@ -2054,11 +1913,11 @@ func (c *MetricClient) mutate(ctx context.Context, m *MetricMutation) (Value, er
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Alert, AllowList, AllowListItem, ApicAuth, Bouncer, ConfigItem, Decision, Event,
-		Lock, Machine, Meta, Metric []ent.Hook
+		Alert, AllowList, AllowListItem, Bouncer, ConfigItem, Decision, Event, Lock,
+		Machine, Meta, Metric []ent.Hook
 	}
 	inters struct {
-		Alert, AllowList, AllowListItem, ApicAuth, Bouncer, ConfigItem, Decision, Event,
-		Lock, Machine, Meta, Metric []ent.Interceptor
+		Alert, AllowList, AllowListItem, Bouncer, ConfigItem, Decision, Event, Lock,
+		Machine, Meta, Metric []ent.Interceptor
 	}
 )
