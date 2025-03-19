@@ -288,11 +288,11 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		if token == nil {
 			skip = false
 			log.Debugf("No token found in database")
-		}
+
 	}
 
 	if !skip || time.Now().UTC().After(expiration.Add(-time.Minute*1)) {
-		log.Infof("No token found, authenticating")
+		log.Debugf("No token found, authenticating")
 		authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 			MachineID: &config.Credentials.Login,
 			Password:  &password,
@@ -312,7 +312,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		a.dbClient.SetConfigItem(ctx, "apic_token", authResp.Token)
 		a.dbClient.SetConfigItem(ctx, "apic_expiration", authResp.Expire)
 	} else {
-		log.Infof("Token found in database, skipping authentication")
+		log.Debugf("Token found in database, skipping authentication")
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *token
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
 	}
