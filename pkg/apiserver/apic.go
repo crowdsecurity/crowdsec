@@ -313,7 +313,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		if err != nil {
 			return fmt.Errorf("while setting token in db: %w", err)
 		}
-		a.dbClient.SetConfigItem(ctx, "apic_expiration", authResp.Expire)
+		err = a.dbClient.SetConfigItem(ctx, "apic_expiration", authResp.Expire)
 		if err != nil {
 			return fmt.Errorf("while setting expiration in db: %w", err)
 		}
