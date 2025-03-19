@@ -288,7 +288,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		if token == nil {
 			skip = false
 			log.Debugf("No token found in database")
-
+		}
 	}
 
 	if !skip || time.Now().UTC().After(expiration.Add(-time.Minute*1)) {
