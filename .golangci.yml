@@ -284,7 +284,6 @@ linters:
     - ireturn               # Accept Interfaces, Return Concrete Types
     - mnd                   # An analyzer to detect magic numbers.
     - nilnil                # Checks that there is no simultaneous return of `nil` error and an invalid value.
-    - noctx                 # Finds sending http request without context.Context
     - unparam               # Reports unused function parameters
 
     #
