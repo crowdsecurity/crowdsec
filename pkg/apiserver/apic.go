@@ -18,6 +18,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
+	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -248,51 +249,60 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
 	var (
-		expiration_string *string
-		token             *string
-		expiration        time.Time
-		skip              = true
+		tokenString *string
+		expiration  time.Time
+		skip        = true
+		token       *jwt.Token
+		claims      jwt.MapClaims
+		ok          bool
 	)
-	scenarios, err := a.FetchScenariosListFromDB(ctx)
-	if err != nil {
-		return fmt.Errorf("get scenario in db: %w", err)
-	}
 
-	password := strfmt.Password(config.Credentials.Password)
-
-	expiration_string, err = a.dbClient.GetConfigItem(ctx, "apic_expiration")
+	tokenString, err := a.dbClient.GetConfigItem(ctx, "apic_token")
 	if err != nil {
-		log.Debugf("Error with database:%s", err)
+		log.Debugf("no token found in database")
 		skip = false
 	}
 
-	if expiration_string == nil {
+	if skip && tokenString == nil {
 		skip = false
-		log.Debugf("No expiration found in database")
+		log.Debugf("No token found in database")
 	}
 
 	if skip {
-		expiration, err = time.Parse(time.RFC3339, *expiration_string)
+		parser := new(jwt.Parser)
+		token, _, err = parser.ParseUnverified(*tokenString, jwt.MapClaims{})
 		if err != nil {
-			log.Debugf("unable to parse expiration date")
+			log.Debugf("Error parsing token:", err)
+			skip = false
+		}
+	}
+
+	if skip {
+		claims, ok = token.Claims.(jwt.MapClaims)
+		if !ok {
+			log.Debugf("Error parsing token claims")
 			skip = false
 		}
 	}
 	if skip {
-		token, err = a.dbClient.GetConfigItem(ctx, "apic_token")
-		if err != nil {
-			log.Debugf("no token found in database")
+		expValue, ok := claims["exp"].(float64)
+		if !ok {
+			log.Debugf("Token does not have an exp claim")
 			skip = false
 		}
-
-		if token == nil {
-			skip = false
-			log.Debugf("No token found in database")
-		}
+		expiration = time.Unix(int64(expValue), 0)
 	}
 
 	if !skip || time.Now().UTC().After(expiration.Add(-time.Minute*1)) {
 		log.Debugf("No token found, authenticating")
+
+		scenarios, err := a.FetchScenariosListFromDB(ctx)
+		if err != nil {
+			return fmt.Errorf("get scenario in db: %w", err)
+		}
+
+		password := strfmt.Password(config.Credentials.Password)
+
 		authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 			MachineID: &config.Credentials.Login,
 			Password:  &password,
@@ -313,15 +323,11 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		if err != nil {
 			return fmt.Errorf("while setting token in db: %w", err)
 		}
-		err = a.dbClient.SetConfigItem(ctx, "apic_expiration", authResp.Expire)
-		if err != nil {
-			return fmt.Errorf("while setting expiration in db: %w", err)
-		}
-	} else {
-		log.Debugf("Token found in database, skipping authentication")
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *token
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
+		return nil
 	}
+	log.Debugf("Token found in database, skipping authentication")
+	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *tokenString
+	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
 
 	return nil
 }
