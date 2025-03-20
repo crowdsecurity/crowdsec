@@ -61,6 +61,19 @@ config_prepare() {
         .api.server.listen_socket="/run/crowdsec.sock" |
         .config_paths.config_dir |= sub("/$", "")
     ' "${CONFIG_DIR}/config.yaml"
+
+    # pin the branch to avoid having to query the last version repeatedly.
+    # this means the fixture could possibly go stale (i.e. use the wrong branch) if a new version is released,
+    # but that shouldn't impact the tests anyway.
+
+    HUB_BRANCH=$("$CSCLI" hub branch 2>/dev/null)
+    export HUB_BRANCH
+
+    echo "Setting up tests with hub branch $HUB_BRANCH"
+
+    # need a working config, so we do it as a separate step.
+
+    yq -i e '.cscli.hub_branch=strenv(HUB_BRANCH)' "${CONFIG_DIR}/config.yaml"
 }
 
 make_init_data() {
