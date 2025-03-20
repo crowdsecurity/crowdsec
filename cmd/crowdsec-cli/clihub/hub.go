@@ -46,6 +46,7 @@ cscli hub upgrade`,
 		DisableAutoGenTag: true,
 	}
 
+	cmd.AddCommand(cli.newBranchCmd())
 	cmd.AddCommand(cli.newListCmd())
 	cmd.AddCommand(cli.newUpdateCmd())
 	cmd.AddCommand(cli.newUpgradeCmd())
@@ -82,6 +83,28 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
 	}
 
 	return nil
+}
+
+func (cli *cliHub) newBranchCmd() *cobra.Command {
+	var all bool
+
+	cmd := &cobra.Command{
+		Use:               "branch",
+		Short:             "Show selected hub branch",
+		Long:              "Display the hub branch to be used, depending on configuration and crowdsec version",
+		Args:              args.NoArgs,
+		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			branch := require.HubBranch(cmd.Context(), cli.cfg())
+			fmt.Println(branch)
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
+
+	return cmd
 }
 
 func (cli *cliHub) newListCmd() *cobra.Command {
