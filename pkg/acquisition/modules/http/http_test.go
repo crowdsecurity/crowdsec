@@ -254,7 +254,12 @@ basic_auth:
 
 	time.Sleep(1 * time.Second)
 
-	res, err := http.Get(fmt.Sprintf("%s/test", testHTTPServerAddr))
+	ctx := t.Context()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr + "/test", http.NoBody)
+	require.NoError(t, err)
+
+	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusMethodNotAllowed, res.StatusCode)
 
@@ -265,6 +270,8 @@ basic_auth:
 }
 
 func TestStreamingAcquisitionUnknownPath(t *testing.T) {
+	ctx := t.Context()
+
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -277,7 +284,10 @@ basic_auth:
 
 	time.Sleep(1 * time.Second)
 
-	res, err := http.Get(fmt.Sprintf("%s/unknown", testHTTPServerAddr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr + "/unknown", http.NoBody)
+	require.NoError(t, err)
+
+	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 
@@ -303,11 +313,15 @@ basic_auth:
 
 	client := &http.Client{}
 
-	resp, err := http.Post(fmt.Sprintf("%s/test", testHTTPServerAddr), "application/json", strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr + "/test", strings.NewReader("test"))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader("test"))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr + "/test", strings.NewReader("test"))
 	require.NoError(t, err)
 	req.SetBasicAuth("test", "WrongPassword")
 
@@ -553,6 +567,8 @@ timeout: 1s`), 0)
 }
 
 func TestStreamingAcquisitionTLSHTTPRequest(t *testing.T) {
+	ctx := t.Context()
+
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -566,7 +582,11 @@ tls:
 
 	time.Sleep(1 * time.Second)
 
-	resp, err := http.Post(fmt.Sprintf("%s/test", testHTTPServerAddr), "application/json", strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr + "/test", strings.NewReader("test"))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)

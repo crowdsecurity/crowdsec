@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *ApiClient) NewRequestWithContext(ctx context.Context, method, url string, body interface{}) (*http.Request, error) {
+func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body interface{}) (*http.Request, error) {
 	if !strings.HasSuffix(c.BaseURL.Path, "/") {
 		return nil, fmt.Errorf("BaseURL must have a trailing slash, but %q does not", c.BaseURL)
 	}

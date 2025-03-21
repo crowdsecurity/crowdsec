@@ -754,7 +754,13 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 			description = *link.Description
 		}
 
-		resp, err := defaultClient.GetClient().Get(*link.URL)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
+		if err != nil {
+			log.Errorf("while pulling allowlist: %s", err)
+			continue
+		}
+
+		resp, err := defaultClient.GetClient().Do(req)
 		if err != nil {
 			log.Errorf("while pulling allowlist: %s", err)
 			continue
