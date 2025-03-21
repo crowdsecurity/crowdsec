@@ -46,6 +46,7 @@ linters-settings:
   gomoddirectives:
     replace-allow-list:
       - golang.org/x/time/rate
+      - github.com/corazawaf/coraza/v3
 
   govet:
     enable-all: true
