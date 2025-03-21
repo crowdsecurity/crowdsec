@@ -280,7 +280,6 @@ linters:
     # Recommended? (requires some work)
     #
 
-    - containedctx          # containedctx is a linter that detects struct contained context.Context field
     - errname               # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - ireturn               # Accept Interfaces, Return Concrete Types
     - mnd                   # An analyzer to detect magic numbers.
@@ -503,3 +502,8 @@ issues:
         - usetesting
       path: "pkg/apiserver/(.+)_test.go"
       text: "os.CreateTemp.* could be replaced by os.CreateTemp.*"
+
+    - linters:
+        - containedctx
+      path: "cmd/notification-file/main.go"
+      text: "found a struct that contains a context.Context field"
