@@ -508,13 +508,11 @@ install_plugins() {
     cp ${SENTINEL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${FILE_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
-    if [[ ${DOCKER_MODE} == "false" ]]; then
-        for yaml_conf in ${SLACK_PLUGIN_CONFIG} ${SPLUNK_PLUGIN_CONFIG} ${HTTP_PLUGIN_CONFIG} ${EMAIL_PLUGIN_CONFIG} ${SENTINEL_PLUGIN_CONFIG} ${FILE_PLUGIN_CONFIG}; do
-            if [[ ! -s /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]]; then
-                cp "$yaml_conf" /etc/crowdsec/notifications/
-            fi
-        done
-    fi
+    for yaml_conf in ${SLACK_PLUGIN_CONFIG} ${SPLUNK_PLUGIN_CONFIG} ${HTTP_PLUGIN_CONFIG} ${EMAIL_PLUGIN_CONFIG} ${SENTINEL_PLUGIN_CONFIG} ${FILE_PLUGIN_CONFIG}; do
+        if [[ ! -s /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]]; then
+            cp "$yaml_conf" /etc/crowdsec/notifications/
+        fi
+    done
 }
 
 check_running_bouncers() {
