@@ -701,6 +701,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 }
 
 // IsTailing returns whether a given file is currently being tailed. For testing purposes.
+// It is case sensitive and path delimiter sensitive (filename must match exactly what the filename would look being OS specific)
 func (f *FileSource) IsTailing(filename string) bool {
 	f.tailMapMutex.RLock()
 	defer f.tailMapMutex.RUnlock()
@@ -708,6 +709,7 @@ func (f *FileSource) IsTailing(filename string) bool {
 }
 
 // RemoveTail is used for testing to simulate a dead tailer. For testing purposes.
+// It is case sensitive and path delimiter sensitive (filename must match exactly what the filename would look being OS specific)
 func (f *FileSource) RemoveTail(filename string) {
 	f.tailMapMutex.Lock()
 	defer f.tailMapMutex.Unlock()
