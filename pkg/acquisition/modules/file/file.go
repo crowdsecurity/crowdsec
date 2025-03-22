@@ -349,6 +349,18 @@ func (f *FileSource) Dump() interface{} {
 	return f
 }
 
+// checkAndTailFile validates and sets up tailing for a given file. It performs the following checks:
+// 1. Verifies if the file exists and is not a directory
+// 2. Checks if the filename matches any of the configured patterns
+// 3. Sets up file tailing if the file is valid and matches patterns
+//
+// Parameters:
+//   - filename: The path to the file to check and potentially tail
+//   - logger: A log.Entry for contextual logging
+//   - out: Channel to send file events to
+//   - t: A tomb.Tomb for graceful shutdown handling
+//
+// Returns an error if any validation fails or if tailing setup fails
 func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out chan types.Event, t *tomb.Tomb) error {
 	// Check if it's a directory
 	fi, err := os.Stat(filename)

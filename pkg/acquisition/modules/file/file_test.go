@@ -396,13 +396,19 @@ force_inotify: true`, testPattern),
 			actualLines := 0
 
 			if tc.expectedLines != 0 {
+				var stopReading bool
+				defer func() { stopReading = true }()
 				go func() {
 					for {
 						select {
 						case <-out:
 							actualLines++
-						case <-time.After(2 * time.Second):
-							return
+						default:
+							if stopReading {
+								return
+							}
+							// Small sleep to prevent tight loop
+							time.Sleep(100 * time.Millisecond)
 						}
 					}
 				}()
@@ -412,21 +418,41 @@ force_inotify: true`, testPattern),
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
-				fd, err := os.Create("test_files/stream.log")
+				// f.IsTailing is path delimiter sensitive
+				streamLogFile := filepath.Join("test_files", "stream.log")
+
+				fd, err := os.Create(streamLogFile)
 				require.NoError(t, err, "could not create test file")
+
+				// wait for the file to be tailed
+				waitingForTail := true
+				for waitingForTail {
+					select {
+					case <-time.After(2 * time.Second):
+						t.Fatal("Timeout waiting for file to be tailed")
+					default:
+						if !f.IsTailing(streamLogFile) {
+							time.Sleep(50 * time.Millisecond)
+							continue
+						}
+						waitingForTail = false
+					}
+				}
 
 				for i := range 5 {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
-						os.Remove("test_files/stream.log")
+						os.Remove(streamLogFile)
 						t.Fatalf("could not write test file : %s", err)
 					}
 				}
 
 				fd.Close()
-				// we sleep to make sure we detect the new file
-				time.Sleep(3 * time.Second)
-				os.Remove("test_files/stream.log")
+
+				// sleep to ensure the tail events are processed
+				time.Sleep(2 * time.Second)
+
+				os.Remove(streamLogFile)
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
