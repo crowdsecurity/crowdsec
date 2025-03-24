@@ -72,10 +72,6 @@ type service struct {
 }
 
 func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login string, password string, scenarios []string) error {
-	if lapiClient != nil {
-		return errors.New("client already initialized")
-	}
-
 	apiURL, err := url.Parse(apiUrl)
 	if err != nil {
 		return fmt.Errorf("parsing api url ('%s'): %w", apiURL, err)
