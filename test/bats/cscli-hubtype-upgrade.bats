@@ -165,17 +165,15 @@ get_latest_version() {
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists --dry-run
     assert_output - <<-EOT
-	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
 	Nothing to do.
 	EOT
-    refute_stderr
+    assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists
     assert_output - <<-EOT
-	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
 	Nothing to do.
 	EOT
-    refute_stderr
+    assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
 
