@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/downloader"
@@ -38,13 +38,13 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 	i := c.Item
 
 	if i.State.IsLocal() {
-		plan.Info(i.FQName() + " - not downloading local item")
+		log.Infof("%s - not downloading local item", i.FQName())
 		return false, nil
 	}
 
 	// XXX: if it's tainted do we upgrade the dependencies anyway?
 	if i.State.Tainted && !c.Force {
-		plan.Warning(i.FQName() + " is tainted, use '--force' to overwrite")
+		log.Warnf("%s is tainted, use '--force' to overwrite", i.FQName())
 		return false, nil
 	}
 
@@ -132,7 +132,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				BeforeRequest(func(req *http.Request) {
 					fmt.Printf("downloading %s\n", req.URL)
 				}).
-				WithLogger(logrus.WithField("url", dataS.SourceURL))
+				WithLogger(log.WithField("url", dataS.SourceURL))
 
 			if !force {
 				d = d.WithLastModified().

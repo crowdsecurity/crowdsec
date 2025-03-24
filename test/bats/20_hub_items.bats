@@ -155,29 +155,29 @@ teardown() {
     rune -0 mkdir -p "$CONFIG_DIR/scenarios"
     rune -0 touch "$CONFIG_DIR/scenarios/foobar.yaml"
     rune -0 cscli scenarios remove foobar.yaml
+    assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	WARN scenarios:foobar.yaml is a local item, please delete manually
 	Nothing to do.
 	EOT
     rune -0 cscli scenarios remove foobar.yaml --purge
+    assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	WARN scenarios:foobar.yaml is a local item, please delete manually
 	Nothing to do.
 	EOT
     rune -0 cscli scenarios remove foobar.yaml --force
+    assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	WARN scenarios:foobar.yaml is a local item, please delete manually
 	Nothing to do.
 	EOT
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
 
     rune -0 cscli scenarios remove --all
-    assert_line "WARN scenarios:foobar.yaml is a local item, please delete manually"
     assert_line "disabling scenarios:crowdsecurity/ssh-bf"
+    assert_stderr --partial "scenarios:foobar.yaml is a local item, please delete manually"
 
     rune -0 cscli scenarios remove --all --purge
-    assert_line "WARN scenarios:foobar.yaml is a local item, please delete manually"
+    assert_stderr --partial "scenarios:foobar.yaml is a local item, please delete manually"
     assert_line "purging scenarios:crowdsecurity/ssh-bf"
 }
 
