@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/fatih/color"
 
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
@@ -94,14 +93,6 @@ func (p *ActionPlan) AddCommand(c Command) error {
 	}
 
 	return nil
-}
-
-func (p *ActionPlan) Info(msg string) {
-	fmt.Println(msg)
-}
-
-func (p *ActionPlan) Warning(msg string) {
-	fmt.Printf("%s %s\n", color.YellowString("WARN"), msg)
 }
 
 // Description returns a string representation of the action plan.
