@@ -71,47 +71,12 @@ func checkPathNotContained(path string, subpath string) error {
 	return nil
 }
 
+// CopyDir copies the content of a directory to another directory.
+// It delegates the operation to os.CopyFS with an additional check to prevent infinite loops.
 func CopyDir(src string, dest string) error {
-	err := checkPathNotContained(src, dest)
-	if err != nil {
+	if err := checkPathNotContained(src, dest); err != nil {
 		return err
 	}
 
-	f, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-
-	file, err := f.Stat()
-	if err != nil {
-		return err
-	}
-
-	if !file.IsDir() {
-		return errors.New("Source " + file.Name() + " is not a directory!")
-	}
-
-	err = os.MkdirAll(dest, 0o755)
-	if err != nil {
-		return err
-	}
-
-	files, err := os.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, f := range files {
-		if f.IsDir() {
-			if err = CopyDir(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name())); err != nil {
-				return err
-			}
-		} else {
-			if err = Copy(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name())); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return os.CopyFS(dest, os.DirFS(src))
 }
