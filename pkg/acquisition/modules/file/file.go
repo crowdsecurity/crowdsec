@@ -433,6 +433,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			if event.Op&fsnotify.Create != fsnotify.Create {
 				continue
 			}
+			//nolint:errcheck
 			f.checkAndTailFile(event.Name, logger, out, t)
 
 		case <-tickerChan: // Will never trigger if tickerChan is nil
@@ -444,6 +445,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					continue
 				}
 				for _, file := range files {
+					//nolint:errcheck
 					f.checkAndTailFile(file, logger, out, t)
 				}
 			}
