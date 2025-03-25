@@ -541,7 +541,6 @@ mode: tail
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			f := &fileacquisition.FileSource{}
 			err := f.Configure(tc.config, log.NewEntry(log.New()), configuration.METRICS_NONE)
@@ -555,9 +554,7 @@ mode: tail
 }
 
 func TestDiscoveryPolling(t *testing.T) {
-	dir, err := os.MkdirTemp("", "crowdsec-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	pattern := filepath.Join(dir, "*.log")
 	yamlConfig := fmt.Sprintf(`
@@ -572,7 +569,7 @@ mode: tail
 	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
-	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	err := f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
 	require.NoError(t, err)
 
 	// Create channel for events
@@ -585,7 +582,7 @@ mode: tail
 
 	// Create a test file
 	testFile := filepath.Join(dir, "test.log")
-	err = os.WriteFile(testFile, []byte("test line\n"), 0644)
+	err = os.WriteFile(testFile, []byte("test line\n"), 0o644)
 	require.NoError(t, err)
 
 	// Wait for polling to detect the file
@@ -601,12 +598,10 @@ mode: tail
 }
 
 func TestFileResurrectionViaPolling(t *testing.T) {
-	dir, err := os.MkdirTemp("", "crowdsec-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	testFile := filepath.Join(dir, "test.log")
-	err = os.WriteFile(testFile, []byte("test line\n"), 0644)
+	err := os.WriteFile(testFile, []byte("test line\n"), 0o644)
 	require.NoError(t, err)
 
 	pattern := filepath.Join(dir, "*.log")
