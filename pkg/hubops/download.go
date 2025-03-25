@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -116,6 +117,13 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 		for _, dataS := range data.Data {
 			if dataS.SourceURL == "" {
 				continue
+			}
+
+			// twopenny validation
+			if u, err := url.ParseRequestURI(dataS.SourceURL); err != nil {
+				return false, err
+			} else if u.Scheme == "" {
+				return false, fmt.Errorf("a valid URL was expected (note: local items can download data too): %s", dataS.SourceURL)
 			}
 
 			// XXX: check context cancellation
