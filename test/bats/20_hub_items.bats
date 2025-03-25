@@ -160,7 +160,8 @@ teardown() {
 	EOT
     rune -1 cscli hub upgrade
     assert_line "downloading https://localhost:1234/database.mmdb"
-    assert_stderr --partial 'Get "https://localhost:1234/database.mmdb": dial tcp 127.0.0.1:1234: connect: connection refused'
+    assert_stderr --partial 'Get "https://localhost:1234/database.mmdb":'
+    assert_stderr --partial 'connect: connection refused'
 
     # bad link, or local path
     cat >"$CONFIG_DIR"/collections/foobar.yaml <<-EOT
