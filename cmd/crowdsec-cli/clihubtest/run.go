@@ -45,6 +45,12 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 
 	var eg errgroup.Group
 
+	if isAppsecTest {
+		log.Info("Appsec tests can not run in parallel: setting max_jobs=1")
+
+		maxJobs = 1
+	}
+
 	eg.SetLimit(int(maxJobs))
 
 	for _, test := range hubPtr.Tests {
@@ -215,7 +221,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&appSecHost, "host", hubtest.DefaultAppsecHost, "Address to expose AppSec for hubtest")
 	cmd.Flags().BoolVar(&all, "all", false, "Run all tests")
 	cmd.Flags().BoolVar(&reportSuccess, "report-success", false, "Report successful tests too (implied with json output)")
-	cmd.Flags().UintVar(&maxJobs, "max-jobs", maxJobs, "Run <num> batch")
+	cmd.Flags().UintVar(&maxJobs, "max-jobs", maxJobs, "Max number of concurrent tests (does not apply to appsec)")
 
 	return cmd
 }
