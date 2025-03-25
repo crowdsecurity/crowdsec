@@ -913,7 +913,7 @@ func (c *Client) DeleteAlertByID(ctx context.Context, id int) error {
 }
 
 func (c *Client) DeleteAlertWithFilter(ctx context.Context, filter map[string][]string) (int, error) {
-	preds, err := AlertPredicatesFromFilter(filter)
+	preds, err := alertPredicatesFromFilter(filter)
 	if err != nil {
 		return 0, err
 	}
