@@ -754,7 +754,13 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 			description = *link.Description
 		}
 
-		resp, err := defaultClient.GetClient().Get(*link.URL)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
+		if err != nil {
+			log.Errorf("while pulling allowlist: %s", err)
+			continue
+		}
+
+		resp, err := defaultClient.GetClient().Do(req)
 		if err != nil {
 			log.Errorf("while pulling allowlist: %s", err)
 			continue
@@ -852,6 +858,10 @@ func (a *apic) ApplyApicWhitelists(ctx context.Context, decisions []*models.Deci
 	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC(ctx)
 	if err != nil {
 		log.Errorf("while getting allowlists content: %s", err)
+	}
+
+	if a.whitelists != nil && (len(a.whitelists.Cidrs) > 0 || len(a.whitelists.Ips) > 0) {
+		log.Warn("capi_whitelists_path is deprecated, please use centralized allowlists instead. See https://docs.crowdsec.net/docs/next/local_api/centralized_allowlists.")
 	}
 
 	if (a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0) && len(allowlisted_ips) == 0 && len(allowlisted_cidrs) == 0 {

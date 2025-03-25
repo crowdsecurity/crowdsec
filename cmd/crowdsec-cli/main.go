@@ -168,8 +168,9 @@ func (cli *cliRoot) initialize() error {
 		}
 	}
 
-	csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
-
+	if csConfig.DbConfig != nil {
+		csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
+	}
 	return nil
 }
 

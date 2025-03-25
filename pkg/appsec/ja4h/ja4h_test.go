@@ -21,6 +21,8 @@ For those hashes, the value used was the one returned by our code (because we de
 */
 
 func TestJA4H_A(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		name           string
 		request        func() *http.Request
@@ -29,7 +31,7 @@ func TestJA4H_A(t *testing.T) {
 		{
 			name: "basic GET request - HTTP1.1 - no accept-language header",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				return req
 			},
 			expectedResult: "ge11nn000000",
@@ -37,7 +39,7 @@ func TestJA4H_A(t *testing.T) {
 		{
 			name: "basic GET request - HTTP1.1 - with accept-language header",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.Header.Set("Accept-Language", "en-US")
 				return req
 			},
@@ -46,7 +48,7 @@ func TestJA4H_A(t *testing.T) {
 		{
 			name: "basic POST request - HTTP1.1 - no accept-language header - cookies - referer",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.Header.Set("Referer", "http://example.com")
 				return req
@@ -56,7 +58,7 @@ func TestJA4H_A(t *testing.T) {
 		{
 			name: "bad accept-language header",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.Header.Set("Accept-Language", "aksjdhaslkdhalkjsd")
 				return req
 			},
@@ -65,7 +67,7 @@ func TestJA4H_A(t *testing.T) {
 		{
 			name: "bad accept-language header 2",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.Header.Set("Accept-Language", ",")
 				return req
 			},
@@ -86,6 +88,9 @@ func TestJA4H_A(t *testing.T) {
 func TestJA4H_B(t *testing.T) {
 	// This test is only for non-regression
 	// Because go does not keep headers order, we just want to make sure our code always process the headers in the same order
+
+	ctx := t.Context()
+
 	tests := []struct {
 		name           string
 		request        func() *http.Request
@@ -94,7 +99,7 @@ func TestJA4H_B(t *testing.T) {
 		{
 			name: "no headers",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				return req
 			},
 			expectedResult: "e3b0c44298fc",
@@ -102,7 +107,7 @@ func TestJA4H_B(t *testing.T) {
 		{
 			name: "header with arbitrary content",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.Header.Set("X-Custom-Header", "some value")
 				return req
 			},
@@ -111,7 +116,7 @@ func TestJA4H_B(t *testing.T) {
 		{
 			name: "header with multiple headers",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.Header.Set("X-Custom-Header", "some value")
 				req.Header.Set("Authorization", "Bearer token")
 				return req
@@ -121,7 +126,7 @@ func TestJA4H_B(t *testing.T) {
 		{
 			name: "curl-like request",
 			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://localhost", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost", http.NoBody)
 				req.Header.Set("Host", "localhost")
 				req.Header.Set("User-Agent", "curl/8.12.1")
 				req.Header.Set("Accept", "*/*")
@@ -150,7 +155,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "no cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				return req.Cookies()
 			},
 			expectedResult: "000000000000",
@@ -158,7 +163,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "one cookie",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				return req.Cookies()
 			},
@@ -167,7 +172,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "duplicate cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar2"})
 				return req.Cookies()
@@ -177,7 +182,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "multiple cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "bar", Value: "foo"})
 				cookies := req.Cookies()
@@ -209,7 +214,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "no cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				return req.Cookies()
 			},
 			expectedResult: "000000000000",
@@ -217,7 +222,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "one cookie",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				return req.Cookies()
 			},
@@ -226,7 +231,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "duplicate cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar2"})
 				return req.Cookies()
@@ -236,7 +241,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "multiple cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "bar", Value: "foo"})
 				cookies := req.Cookies()
@@ -260,6 +265,8 @@ func TestJA4H_D(t *testing.T) {
 }
 
 func TestJA4H(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		name         string
 		req          func() *http.Request
@@ -268,7 +275,7 @@ func TestJA4H(t *testing.T) {
 		{
 			name: "Basic GET - No cookies",
 			req: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				return req
 			},
 			expectedHash: "ge11nn000000_e3b0c44298fc_000000000000_000000000000",
@@ -276,7 +283,7 @@ func TestJA4H(t *testing.T) {
 		{
 			name: "Basic GET - With cookies",
 			req: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "session", Value: "12345"})
 				return req
 			},
@@ -285,7 +292,7 @@ func TestJA4H(t *testing.T) {
 		{
 			name: "Basic GET - Multiple cookies",
 			req: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "baz", Value: "qux"})
 				return req

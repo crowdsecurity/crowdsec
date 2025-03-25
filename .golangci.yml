@@ -46,6 +46,7 @@ linters-settings:
   gomoddirectives:
     replace-allow-list:
       - golang.org/x/time/rate
+      - github.com/corazawaf/coraza/v3
 
   govet:
     enable-all: true
@@ -214,7 +215,6 @@ linters-settings:
     enable-all: true
     disabled-checks:
       - paramTypeCombine
-      - httpNoBody
       - ifElseChain
       - importShadow
       - hugeParam
@@ -280,12 +280,10 @@ linters:
     # Recommended? (requires some work)
     #
 
-    - containedctx          # containedctx is a linter that detects struct contained context.Context field
     - errname               # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - ireturn               # Accept Interfaces, Return Concrete Types
     - mnd                   # An analyzer to detect magic numbers.
     - nilnil                # Checks that there is no simultaneous return of `nil` error and an invalid value.
-    - noctx                 # Finds sending http request without context.Context
     - unparam               # Reports unused function parameters
 
     #
@@ -503,3 +501,8 @@ issues:
         - usetesting
       path: "pkg/apiserver/(.+)_test.go"
       text: "os.CreateTemp.* could be replaced by os.CreateTemp.*"
+
+    - linters:
+        - containedctx
+      path: "cmd/notification-file/main.go"
+      text: "found a struct that contains a context.Context field"

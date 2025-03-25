@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func (cli *cliHubTest) newEvalCmd() *cobra.Command {
@@ -11,8 +13,8 @@ func (cli *cliHubTest) newEvalCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "eval",
-		Short:             "eval [test_name]",
-		Args:              cobra.ExactArgs(1),
+		Short:             "eval [test_name]...",
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {

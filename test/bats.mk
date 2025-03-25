@@ -103,7 +103,6 @@ bats-test: bats-environment  ## Run functional tests
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 
 bats-test-hub: bats-environment bats-check-requirements  ## Run all hub tests
-	@$(TEST_DIR)/bin/generate-hub-tests
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
 
 # Not failproof but they can catch bugs and improve learning of sh/bash

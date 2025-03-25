@@ -6,6 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 func (cli *cliMachines) validate(ctx context.Context, machineID string) error {
@@ -24,7 +26,7 @@ func (cli *cliMachines) newValidateCmd() *cobra.Command {
 		Short:             "validate a machine to access the local API",
 		Long:              `validate a machine to access the local API.`,
 		Example:           `cscli machines validate "machine_name"`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cli.validate(cmd.Context(), args[0])
