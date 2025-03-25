@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 # This script is provided (only in the source distribution) as an ad-hoc solution
-# to migrate an installation from the crowdsec package maintained in the debian repositories
+# to migrate an installation from the crowdsec package maintained in the debian or ubuntu repositories
 # to the official crowdsec repository.
 
 set -eu
@@ -9,7 +9,7 @@ set -eu
 if [ ! -d /var/lib/crowdsec/hub/ ]; then
     echo "You don't have a hub directory to migrate."
     echo
-    echo "Use this script only if you upgrade from the crowdsec package included in the debian repositories."
+    echo "Use this script only if you upgrade from the crowdsec package included in the debian or ubuntu repositories."
     exit 1
 fi
 
