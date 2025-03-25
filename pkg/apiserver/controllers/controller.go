@@ -98,6 +98,8 @@ func (c *Controller) NewV1() error {
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
+	c.Router.UnescapePathValues = true
+	c.Router.UseRawPath = true
 	c.Router.NoRoute(func(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 	})
