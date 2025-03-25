@@ -120,7 +120,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 			}
 
 			// twopenny validation
-			if u, err := url.ParseRequestURI(dataS.SourceURL); err != nil {
+			if u, err := url.Parse(dataS.SourceURL); err != nil {
 				return false, err
 			} else if u.Scheme == "" {
 				return false, fmt.Errorf("a valid URL was expected (note: local items can download data too): %s", dataS.SourceURL)
