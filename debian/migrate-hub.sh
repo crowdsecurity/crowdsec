@@ -1,5 +1,9 @@
 #!/usr/bin/env sh
 
+# This script is provided (only in the source distribution) as an ad-hoc solution
+# to migrate an installation from the crowdsec package maintained in the debian repositories
+# to the official crowdsec repository.
+
 set -eu
 
 if [ ! -d /var/lib/crowdsec/hub/ ]; then
