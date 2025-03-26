@@ -176,8 +176,6 @@ linters-settings:
         disabled: true
       - name: redundant-import-alias
         disabled: true
-      - name: time-equal
-        disabled: true
       - name: var-naming
         disabled: true
       - name: unchecked-type-assertion
