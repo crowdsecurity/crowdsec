@@ -120,7 +120,6 @@ linters-settings:
     - -ST1003   # should not use underscores in Go names; ...
     - -ST1005   # error strings should not be capitalized
     - -ST1012   # error var ... should have name of the form ErrFoo
-    - -ST1016   # methods on the same type should have the same receiver name
     - -ST1022   # comment on exported var ... should be of the form ...
 
   revive:
