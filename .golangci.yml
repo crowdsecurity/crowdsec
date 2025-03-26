@@ -400,11 +400,6 @@ issues:
       path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
       text: "confusing-naming: Method 'QueryRange' differs only by capitalization to method 'queryRange' in the same source file"
 
-    - linters:
-        - revive
-      path: pkg/hubtest/hubtest_item.go
-      text: "cyclomatic: .*RunWithLogFile"
-
     # tolerate complex functions in tests for now
     - linters:
         - maintidx
