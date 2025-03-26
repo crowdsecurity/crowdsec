@@ -48,12 +48,12 @@ type ApiClient struct {
 	UsageMetrics   *UsageMetricsService
 }
 
-func (a *ApiClient) GetClient() *http.Client {
-	return a.client
+func (c *ApiClient) GetClient() *http.Client {
+	return c.client
 }
 
-func (a *ApiClient) IsEnrolled() bool {
-	jwtTransport := a.client.Transport.(*JWTTransport)
+func (c *ApiClient) IsEnrolled() bool {
+	jwtTransport := c.client.Transport.(*JWTTransport)
 	tokenStr := jwtTransport.Token
 
 	token, _ := jwt.Parse(tokenStr, nil)
