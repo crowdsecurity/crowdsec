@@ -259,20 +259,20 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 	tokenString, err := a.dbClient.GetConfigItem(ctx, "apic_token")
 	if err != nil {
-		log.Debugf("no token found in database")
+		log.Debugf("err when looking for a token in database: %s", err)
 		skip = false
 	}
 
 	if skip && tokenString == nil {
 		skip = false
-		log.Debugf("No token found in database")
+		log.Debug("No token found in database")
 	}
 
 	if skip {
 		parser := new(jwt.Parser)
 		token, _, err = parser.ParseUnverified(*tokenString, jwt.MapClaims{})
 		if err != nil {
-			log.Debugf("Error parsing token:", err)
+			log.Debugf("error parsing token:", err)
 			skip = false
 		}
 	}
@@ -280,21 +280,21 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 	if skip {
 		claims, ok = token.Claims.(jwt.MapClaims)
 		if !ok {
-			log.Debugf("Error parsing token claims")
+			log.Debugf("error parsing token claims", err)
 			skip = false
 		}
 	}
 	if skip {
 		expValue, ok := claims["exp"].(float64)
 		if !ok {
-			log.Debugf("Token does not have an exp claim")
+			log.Debug("token does not have an exp claim")
 			skip = false
 		}
 		expiration = time.Unix(int64(expValue), 0)
 	}
 
 	if !skip || time.Now().UTC().After(expiration.Add(-time.Minute*1)) {
-		log.Debugf("No token found, authenticating")
+		log.Debug("No token found, authenticating")
 
 		scenarios, err := a.FetchScenariosListFromDB(ctx)
 		if err != nil {
@@ -325,7 +325,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		}
 		return nil
 	}
-	log.Debugf("Token found in database, skipping authentication")
+	log.Debug("token found in database, skipping authentication")
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *tokenString
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
 
