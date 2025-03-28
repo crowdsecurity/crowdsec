@@ -135,6 +135,17 @@ teardown() {
     refute_stderr
 }
 
+@test "cscli allolists: range check" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -1 cscli decisions add -r 192.168.10.20/24
+    assert_stderr 'Error: 192.168.10.20/24 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
+    refute_output
+    rune -0 cscli decisions add -r 192.168.10.20/24 --bypass-allowlist
+    assert_stderr --partial 'Decision successfully added'
+    refute_output
+}
+
 @test "cscli allowlists delete" {
     rune -1 cscli allowlist delete
     assert_stderr 'Error: accepts 1 arg(s), received 0'

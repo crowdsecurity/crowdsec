@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -53,7 +55,7 @@ func (c *DisableCommand) Prepare(plan *ActionPlan) (bool, error) {
 	i := c.Item
 
 	if i.State.IsLocal() {
-		plan.Warning(i.FQName() + " is a local item, please delete manually")
+		log.Warnf("%s is a local item, please delete manually", i.FQName())
 		return false, nil
 	}
 
