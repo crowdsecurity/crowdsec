@@ -272,7 +272,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		parser := new(jwt.Parser)
 		token, _, err = parser.ParseUnverified(*tokenString, jwt.MapClaims{})
 		if err != nil {
-			log.Debugf("error parsing token:", err)
+			log.Debugf("error parsing token: %s", err)
 			skip = false
 		}
 	}
@@ -280,7 +280,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 	if skip {
 		claims, ok = token.Claims.(jwt.MapClaims)
 		if !ok {
-			log.Debugf("error parsing token claims", err)
+			log.Debugf("error parsing token claims: %s", err)
 			skip = false
 		}
 	}
