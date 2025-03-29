@@ -9,8 +9,6 @@ import (
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
@@ -129,15 +127,21 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 }
 
 // flushMetrics deletes metrics older than maxAge, regardless if they have been pushed to CAPI or not
-func (c *Client) flushMetrics(ctx context.Context, maxAge *time.Duration) {
-	if maxAge == nil {
-		maxAge = ptr.Of(defaultMetricsMaxAge)
+func (c *Client) flushMetrics(ctx context.Context, maxAge string) {
+	maxAgeDuration := defaultMetricsMaxAge
+	if maxAge != "" {
+		duration, err := ParseDuration(maxAge)
+		if err != nil {
+			c.Log.Errorf("while parsing metrics max age duration, defaulting to %s: %s", defaultMetricsMaxAge, err)
+			duration = defaultMetricsMaxAge
+		}
+		maxAgeDuration = duration
 	}
 
-	c.Log.Debugf("flushing metrics older than %s", maxAge)
+	c.Log.Debugf("flushing metrics older than %s", maxAgeDuration)
 
 	deleted, err := c.Ent.Metric.Delete().Where(
-		metric.ReceivedAtLTE(time.Now().UTC().Add(-*maxAge)),
+		metric.ReceivedAtLTE(time.Now().UTC().Add(-maxAgeDuration)),
 	).Exec(ctx)
 	if err != nil {
 		c.Log.Errorf("while flushing metrics: %s", err)
