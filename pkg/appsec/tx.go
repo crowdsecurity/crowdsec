@@ -1,10 +1,10 @@
 package appsec
 
 import (
-	"github.com/crowdsecurity/coraza/v3"
-	"github.com/crowdsecurity/coraza/v3/experimental"
-	"github.com/crowdsecurity/coraza/v3/experimental/plugins/plugintypes"
-	"github.com/crowdsecurity/coraza/v3/types"
+	"github.com/corazawaf/coraza/v3"
+	"github.com/corazawaf/coraza/v3/experimental"
+	"github.com/corazawaf/coraza/v3/experimental/plugins/plugintypes"
+	"github.com/corazawaf/coraza/v3/types"
 )
 
 type ExtendedTransaction struct {
@@ -90,4 +90,8 @@ func (t *ExtendedTransaction) MatchedRules() []types.MatchedRule {
 
 func (t *ExtendedTransaction) ID() string {
 	return t.Tx.ID()
+}
+
+func (t *ExtendedTransaction) Close() error {
+	return t.Tx.Close()
 }

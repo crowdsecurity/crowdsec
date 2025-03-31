@@ -115,13 +115,35 @@ func TestCheckInAllowlist(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, resp.Allowlisted)
 
+	// GET request, should return 200 and status in body
+	w = lapi.RecordResponse(t, ctx, http.MethodGet, "/v1/allowlists/check/2.3.4.0%2F24", emptyBody, passwordAuthType)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	resp = models.CheckAllowlistResponse{}
+
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+
+	require.NoError(t, err)
+	require.False(t, resp.Allowlisted)
+
 	// HEAD request, should return 200
 	w = lapi.RecordResponse(t, ctx, http.MethodHead, "/v1/allowlists/check/1.2.3.4", emptyBody, passwordAuthType)
 
 	require.Equal(t, http.StatusOK, w.Code)
 
+	// HEAD request, should return 200
+	w = lapi.RecordResponse(t, ctx, http.MethodHead, "/v1/allowlists/check/1.2.3.0%2F24", emptyBody, passwordAuthType)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
 	// HEAD request, should return 204
 	w = lapi.RecordResponse(t, ctx, http.MethodHead, "/v1/allowlists/check/2.3.4.5", emptyBody, passwordAuthType)
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+
+	// HEAD request, should return 204
+	w = lapi.RecordResponse(t, ctx, http.MethodHead, "/v1/allowlists/check/2.3.4.5%2F24", emptyBody, passwordAuthType)
 
 	require.Equal(t, http.StatusNoContent, w.Code)
 }

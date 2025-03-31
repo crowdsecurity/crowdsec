@@ -124,7 +124,29 @@ teardown() {
     assert_stderr --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
 }
 
+@test "crowdsec - reload" {
+    # we test that reload works as intended with the agent enabled
+
+    logfile="$(config_get '.common.log_dir')/crowdsec.log"
+
+    rune -0 truncate -s0 "$logfile"
+
+    rune -0 ./instance-crowdsec start-pid
+    PID="$output"
+
+    sleep .5
+    rune -0 kill -HUP "$PID"
+
+    sleep 5
+    rune -0 ps "$PID"
+
+    assert_file_contains "$logfile" "Reload is finished"
+}
+
 @test "crowdsec - reload (change of logfile, disabled agent)" {
+    # we test that reload works as intended with the agent disabled
+    # and that we can change the log configuration
+
     logdir1=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
     log_old="${logdir1}/crowdsec.log"
     config_set ".common.log_dir=\"${logdir1}\""

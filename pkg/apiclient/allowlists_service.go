@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	qs "github.com/google/go-querystring/query"
 	log "github.com/sirupsen/logrus"
@@ -27,7 +28,7 @@ func (s *AllowlistsService) List(ctx context.Context, opts AllowlistListOpts) (*
 
 	u += "?" + params.Encode()
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -58,7 +59,7 @@ func (s *AllowlistsService) Get(ctx context.Context, name string, opts Allowlist
 
 	log.Debugf("GET %s", u)
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -74,9 +75,10 @@ func (s *AllowlistsService) Get(ctx context.Context, name string, opts Allowlist
 }
 
 func (s *AllowlistsService) CheckIfAllowlisted(ctx context.Context, value string) (bool, *Response, error) {
-	u := s.client.URLPrefix + "/allowlists/check/" + value
+	escapedValue := url.PathEscape(value)
+	u := s.client.URLPrefix + "/allowlists/check/" + escapedValue
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodHead, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodHead, u, nil)
 	if err != nil {
 		return false, nil, err
 	}
@@ -92,9 +94,10 @@ func (s *AllowlistsService) CheckIfAllowlisted(ctx context.Context, value string
 }
 
 func (s *AllowlistsService) CheckIfAllowlistedWithReason(ctx context.Context, value string) (*models.CheckAllowlistResponse, *Response, error) {
-	u := s.client.URLPrefix + "/allowlists/check/" + value
+	escapedValue := url.PathEscape(value)
+	u := s.client.URLPrefix + "/allowlists/check/" + escapedValue
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
