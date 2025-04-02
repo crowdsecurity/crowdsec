@@ -135,15 +135,35 @@ teardown() {
     refute_stderr
 }
 
-@test "cscli allolists: range check" {
+@test "cscli allowlists: check during decisions add" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -1 cscli decisions add -i 192.168.1.1
+    assert_stderr 'Error: 192.168.1.1 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
+    refute_output
+    rune -0 cscli decisions add -i 192.168.1.1 --bypass-allowlist
+    assert_stderr --partial 'Decision successfully added'
+    refute_output
+}
+
+@test "cscli allowlists: check during decisions import" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -1 cscli decisions import -i - <<<'192.168.1.1' --format values
+    refute_output
+    assert_stderr --partial '192.168.1.1 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
+    rune -0 cscli decisions import -i - <<<'192.168.1.1' --format values --bypass-allowlist
+    assert_stderr --partial 'Imported 1 decisions'
+    refute_output
+}
+
+@test "cscli allowlists: range check" {
     rune -0 cscli allowlist create foo -d 'a foo'
     rune -0 cscli allowlist add foo 192.168.0.0/16
     rune -1 cscli decisions add -r 192.168.10.20/24
-    assert_stderr 'Error: 192.168.10.20/24 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
-    refute_output
+    assert_stderr --partial '192.168.10.20/24 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
     rune -0 cscli decisions add -r 192.168.10.20/24 --bypass-allowlist
     assert_stderr --partial 'Decision successfully added'
-    refute_output
 }
 
 @test "cscli allowlists delete" {

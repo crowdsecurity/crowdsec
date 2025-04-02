@@ -68,7 +68,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	return ret, nil
 }
 
-func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string) error {
+func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string, bypassAllowlist bool) error {
 	var (
 		content []byte
 		fin     *os.File
@@ -151,6 +151,15 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 			log.Debugf("item %d: missing 'scope', using default '%s'", i, scope)
 		}
 
+		if !bypassAllowlist && (d.Scope == types.Ip || d.Scope == types.Range) {
+			resp, _, err := cli.client.Allowlists.CheckIfAllowlistedWithReason(ctx, d.Value)
+			if err != nil {
+				log.Errorf("Cannot check if %s is in allowlist: %s", d.Value, err)
+			} else if resp.Allowlisted {
+				return fmt.Errorf("%s is allowlisted by item %s, use --bypass-allowlist to add the decision anyway", d.Value, resp.Reason)
+			}
+		}
+
 		decisions[i] = &models.Decision{
 			Value:     ptr.Of(d.Value),
 			Duration:  ptr.Of(d.Duration),
@@ -202,13 +211,14 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 
 func (cli *cliDecisions) newImportCmd() *cobra.Command {
 	var (
-		input        string
-		duration     string
-		scope        string
-		reason       string
-		decisionType string
-		batch        int
-		format       string
+		input           string
+		duration        string
+		scope           string
+		reason          string
+		decisionType    string
+		batch           int
+		format          string
+		bypassAllowlist bool
 	)
 
 	cmd := &cobra.Command{
@@ -236,7 +246,7 @@ Raw values, standard input:
 $ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.import_(cmd.Context(), input, duration, scope, reason, decisionType, batch, format)
+			return cli.import_(cmd.Context(), input, duration, scope, reason, decisionType, batch, format, bypassAllowlist)
 		},
 	}
 
@@ -249,6 +259,7 @@ $ echo "1.2.3.4" | cscli decisions import -i - --format values
 	flags.StringVarP(&decisionType, "type", "t", "ban", "Decision type: ban,captcha,throttle")
 	flags.IntVar(&batch, "batch", 0, "Split import in batches of N decisions")
 	flags.StringVar(&format, "format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
+	flags.BoolVarP(&bypassAllowlist, "bypass-allowlist", "B", false, "Add decision even if value is in allowlist")
 
 	_ = cmd.MarkFlagRequired("input")
 
