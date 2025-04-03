@@ -68,7 +68,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	return ret, nil
 }
 
-func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string, bypassAllowlist bool) error {
+func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string, bypassAllowlist bool) error { //nolint:revive
 	var (
 		content []byte
 		fin     *os.File
