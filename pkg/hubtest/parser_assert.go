@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/expr-lang/expr"
@@ -270,7 +271,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					}
 
 					if mkey == "datasource_path" {
-						ret += fmt.Sprintf(`basename(results["%s"]["%s"][%d].Evt.Meta["%s"]) == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
+						ret += fmt.Sprintf(`basename(results["%s"]["%s"][%d].Evt.Meta["%s"]) == "%s"`+"\n", stage, parser, pidx, mkey, Escape(filepath.Base(mval)))
 					} else {
 						ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
 					}
