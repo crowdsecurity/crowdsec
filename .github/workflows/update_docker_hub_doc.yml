@@ -17,10 +17,11 @@ jobs:
         if: ${{ github.repository_owner == 'crowdsecurity' }}
       -
         name: Update docker hub README
-        uses: ms-jpq/sync-dockerhub-readme@v1
+        uses: peter-evans/dockerhub-description@v4
         if: ${{ github.repository_owner == 'crowdsecurity' }}
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: crowdsecurity/crowdsec
+          short-description: ${{ github.event.repository.description }}
           readme: "./docker/README.md"
