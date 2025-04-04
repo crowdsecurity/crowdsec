@@ -29,6 +29,7 @@ type APIKey struct {
 	TlsAuth    *TLSAuth
 }
 
+//
 func GenerateAPIKey(n int) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
