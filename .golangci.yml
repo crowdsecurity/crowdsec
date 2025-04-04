@@ -51,6 +51,7 @@ linters-settings:
   govet:
     enable-all: true
     disable:
+     - reflectvaluecompare
      - fieldalignment
 
   maintidx:
@@ -120,6 +121,7 @@ linters-settings:
     - -ST1003   # should not use underscores in Go names; ...
     - -ST1005   # error strings should not be capitalized
     - -ST1012   # error var ... should have name of the form ErrFoo
+    - -ST1016   # methods on the same type should have the same receiver name
     - -ST1022   # comment on exported var ... should be of the form ...
 
   revive:
@@ -175,6 +177,8 @@ linters-settings:
       - name: package-comments
         disabled: true
       - name: redundant-import-alias
+        disabled: true
+      - name: time-equal
         disabled: true
       - name: var-naming
         disabled: true
@@ -396,6 +400,11 @@ issues:
         - revive
       path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
       text: "confusing-naming: Method 'QueryRange' differs only by capitalization to method 'queryRange' in the same source file"
+
+    - linters:
+        - revive
+      path: pkg/hubtest/hubtest_item.go
+      text: "cyclomatic: .*RunWithLogFile"
 
     # tolerate complex functions in tests for now
     - linters:
