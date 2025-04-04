@@ -280,7 +280,7 @@ func TestSmokeUnknownIP(t *testing.T) {
 		t.Fatalf("failed to get ip info: %s", err)
 	}
 
-	assert.Equal(t, "", resp.Ip)
+	assert.Empty(t, resp.Ip)
 }
 
 func TestRateLimit(t *testing.T) {
