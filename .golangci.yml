@@ -183,7 +183,6 @@ linters:
 
     govet:
       disable:
-        - reflectvaluecompare
         - fieldalignment
       enable-all: true
 
@@ -269,8 +268,6 @@ linters:
           disabled: true
         - name: redundant-import-alias
           disabled: true
-        - name: time-equal
-          disabled: true
         - name: var-naming
           disabled: true
         - name: unchecked-type-assertion
@@ -304,7 +301,6 @@ linters:
         - -ST1003
         - -ST1005
         - -ST1012
-        - -ST1016
         - -ST1022
         - -QF1003
         - -QF1008
@@ -378,11 +374,6 @@ linters:
           - revive
         path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
         text: 'confusing-naming: Method ''QueryRange'' differs only by capitalization to method ''queryRange'' in the same source file'
-
-      - linters:
-          - revive
-        path: pkg/hubtest/hubtest_item.go
-        text: 'cyclomatic: .*RunWithLogFile'
 
       # tolerate complex functions in tests for now
       - linters:
