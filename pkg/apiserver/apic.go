@@ -730,7 +730,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 	}
 
 	for _, link := range allowlistsLinks {
-		if log.GetLevel() >= log.TraceLevel {
+		if log.IsLevelEnabled(log.TraceLevel) {
 			log.Tracef("allowlist body: %+v", spew.Sdump(link))
 		}
 
