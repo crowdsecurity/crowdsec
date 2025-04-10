@@ -319,6 +319,22 @@ paths:
           description: "400 response"
           schema:
             $ref: "#/definitions/ErrorResponse"
+    delete:
+      description: watcher self-delete
+      summary: DeleteWatcher
+      tags:
+        - watchers
+      operationId: DeleteWatcher
+      deprecated: false
+      responses:
+        '204':
+          description: Watcher Deleted
+        '403':
+          description: "403 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - JWTAuthorizer: []
   /watchers/login:
     post:
       description: Authenticate current to get session ID
