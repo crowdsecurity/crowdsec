@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -332,11 +331,10 @@ func feedLoki(ctx context.Context, logger *log.Entry, n int, title string) error
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipOnWindows(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
@@ -394,11 +392,10 @@ since: 1h
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
@@ -510,11 +507,10 @@ query: >
 }
 
 func TestStopStreaming(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	config := `
 mode: tail

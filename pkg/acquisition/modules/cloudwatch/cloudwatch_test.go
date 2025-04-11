@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -59,30 +59,38 @@ func checkForLocalStackAvailability() error {
 	return nil
 }
 
-func TestMain(m *testing.M) {
-	if runtime.GOOS == "windows" {
-		os.Exit(0)
-	}
 
-	if err := checkForLocalStackAvailability(); err != nil {
-		log.Fatalf("local stack error : %s", err)
-	}
+type CloudwatchSuite struct {
+	suite.Suite
 
-	def_PollNewStreamInterval = 1 * time.Second
-	def_PollStreamInterval = 1 * time.Second
-	def_StreamReadTimeout = 10 * time.Second
-	def_MaxStreamAge = 5 * time.Second
-	def_PollDeadStreamInterval = 5 * time.Second
-
-	os.Exit(m.Run())
+	pollNewStreamInterval time.Duration
+	pollStreamInterval time.Duration
+	streamReadTimeout time.Duration
+	maxStreamAge time.Duration
+	pollDeadStreamInterval time.Duration
 }
 
-func TestWatchLogGroupForStreams(t *testing.T) {
-	ctx := t.Context()
-
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
+func (s *CloudwatchSuite) SetupTest() {
+	if err := checkForLocalStackAvailability(); err != nil {
+		s.T().Fatalf("local stack error : %s", err)
 	}
+
+	s.pollNewStreamInterval = 1 * time.Second
+	s.pollStreamInterval = 1 * time.Second
+	s.streamReadTimeout = 10 * time.Second
+	s.maxStreamAge = 5 * time.Second
+	s.pollDeadStreamInterval = 5 * time.Second
+}
+
+func TestCloudwatchSuite(t *testing.T) {
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+
+	suite.Run(t, new(CloudwatchSuite))
+}
+
+func (s *CloudwatchSuite) TestWatchLogGroupForStreams() {
+	ctx := s.T().Context()
 
 	log.SetLevel(log.DebugLevel)
 
@@ -250,7 +258,7 @@ stream_name: test_stream`),
 			},
 			run: func(t *testing.T, cw *CloudwatchSource) {
 				// wait for new stream pickup + stream poll interval
-				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollNewStreamInterval + (1 * time.Second))
 				time.Sleep(def_PollStreamInterval + (1 * time.Second))
 				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
@@ -432,14 +440,14 @@ stream_name: test_stream`),
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		s.Run(tc.name, func() {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			dbgLogger.Infof("starting test")
 
 			cw := CloudwatchSource{}
 			err := cw.Configure(tc.config, dbgLogger, configuration.METRICS_NONE)
-			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
 				return
@@ -447,7 +455,7 @@ stream_name: test_stream`),
 
 			// run pre-routine : tests use it to set group & streams etc.
 			if tc.setup != nil {
-				tc.setup(t, &cw)
+				tc.setup(s.T(), &cw)
 			}
 
 			out := make(chan types.Event)
@@ -461,7 +469,7 @@ stream_name: test_stream`),
 				err := cw.StreamingAcquisition(ctx, out, &actmb)
 
 				dbgLogger.Infof("acquis done")
-				cstest.RequireErrorContains(t, err, tc.expectedStartErr)
+				cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
 
 				return nil
 			})
@@ -481,7 +489,7 @@ stream_name: test_stream`),
 			})
 
 			if tc.run != nil {
-				tc.run(t, &cw)
+				tc.run(s.T(), &cw)
 			} else {
 				dbgLogger.Warning("no code to run")
 			}
@@ -497,7 +505,7 @@ stream_name: test_stream`),
 			// check results
 			if tc.expectedResLen != -1 {
 				if tc.expectedResLen != len(rcvdEvts) {
-					t.Fatalf("%s : expected %d results got %d -> %v", tc.name, tc.expectedResLen, len(rcvdEvts), rcvdEvts)
+					s.T().Fatalf("%s : expected %d results got %d -> %v", tc.name, tc.expectedResLen, len(rcvdEvts), rcvdEvts)
 				}
 
 				dbgLogger.Debugf("got %d expected messages", len(rcvdEvts))
@@ -507,11 +515,11 @@ stream_name: test_stream`),
 				res := tc.expectedResMessages
 				for idx, v := range rcvdEvts {
 					if len(res) == 0 {
-						t.Fatalf("result %d/%d : received '%s', didn't expect anything (recvd:%d, expected:%d)", idx, len(rcvdEvts), v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
+						s.T().Fatalf("result %d/%d : received '%s', didn't expect anything (recvd:%d, expected:%d)", idx, len(rcvdEvts), v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
 					}
 
 					if res[0] != v.Line.Raw {
-						t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvdEvts), res[0], v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
+						s.T().Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvdEvts), res[0], v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
 					}
 
 					dbgLogger.Debugf("got message '%s'", res[0])
@@ -519,23 +527,22 @@ stream_name: test_stream`),
 				}
 
 				if len(res) != 0 {
-					t.Fatalf("leftover unmatched results : %v", res)
+					s.T().Fatalf("leftover unmatched results : %v", res)
 				}
 			}
 
 			if tc.teardown != nil {
-				tc.teardown(t, &cw)
+				tc.teardown(s.T(), &cw)
 			}
 		})
 	}
 }
 
 func TestConfiguration(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	log.SetLevel(log.DebugLevel)
 
@@ -611,10 +618,6 @@ stream_name: test_stream`),
 }
 
 func TestConfigureByDSN(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
-
 	log.SetLevel(log.DebugLevel)
 
 	tests := []struct {
@@ -658,11 +661,10 @@ func TestConfigureByDSN(t *testing.T) {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	log.SetLevel(log.DebugLevel)
 
