@@ -172,7 +172,6 @@ linters:
         - equalFold               #
         - unnecessaryBlock        #
         - tooManyResultsChecker
-        - unnecessaryDefer
         - docStub
         - preferFprint
 
