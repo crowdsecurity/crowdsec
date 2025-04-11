@@ -31,7 +31,7 @@ test/bats/.bats/run-logs
 # Test binaries, built from *_test.go
 pkg/csplugin/tests/cs_plugin_test*
 
-# Output of go-acc, go -cover
+# Output of test coverage
 *.out
 test/coverage/*
 
