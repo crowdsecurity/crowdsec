@@ -301,7 +301,8 @@ endif
 
 .PHONY: test
 test: check_gotestsum testenv  ## Run unit tests (with localstack and code coverage)
-	@gotestsum --format testdox -- -covermode=atomic -coverprofile=coverage.out -coverpkg=./... -tags=$(GO_TAGS) ./...
+# The quotes in the next command are required for PowerShell
+	@gotestsum --format testdox -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
 
 .PHONY: check_golangci-lint
 check_golangci-lint:

@@ -181,7 +181,7 @@ jobs:
     - name: Unit tests
       run: |
         go install gotest.tools/gotestsum@v1.12.1
-        make gotestsum
+        make test
 
     # check if some component stubs are missing
     - name: "Build profile: minimal"
