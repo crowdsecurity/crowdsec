@@ -300,9 +300,16 @@ else
 endif
 
 .PHONY: test
-test: check_gotestsum testenv  ## Run unit tests (with localstack and code coverage)
+test: check_gotestsum testenv  ## Run unit tests
 # The quotes in the next command are required for PowerShell
-	@gotestsum --format testdox -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
+	@FORMAT=$$(if [ -n "$$GITHUB_ACTIONS" ]; then echo github-actions; else echo pkgname; fi); \
+	gotestsum --format $$FORMAT --format-hide-empty-pkg -- "-tags=$(GO_TAGS)" ./...
+
+.PHONY: testcover
+testcover: check_gotestsum testenv  ## Run unit tests with coverage report
+# The quotes in the next command are required for PowerShell
+	@FORMAT=$$(if [ -n "$$GITHUB_ACTIONS" ]; then echo github-actions; else echo pkgname; fi); \
+	gotestsum --format $$FORMAT --format-hide-empty-pkg -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
 
 .PHONY: check_golangci-lint
 check_golangci-lint:
