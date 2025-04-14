@@ -70,7 +70,7 @@ type CloudwatchSuite struct {
 	pollDeadStreamInterval time.Duration
 }
 
-func (s *CloudwatchSuite) SetupTest() {
+func (s *CloudwatchSuite) SetupSuite() {
 	if err := checkForLocalStackAvailability(); err != nil {
 		s.T().Fatalf("local stack error : %s", err)
 	}
@@ -259,7 +259,7 @@ stream_name: test_stream`),
 			run: func(t *testing.T, cw *CloudwatchSource) {
 				// wait for new stream pickup + stream poll interval
 				time.Sleep(s.pollNewStreamInterval + (1 * time.Second))
-				time.Sleep(def_PollStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollStreamInterval + (1 * time.Second))
 				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
@@ -332,8 +332,8 @@ stream_name: test_stream`),
 			},
 			run: func(t *testing.T, cw *CloudwatchSource) {
 				// wait for new stream pickup + stream poll interval
-				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
-				time.Sleep(def_PollStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollNewStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollStreamInterval + (1 * time.Second))
 				// send some events
 				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
@@ -347,7 +347,7 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 				// wait for the stream to time-out
-				time.Sleep(def_StreamReadTimeout + (1 * time.Second))
+				time.Sleep(s.streamReadTimeout + (1 * time.Second))
 				// and send events again
 				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
@@ -361,8 +361,8 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 				// wait for new stream pickup + stream poll interval
-				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
-				time.Sleep(def_PollStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollNewStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollStreamInterval + (1 * time.Second))
 			},
 			teardown: func(t *testing.T, cw *CloudwatchSource) {
 				_, err := cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
@@ -419,9 +419,9 @@ stream_name: test_stream`),
 			},
 			run: func(t *testing.T, cw *CloudwatchSource) {
 				// wait for new stream pickup + stream poll interval
-				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
-				time.Sleep(def_PollStreamInterval + (1 * time.Second))
-				time.Sleep(def_PollDeadStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollNewStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollStreamInterval + (1 * time.Second))
+				time.Sleep(s.pollDeadStreamInterval + (1 * time.Second))
 			},
 			teardown: func(t *testing.T, cw *CloudwatchSource) {
 				_, err := cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
