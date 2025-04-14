@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -112,9 +111,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestBadConfiguration(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	tests := []struct {
 		config      string
@@ -156,11 +153,10 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config string
@@ -204,11 +200,10 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config string
@@ -255,11 +250,10 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config string

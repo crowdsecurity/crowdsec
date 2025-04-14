@@ -260,7 +260,7 @@ clean-rpm:
 	@$(RM) -r rpm/SRPMS
 
 .PHONY: clean
-clean: clean-debian clean-rpm testclean  ## Remove build artifacts
+clean: clean-debian clean-rpm bats-clean  ## Remove build artifacts
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
@@ -279,28 +279,55 @@ cscli:  ## Build cscli
 crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
-.PHONY: testclean
-testclean: bats-clean  ## Remove test artifacts
-	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
-	@$(RM) pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
-	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
-	@$(RM) pkg/types/example.txt $(WIN_IGNORE_ERR)
-
 # for the tests with localstack
 export AWS_ENDPOINT_FORCE=http://localhost:4566
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 
 testenv:
-	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it'
+ifeq ($(TEST_LOCAL_ONLY),)
+	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it; or define the envvar TEST_LOCAL_ONLY to some value.'
+else
+	@echo 'TEST_LOCAL_ONLY: skipping tests that require mock containers (localstack, kafka...)'
+endif
+
+.PHONY: check_gotestsum
+check_gotestsum:
+ifeq ($(OS),Windows_NT)
+	@where gotestsum >nul || (echo "Error: gotestsum is not installed. Install it with 'go install gotest.tools/gotestsum@latest'" && exit 1)
+else
+	@command -v gotestsum > /dev/null 2>&1 || (echo "Error: gotestsum is not installed. Install it with 'go install gotest.tools/gotestsum@latest'" && exit 1)
+endif
+
+# Default format
+GOTESTSUM_FORMAT := pkgname
+
+# If running in GitHub Actions, change format
+ifdef GITHUB_ACTIONS
+  GOTESTSUM_FORMAT := github-actions
+endif
 
 .PHONY: test
-test: testenv  ## Run unit tests with localstack
-	$(GOTEST) --tags=$(GO_TAGS) $(LD_OPTS) ./...
+test: check_gotestsum testenv  ## Run unit tests
+# The quotes in the next command are required for PowerShell
+	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- "-tags=$(GO_TAGS)" ./...
 
-.PHONY: go-acc
-go-acc: testenv  ## Run unit tests with localstack + coverage
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models --tags $(GO_TAGS) -- $(LD_OPTS)
+.PHONY: testcover
+testcover: check_gotestsum testenv  ## Run unit tests with coverage report
+# The quotes in the next command are required for PowerShell
+	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
+
+.PHONY: check_golangci-lint
+check_golangci-lint:
+ifeq ($(OS),Windows_NT)
+	@where golangci-lint >nul || (echo "Error: golangci-lint is not installed. Install it from https://github.com/golangci/golangci-lint" && exit 1)
+else
+	@command -v galangci-lint > /dev/null 2>&1 || (echo "Error: golangci-lint is not installed. Install it from https://github.com/golangci/golangci-lint" && exit 1)
+endif
+
+.PHONY: lint
+lint: check_golangci-lint  ## Run go linters
+	@golangci-lint run
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \

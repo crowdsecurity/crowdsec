@@ -21,7 +21,6 @@ on:
 
 # these env variables are for localstack, so we can emulate aws services
 env:
-  RICHGO_FORCE_COLOR: 1
   AWS_HOST: localstack
   # these are to mimic aws config
   AWS_ACCESS_KEY_ID: test
@@ -170,23 +169,24 @@ jobs:
       run: |
           .github/generate-codecov-yml.sh >> .github/codecov.yml
 
-    - name: Build and run tests, static
+    - name: Ensure we can do a dynamic build
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
-        go install github.com/ory/go-acc@v0.2.8
-        go install github.com/kyoh86/richgo@v0.3.10
-        set -o pipefail
-        make build BUILD_STATIC=1
-        make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+        make build
+
+    - name: Ensure we can do a static build
+      run: |
+        make clean build BUILD_STATIC=1
+
+    - name: Unit tests
+      run: |
+        go install gotest.tools/gotestsum@v1.12.1
+        make testcover
 
     # check if some component stubs are missing
     - name: "Build profile: minimal"
       run: |
         make build BUILD_PROFILE=minimal
-
-    - name: Ensure we can do a dynamic build, without tests
-      run: |
-        make clean build
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
