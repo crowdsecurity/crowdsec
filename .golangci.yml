@@ -165,7 +165,6 @@ linters:
         - unnamedResult
         - sloppyReassign
         - appendCombine
-        - typeUnparen
         - commentFormatting
         - deferInLoop             #
         - whyNoLint
