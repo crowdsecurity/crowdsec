@@ -299,17 +299,23 @@ else
 	@command -v gotestsum > /dev/null 2>&1 || (echo "Error: gotestsum is not installed. Install it with 'go install gotest.tools/gotestsum@latest'" && exit 1)
 endif
 
+# Default format
+GOTESTSUM_FORMAT := pkgname
+
+# If running in GitHub Actions, change format
+ifdef GITHUB_ACTIONS
+  GOTESTSUM_FORMAT := github-actions
+endif
+
 .PHONY: test
 test: check_gotestsum testenv  ## Run unit tests
 # The quotes in the next command are required for PowerShell
-	@FORMAT=$$(if [ -n "$$GITHUB_ACTIONS" ]; then echo github-actions; else echo pkgname; fi); \
-	gotestsum --format $$FORMAT --format-hide-empty-pkg -- "-tags=$(GO_TAGS)" ./...
+	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- "-tags=$(GO_TAGS)" ./...
 
 .PHONY: testcover
 testcover: check_gotestsum testenv  ## Run unit tests with coverage report
 # The quotes in the next command are required for PowerShell
-	@FORMAT=$$(if [ -n "$$GITHUB_ACTIONS" ]; then echo github-actions; else echo pkgname; fi); \
-	gotestsum --format $$FORMAT --format-hide-empty-pkg -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
+	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
 
 .PHONY: check_golangci-lint
 check_golangci-lint:
