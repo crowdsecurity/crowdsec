@@ -279,11 +279,6 @@ cscli:  ## Build cscli
 crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
-# for the tests with localstack
-export AWS_ENDPOINT_FORCE=http://localhost:4566
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-
 testenv:
 ifeq ($(TEST_LOCAL_ONLY),)
 	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it; or define the envvar TEST_LOCAL_ONLY to some value.'
