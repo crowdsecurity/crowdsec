@@ -42,9 +42,8 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	}()
 
 	iter := reflect.ValueOf(evt).Elem()
-	if (iter == reflect.Value{}) || iter.IsZero() {
+	if !iter.IsValid() || iter.IsZero() {
 		log.Tracef("event is nil")
-		//event is nil
 		return false
 	}
 
@@ -56,7 +55,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		case reflect.Map:
 			tmp := iter.MapIndex(reflect.ValueOf(f))
 			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
-			if (tmp == reflect.Value{}) || tmp.IsZero() {
+			if !tmp.IsValid() || tmp.IsZero() {
 				log.Debugf("map entry is zero in '%s'", target)
 			}
 

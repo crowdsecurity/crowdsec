@@ -418,10 +418,10 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 
 	err = w.appsecAllowlistClient.Start(ctx, apiClient)
 	if err != nil {
-		return fmt.Errorf("failed to fetch allowlists: %w", err)
+		w.logger.Errorf("failed to fetch allowlists for appsec, disabling them: %s", err)
+	} else {
+		w.appsecAllowlistClient.StartRefresh(ctx, t)
 	}
-
-	w.appsecAllowlistClient.StartRefresh(ctx, t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")

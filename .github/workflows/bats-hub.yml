@@ -47,7 +47,7 @@ jobs:
           ./test/instance-data load
           git clone --depth 1 https://github.com/crowdsecurity/hub.git ./hub
           cd ./hub
-          cscli hubtest run --all --clean --max-jobs 8
+          cscli hubtest run --all --clean --max-jobs 4
 
     - name: "Collect hub coverage"
       run: ./test/bin/collect-hub-coverage ./hub >> $GITHUB_ENV
@@ -61,7 +61,7 @@ jobs:
         filename: crowdsec_parsers_badge.json
         label: Hub Parsers
         message: ${{ env.PARSERS_COV }}
-        color: ${{ env.SCENARIO_BADGE_COLOR }}
+        color: ${{ env.PARSERS_BADGE_COLOR }}
 
     - name: "Create Scenarios badge"
       uses: schneegans/dynamic-badges-action@v1.7.0
