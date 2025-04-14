@@ -331,7 +331,7 @@ func feedLoki(ctx context.Context, logger *log.Entry, n int, title string) error
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 	cstest.SkipOnWindows(t)
 
 	ctx := t.Context()
@@ -393,7 +393,7 @@ since: 1h
 
 func TestStreamingAcquisition(t *testing.T) {
 	cstest.SkipOnWindows(t)
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
 	ctx := t.Context()
 
@@ -508,7 +508,7 @@ query: >
 
 func TestStopStreaming(t *testing.T) {
 	cstest.SkipOnWindows(t)
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
 	ctx := t.Context()
 

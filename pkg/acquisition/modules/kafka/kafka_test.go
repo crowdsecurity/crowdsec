@@ -128,7 +128,7 @@ func createTopic(topic string, broker string) {
 
 func TestStreamingAcquisition(t *testing.T) {
 	cstest.SkipOnWindows(t)
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
 	ctx := t.Context()
 
@@ -200,7 +200,7 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 	cstest.SkipOnWindows(t)
 
 	ctx := t.Context()

@@ -154,7 +154,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 
 func TestReadFromStream(t *testing.T) {
 	cstest.SkipOnWindows(t)
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
 	ctx := t.Context()
 
@@ -201,7 +201,7 @@ stream_name: stream-1-shard`,
 
 func TestReadFromMultipleShards(t *testing.T) {
 	cstest.SkipOnWindows(t)
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
 	ctx := t.Context()
 
@@ -251,7 +251,7 @@ stream_name: stream-2-shards`,
 
 func TestFromSubscription(t *testing.T) {
 	cstest.SkipOnWindows(t)
-	cstest.SkipIfDefined(t, "SKIP_LOCALSTACK")
+	cstest.SkipIfDefined(t, "TEST_LOCAL_ONLY")
 
 	ctx := t.Context()
 

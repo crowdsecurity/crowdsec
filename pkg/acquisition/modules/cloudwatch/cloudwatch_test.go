@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
-	if os.Getenv("SKIP_LOCALSTACK") != "" {
+	if os.Getenv("TEST_LOCAL_ONLY") != "" {
 		os.Exit(0)
 	}
 

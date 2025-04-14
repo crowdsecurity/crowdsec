@@ -285,10 +285,10 @@ export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 
 testenv:
-ifeq ($(SKIP_LOCALSTACK),)
-	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it; or define the envvar SKIP_LOCALSTACK to some value.'
+ifeq ($(TEST_LOCAL_ONLY),)
+	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it; or define the envvar TEST_LOCAL_ONLY to some value.'
 else
-	@echo 'Skipping tests that require localstack.'
+	@echo 'TEST_LOCAL_ONLY: skipping tests that require mock containers (localstack, kafka...)'
 endif
 
 .PHONY: check_gotestsum
