@@ -150,7 +150,7 @@ func (d *DatabaseCfg) ConnectionString() (string, error) {
 		}
 
 		if d.SSLMode != "" {
-			// This will be overriden if a CA or client cert is provided
+			// This will be overridden if a CA or client cert is provided
 			params.Set("tls", d.SSLMode)
 		}
 
