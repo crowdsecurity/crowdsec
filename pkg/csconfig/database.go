@@ -143,6 +143,12 @@ func (d *DatabaseCfg) ConnectionString() (string, error) {
 
 		tlsConfig := &tls.Config{}
 
+		// This is just to get an initial value, don't care about the error
+		systemRootCAs, _ := x509.SystemCertPool()
+		if systemRootCAs != nil {
+			tlsConfig.RootCAs = systemRootCAs
+		}
+
 		if d.isSocketConfig() {
 			connString = fmt.Sprintf("%s:%s@unix(%s)/%s", d.User, d.Password, d.DbPath, d.DbName)
 		} else {
@@ -159,7 +165,9 @@ func (d *DatabaseCfg) ConnectionString() (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("failed to read CA cert file %s: %w", d.SSLCACert, err)
 			}
-			tlsConfig.RootCAs = x509.NewCertPool()
+			if tlsConfig.RootCAs == nil {
+				tlsConfig.RootCAs = x509.NewCertPool()
+			}
 			if !tlsConfig.RootCAs.AppendCertsFromPEM(caCert) {
 				return "", fmt.Errorf("failed to append CA cert file %s: %w", d.SSLCACert, err)
 			}
