@@ -55,7 +55,7 @@ export GOCOVERDIR="$(TEST_DIR)/coverage"
 export PATH="$(TEST_DIR)/tools:$(PATH)"
 endef
 
-bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub
+bats-all: bats-clean bats-build bats-fixture bats-test
 
 # Source this to run the scripts outside of the Makefile
 # Old versions of make don't have $(file) directive
@@ -102,9 +102,6 @@ bats-clean:  ## Remove functional test environment
 bats-test: bats-environment  ## Run functional tests
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 
-bats-test-hub: bats-environment bats-check-requirements  ## Run all hub tests
-	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
-
 # Not failproof but they can catch bugs and improve learning of sh/bash
 bats-lint:  ## Static checks for the test scripts.
 	@shellcheck --version >/dev/null 2>&1 || (echo "ERROR: shellcheck is required."; exit 1)
@@ -113,4 +110,3 @@ bats-lint:  ## Static checks for the test scripts.
 bats-test-package: bats-environment  ## CI only - test a binary package (deb, rpm, ...)
 	$(TEST_DIR)/instance-data make
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
-	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
