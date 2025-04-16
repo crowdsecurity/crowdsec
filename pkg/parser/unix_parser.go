@@ -139,13 +139,12 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	if len(parsers.PovfwStageFiles) > 0 {
 		log.Infof("Loading postoverflow parsers")
 		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
+		if err != nil {
+			return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)
+		}
 	} else {
 		log.Infof("No postoverflow parsers to load")
 		parsers.Povfwnodes = []Node{}
-	}
-
-	if err != nil {
-		return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
