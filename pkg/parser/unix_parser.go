@@ -37,21 +37,27 @@ func Init(c map[string]any) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
 	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
+
 	files, err := os.ReadDir(c["patterns"].(string))
 	if err != nil {
 		return nil, err
 	}
+
 	r.DataFolder = c["data"].(string)
-	for _, f := range files {
-		if strings.Contains(f.Name(), ".") || f.IsDir() {
+
+	for _, file := range files {
+		if strings.Contains(file.Name(), ".") || file.IsDir() {
 			continue
 		}
-		if err := r.Grok.AddFromFile(filepath.Join(c["patterns"].(string), f.Name())); err != nil {
-			log.Errorf("failed to load pattern %s: %v", f.Name(), err)
+
+		if err := r.Grok.AddFromFile(filepath.Join(c["patterns"].(string), file.Name())); err != nil {
+			log.Errorf("failed to load pattern %s: %v", file.Name(), err)
 			return nil, err
 		}
 	}
+
 	log.Debugf("Loaded %d pattern files", len(files))
+
 	return &r, nil
 }
 
@@ -71,9 +77,11 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 				Filename: hubParserItem.State.LocalPath,
 				Stage:    hubParserItem.Stage,
 			}
+
 			if itemType == cwhub.PARSERS {
 				parsers.StageFiles = append(parsers.StageFiles, stagefile)
 			}
+
 			if itemType == cwhub.POSTOVERFLOWS {
 				parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
 			}
@@ -85,6 +93,7 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
 		})
 	}
+
 	if parsers.PovfwStageFiles != nil {
 		sort.Slice(parsers.PovfwStageFiles, func(i, j int) bool {
 			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
@@ -120,7 +129,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	/*
 		Load enrichers
 	*/
-	log.Infof("Loading enrich plugins")
+	log.Info("Loading enrich plugins")
 
 	parsers.EnricherCtx, err = Loadplugin()
 	if err != nil {
@@ -139,13 +148,15 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	}
 
 	if len(parsers.PovfwStageFiles) > 0 {
-		log.Infof("Loading postoverflow parsers")
+		log.Info("Loading postoverflow parsers")
+
 		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
 		if err != nil {
 			return parsers, fmt.Errorf("failed to load postoverflow config: %w", err)
 		}
 	} else {
-		log.Infof("No postoverflow parsers to load")
+		log.Info("No postoverflow parsers to load")
+
 		parsers.Povfwnodes = []Node{}
 	}
 
@@ -160,5 +171,6 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	parsers.Povfwctx.Grok = grokky.Host{}
 	parsers.StageFiles = []Stagefile{}
 	parsers.PovfwStageFiles = []Stagefile{}
+
 	return parsers, nil
 }
