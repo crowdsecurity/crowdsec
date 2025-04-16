@@ -97,6 +97,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 	}
 
 	fields := log.Fields{
+		// XXX: type is the whole DSN string here
 		"type": source,
 	}
 
