@@ -28,9 +28,12 @@ type DecisionsByScenario struct {
 }
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz int
+	var (
+		err error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		ip_sz int
+	)
+
 	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
@@ -197,8 +200,10 @@ func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*Decisions
 }
 
 func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
-	var data []*ent.Decision
-	var err error
+	var (
+		err error
+		data []*ent.Decision
+	)
 
 	decisions := c.Ent.Decision.Query().
 		Where(decision.UntilGTE(time.Now().UTC()))
@@ -318,9 +323,12 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 }
 
 func (c *Client) DeleteDecisionsWithFilter(ctx context.Context, filter map[string][]string) (string, []*ent.Decision, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz int
+	var (
+		err error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		ip_sz int
+	)
+
 	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer) */
@@ -374,9 +382,12 @@ func (c *Client) DeleteDecisionsWithFilter(ctx context.Context, filter map[strin
 
 // ExpireDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
 func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[string][]string) (string, []*ent.Decision, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz int
+	var (
+		err error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		ip_sz int
+	)
+
 	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
@@ -523,9 +534,11 @@ func (c *Client) ExpireDecisionByID(ctx context.Context, decisionID int) (int, [
 }
 
 func (c *Client) CountDecisionsByValue(ctx context.Context, decisionValue string) (int, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz, count int
+	var (
+		err error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		ip_sz, count int
+	)
 
 	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 	if err != nil {
@@ -549,9 +562,11 @@ func (c *Client) CountDecisionsByValue(ctx context.Context, decisionValue string
 }
 
 func (c *Client) CountActiveDecisionsByValue(ctx context.Context, decisionValue string) (int, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz, count int
+	var (
+		err error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		ip_sz, count int
+	)
 
 	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 	if err != nil {
@@ -577,9 +592,11 @@ func (c *Client) CountActiveDecisionsByValue(ctx context.Context, decisionValue 
 }
 
 func (c *Client) GetActiveDecisionsTimeLeftByValue(ctx context.Context, decisionValue string) (time.Duration, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz int
+	var (
+		err error
+		start_ip, start_sfx, end_ip, end_sfx int64
+		ip_sz int
+	)
 
 	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
 	if err != nil {
