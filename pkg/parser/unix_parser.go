@@ -33,24 +33,24 @@ type Parsers struct {
 	EnricherCtx     EnricherCtx
 }
 
-func Init(c map[string]any) (*UnixParserCtx, error) {
+func Init(patternDir string, dataDir string) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
 	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
 
-	files, err := os.ReadDir(c["patterns"].(string))
+	files, err := os.ReadDir(patternDir)
 	if err != nil {
 		return nil, err
 	}
 
-	r.DataFolder = c["data"].(string)
+	r.DataFolder = dataDir
 
 	for _, file := range files {
 		if strings.Contains(file.Name(), ".") || file.IsDir() {
 			continue
 		}
 
-		if err := r.Grok.AddFromFile(filepath.Join(c["patterns"].(string), file.Name())); err != nil {
+		if err := r.Grok.AddFromFile(filepath.Join(patternDir, file.Name())); err != nil {
 			log.Errorf("failed to load pattern %s: %v", file.Name(), err)
 			return nil, err
 		}
@@ -106,22 +106,16 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	patternsDir := cConfig.ConfigPaths.PatternDir
-	log.Infof("Loading grok library %s", patternsDir)
+	patternDir := cConfig.ConfigPaths.PatternDir
+	log.Infof("Loading grok library %s", patternDir)
 
 	/* load base regexps for two grok parsers */
-	parsers.Ctx, err = Init(map[string]any{
-		"patterns": patternsDir,
-		"data":     cConfig.ConfigPaths.DataDir,
-	})
+	parsers.Ctx, err = Init(patternDir, cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns: %w", err)
 	}
 
-	parsers.Povfwctx, err = Init(map[string]any{
-		"patterns": patternsDir,
-		"data":     cConfig.ConfigPaths.DataDir,
-	})
+	parsers.Povfwctx, err = Init(patternDir, cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns: %w", err)
 	}

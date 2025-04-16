@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -179,7 +180,7 @@ func prepTests(t require.TestingT) (*UnixParserCtx, EnricherCtx) {
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
-	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
+	pctx, err = Init(filepath.Join(cfgdir, "patterns"), "./tests/")
 	require.NoError(t, err, "parser init failed")
 
 	return pctx, ectx
@@ -403,7 +404,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 		return
 	}
 
-	pctx, err := Init(map[string]interface{}{"patterns": "../../config/patterns/", "data": "./tests/"})
+	pctx, err := Init("../../config/patterns/", "./tests/")
 	require.NoError(t, err, "unable to load patterns")
 
 	log.Infof("-> %s", spew.Sdump(pctx))
