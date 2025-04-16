@@ -33,7 +33,7 @@ type Parsers struct {
 	EnricherCtx     EnricherCtx
 }
 
-func Init(c map[string]interface{}) (*UnixParserCtx, error) {
+func Init(c map[string]any) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
 	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
@@ -47,7 +47,7 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 			continue
 		}
 		if err := r.Grok.AddFromFile(filepath.Join(c["patterns"].(string), f.Name())); err != nil {
-			log.Errorf("failed to load pattern %s : %v", f.Name(), err)
+			log.Errorf("failed to load pattern %s: %v", f.Name(), err)
 			return nil, err
 		}
 	}
@@ -99,20 +99,22 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	patternsDir := cConfig.ConfigPaths.PatternDir
 	log.Infof("Loading grok library %s", patternsDir)
+
 	/* load base regexps for two grok parsers */
-	parsers.Ctx, err = Init(map[string]interface{}{
+	parsers.Ctx, err = Init(map[string]any{
 		"patterns": patternsDir,
 		"data":     cConfig.ConfigPaths.DataDir,
 	})
 	if err != nil {
-		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
+		return parsers, fmt.Errorf("failed to load parser patterns: %w", err)
 	}
-	parsers.Povfwctx, err = Init(map[string]interface{}{
+
+	parsers.Povfwctx, err = Init(map[string]any{
 		"patterns": patternsDir,
 		"data":     cConfig.ConfigPaths.DataDir,
 	})
 	if err != nil {
-		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
+		return parsers, fmt.Errorf("failed to load postovflw parser patterns: %w", err)
 	}
 
 	/*
@@ -122,7 +124,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	parsers.EnricherCtx, err = Loadplugin()
 	if err != nil {
-		return parsers, fmt.Errorf("failed to load enrich plugin : %v", err)
+		return parsers, fmt.Errorf("failed to load enrich plugin: %w", err)
 	}
 
 	/*
@@ -133,14 +135,14 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	parsers.Nodes, err = LoadStages(parsers.StageFiles, parsers.Ctx, parsers.EnricherCtx)
 	if err != nil {
-		return parsers, fmt.Errorf("failed to load parser config : %v", err)
+		return parsers, fmt.Errorf("failed to load parser config: %w", err)
 	}
 
 	if len(parsers.PovfwStageFiles) > 0 {
 		log.Infof("Loading postoverflow parsers")
 		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
 		if err != nil {
-			return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)
+			return parsers, fmt.Errorf("failed to load postoverflow config: %w", err)
 		}
 	} else {
 		log.Infof("No postoverflow parsers to load")
