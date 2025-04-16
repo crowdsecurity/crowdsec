@@ -158,7 +158,6 @@ linters:
       disabled-checks:
         - paramTypeCombine
         - ifElseChain
-        - importShadow
         - hugeParam
         - commentedOutCode
         - commentedOutImport
