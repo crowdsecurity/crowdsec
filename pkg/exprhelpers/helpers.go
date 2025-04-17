@@ -57,6 +57,13 @@ var dbClient *database.Client
 
 var exprFunctionOptions []expr.Option
 
+func init() { //nolint:gochecknoinits
+	exprFunctionOptions = make([]expr.Option, len(exprFuncs))
+	for i, fn := range exprFuncs {
+		exprFunctionOptions[i] = expr.Function(fn.name, fn.function, fn.signature...)
+	}
+}
+
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 var (
@@ -66,22 +73,11 @@ var (
 )
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
-	if len(exprFunctionOptions) == 0 {
-		exprFunctionOptions = []expr.Option{}
-		for _, function := range exprFuncs {
-			exprFunctionOptions = append(exprFunctionOptions,
-				expr.Function(function.name,
-					function.function,
-					function.signature...,
-				))
-		}
-	}
-
-	ret := []expr.Option{}
-	ret = append(ret, exprFunctionOptions...)
-	ret = append(ret, expr.Env(ctx))
-
-	return ret
+	// copy the pre‑built options + one Env(...) for this call
+	opts := make([]expr.Option, len(exprFunctionOptions)+1)
+	copy(opts, exprFunctionOptions)
+	opts[len(opts)-1] = expr.Env(ctx)
+	return opts
 }
 
 func GeoIPInit(datadir string) error {
