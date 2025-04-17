@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/sirupsen/logrus"
 
@@ -72,7 +73,7 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 		CompareContent().
 		WithLogger(logger.WithField("url", url)).
 		BeforeRequest(func(_ *http.Request) {
-			fmt.Println("Downloading " + destPath)
+			fmt.Fprintln(os.Stdout, "Downloading " + destPath)
 		}).
 		Download(ctx, url.String())
 	if err != nil {

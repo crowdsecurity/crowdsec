@@ -58,7 +58,6 @@ linters:
     - paralleltest          # Detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
     - exhaustruct           # Checks if all structure fields are initialized
-    - forbidigo             # Forbids identifiers
     - gochecknoglobals      # Check that no global variables exist.
     - goconst               # Finds repeated strings that could be replaced by a constant
     - tagliatelle           # Checks the struct tags.
@@ -199,6 +198,14 @@ linters:
       # Switch statement requires default case even if exhaustive.
       # Default: false
       default-case-required: true
+
+    forbidigo:
+      forbid:
+      # prefer fprint to print calls, keep the latter for debugging
+      # so they're not comitted by mistake.
+      - pattern: ^print(ln)?$
+      - pattern: ^fmt\.Print.*$
+        msg: use the Fprint equivalent in production code
 
     gocritic:
       enable-all: true
@@ -550,6 +557,12 @@ linters:
       - linters:
           - maintidx
         path: (.+)_test.go
+
+      # tolerate print in tests for now
+      - linters:
+          - forbidigo
+        path: (.+)_test.go
+        text: 'use the Fprint equivalent in production code'
 
       # tolerate long functions in tests
       - linters:
