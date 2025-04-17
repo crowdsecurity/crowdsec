@@ -33,7 +33,7 @@ type Parsers struct {
 	EnricherCtx     EnricherCtx
 }
 
-func Init(patternDir string, dataDir string) (*UnixParserCtx, error) {
+func NewUnixParserCtx(patternDir string, dataDir string) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
 	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
@@ -110,12 +110,12 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	log.Infof("Loading grok library %s", patternDir)
 
 	/* load base regexps for two grok parsers */
-	parsers.Ctx, err = Init(patternDir, cConfig.ConfigPaths.DataDir)
+	parsers.Ctx, err = NewUnixParserCtx(patternDir, cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns: %w", err)
 	}
 
-	parsers.Povfwctx, err = Init(patternDir, cConfig.ConfigPaths.DataDir)
+	parsers.Povfwctx, err = NewUnixParserCtx(patternDir, cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns: %w", err)
 	}
