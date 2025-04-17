@@ -34,7 +34,7 @@ func createLogGroup(t *testing.T, cw *CloudwatchSource, group string) {
 
 func createLogStream(t *testing.T, cw *CloudwatchSource, group string, stream string) {
 	_, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
-		LogGroupName: aws.String(group),
+		LogGroupName:  aws.String(group),
 		LogStreamName: aws.String(stream),
 	})
 	require.NoError(t, err)
