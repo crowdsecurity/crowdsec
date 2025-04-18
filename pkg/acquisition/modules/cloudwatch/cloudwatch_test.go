@@ -325,7 +325,7 @@ stream_name: test_stream`,
 			dbgLogger.Infof("starting test")
 
 			cw := CloudwatchSource{}
-			err := cw.Configure(([]byte)(tc.config), dbgLogger, configuration.METRICS_NONE)
+			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
@@ -442,7 +442,7 @@ stream_name: test_stream`,
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 
 			cw := CloudwatchSource{}
-			err := cw.Configure(([]byte)(tc.config), dbgLogger, configuration.METRICS_NONE)
+			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {

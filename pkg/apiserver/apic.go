@@ -396,11 +396,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	batchSize := 50
 
 	for start := 0; start < len(cache); start += batchSize {
-		end := start + batchSize
-
-		if end > len(cache) {
-			end = len(cache)
-		}
+		end := min(start+batchSize, len(cache))
 
 		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
