@@ -399,6 +399,8 @@ func TestDeleteDecisions(t *testing.T) {
 	ctx := t.Context()
 
 	mux, urlx, teardown := setup()
+	defer teardown()
+
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
@@ -433,8 +435,6 @@ func TestDeleteDecisions(t *testing.T) {
 	deleted, _, err := client.Decisions.Delete(ctx, filters)
 	require.NoError(t, err)
 	assert.Equal(t, "1", deleted.NbDeleted)
-
-	defer teardown()
 }
 
 func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {

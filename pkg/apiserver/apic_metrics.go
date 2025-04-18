@@ -251,7 +251,7 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 // Metrics are sent at start, then at the randomized metricsIntervalFirst,
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
-func (a *apic) SendMetrics(ctx context.Context, stop chan (bool)) {
+func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 	defer trace.CatchPanic("lapi/metricsToAPIC")
 
 	// verify the list of machines every <checkInt> interval

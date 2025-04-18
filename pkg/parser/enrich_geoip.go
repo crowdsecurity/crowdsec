@@ -97,16 +97,17 @@ func GeoIpCity(field string, p *types.Event, plog *log.Entry) (map[string]string
 
 	ret := make(map[string]string)
 
-	if record.Country.IsoCode != "" {
+	switch {
+	case record.Country.IsoCode != "":
 		ret["IsoCode"] = record.Country.IsoCode
 		ret["IsInEU"] = strconv.FormatBool(record.Country.IsInEuropeanUnion)
-	} else if record.RegisteredCountry.IsoCode != "" {
+	case record.RegisteredCountry.IsoCode != "":
 		ret["IsoCode"] = record.RegisteredCountry.IsoCode
 		ret["IsInEU"] = strconv.FormatBool(record.RegisteredCountry.IsInEuropeanUnion)
-	} else if record.RepresentedCountry.IsoCode != "" {
+	case record.RepresentedCountry.IsoCode != "":
 		ret["IsoCode"] = record.RepresentedCountry.IsoCode
 		ret["IsInEU"] = strconv.FormatBool(record.RepresentedCountry.IsInEuropeanUnion)
-	} else {
+	default:
 		ret["IsoCode"] = ""
 		ret["IsInEU"] = "false"
 	}

@@ -47,7 +47,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		return false
 	}
 
-	for _, f := range strings.Split(target, ".") {
+	for f := range strings.SplitSeq(target, ".") {
 		/*
 		** According to current Event layout we only have to handle struct and map
 		 */
@@ -126,7 +126,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := exprhelpers.Run(static.RunTimeValue, map[string]interface{}{"evt": event}, clog, n.Debug)
+			output, err := exprhelpers.Run(static.RunTimeValue, map[string]any{"evt": event}, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -138,9 +138,9 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 				value = strconv.Itoa(out)
 			case float64, float32:
 				value = fmt.Sprintf("%f", out)
-			case map[string]interface{}:
+			case map[string]any:
 				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
-			case []interface{}:
+			case []any:
 				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case nil:
 				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
@@ -289,7 +289,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		event.Meta = make(map[string]string)
 	}
 	if event.Unmarshaled == nil {
-		event.Unmarshaled = make(map[string]interface{})
+		event.Unmarshaled = make(map[string]any)
 	}
 	if event.Type == types.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
@@ -342,7 +342,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				nodes[idx].Profiling = true
 			}
-			ret, err := nodes[idx].process(&event, ctx, map[string]interface{}{"evt": &event})
+			ret, err := nodes[idx].process(&event, ctx, map[string]any{"evt": &event})
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err

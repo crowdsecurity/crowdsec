@@ -92,17 +92,18 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	threshold := pw.PluginConfigByName[pluginName].GroupThreshold
 
 	//only size is set
-	if threshold > 0 && interval == 0 {
+	switch {
+	case threshold > 0 && interval == 0:
 		watchCount = threshold
 		watchTime = DefaultEmptyTicker
-	} else if interval != 0 && threshold == 0 {
+	case interval != 0 && threshold == 0:
 		//only time is set
 		watchTime = interval
-	} else if interval != 0 && threshold != 0 {
+	case interval != 0 && threshold != 0:
 		//both are set
 		watchTime = DefaultEmptyTicker
 		watchCount = threshold
-	} else {
+	default:
 		//none are set, we sent every event we receive
 		watchTime = DefaultEmptyTicker
 		watchCount = 1

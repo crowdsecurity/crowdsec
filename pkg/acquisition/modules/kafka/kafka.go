@@ -143,7 +143,7 @@ func (k *KafkaSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
-func (k *KafkaSource) Dump() interface{} {
+func (k *KafkaSource) Dump() any {
 	return k
 }
 

@@ -59,7 +59,7 @@ func overflowEventSources(evt types.Event, leaky *Leaky) (map[string]models.Sour
 				}
 
 				if leaky.scopeType.RunTimeFilter != nil {
-					retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+					retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
 					if err != nil {
 						return srcs, fmt.Errorf("while running scope filter: %w", err)
 					}
@@ -156,7 +156,7 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 			src.Value = &src.Range
 
 			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -176,7 +176,7 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 			return srcs, errors.New("empty scope information")
 		}
 
-		retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+		retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
 		if err != nil {
 			return srcs, fmt.Errorf("while running scope filter: %w", err)
 		}

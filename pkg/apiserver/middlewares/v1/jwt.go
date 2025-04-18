@@ -29,7 +29,7 @@ type JWT struct {
 	TlsAuth    *TLSAuth
 }
 
-func PayloadFunc(data interface{}) jwt.MapClaims {
+func PayloadFunc(data any) jwt.MapClaims {
 	if value, ok := data.(*models.WatcherAuthRequest); ok {
 		return jwt.MapClaims{
 			MachineIDKey: &value.MachineID,
@@ -39,7 +39,7 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 	return jwt.MapClaims{}
 }
 
-func IdentityHandler(c *gin.Context) interface{} {
+func IdentityHandler(c *gin.Context) any {
 	claims := jwt.ExtractClaims(c)
 	machineID := claims[MachineIDKey].(string)
 
@@ -172,7 +172,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	return &ret, nil
 }
 
-func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
+func (j *JWT) Authenticator(c *gin.Context) (any, error) {
 	var (
 		err  error
 		auth *authInput
@@ -248,7 +248,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}, nil
 }
 
-func Authorizator(data interface{}, c *gin.Context) bool {
+func Authorizator(data any, c *gin.Context) bool {
 	return true
 }
 
