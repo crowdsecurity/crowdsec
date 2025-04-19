@@ -426,29 +426,38 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 	return ret, nil
 }
 
+func parseAlertTimes(alert *models.Alert, logger log.FieldLogger) (time.Time, time.Time) {
+	now := time.Now().UTC()
+
+	start, err := time.Parse(time.RFC3339, *alert.StartAt)
+	if err != nil {
+		logger.Errorf("creating alert: Failed to parse startAtTime '%s', defaulting to now: %s", *alert.StartAt, err)
+
+		start = now
+	}
+
+	stop, err := time.Parse(time.RFC3339, *alert.StopAt)
+	if err != nil {
+		logger.Errorf("creating alert: Failed to parse stopAtTime '%s', defaulting to now: %s", *alert.StopAt, err)
+
+		stop = now
+	}
+
+	return start, stop
+}
+
 func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	alertBuilders := []*ent.AlertCreate{}
 	alertDecisions := [][]*ent.Decision{}
 
 	for _, alertItem := range alerts {
 		var (
+			err    error
 			metas  []*ent.Meta
 			events []*ent.Event
 		)
 
-		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
-		if err != nil {
-			c.Log.Errorf("creating alert: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
-
-			startAtTime = time.Now().UTC()
-		}
-
-		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
-		if err != nil {
-			c.Log.Errorf("creating alert: Failed to parse stopAtTime '%s', defaulting to now: %s", *alertItem.StopAt, err)
-
-			stopAtTime = time.Now().UTC()
-		}
+		startAtTime, stopAtTime := parseAlertTimes(alertItem, c.Log)
 
 		/*display proper alert in logs*/
 		for _, disp := range alertItem.FormatAsStrings(machineID, log.StandardLogger()) {
