@@ -520,15 +520,43 @@ func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.
 	return client.Event.CreateBulk(eventBulk...).Save(ctx)
 }
 
+func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.Client, alertItem *models.Alert) ([]*ent.Meta, error) {
+	if len(alertItem.Meta) == 0 {
+		return nil, nil
+	}
+
+	metaBulk := make([]*ent.MetaCreate, len(alertItem.Meta))
+
+	for i, metaItem := range alertItem.Meta {
+		key := metaItem.Key
+		value := metaItem.Value
+
+		if len(metaItem.Value) > 4095 {
+			logger.Warningf("truncated meta %s: value too long", metaItem.Key)
+
+			value = value[:4095]
+		}
+
+		if len(metaItem.Key) > 255 {
+			logger.Warningf("truncated meta %s: key too long", metaItem.Key)
+
+			key = key[:255]
+		}
+
+		metaBulk[i] = client.Meta.Create().
+			SetKey(key).
+			SetValue(value)
+	}
+
+	return client.Meta.CreateBulk(metaBulk...).Save(ctx)
+}
+
 func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	alertBuilders := []*ent.AlertCreate{}
 	alertDecisions := [][]*ent.Decision{}
 
 	for _, alertItem := range alerts {
-		var (
-			err    error
-			metas  []*ent.Meta
-		)
+		var err error
 
 		startAtTime, stopAtTime := parseAlertTimes(alertItem, c.Log)
 
@@ -542,35 +570,11 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			return nil, fmt.Errorf("building events for alert %s: %w", alertItem.UUID, err)
 		}
 
-		if len(alertItem.Meta) > 0 {
-			metaBulk := make([]*ent.MetaCreate, len(alertItem.Meta))
-
-			for i, metaItem := range alertItem.Meta {
-				key := metaItem.Key
-				value := metaItem.Value
-
-				if len(metaItem.Value) > 4095 {
-					c.Log.Warningf("truncated meta %s: value too long", metaItem.Key)
-
-					value = value[:4095]
-				}
-
-				if len(metaItem.Key) > 255 {
-					c.Log.Warningf("truncated meta %s: key too long", metaItem.Key)
-
-					key = key[:255]
-				}
-
-				metaBulk[i] = c.Ent.Meta.Create().
-					SetKey(key).
-					SetValue(value)
-			}
-
-			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(ctx)
-			if err != nil {
-				c.Log.Warningf("error creating alert meta: %s", err)
-			}
+		metas, err := buildMetaCreates(ctx, c.Log, c.Ent, alertItem)
+		if err != nil {
+			c.Log.Warningf("error creating alert meta: %s", err)
 		}
+
 
 		decisions := []*ent.Decision{}
 
