@@ -551,6 +551,27 @@ func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.C
 	return client.Meta.CreateBulk(metaBulk...).Save(ctx)
 }
 
+func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
+	decisions := []*ent.Decision{}
+
+	decisionChunks := slicetools.Chunks(alertItem.Decisions, client.decisionBulkSize)
+	for _, decisionChunk := range decisionChunks {
+		decisionRet, err := client.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
+		if err != nil {
+			return nil, 0, fmt.Errorf("creating alert decisions: %w", err)
+		}
+
+		decisions = append(decisions, decisionRet...)
+	}
+
+	discarded := len(alertItem.Decisions) - len(decisions)
+	if discarded > 0 {
+		logger.Warningf("discarded %d decisions for %s", discarded, alertItem.UUID)
+	}
+
+	return decisions, discarded, nil
+}
+
 func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	alertBuilders := []*ent.AlertCreate{}
 	alertDecisions := [][]*ent.Decision{}
@@ -575,29 +596,16 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			c.Log.Warningf("error creating alert meta: %s", err)
 		}
 
-
-		decisions := []*ent.Decision{}
-
-		decisionChunks := slicetools.Chunks(alertItem.Decisions, c.decisionBulkSize)
-		for _, decisionChunk := range decisionChunks {
-			decisionRet, err := c.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
-			if err != nil {
-				return nil, fmt.Errorf("creating alert decisions: %w", err)
-			}
-
-			decisions = append(decisions, decisionRet...)
-		}
-
-		discarded := len(alertItem.Decisions) - len(decisions)
-		if discarded > 0 {
-			c.Log.Warningf("discarded %d decisions for %s", discarded, alertItem.UUID)
+		decisions, discardCount, err := buildDecisions(ctx, c.Log, c, alertItem, stopAtTime)
+		if err != nil {
+			return nil, fmt.Errorf("building decisions for alert %s: %w", alertItem.UUID, err)
 		}
 
 		// if all decisions were discarded, discard the alert too
-		if discarded > 0 && len(decisions) == 0 {
-			c.Log.Warningf("dropping alert %s with invalid decisions", alertItem.UUID)
+		if discardCount > 0 && len(decisions) == 0 {
+			c.Log.Warningf("dropping alert %s: all decisions invalid", alertItem.UUID)
 			continue
-		}
+	        }
 
 		alertBuilder := c.Ent.Alert.
 			Create().
