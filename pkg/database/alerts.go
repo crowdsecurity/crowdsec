@@ -572,6 +572,32 @@ func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client,
 	return decisions, discarded, nil
 }
 
+func retryOnBusy(fn func() error) error {
+	for retry := range maxLockRetries {
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrBusy {
+			// sqlite3.Error{
+			//   Code:         5,
+			//   ExtendedCode: 5,
+			//   SystemErrno:  0,
+			//   err:          "database is locked",
+			// }
+			log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
+			time.Sleep(1 * time.Second)
+
+			continue
+		}
+
+		return err
+	}
+
+	return fmt.Errorf("exceeded %d busy retries", maxLockRetries)
+}
+
 func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate, alertDecisions [][]*ent.Decision) ([]string, error) {
 	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(ctx)
 	if err != nil {
@@ -586,33 +612,11 @@ func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate
 		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
 
 		for _, d2 := range decisionsChunk {
-			retry := 0
-
-			for retry < maxLockRetries {
-				// so much for the happy path... but sqlite3 errors work differently
+			if err := retryOnBusy(func() error {
 				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
-				if err == nil {
-					break
-				}
-
-				var sqliteErr sqlite3.Error
-				if errors.As(err, &sqliteErr) {
-					if sqliteErr.Code == sqlite3.ErrBusy {
-						// sqlite3.Error{
-						//   Code:         5,
-						//   ExtendedCode: 5,
-						//   SystemErrno:  0,
-						//   err:          "database is locked",
-						// }
-						retry++
-						log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
-						time.Sleep(1 * time.Second)
-
-						continue
-					}
-				}
-
-				return nil, fmt.Errorf("error while updating decisions: %w", err)
+				return err
+			}); err != nil {
+				return nil, fmt.Errorf("attach decisions to alert %d: %w", a.ID, err)
 			}
 		}
 	}
