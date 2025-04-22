@@ -180,7 +180,7 @@ func prepTests(t require.TestingT) (*UnixParserCtx, EnricherCtx) {
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
-	pctx, err = Init(filepath.Join(cfgdir, "patterns"), "./tests/")
+	pctx, err = NewUnixParserCtx(filepath.Join(cfgdir, "patterns"), "./tests/")
 	require.NoError(t, err, "parser init failed")
 
 	return pctx, ectx
@@ -404,7 +404,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 		return
 	}
 
-	pctx, err := Init("../../config/patterns/", "./tests/")
+	pctx, err := NewUnixParserCtx("../../config/patterns/", "./tests/")
 	require.NoError(t, err, "unable to load patterns")
 
 	log.Infof("-> %s", spew.Sdump(pctx))
