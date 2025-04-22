@@ -572,6 +572,54 @@ func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client,
 	return decisions, discarded, nil
 }
 
+func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate, alertDecisions [][]*ent.Decision) ([]string, error) {
+	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
+	}
+
+	ret := make([]string, len(alertsCreateBulk))
+	for i, a := range alertsCreateBulk {
+		ret[i] = strconv.Itoa(a.ID)
+
+		d := alertDecisions[i]
+		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
+
+		for _, d2 := range decisionsChunk {
+			retry := 0
+
+			for retry < maxLockRetries {
+				// so much for the happy path... but sqlite3 errors work differently
+				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
+				if err == nil {
+					break
+				}
+
+				var sqliteErr sqlite3.Error
+				if errors.As(err, &sqliteErr) {
+					if sqliteErr.Code == sqlite3.ErrBusy {
+						// sqlite3.Error{
+						//   Code:         5,
+						//   ExtendedCode: 5,
+						//   SystemErrno:  0,
+						//   err:          "database is locked",
+						// }
+						retry++
+						log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
+						time.Sleep(1 * time.Second)
+
+						continue
+					}
+				}
+
+				return nil, fmt.Errorf("error while updating decisions: %w", err)
+			}
+		}
+	}
+
+	return ret, nil
+}
+
 func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	alertBuilders := []*ent.AlertCreate{}
 	alertDecisions := [][]*ent.Decision{}
@@ -646,51 +694,12 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 		return nil, nil
 	}
 
-	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(ctx)
+	// Save alerts, then attach decisions with retry logic
+	ids, err := saveAlerts(ctx, c, alertBuilders, alertDecisions)
 	if err != nil {
-		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
+		return nil, err
 	}
-
-	ret := make([]string, len(alertsCreateBulk))
-	for i, a := range alertsCreateBulk {
-		ret[i] = strconv.Itoa(a.ID)
-
-		d := alertDecisions[i]
-		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
-
-		for _, d2 := range decisionsChunk {
-			retry := 0
-
-			for retry < maxLockRetries {
-				// so much for the happy path... but sqlite3 errors work differently
-				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
-				if err == nil {
-					break
-				}
-
-				var sqliteErr sqlite3.Error
-				if errors.As(err, &sqliteErr) {
-					if sqliteErr.Code == sqlite3.ErrBusy {
-						// sqlite3.Error{
-						//   Code:         5,
-						//   ExtendedCode: 5,
-						//   SystemErrno:  0,
-						//   err:          "database is locked",
-						// }
-						retry++
-						log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
-						time.Sleep(1 * time.Second)
-
-						continue
-					}
-				}
-
-				return nil, fmt.Errorf("error while updating decisions: %w", err)
-			}
-		}
-	}
-
-	return ret, nil
+	return ids, nil
 }
 
 func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []*models.Alert) ([]string, error) {
