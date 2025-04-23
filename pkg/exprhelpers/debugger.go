@@ -117,7 +117,7 @@ func (o *OpOutput) String() string {
 	return ret + ""
 }
 
-func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
+func (ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
 	locations := program.Locations()
 	src := string(program.Source())
 
@@ -197,13 +197,13 @@ func opEnd(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Progra
 	return &out
 }
 
-func opNot(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opNot(_ OpOutput, prevOut *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
 	// negate the previous condition
 	prevOut.Negated = true
 	return nil
 }
 
-func opTrue(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opTrue(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
 	// generated when possible ? (1 == 1)
 	out.Condition = true
 	out.ConditionResult = new(bool)
@@ -212,7 +212,7 @@ func opTrue(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm
 	return &out
 }
 
-func opFalse(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opFalse(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
 	// generated when possible ? (1 != 1)
 	out.Condition = true
 	out.ConditionResult = new(bool)
@@ -221,7 +221,7 @@ func opFalse(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *v
 	return &out
 }
 
-func opJumpIfTrue(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opJumpIfTrue(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	stack := vm.Stack
 	out.JumpIf = true
 	out.IfTrue = true
@@ -235,7 +235,7 @@ func opJumpIfTrue(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM,
 	return &out
 }
 
-func opJumpIfFalse(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opJumpIfFalse(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	stack := vm.Stack
 	out.JumpIf = true
 	out.IfFalse = true
@@ -249,7 +249,7 @@ func opJumpIfFalse(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM
 	return &out
 }
 
-func opCall1(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opCall1(out OpOutput, _ *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	out.Func = true
 	out.FuncName = parts[3]
 	stack := vm.Stack
@@ -263,7 +263,7 @@ func opCall1(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, 
 	return &out
 }
 
-func opCall2(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opCall2(out OpOutput, _ *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	out.Func = true
 	out.FuncName = parts[3]
 	stack := vm.Stack
@@ -277,7 +277,7 @@ func opCall2(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, 
 	return &out
 }
 
-func opCall3(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opCall3(out OpOutput, _ *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	out.Func = true
 	out.FuncName = parts[3]
 	stack := vm.Stack
@@ -291,17 +291,17 @@ func opCall3(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, 
 	return &out
 }
 
-func opCallFast(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opCallFast(_ OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
 	// double check OpCallFast and OpCallTyped
 	return nil
 }
 
-func opCallTyped(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+func opCallTyped(_ OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
 	// double check OpCallFast and OpCallTyped
 	return nil
 }
 
-func opCallN(out OpOutput, prevOut *OpOutput, ip int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+func opCallN(out OpOutput, _ *OpOutput, ip int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
 	// Op for function calls with more than 3 args
 	out.Func = true
 	out.FuncName = parts[1]
@@ -326,7 +326,7 @@ func opCallN(out OpOutput, prevOut *OpOutput, ip int, parts []string, vm *vm.VM,
 	return &out
 }
 
-func opEqual(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+func opEqual(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	stack := vm.Stack
 	out.Comparison = true
 	out.Left = autoQuote(stack[0])
@@ -334,7 +334,7 @@ func opEqual(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, 
 	return &out
 }
 
-func opIn(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+func opIn(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	// in operator
 	stack := vm.Stack
 	out.Condition = true
@@ -347,7 +347,7 @@ func opIn(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, pro
 	return &out
 }
 
-func opContains(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+func opContains(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	// kind OpIn , but reverse
 	stack := vm.Stack
 	out.Condition = true
