@@ -157,6 +157,210 @@ func autoQuote(v any) string {
 	}
 }
 
+
+type opHandler func(out OpOutput, prevOut *OpOutput, ip int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput
+
+var opHandlers = map[string]opHandler{
+  "OpBegin":         opBegin,
+  "OpEnd":           opEnd,
+  "OpNot":           opNot,
+  "OpTrue":          opTrue,
+  "OpFalse":         opFalse,
+  "OpJumpIfTrue":    opJumpIfTrue,
+  "OpJumpIfFalse":   opJumpIfFalse,
+  "OpCall1":         opCall1,
+  "OpCall2":         opCall2,
+  "OpCall3":         opCall3,
+  "OpCallFast":      opCallFast,
+  "OpCallTyped":     opCallTyped,
+  "OpCallN":         opCallN,
+  "OpEqualString":   opEqual,
+  "OpEqual":         opEqual,
+  "OpEqualInt":      opEqual,
+  "OpIn":            opIn,
+  "OpContains":      opContains,
+}
+
+func opBegin(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
+	out.CodeDepth += IndentStep
+	out.BlockStart = true
+	return &out
+}
+
+func opEnd(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	out.CodeDepth -= IndentStep
+	out.BlockEnd = true
+	// OpEnd can carry value, if it's any/all/count etc.
+	if len(vm.Stack) > 0 {
+		out.StrConditionResult = fmt.Sprintf("%v", vm.Stack)
+	}
+	return &out
+}
+
+func opNot(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	// negate the previous condition
+	prevOut.Negated = true
+	return nil
+}
+
+func opTrue(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	// generated when possible ? (1 == 1)
+	out.Condition = true
+	out.ConditionResult = new(bool)
+	*out.ConditionResult = true
+	out.StrConditionResult = "true"
+	return &out
+}
+
+func opFalse(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	// generated when possible ? (1 != 1)
+	out.Condition = true
+	out.ConditionResult = new(bool)
+	*out.ConditionResult = false
+	out.StrConditionResult = "false"
+	return &out
+}
+
+func opJumpIfTrue(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	stack := vm.Stack
+	out.JumpIf = true
+	out.IfTrue = true
+	out.StrConditionResult = fmt.Sprintf("%v", stack[0])
+
+	if val, ok := stack[0].(bool); ok {
+		out.ConditionResult = new(bool)
+		*out.ConditionResult = val
+	}
+
+	return &out
+}
+
+func opJumpIfFalse(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	stack := vm.Stack
+	out.JumpIf = true
+	out.IfFalse = true
+	out.StrConditionResult = fmt.Sprintf("%v", stack[0])
+
+	if val, ok := stack[0].(bool); ok {
+		out.ConditionResult = new(bool)
+		*out.ConditionResult = val
+	}
+
+	return &out
+}
+
+func opCall1(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	out.Func = true
+	out.FuncName = parts[3]
+	stack := vm.Stack
+
+	num_items := 1
+	for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+		out.Args = append(out.Args, autoQuote(stack[i]))
+		num_items--
+	}
+
+	return &out
+}
+
+func opCall2(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	out.Func = true
+	out.FuncName = parts[3]
+	stack := vm.Stack
+
+	num_items := 2
+	for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+		out.Args = append(out.Args, autoQuote(stack[i]))
+		num_items--
+	}
+
+	return &out
+}
+
+func opCall3(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	out.Func = true
+	out.FuncName = parts[3]
+	stack := vm.Stack
+
+	num_items := 3
+	for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+		out.Args = append(out.Args, autoQuote(stack[i]))
+		num_items--
+	}
+
+	return &out
+}
+
+func opCallFast(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	// double check OpCallFast and OpCallTyped
+	return nil
+}
+
+func opCallTyped(out OpOutput, prevOut *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
+	// double check OpCallFast and OpCallTyped
+	return nil
+}
+
+func opCallN(out OpOutput, prevOut *OpOutput, ip int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+	// Op for function calls with more than 3 args
+	out.Func = true
+	out.FuncName = parts[1]
+	stack := vm.Stack
+
+	// for OpCallN, we get the number of args
+	if len(program.Arguments) >= ip {
+		nb_args := program.Arguments[ip]
+		if nb_args > 0 {
+			// we need to skip the top item on stack
+			for i := len(stack) - 2; i >= 0 && nb_args > 0; i-- {
+				out.Args = append(out.Args, autoQuote(stack[i]))
+				nb_args--
+			}
+		}
+	} else { // let's blindly take the items on stack
+		for _, val := range vm.Stack {
+			out.Args = append(out.Args, autoQuote(val))
+		}
+	}
+
+	return &out
+}
+
+func opEqual(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+	stack := vm.Stack
+	out.Comparison = true
+	out.Left = autoQuote(stack[0])
+	out.Right = autoQuote(stack[1])
+	return &out
+}
+
+func opIn(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+	// in operator
+	stack := vm.Stack
+	out.Condition = true
+	out.ConditionIn = true
+	//seems that we tend to receive stack[1] as a map.
+	//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
+	//(because of the random order of the map)
+	out.Args = append(out.Args, autoQuote(stack[0]))
+	out.Args = append(out.Args, autoQuote(stack[1]))
+	return &out
+}
+
+func opContains(out OpOutput, prevOut *OpOutput, _ int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput {
+	// kind OpIn , but reverse
+	stack := vm.Stack
+	out.Condition = true
+	out.ConditionContains = true
+	//seems that we tend to receive stack[1] as a map.
+	//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
+	//(because of the random order of the map)
+	out.Args = append(out.Args, autoQuote(stack[0]))
+	out.Args = append(out.Args, autoQuote(stack[1]))
+	return &out
+}
+
+
 func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
 	IdxOut := len(outputs)
 	prevIdxOut := 0
@@ -192,150 +396,17 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 
 	erp.Logger.Tracef("[STEP %d:%s] (stack:%+v) (parts:%+v) {depth:%d}", ip, parts[1], vm.Stack, parts, currentDepth)
 
-	out := OpOutput{}
-	out.CodeDepth = currentDepth
-	out.Code = erp.extractCode(ip, program)
-
-	switch parts[1] {
-	case "OpBegin":
-		out.CodeDepth += IndentStep
-		out.BlockStart = true
-		outputs = append(outputs, out)
-	case "OpEnd":
-		out.CodeDepth -= IndentStep
-		out.BlockEnd = true
-		// OpEnd can carry value, if it's any/all/count etc.
-		if len(vm.Stack) > 0 {
-			out.StrConditionResult = fmt.Sprintf("%v", vm.Stack)
+	if handler, ok := opHandlers[parts[1]]; ok {
+		out := handler(
+			OpOutput{
+				CodeDepth: currentDepth,
+				Code: erp.extractCode(ip, program),
+			},
+			&outputs[prevIdxOut],
+			ip, parts, vm, program)
+		if out != nil {
+			outputs = append(outputs, *out)
 		}
-
-		outputs = append(outputs, out)
-	case "OpNot":
-		// negate the previous condition
-		outputs[prevIdxOut].Negated = true
-	case "OpTrue": // generated when possible ? (1 == 1)
-		out.Condition = true
-		out.ConditionResult = new(bool)
-		*out.ConditionResult = true
-		out.StrConditionResult = "true"
-		outputs = append(outputs, out)
-	case "OpFalse": // generated when possible ? (1 != 1)
-		out.Condition = true
-		out.ConditionResult = new(bool)
-		*out.ConditionResult = false
-		out.StrConditionResult = "false"
-		outputs = append(outputs, out)
-	case "OpJumpIfTrue": // OR
-		stack := vm.Stack
-		out.JumpIf = true
-		out.IfTrue = true
-		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
-
-		if val, ok := stack[0].(bool); ok {
-			out.ConditionResult = new(bool)
-			*out.ConditionResult = val
-		}
-
-		outputs = append(outputs, out)
-	case "OpJumpIfFalse": // AND
-		stack := vm.Stack
-		out.JumpIf = true
-		out.IfFalse = true
-		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
-
-		if val, ok := stack[0].(bool); ok {
-			out.ConditionResult = new(bool)
-			*out.ConditionResult = val
-		}
-
-		outputs = append(outputs, out)
-	case "OpCall1": // Op for function calls
-		out.Func = true
-		out.FuncName = parts[3]
-		stack := vm.Stack
-
-		num_items := 1
-		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
-			out.Args = append(out.Args, autoQuote(stack[i]))
-			num_items--
-		}
-
-		outputs = append(outputs, out)
-	case "OpCall2": // Op for function calls
-		out.Func = true
-		out.FuncName = parts[3]
-		stack := vm.Stack
-
-		num_items := 2
-		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
-			out.Args = append(out.Args, autoQuote(stack[i]))
-			num_items--
-		}
-
-		outputs = append(outputs, out)
-	case "OpCall3": // Op for function calls
-		out.Func = true
-		out.FuncName = parts[3]
-		stack := vm.Stack
-
-		num_items := 3
-		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
-			out.Args = append(out.Args, autoQuote(stack[i]))
-			num_items--
-		}
-
-		outputs = append(outputs, out)
-	// double check OpCallFast and OpCallTyped
-	case "OpCallFast", "OpCallTyped":
-		//
-	case "OpCallN": // Op for function calls with more than 3 args
-		out.Func = true
-		out.FuncName = parts[1]
-		stack := vm.Stack
-
-		// for OpCallN, we get the number of args
-		if len(program.Arguments) >= ip {
-			nb_args := program.Arguments[ip]
-			if nb_args > 0 {
-				// we need to skip the top item on stack
-				for i := len(stack) - 2; i >= 0 && nb_args > 0; i-- {
-					out.Args = append(out.Args, autoQuote(stack[i]))
-					nb_args--
-				}
-			}
-		} else { // let's blindly take the items on stack
-			for _, val := range vm.Stack {
-				out.Args = append(out.Args, autoQuote(val))
-			}
-		}
-
-		outputs = append(outputs, out)
-	case "OpEqualString", "OpEqual", "OpEqualInt": // comparisons
-		stack := vm.Stack
-		out.Comparison = true
-		out.Left = autoQuote(stack[0])
-		out.Right = autoQuote(stack[1])
-		outputs = append(outputs, out)
-	case "OpIn": // in operator
-		stack := vm.Stack
-		out.Condition = true
-		out.ConditionIn = true
-		//seems that we tend to receive stack[1] as a map.
-		//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
-		//(because of the random order of the map)
-		out.Args = append(out.Args, autoQuote(stack[0]))
-		out.Args = append(out.Args, autoQuote(stack[1]))
-		outputs = append(outputs, out)
-	case "OpContains": // kind OpIn , but reverse
-		stack := vm.Stack
-		out.Condition = true
-		out.ConditionContains = true
-		//seems that we tend to receive stack[1] as a map.
-		//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
-		//(because of the random order of the map)
-		out.Args = append(out.Args, autoQuote(stack[0]))
-		out.Args = append(out.Args, autoQuote(stack[1]))
-		outputs = append(outputs, out)
 	}
 
 	return outputs, nil
