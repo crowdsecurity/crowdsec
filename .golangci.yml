@@ -267,7 +267,6 @@ linters:
         - fmtappendf
         - forvar
         - omitzero
-        - slicessort
         - stringsbuilder
         - stringsseq
         - waitgroup
