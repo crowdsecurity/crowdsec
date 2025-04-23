@@ -104,3 +104,63 @@ func TestCheckAllowlist(t *testing.T) {
 	require.True(t, allowlisted)
 	require.Equal(t, "8a95:c186:9f96:4c75:0dad:49c6:ff62:94b8 from test", reason)
 }
+
+func TestIsAllowListedBy_SingleAndMultiple(t *testing.T) {
+	ctx := context.Background()
+	dbClient := getDBClient(t, ctx)
+
+	list1, err := dbClient.CreateAllowList(ctx, "list1", "first list", "", false)
+	require.NoError(t, err)
+	list2, err := dbClient.CreateAllowList(ctx, "list2", "second list", "", false)
+	require.NoError(t, err)
+
+	// Add overlapping and distinct entries
+	_, err = dbClient.AddToAllowlist(ctx, list1, []*models.AllowlistItem{
+		{Value: "1.1.1.1"},
+		{Value: "10.0.0.0/8"},
+	})
+	require.NoError(t, err)
+	_, err = dbClient.AddToAllowlist(ctx, list2, []*models.AllowlistItem{
+		{Value: "1.1.1.1"},                   // overlaps with list1
+		{Value: "192.168.0.0/16"},            // only in list2
+		{Value: "2.2.2.2", Expiration: strfmt.DateTime(time.Now().Add(-time.Hour))}, // expired
+	})
+	require.NoError(t, err)
+
+	// Exact IP that lives in both
+	names, err := dbClient.IsAllowlistedBy(ctx, "1.1.1.1")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"list1", "list2"}, names)
+
+	// IP matching only list1's CIDR
+	names, err = dbClient.IsAllowlistedBy(ctx, "10.5.6.7")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"list1"}, names)
+
+	// IP matching only list2's CIDR
+	names, err = dbClient.IsAllowlistedBy(ctx, "192.168.1.42")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"list2"}, names)
+
+	// Expired entry in list2 should not appear
+	names, err = dbClient.IsAllowlistedBy(ctx, "2.2.2.2")
+	require.NoError(t, err)
+	assert.Empty(t, names)
+}
+
+func TestIsAllowListedBy_NoMatch(t *testing.T) {
+	ctx := context.Background()
+	dbClient := getDBClient(t, ctx)
+
+	list, err := dbClient.CreateAllowList(ctx, "solo", "single", "", false)
+	require.NoError(t, err)
+	_, err = dbClient.AddToAllowlist(ctx, list, []*models.AllowlistItem{
+		{Value: "5.5.5.5"},
+	})
+	require.NoError(t, err)
+
+	// completely unrelated IP
+	names, err := dbClient.IsAllowlistedBy(ctx, "8.8.4.4")
+	require.NoError(t, err)
+	assert.Empty(t, names)
+}

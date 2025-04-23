@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -146,4 +147,57 @@ func TestCheckInAllowlist(t *testing.T) {
 	w = lapi.RecordResponse(t, ctx, http.MethodHead, "/v1/allowlists/check/2.3.4.5%2F24", emptyBody, passwordAuthType)
 
 	require.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestBulkCheckAllowlist(t *testing.T) {
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+
+	// create an allowlist and add one live entry
+	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
+	require.NoError(t, err)
+
+	added, err := lapi.DBClient.AddToAllowlist(ctx, l, []*models.AllowlistItem{
+		{Value: "1.2.3.4"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, added)
+
+	// craft a bulk check payload with one matching and one non-matching target
+	reqBody := `{"targets":["1.2.3.4","2.3.4.5"]}`
+	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/allowlists/check", strings.NewReader(reqBody), passwordAuthType)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// unmarshal and verify
+	resp := models.BulkCheckAllowlistResponse{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Results, 2)
+
+	// expect "1.2.3.4" in the "test" allowlist, and "2.3.4.5" in none
+	var match bool
+	for _, r := range resp.Results {
+		switch *r.Target {
+		case "1.2.3.4":
+			match = true
+			assert.Equal(t, []string{"test"}, r.Allowlists)
+		case "2.3.4.5":
+			assert.Empty(t, r.Allowlists)
+		default:
+			t.Errorf("unexpected target %v", r.Target)
+		}
+	}
+	require.True(t, match, "did not see result for 1.2.3.4")
+}
+
+func TestBulkCheckAllowlist_BadRequest(t *testing.T) {
+	ctx := context.Background()
+	lapi := SetupLAPITest(t, ctx)
+
+	// missing or empty body should yield 400
+	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/allowlists/check", emptyBody, passwordAuthType)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+
+	// malformed JSON should also yield 400
+	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/allowlists/check", strings.NewReader("{invalid-json"), passwordAuthType)
+	require.Equal(t, http.StatusBadRequest, w.Code)
 }

@@ -10,6 +10,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
+func (c *Controller) CheckInAllowlistBulk(gctx *gin.Context) {
+	resp := models.BulkCheckAllowlistResponse{
+	}
+
+	gctx.JSON(http.StatusOK, resp)
+}
+
 func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
 	value := gctx.Param("ip_or_range")
 
