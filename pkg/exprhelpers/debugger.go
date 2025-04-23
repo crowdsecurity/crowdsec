@@ -396,13 +396,18 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 
 	erp.Logger.Tracef("[STEP %d:%s] (stack:%+v) (parts:%+v) {depth:%d}", ip, parts[1], vm.Stack, parts, currentDepth)
 
+	var prevOut *OpOutput
+
 	if handler, ok := opHandlers[parts[1]]; ok {
+		if len(outputs) > 0 {
+			prevOut = &outputs[prevIdxOut]
+		}
 		out := handler(
 			OpOutput{
 				CodeDepth: currentDepth,
 				Code: erp.extractCode(ip, program),
 			},
-			&outputs[prevIdxOut],
+			prevOut,
 			ip, parts, vm, program)
 		if out != nil {
 			outputs = append(outputs, *out)
