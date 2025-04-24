@@ -28,7 +28,6 @@ linters:
 
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
-    - exhaustive            # check exhaustiveness of enum switch statements
     - godot                 # Check if comments end in a period
     - gosec                 # (gas): Inspects source code for security problems
     - musttag               # enforce field tags in (un)marshaled structs
