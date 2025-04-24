@@ -25,7 +25,7 @@ type UnixParserCtx struct {
 
 type Parsers struct {
 	Ctx             *UnixParserCtx
-	Povfwctx        *UnixParserCtx
+	PovfwCtx        *UnixParserCtx
 	StageFiles      []Stagefile
 	PovfwStageFiles []Stagefile
 	Nodes           []Node
@@ -33,24 +33,24 @@ type Parsers struct {
 	EnricherCtx     EnricherCtx
 }
 
-func Init(c map[string]any) (*UnixParserCtx, error) {
+func NewUnixParserCtx(patternDir string, dataDir string) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
 	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
 
-	files, err := os.ReadDir(c["patterns"].(string))
+	files, err := os.ReadDir(patternDir)
 	if err != nil {
 		return nil, err
 	}
 
-	r.DataFolder = c["data"].(string)
+	r.DataFolder = dataDir
 
 	for _, file := range files {
 		if strings.Contains(file.Name(), ".") || file.IsDir() {
 			continue
 		}
 
-		if err := r.Grok.AddFromFile(filepath.Join(c["patterns"].(string), file.Name())); err != nil {
+		if err := r.Grok.AddFromFile(filepath.Join(patternDir, file.Name())); err != nil {
 			log.Errorf("failed to load pattern %s: %v", file.Name(), err)
 			return nil, err
 		}
@@ -66,7 +66,7 @@ func Init(c map[string]any) (*UnixParserCtx, error) {
 func NewParsers(hub *cwhub.Hub) *Parsers {
 	parsers := &Parsers{
 		Ctx:             &UnixParserCtx{},
-		Povfwctx:        &UnixParserCtx{},
+		PovfwCtx:        &UnixParserCtx{},
 		StageFiles:      make([]Stagefile, 0),
 		PovfwStageFiles: make([]Stagefile, 0),
 	}
@@ -88,17 +88,13 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 		}
 	}
 
-	if parsers.StageFiles != nil {
-		sort.Slice(parsers.StageFiles, func(i, j int) bool {
-			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
-		})
-	}
+	sort.Slice(parsers.StageFiles, func(i, j int) bool {
+		return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
+	})
 
-	if parsers.PovfwStageFiles != nil {
-		sort.Slice(parsers.PovfwStageFiles, func(i, j int) bool {
-			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
-		})
-	}
+	sort.Slice(parsers.PovfwStageFiles, func(i, j int) bool {
+		return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
+	})
 
 	return parsers
 }
@@ -106,22 +102,16 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	patternsDir := cConfig.ConfigPaths.PatternDir
-	log.Infof("Loading grok library %s", patternsDir)
+	patternDir := cConfig.ConfigPaths.PatternDir
+	log.Infof("Loading grok library %s", patternDir)
 
 	/* load base regexps for two grok parsers */
-	parsers.Ctx, err = Init(map[string]any{
-		"patterns": patternsDir,
-		"data":     cConfig.ConfigPaths.DataDir,
-	})
+	parsers.Ctx, err = NewUnixParserCtx(patternDir, cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns: %w", err)
 	}
 
-	parsers.Povfwctx, err = Init(map[string]any{
-		"patterns": patternsDir,
-		"data":     cConfig.ConfigPaths.DataDir,
-	})
+	parsers.PovfwCtx, err = NewUnixParserCtx(patternDir, cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns: %w", err)
 	}
@@ -150,7 +140,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	if len(parsers.PovfwStageFiles) > 0 {
 		log.Info("Loading postoverflow parsers")
 
-		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
+		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.PovfwCtx, parsers.EnricherCtx)
 		if err != nil {
 			return parsers, fmt.Errorf("failed to load postoverflow config: %w", err)
 		}
@@ -162,13 +152,13 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		parsers.Ctx.Profiling = true
-		parsers.Povfwctx.Profiling = true
+		parsers.PovfwCtx.Profiling = true
 	}
 	/*
 		Reset CTX grok to reduce memory footprint after we compile all the patterns
 	*/
 	parsers.Ctx.Grok = grokky.Host{}
-	parsers.Povfwctx.Grok = grokky.Host{}
+	parsers.PovfwCtx.Grok = grokky.Host{}
 	parsers.StageFiles = []Stagefile{}
 	parsers.PovfwStageFiles = []Stagefile{}
 
