@@ -130,17 +130,17 @@ func TestIsAllowListedBy_SingleAndMultiple(t *testing.T) {
 	// Exact IP that lives in both
 	names, err := dbClient.IsAllowlistedBy(ctx, "1.1.1.1")
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"list1", "list2"}, names)
+	assert.ElementsMatch(t, []string{"1.1.1.1 from list1", "1.1.1.1 from list2"}, names)
 
 	// IP matching only list1's CIDR
 	names, err = dbClient.IsAllowlistedBy(ctx, "10.5.6.7")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"list1"}, names)
+	assert.Equal(t, []string{"10.0.0.0/8 from list1"}, names)
 
 	// IP matching only list2's CIDR
 	names, err = dbClient.IsAllowlistedBy(ctx, "192.168.1.42")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"list2"}, names)
+	assert.Equal(t, []string{"192.168.0.0/16 from list2"}, names)
 
 	// Expired entry in list2 should not appear
 	names, err = dbClient.IsAllowlistedBy(ctx, "2.2.2.2")

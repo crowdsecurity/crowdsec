@@ -319,29 +319,32 @@ func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, e
 		return nil, fmt.Errorf("unable to check if value is allowlisted: %w", err)
 	}
 
-	names := make([]string, 0)
+	reasons := make([]string, 0)
 	for _, item := range items {
 		if len(item.Edges.Allowlist) == 0 {
 			continue
 		}
-		name := item.Edges.Allowlist[0].Name
-		names = append(names, name)
+		reason := item.Value + " from " + item.Edges.Allowlist[0].Name
+		if item.Comment != "" {
+			reason += " (" + item.Comment + ")"
+		}
+		reasons = append(reasons, reason)
 	}
 
-	return names, nil
+	return reasons, nil
 }
 
 func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string, error) {
-	lists, err := c.IsAllowlistedBy(ctx, value)
+	reasons, err := c.IsAllowlistedBy(ctx, value)
 	if err != nil {
 		return false, "", err
 	}
 
-	if len(lists) == 0 {
+	if len(reasons) == 0 {
 		return false, "", nil
 	}
 
-	reason := fmt.Sprintf("%s from %s", value, strings.Join(lists, ", "))
+	reason := strings.Join(reasons, ", ")
 
 	return true, reason, nil
 }
