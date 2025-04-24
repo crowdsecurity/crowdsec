@@ -156,7 +156,7 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 			SetComment(item.Description)
 
 		if !time.Time(item.Expiration).IsZero() {
-			query = query.SetExpiresAt(time.Time(item.Expiration))
+			query = query.SetExpiresAt(time.Time(item.Expiration).UTC())
 		}
 
 		content, err := query.Save(ctx)
