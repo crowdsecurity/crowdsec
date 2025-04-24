@@ -155,16 +155,16 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 }
 
 // queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
-func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
+func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, string, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return false, false, err
+		return false, false, "", err
 	}
 
 	itemsForAPI := hub.GetInstalledListForAPI()
 
 	if len(itemsForAPI) == 0 {
-		return false, false, errors.New("no scenarios or appsec-rules installed, abort")
+		return false, false, "", errors.New("no scenarios or appsec-rules installed, abort")
 	}
 
 	passwd := strfmt.Password(password)
@@ -182,7 +182,7 @@ func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 		},
 	})
 	if err != nil {
-		return false, false, err
+		return false, false, "", err
 	}
 
 	pw := strfmt.Password(password)
@@ -195,16 +195,16 @@ func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 
 	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, t)
 	if err != nil {
-		return false, false, err
+		return false, false, "", err
 	}
 
 	client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
 	if client.IsEnrolled() {
-		return true, true, nil
+		return true, true, client.GetSubscriptionType(), nil
 	}
 
-	return true, false, nil
+	return true, false, "", nil
 }
 
 func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) error {
@@ -219,7 +219,7 @@ func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
-	auth, enrolled, err := queryCAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
+	auth, enrolled, subType, err := queryCAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
@@ -230,6 +230,7 @@ func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 
 	if enrolled {
 		fmt.Fprint(out, "Your instance is enrolled in the console\n")
+		fmt.Fprintf(out, "Subscription type: %s\n", subType)
 	}
 
 	switch *cfg.API.Server.OnlineClient.Sharing {

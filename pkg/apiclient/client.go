@@ -67,6 +67,24 @@ func (c *ApiClient) IsEnrolled() bool {
 	return ok
 }
 
+func (c *ApiClient) GetSubscriptionType() string {
+	jwtTransport := c.client.Transport.(*JWTTransport)
+	tokenStr := jwtTransport.Token
+
+	token, _ := jwt.Parse(tokenStr, nil)
+	if token == nil {
+		return ""
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	subscriptionType, ok := claims["subscription_type"].(string)
+	if !ok {
+		return ""
+	}
+
+	return subscriptionType
+}
+
 type service struct {
 	client *ApiClient
 }
