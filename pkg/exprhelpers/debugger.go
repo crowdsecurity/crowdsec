@@ -117,7 +117,7 @@ func (o *OpOutput) String() string {
 	return ret + ""
 }
 
-func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
+func (ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
 	locations := program.Locations()
 	src := string(program.Source())
 
@@ -356,7 +356,7 @@ func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
 	return nil
 }
 
-func Run(program *vm.Program, env interface{}, logger *log.Entry, debug bool) (any, error) {
+func Run(program *vm.Program, env any, logger *log.Entry, debug bool) (any, error) {
 	if debug {
 		dbgInfo, ret, err := RunWithDebug(program, env, logger)
 		DisplayExprDebug(program, dbgInfo, logger, ret)
@@ -383,7 +383,7 @@ func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry
 }
 
 // TBD: Based on the level of the logger (ie. trace vs debug) we could decide to add more low level instructions (pop, push, etc.)
-func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]OpOutput, any, error) {
+func RunWithDebug(program *vm.Program, env any, logger *log.Entry) ([]OpOutput, any, error) {
 	outputs := []OpOutput{}
 	erp := ExprRuntimeDebug{
 		Logger: logger,

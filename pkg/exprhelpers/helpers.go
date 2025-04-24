@@ -875,11 +875,12 @@ func ParseKV(params ...any) (any, error) {
 		value := ""
 
 		for i, name := range keyValuePattern.SubexpNames() {
-			if name == "key" {
+			switch {
+			case name == "key":
 				key = match[i]
-			} else if name == "quoted_value" && match[i] != "" {
+			case name == "quoted_value" && match[i] != "":
 				value = match[i]
-			} else if name == "value" && match[i] != "" {
+			case name == "value" && match[i] != "":
 				value = match[i]
 			}
 		}

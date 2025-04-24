@@ -133,11 +133,12 @@ func handleAlertIPv6Predicates(ip_sz int, contains bool, start_ip, start_sfx, en
 }
 
 func handleAlertIPPredicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) error {
-	if ip_sz == 4 {
+	switch {
+	case ip_sz == 4:
 		handleAlertIPv4Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
-	} else if ip_sz == 16 {
+	case ip_sz == 16:
 		handleAlertIPv6Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
-	} else if ip_sz != 0 {
+	case ip_sz != 0:
 		return errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 

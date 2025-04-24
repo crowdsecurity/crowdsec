@@ -57,7 +57,7 @@ type CloudwatchSuite struct {
 	suite.Suite
 }
 
-func (s *CloudwatchSuite) SetupSuite() {
+func (*CloudwatchSuite) SetupSuite() {
 	def_PollNewStreamInterval = 1 * time.Second
 	def_PollStreamInterval = 1 * time.Second
 	def_StreamReadTimeout = 10 * time.Second
@@ -308,7 +308,7 @@ stream_name: test_stream`,
 				})
 				require.NoError(t, err)
 			},
-			run: func(t *testing.T, cw *CloudwatchSource) {
+			run: func(_ *testing.T, _ *CloudwatchSource) {
 				// wait for new stream pickup + stream poll interval
 				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
 				time.Sleep(def_PollStreamInterval + (1 * time.Second))
@@ -325,7 +325,7 @@ stream_name: test_stream`,
 			dbgLogger.Infof("starting test")
 
 			cw := CloudwatchSource{}
-			err := cw.Configure(([]byte)(tc.config), dbgLogger, configuration.METRICS_NONE)
+			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
@@ -442,7 +442,7 @@ stream_name: test_stream`,
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 
 			cw := CloudwatchSource{}
-			err := cw.Configure(([]byte)(tc.config), dbgLogger, configuration.METRICS_NONE)
+			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
