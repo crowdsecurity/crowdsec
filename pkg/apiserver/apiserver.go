@@ -178,7 +178,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		}
 	}
 
-	if log.GetLevel() < log.DebugLevel {
+	if !log.IsLevelEnabled(log.DebugLevel) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
