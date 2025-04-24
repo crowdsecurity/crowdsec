@@ -11,7 +11,37 @@ import (
 )
 
 func (c *Controller) CheckInAllowlistBulk(gctx *gin.Context) {
+	var req models.BulkCheckAllowlistRequest
+
+	if err := gctx.ShouldBindJSON(&req); err != nil {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	if len(req.Targets) == 0 {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": "targets list cannot be empty"})
+		return
+	}
+
 	resp := models.BulkCheckAllowlistResponse{
+		Results: make([]*models.BulkCheckAllowlistResult, 0),
+	}
+
+	for _, target := range req.Targets {
+		lists, err := c.DBClient.IsAllowlistedBy(gctx.Request.Context(), target)
+		if err != nil {
+			c.HandleDBErrors(gctx, err)
+			return
+		}
+
+		if len(lists) == 0 {
+			continue
+		}
+
+		resp.Results = append(resp.Results, &models.BulkCheckAllowlistResult{
+			Target: &target,
+			Allowlists: lists,
+		})
 	}
 
 	gctx.JSON(http.StatusOK, resp)
