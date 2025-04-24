@@ -171,17 +171,15 @@ func TestBulkCheckAllowlist(t *testing.T) {
 	// unmarshal and verify
 	resp := models.BulkCheckAllowlistResponse{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	require.Len(t, resp.Results, 2)
+	require.Len(t, resp.Results, 1)
 
-	// expect "1.2.3.4" in the "test" allowlist, and "2.3.4.5" in none
+	// expect only "1.2.3.4" in the "test" allowlist, while "2.3.4.5" should not be in the response
 	var match bool
 	for _, r := range resp.Results {
 		switch *r.Target {
 		case "1.2.3.4":
 			match = true
-			assert.Equal(t, []string{"test"}, r.Allowlists)
-		case "2.3.4.5":
-			assert.Empty(t, r.Allowlists)
+			assert.Equal(t, []string{"1.2.3.4 from test"}, r.Allowlists)
 		default:
 			t.Errorf("unexpected target %v", r.Target)
 		}

@@ -1438,12 +1438,12 @@ definitions:
     properties:
       target:
         type: string
-        description: The IP or range that was checked
+        description: The IP or range that is allowlisted
       allowlists:
         type: array
         items:
           type: string
-        description: Names of allowlists containing this target (empty if none)
+        description: Matching ip or range, name of the allowlist and comment related to the target
     required:
       - target
       - allowlists

@@ -19,11 +19,11 @@ import (
 // swagger:model BulkCheckAllowlistResult
 type BulkCheckAllowlistResult struct {
 
-	// Names of allowlists containing this target (empty if none)
+	// Matching ip or range, name of the allowlist and comment related to the target
 	// Required: true
 	Allowlists []string `json:"allowlists"`
 
-	// The IP or range that was checked
+	// The IP or range that is allowlisted
 	// Required: true
 	Target *string `json:"target"`
 }
