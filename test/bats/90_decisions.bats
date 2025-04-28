@@ -130,7 +130,7 @@ teardown() {
     # XXX: improve validation
     rune -0 cscli decisions import -i - <<<'value\n1.2.3.4,5.6.7.8' --format csv
     assert_stderr --partial 'Parsing csv'
-    assert_stderr --partial "Imported 0 decisions"
+    assert_stderr --partial "no decisions found"
 
     #----------
     # VALUES

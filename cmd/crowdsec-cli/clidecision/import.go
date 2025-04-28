@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jszwec/csvutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -139,6 +140,10 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		return err
 	}
 
+	if len(decisionsListRaw) == 0 {
+		return errors.New("no decisions found")
+	}
+
 	decisions := make([]*models.Decision, len(decisionsListRaw))
 
 	for i, d := range decisionsListRaw {
@@ -180,6 +185,9 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 	if len(decisions) > 1000 {
 		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
 	}
+
+	log.Infof("batch size: %d", batch)
+	spew.Dump(decisions)
 
 	if batch == 0 {
 		batch = len(decisions)
