@@ -503,39 +503,39 @@ exclude_regexps: ["\\.gz$"]`
 func TestDiscoveryPollConfiguration(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  []byte
+		config  string
 		wantErr string
 	}{
 		{
 			name: "valid discovery poll config",
-			config: []byte(`
+			config: `
 filenames:
  - "tests/test.log"
 discovery_poll_enable: true
 discovery_poll_interval: "30s"
 mode: tail
-`),
+`,
 			wantErr: "",
 		},
 		{
 			name: "invalid poll interval",
-			config: []byte(`
+			config: `
 filenames:
  - "tests/test.log"
 discovery_poll_enable: true
 discovery_poll_interval: "invalid"
 mode: tail
-`),
+`,
 			wantErr: "cannot unmarshal !!str `invalid` into time.Duration",
 		},
 		{
 			name: "polling disabled",
-			config: []byte(`
+			config: `
 filenames:
  - "tests/test.log"
 discovery_poll_enable: false
 mode: tail
-`),
+`,
 			wantErr: "",
 		},
 	}
@@ -543,7 +543,7 @@ mode: tail
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &fileacquisition.FileSource{}
-			err := f.Configure(tc.config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 		})
 	}
