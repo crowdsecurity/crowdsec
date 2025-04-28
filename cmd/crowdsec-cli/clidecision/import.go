@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/jszwec/csvutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -187,7 +186,6 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 	}
 
 	log.Infof("batch size: %d", batch)
-	spew.Dump(decisions)
 
 	if batch == 0 {
 		batch = len(decisions)
@@ -198,9 +196,17 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 	for chunk := range slices.Chunk(decisions, batch) {
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
 
-		decisionsStr := make([]string, len(chunk))
-		for i, d := range chunk {
-			decisionsStr[i] = *d.Value
+		decisionsStr := make([]string, 0, len(chunk))
+		for _, d := range chunk {
+			if *d.Scope != types.Ip && *d.Scope != types.Range {
+				continue
+			}
+			decisionsStr = append(decisionsStr, *d.Value)
+		}
+
+		// Skip if no IPs or ranges
+		if len(decisionsStr) == 0 {
+			continue
 		}
 
 		allowlistResp, _, err := cli.client.Allowlists.CheckIfAllowlistedBulk(ctx, decisionsStr)
