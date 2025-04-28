@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +19,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -38,7 +39,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 
 	switch format {
 	case "values":
-		log.Infof("Parsing values")
+		fmt.Fprintln(os.Stdout, "Parsing values")
 
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {
@@ -50,13 +51,13 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 			return nil, fmt.Errorf("unable to parse values: '%w'", err)
 		}
 	case "json":
-		log.Infof("Parsing json")
+		fmt.Fprintln(os.Stdout, "Parsing json")
 
 		if err := json.Unmarshal(content, &ret); err != nil {
 			return nil, err
 		}
 	case "csv":
-		log.Infof("Parsing csv")
+		fmt.Fprintln(os.Stdout, "Parsing csv")
 
 		if err := csvutil.Unmarshal(content, &ret); err != nil {
 			return nil, fmt.Errorf("unable to parse csv: '%w'", err)
@@ -66,6 +67,20 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	}
 
 	return ret, nil
+}
+
+func excludeAllowlistedDecisions(decisions []*models.Decision, allowlistedValues []string) iter.Seq[*models.Decision] {
+	return func(yield func(*models.Decision) bool) {
+		for _, d := range decisions {
+			if slices.Contains(allowlistedValues, *d.Value) {
+				continue
+			}
+
+			if !yield(d) {
+				return
+			}
+		}
+	}
 }
 
 func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string) error {
@@ -124,6 +139,10 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		return err
 	}
 
+	if len(decisionsListRaw) == 0 {
+		return errors.New("no decisions found")
+	}
+
 	decisions := make([]*models.Decision, len(decisionsListRaw))
 
 	for i, d := range decisionsListRaw {
@@ -163,11 +182,50 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 	}
 
 	if len(decisions) > 1000 {
-		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
+		fmt.Fprintf(os.Stdout, "You are about to add %d decisions, this may take a while\n", len(decisions))
 	}
 
-	for _, chunk := range slicetools.Chunks(decisions, batch) {
+	if batch == 0 {
+		batch = len(decisions)
+	} else {
+		fmt.Fprintf(os.Stdout, "batch size: %d\n", batch)
+	}
+
+	allowlistedValues := make([]string, 0)
+
+	for chunk := range slices.Chunk(decisions, batch) {
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
+
+		decisionsStr := make([]string, 0, len(chunk))
+
+		for _, d := range chunk {
+			if *d.Scope != types.Ip && *d.Scope != types.Range {
+				continue
+			}
+
+			decisionsStr = append(decisionsStr, *d.Value)
+		}
+
+		// Skip if no IPs or ranges
+		if len(decisionsStr) == 0 {
+			continue
+		}
+
+		allowlistResp, _, err := cli.client.Allowlists.CheckIfAllowlistedBulk(ctx, decisionsStr)
+
+		if err != nil {
+			return err
+		}
+
+		for _, r := range allowlistResp.Results {
+			fmt.Fprintf(os.Stdout, "Value %s is allowlisted by %s\n", *r.Target, r.Allowlists)
+			allowlistedValues = append(allowlistedValues, *r.Target)
+		}
+	}
+
+	actualDecisions := slices.Collect(excludeAllowlistedDecisions(decisions, allowlistedValues))
+
+	for chunk := range slices.Chunk(actualDecisions, batch) {
 		importAlert := models.Alert{
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Scenario:  ptr.Of(fmt.Sprintf("import %s: %d IPs", input, len(chunk))),
@@ -195,7 +253,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 	}
 
-	log.Infof("Imported %d decisions", len(decisions))
+	fmt.Fprintf(os.Stdout, "Imported %d decisions", len(actualDecisions))
 
 	return nil
 }
