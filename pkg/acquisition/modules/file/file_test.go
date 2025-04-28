@@ -558,6 +558,7 @@ filenames:
  - '%s'
 discovery_poll_enable: true
 discovery_poll_interval: "1s"
+exclude_regexps: ["\\.ignore$"]
 mode: tail
 `, pattern)
 
@@ -581,12 +582,15 @@ mode: tail
 	err = os.WriteFile(testFile, []byte("test line\n"), 0o644)
 	require.NoError(t, err)
 
+	ignoredFile := filepath.Join(dir, ".ignored")
+	err = os.WriteFile(ignoredFile, []byte("test line\n"), 0o644)
+	require.NoError(t, err)
+
 	// Wait for polling to detect the file
 	time.Sleep(4 * time.Second)
 
-	// Verify file is being tailed
-	isTailed := f.IsTailing(testFile)
-	require.True(t, isTailed, "File should be tailed after polling")
+	require.True(t, f.IsTailing(testFile), "File should be tailed after polling")
+	require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
 
 	// Cleanup
 	tomb.Kill(nil)
