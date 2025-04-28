@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +19,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -66,6 +67,20 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	}
 
 	return ret, nil
+}
+
+func excludeAllowlistedDecisions(decisions []*models.Decision, allowlistedValues []string) iter.Seq[*models.Decision] {
+	return func(yield func(*models.Decision) bool) {
+		for _, d := range decisions {
+			if slices.Contains(allowlistedValues, *d.Value) {
+				continue
+			}
+
+			if !yield(d) {
+				return
+			}
+		}
+	}
 }
 
 func (cli *cliDecisions) import_(ctx context.Context, input string, duration string, scope string, reason string, type_ string, batch int, format string) error {
@@ -166,8 +181,35 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
 	}
 
-	for _, chunk := range slicetools.Chunks(decisions, batch) {
+	if batch == 0 {
+		batch = len(decisions)
+	}
+
+	allowlistedValues := make([]string, 0)
+
+	for chunk := range slices.Chunk(decisions, batch) {
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
+
+		decisionsStr := make([]string, len(chunk))
+		for i, d := range chunk {
+			decisionsStr[i] = *d.Value
+		}
+
+		allowlistResp, _, err := cli.client.Allowlists.CheckIfAllowlistedBulk(ctx, decisionsStr)
+
+		if err != nil {
+			return err
+		}
+
+		for _, r := range allowlistResp.Results {
+			log.Infof("Value %s is allowlisted by %s", *r.Target, r.Allowlists)
+			allowlistedValues = append(allowlistedValues, *r.Target)
+		}
+	}
+
+	actualDecisions := slices.Collect(excludeAllowlistedDecisions(decisions, allowlistedValues))
+
+	for chunk := range slices.Chunk(actualDecisions, batch) {
 		importAlert := models.Alert{
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Scenario:  ptr.Of(fmt.Sprintf("import %s: %d IPs", input, len(chunk))),
@@ -195,7 +237,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 	}
 
-	log.Infof("Imported %d decisions", len(decisions))
+	log.Infof("Imported %d decisions", len(actualDecisions))
 
 	return nil
 }
