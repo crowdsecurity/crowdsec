@@ -202,7 +202,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 
 		for _, r := range allowlistResp.Results {
-			log.Infof("Value %s is allowlisted by %s", *r.Target, r.Allowlists)
+			fmt.Fprintf(os.Stdout, "Value %s is allowlisted by %s\n", *r.Target, r.Allowlists)
 			allowlistedValues = append(allowlistedValues, *r.Target)
 		}
 	}
