@@ -482,21 +482,12 @@ exclude_regexps: ["\\.gz$"]`
 	subLogger := logger.WithField("type", "file")
 
 	f := fileacquisition.FileSource{}
-	if err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE); err != nil {
-		subLogger.Fatalf("unexpected error: %s", err)
-	}
+	err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
+	require.NoError(t, err)
 
-	expectedLogOutput := "Skipping file test_files/test.log.gz as it matches exclude pattern"
-
-	if runtime.GOOS == "windows" {
-		expectedLogOutput = `Skipping file test_files\test.log.gz as it matches exclude pattern \.gz`
-	}
-
-	if hook.LastEntry() == nil {
-		t.Fatalf("expected output %s, but got nothing", expectedLogOutput)
-	}
-
-	assert.Contains(t, hook.LastEntry().Message, expectedLogOutput)
+	require.NotNil(t, hook.LastEntry())
+	assert.Contains(t, hook.LastEntry().Message, `Skipping file: matches exclude regex "\\.gz`)
+	assert.Equal(t, "test_files/test.log.gz", hook.LastEntry().Data["file"])
 	hook.Reset()
 }
 

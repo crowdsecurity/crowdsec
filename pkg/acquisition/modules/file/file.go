@@ -154,8 +154,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLeve
 		}
 
 		for _, file := range files {
-			if re := f.excludedByRE(file); re != nil {
-				f.logger.Infof("Skipping file %s as it matches exclude pattern %s", file, re)
+			if f.isExcluded(file) {
 				continue
 			}
 
@@ -443,8 +442,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 func (f *FileSource) setupTailForFile(file string, out chan types.Event, t *tomb.Tomb) error {
 	logger := f.logger.WithField("file", file)
 
-	if re := f.excludedByRE(file); re != nil {
-		logger.Infof("Skipping file as it matches exclude pattern %s", re)
+	if f.isExcluded(file) {
 		return nil
 	}
 
@@ -689,13 +687,14 @@ func (f *FileSource) RemoveTail(filename string) {
 	delete(f.tails, filename)
 }
 
-// excludedByRE returns the first matching regexp from the list of excluding patterns,
+// isExcluded returns the first matching regexp from the list of excluding patterns,
 // or nil if the file is not excluded.
-func (f *FileSource) excludedByRE(path string) *regexp.Regexp {
+func (f *FileSource) isExcluded(path string) bool {
 	for _, re := range f.exclude_regexps {
 		if re.MatchString(path) {
-			return re
+			f.logger.WithField("file", path).Infof("Skipping file: matches exclude regex %q", re)
+			return true
 		}
 	}
-	return nil
+	return false
 }
