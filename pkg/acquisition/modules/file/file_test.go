@@ -487,7 +487,7 @@ exclude_regexps: ["\\.gz$"]`
 
 	require.NotNil(t, hook.LastEntry())
 	assert.Contains(t, hook.LastEntry().Message, `Skipping file: matches exclude regex "\\.gz`)
-	assert.Equal(t, "test_files/test.log.gz", hook.LastEntry().Data["file"])
+	assert.Equal(t, filepath.Join("test_files", "test.log.gz"), hook.LastEntry().Data["file"])
 	hook.Reset()
 }
 
