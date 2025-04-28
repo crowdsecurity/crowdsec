@@ -320,14 +320,17 @@ func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, e
 	}
 
 	reasons := make([]string, 0)
+
 	for _, item := range items {
 		if len(item.Edges.Allowlist) == 0 {
 			continue
 		}
+
 		reason := item.Value + " from " + item.Edges.Allowlist[0].Name
 		if item.Comment != "" {
 			reason += " (" + item.Comment + ")"
 		}
+
 		reasons = append(reasons, reason)
 	}
 

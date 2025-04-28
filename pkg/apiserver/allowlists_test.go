@@ -175,15 +175,18 @@ func TestBulkCheckAllowlist(t *testing.T) {
 
 	// expect only "1.2.3.4" in the "test" allowlist, while "2.3.4.5" should not be in the response
 	var match bool
+
 	for _, r := range resp.Results {
 		switch *r.Target {
 		case "1.2.3.4":
 			match = true
+
 			assert.Equal(t, []string{"1.2.3.4 from test"}, r.Allowlists)
 		default:
 			t.Errorf("unexpected target %v", r.Target)
 		}
 	}
+
 	require.True(t, match, "did not see result for 1.2.3.4")
 }
 

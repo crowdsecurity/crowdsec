@@ -197,10 +197,12 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
 
 		decisionsStr := make([]string, 0, len(chunk))
+
 		for _, d := range chunk {
 			if *d.Scope != types.Ip && *d.Scope != types.Range {
 				continue
 			}
+
 			decisionsStr = append(decisionsStr, *d.Value)
 		}
 

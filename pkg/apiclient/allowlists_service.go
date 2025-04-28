@@ -83,7 +83,7 @@ func (s *AllowlistsService) CheckIfAllowlisted(ctx context.Context, value string
 		return false, nil, err
 	}
 
-	var discardBody interface{}
+	var discardBody any
 
 	resp, err := s.client.Do(ctx, req, discardBody)
 	if err != nil {
