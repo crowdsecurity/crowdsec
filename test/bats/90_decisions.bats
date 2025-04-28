@@ -87,24 +87,24 @@ teardown() {
     assert_stderr --partial "unable to guess format from file extension, please provide a format with --format flag"
 
     rune -0 cscli decisions import -i "${TESTDATA}/decisions.json"
-    assert_stderr --partial "Parsing json"
-    assert_stderr --partial "Imported 5 decisions"
+    assert_output --partial "Parsing json"
+    assert_output --partial "Imported 5 decisions"
 
     # import from stdin
     rune -1 cscli decisions import -i /dev/stdin < <(cat "${TESTDATA}/decisions.json")
     assert_stderr --partial "unable to guess format from file extension, please provide a format with --format flag"
     rune -0 cscli decisions import -i /dev/stdin < <(cat "${TESTDATA}/decisions.json") --format json
-    assert_stderr --partial "Parsing json"
-    assert_stderr --partial "Imported 5 decisions"
+    assert_output --partial "Parsing json"
+    assert_output --partial "Imported 5 decisions"
 
     # invalid json
     rune -1 cscli decisions import -i - <<<'{"blah":"blah"}' --format json
-    assert_stderr --partial 'Parsing json'
+    assert_output --partial 'Parsing json'
     assert_stderr --partial 'json: cannot unmarshal object into Go value of type []clidecision.decisionRaw'
 
     # json with extra data
     rune -1 cscli decisions import -i - <<<'{"values":"1.2.3.4","blah":"blah"}' --format json
-    assert_stderr --partial 'Parsing json'
+    assert_output --partial 'Parsing json'
     assert_stderr --partial 'json: cannot unmarshal object into Go value of type []clidecision.decisionRaw'
 
     #----------
@@ -116,21 +116,21 @@ teardown() {
     assert_stderr --partial "unable to guess format from file extension, please provide a format with --format flag"
 
     rune -0 cscli decisions import -i "${TESTDATA}/decisions.csv"
-    assert_stderr --partial 'Parsing csv'
-    assert_stderr --partial 'Imported 5 decisions'
+    assert_output --partial 'Parsing csv'
+    assert_output --partial 'Imported 5 decisions'
 
     # import from stdin
     rune -1 cscli decisions import -i /dev/stdin < <(cat "${TESTDATA}/decisions.csv")
     assert_stderr --partial "unable to guess format from file extension, please provide a format with --format flag"
     rune -0 cscli decisions import -i /dev/stdin < <(cat "${TESTDATA}/decisions.csv") --format csv
-    assert_stderr --partial "Parsing csv"
-    assert_stderr --partial "Imported 5 decisions"
+    assert_output --partial "Parsing csv"
+    assert_output --partial "Imported 5 decisions"
 
     # invalid csv
     # XXX: improve validation
     rune -1 cscli decisions import -i - <<<'value\n1.2.3.4,5.6.7.8' --format csv
-    assert_stderr --partial 'Parsing csv'
-    assert_stderr --partial "no decisions found"
+    assert_output "Parsing csv"
+    assert_stderr "Error: no decisions found"
 
     #----------
     # VALUES
@@ -142,8 +142,8 @@ teardown() {
 	1.2.3.5
 	1.2.3.6
 	EOT
-    assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'Imported 3 decisions'
+    assert_output --partial 'Parsing values'
+    assert_output --partial 'Imported 3 decisions'
 
     # leading or trailing spaces are ignored
     rune -0 cscli decisions import -i - --format values <<-EOT
@@ -151,8 +151,8 @@ teardown() {
 	10.2.3.5   
 	   10.2.3.6
 	EOT
-    assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'Imported 3 decisions'
+    assert_output --partial 'Parsing values'
+    assert_output --partial 'Imported 3 decisions'
 
     # silently discarding (but logging) invalid decisions
 
@@ -177,8 +177,8 @@ teardown() {
 	bad-apple
         1.2.3.5
 	EOT
-    assert_stderr --partial 'Parsing values'
-    assert_stderr --partial "API error: invalid ip address 'bad-apple'"
+    assert_output "Parsing values"
+    assert_stderr "Error: API error: invalid ip address 'bad-apple'"
 
     rune -0 cscli decisions list -a -o json
     rune -0 jq -r '.[0].decisions | length' <(output)
@@ -195,5 +195,5 @@ teardown() {
 	EOT
     assert_stderr --partial 'Processing chunk of 2 decisions'
     assert_stderr --partial 'Processing chunk of 1 decisions'
-    assert_stderr --partial 'Imported 3 decisions'
+    assert_output --partial 'Imported 3 decisions'
 }
