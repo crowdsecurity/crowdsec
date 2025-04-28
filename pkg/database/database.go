@@ -82,7 +82,11 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 		}
 	}
 
-	drv, err := getEntDriver(typ, dia, config.ConnectionString(), config)
+	dbConnectionString, err := config.ConnectionString()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate DB connection string: %w", err)
+	}
+	drv, err := getEntDriver(typ, dia, dbConnectionString, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening connection to %s: %w", config.Type, err)
 	}

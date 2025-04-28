@@ -158,21 +158,18 @@ linters:
       disabled-checks:
         - paramTypeCombine
         - ifElseChain
-        - importShadow
         - hugeParam
         - commentedOutCode
         - commentedOutImport
         - unnamedResult
         - sloppyReassign
         - appendCombine
-        - typeUnparen
         - commentFormatting
         - deferInLoop             #
         - whyNoLint
         - equalFold               #
         - unnecessaryBlock        #
         - tooManyResultsChecker
-        - unnecessaryDefer
         - docStub
         - preferFprint
 

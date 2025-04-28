@@ -37,7 +37,7 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
 
-	if log.GetLevel() >= log.TraceLevel {
+	if log.IsLevelEnabled(log.TraceLevel) {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("auth-api request: %s", string(dump))
 	}
@@ -50,7 +50,7 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
-	if log.GetLevel() >= log.TraceLevel {
+	if log.IsLevelEnabled(log.TraceLevel) {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Tracef("auth-api response: %s", string(dump))
 	}
