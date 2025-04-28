@@ -159,12 +159,10 @@ teardown() {
     rune -0 cscli alerts delete --all
     truncate -s 0 "$LOGFILE"
 
-    rune -0 cscli decisions import -i - --format values <<-EOT
+    rune -1 cscli decisions import -i - --format values <<-EOT
 	whatever
 	EOT
-    assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'Imported 1 decisions'
-    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid ip address 'whatever'"
+    assert_stderr --partial "invalid ip address 'whatever'"
 
     rune -0 cscli decisions list -a -o json
     assert_json '[]'
@@ -174,18 +172,17 @@ teardown() {
     rune -0 cscli alerts delete --all
     truncate -s 0 "$LOGFILE"
 
-    rune -0 cscli decisions import -i - --format values <<-EOT
+    rune -1 cscli decisions import -i - --format values <<-EOT
         1.2.3.4
 	bad-apple
         1.2.3.5
 	EOT
     assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'Imported 3 decisions'
-    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid ip address 'bad-apple'"
+    assert_stderr --partial "API error: invalid ip address 'bad-apple'"
 
     rune -0 cscli decisions list -a -o json
     rune -0 jq -r '.[0].decisions | length' <(output)
-    assert_output 2
+    assert_output 0
 
     #----------
     # Batch
