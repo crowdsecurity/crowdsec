@@ -459,11 +459,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	batchSize := 50
 
 	for start := 0; start < len(cache); start += batchSize {
-		end := start + batchSize
-
-		if end > len(cache) {
-			end = len(cache)
-		}
+		end := min(start+batchSize, len(cache))
 
 		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
@@ -793,7 +789,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 	}
 
 	for _, link := range allowlistsLinks {
-		if log.GetLevel() >= log.TraceLevel {
+		if log.IsLevelEnabled(log.TraceLevel) {
 			log.Tracef("allowlist body: %+v", spew.Sdump(link))
 		}
 
@@ -836,6 +832,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		for scanner.Scan() {
 			item := scanner.Text()
 			j := &models.AllowlistItem{}
+
 			if err := json.Unmarshal([]byte(item), j); err != nil {
 				log.Errorf("while unmarshalling allowlist item: %s", err)
 				continue
