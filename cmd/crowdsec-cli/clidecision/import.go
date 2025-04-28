@@ -39,7 +39,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 
 	switch format {
 	case "values":
-		log.Infof("Parsing values")
+		fmt.Fprintln(os.Stdout, "Parsing values")
 
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {
@@ -51,13 +51,13 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 			return nil, fmt.Errorf("unable to parse values: '%w'", err)
 		}
 	case "json":
-		log.Infof("Parsing json")
+		fmt.Fprintln(os.Stdout, "Parsing json")
 
 		if err := json.Unmarshal(content, &ret); err != nil {
 			return nil, err
 		}
 	case "csv":
-		log.Infof("Parsing csv")
+		fmt.Fprintln(os.Stdout, "Parsing csv")
 
 		if err := csvutil.Unmarshal(content, &ret); err != nil {
 			return nil, fmt.Errorf("unable to parse csv: '%w'", err)
@@ -182,13 +182,13 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 	}
 
 	if len(decisions) > 1000 {
-		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
+		fmt.Fprintf(os.Stdout, "You are about to add %d decisions, this may take a while\n", len(decisions))
 	}
-
-	log.Infof("batch size: %d", batch)
 
 	if batch == 0 {
 		batch = len(decisions)
+	} else {
+		fmt.Fprintf(os.Stdout, "batch size: %d\n", batch)
 	}
 
 	allowlistedValues := make([]string, 0)
@@ -251,7 +251,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 	}
 
-	log.Infof("Imported %d decisions", len(actualDecisions))
+	fmt.Fprintf(os.Stdout, "Imported %d decisions", len(actualDecisions))
 
 	return nil
 }
