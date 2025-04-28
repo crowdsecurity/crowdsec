@@ -504,7 +504,7 @@ func TestDiscoveryPollConfiguration(t *testing.T) {
 	tests := []struct {
 		name    string
 		config  []byte
-		wantErr bool
+		wantErr string
 	}{
 		{
 			name: "valid discovery poll config",
@@ -515,7 +515,7 @@ discovery_poll_enable: true
 discovery_poll_interval: "30s"
 mode: tail
 `),
-			wantErr: false,
+			wantErr: "",
 		},
 		{
 			name: "invalid poll interval",
@@ -526,7 +526,7 @@ discovery_poll_enable: true
 discovery_poll_interval: "invalid"
 mode: tail
 `),
-			wantErr: true,
+			wantErr: "cannot unmarshal !!str `invalid` into time.Duration",
 		},
 		{
 			name: "polling disabled",
@@ -536,7 +536,7 @@ filenames:
 discovery_poll_enable: false
 mode: tail
 `),
-			wantErr: false,
+			wantErr: "",
 		},
 	}
 
@@ -544,11 +544,7 @@ mode: tail
 		t.Run(tc.name, func(t *testing.T) {
 			f := &fileacquisition.FileSource{}
 			err := f.Configure(tc.config, log.NewEntry(log.New()), configuration.METRICS_NONE)
-			if tc.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			cstest.RequireErrorContains(t, err, tc.wantErr)
 		})
 	}
 }
@@ -599,6 +595,7 @@ mode: tail
 
 func TestFileResurrectionViaPolling(t *testing.T) {
 	dir := t.TempDir()
+	ctx := t.Context()
 
 	testFile := filepath.Join(dir, "test.log")
 	err := os.WriteFile(testFile, []byte("test line\n"), 0o644)
@@ -623,7 +620,7 @@ mode: tail
 	eventChan := make(chan types.Event)
 	tomb := tomb.Tomb{}
 
-	err = f.StreamingAcquisition(context.Background(), eventChan, &tomb)
+	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
 	require.NoError(t, err)
 
 	// Wait for initial tail setup

@@ -2,6 +2,7 @@ package fileacquisition
 
 import (
 	"bufio"
+	"cmp"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -29,6 +30,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+const defaultPollInterval = 30 * time.Second
+
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_filesource_hits_total",
@@ -38,14 +41,14 @@ var linesRead = prometheus.NewCounterVec(
 
 type FileConfiguration struct {
 	Filenames                         []string
-	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
+	ExcludeRegexps                    []string      `yaml:"exclude_regexps"`
 	Filename                          string
-	ForceInotify                      bool   `yaml:"force_inotify"`
-	MaxBufferSize                     int    `yaml:"max_buffer_size"`
-	PollWithoutInotify                *bool  `yaml:"poll_without_inotify"`
-	DiscoveryPollInterval             string `yaml:"discovery_poll_interval"`
-	DiscoveryPollEnable               bool   `yaml:"discovery_poll_enable"`
-	configuration.DataSourceCommonCfg `yaml:",inline"`
+	ForceInotify                      bool          `yaml:"force_inotify"`
+	MaxBufferSize                     int           `yaml:"max_buffer_size"`
+	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
+	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
+	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
+	configuration.DataSourceCommonCfg               `yaml:",inline"`
 }
 
 type FileSource struct {
@@ -99,13 +102,6 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 		}
 
 		f.exclude_regexps = append(f.exclude_regexps, re)
-	}
-
-	// Validate polling configuration if enabled
-	if f.config.DiscoveryPollEnable && f.config.DiscoveryPollInterval != "" {
-		if _, err := time.ParseDuration(f.config.DiscoveryPollInterval); err != nil {
-			return fmt.Errorf("invalid discovery_poll_interval: %w", err)
-		}
 	}
 
 	return nil
@@ -410,15 +406,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	var tickerChan <-chan time.Time
 	var ticker *time.Ticker
 	if f.config.DiscoveryPollEnable {
-		interval := 30 * time.Second // default interval
-		if f.config.DiscoveryPollInterval != "" {
-			parsedInterval, err := time.ParseDuration(f.config.DiscoveryPollInterval)
-			if err != nil {
-				logger.Warnf("Invalid discovery_poll_interval '%s', using default 30s: %s", f.config.DiscoveryPollInterval, err)
-			} else {
-				interval = parsedInterval
-			}
-		}
+		interval := cmp.Or(f.config.DiscoveryPollInterval, defaultPollInterval)
 		ticker = time.NewTicker(interval)
 		tickerChan = ticker.C
 		defer ticker.Stop()
