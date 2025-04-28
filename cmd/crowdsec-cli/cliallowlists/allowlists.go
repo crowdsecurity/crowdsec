@@ -497,6 +497,14 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 		fmt.Printf("added %d values to allowlist %s\n", added, name)
 	}
 
+	deleted, err := db.ApplyAllowlistsToExistingDecisions(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to apply allowlists to existing decisions: %w", err)
+	}
+	if deleted > 0 {
+		fmt.Printf("%d decisions deleted by allowlists\n", deleted)
+	}
+
 	return nil
 }
 

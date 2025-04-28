@@ -370,3 +370,36 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 
 	return ips, nets, nil
 }
+
+func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, error) {
+	// Soft delete (set expiration to now) all decisions that matches any allowlist
+
+	// First, get all non-expired allowlist items
+	allowlistItems, err := c.Ent.AllowListItem.Query().
+		Where(
+			allowlistitem.Or(
+				allowlistitem.ExpiresAtGTE(time.Now().UTC()),
+				allowlistitem.ExpiresAtIsNil(),
+			),
+		).All(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("unable to get allowlist items: %w", err)
+	}
+
+	// Chunk the allowlist items to avoid too long query
+	chunkSize := 1000
+
+	var chunks [][]*ent.AllowListItem
+	for i := 0; i < len(allowlistItems); i += chunkSize {
+		end := i + chunkSize
+		if end > len(allowlistItems) {
+			end = len(allowlistItems)
+		}
+		chunks = append(chunks, allowlistItems[i:end])
+	}
+
+	for _, chunk := range chunks {
+	}
+
+	return 0, nil
+}
