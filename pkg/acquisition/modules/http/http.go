@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -407,7 +408,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		_ = os.Remove(h.Config.ListenSocket)
 		listener, err := net.Listen("unix", h.Config.ListenSocket)
 		if err != nil {
-			return fmt.Errorf("failed to listen on unix socket: %w", err)
+			return csnet.WrapSockErr(err, h.Config.ListenSocket)
 		}
 		if h.Config.TLS != nil {
 			err := h.Server.ServeTLS(listener, h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
