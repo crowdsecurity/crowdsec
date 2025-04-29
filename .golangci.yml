@@ -8,12 +8,6 @@ linters:
   default: all
   disable:
     #
-    # DEPRECATED by golangi-lint
-
-
-    # none right now
-
-    #
     # Redundant
     #
     - cyclop    # revive
@@ -25,6 +19,7 @@ linters:
     # Disabled atm
 
     - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
+    - funcorder
 
     #
     # Recommended? (easy)
@@ -172,6 +167,7 @@ linters:
         - tooManyResultsChecker
         - docStub
         - preferFprint
+        - importShadow
 
     gomoddirectives:
       replace-allow-list:
