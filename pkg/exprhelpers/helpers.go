@@ -642,7 +642,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -670,7 +670,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 
-	count, err := dbClient.CountDecisionsSinceByValue(ctx, value, sinceTime)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, &sinceTime, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -689,7 +689,7 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountActiveDecisionsByValue(ctx, value)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, true)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
@@ -875,11 +875,12 @@ func ParseKV(params ...any) (any, error) {
 		value := ""
 
 		for i, name := range keyValuePattern.SubexpNames() {
-			if name == "key" {
+			switch {
+			case name == "key":
 				key = match[i]
-			} else if name == "quoted_value" && match[i] != "" {
+			case name == "quoted_value" && match[i] != "":
 				value = match[i]
-			} else if name == "value" && match[i] != "" {
+			case name == "value" && match[i] != "":
 				value = match[i]
 			}
 		}

@@ -156,7 +156,7 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 			SetComment(item.Description)
 
 		if !time.Time(item.Expiration).IsZero() {
-			query = query.SetExpiresAt(time.Time(item.Expiration))
+			query = query.SetExpiresAt(time.Time(item.Expiration).UTC())
 		}
 
 		content, err := query.Save(ctx)
@@ -236,7 +236,7 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 	return added, nil
 }
 
-func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string, error) {
+func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, error) {
 	/*
 		Few cases:
 		- value is an IP/range directly is in allowlist
@@ -245,7 +245,7 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 	*/
 	sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(value)
 	if err != nil {
-		return false, "", err
+		return nil, err
 	}
 
 	c.Log.Debugf("checking if %s is allowlisted", value)
@@ -314,21 +314,40 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 		)
 	}
 
-	allowed, err := query.WithAllowlist().First(ctx)
+	items, err := query.WithAllowlist().All(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return false, "", nil
+		return nil, fmt.Errorf("unable to check if value is allowlisted: %w", err)
+	}
+
+	reasons := make([]string, 0)
+
+	for _, item := range items {
+		if len(item.Edges.Allowlist) == 0 {
+			continue
 		}
 
-		return false, "", fmt.Errorf("unable to check if value is allowlisted: %w", err)
+		reason := item.Value + " from " + item.Edges.Allowlist[0].Name
+		if item.Comment != "" {
+			reason += " (" + item.Comment + ")"
+		}
+
+		reasons = append(reasons, reason)
 	}
 
-	allowlistName := allowed.Edges.Allowlist[0].Name
-	reason := allowed.Value + " from " + allowlistName
+	return reasons, nil
+}
 
-	if allowed.Comment != "" {
-		reason += " (" + allowed.Comment + ")"
+func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string, error) {
+	reasons, err := c.IsAllowlistedBy(ctx, value)
+	if err != nil {
+		return false, "", err
 	}
+
+	if len(reasons) == 0 {
+		return false, "", nil
+	}
+
+	reason := strings.Join(reasons, ", ")
 
 	return true, reason, nil
 }
