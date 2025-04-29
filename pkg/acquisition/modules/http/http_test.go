@@ -2,11 +2,13 @@ package httpacquisition
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -256,7 +258,7 @@ basic_auth:
 
 	ctx := t.Context()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr + "/test", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr+"/test", http.NoBody)
 	require.NoError(t, err)
 
 	res, err := http.DefaultClient.Do(req)
@@ -284,7 +286,7 @@ basic_auth:
 
 	time.Sleep(1 * time.Second)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr + "/unknown", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr+"/unknown", http.NoBody)
 	require.NoError(t, err)
 
 	res, err := http.DefaultClient.Do(req)
@@ -313,7 +315,7 @@ basic_auth:
 
 	client := &http.Client{}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr + "/test", strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr+"/test", strings.NewReader("test"))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -321,7 +323,7 @@ basic_auth:
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	req, err = http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr + "/test", strings.NewReader("test"))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr+"/test", strings.NewReader("test"))
 	require.NoError(t, err)
 	req.SetBasicAuth("test", "WrongPassword")
 
@@ -474,6 +476,49 @@ custom_headers:
 	require.NoError(t, err)
 }
 
+func TestAcquistionSocket(t *testing.T) {
+	ctx := t.Context()
+	h := &HTTPSource{}
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+source: http
+listen_socket: /run/test.sock
+path: /test
+auth_type: headers
+headers:
+  key: test`), 2)
+
+	time.Sleep(1 * time.Second)
+	rawEvt := `{"test": "test"}`
+	errChan := make(chan error)
+	go assertEvents(out, []string{rawEvt}, errChan)
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return net.Dial("unix", "/run/test.sock")
+			},
+		},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(rawEvt))
+	require.NoError(t, err)
+
+	req.Header.Add("Key", "test")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	err = <-errChan
+	require.NoError(t, err)
+
+	assertMetrics(t, reg, h.GetMetrics(), 1)
+
+	h.Server.Close()
+	tomb.Kill(nil)
+	err = tomb.Wait()
+	require.NoError(t, err)
+}
+
 type slowReader struct {
 	delay time.Duration
 	body  []byte
@@ -582,7 +627,7 @@ tls:
 
 	time.Sleep(1 * time.Second)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr + "/test", strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr+"/test", strings.NewReader("test"))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 

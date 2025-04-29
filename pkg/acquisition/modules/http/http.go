@@ -403,6 +403,10 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	}
 
 	t.Go(func() error {
+		if h.Config.ListenSocket == "" {
+			return nil
+		}
+
 		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
 		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
 		_ = os.Remove(h.Config.ListenSocket)
@@ -426,6 +430,10 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	})
 
 	t.Go(func() error {
+		if h.Config.ListenAddr == "" {
+			return nil
+		}
+
 		defer trace.CatchPanic("crowdsec/acquis/http/server/tcp")
 
 		if h.Config.TLS != nil {
