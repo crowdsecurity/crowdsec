@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
@@ -247,34 +248,6 @@ func (cli *cliAlerts) list(ctx context.Context, alertListFilter apiclient.Alerts
 		alertListFilter.Limit = limit
 	}
 
-	if *alertListFilter.Until == "" {
-		alertListFilter.Until = nil
-	} else if strings.HasSuffix(*alertListFilter.Until, "d") {
-		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-		realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
-
-		days, err := strconv.Atoi(realDuration)
-		if err != nil {
-			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
-		}
-
-		*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
-	}
-
-	if *alertListFilter.Since == "" {
-		alertListFilter.Since = nil
-	} else if strings.HasSuffix(*alertListFilter.Since, "d") {
-		// time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier
-		realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
-
-		days, err := strconv.Atoi(realDuration)
-		if err != nil {
-			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
-		}
-
-		*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
-	}
-
 	if *alertListFilter.IncludeCAPI {
 		*alertListFilter.Limit = 0
 	}
@@ -330,8 +303,8 @@ func (cli *cliAlerts) newListCmd() *cobra.Command {
 		ScenarioEquals: new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
-		Since:          new(string),
-		Until:          new(string),
+		Since:          cstime.Duration(0),
+		Until:          cstime.Duration(0),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
 		OriginEquals:   new(string),
@@ -362,8 +335,8 @@ cscli alerts list --type ban`,
 	flags := cmd.Flags()
 	flags.SortFlags = false
 	flags.BoolVarP(alertListFilter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
-	flags.StringVar(alertListFilter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
-	flags.StringVar(alertListFilter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	flags.Var(&alertListFilter.Until, "until", "restrict to alerts older than until (ie. 4h, 30d)")
+	flags.Var(&alertListFilter.Since, "since", "restrict to alerts newer than since (ie. 4h, 30d)")
 	flags.StringVarP(alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	flags.StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
 	flags.StringVarP(alertListFilter.RangeEquals, "range", "r", "", "restrict to alerts from this range (shorthand for --scope range --value <RANGE/X>)")

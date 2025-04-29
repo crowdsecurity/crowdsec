@@ -7,6 +7,8 @@ import (
 
 	qs "github.com/google/go-querystring/query"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -19,9 +21,9 @@ type AlertsListOpts struct {
 	IPEquals             *string `url:"ip,omitempty"`
 	RangeEquals          *string `url:"range,omitempty"`
 	OriginEquals         *string `url:"origin,omitempty"`
-	Since                *string `url:"since,omitempty"`
+	Since                cstime.Duration `url:"since,omitempty"`
 	TypeEquals           *string `url:"decision_type,omitempty"`
-	Until                *string `url:"until,omitempty"`
+	Until                cstime.Duration `url:"until,omitempty"`
 	IncludeSimulated     *bool   `url:"simulated,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	IncludeCAPI          *bool   `url:"include_capi,omitempty"`
@@ -36,8 +38,8 @@ type AlertsDeleteOpts struct {
 	ScenarioEquals       *string `url:"scenario,omitempty"`
 	IPEquals             *string `url:"ip,omitempty"`
 	RangeEquals          *string `url:"range,omitempty"`
-	Since                *string `url:"since,omitempty"`
-	Until                *string `url:"until,omitempty"`
+	Since                cstime.Duration `url:"since,omitempty"`
+	Until                cstime.Duration `url:"until,omitempty"`
 	OriginEquals         *string `url:"origin,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	SourceEquals         *string `url:"alert_source,omitempty"`

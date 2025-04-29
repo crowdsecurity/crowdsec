@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -40,7 +42,9 @@ func handleScopeFilter(scope string, predicates *[]predicate.Alert) {
 }
 
 func handleTimeFilters(param, value string, predicates *[]predicate.Alert) error {
-	duration, err := ParseDuration(value)
+	// crowsdec now always sends duration without days, but we allow them for
+	// compatibility with other tools
+	duration, err := cstime.ParseDuration(value)
 	if err != nil {
 		return fmt.Errorf("while parsing duration: %w", err)
 	}
