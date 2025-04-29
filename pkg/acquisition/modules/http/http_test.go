@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -477,7 +478,11 @@ custom_headers:
 }
 
 func TestAcquistionSocket(t *testing.T) {
-	socketFile := "/tmp/test.sock"
+	tempDir, err := os.MkdirTemp("", "crowdsec-http-socket")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	socketFile := filepath.Join(tempDir, "test.sock")
 
 	ctx := t.Context()
 	h := &HTTPSource{}
