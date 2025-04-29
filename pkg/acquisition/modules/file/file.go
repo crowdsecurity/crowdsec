@@ -320,7 +320,7 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 	})
 
 	for _, file := range f.files {
-		if err := f.setupTailForFile(file, out, t); err != nil {
+		if err := f.setupTailForFile(file, out, true, t); err != nil {
 			f.logger.Errorf("Error setting up tail for %s: %s", file, err)
 		}
 	}
@@ -328,7 +328,7 @@ func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 	return nil
 }
 
-func (f *FileSource) Dump() interface{} {
+func (f *FileSource) Dump() any {
 	return f
 }
 
@@ -378,7 +378,7 @@ func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out ch
 	}
 
 	// Setup the tail if needed
-	if err := f.setupTailForFile(filename, out, t); err != nil {
+	if err := f.setupTailForFile(filename, out, false, t); err != nil {
 		logger.Errorf("Error setting up tail for file %s: %s", filename, err)
 		return err
 	}
@@ -439,7 +439,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (f *FileSource) setupTailForFile(file string, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd bool, t *tomb.Tomb) error {
 	logger := f.logger.WithField("file", file)
 
 	if f.isExcluded(file) {
@@ -502,6 +502,10 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, t *tomb
 	seekInfo := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
 	if f.config.Mode == configuration.CAT_MODE {
 		seekInfo.Whence = io.SeekStart
+	}
+
+	if seekEnd {
+		seekInfo.Whence = io.SeekEnd
 	}
 
 	tail, err := tail.TailFile(file, tail.Config{
@@ -655,7 +659,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 			linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
+			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]any)}
 		}
 	}
 
