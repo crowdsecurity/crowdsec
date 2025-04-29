@@ -26,6 +26,6 @@ func TestCreateSetGet(t *testing.T) {
 	//expire
 	time.Sleep(1500 * time.Millisecond)
 	ret, err = GetKey("test", "testkey0")
-	assert.Equal(t, "", ret)
+	assert.Empty(t, ret)
 	require.NoError(t, err)
 }

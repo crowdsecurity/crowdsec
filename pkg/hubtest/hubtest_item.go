@@ -459,9 +459,9 @@ func (t *HubTestItem) RunWithLogFile() error {
 	crowdsecCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	log.Debugf("%s", crowdsecCmd.String())
-	output, err = crowdsecCmd.CombinedOutput()
 
-	if log.GetLevel() >= log.DebugLevel || err != nil {
+	output, err = crowdsecCmd.CombinedOutput()
+	if err != nil || log.IsLevelEnabled(log.DebugLevel) {
 		fmt.Println(string(output))
 	}
 

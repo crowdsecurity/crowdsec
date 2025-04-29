@@ -144,7 +144,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 			outputsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runOutput")
 
-				return runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, apiClient)
+				return runOutput(inputEventChan, outputEventChan, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient)
 			})
 		}
 

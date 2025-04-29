@@ -92,7 +92,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 		req.Header.Add("User-Agent", t.UserAgent)
 	}
 
-	if log.GetLevel() >= log.TraceLevel {
+	if log.IsLevelEnabled(log.TraceLevel) {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("auth-jwt request: %s", string(dump))
 	}
@@ -106,7 +106,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	log.Debugf("auth-jwt : http %d", resp.StatusCode)
 
-	if log.GetLevel() >= log.TraceLevel {
+	if log.IsLevelEnabled(log.TraceLevel) {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Tracef("auth-jwt response: %s", string(dump))
 	}
@@ -174,7 +174,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	attemptsCount := make(map[int]int)
 
 	for {
-		if log.GetLevel() >= log.TraceLevel {
+		if log.IsLevelEnabled(log.TraceLevel) {
 			// requestToDump := cloneRequest(req)
 			dump, _ := httputil.DumpRequest(req, true)
 			log.Tracef("req-jwt: %s", string(dump))

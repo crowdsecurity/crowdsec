@@ -910,7 +910,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	))
 
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
-		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		assert.Empty(t, req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(200, "1.2.3.4"), nil
 	})
 
@@ -932,11 +932,11 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	blocklistConfigItemName := "blocklist:blocklist1:last_pull"
 	lastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
-	assert.NotEqual(t, "", *lastPullTimestamp)
+	assert.NotEmpty(t, *lastPullTimestamp)
 
 	// new call should return 304 and should not change lastPullTimestamp
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
-		assert.NotEqual(t, "", req.Header.Get("If-Modified-Since"))
+		assert.NotEmpty(t, req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(304, ""), nil
 	})
 
@@ -1003,7 +1003,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	))
 
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
-		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		assert.Empty(t, req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(304, ""), nil
 	})
 
@@ -1031,7 +1031,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
-		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		assert.Empty(t, req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(200, "1.2.3.4"), nil
 	})
 
