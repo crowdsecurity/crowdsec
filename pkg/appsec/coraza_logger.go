@@ -6,7 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	dbg "github.com/crowdsecurity/coraza/v3/debuglog"
+	dbg "github.com/corazawaf/coraza/v3/debuglog"
 )
 
 var DebugRules = map[int]bool{}

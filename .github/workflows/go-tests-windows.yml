@@ -15,7 +15,6 @@ on:
       - 'README.md'
 
 env:
-  RICHGO_FORCE_COLOR: 1
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
@@ -44,12 +43,10 @@ jobs:
       run: |
           .github/generate-codecov-yml.sh >> .github/codecov.yml
 
-    - name: Run tests
+    - name: Unit tests
       run: |
-        go install github.com/kyoh86/richgo@v0.3.10
-        go test -tags expr_debug -coverprofile coverage.out -covermode=atomic ./... > out.txt
-        if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
-        cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+        go install gotest.tools/gotestsum@v1.12.1
+        make testcover
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -59,8 +56,8 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v7
       with:
-        version: v1.64
+        version: v2.1
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

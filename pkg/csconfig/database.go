@@ -1,12 +1,17 @@
 package csconfig
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
 	"path/filepath"
 	"time"
 
 	"entgo.io/ent/dialect"
+	"github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -26,7 +31,10 @@ type DatabaseCfg struct {
 	User             string      `yaml:"user"`
 	Password         string      `yaml:"password"`
 	DbName           string      `yaml:"db_name"`
-	Sslmode          string      `yaml:"sslmode"`
+	SSLMode          string      `yaml:"sslmode"`
+	SSLCACert        string      `yaml:"ssl_ca_cert"`
+	SSLClientCert    string      `yaml:"ssl_client_cert"`
+	SSLClientKey     string      `yaml:"ssl_client_key"`
 	Host             string      `yaml:"host"`
 	Port             int         `yaml:"port"`
 	DbPath           string      `yaml:"db_path"`
@@ -116,7 +124,7 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 	return nil
 }
 
-func (d *DatabaseCfg) ConnectionString() string {
+func (d *DatabaseCfg) ConnectionString() (string, error) {
 	connString := ""
 
 	switch d.Type {
@@ -130,24 +138,80 @@ func (d *DatabaseCfg) ConnectionString() string {
 
 		connString = fmt.Sprintf("file:%s?%s", d.DbPath, sqliteConnectionStringParameters)
 	case "mysql":
-		if d.isSocketConfig() {
-			connString = fmt.Sprintf("%s:%s@unix(%s)/%s?parseTime=True", d.User, d.Password, d.DbPath, d.DbName)
-		} else {
-			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
+		params := url.Values{}
+		params.Add("parseTime", "True")
+
+		tlsConfig := &tls.Config{}
+
+		// This is just to get an initial value, don't care about the error
+		systemRootCAs, _ := x509.SystemCertPool()
+		if systemRootCAs != nil {
+			tlsConfig.RootCAs = systemRootCAs
 		}
 
-		if d.Sslmode != "" {
-			connString = fmt.Sprintf("%s&tls=%s", connString, d.Sslmode)
+		if d.isSocketConfig() {
+			connString = fmt.Sprintf("%s:%s@unix(%s)/%s", d.User, d.Password, d.DbPath, d.DbName)
+		} else {
+			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", d.User, d.Password, d.Host, d.Port, d.DbName)
 		}
+
+		if d.SSLMode != "" {
+			// This will be overridden if a CA or client cert is provided
+			params.Set("tls", d.SSLMode)
+		}
+
+		if d.SSLCACert != "" {
+			caCert, err := os.ReadFile(d.SSLCACert)
+			if err != nil {
+				return "", fmt.Errorf("failed to read CA cert file %s: %w", d.SSLCACert, err)
+			}
+			if tlsConfig.RootCAs == nil {
+				tlsConfig.RootCAs = x509.NewCertPool()
+			}
+			if !tlsConfig.RootCAs.AppendCertsFromPEM(caCert) {
+				return "", fmt.Errorf("failed to append CA cert file %s: %w", d.SSLCACert, err)
+			}
+			params.Set("tls", "custom")
+		}
+
+		if d.SSLClientCert != "" && d.SSLClientKey != "" {
+			cert, err := tls.LoadX509KeyPair(d.SSLClientCert, d.SSLClientKey)
+			if err != nil {
+				return "", fmt.Errorf("failed to load client cert/key pair: %w", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+			params.Set("tls", "custom")
+		}
+
+		if params.Get("tls") == "custom" {
+			// Register the custom TLS config
+			err := mysql.RegisterTLSConfig("custom", tlsConfig)
+			if err != nil {
+				return "", fmt.Errorf("failed to register custom TLS config: %w", err)
+			}
+		}
+		connString = fmt.Sprintf("%s?%s", connString, params.Encode())
 	case "postgres", "postgresql", "pgx":
 		if d.isSocketConfig() {
 			connString = fmt.Sprintf("host=%s user=%s dbname=%s password=%s", d.DbPath, d.User, d.DbName, d.Password)
 		} else {
-			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", d.Host, d.Port, d.User, d.DbName, d.Password, d.Sslmode)
+			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s", d.Host, d.Port, d.User, d.DbName, d.Password)
+		}
+
+		if d.SSLMode != "" {
+			connString = fmt.Sprintf("%s sslmode=%s", connString, d.SSLMode)
+		}
+
+		if d.SSLCACert != "" {
+			connString = fmt.Sprintf("%s sslrootcert=%s", connString, d.SSLCACert)
+		}
+
+		if d.SSLClientCert != "" && d.SSLClientKey != "" {
+			connString = fmt.Sprintf("%s sslcert=%s sslkey=%s", connString, d.SSLClientCert, d.SSLClientKey)
 		}
 	}
 
-	return connString
+	return connString, nil
 }
 
 func (d *DatabaseCfg) ConnectionDialect() (string, string, error) {

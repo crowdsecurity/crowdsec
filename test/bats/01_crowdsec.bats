@@ -101,12 +101,52 @@ teardown() {
     assert_stderr --regexp 'FATAL.* you must run at least the API Server or crowdsec$'
 }
 
+@test "crowdsec - pass log level flag to apiserver" {
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+    config_set "$LOCAL_API_CREDENTIALS" '.password="badpassword"'
+
+    config_set '.common.log_media="stdout"'
+    rune -1 "$CROWDSEC"
+
+    # info
+    assert_stderr --partial "/v1/watchers/login"
+    # fatal
+    assert_stderr --partial "incorrect Username or Password"
+
+    config_set '.common.log_media="stdout"'
+    rune -1 "$CROWDSEC" -error
+
+    refute_stderr --partial "/v1/watchers/login"
+}
+
 @test "CS_LAPI_SECRET not strong enough" {
     CS_LAPI_SECRET=foo rune -1 wait-for "$CROWDSEC"
     assert_stderr --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
 }
 
+@test "crowdsec - reload" {
+    # we test that reload works as intended with the agent enabled
+
+    logfile="$(config_get '.common.log_dir')/crowdsec.log"
+
+    rune -0 truncate -s0 "$logfile"
+
+    rune -0 ./instance-crowdsec start-pid
+    PID="$output"
+
+    sleep .5
+    rune -0 kill -HUP "$PID"
+
+    sleep 5
+    rune -0 ps "$PID"
+
+    assert_file_contains "$logfile" "Reload is finished"
+}
+
 @test "crowdsec - reload (change of logfile, disabled agent)" {
+    # we test that reload works as intended with the agent disabled
+    # and that we can change the log configuration
+
     logdir1=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp -u)
     log_old="${logdir1}/crowdsec.log"
     config_set ".common.log_dir=\"${logdir1}\""

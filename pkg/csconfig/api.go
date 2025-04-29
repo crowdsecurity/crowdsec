@@ -473,6 +473,8 @@ func (c *LocalApiServerCfg) LoadCapiWhitelists() error {
 		return nil
 	}
 
+	log.Warn("capi_whitelists_path is deprecated, please use centralized allowlists instead. See https://docs.crowdsec.net/docs/next/local_api/centralized_allowlists.")
+
 	fd, err := os.Open(c.CapiWhitelistsPath)
 	if err != nil {
 		return fmt.Errorf("while opening capi whitelist file: %w", err)

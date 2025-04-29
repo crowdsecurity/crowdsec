@@ -396,11 +396,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 	batchSize := 50
 
 	for start := 0; start < len(cache); start += batchSize {
-		end := start + batchSize
-
-		if end > len(cache) {
-			end = len(cache)
-		}
+		end := min(start+batchSize, len(cache))
 
 		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
@@ -730,7 +726,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 	}
 
 	for _, link := range allowlistsLinks {
-		if log.GetLevel() >= log.TraceLevel {
+		if log.IsLevelEnabled(log.TraceLevel) {
 			log.Tracef("allowlist body: %+v", spew.Sdump(link))
 		}
 
@@ -754,7 +750,13 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 			description = *link.Description
 		}
 
-		resp, err := defaultClient.GetClient().Get(*link.URL)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
+		if err != nil {
+			log.Errorf("while pulling allowlist: %s", err)
+			continue
+		}
+
+		resp, err := defaultClient.GetClient().Do(req)
 		if err != nil {
 			log.Errorf("while pulling allowlist: %s", err)
 			continue
@@ -767,6 +769,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		for scanner.Scan() {
 			item := scanner.Text()
 			j := &models.AllowlistItem{}
+
 			if err := json.Unmarshal([]byte(item), j); err != nil {
 				log.Errorf("while unmarshalling allowlist item: %s", err)
 				continue
@@ -852,6 +855,10 @@ func (a *apic) ApplyApicWhitelists(ctx context.Context, decisions []*models.Deci
 	allowlisted_ips, allowlisted_cidrs, err := a.dbClient.GetAllowlistsContentForAPIC(ctx)
 	if err != nil {
 		log.Errorf("while getting allowlists content: %s", err)
+	}
+
+	if a.whitelists != nil && (len(a.whitelists.Cidrs) > 0 || len(a.whitelists.Ips) > 0) {
+		log.Warn("capi_whitelists_path is deprecated, please use centralized allowlists instead. See https://docs.crowdsec.net/docs/next/local_api/centralized_allowlists.")
 	}
 
 	if (a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0) && len(allowlisted_ips) == 0 && len(allowlisted_cidrs) == 0 {

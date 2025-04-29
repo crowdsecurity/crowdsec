@@ -337,7 +337,7 @@ func TestUnknownPath(t *testing.T) {
 	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", http.NoBody)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -388,7 +388,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.DebugLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -396,7 +396,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -440,7 +440,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	cfg.LogLevel = ptr.Of(log.ErrorLevel)
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
+	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -448,7 +448,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)

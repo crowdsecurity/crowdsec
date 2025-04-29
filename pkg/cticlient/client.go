@@ -9,9 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -21,17 +20,19 @@ const (
 )
 
 var (
-	ErrUnauthorized = errors.New("unauthorized")
-	ErrLimit        = errors.New("request quota exceeded, please reduce your request rate")
-	ErrNotFound     = errors.New("ip not found")
-	ErrDisabled     = errors.New("cti is disabled")
-	ErrUnknown      = errors.New("unknown error")
+	ErrUnauthorized  = errors.New("unauthorized")
+	ErrLimit         = errors.New("request quota exceeded, please reduce your request rate")
+	ErrNotFound      = errors.New("ip not found")
+	ErrDisabled      = errors.New("cti is disabled")
+	ErrUnknown       = errors.New("unknown error")
+	defaultUserAgent = useragent.Default()
 )
 
 type CrowdsecCTIClient struct {
 	httpClient *http.Client
 	apiKey     string
 	Logger     *log.Entry
+	UserAgent  string
 }
 
 func (c *CrowdsecCTIClient) doRequest(ctx context.Context, method string, endpoint string, params map[string]string) ([]byte, error) {
@@ -42,14 +43,13 @@ func (c *CrowdsecCTIClient) doRequest(ctx context.Context, method string, endpoi
 			url += fmt.Sprintf("%s=%s&", k, v)
 		}
 	}
-
-	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	req, err := http.NewRequestWithContext(ctx, method, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("X-Api-Key", c.apiKey)
-	req.Header.Set("User-Agent", useragent.Default())
+	req.Header.Set("User-Agent", c.UserAgent)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -170,6 +170,10 @@ func NewCrowdsecCTIClient(options ...func(*CrowdsecCTIClient)) *CrowdsecCTIClien
 		client.Logger = log.NewEntry(log.New())
 	}
 
+	if client.UserAgent == "" {
+		client.UserAgent = defaultUserAgent
+	}
+
 	return client
 }
 
@@ -188,5 +192,11 @@ func WithHTTPClient(httpClient *http.Client) func(*CrowdsecCTIClient) {
 func WithAPIKey(apiKey string) func(*CrowdsecCTIClient) {
 	return func(c *CrowdsecCTIClient) {
 		c.apiKey = apiKey
+	}
+}
+
+func WithUserAgent(userAgent string) func(*CrowdsecCTIClient) {
+	return func(c *CrowdsecCTIClient) {
+		c.UserAgent = userAgent
 	}
 }

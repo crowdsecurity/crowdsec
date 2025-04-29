@@ -3,6 +3,8 @@ package appsecacquisition
 import (
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -346,7 +348,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				ClientIP:   "1.2.3.4",
 				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
+				Method:     "POST",
 				URI:        "/urllll",
 				Headers:    http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
 				Body: []byte(`
@@ -368,6 +370,11 @@ toto
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
+
+				// Might fail if you have artifacts from previous tests, but good enough 99% of the time
+				tmpFiles, err := filepath.Glob(filepath.Join(os.TempDir(), "crzmp*"))
+				require.NoError(t, err)
+				require.Empty(t, tmpFiles)
 			},
 		},
 		{

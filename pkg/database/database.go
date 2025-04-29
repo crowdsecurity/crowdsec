@@ -52,12 +52,8 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	}
 	/*The logger that will be used by db operations*/
 	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
 		return nil, fmt.Errorf("while configuring db logger: %w", err)
-	}
-
-	if config.LogLevel != nil {
-		clog.SetLevel(*config.LogLevel)
 	}
 
 	entLogger := clog.WithField("context", "ent")
@@ -86,7 +82,11 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 		}
 	}
 
-	drv, err := getEntDriver(typ, dia, config.ConnectionString(), config)
+	dbConnectionString, err := config.ConnectionString()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate DB connection string: %w", err)
+	}
+	drv, err := getEntDriver(typ, dia, dbConnectionString, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening connection to %s: %w", config.Type, err)
 	}

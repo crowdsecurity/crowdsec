@@ -11,8 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/coraza/v3/collection"
-	"github.com/crowdsecurity/coraza/v3/types/variables"
+	"github.com/corazawaf/coraza/v3/collection"
+	"github.com/corazawaf/coraza/v3/types/variables"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
@@ -60,8 +60,8 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 }
 
 func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
-	// if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
-	if !inEvt.Appsec.HasInBandMatches {
+	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
+	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil
 	}
 
@@ -99,12 +99,12 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 
 	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
 	alert.Leakspeed = ptr.Of("")
-	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
-	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
-	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.MatchedRules.GetVersion())
+	alert.Scenario = ptr.Of(inEvt.Appsec.GetName())
+	alert.ScenarioHash = ptr.Of(inEvt.Appsec.GetHash())
+	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
 	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
-	msg := fmt.Sprintf("AppSec block: %s from %s (%s)", inEvt.Appsec.MatchedRules.GetName(),
+	msg := fmt.Sprintf("AppSec block: %s from %s (%s)", inEvt.Appsec.GetName(),
 		alert.Source.IP, inEvt.Parsed["remediation_cmpt_ip"])
 	alert.Message = &msg
 	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
@@ -278,7 +278,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			matchedZones = append(matchedZones, zone)
 		}
 
-		corazaRule := map[string]interface{}{
+		corazaRule := map[string]any{
 			"id":            rule.Rule().ID(),
 			"uri":           evt.Parsed["target_uri"],
 			"rule_type":     kind,

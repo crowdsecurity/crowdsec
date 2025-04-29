@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -321,13 +322,12 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 
-	err = types.ConfigureLogger(l)
+	err = types.ConfigureLogger(l, ptr.Of(log.TraceLevel))
 	if err != nil {
 		return nil, err
 	}
 	// We set the highest level to permit plugins to set their own log level
 	// without that, crowdsec log level is controlling plugins level
-	l.SetLevel(log.TraceLevel)
 	logger := NewHCLogAdapter(l, "")
 	c := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  handshake,

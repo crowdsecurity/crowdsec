@@ -113,7 +113,7 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw 
 		return fmt.Errorf("could not format prometheus metrics: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.Cscli.PrometheusUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.Cscli.PrometheusUrl, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("could not create request to prometheus endpoint: %w", err)
 	}
@@ -328,7 +328,7 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 			),
 			endpoint,
 		),
-		nil,
+		http.NoBody,
 	)
 	if err != nil {
 		return fmt.Errorf("could not create request to pprof endpoint: %w", err)
