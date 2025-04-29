@@ -478,10 +478,7 @@ custom_headers:
 }
 
 func TestAcquistionSocket(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "crowdsec-http-socket")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	socketFile := filepath.Join(tempDir, "test.sock")
 
 	ctx := t.Context()
