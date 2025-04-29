@@ -477,11 +477,13 @@ custom_headers:
 }
 
 func TestAcquistionSocket(t *testing.T) {
+	socketFile := "/tmp/test.sock"
+
 	ctx := t.Context()
 	h := &HTTPSource{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
-listen_socket: /run/test.sock
+listen_socket: `+socketFile+`
 path: /test
 auth_type: headers
 headers:
@@ -495,7 +497,7 @@ headers:
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial("unix", "/run/test.sock")
+				return net.Dial("unix", socketFile)
 			},
 		},
 	}
