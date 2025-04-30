@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -68,7 +69,7 @@ func (cli *cliItem) upgrade(ctx context.Context, args []string, interactive bool
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
-		fmt.Println("\n" + msg)
+		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
 	return nil

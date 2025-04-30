@@ -97,7 +97,7 @@ func (cli *cliItem) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func compInstalledItems(itemType string, args []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+func compInstalledItems(itemType string, _ []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
 	hub, err := require.Hub(cfg(), nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

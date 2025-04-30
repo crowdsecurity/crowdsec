@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -91,7 +92,7 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
-		fmt.Println("\n" + msg)
+		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
 	return nil

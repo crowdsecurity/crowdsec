@@ -51,7 +51,7 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 		}
 
 		if diff {
-			fmt.Println(cli.whyTainted(ctx, hub, contentProvider, item, rev))
+			fmt.Fprintln(os.Stdout, cli.whyTainted(ctx, hub, contentProvider, item, rev))
 
 			continue
 		}
@@ -212,7 +212,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 			return fmt.Errorf("unable to serialize item: %w", err)
 		}
 
-		fmt.Print(string(b))
+		fmt.Fprintln(os.Stdout, string(b))
 	}
 
 	if output != "human" {
@@ -220,13 +220,11 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 	}
 
 	if item.State.Tainted {
-		fmt.Println()
-		fmt.Printf(`This item is tainted. Use "%s %s inspect --diff %s" to see why.`, filepath.Base(os.Args[0]), item.Type, item.Name)
-		fmt.Println()
+		fmt.Fprintf(os.Stdout, "\nThis item is tainted. Use '%s %s inspect --diff %s' to see why.\n", filepath.Base(os.Args[0]), item.Type, item.Name)
 	}
 
 	if wantMetrics {
-		fmt.Printf("\nCurrent metrics: \n")
+		fmt.Fprintf(os.Stdout, "\nCurrent metrics: \n")
 
 		if err := showMetrics(prometheusURL, hub, item, wantColor); err != nil {
 			return err
