@@ -98,7 +98,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if d.Config.CheckInterval != "" {
-		d.logger.Warnf("check_interval is deprecated, it will be removed in a future version")
+		d.logger.Warn("check_interval is deprecated, it will be removed in a future version")
 	}
 
 	if d.Config.Mode == "" {
