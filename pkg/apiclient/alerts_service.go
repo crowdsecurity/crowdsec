@@ -15,36 +15,36 @@ import (
 type AlertsService service
 
 type AlertsListOpts struct {
-	ScopeEquals          *string `url:"scope,omitempty"`
-	ValueEquals          *string `url:"value,omitempty"`
-	ScenarioEquals       *string `url:"scenario,omitempty"`
-	IPEquals             *string `url:"ip,omitempty"`
-	RangeEquals          *string `url:"range,omitempty"`
-	OriginEquals         *string `url:"origin,omitempty"`
+	ScopeEquals          *string                 `url:"scope,omitempty"`
+	ValueEquals          *string                 `url:"value,omitempty"`
+	ScenarioEquals       *string                 `url:"scenario,omitempty"`
+	IPEquals             *string                 `url:"ip,omitempty"`
+	RangeEquals          *string                 `url:"range,omitempty"`
+	OriginEquals         *string                 `url:"origin,omitempty"`
 	Since                cstime.DurationWithDays `url:"since,omitempty"`
-	TypeEquals           *string `url:"decision_type,omitempty"`
+	TypeEquals           *string                 `url:"decision_type,omitempty"`
 	Until                cstime.DurationWithDays `url:"until,omitempty"`
-	IncludeSimulated     *bool   `url:"simulated,omitempty"`
-	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
-	IncludeCAPI          *bool   `url:"include_capi,omitempty"`
-	Limit                *int    `url:"limit,omitempty"`
-	Contains             *bool   `url:"contains,omitempty"`
+	IncludeSimulated     *bool                   `url:"simulated,omitempty"`
+	ActiveDecisionEquals *bool                   `url:"has_active_decision,omitempty"`
+	IncludeCAPI          *bool                   `url:"include_capi,omitempty"`
+	Limit                *int                    `url:"limit,omitempty"`
+	Contains             *bool                   `url:"contains,omitempty"`
 	ListOpts
 }
 
 type AlertsDeleteOpts struct {
-	ScopeEquals          *string `url:"scope,omitempty"`
-	ValueEquals          *string `url:"value,omitempty"`
-	ScenarioEquals       *string `url:"scenario,omitempty"`
-	IPEquals             *string `url:"ip,omitempty"`
-	RangeEquals          *string `url:"range,omitempty"`
+	ScopeEquals          *string                 `url:"scope,omitempty"`
+	ValueEquals          *string                 `url:"value,omitempty"`
+	ScenarioEquals       *string                 `url:"scenario,omitempty"`
+	IPEquals             *string                 `url:"ip,omitempty"`
+	RangeEquals          *string                 `url:"range,omitempty"`
 	Since                cstime.DurationWithDays `url:"since,omitempty"`
 	Until                cstime.DurationWithDays `url:"until,omitempty"`
-	OriginEquals         *string `url:"origin,omitempty"`
-	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
-	SourceEquals         *string `url:"alert_source,omitempty"`
-	Contains             *bool   `url:"contains,omitempty"`
-	Limit                *int    `url:"limit,omitempty"`
+	OriginEquals         *string                 `url:"origin,omitempty"`
+	ActiveDecisionEquals *bool                   `url:"has_active_decision,omitempty"`
+	SourceEquals         *string                 `url:"alert_source,omitempty"`
+	Contains             *bool                   `url:"contains,omitempty"`
+	Limit                *int                    `url:"limit,omitempty"`
 	ListOpts
 }
 
