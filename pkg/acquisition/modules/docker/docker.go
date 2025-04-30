@@ -97,6 +97,10 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
+	if d.Config.CheckInterval != "" {
+		d.logger.Warnf("check_interval is deprecated, it will be removed in a future version")
+	}
+
 	if d.Config.Mode == "" {
 		d.Config.Mode = configuration.TAIL_MODE
 	}

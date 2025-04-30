@@ -55,6 +55,15 @@ container_name:
  - toto`,
 			expectedErr: "",
 		},
+		{
+			config: `
+mode: cat
+source: docker
+check_interval: 10s
+container_name:
+ - toto`,
+			expectedErr: "",
+		},
 	}
 
 	subLogger := log.WithField("type", "docker")
