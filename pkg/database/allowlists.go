@@ -12,6 +12,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -393,7 +395,10 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, error) {
 	// Soft delete (set expiration to now) all decisions that matches any allowlist
 
-	// First, get all non-expired allowlist items
+	totalCount := 0
+
+	// Get all non-expired allowlist items
+	// We will match them one by one against all decisions
 	allowlistItems, err := c.Ent.AllowListItem.Query().
 		Where(
 			allowlistitem.Or(
@@ -405,20 +410,77 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 		return 0, fmt.Errorf("unable to get allowlist items: %w", err)
 	}
 
-	// Chunk the allowlist items to avoid too long query
-	chunkSize := 1000
+	now := time.Now().UTC()
 
-	var chunks [][]*ent.AllowListItem
-	for i := 0; i < len(allowlistItems); i += chunkSize {
-		end := i + chunkSize
-		if end > len(allowlistItems) {
-			end = len(allowlistItems)
+	for _, item := range allowlistItems {
+		updateQuery := c.Ent.Decision.Update().SetUntil(now)
+		switch item.IPSize {
+		case 4:
+			updateQuery = updateQuery.Where(
+				decision.And(
+					decision.IPSizeEQ(4),
+					decision.Or(
+						decision.And(
+							decision.StartIPLTE(item.StartIP),
+							decision.EndIPGTE(item.EndIP),
+						),
+						decision.And(
+							decision.StartIPGTE(item.StartIP),
+							decision.EndIPLTE(item.EndIP),
+						),
+					)))
+		case 16:
+			updateQuery = updateQuery.Where(
+				decision.And(
+					decision.IPSizeEQ(16),
+					decision.Or(
+						decision.And(
+							decision.Or(
+								decision.StartIPLT(item.StartIP),
+								decision.And(
+									decision.StartIPEQ(item.StartIP),
+									decision.StartSuffixLTE(item.StartSuffix),
+								)),
+							decision.Or(
+								decision.EndIPGT(item.EndIP),
+								decision.And(
+									decision.EndIPEQ(item.EndIP),
+									decision.EndSuffixGTE(item.EndSuffix),
+								),
+							),
+						),
+						decision.And(
+							decision.Or(
+								decision.StartIPGT(item.StartIP),
+								decision.And(
+									decision.StartIPEQ(item.StartIP),
+									decision.StartSuffixGTE(item.StartSuffix),
+								)),
+							decision.Or(
+								decision.EndIPLT(item.EndIP),
+								decision.And(
+									decision.EndIPEQ(item.EndIP),
+									decision.EndSuffixLTE(item.EndSuffix),
+								),
+							),
+						),
+					),
+				),
+			)
+		default:
+			// This should never happen
+			// But better safe than sorry and just skip it instead of expiring all decisions
+			c.Log.Errorf("unexpected IP size %d for allowlist item %s", item.IPSize, item.Value)
+			continue
 		}
-		chunks = append(chunks, allowlistItems[i:end])
+		// Update the decisions
+		count, err := updateQuery.Save(ctx)
+		if err != nil {
+			c.Log.Errorf("unable to expire existing decisions: %s", err)
+			continue
+		}
+		totalCount += count
 	}
 
-	for _, chunk := range chunks {
-	}
-
-	return 0, nil
+	return totalCount, nil
 }
