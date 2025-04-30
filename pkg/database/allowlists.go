@@ -413,7 +413,7 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 	now := time.Now().UTC()
 
 	for _, item := range allowlistItems {
-		updateQuery := c.Ent.Decision.Update().SetUntil(now)
+		updateQuery := c.Ent.Decision.Update().SetUntil(now).Where(decision.UntilGTE(now))
 		switch item.IPSize {
 		case 4:
 			updateQuery = updateQuery.Where(
