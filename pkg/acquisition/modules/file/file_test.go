@@ -1,8 +1,10 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -394,13 +396,19 @@ force_inotify: true`, testPattern),
 			actualLines := 0
 
 			if tc.expectedLines != 0 {
+				var stopReading bool
+				defer func() { stopReading = true }()
 				go func() {
 					for {
 						select {
 						case <-out:
 							actualLines++
-						case <-time.After(2 * time.Second):
-							return
+						default:
+							if stopReading {
+								return
+							}
+							// Small sleep to prevent tight loop
+							time.Sleep(100 * time.Millisecond)
 						}
 					}
 				}()
@@ -410,21 +418,41 @@ force_inotify: true`, testPattern),
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
-				fd, err := os.Create("test_files/stream.log")
+				// f.IsTailing is path delimiter sensitive
+				streamLogFile := filepath.Join("test_files", "stream.log")
+
+				fd, err := os.Create(streamLogFile)
 				require.NoError(t, err, "could not create test file")
+
+				// wait for the file to be tailed
+				waitingForTail := true
+				for waitingForTail {
+					select {
+					case <-time.After(2 * time.Second):
+						t.Fatal("Timeout waiting for file to be tailed")
+					default:
+						if !f.IsTailing(streamLogFile) {
+							time.Sleep(50 * time.Millisecond)
+							continue
+						}
+						waitingForTail = false
+					}
+				}
 
 				for i := range 5 {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
-						os.Remove("test_files/stream.log")
+						os.Remove(streamLogFile)
 						t.Fatalf("could not write test file : %s", err)
 					}
 				}
 
 				fd.Close()
-				// we sleep to make sure we detect the new file
-				time.Sleep(3 * time.Second)
-				os.Remove("test_files/stream.log")
+
+				// sleep to ensure the tail events are processed
+				time.Sleep(2 * time.Second)
+
+				os.Remove(streamLogFile)
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
@@ -454,20 +482,158 @@ exclude_regexps: ["\\.gz$"]`
 	subLogger := logger.WithField("type", "file")
 
 	f := fileacquisition.FileSource{}
-	if err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE); err != nil {
-		subLogger.Fatalf("unexpected error: %s", err)
-	}
+	err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
+	require.NoError(t, err)
 
-	expectedLogOutput := "Skipping file test_files/test.log.gz as it matches exclude pattern"
-
-	if runtime.GOOS == "windows" {
-		expectedLogOutput = `Skipping file test_files\test.log.gz as it matches exclude pattern \.gz`
-	}
-
-	if hook.LastEntry() == nil {
-		t.Fatalf("expected output %s, but got nothing", expectedLogOutput)
-	}
-
-	assert.Contains(t, hook.LastEntry().Message, expectedLogOutput)
+	require.NotNil(t, hook.LastEntry())
+	assert.Contains(t, hook.LastEntry().Message, `Skipping file: matches exclude regex "\\.gz`)
+	assert.Equal(t, filepath.Join("test_files", "test.log.gz"), hook.LastEntry().Data["file"])
 	hook.Reset()
+}
+
+func TestDiscoveryPollConfiguration(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  string
+		wantErr string
+	}{
+		{
+			name: "valid discovery poll config",
+			config: `
+filenames:
+ - "tests/test.log"
+discovery_poll_enable: true
+discovery_poll_interval: "30s"
+mode: tail
+`,
+			wantErr: "",
+		},
+		{
+			name: "invalid poll interval",
+			config: `
+filenames:
+ - "tests/test.log"
+discovery_poll_enable: true
+discovery_poll_interval: "invalid"
+mode: tail
+`,
+			wantErr: "cannot unmarshal !!str `invalid` into time.Duration",
+		},
+		{
+			name: "polling disabled",
+			config: `
+filenames:
+ - "tests/test.log"
+discovery_poll_enable: false
+mode: tail
+`,
+			wantErr: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &fileacquisition.FileSource{}
+			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), configuration.METRICS_NONE)
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+		})
+	}
+}
+
+func TestDiscoveryPolling(t *testing.T) {
+	dir := t.TempDir()
+
+	pattern := filepath.Join(dir, "*.log")
+	yamlConfig := fmt.Sprintf(`
+filenames:
+ - '%s'
+discovery_poll_enable: true
+discovery_poll_interval: "1s"
+exclude_regexps: ["\\.ignore$"]
+mode: tail
+`, pattern)
+
+	fmt.Printf("Config: %s\n", yamlConfig)
+	config := []byte(yamlConfig)
+
+	f := &fileacquisition.FileSource{}
+	err := f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	require.NoError(t, err)
+
+	// Create channel for events
+	eventChan := make(chan types.Event)
+	tomb := tomb.Tomb{}
+
+	// Start acquisition
+	err = f.StreamingAcquisition(context.Background(), eventChan, &tomb)
+	require.NoError(t, err)
+
+	// Create a test file
+	testFile := filepath.Join(dir, "test.log")
+	err = os.WriteFile(testFile, []byte("test line\n"), 0o644)
+	require.NoError(t, err)
+
+	ignoredFile := filepath.Join(dir, ".ignored")
+	err = os.WriteFile(ignoredFile, []byte("test line\n"), 0o644)
+	require.NoError(t, err)
+
+	// Wait for polling to detect the file
+	time.Sleep(4 * time.Second)
+
+	require.True(t, f.IsTailing(testFile), "File should be tailed after polling")
+	require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
+
+	// Cleanup
+	tomb.Kill(nil)
+	tomb.Wait()
+}
+
+func TestFileResurrectionViaPolling(t *testing.T) {
+	dir := t.TempDir()
+	ctx := t.Context()
+
+	testFile := filepath.Join(dir, "test.log")
+	err := os.WriteFile(testFile, []byte("test line\n"), 0o644)
+	require.NoError(t, err)
+
+	pattern := filepath.Join(dir, "*.log")
+	yamlConfig := fmt.Sprintf(`
+filenames:
+ - '%s'
+discovery_poll_enable: true
+discovery_poll_interval: "1s"
+mode: tail
+`, pattern)
+
+	fmt.Printf("Config: %s\n", yamlConfig)
+	config := []byte(yamlConfig)
+
+	f := &fileacquisition.FileSource{}
+	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	require.NoError(t, err)
+
+	eventChan := make(chan types.Event)
+	tomb := tomb.Tomb{}
+
+	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
+	require.NoError(t, err)
+
+	// Wait for initial tail setup
+	time.Sleep(100 * time.Millisecond)
+
+	// Simulate tailer death by removing it from the map
+	f.RemoveTail(testFile)
+	isTailed := f.IsTailing(testFile)
+	require.False(t, isTailed, "File should be removed from the map")
+
+	// Wait for polling to resurrect the file
+	time.Sleep(2 * time.Second)
+
+	// Verify file is being tailed again
+	isTailed = f.IsTailing(testFile)
+	require.True(t, isTailed, "File should be resurrected via polling")
+
+	// Cleanup
+	tomb.Kill(nil)
+	tomb.Wait()
 }
