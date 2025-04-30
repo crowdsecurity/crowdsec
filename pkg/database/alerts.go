@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -382,7 +383,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			sz                                   int
 		)
 
-		duration, err := ParseDuration(*decisionItem.Duration)
+		duration, err := cstime.ParseDuration(*decisionItem.Duration)
 		if err != nil {
 			return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 		}
