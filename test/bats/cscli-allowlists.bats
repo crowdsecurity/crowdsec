@@ -126,7 +126,7 @@ teardown() {
     refute_output
     assert_stderr 'Error: invalid day value in duration "1 day"'
 
-    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d'
+    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d12h'
     assert_output 'added 1 values to allowlist foo'
     refute_stderr
 
