@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -556,15 +557,17 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			d.logger.Infof("stopping container watcher")
 			return nil
 		case event := <-eventsChan:
-			if event.Action == "start" || event.Action == "die" {
+			if event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie {
 				err := d.checkContainers(ctx, monitChan, deleteChan)
 				if err != nil {
-					d.logger.Errorf("error while checking containers: %s", err)
+					return err // We hit an error while watching containers, we stop the watcher
 				}
 			}
 		case err := <-errChan:
-			d.logger.Errorf("error while watching containers: %s", err)
-			return err
+			if errors.Is(err, io.EOF) {
+				d.logger.Debug("EOF while watching containers, we stop the watcher")
+			}
+			return err // We hit an error while watching containers, we stop the watcher
 		}
 	}
 }
