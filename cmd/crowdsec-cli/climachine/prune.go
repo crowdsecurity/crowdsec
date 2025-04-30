@@ -9,10 +9,14 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
+
+const defaultPruneDuration = 10 * time.Minute
 
 func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notValidOnly bool, force bool) error {
 	if duration < 2*time.Minute && !notValidOnly {
@@ -67,12 +71,11 @@ func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notVa
 
 func (cli *cliMachines) newPruneCmd() *cobra.Command {
 	var (
-		duration     time.Duration
 		notValidOnly bool
 		force        bool
 	)
 
-	const defaultDuration = 10 * time.Minute
+	duration := cstime.Duration(defaultPruneDuration)
 
 	cmd := &cobra.Command{
 		Use:   "prune",
@@ -84,12 +87,12 @@ cscli machines prune --not-validated-only --force`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.prune(cmd.Context(), duration, notValidOnly, force)
+			return cli.prune(cmd.Context(), time.Duration(duration), notValidOnly, force)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.DurationVarP(&duration, "duration", "d", defaultDuration, "duration of time since validated machine last heartbeat")
+	flags.VarP(&duration, "duration", "d", "duration of time since validated machine last heartbeat")
 	flags.BoolVar(&notValidOnly, "not-validated-only", false, "only prune machines that are not validated")
 	flags.BoolVar(&force, "force", false, "force prune without asking for confirmation")
 
