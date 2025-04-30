@@ -489,57 +489,57 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 	return nil
 }
 
-func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
-	checkContainers := func() error {
-		// to track for garbage collection
-		runningContainersID := make(map[string]bool)
+func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+	// to track for garbage collection
+	runningContainersID := make(map[string]bool)
 
-		runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
-		if err != nil {
-			if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
-				for idx, container := range d.runningContainerState {
-					if d.runningContainerState[idx].t.Alive() {
-						d.logger.Infof("killing tail for container %s", container.Name)
-						d.runningContainerState[idx].t.Kill(nil)
+	runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
+			for idx, container := range d.runningContainerState {
+				if d.runningContainerState[idx].t.Alive() {
+					d.logger.Infof("killing tail for container %s", container.Name)
+					d.runningContainerState[idx].t.Kill(nil)
 
-						if err := d.runningContainerState[idx].t.Wait(); err != nil {
-							d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
-						}
+					if err := d.runningContainerState[idx].t.Wait(); err != nil {
+						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
 					}
-
-					delete(d.runningContainerState, idx)
 				}
-			} else {
-				log.Errorf("container list err: %s", err)
-			}
 
-			return err
+				delete(d.runningContainerState, idx)
+			}
+		} else {
+			log.Errorf("container list err: %s", err)
 		}
 
-		for _, container := range runningContainers {
-			runningContainersID[container.ID] = true
-
-			// don't need to re eval an already monitored container
-			if _, ok := d.runningContainerState[container.ID]; ok {
-				continue
-			}
-
-			if containerConfig := d.EvalContainer(ctx, container); containerConfig != nil {
-				monitChan <- containerConfig
-			}
-		}
-
-		for containerStateID, containerConfig := range d.runningContainerState {
-			if _, ok := runningContainersID[containerStateID]; !ok {
-				deleteChan <- containerConfig
-			}
-		}
-
-		d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
-		return nil
+		return err
 	}
 
-	err := checkContainers()
+	for _, container := range runningContainers {
+		runningContainersID[container.ID] = true
+
+		// don't need to re eval an already monitored container
+		if _, ok := d.runningContainerState[container.ID]; ok {
+			continue
+		}
+
+		if containerConfig := d.EvalContainer(ctx, container); containerConfig != nil {
+			monitChan <- containerConfig
+		}
+	}
+
+	for containerStateID, containerConfig := range d.runningContainerState {
+		if _, ok := runningContainersID[containerStateID]; !ok {
+			deleteChan <- containerConfig
+		}
+	}
+
+	d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
+	return nil
+}
+
+func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+	err := d.checkContainers(ctx, monitChan, deleteChan)
 	if err != nil {
 		return err
 	}
@@ -557,7 +557,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			return nil
 		case event := <-eventsChan:
 			if event.Action == "start" || event.Action == "die" {
-				err := checkContainers()
+				err := d.checkContainers(ctx, monitChan, deleteChan)
 				if err != nil {
 					d.logger.Errorf("error while checking containers: %s", err)
 				}
