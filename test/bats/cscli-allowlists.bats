@@ -246,3 +246,65 @@ teardown() {
     rune -0 jq 'del(.created_at) | del(.updated_at) | del(.items.[].created_at) | del(.items.[].expiration)' <(output)
     assert_json '{"description":"a foo","items":[],"name":"foo"}'
 }
+
+@test "allowlists expire active decisions" {
+    rune -0 cscli decisions add -i 1.2.3.4
+    rune -0 cscli decisions add -r 2.3.4.0/24
+    rune -0 cscli decisions add -i 5.4.3.42
+    rune -0 cscli decisions add -r 6.5.4.0/24
+    rune -0 cscli decisions add -r 10.0.0.0/23
+
+    rune -0 cscli decisions list -o json
+    jq_out="$output"
+    rune -0 jq -r '.[4].decisions[0].value' <(echo "$jq_out")
+    assert_output '1.2.3.4'
+
+    rune -0 jq -r '.[3].decisions[0].value' <(echo "$jq_out")
+    assert_output '2.3.4.0/24'
+
+    rune -0 jq -r '.[2].decisions[0].value' <(echo "$jq_out")
+    assert_output '5.4.3.42'
+
+    rune -0 jq -r '.[1].decisions[0].value' <(echo "$jq_out")
+    assert_output '6.5.4.0/24'
+
+    rune -0 jq -r '.[0].decisions[0].value' <(echo "$jq_out")
+    assert_output '10.0.0.0/23'
+
+    rune -0 cscli allowlists create foo -d "foo"
+
+    # add an allowlist that matches exactly
+    rune -0 cscli allowlists add foo 1.2.3.4
+    # it should not be here anymore
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[] | select(.value == "1.2.3.4")' <(output)
+    refute_output
+
+    # allowlist an IP belonging to a range
+    rune -0 cscli allowlist add foo 2.3.4.42
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[] | select(.value == "2.3.4.0/24")' <(output)
+    refute_output
+
+    # allowlist a range with an active decision inside
+    rune -0 cscli allowlist add foo 5.4.3.0/24
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[] | select(.value == "5.4.3.42")' <(output)
+    refute_output 
+
+    # allowlist a range inside a range for which we have a decision
+    rune -0 cscli allowlist add foo 6.5.4.0/25
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[] | select(.value == "6.5.4.0/24")' <(output)
+    refute_output
+
+    # allowlist a range bigger than a range for which we have a decision
+    rune -0 cscli allowlist add foo 10.0.0.0/24
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[] | select(.value == "10.0.0.0/23")' <(output)
+    refute_output
+
+    # sanity check no more active decisions
+    rune -0 cscli decisions list -o json
+    assert_json []
+}
