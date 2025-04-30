@@ -663,7 +663,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 		return 0, nil
 	}
 
-	sinceDuration, err := cstime.ParseDuration(since)
+	sinceDuration, err := cstime.ParseDurationWithDays(since)
 	if err != nil {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
 		return 0, nil

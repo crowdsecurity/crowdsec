@@ -383,7 +383,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			sz                                   int
 		)
 
-		duration, err := cstime.ParseDuration(*decisionItem.Duration)
+		duration, err := cstime.ParseDurationWithDays(*decisionItem.Duration)
 		if err != nil {
 			return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 		}

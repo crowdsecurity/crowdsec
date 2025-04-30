@@ -44,7 +44,7 @@ func handleScopeFilter(scope string, predicates *[]predicate.Alert) {
 func handleTimeFilters(param, value string, predicates *[]predicate.Alert) error {
 	// crowsdec now always sends duration without days, but we allow them for
 	// compatibility with other tools
-	duration, err := cstime.ParseDuration(value)
+	duration, err := cstime.ParseDurationWithDays(value)
 	if err != nil {
 		return fmt.Errorf("while parsing duration: %w", err)
 	}

@@ -75,7 +75,7 @@ func (cli *cliMachines) newPruneCmd() *cobra.Command {
 		force        bool
 	)
 
-	duration := cstime.Duration(defaultPruneDuration)
+	duration := cstime.DurationWithDays(defaultPruneDuration)
 
 	cmd := &cobra.Command{
 		Use:   "prune",

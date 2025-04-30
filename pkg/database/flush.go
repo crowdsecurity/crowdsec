@@ -57,7 +57,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 	// Init & Start cronjob every hour for bouncers/agents
 	if config.AgentsGC != nil {
 		if config.AgentsGC.Cert != nil {
-			duration, err := cstime.ParseDuration(*config.AgentsGC.Cert)
+			duration, err := cstime.ParseDurationWithDays(*config.AgentsGC.Cert)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing agents cert auto-delete duration: %w", err)
 			}
@@ -66,7 +66,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.AgentsGC.LoginPassword != nil {
-			duration, err := cstime.ParseDuration(*config.AgentsGC.LoginPassword)
+			duration, err := cstime.ParseDurationWithDays(*config.AgentsGC.LoginPassword)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing agents login/password auto-delete duration: %w", err)
 			}
@@ -81,7 +81,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 
 	if config.BouncersGC != nil {
 		if config.BouncersGC.Cert != nil {
-			duration, err := cstime.ParseDuration(*config.BouncersGC.Cert)
+			duration, err := cstime.ParseDurationWithDays(*config.BouncersGC.Cert)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing bouncers cert auto-delete duration: %w", err)
 			}
@@ -90,7 +90,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.BouncersGC.Api != nil {
-			duration, err := cstime.ParseDuration(*config.BouncersGC.Api)
+			duration, err := cstime.ParseDurationWithDays(*config.BouncersGC.Api)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing bouncers api auto-delete duration: %w", err)
 			}

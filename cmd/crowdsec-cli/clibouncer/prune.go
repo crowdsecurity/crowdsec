@@ -65,7 +65,7 @@ func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force
 func (cli *cliBouncers) newPruneCmd() *cobra.Command {
 	var force    bool
 
-	duration := cstime.Duration(defaultPruneDuration)
+	duration := cstime.DurationWithDays(defaultPruneDuration)
 
 	cmd := &cobra.Command{
 		Use:               "prune",

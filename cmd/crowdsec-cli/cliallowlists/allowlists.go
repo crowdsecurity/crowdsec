@@ -399,7 +399,7 @@ func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name 
 
 func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 	var (
-		expiration cstime.Duration
+		expiration cstime.DurationWithDays
 		comment    string
 	)
 

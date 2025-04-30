@@ -85,7 +85,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 					duration = defaultDuration
 				}
 
-				if _, err := cstime.ParseDuration(duration); err != nil {
+				if _, err := cstime.ParseDurationWithDays(duration); err != nil {
 					return nil, fmt.Errorf("error parsing duration '%s' of %s: %w", duration, profile.Name, err)
 				}
 			}
@@ -137,7 +137,7 @@ func (profile *Runtime) GenerateDecisionFromProfile(alert *models.Alert) ([]*mod
 				profile.Logger.Warningf("Failed to run duration_expr : %v", err)
 			} else {
 				durationStr := fmt.Sprint(duration)
-				if _, err := cstime.ParseDuration(durationStr); err != nil {
+				if _, err := cstime.ParseDurationWithDays(durationStr); err != nil {
 					profile.Logger.Warningf("Failed to parse expr duration result '%s'", duration)
 				} else {
 					*decision.Duration = durationStr
