@@ -56,7 +56,9 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 			continue
 		}
 
-		if err = inspectItem(hub, item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		wantMetrics := !noMetrics && item.State.IsInstalled()
+
+		if err = inspectItem(hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 

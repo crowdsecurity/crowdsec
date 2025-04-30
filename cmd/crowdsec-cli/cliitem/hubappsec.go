@@ -85,10 +85,11 @@ cscli appsec-configs upgrade crowdsecurity/virtual-patching -i
 cscli appsec-configs upgrade crowdsecurity/virtual-patching --interactive`,
 		},
 		inspectHelp: cliHelp{
-			example: `# Display metadata, state, metrics and ancestor collections of appsec-configs (installed or not).
+			example: `# Display metadata, state, ancestor collections of appsec-configs (installed or not).
 cscli appsec-configs inspect crowdsecurity/virtual-patching
 
-# Don't collect metrics (avoid error if crowdsec is not running).
+# If the config is installed, its metrics are collected and shown as well (with an error if crowdsec is not running).
+# To avoid this, use --no-metrics.
 cscli appsec-configs inspect crowdsecurity/virtual-patching --no-metrics
 
 # Display difference between a tainted item and the latest one.
@@ -118,6 +119,10 @@ func NewAppsecRule(cfg configGetter) *cliItem {
 		}
 
 		appsecRule := appsec.AppsecCollectionConfig{}
+
+		if item.State.LocalPath == "" {
+			return nil
+		}
 
 		yamlContent, err := os.ReadFile(item.State.LocalPath)
 		if err != nil {
@@ -222,10 +227,11 @@ cscli appsec-rules upgrade crowdsecurity/crs -i
 cscli appsec-rules upgrade crowdsecurity/crs --interactive`,
 		},
 		inspectHelp: cliHelp{
-			example: `# Display metadata, state, metrics and ancestor collections of appsec-rules (installed or not).
+			example: `# Display metadata, state, ancestor collections of appsec-rules (installed or not).
 cscli appsec-rules inspect crowdsecurity/crs
 
-# Don't collect metrics (avoid error if crowdsec is not running).
+# If the rule is installed, its metrics are collected and shown as well (with an error if crowdsec is not running).
+# To avoid this, use --no-metrics.
 cscli appsec-configs inspect crowdsecurity/crs --no-metrics
 
 # Display difference between a tainted item and the latest one.
