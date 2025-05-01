@@ -95,7 +95,6 @@ bats-fixture: bats-check-requirements bats-update-tools  ## Build fixture for fu
 bats-clean:  ## Remove functional test environment
 	@$(RM) $(TEST_DIR)/local $(WIN_IGNORE_ERR)
 	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
-	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
 	@$(RM) test/.environment.sh $(WIN_IGNORE_ERR)
 	@$(RM) test/coverage/* $(WIN_IGNORE_ERR)
 

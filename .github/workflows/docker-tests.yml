@@ -57,7 +57,7 @@ jobs:
         with:
           version: 0.5.24
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          cache-dependency-glob: "./docker/test/uv.lock"
 
       - name: "Set up Python"
         uses: actions/setup-python@v5
