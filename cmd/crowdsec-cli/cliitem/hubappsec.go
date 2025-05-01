@@ -134,7 +134,7 @@ func NewAppsecRule(cfg configGetter) *cliItem {
 		}
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {
-			fmt.Printf("\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
+			fmt.Fprintf(os.Stdout, "\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
 
 			for _, rule := range appsecRule.Rules {
 				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
@@ -142,13 +142,13 @@ func NewAppsecRule(cfg configGetter) *cliItem {
 					return fmt.Errorf("unable to convert rule %s: %w", rule.Name, err)
 				}
 
-				fmt.Println(convertedRule)
+				fmt.Fprintln(os.Stdout, convertedRule)
 			}
 
 			switch ruleType { //nolint:gocritic
 			case appsec_rule.ModsecurityRuleType:
 				for _, rule := range appsecRule.SecLangRules {
-					fmt.Println(rule)
+					fmt.Fprintln(os.Stdout, rule)
 				}
 			}
 		}

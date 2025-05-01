@@ -58,12 +58,12 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 
 		wantMetrics := !noMetrics && item.State.IsInstalled()
 
-		if err = inspectItem(hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		if err := inspectItem(hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
 		if cli.inspectDetail != nil {
-			if err = cli.inspectDetail(item); err != nil {
+			if err := cli.inspectDetail(item); err != nil {
 				return err
 			}
 		}
@@ -73,7 +73,7 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 }
 
 // return the diff between the installed version and the latest version
-func (cli *cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
+func (*cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.IsInstalled() {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
