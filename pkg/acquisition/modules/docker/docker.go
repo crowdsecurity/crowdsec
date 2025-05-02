@@ -569,12 +569,6 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			return nil
 
 		case event := <-eventsChan:
-			// Reset backoff on successful event
-			if errorRetryBackoff > initialBackoff {
-				errorRetryBackoff = initialBackoff
-				d.logger.Debug("Successfully receiving Docker events, reset backoff timer")
-			}
-
 			if event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie {
 				if err := d.checkContainers(ctx, monitChan, deleteChan); err != nil {
 					d.logger.Warnf("Failed to check containers: %v", err)
@@ -633,14 +627,17 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 
 				default:
 					// No immediate error, seems to have reconnected successfully
-					d.logger.Info("Successfully reconnected to Docker events")
 					errorRetryBackoff = initialBackoff
+					d.logger.Info("Successfully reconnected to Docker events")
 					eventsChan = newEventsChan
 					errChan = newErrChan
 					goto reconnected
 				}
 			}
 		reconnected:
+			// We check containers after a reconnection because the docker daemon might have restarted
+			// and the container tombs may have self deleted
+			d.checkContainers(ctx, monitChan, deleteChan)
 			// Continue in the main loop with new channels
 			continue
 		}
