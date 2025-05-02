@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -439,14 +438,9 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
+			dbCliDel, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 			if err != nil {
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
-			}
-
-			dbCliDel, err := strconv.Atoi(dbCliRet)
-			if err != nil {
-				return 0, fmt.Errorf("converting db ret %d: %w", dbCliDel, err)
 			}
 
 			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
