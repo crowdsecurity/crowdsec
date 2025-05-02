@@ -637,7 +637,9 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			d.logger.Info("Successfully reconnected to Docker events")
 			// We check containers after a reconnection because the docker daemon might have restarted
 			// and the container tombs may have self deleted
-			d.checkContainers(ctx, monitChan, deleteChan)
+			if err := d.checkContainers(ctx, monitChan, deleteChan); err != nil {
+				d.logger.Warnf("Failed to check containers: %v", err)
+			}
 			// Continue in the main loop with new channels
 			continue
 		}
