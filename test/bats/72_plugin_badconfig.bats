@@ -12,6 +12,9 @@ setup_file() {
 
     PROFILES_PATH=$(config_get '.api.server.profiles_path')
     export PROFILES_PATH
+
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    export CONFIG_DIR
 }
 
 teardown_file() {
@@ -110,10 +113,8 @@ teardown() {
 
 @test "config.yaml: missing config_paths.notification_dir" {
     config_set 'del(.config_paths.notification_dir)'
-    config_set "$PROFILES_PATH" '.notifications=["http_default"]'
-    rune -0 wait-for \
-        --err "api server init: plugins are enabled, but config_paths.notification_dir is not defined" \
-        "$CROWDSEC"
+    rune -0 cscli config show --key Config.ConfigPaths.NotificationDir
+    assert_output "$CONFIG_DIR/notifications"
 }
 
 @test "config.yaml: missing config_paths.plugin_dir" {

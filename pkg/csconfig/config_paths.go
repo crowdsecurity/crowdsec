@@ -23,6 +23,10 @@ func (c *Config) loadConfigurationPaths() error {
 		return errors.New("no configuration paths provided")
 	}
 
+	if c.ConfigPaths.ConfigDir == "" {
+		c.ConfigPaths.ConfigDir = filepath.Dir(c.FilePath)
+	}
+
 	if c.ConfigPaths.DataDir == "" {
 		return errors.New("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
 	}
@@ -33,6 +37,10 @@ func (c *Config) loadConfigurationPaths() error {
 
 	if c.ConfigPaths.HubIndexFile == "" {
 		c.ConfigPaths.HubIndexFile = filepath.Join(c.ConfigPaths.HubDir, ".index.json")
+	}
+
+	if c.ConfigPaths.NotificationDir == "" {
+		c.ConfigPaths.NotificationDir = filepath.Join(c.ConfigPaths.ConfigDir, "notifications")
 	}
 
 	if c.ConfigPaths.PatternDir == "" {
