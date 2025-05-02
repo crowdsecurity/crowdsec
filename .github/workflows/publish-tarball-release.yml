@@ -6,7 +6,7 @@ on:
       - prereleased
 
 permissions:
-  # Use write for: hub release edit
+  # Use write for: gh release upload
   contents: write
 
 jobs:

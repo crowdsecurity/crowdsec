@@ -3,7 +3,6 @@ package kafkaacquisition
 import (
 	"context"
 	"net"
-	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -128,11 +127,9 @@ func createTopic(topic string, broker string) {
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := t.Context()
+	cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		name          string
@@ -202,11 +199,9 @@ topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
-	ctx := t.Context()
+	cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		name          string

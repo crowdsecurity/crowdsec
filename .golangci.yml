@@ -1,260 +1,25 @@
-# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
+version: "2"
 
 run:
   build-tags:
     - expr_debug
 
-linters-settings:
-  errcheck:
-    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
-    # Such cases aren't reported by default.
-    # Default: false
-    check-type-assertions: false
-    # List of functions to exclude from checking, where each entry is a single function to exclude.
-    # See https://github.com/kisielk/errcheck#excluding-functions for details.
-    exclude-functions:
-     - (*bytes.Buffer).ReadFrom   # TODO:
-     - io.Copy                    # TODO:
-     - (net/http.ResponseWriter).Write    # TODO:
-     - (*os/exec.Cmd).Start
-     - (*os/exec.Cmd).Wait
-     - (*os.Process).Kill
-     - (*text/template.Template).ExecuteTemplate
-     - syscall.FreeLibrary
-     - golang.org/x/sys/windows.CloseHandle
-     - golang.org/x/sys/windows.ResetEvent
-     - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
-     - (*golang.org/x/sys/windows/svc/mgr.Mgr).Disconnect
-
-     - (github.com/bluele/gcache.Cache).Set
-     - (github.com/gin-gonic/gin.ResponseWriter).WriteString
-     - (*github.com/segmentio/kafka-go.Reader).SetOffsetAt
-     - (*gopkg.in/tomb.v2.Tomb).Wait
-
-     - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterArgs
-     - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterBody
-     - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterHeaders
-     - (*github.com/crowdsecurity/crowdsec/pkg/longpollclient.LongPollClient).Stop
-
-  gci:
-    sections:
-     - standard
-     - default
-     - prefix(github.com/crowdsecurity)
-     - prefix(github.com/crowdsecurity/crowdsec)
-
-  gomoddirectives:
-    replace-allow-list:
-      - golang.org/x/time/rate
-      - github.com/corazawaf/coraza/v3
-
-  govet:
-    enable-all: true
-    disable:
-     - reflectvaluecompare
-     - fieldalignment
-
-  maintidx:
-    # raise this after refactoring
-    under: 15
-
-  misspell:
-    locale: US
-
-  nestif:
-    # lower this after refactoring
-    min-complexity: 16
-
-  nlreturn:
-    block-size: 5
-
-  nolintlint:
-    allow-unused: false # report any unused nolint directives
-    require-explanation: false # don't require an explanation for nolint directives
-    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
-
-  interfacebloat:
-    max: 12
-
-  depguard:
-    rules:
-      wrap:
-        deny:
-          - pkg: "github.com/pkg/errors"
-            desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
-        files:
-          - "!**/pkg/database/*.go"
-      yaml:
-        files:
-          - "!**/pkg/acquisition/acquisition.go"
-          - "!**/pkg/acquisition/acquisition_test.go"
-          - "!**/pkg/acquisition/modules/appsec/appsec.go"
-          - "!**/pkg/acquisition/modules/cloudwatch/cloudwatch.go"
-          - "!**/pkg/acquisition/modules/docker/docker.go"
-          - "!**/pkg/acquisition/modules/file/file.go"
-          - "!**/pkg/acquisition/modules/journalctl/journalctl.go"
-          - "!**/pkg/acquisition/modules/kafka/kafka.go"
-          - "!**/pkg/acquisition/modules/kinesis/kinesis.go"
-          - "!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go"
-          - "!**/pkg/acquisition/modules/loki/loki.go"
-          - "!**/pkg/acquisition/modules/loki/timestamp_test.go"
-          - "!**/pkg/acquisition/modules/victorialogs/victorialogs.go"
-          - "!**/pkg/acquisition/modules/s3/s3.go"
-          - "!**/pkg/acquisition/modules/syslog/syslog.go"
-          - "!**/pkg/acquisition/modules/wineventlog/wineventlog_windows.go"
-          - "!**/pkg/appsec/appsec.go"
-          - "!**/pkg/appsec/loader.go"
-          - "!**/pkg/csplugin/broker.go"
-          - "!**/pkg/leakybucket/buckets_test.go"
-          - "!**/pkg/leakybucket/manager_load.go"
-          - "!**/pkg/parser/node.go"
-          - "!**/pkg/parser/node_test.go"
-          - "!**/pkg/parser/parsing_test.go"
-          - "!**/pkg/parser/stage.go"
-        deny:
-          - pkg: "gopkg.in/yaml.v2"
-            desc: "yaml.v2 is deprecated for new code in favor of yaml.v3"
-
-  stylecheck:
-    checks:
-    - all
-    - -ST1003   # should not use underscores in Go names; ...
-    - -ST1005   # error strings should not be capitalized
-    - -ST1012   # error var ... should have name of the form ErrFoo
-    - -ST1016   # methods on the same type should have the same receiver name
-    - -ST1022   # comment on exported var ... should be of the form ...
-
-  revive:
-    ignore-generated-header: true
-    severity: error
-    enable-all-rules: true
-    rules:
-      - name: add-constant
-        disabled: true
-      - name: cognitive-complexity
-        # lower this after refactoring
-        arguments: [119]
-      - name: comment-spacings
-        disabled: true
-      - name: confusing-results
-        disabled: true
-      - name: cyclomatic
-        # lower this after refactoring
-        arguments: [39]
-      - name: defer
-        disabled: true
-      - name: empty-block
-        disabled: true
-      - name: empty-lines
-        disabled: true
-      - name: error-naming
-        disabled: true
-      - name: flag-parameter
-        disabled: true
-      - name: function-result-limit
-        arguments: [6]
-      - name: function-length
-        # lower this after refactoring
-        arguments: [111, 238]
-      - name: get-return
-        disabled: true
-      - name: increment-decrement
-        disabled: true
-      - name: import-alias-naming
-        disabled: true
-      - name: import-shadowing
-        disabled: true
-      - name: line-length-limit
-        # lower this after refactoring
-        arguments: [221]
-      - name: max-control-nesting
-        # lower this after refactoring
-        arguments: [7]
-      - name: max-public-structs
-        disabled: true
-      - name: nested-structs
-        disabled: true
-      - name: package-comments
-        disabled: true
-      - name: redundant-import-alias
-        disabled: true
-      - name: time-equal
-        disabled: true
-      - name: var-naming
-        disabled: true
-      - name: unchecked-type-assertion
-        disabled: true
-      - name: exported
-        disabled: true
-      - name: unexported-naming
-        disabled: true
-      - name: unexported-return
-        disabled: true
-      - name: unhandled-error
-        disabled: true
-        arguments:
-          - "fmt.Print"
-          - "fmt.Printf"
-          - "fmt.Println"
-      - name: unnecessary-stmt
-        disabled: true
-      - name: unused-parameter
-        disabled: true
-      - name: unused-receiver
-        disabled: true
-      - name: use-any
-        disabled: true
-      - name: useless-break
-        disabled: true
-
-  wsl:
-    # Allow blocks to end with comments
-    allow-trailing-comment: true
-
-  gocritic:
-    enable-all: true
-    disabled-checks:
-      - paramTypeCombine
-      - ifElseChain
-      - importShadow
-      - hugeParam
-      - commentedOutCode
-      - commentedOutImport
-      - unnamedResult
-      - sloppyReassign
-      - appendCombine
-      - typeUnparen
-      - commentFormatting
-      - deferInLoop             #
-      - whyNoLint
-      - equalFold               #
-      - unnecessaryBlock        #
-      - tooManyResultsChecker
-      - unnecessaryDefer
-      - docStub
-      - preferFprint
-
 linters:
-  enable-all: true
+  default: all
   disable:
-    #
-    # DEPRECATED by golangi-lint
-    #
-    - tenv
-
     #
     # Redundant
     #
-
-    - gocyclo  # revive
-    - cyclop   # revive
-    - lll      # revive
-    - funlen   # revive
-    - gocognit # revive
+    - cyclop    # revive
+    - funlen    # revive
+    - gocognit  # revive
+    - gocyclo   # revive
+    - lll       # revive
 
     # Disabled atm
 
     - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
+    - funcorder
 
     #
     # Recommended? (easy)
@@ -263,10 +28,7 @@ linters:
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
     - exhaustive            # check exhaustiveness of enum switch statements
-    - gci                   # Gci control golang package import order and make it always deterministic.
     - godot                 # Check if comments end in a period
-    - gofmt                 # Gofmt checks whether code was gofmt-ed. By default this tool runs with -s option to check for code simplification
-    - goimports             # Check import statements are formatted according to the 'goimport' command. Reformat imports in autofix mode.
     - gosec                 # (gas): Inspects source code for security problems
     - inamedparam           # reports interfaces with unnamed method parameters
     - musttag               # enforce field tags in (un)marshaled structs
@@ -290,7 +52,6 @@ linters:
     # Formatting only, useful in IDE but should not be forced on CI?
     #
 
-    - gofumpt               # Gofumpt checks whether code was gofumpt-ed.
     - nlreturn              # nlreturn checks for a new line before return and branch statements to increase code clarity
     - whitespace            # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
     - wsl                   # add or remove empty lines
@@ -314,195 +75,423 @@ linters:
     - goconst               # Finds repeated strings that could be replaced by a constant
     - tagliatelle           # Checks the struct tags.
     - varnamelen            # checks that the length of a variable's name matches its scope
+    - prealloc
 
-    #
-    # Under evaluation
-    #
+  settings:
 
-    - prealloc              # Finds slice declarations that could potentially be preallocated
+    depguard:
+      rules:
+        wrap:
+          files:
+            - '!**/pkg/database/*.go'
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
+        yaml:
+          files:
+            - '!**/pkg/acquisition/acquisition.go'
+            - '!**/pkg/acquisition/acquisition_test.go'
+            - '!**/pkg/acquisition/modules/appsec/appsec.go'
+            - '!**/pkg/acquisition/modules/cloudwatch/cloudwatch.go'
+            - '!**/pkg/acquisition/modules/docker/docker.go'
+            - '!**/pkg/acquisition/modules/file/file.go'
+            - '!**/pkg/acquisition/modules/journalctl/journalctl.go'
+            - '!**/pkg/acquisition/modules/kafka/kafka.go'
+            - '!**/pkg/acquisition/modules/kinesis/kinesis.go'
+            - '!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go'
+            - '!**/pkg/acquisition/modules/loki/loki.go'
+            - '!**/pkg/acquisition/modules/loki/timestamp_test.go'
+            - '!**/pkg/acquisition/modules/victorialogs/victorialogs.go'
+            - '!**/pkg/acquisition/modules/s3/s3.go'
+            - '!**/pkg/acquisition/modules/syslog/syslog.go'
+            - '!**/pkg/acquisition/modules/wineventlog/wineventlog_windows.go'
+            - '!**/pkg/appsec/appsec.go'
+            - '!**/pkg/appsec/loader.go'
+            - '!**/pkg/csplugin/broker.go'
+            - '!**/pkg/leakybucket/buckets_test.go'
+            - '!**/pkg/leakybucket/manager_load.go'
+            - '!**/pkg/parser/node.go'
+            - '!**/pkg/parser/node_test.go'
+            - '!**/pkg/parser/parsing_test.go'
+            - '!**/pkg/parser/stage.go'
+          deny:
+            - pkg: gopkg.in/yaml.v2
+              desc: yaml.v2 is deprecated for new code in favor of yaml.v3
 
+    errcheck:
+      # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+      # Such cases aren't reported by default.
+      check-type-assertions: false
+      # List of functions to exclude from checking, where each entry is a single function to exclude.
+      # See https://github.com/kisielk/errcheck#excluding-functions for details.
+      exclude-functions:
+        - (*bytes.Buffer).ReadFrom          # TODO
+        - io.Copy                           # TODO
+        - (net/http.ResponseWriter).Write   # TODO
+        - (*os/exec.Cmd).Start
+        - (*os/exec.Cmd).Wait
+        - (*os.Process).Kill
+        - (*text/template.Template).ExecuteTemplate
+        - syscall.FreeLibrary
+        - golang.org/x/sys/windows.CloseHandle
+        - golang.org/x/sys/windows.ResetEvent
+        - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
+        - (*golang.org/x/sys/windows/svc/mgr.Mgr).Disconnect
+
+        - (github.com/bluele/gcache.Cache).Set
+        - (github.com/gin-gonic/gin.ResponseWriter).WriteString
+        - (*github.com/segmentio/kafka-go.Reader).SetOffsetAt
+        - (*gopkg.in/tomb.v2.Tomb).Wait
+
+        - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterArgs
+        - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterBody
+        - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterHeaders
+        - (*github.com/crowdsecurity/crowdsec/pkg/longpollclient.LongPollClient).Stop
+
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        - paramTypeCombine
+        - ifElseChain
+        - hugeParam
+        - commentedOutCode
+        - commentedOutImport
+        - unnamedResult
+        - sloppyReassign
+        - appendCombine
+        - commentFormatting
+        - deferInLoop             #
+        - whyNoLint
+        - equalFold               #
+        - unnecessaryBlock        #
+        - tooManyResultsChecker
+        - docStub
+        - preferFprint
+        - importShadow
+
+    gomoddirectives:
+      replace-allow-list:
+        - golang.org/x/time/rate
+        - github.com/corazawaf/coraza/v3
+
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+
+    interfacebloat:
+      max: 12
+
+    maintidx:
+      # raise this after refactoring
+      under: 15
+
+    misspell:
+      locale: US
+
+    nestif:
+      # lower this after refactoring
+      min-complexity: 16
+
+    nlreturn:
+      block-size: 5
+
+    nolintlint:
+      require-explanation: false  # don't require an explanation for nolint directives
+      require-specific: false     # don't require nolint directives to be specific about which linter is being skipped
+      allow-unused: false         # report any unused nolint directives
+
+    revive:
+      severity: error
+      enable-all-rules: true
+      rules:
+        - name: add-constant
+          disabled: true
+        - name: cognitive-complexity
+          arguments:
+            # lower this after refactoring
+            - 119
+        - name: comment-spacings
+          disabled: true
+        - name: confusing-results
+          disabled: true
+        - name: cyclomatic
+          arguments:
+            # lower this after refactoring
+            - 38
+        - name: defer
+          disabled: true
+        - name: empty-block
+          disabled: true
+        - name: empty-lines
+          disabled: true
+        - name: error-naming
+          disabled: true
+        - name: flag-parameter
+          disabled: true
+        - name: function-result-limit
+          arguments:
+            - 6
+        - name: function-length
+          arguments:
+            # lower this after refactoring
+            - 111
+            - 238
+        - name: get-return
+          disabled: true
+        - name: increment-decrement
+          disabled: true
+        - name: import-alias-naming
+          disabled: true
+        - name: import-shadowing
+          disabled: true
+        - name: line-length-limit
+          arguments:
+            # lower this after refactoring
+            - 221
+        - name: max-control-nesting
+          arguments:
+            # lower this after refactoring
+            - 7
+        - name: max-public-structs
+          disabled: true
+        - name: nested-structs
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: redundant-import-alias
+          disabled: true
+        - name: var-naming
+          disabled: true
+        - name: unchecked-type-assertion
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: unexported-naming
+          disabled: true
+        - name: unexported-return
+          disabled: true
+        - name: unhandled-error
+          arguments:
+            - fmt.Print
+            - fmt.Printf
+            - fmt.Println
+          disabled: true
+        - name: unnecessary-stmt
+          disabled: true
+        - name: unused-parameter
+          disabled: true
+        - name: unused-receiver
+          disabled: true
+        - name: use-any
+          disabled: true
+        - name: useless-break
+          disabled: true
+
+    staticcheck:
+      checks:
+        - all
+        - -ST1003
+        - -ST1005
+        - -ST1012
+        - -ST1022
+        - -QF1003
+        - -QF1008
+        - -QF1012
+
+    wsl:
+      # Allow blocks to end with comments
+      allow-trailing-comment: true
+
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+
+      # `err` is often shadowed, we may continue to do it
+
+      - linters:
+          - govet
+        text: 'shadow: declaration of "(err|ctx)" shadows declaration'
+
+      # Will apply, trivial - just beware of merge conflicts
+
+      - linters:
+          - perfsprint
+        text: fmt.Sprintf can be replaced .*
+
+      # Will fix, easy but some thinking required
+
+      - linters:
+          - errorlint
+        text: non-wrapping format verb for fmt.Errorf. Use `%w` to format errors
+      - linters:
+          - nosprintfhostport
+        text: host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf
+
+      # https://github.com/timakin/bodyclose
+      - linters:
+          - bodyclose
+        text: response body must be closed
+
+      # named/naked returns are evil, with a single exception
+      # https://go.dev/wiki/CodeReviewComments#named-result-parameters
+      - linters:
+          - nonamedreturns
+        text: named return .* with type .* found
+
+      - linters:
+          - revive
+        path: pkg/leakybucket/manager_load.go
+        text: 'confusing-naming: Field ''.*'' differs only by capitalization to other field in the struct type BucketFactory'
+
+      - linters:
+          - revive
+        path: pkg/exprhelpers/helpers.go
+        text: 'confusing-naming: Method ''flatten'' differs only by capitalization to function ''Flatten'' in the same source file'
+
+      - linters:
+          - revive
+        path: pkg/appsec/query_utils.go
+        text: 'confusing-naming: Method ''parseQuery'' differs only by capitalization to function ''ParseQuery'' in the same source file'
+
+      - linters:
+          - revive
+        path: pkg/acquisition/modules/loki/internal/lokiclient/loki_client.go
+        text: 'confusing-naming: Method ''QueryRange'' differs only by capitalization to method ''queryRange'' in the same source file'
+
+      - linters:
+          - revive
+        path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
+        text: 'confusing-naming: Method ''QueryRange'' differs only by capitalization to method ''queryRange'' in the same source file'
+
+      # tolerate complex functions in tests for now
+      - linters:
+          - maintidx
+        path: (.+)_test.go
+
+      # tolerate long functions in tests
+      - linters:
+          - revive
+        path: pkg/(.+)_test.go
+        text: 'function-length: .*'
+
+      # tolerate long lines in tests
+      - linters:
+          - revive
+        path: pkg/(.+)_test.go
+        text: 'line-length-limit: .*'
+
+      # we use t,ctx instead of ctx,t in tests
+      - linters:
+          - revive
+        path: pkg/(.+)_test.go
+        text: 'context-as-argument: context.Context should be the first parameter of a function'
+
+      # tolerate deep exit in cobra's OnInitialize, for now
+      - linters:
+          - revive
+        path: cmd/crowdsec-cli/main.go
+        text: 'deep-exit: .*'
+
+      - linters:
+          - revive
+        path: cmd/crowdsec/crowdsec.go
+        text: 'deep-exit: .*'
+
+      - linters:
+          - revive
+        path: cmd/crowdsec/api.go
+        text: 'deep-exit: .*'
+
+      - linters:
+          - revive
+        path: cmd/crowdsec/win_service.go
+        text: 'deep-exit: .*'
+
+      - linters:
+          - recvcheck
+        path: pkg/csplugin/hclog_adapter.go
+        text: the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.
+
+      # encoding to json/yaml requires value receivers
+      - linters:
+          - recvcheck
+        path: pkg/cwhub/item.go
+        text: the methods of "Item" use pointer receiver and non-pointer receiver.
+
+      - linters:
+          - gocritic
+        path: cmd/crowdsec-cli
+        text: 'rangeValCopy: .*'
+
+      - linters:
+          - gocritic
+        path: pkg/(cticlient|hubtest)
+        text: 'rangeValCopy: .*'
+
+      - linters:
+          - gocritic
+        path: (.+)_test.go
+        text: 'rangeValCopy: .*'
+
+      - linters:
+          - gocritic
+        path: pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)
+        text: 'rangeValCopy: .*'
+
+      - linters:
+          - revive
+        path: pkg/types/utils.go
+        text: 'argument-limit: .*'
+
+      # need some cleanup first: to create db in memory and share the client, not the config
+      - linters:
+          - usetesting
+        path: (.+)_test.go
+        text: context.Background.*
+
+      - linters:
+          - usetesting
+        path: pkg/apiserver/(.+)_test.go
+        text: os.MkdirTemp.* could be replaced by t.TempDir.*
+
+      - linters:
+          - usetesting
+        path: pkg/apiserver/(.+)_test.go
+        text: os.CreateTemp.* could be replaced by os.CreateTemp.*
+
+      - linters:
+          - containedctx
+        path: cmd/notification-file/main.go
+        text: found a struct that contains a context.Context field
+    paths:
+      - pkg/yamlpatch/merge.go
+      - pkg/yamlpatch/merge_test.go
+      - pkg/time/rate
+      - pkg/metabase
+      - third_party$
+      - builtin$
+      - examples$
 
 issues:
-  # “Look, that’s why there’s rules, understand? So that you think before you
-  # break ‘em.” ― Terry Pratchett
-
-  exclude-dirs:
-    - pkg/time/rate
-    - pkg/metabase
-
-  exclude-files:
-    - pkg/yamlpatch/merge.go
-    - pkg/yamlpatch/merge_test.go
-
-  exclude-generated: strict
-
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
 
-    # Won't fix:
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/crowdsecurity)
+        - prefix(github.com/crowdsecurity/crowdsec)
 
-    # `err` is often shadowed, we may continue to do it
-    - linters:
-        - govet
-      text: "shadow: declaration of \"(err|ctx)\" shadows declaration"
-
-    # Will fix, trivial - just beware of merge conflicts
-
-    - linters:
-        - perfsprint
-      text: "fmt.Sprintf can be replaced .*"
-
-    #
-    # Will fix, easy but some neurons required
-    #
-
-    - linters:
-        - errorlint
-      text: "non-wrapping format verb for fmt.Errorf. Use `%w` to format errors"
-
-    - linters:
-        - nosprintfhostport
-      text: "host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf"
-
-    # https://github.com/timakin/bodyclose
-    - linters:
-        - bodyclose
-      text: "response body must be closed"
-
-    # named/naked returns are evil, with a single exception
-    # https://go.dev/wiki/CodeReviewComments#named-result-parameters
-    - linters:
-        - nonamedreturns
-      text: "named return .* with type .* found"
-
-    - linters:
-        - revive
-      path: pkg/leakybucket/manager_load.go
-      text: "confusing-naming: Field '.*' differs only by capitalization to other field in the struct type BucketFactory"
-
-    - linters:
-        - revive
-      path: pkg/exprhelpers/helpers.go
-      text: "confusing-naming: Method 'flatten' differs only by capitalization to function 'Flatten' in the same source file"
-
-    - linters:
-        - revive
-      path: pkg/appsec/query_utils.go
-      text: "confusing-naming: Method 'parseQuery' differs only by capitalization to function 'ParseQuery' in the same source file"
-
-    - linters:
-        - revive
-      path: pkg/acquisition/modules/loki/internal/lokiclient/loki_client.go
-      text: "confusing-naming: Method 'QueryRange' differs only by capitalization to method 'queryRange' in the same source file"
-
-    - linters:
-        - revive
-      path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
-      text: "confusing-naming: Method 'QueryRange' differs only by capitalization to method 'queryRange' in the same source file"
-
-    - linters:
-        - revive
-      path: pkg/hubtest/hubtest_item.go
-      text: "cyclomatic: .*RunWithLogFile"
-
-    # tolerate complex functions in tests for now
-    - linters:
-        - maintidx
-      path: "(.+)_test.go"
-
-    # tolerate long functions in tests
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "function-length: .*"
-
-    # tolerate long lines in tests
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "line-length-limit: .*"
-
-    # we use t,ctx instead of ctx,t in tests
-    - linters:
-        - revive
-      path: "pkg/(.+)_test.go"
-      text: "context-as-argument: context.Context should be the first parameter of a function"
-
-    # tolerate deep exit in cobra's OnInitialize, for now
-    - linters:
-        - revive
-      path: "cmd/crowdsec-cli/main.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec/crowdsec.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec/api.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - revive
-      path: "cmd/crowdsec/win_service.go"
-      text: "deep-exit: .*"
-
-    - linters:
-        - recvcheck
-      path: "pkg/csplugin/hclog_adapter.go"
-      text: 'the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.'
-
-    # encoding to json/yaml requires value receivers
-    - linters:
-        - recvcheck
-      path: "pkg/cwhub/item.go"
-      text: 'the methods of "Item" use pointer receiver and non-pointer receiver.'
-
-    - linters:
-        - gocritic
-      path: "cmd/crowdsec-cli"
-      text: "rangeValCopy: .*"
-
-    - linters:
-        - gocritic
-      path: "pkg/(cticlient|hubtest)"
-      text: "rangeValCopy: .*"
-
-    - linters:
-        - gocritic
-      path: "(.+)_test.go"
-      text: "rangeValCopy: .*"
-
-    - linters:
-        - gocritic
-      path: "pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)"
-      text: "rangeValCopy: .*"
-
-    - linters:
-        - revive
-      path: "pkg/types/utils.go"
-      text: "argument-limit: .*"
-
-    # need some cleanup first: to create db in memory and share the client, not the config
-    - linters:
-        - usetesting
-      path: "(.+)_test.go"
-      text: "context.Background.*"
-
-    - linters:
-        - usetesting
-      path: "pkg/apiserver/(.+)_test.go"
-      text: "os.MkdirTemp.* could be replaced by t.TempDir.*"
-
-    - linters:
-        - usetesting
-      path: "pkg/apiserver/(.+)_test.go"
-      text: "os.CreateTemp.* could be replaced by os.CreateTemp.*"
-
-    - linters:
-        - containedctx
-      path: "cmd/notification-file/main.go"
-      text: "found a struct that contains a context.Context field"
+  exclusions:
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

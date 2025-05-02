@@ -356,15 +356,7 @@ If you are not using Docker, you may need to adjust the `PGHOST`/`PGPORT`/`PGPAS
 
 An additional user and database both named `crowdsec_test` will be created.
 
-Now you can build and run the tests (we skip bats-test-hub here, they really
-should not be affected by a change in DB).
-
-```
-$ export DB_BACKEND=postgres
-$ make clean bats-build bats-fixture bats-test
-```
-
-or with the pgx driver:
+Now you can build and run the tests:
 
 ```
 $ export DB_BACKEND=pgx

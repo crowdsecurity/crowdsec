@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body interface{}) (*http.Request, error) {
+func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body any) (*http.Request, error) {
 	if !strings.HasSuffix(c.BaseURL.Path, "/") {
 		return nil, fmt.Errorf("BaseURL must have a trailing slash, but %q does not", c.BaseURL)
 	}
@@ -48,7 +48,7 @@ func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body
 	return req, nil
 }
 
-func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
+func (c *ApiClient) Do(ctx context.Context, req *http.Request, v any) (*Response, error) {
 	if ctx == nil {
 		return nil, errors.New("context must be non-nil")
 	}
@@ -91,7 +91,7 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		return newResponse(resp), err
 	}
 
-	if log.GetLevel() >= log.DebugLevel {
+	if log.IsLevelEnabled(log.DebugLevel) {
 		for k, v := range resp.Header {
 			log.Debugf("[headers] %s: %s", k, v)
 		}
