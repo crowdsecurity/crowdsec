@@ -585,6 +585,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			// Multiple retry attempts within the error case
 			retries := 0
 
+			d.logger.Infof("Attempting to reconnect to Docker events stream")
 			for {
 				// Check for cancellation before sleeping
 				select {
@@ -610,7 +611,6 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 				}
 
 				// Try to reconnect
-				d.logger.Infof("Attempting to reconnect to Docker events stream")
 				newEventsChan, newErrChan := d.Client.Events(ctx, options)
 
 				// Check if connection is immediately broken
