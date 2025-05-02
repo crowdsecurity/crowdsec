@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"math"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -555,23 +555,102 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 		Filters: f,
 	}
 	eventsChan, errChan := d.Client.Events(ctx, options)
+
+	const (
+		initialBackoff = 2 * time.Second
+		maxBackoff     = 60 * time.Second // Cap at 1 minute
+		backoffFactor  = 2
+		maxRetries     = 5 // Max retries per reconnection attempt
+	)
+	errorRetryBackoff := initialBackoff
+
 	for {
 		select {
 		case <-d.t.Dying():
 			d.logger.Infof("stopping container watcher")
 			return nil
+
 		case event := <-eventsChan:
+			// Reset backoff on successful event
+			if errorRetryBackoff > initialBackoff {
+				errorRetryBackoff = initialBackoff
+				d.logger.Debug("Successfully receiving Docker events, reset backoff timer")
+			}
+
 			if event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie {
-				err := d.checkContainers(ctx, monitChan, deleteChan)
-				if err != nil {
-					return err // We hit an error while watching containers, we stop the watcher
+				if err := d.checkContainers(ctx, monitChan, deleteChan); err != nil {
+					d.logger.Warnf("Failed to check containers: %v", err)
 				}
 			}
+
 		case err := <-errChan:
-			if errors.Is(err, io.EOF) {
-				d.logger.Debug("EOF while watching containers, we stop the watcher")
+			if err == nil {
+				continue
 			}
-			return err // We hit an error while watching containers, we stop the watcher
+
+			d.logger.Errorf("Docker events error: %v", err)
+
+			// Multiple retry attempts within the error case
+			retries := 0
+			var reconnectErr error
+
+			for retries < maxRetries {
+				// Check for cancellation before sleeping
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-d.t.Dying():
+					return nil
+				default:
+					// Continue with reconnection attempt
+				}
+
+				// Sleep with backoff
+				d.logger.Debugf("Retry %d/%d: Waiting %s before reconnecting to Docker events",
+					retries+1, maxRetries, errorRetryBackoff)
+
+				select {
+				case <-time.After(errorRetryBackoff):
+					// Continue after backoff
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-d.t.Dying():
+					return nil
+				}
+
+				// Try to reconnect
+				d.logger.Infof("Attempting to reconnect to Docker events stream")
+				newEventsChan, newErrChan := d.Client.Events(ctx, options)
+
+				// Check if connection is immediately broken
+				select {
+				case reconnectErr = <-newErrChan:
+					// Connection failed immediately
+					retries++
+					errorRetryBackoff = time.Duration(math.Min(
+						float64(errorRetryBackoff*backoffFactor),
+						float64(maxBackoff),
+					))
+					d.logger.Errorf("Failed to reconnect to Docker events (attempt %d/%d): %v",
+						retries, maxRetries, reconnectErr)
+
+				default:
+					// No immediate error, seems to have reconnected successfully
+					d.logger.Info("Successfully reconnected to Docker events")
+					eventsChan = newEventsChan
+					errChan = newErrChan
+					errorRetryBackoff = initialBackoff
+					goto reconnected
+				}
+			}
+
+			// If we've exhausted all retries, return with an error
+			return fmt.Errorf("failed to reconnect to Docker events after %d attempts: %w",
+				maxRetries, reconnectErr)
+
+		reconnected:
+			// Continue in the main loop with new channels
+			continue
 		}
 	}
 }
