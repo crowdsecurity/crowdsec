@@ -585,7 +585,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			// Multiple retry attempts within the error case
 			retries := 0
 
-			d.logger.Infof("Attempting to reconnect to Docker events stream")
+			d.logger.Info("Attempting to reconnect to Docker events stream")
 			for {
 				// Check for cancellation before sleeping
 				select {
@@ -628,13 +628,13 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 				default:
 					// No immediate error, seems to have reconnected successfully
 					errorRetryBackoff = initialBackoff
-					d.logger.Info("Successfully reconnected to Docker events")
 					eventsChan = newEventsChan
 					errChan = newErrChan
 					goto reconnected
 				}
 			}
 		reconnected:
+			d.logger.Info("Successfully reconnected to Docker events")
 			// We check containers after a reconnection because the docker daemon might have restarted
 			// and the container tombs may have self deleted
 			d.checkContainers(ctx, monitChan, deleteChan)
