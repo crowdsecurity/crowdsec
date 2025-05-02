@@ -268,27 +268,32 @@ teardown() {
 
     # add an allowlist that matches exactly
     rune -0 cscli allowlists add foo 1.2.3.4
+    if is_db_mysql; then sleep 2; fi
     # it should not be here anymore
     rune -0 cscli decisions list -o json
     rune -0 jq -e 'any(.[].decisions[]; .value == "1.2.3.4") | not' <(output)
 
     # allowlist an IP belonging to a range
     rune -0 cscli allowlist add foo 2.3.4.42
+    if is_db_mysql; then sleep 2; fi
     rune -0 cscli decisions list -o json
     rune -0 jq -e 'any(.[].decisions[]; .value == "2.3.4.0/24") | not' <(output)
 
     # allowlist a range with an active decision inside
     rune -0 cscli allowlist add foo 5.4.3.0/24
+    if is_db_mysql; then sleep 2; fi
     rune -0 cscli decisions list -o json
     rune -0 jq -e 'any(.[].decisions[]; .value == "5.4.3.42") | not' <(output)
 
     # allowlist a range inside a range for which we have a decision
     rune -0 cscli allowlist add foo 6.5.4.0/25
+    if is_db_mysql; then sleep 2; fi
     rune -0 cscli decisions list -o json
     rune -0 jq -e 'any(.[].decisions[]; .value == "6.5.4.0/24") | not' <(output)
 
     # allowlist a range bigger than a range for which we have a decision
     rune -0 cscli allowlist add foo 10.0.0.0/24
+    if is_db_mysql; then sleep 2; fi
     rune -0 cscli decisions list -o json
     rune -0 jq -e 'any(.[].decisions[]; .value == "10.0.0.0/24") | not' <(output)
 
