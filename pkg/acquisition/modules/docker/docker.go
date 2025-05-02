@@ -625,7 +625,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 				case reconnectErr = <-newErrChan:
 					// Connection failed immediately
 					retries++
-					errorRetryBackoff = errorRetryBackoff * backoffFactor
+					errorRetryBackoff *= backoffFactor
 					d.logger.Errorf("Failed to reconnect to Docker events (attempt %d/%d): %v",
 						retries, maxRetries, reconnectErr)
 
