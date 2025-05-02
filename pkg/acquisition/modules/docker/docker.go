@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -558,7 +557,6 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 
 	const (
 		initialBackoff = 2 * time.Second
-		maxBackoff     = 60 * time.Second // Cap at 1 minute
 		backoffFactor  = 2
 		maxRetries     = 5 // Max retries per reconnection attempt
 	)
@@ -627,10 +625,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 				case reconnectErr = <-newErrChan:
 					// Connection failed immediately
 					retries++
-					errorRetryBackoff = time.Duration(math.Min(
-						float64(errorRetryBackoff*backoffFactor),
-						float64(maxBackoff),
-					))
+					errorRetryBackoff = errorRetryBackoff * backoffFactor
 					d.logger.Errorf("Failed to reconnect to Docker events (attempt %d/%d): %v",
 						retries, maxRetries, reconnectErr)
 
