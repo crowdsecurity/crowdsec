@@ -292,7 +292,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 		duration, err := time.ParseDuration(*decisionItem.Duration)
 		if err != nil {
-			return 0,0,0, rollbackOnError(txClient, err, "parsing decision duration")
+			return 0, 0, 0, rollbackOnError(txClient, err, "parsing decision duration")
 		}
 
 		if decisionItem.Scope == nil {
@@ -382,7 +382,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			sz                                   int
 		)
 
-		duration, err := time.ParseDuration(*decisionItem.Duration)
+		duration, err := ParseDuration(*decisionItem.Duration)
 		if err != nil {
 			return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 		}
