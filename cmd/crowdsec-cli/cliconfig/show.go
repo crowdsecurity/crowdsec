@@ -25,7 +25,7 @@ func (cli *cliConfig) showKey(key string) error {
 	}
 
 	opts := []expr.Option{}
-	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
+	opts = append(opts, exprhelpers.GetExprOptions(map[string]any{})...)
 	opts = append(opts, expr.Env(Env{}))
 
 	program, err := expr.Compile(key, opts...)

@@ -75,7 +75,6 @@ teardown() {
 }
 
 @test "duplicate notification config" {
-    CONFIG_DIR=$(dirname "$CONFIG_YAML")
     # email_default has two configurations
     rune -0 yq -i '.name="email_default"' "$CONFIG_DIR/notifications/http.yaml"
     # enable a notification, otherwise plugins are ignored
