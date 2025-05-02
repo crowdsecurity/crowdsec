@@ -556,9 +556,9 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 	eventsChan, errChan := d.Client.Events(ctx, options)
 
 	const (
-		initialBackoff = 2 * time.Second
-		backoffFactor  = 2
-		maxRetries     = 5 // Max retries per reconnection attempt
+		initialBackoff       = 2 * time.Second
+		backoffFactor        = 2
+		errorRetryMaxBackoff = 60 * time.Second
 	)
 	errorRetryBackoff := initialBackoff
 
@@ -590,9 +590,8 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 
 			// Multiple retry attempts within the error case
 			retries := 0
-			var reconnectErr error
 
-			for retries < maxRetries {
+			for {
 				// Check for cancellation before sleeping
 				select {
 				case <-ctx.Done():
@@ -604,8 +603,8 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 				}
 
 				// Sleep with backoff
-				d.logger.Debugf("Retry %d/%d: Waiting %s before reconnecting to Docker events",
-					retries+1, maxRetries, errorRetryBackoff)
+				d.logger.Debugf("Retry %d: Waiting %s before reconnecting to Docker events",
+					retries+1, errorRetryBackoff)
 
 				select {
 				case <-time.After(errorRetryBackoff):
@@ -622,27 +621,25 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 
 				// Check if connection is immediately broken
 				select {
-				case reconnectErr = <-newErrChan:
+				case err := <-newErrChan:
 					// Connection failed immediately
 					retries++
 					errorRetryBackoff *= backoffFactor
-					d.logger.Errorf("Failed to reconnect to Docker events (attempt %d/%d): %v",
-						retries, maxRetries, reconnectErr)
+					if errorRetryBackoff > errorRetryMaxBackoff {
+						errorRetryBackoff = errorRetryMaxBackoff
+					}
+					d.logger.Errorf("Failed to reconnect to Docker events (attempt %d): %v",
+						retries, err)
 
 				default:
 					// No immediate error, seems to have reconnected successfully
 					d.logger.Info("Successfully reconnected to Docker events")
+					errorRetryBackoff = initialBackoff
 					eventsChan = newEventsChan
 					errChan = newErrChan
-					errorRetryBackoff = initialBackoff
 					goto reconnected
 				}
 			}
-
-			// If we've exhausted all retries, return with an error
-			return fmt.Errorf("failed to reconnect to Docker events after %d attempts: %w",
-				maxRetries, reconnectErr)
-
 		reconnected:
 			// Continue in the main loop with new channels
 			continue
