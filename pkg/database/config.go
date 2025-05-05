@@ -7,6 +7,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/tokenitem"
 )
 
 func (c *Client) GetConfigItem(ctx context.Context, key string) (*string, error) {
@@ -26,6 +27,33 @@ func (c *Client) SetConfigItem(ctx context.Context, key string, value string) er
 	nbUpdated, err := c.Ent.ConfigItem.Update().SetValue(value).Where(configitem.NameEQ(key)).Save(ctx)
 	if (err != nil && ent.IsNotFound(err)) || nbUpdated == 0 { // not found, create
 		err := c.Ent.ConfigItem.Create().SetName(key).SetValue(value).Exec(ctx)
+		if err != nil {
+			return errors.Wrapf(QueryFail, "insert config item: %s", err)
+		}
+	} else if err != nil {
+		return errors.Wrapf(QueryFail, "update config item: %s", err)
+	}
+
+	return nil
+}
+
+func (c *Client) GetTokenItem(ctx context.Context, key string) (*string, error) {
+	result, err := c.Ent.TokenItem.Query().Where(tokenitem.NameEQ(key)).First(ctx)
+	if err != nil && ent.IsNotFound(err) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrapf(QueryFail, "select config item: %s", err)
+	}
+
+	return &result.Value, nil
+}
+
+func (c *Client) SetTokenItem(ctx context.Context, key string, value string) error {
+	nbUpdated, err := c.Ent.TokenItem.Update().SetValue(value).Where(tokenitem.NameEQ(key)).Save(ctx)
+	if (err != nil && ent.IsNotFound(err)) || nbUpdated == 0 { // not found, create
+		err := c.Ent.TokenItem.Create().SetName(key).SetValue(value).Exec(ctx)
 		if err != nil {
 			return errors.Wrapf(QueryFail, "insert config item: %s", err)
 		}

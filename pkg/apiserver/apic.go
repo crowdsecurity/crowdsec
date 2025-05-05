@@ -257,7 +257,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		ok          bool
 	)
 
-	tokenString, err := a.dbClient.GetConfigItem(ctx, "apic_token")
+	tokenString, err := a.dbClient.GetTokenItem(ctx, "apic_token")
 	if err != nil {
 		log.Debugf("err when looking for a token in database: %s", err)
 		skip = false
@@ -319,7 +319,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-		err = a.dbClient.SetConfigItem(ctx, "apic_token", authResp.Token)
+		err = a.dbClient.SetTokenItem(ctx, "apic_token", authResp.Token)
 		if err != nil {
 			return fmt.Errorf("while setting token in db: %w", err)
 		}
