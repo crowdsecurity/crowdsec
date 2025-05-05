@@ -119,14 +119,14 @@ teardown() {
 
     # comment and expiration are applied to all values
     rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e toto
-    assert_stderr 'Error: time: invalid duration "toto"'
+    assert_stderr 'Error: invalid argument "toto" for "-e, --expiration" flag: time: invalid duration "toto"'
     refute_output
 
     rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e '1 day'
     refute_output
-    assert_stderr 'Error: strconv.Atoi: parsing "1 ": invalid syntax'
+    assert_stderr 'Error: invalid argument "1 day" for "-e, --expiration" flag: invalid day value in duration "1 day"'
 
-    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d'
+    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d12h'
     assert_output 'added 1 values to allowlist foo'
     refute_stderr
 

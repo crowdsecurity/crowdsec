@@ -23,6 +23,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 )
 
 type configGetter func() *csconfig.Config
@@ -184,34 +186,8 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 	if noSimu != nil && *noSimu {
 		filter.IncludeSimulated = new(bool)
 	}
+
 	/* nullify the empty entries to avoid bad filter */
-	if *filter.Until == "" {
-		filter.Until = nil
-	} else if strings.HasSuffix(*filter.Until, "d") {
-		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-		realDuration := strings.TrimSuffix(*filter.Until, "d")
-
-		days, err := strconv.Atoi(realDuration)
-		if err != nil {
-			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-		}
-
-		*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
-	}
-
-	if *filter.Since == "" {
-		filter.Since = nil
-	} else if strings.HasSuffix(*filter.Since, "d") {
-		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-		realDuration := strings.TrimSuffix(*filter.Since, "d")
-
-		days, err := strconv.Atoi(realDuration)
-		if err != nil {
-			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
-		}
-
-		*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
-	}
 
 	if *filter.IncludeCAPI {
 		*filter.Limit = 0
@@ -270,8 +246,8 @@ func (cli *cliDecisions) newListCmd() *cobra.Command {
 		OriginEquals:   new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
-		Since:          new(string),
-		Until:          new(string),
+		Since:          cstime.DurationWithDays(0),
+		Until:          cstime.DurationWithDays(0),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
 		Limit:          new(int),
@@ -300,8 +276,8 @@ cscli decisions list --origin lists --scenario list_name
 	flags := cmd.Flags()
 	flags.SortFlags = false
 	flags.BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
-	flags.StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
-	flags.StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
+	flags.Var(&filter.Since, "since", "restrict to alerts newer than since (ie. 4h, 30d)")
+	flags.Var(&filter.Until, "until", "restrict to alerts older than until (ie. 4h, 30d)")
 	flags.StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
 	flags.StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
 	flags.StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
