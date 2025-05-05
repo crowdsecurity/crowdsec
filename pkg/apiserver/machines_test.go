@@ -47,7 +47,7 @@ func TestCreateMachine(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
-	assert.Equal(t, "", w.Body.String())
+	assert.Empty(t, w.Body.String())
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
@@ -68,7 +68,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
-	assert.Equal(t, "", w.Body.String())
+	assert.Empty(t, w.Body.String())
 
 	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
 
@@ -92,13 +92,13 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
-	assert.Equal(t, "", w.Body.String())
+	assert.Empty(t, w.Body.String())
 
 	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
 
 	// For some reason, the IP is empty when running tests
 	// if no forwarded-for headers are present
-	assert.Equal(t, "", ip)
+	assert.Empty(t, ip)
 }
 
 func TestCreateMachineWithoutForwardedFor(t *testing.T) {
@@ -117,13 +117,13 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
-	assert.Equal(t, "", w.Body.String())
+	assert.Empty(t, w.Body.String())
 
 	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
 
 	// For some reason, the IP is empty when running tests
 	// if no forwarded-for headers are present
-	assert.Equal(t, "", ip)
+	assert.Empty(t, ip)
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {

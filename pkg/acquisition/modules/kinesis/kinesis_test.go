@@ -5,11 +5,8 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
-	"runtime"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -26,21 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-func getLocalStackEndpoint() (string, error) {
-	endpoint := "http://localhost:4566"
-
-	if v := os.Getenv("AWS_ENDPOINT_FORCE"); v != "" {
-		v = strings.TrimPrefix(v, "http://")
-
-		_, err := net.Dial("tcp", v)
-		if err != nil {
-			return "", fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
-		}
-	}
-
-	return endpoint, nil
-}
 
 func GenSubObject(t *testing.T, i int) []byte {
 	r := CloudWatchSubscriptionRecord{
@@ -70,10 +52,7 @@ func GenSubObject(t *testing.T, i int) []byte {
 	return b.Bytes()
 }
 
-func WriteToStream(t *testing.T, streamName string, count int, shards int, sub bool) {
-	endpoint, err := getLocalStackEndpoint()
-	require.NoError(t, err)
-
+func WriteToStream(t *testing.T, endpoint string, streamName string, count int, shards int, sub bool) {
 	sess := session.Must(session.NewSession())
 	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
 
@@ -91,7 +70,7 @@ func WriteToStream(t *testing.T, streamName string, count int, shards int, sub b
 			data = []byte(strconv.Itoa(i))
 		}
 
-		_, err = kinesisClient.PutRecord(&kinesis.PutRecordInput{
+		_, err := kinesisClient.PutRecord(&kinesis.PutRecordInput{
 			Data:         data,
 			PartitionKey: aws.String(partition),
 			StreamName:   aws.String(streamName),
@@ -112,9 +91,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestBadConfiguration(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	tests := []struct {
 		config      string
@@ -156,11 +133,9 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
-	ctx := t.Context()
+	endpoint := cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config string
@@ -176,8 +151,6 @@ stream_name: stream-1-shard`,
 			shards: 1,
 		},
 	}
-	endpoint, _ := getLocalStackEndpoint()
-
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
@@ -190,7 +163,7 @@ stream_name: stream-1-shard`,
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(t, f.Config.StreamName, test.count, test.shards, false)
+		WriteToStream(t, endpoint, f.Config.StreamName, test.count, test.shards, false)
 
 		for i := range test.count {
 			e := <-out
@@ -204,11 +177,9 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
-	ctx := t.Context()
+	endpoint := cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config string
@@ -224,7 +195,6 @@ stream_name: stream-2-shards`,
 			shards: 2,
 		},
 	}
-	endpoint, _ := getLocalStackEndpoint()
 
 	for _, test := range tests {
 		f := KinesisSource{}
@@ -238,7 +208,7 @@ stream_name: stream-2-shards`,
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(t, f.Config.StreamName, test.count, test.shards, false)
+		WriteToStream(t, endpoint, f.Config.StreamName, test.count, test.shards, false)
 
 		c := 0
 
@@ -255,11 +225,9 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
-	ctx := t.Context()
+	endpoint := cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config string
@@ -276,7 +244,6 @@ from_subscription: true`,
 			shards: 1,
 		},
 	}
-	endpoint, _ := getLocalStackEndpoint()
 
 	for _, test := range tests {
 		f := KinesisSource{}
@@ -290,7 +257,7 @@ from_subscription: true`,
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(t, f.Config.StreamName, test.count, test.shards, true)
+		WriteToStream(t, endpoint, f.Config.StreamName, test.count, test.shards, true)
 
 		for i := range test.count {
 			e := <-out

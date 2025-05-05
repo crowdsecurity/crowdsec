@@ -392,9 +392,7 @@ func TestDetectSimpleRule(t *testing.T) {
 }
 
 func TestDetectUnitError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommandNotFound
@@ -563,10 +561,7 @@ func TestDetectForcedUnit(t *testing.T) {
 }
 
 func TestDetectForcedProcess(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// while looking for service wizard: rule 'ProcessRunning("foobar")': while looking up running processes: could not get Name: A device attached to the system is not functioning.
-		t.Skip("skipping on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
@@ -593,9 +588,7 @@ func TestDetectForcedProcess(t *testing.T) {
 }
 
 func TestDetectSkipService(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand

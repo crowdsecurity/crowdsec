@@ -15,8 +15,10 @@ func colorizeItemName(fullname string) string {
 		bold := color.New(color.Bold)
 		author := parts[0]
 		name := parts[1]
+
 		return author + "/" + bold.Sprint(name)
 	}
+
 	return fullname
 }
 
