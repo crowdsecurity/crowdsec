@@ -30,7 +30,6 @@ const (
 
 func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
 	maxItems := 0
-	maxAge := ""
 
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
 		return nil, errors.New("max_items can't be zero or negative")
@@ -40,14 +39,10 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		maxItems = *config.MaxItems
 	}
 
-	if config.MaxAge != nil && *config.MaxAge != "" {
-		maxAge = *config.MaxAge
-	}
-
 	// Init & Start cronjob every minute for alerts
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, ctx, maxAge, maxItems)
+	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, ctx, time.Duration(config.MaxAge), maxItems)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
 	}
@@ -230,7 +225,7 @@ func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig
 	return nil
 }
 
-func (c *Client) FlushAlerts(ctx context.Context, maxAge string, maxItems int) error {
+func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems int) error {
 	var (
 		deletedByAge    int
 		deletedByNbItem int
@@ -255,9 +250,9 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge string, maxItems int) e
 
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 
-	if maxAge != "" {
+	if maxAge != 0 {
 		filter := map[string][]string{
-			"created_before": {maxAge},
+			"created_before": {maxAge.String()},
 		}
 
 		nbDeleted, err := c.DeleteAlertWithFilter(ctx, filter)

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
@@ -533,10 +534,9 @@ func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 }
 
 func (cli *cliAlerts) newFlushCmd() *cobra.Command {
-	var (
-		maxItems int
-		maxAge   string
-	)
+	var maxItems int
+
+	maxAge := cstime.DurationWithDays(7*24*time.Hour)
 
 	cmd := &cobra.Command{
 		Use: `flush`,
@@ -557,7 +557,7 @@ func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 				return err
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
-			err = db.FlushAlerts(ctx, maxAge, maxItems)
+			err = db.FlushAlerts(ctx, time.Duration(maxAge), maxItems)
 			if err != nil {
 				return fmt.Errorf("unable to flush alerts: %w", err)
 			}
@@ -569,7 +569,7 @@ func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 
 	cmd.Flags().SortFlags = false
 	cmd.Flags().IntVar(&maxItems, "max-items", 5000, "Maximum number of alert items to keep in the database")
-	cmd.Flags().StringVar(&maxAge, "max-age", "7d", "Maximum age of alert items to keep in the database")
+	cmd.Flags().Var(&maxAge, "max-age", "Maximum age of alert items to keep in the database")
 
 	return cmd
 }

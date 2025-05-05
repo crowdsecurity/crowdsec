@@ -59,9 +59,9 @@ type AuthGCCfg struct {
 type FlushDBCfg struct {
 	MaxItems *int `yaml:"max_items,omitempty"`
 	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
-	MaxAge        *string                  `yaml:"max_age,omitempty"`
-	BouncersGC    *AuthGCCfg               `yaml:"bouncers_autodelete,omitempty"`
-	AgentsGC      *AuthGCCfg               `yaml:"agents_autodelete,omitempty"`
+	MaxAge        cstime.DurationWithDays `yaml:"max_age,omitempty"`
+	BouncersGC    *AuthGCCfg              `yaml:"bouncers_autodelete,omitempty"`
+	AgentsGC      *AuthGCCfg              `yaml:"agents_autodelete,omitempty"`
 	MetricsMaxAge cstime.DurationWithDays `yaml:"metrics_max_age,omitempty"`
 }
 
