@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff bool, rev bool, noMetrics bool) error {
+func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff bool, rev bool, noMetrics bool) error {
 	cfg := cli.cfg()
 
 	if rev && !diff {
@@ -51,17 +51,19 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 		}
 
 		if diff {
-			fmt.Println(cli.whyTainted(ctx, hub, contentProvider, item, rev))
+			fmt.Fprintln(os.Stdout, cli.whyTainted(ctx, hub, contentProvider, item, rev))
 
 			continue
 		}
 
-		if err = inspectItem(hub, item, !noMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		wantMetrics := !noMetrics && item.State.IsInstalled()
+
+		if err := inspectItem(hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
 		if cli.inspectDetail != nil {
-			if err = cli.inspectDetail(item); err != nil {
+			if err := cli.inspectDetail(item); err != nil {
 				return err
 			}
 		}
@@ -71,7 +73,7 @@ func (cli cliItem) inspect(ctx context.Context, args []string, url string, diff 
 }
 
 // return the diff between the installed version and the latest version
-func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
+func (*cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.IsInstalled() {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -113,7 +115,7 @@ func (cli cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvid
 	return fmt.Sprintf("%s", diff), nil
 }
 
-func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
+func (cli *cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, item *cwhub.Item, reverse bool) string {
 	if !item.State.IsInstalled() {
 		return fmt.Sprintf("# %s is not installed", item.FQName())
 	}
@@ -159,7 +161,7 @@ func (cli cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvid
 	return strings.Join(ret, "\n")
 }
 
-func (cli cliItem) newInspectCmd() *cobra.Command {
+func (cli *cliItem) newInspectCmd() *cobra.Command {
 	var (
 		url       string
 		diff      bool
@@ -212,7 +214,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 			return fmt.Errorf("unable to serialize item: %w", err)
 		}
 
-		fmt.Print(string(b))
+		fmt.Fprintln(os.Stdout, string(b))
 	}
 
 	if output != "human" {
@@ -220,13 +222,11 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 	}
 
 	if item.State.Tainted {
-		fmt.Println()
-		fmt.Printf(`This item is tainted. Use "%s %s inspect --diff %s" to see why.`, filepath.Base(os.Args[0]), item.Type, item.Name)
-		fmt.Println()
+		fmt.Fprintf(os.Stdout, "\nThis item is tainted. Use '%s %s inspect --diff %s' to see why.\n", filepath.Base(os.Args[0]), item.Type, item.Name)
 	}
 
 	if wantMetrics {
-		fmt.Printf("\nCurrent metrics: \n")
+		fmt.Fprintf(os.Stdout, "\nCurrent metrics: \n")
 
 		if err := showMetrics(prometheusURL, hub, item, wantColor); err != nil {
 			return err

@@ -37,10 +37,10 @@ if [[ $# -ge 1 ]]; then
         --print-output-on-failure \
         "$@"
 else
-    echo "test files: $TEST_DIR/bats $TEST_DIR/dyn-bats"
+    echo "test files: $TEST_DIR/bats"
     "$TEST_DIR/lib/bats-core/bin/bats" \
         --jobs 1 \
         --timing \
         --print-output-on-failure \
-        "$TEST_DIR/bats" "$TEST_DIR/dyn-bats"
+        "$TEST_DIR/bats"
 fi

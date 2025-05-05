@@ -115,7 +115,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLev
 	return nil
 }
 
-func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
+func (*KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
 }
 
@@ -123,27 +123,27 @@ func (k *KafkaSource) GetMode() string {
 	return k.Config.Mode
 }
 
-func (k *KafkaSource) GetName() string {
+func (*KafkaSource) GetName() string {
 	return dataSourceName
 }
 
-func (k *KafkaSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+func (*KafkaSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
-func (k *KafkaSource) CanRun() error {
+func (*KafkaSource) CanRun() error {
 	return nil
 }
 
-func (k *KafkaSource) GetMetrics() []prometheus.Collector {
+func (*KafkaSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
-func (k *KafkaSource) GetAggregMetrics() []prometheus.Collector {
+func (*KafkaSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
-func (k *KafkaSource) Dump() interface{} {
+func (k *KafkaSource) Dump() any {
 	return k
 }
 
