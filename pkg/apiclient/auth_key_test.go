@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestApiAuth(t *testing.T) {
@@ -48,7 +47,7 @@ func TestApiAuth(t *testing.T) {
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	require.NoError(t, err)
 
-	alert := DecisionsListOpts{IPEquals: ptr.Of("1.2.3.4")}
+	alert := DecisionsListOpts{IPEquals: "1.2.3.4"}
 	_, resp, err := newcli.Decisions.List(ctx, alert)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)

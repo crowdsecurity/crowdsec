@@ -175,7 +175,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOpts, noSimu *bool, contained *bool, printMachine bool) error {
 	var err error
 
-	*filter.ScopeEquals, err = clialert.SanitizeScope(*filter.ScopeEquals, *filter.IPEquals, *filter.RangeEquals)
+	filter.ScopeEquals, err = clialert.SanitizeScope(filter.ScopeEquals, filter.IPEquals, filter.RangeEquals)
 	if err != nil {
 		return err
 	}
@@ -191,34 +191,6 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 
 	if *filter.IncludeCAPI {
 		*filter.Limit = 0
-	}
-
-	if *filter.TypeEquals == "" {
-		filter.TypeEquals = nil
-	}
-
-	if *filter.ValueEquals == "" {
-		filter.ValueEquals = nil
-	}
-
-	if *filter.ScopeEquals == "" {
-		filter.ScopeEquals = nil
-	}
-
-	if *filter.ScenarioEquals == "" {
-		filter.ScenarioEquals = nil
-	}
-
-	if *filter.IPEquals == "" {
-		filter.IPEquals = nil
-	}
-
-	if *filter.RangeEquals == "" {
-		filter.RangeEquals = nil
-	}
-
-	if *filter.OriginEquals == "" {
-		filter.OriginEquals = nil
 	}
 
 	if contained != nil && *contained {
@@ -240,15 +212,15 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 
 func (cli *cliDecisions) newListCmd() *cobra.Command {
 	filter := apiclient.AlertsListOpts{
-		ValueEquals:    new(string),
-		ScopeEquals:    new(string),
-		ScenarioEquals: new(string),
-		OriginEquals:   new(string),
-		IPEquals:       new(string),
-		RangeEquals:    new(string),
+		ValueEquals:    "",
+		ScopeEquals:    "",
+		ScenarioEquals: "",
+		OriginEquals:   "",
+		IPEquals:       "",
+		RangeEquals:    "",
 		Since:          cstime.DurationWithDays(0),
 		Until:          cstime.DurationWithDays(0),
-		TypeEquals:     new(string),
+		TypeEquals:     "",
 		IncludeCAPI:    new(bool),
 		Limit:          new(int),
 	}
@@ -278,13 +250,13 @@ cscli decisions list --origin lists --scenario list_name
 	flags.BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
 	flags.Var(&filter.Since, "since", "restrict to alerts newer than since (ie. 4h, 30d)")
 	flags.Var(&filter.Until, "until", "restrict to alerts older than until (ie. 4h, 30d)")
-	flags.StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
-	flags.StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	flags.StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
-	flags.StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
-	flags.StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
-	flags.StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
-	flags.StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
+	flags.StringVarP(&filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
+	flags.StringVar(&filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
+	flags.StringVar(&filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVarP(&filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
+	flags.StringVarP(&filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
+	flags.StringVarP(&filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(&filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
 	flags.IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
 	flags.BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
@@ -428,37 +400,9 @@ func (cli *cliDecisions) delete(ctx context.Context, delFilter apiclient.Decisio
 	var err error
 
 	/*take care of shorthand options*/
-	*delFilter.ScopeEquals, err = clialert.SanitizeScope(*delFilter.ScopeEquals, *delFilter.IPEquals, *delFilter.RangeEquals)
+	delFilter.ScopeEquals, err = clialert.SanitizeScope(delFilter.ScopeEquals, delFilter.IPEquals, delFilter.RangeEquals)
 	if err != nil {
 		return err
-	}
-
-	if *delFilter.ScopeEquals == "" {
-		delFilter.ScopeEquals = nil
-	}
-
-	if *delFilter.OriginEquals == "" {
-		delFilter.OriginEquals = nil
-	}
-
-	if *delFilter.ValueEquals == "" {
-		delFilter.ValueEquals = nil
-	}
-
-	if *delFilter.ScenarioEquals == "" {
-		delFilter.ScenarioEquals = nil
-	}
-
-	if *delFilter.TypeEquals == "" {
-		delFilter.TypeEquals = nil
-	}
-
-	if *delFilter.IPEquals == "" {
-		delFilter.IPEquals = nil
-	}
-
-	if *delFilter.RangeEquals == "" {
-		delFilter.RangeEquals = nil
 	}
 
 	if contained != nil && *contained {
@@ -490,13 +434,13 @@ func (cli *cliDecisions) delete(ctx context.Context, delFilter apiclient.Decisio
 
 func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
 	delFilter := apiclient.DecisionsDeleteOpts{
-		ScopeEquals:    new(string),
-		ValueEquals:    new(string),
-		TypeEquals:     new(string),
-		IPEquals:       new(string),
-		RangeEquals:    new(string),
-		ScenarioEquals: new(string),
-		OriginEquals:   new(string),
+		ScopeEquals:    "",
+		ValueEquals:    "",
+		TypeEquals:     "",
+		IPEquals:       "",
+		RangeEquals:    "",
+		ScenarioEquals: "",
+		OriginEquals:   "",
 	}
 
 	var delDecisionID string
@@ -522,10 +466,10 @@ cscli decisions delete --origin lists  --scenario list_name
 			if delDecisionAll {
 				return nil
 			}
-			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
-				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
-				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
-				*delFilter.OriginEquals == "" && delDecisionID == "" {
+			if delFilter.ScopeEquals == "" && delFilter.ValueEquals == "" &&
+				delFilter.TypeEquals == "" && delFilter.IPEquals == "" &&
+				delFilter.RangeEquals == "" && delFilter.ScenarioEquals == "" &&
+				delFilter.OriginEquals == "" && delDecisionID == "" {
 				_ = cmd.Usage()
 				return errors.New("at least one filter or --all must be specified")
 			}
@@ -539,12 +483,12 @@ cscli decisions delete --origin lists  --scenario list_name
 
 	flags := cmd.Flags()
 	flags.SortFlags = false
-	flags.StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	flags.StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	flags.StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
-	flags.StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	flags.StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
-	flags.StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVarP(&delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(&delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	flags.StringVarP(&delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
+	flags.StringVarP(&delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	flags.StringVarP(&delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
+	flags.StringVar(&delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 
 	flags.StringVar(&delDecisionID, "id", "", "decision id")
 	flags.BoolVar(&delDecisionAll, "all", false, "delete all decisions")

@@ -189,7 +189,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	assert.Equal(t, expected, *alerts)
 
 	// this one doesn't
-	filter := AlertsListOpts{IPEquals: ptr.Of("1.2.3.4")}
+	filter := AlertsListOpts{IPEquals: "1.2.3.4"}
 
 	alerts, resp, err = client.Alerts.List(ctx, filter)
 	require.NoError(t, err)
@@ -442,7 +442,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 
 	defer teardown()
 
-	alert := AlertsDeleteOpts{IPEquals: ptr.Of("1.2.3.4")}
+	alert := AlertsDeleteOpts{IPEquals: "1.2.3.4"}
 	alerts, resp, err := client.Alerts.Delete(ctx, alert)
 	require.NoError(t, err)
 
