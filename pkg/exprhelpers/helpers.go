@@ -29,6 +29,8 @@ import (
 	"github.com/umahmood/haversine"
 	"github.com/wasilibs/go-re2"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -675,7 +677,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 		return 0, nil
 	}
 
-	sinceDuration, err := time.ParseDuration(since)
+	sinceDuration, err := cstime.ParseDurationWithDays(since)
 	if err != nil {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
 		return 0, nil

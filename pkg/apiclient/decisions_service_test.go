@@ -19,6 +19,7 @@ import (
 
 func TestDecisionsList(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -64,15 +65,13 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	// OK decisions
-	decisionsFilter := DecisionsListOpts{IPEquals: ptr.Of("1.2.3.4")}
-	decisions, resp, err := newcli.Decisions.List(ctx, decisionsFilter)
+	decisions, resp, err := newcli.Decisions.List(ctx, DecisionsListOpts{IPEquals: "1.2.3.4"})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Equal(t, *expected, *decisions)
 
 	// Empty return
-	decisionsFilter = DecisionsListOpts{IPEquals: ptr.Of("1.2.3.5")}
-	decisions, resp, err = newcli.Decisions.List(ctx, decisionsFilter)
+	decisions, resp, err = newcli.Decisions.List(ctx, DecisionsListOpts{IPEquals: "1.2.3.5"})
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Empty(t, *decisions)
@@ -80,6 +79,7 @@ func TestDecisionsList(t *testing.T) {
 
 func TestDecisionsStream(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -156,6 +156,7 @@ func TestDecisionsStream(t *testing.T) {
 
 func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -224,6 +225,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 
 func TestDecisionsStreamV3(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -297,6 +299,7 @@ func TestDecisionsStreamV3(t *testing.T) {
 
 func TestDecisionsFromBlocklist(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -429,10 +432,7 @@ func TestDeleteDecisions(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	filters := DecisionsDeleteOpts{IPEquals: new(string)}
-	*filters.IPEquals = "1.2.3.4"
-
-	deleted, _, err := client.Decisions.Delete(ctx, filters)
+	deleted, _, err := client.Decisions.Delete(ctx, DecisionsDeleteOpts{IPEquals: "1.2.3.4"})
 	require.NoError(t, err)
 	assert.Equal(t, "1", deleted.NbDeleted)
 }

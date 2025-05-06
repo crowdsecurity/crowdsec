@@ -11,13 +11,13 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
+	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -214,8 +214,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		shareSignals:              *config.Sharing,
 	}
 
-	password := strfmt.Password(config.Credentials.Password)
-
 	apiURL, err := url.Parse(config.Credentials.URL)
 	if err != nil {
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.URL, err)
@@ -233,7 +231,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
-		Password:       password,
+		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
@@ -244,29 +242,103 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while creating api client: %w", err)
 	}
 
-	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
-	// Explicit authentication will provoke a useless supplementary call to CAPI
-	scenarios, err := ret.FetchScenariosListFromDB(ctx)
+	err = ret.Authenticate(ctx, config)
+	return ret, err
+}
+
+// loadAPICToken attempts to retrieve and validate a JWT token from the local database.
+// It returns the token string, its expiration time, and a boolean indicating whether the token is valid.
+//
+// A token is considered valid if:
+//   - it exists in the database,
+//   - it is a properly formatted JWT with an "exp" claim,
+//   - it is not expired or near expiry.
+func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time, bool) {
+	token, err := db.GetConfigItem(ctx, "apic_token")
 	if err != nil {
-		return ret, fmt.Errorf("get scenario in db: %w", err)
+		log.Debugf("error fetching token from DB: %s", err)
+		return "", time.Time{}, false
 	}
 
-	authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
+	if token == nil {
+		log.Debug("no token found in DB")
+		return "", time.Time{}, false
+	}
+
+	parser := new(jwt.Parser)
+	tok, _, err := parser.ParseUnverified(*token, jwt.MapClaims{})
+	if err != nil {
+		log.Debugf("error parsing token: %s", err)
+		return "", time.Time{}, false
+	}
+
+	claims, ok := tok.Claims.(jwt.MapClaims)
+	if !ok {
+		log.Debugf("error parsing token claims: %s", err)
+		return "", time.Time{}, false
+	}
+
+	expFloat, ok := claims["exp"].(float64)
+	if !ok {
+		log.Debug("token missing 'exp' claim")
+		return "", time.Time{}, false
+	}
+
+	exp := time.Unix(int64(expFloat), 0)
+	if time.Now().UTC().After(exp.Add(-1*time.Minute)) {
+		log.Debug("auth token expired")
+		return "", time.Time{}, false
+	}
+
+	return *token, exp, true
+}
+
+// saveAPICToken stores the given JWT token in the local database under the "apic_token" config item.
+func saveAPICToken(ctx context.Context, db *database.Client, token string) error {
+	if err := db.SetConfigItem(ctx, "apic_token", token); err != nil {
+		return fmt.Errorf("saving token to db: %w", err)
+	}
+
+	return nil
+}
+
+// Authenticate ensures the API client is authorized to communicate with the CAPI.
+// It attempts to reuse a previously saved JWT token from the database, falling back to
+// an authentication request if the token is missing, invalid, or expired.
+//
+// If a new token is obtained, it is saved back to the database for caching.
+func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
+	if token, exp, valid := loadAPICToken(ctx, a.dbClient); valid {
+		log.Debug("using valid token from DB")
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+	}
+
+	log.Debug("No token found, authenticating")
+
+	scenarios, err := a.FetchScenariosListFromDB(ctx)
+	if err != nil {
+		return fmt.Errorf("get scenario in db: %w", err)
+	}
+
+	password := strfmt.Password(config.Credentials.Password)
+
+	authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &config.Credentials.Login,
 		Password:  &password,
 		Scenarios: scenarios,
 	})
 	if err != nil {
-		return ret, fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
+		return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
 	}
 
-	if err = ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-		return ret, fmt.Errorf("unable to parse jwt expiration: %w", err)
+	if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return fmt.Errorf("unable to parse jwt expiration: %w", err)
 	}
 
-	ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return ret, err
+	return saveAPICToken(ctx, a.dbClient, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
@@ -439,14 +511,9 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
+			dbCliDel, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 			if err != nil {
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
-			}
-
-			dbCliDel, err := strconv.Atoi(dbCliRet)
-			if err != nil {
-				return 0, fmt.Errorf("converting db ret %d: %w", dbCliDel, err)
 			}
 
 			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
@@ -588,6 +655,8 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	var err error
 
+	hasPulledAllowlists := false
+
 	// A mutex with TryLock would be a bit simpler
 	// But go does not guarantee that TryLock will be able to acquire the lock even if it is available
 	select {
@@ -649,7 +718,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	// process deleted decisions
 	nbDeleted, err := a.HandleDeletedDecisionsV3(ctx, data.Deleted, deleteCounters)
 	if err != nil {
-		return err
+		log.Errorf("could not delete decisions from CAPI: %s", err)
 	}
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
@@ -657,8 +726,10 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	// Update allowlists before processing decisions
 	if data.Links != nil {
 		if len(data.Links.Allowlists) > 0 {
+			hasPulledAllowlists = true
+
 			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
-				return fmt.Errorf("while updating allowlists: %w", err)
+				log.Errorf("could not update allowlists from CAPI: %s", err)
 			}
 		}
 	}
@@ -675,7 +746,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 		err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, deleteCounters)
 		if err != nil {
-			return fmt.Errorf("while saving alerts: %w", err)
+			log.Errorf("could not save alert for CAPI pull: %s", err)
 		}
 	} else {
 		if a.pullCommunity {
@@ -689,8 +760,19 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	if data.Links != nil {
 		if len(data.Links.Blocklists) > 0 {
 			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
-				return fmt.Errorf("while updating blocklists: %w", err)
+				log.Errorf("could not update blocklists from CAPI: %s", err)
 			}
+		}
+	}
+
+	if hasPulledAllowlists {
+		deleted, err := a.dbClient.ApplyAllowlistsToExistingDecisions(ctx)
+		if err != nil {
+			log.Errorf("could not apply allowlists to existing decisions: %s", err)
+		}
+
+		if deleted > 0 {
+			log.Infof("deleted %d decisions from allowlists", deleted)
 		}
 	}
 
