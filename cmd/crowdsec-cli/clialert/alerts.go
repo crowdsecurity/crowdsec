@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
@@ -247,34 +249,6 @@ func (cli *cliAlerts) list(ctx context.Context, alertListFilter apiclient.Alerts
 		alertListFilter.Limit = limit
 	}
 
-	if *alertListFilter.Until == "" {
-		alertListFilter.Until = nil
-	} else if strings.HasSuffix(*alertListFilter.Until, "d") {
-		/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-		realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
-
-		days, err := strconv.Atoi(realDuration)
-		if err != nil {
-			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
-		}
-
-		*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
-	}
-
-	if *alertListFilter.Since == "" {
-		alertListFilter.Since = nil
-	} else if strings.HasSuffix(*alertListFilter.Since, "d") {
-		// time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier
-		realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
-
-		days, err := strconv.Atoi(realDuration)
-		if err != nil {
-			return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
-		}
-
-		*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
-	}
-
 	if *alertListFilter.IncludeCAPI {
 		*alertListFilter.Limit = 0
 	}
@@ -330,8 +304,8 @@ func (cli *cliAlerts) newListCmd() *cobra.Command {
 		ScenarioEquals: new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
-		Since:          new(string),
-		Until:          new(string),
+		Since:          cstime.DurationWithDays(0),
+		Until:          cstime.DurationWithDays(0),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
 		OriginEquals:   new(string),
@@ -362,8 +336,8 @@ cscli alerts list --type ban`,
 	flags := cmd.Flags()
 	flags.SortFlags = false
 	flags.BoolVarP(alertListFilter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
-	flags.StringVar(alertListFilter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
-	flags.StringVar(alertListFilter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	flags.Var(&alertListFilter.Until, "until", "restrict to alerts older than until (ie. 4h, 30d)")
+	flags.Var(&alertListFilter.Since, "since", "restrict to alerts newer than since (ie. 4h, 30d)")
 	flags.StringVarP(alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	flags.StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
 	flags.StringVarP(alertListFilter.RangeEquals, "range", "r", "", "restrict to alerts from this range (shorthand for --scope range --value <RANGE/X>)")
@@ -560,10 +534,9 @@ func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 }
 
 func (cli *cliAlerts) newFlushCmd() *cobra.Command {
-	var (
-		maxItems int
-		maxAge   string
-	)
+	var maxItems int
+
+	maxAge := cstime.DurationWithDays(7*24*time.Hour)
 
 	cmd := &cobra.Command{
 		Use: `flush`,
@@ -584,7 +557,7 @@ func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 				return err
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
-			err = db.FlushAlerts(ctx, maxAge, maxItems)
+			err = db.FlushAlerts(ctx, time.Duration(maxAge), maxItems)
 			if err != nil {
 				return fmt.Errorf("unable to flush alerts: %w", err)
 			}
@@ -596,7 +569,7 @@ func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 
 	cmd.Flags().SortFlags = false
 	cmd.Flags().IntVar(&maxItems, "max-items", 5000, "Maximum number of alert items to keep in the database")
-	cmd.Flags().StringVar(&maxAge, "max-age", "7d", "Maximum age of alert items to keep in the database")
+	cmd.Flags().Var(&maxAge, "max-age", "Maximum age of alert items to keep in the database")
 
 	return cmd
 }

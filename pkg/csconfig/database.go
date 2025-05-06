@@ -14,6 +14,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -58,10 +59,10 @@ type AuthGCCfg struct {
 type FlushDBCfg struct {
 	MaxItems *int `yaml:"max_items,omitempty"`
 	// We could unmarshal as time.Duration, but alert filters right now are a map of strings
-	MaxAge        *string        `yaml:"max_age,omitempty"`
-	BouncersGC    *AuthGCCfg     `yaml:"bouncers_autodelete,omitempty"`
-	AgentsGC      *AuthGCCfg     `yaml:"agents_autodelete,omitempty"`
-	MetricsMaxAge *time.Duration `yaml:"metrics_max_age,omitempty"`
+	MaxAge        cstime.DurationWithDays `yaml:"max_age,omitempty"`
+	BouncersGC    *AuthGCCfg              `yaml:"bouncers_autodelete,omitempty"`
+	AgentsGC      *AuthGCCfg              `yaml:"agents_autodelete,omitempty"`
+	MetricsMaxAge cstime.DurationWithDays `yaml:"metrics_max_age,omitempty"`
 }
 
 func (c *Config) LoadDBConfig(inCli bool) error {

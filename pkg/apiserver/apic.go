@@ -582,6 +582,8 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	var err error
 
+	hasPulledAllowlists := false
+
 	// A mutex with TryLock would be a bit simpler
 	// But go does not guarantee that TryLock will be able to acquire the lock even if it is available
 	select {
@@ -643,7 +645,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	// process deleted decisions
 	nbDeleted, err := a.HandleDeletedDecisionsV3(ctx, data.Deleted, deleteCounters)
 	if err != nil {
-		return err
+		log.Errorf("could not delete decisions from CAPI: %s", err)
 	}
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
@@ -651,8 +653,9 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	// Update allowlists before processing decisions
 	if data.Links != nil {
 		if len(data.Links.Allowlists) > 0 {
+			hasPulledAllowlists = true
 			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
-				return fmt.Errorf("while updating allowlists: %w", err)
+				log.Errorf("could not update allowlists from CAPI: %s", err)
 			}
 		}
 	}
@@ -669,7 +672,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 		err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, deleteCounters)
 		if err != nil {
-			return fmt.Errorf("while saving alerts: %w", err)
+			log.Errorf("could not save alert for CAPI pull: %s", err)
 		}
 	} else {
 		if a.pullCommunity {
@@ -683,8 +686,18 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	if data.Links != nil {
 		if len(data.Links.Blocklists) > 0 {
 			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
-				return fmt.Errorf("while updating blocklists: %w", err)
+				log.Errorf("could not update blocklists from CAPI: %s", err)
 			}
+		}
+	}
+
+	if hasPulledAllowlists {
+		deleted, err := a.dbClient.ApplyAllowlistsToExistingDecisions(ctx)
+		if err != nil {
+			log.Errorf("could not apply allowlists to existing decisions: %s", err)
+		}
+		if deleted > 0 {
+			log.Infof("deleted %d decisions from allowlists", deleted)
 		}
 	}
 
