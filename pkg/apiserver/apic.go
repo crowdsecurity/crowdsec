@@ -654,6 +654,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	if data.Links != nil {
 		if len(data.Links.Allowlists) > 0 {
 			hasPulledAllowlists = true
+
 			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
 				log.Errorf("could not update allowlists from CAPI: %s", err)
 			}
@@ -696,6 +697,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		if err != nil {
 			log.Errorf("could not apply allowlists to existing decisions: %s", err)
 		}
+
 		if deleted > 0 {
 			log.Infof("deleted %d decisions from allowlists", deleted)
 		}

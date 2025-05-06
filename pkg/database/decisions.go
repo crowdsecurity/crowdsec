@@ -29,9 +29,9 @@ type DecisionsByScenario struct {
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var (
-		err error
+		err                                  error
 		start_ip, start_sfx, end_ip, end_sfx int64
-		ip_sz int
+		ip_sz                                int
 	)
 
 	contains := true
@@ -100,18 +100,21 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid limit value : %s", err)
 			}
+
 			query = query.Limit(limit)
 		case "offset":
 			offset, err := strconv.Atoi(value[0])
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid offset value : %s", err)
 			}
+
 			query = query.Offset(offset)
 		case "id_gt":
 			id, err := strconv.Atoi(value[0])
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid id_gt value : %s", err)
 			}
+
 			query = query.Where(decision.IDGT(id))
 		}
 	}
@@ -201,7 +204,7 @@ func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*Decisions
 
 func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
 	var (
-		err error
+		err  error
 		data []*ent.Decision
 	)
 
@@ -325,9 +328,9 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 // ExpireDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
 func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[string][]string) (int, []*ent.Decision, error) {
 	var (
-		err error
+		err                                  error
 		start_ip, start_sfx, end_ip, end_sfx int64
-		ip_sz int
+		ip_sz                                int
 	)
 
 	contains := true
@@ -506,13 +509,7 @@ func (c *Client) CountDecisionsByValue(ctx context.Context, value string, since 
 }
 
 func (c *Client) GetActiveDecisionsTimeLeftByValue(ctx context.Context, decisionValue string) (time.Duration, error) {
-	var (
-		err error
-		start_ip, start_sfx, end_ip, end_sfx int64
-		ip_sz int
-	)
-
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(decisionValue)
 	if err != nil {
 		return 0, fmt.Errorf("unable to convert '%s' to int: %w", decisionValue, err)
 	}
