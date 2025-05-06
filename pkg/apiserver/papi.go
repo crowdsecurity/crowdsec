@@ -22,9 +22,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const SyncInterval = time.Second * 10
-
-const PapiPullKey = "papi:last_pull"
+const (
+	SyncInterval = time.Second * 10
+	PapiPullKey  = "papi:last_pull"
+)
 
 var operationMap = map[string]func(*Message, *Papi, bool) error{
 	"decision":   DecisionCmd,
@@ -240,7 +241,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 	}
 
 	// value doesn't exist, it's first time we're pulling
-	if lastTimestampStr == nil {
+	if lastTimestampStr == "" {
 		binTime, err := lastTimestamp.MarshalText()
 		if err != nil {
 			return fmt.Errorf("failed to serialize last timestamp: %w", err)
@@ -252,7 +253,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 			p.Logger.Debugf("config item '%s' set in database with value '%s'", PapiPullKey, string(binTime))
 		}
 	} else {
-		if err := lastTimestamp.UnmarshalText([]byte(*lastTimestampStr)); err != nil {
+		if err := lastTimestamp.UnmarshalText([]byte(lastTimestampStr)); err != nil {
 			return fmt.Errorf("failed to parse last timestamp: %w", err)
 		}
 	}

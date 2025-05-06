@@ -362,7 +362,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Remediation: &tremediationBlocklist,
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
-	}, nil)
+	}, "")
 	require.NoError(t, err)
 	assert.True(t, isModified)
 
@@ -381,7 +381,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Remediation: &tremediationBlocklist,
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
-	}, ptr.Of("Sun, 01 Jan 2023 01:01:01 GMT"))
+	}, "Sun, 01 Jan 2023 01:01:01 GMT")
 
 	require.NoError(t, err)
 	assert.False(t, isModified)
@@ -392,7 +392,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Remediation: &tremediationBlocklist,
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
-	}, ptr.Of("Mon, 02 Jan 2023 01:01:01 GMT"))
+	}, "Mon, 02 Jan 2023 01:01:01 GMT")
 
 	require.NoError(t, err)
 	assert.True(t, isModified)
