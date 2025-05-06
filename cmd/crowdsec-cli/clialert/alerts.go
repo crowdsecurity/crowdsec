@@ -104,15 +104,15 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 		if *alerts == nil {
 			// avoid returning "null" in json
 			// could be cleaner if we used slice of alerts directly
-			fmt.Println("[]")
+			fmt.Fprintln(os.Stdout, "[]")
 			return nil
 		}
 
 		x, _ := json.MarshalIndent(alerts, "", " ")
-		fmt.Print(string(x))
+		fmt.Fprint(os.Stdout, string(x))
 	case "human":
 		if len(*alerts) == 0 {
-			fmt.Println("No active alerts")
+			fmt.Fprintln(os.Stdout, "No active alerts")
 			return nil
 		}
 
@@ -156,7 +156,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	alertDecisionsTable(color.Output, cfg.Cscli.Color, alert)
 
 	if len(alert.Meta) > 0 {
-		fmt.Printf("\n - Context  :\n")
+		fmt.Fprintf(os.Stdout, "\n - Context  :\n")
 		sort.Slice(alert.Meta, func(i, j int) bool {
 			return alert.Meta[i].Key < alert.Meta[j].Key
 		})
@@ -183,7 +183,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	}
 
 	if withDetail {
-		fmt.Printf("\n - Events  :\n")
+		fmt.Fprintf(os.Stdout, "\n - Events  :\n")
 
 		for _, event := range alert.Events {
 			alertEventTable(color.Output, cfg.Cscli.Color, event)
@@ -240,7 +240,7 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 func (cli *cliAlerts) list(ctx context.Context, alertListFilter apiclient.AlertsListOpts, limit *int, contained *bool, printMachine bool) error {
 	var err error
 
-	*alertListFilter.ScopeEquals, err = SanitizeScope(*alertListFilter.ScopeEquals, *alertListFilter.IPEquals, *alertListFilter.RangeEquals)
+	alertListFilter.ScopeEquals, err = SanitizeScope(alertListFilter.ScopeEquals, alertListFilter.IPEquals, alertListFilter.RangeEquals)
 	if err != nil {
 		return err
 	}
@@ -251,34 +251,6 @@ func (cli *cliAlerts) list(ctx context.Context, alertListFilter apiclient.Alerts
 
 	if *alertListFilter.IncludeCAPI {
 		*alertListFilter.Limit = 0
-	}
-
-	if *alertListFilter.TypeEquals == "" {
-		alertListFilter.TypeEquals = nil
-	}
-
-	if *alertListFilter.ScopeEquals == "" {
-		alertListFilter.ScopeEquals = nil
-	}
-
-	if *alertListFilter.ValueEquals == "" {
-		alertListFilter.ValueEquals = nil
-	}
-
-	if *alertListFilter.ScenarioEquals == "" {
-		alertListFilter.ScenarioEquals = nil
-	}
-
-	if *alertListFilter.IPEquals == "" {
-		alertListFilter.IPEquals = nil
-	}
-
-	if *alertListFilter.RangeEquals == "" {
-		alertListFilter.RangeEquals = nil
-	}
-
-	if *alertListFilter.OriginEquals == "" {
-		alertListFilter.OriginEquals = nil
 	}
 
 	if contained != nil && *contained {
@@ -299,16 +271,16 @@ func (cli *cliAlerts) list(ctx context.Context, alertListFilter apiclient.Alerts
 
 func (cli *cliAlerts) newListCmd() *cobra.Command {
 	alertListFilter := apiclient.AlertsListOpts{
-		ScopeEquals:    new(string),
-		ValueEquals:    new(string),
-		ScenarioEquals: new(string),
-		IPEquals:       new(string),
-		RangeEquals:    new(string),
+		ScopeEquals:    "",
+		ValueEquals:    "",
+		ScenarioEquals: "",
+		IPEquals:       "",
+		RangeEquals:    "",
 		Since:          cstime.DurationWithDays(0),
 		Until:          cstime.DurationWithDays(0),
-		TypeEquals:     new(string),
+		TypeEquals:     "",
 		IncludeCAPI:    new(bool),
-		OriginEquals:   new(string),
+		OriginEquals:   "",
 	}
 
 	limit := new(int)
@@ -338,13 +310,13 @@ cscli alerts list --type ban`,
 	flags.BoolVarP(alertListFilter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
 	flags.Var(&alertListFilter.Until, "until", "restrict to alerts older than until (ie. 4h, 30d)")
 	flags.Var(&alertListFilter.Since, "since", "restrict to alerts newer than since (ie. 4h, 30d)")
-	flags.StringVarP(alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
-	flags.StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
-	flags.StringVarP(alertListFilter.RangeEquals, "range", "r", "", "restrict to alerts from this range (shorthand for --scope range --value <RANGE/X>)")
-	flags.StringVar(alertListFilter.TypeEquals, "type", "", "restrict to alerts with given decision type (ie. ban, captcha)")
-	flags.StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
-	flags.StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	flags.StringVar(alertListFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVarP(&alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(&alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
+	flags.StringVarP(&alertListFilter.RangeEquals, "range", "r", "", "restrict to alerts from this range (shorthand for --scope range --value <RANGE/X>)")
+	flags.StringVar(&alertListFilter.TypeEquals, "type", "", "restrict to alerts with given decision type (ie. ban, captcha)")
+	flags.StringVar(&alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
+	flags.StringVarP(&alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	flags.StringVar(&alertListFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that sent alerts")
 	flags.IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
@@ -356,33 +328,13 @@ func (cli *cliAlerts) delete(ctx context.Context, delFilter apiclient.AlertsDele
 	var err error
 
 	if !deleteAll {
-		*delFilter.ScopeEquals, err = SanitizeScope(*delFilter.ScopeEquals, *delFilter.IPEquals, *delFilter.RangeEquals)
+		delFilter.ScopeEquals, err = SanitizeScope(delFilter.ScopeEquals, delFilter.IPEquals, delFilter.RangeEquals)
 		if err != nil {
 			return err
 		}
 
 		if activeDecision != nil {
 			delFilter.ActiveDecisionEquals = activeDecision
-		}
-
-		if *delFilter.ScopeEquals == "" {
-			delFilter.ScopeEquals = nil
-		}
-
-		if *delFilter.ValueEquals == "" {
-			delFilter.ValueEquals = nil
-		}
-
-		if *delFilter.ScenarioEquals == "" {
-			delFilter.ScenarioEquals = nil
-		}
-
-		if *delFilter.IPEquals == "" {
-			delFilter.IPEquals = nil
-		}
-
-		if *delFilter.RangeEquals == "" {
-			delFilter.RangeEquals = nil
 		}
 
 		if contained != nil && *contained {
@@ -422,11 +374,11 @@ func (cli *cliAlerts) newDeleteCmd() *cobra.Command {
 	)
 
 	delFilter := apiclient.AlertsDeleteOpts{
-		ScopeEquals:    new(string),
-		ValueEquals:    new(string),
-		ScenarioEquals: new(string),
-		IPEquals:       new(string),
-		RangeEquals:    new(string),
+		ScopeEquals:    "",
+		ValueEquals:    "",
+		ScenarioEquals: "",
+		IPEquals:       "",
+		RangeEquals:    "",
 	}
 
 	contained := new(bool)
@@ -445,9 +397,9 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if deleteAll {
 				return nil
 			}
-			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
-				*delFilter.ScenarioEquals == "" && *delFilter.IPEquals == "" &&
-				*delFilter.RangeEquals == "" && delAlertByID == "" {
+			if delFilter.ScopeEquals == "" && delFilter.ValueEquals == "" &&
+				delFilter.ScenarioEquals == "" && delFilter.IPEquals == "" &&
+				delFilter.RangeEquals == "" && delAlertByID == "" {
 				_ = cmd.Usage()
 				return errors.New("at least one filter or --all must be specified")
 			}
@@ -461,11 +413,11 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 
 	flags := cmd.Flags()
 	flags.SortFlags = false
-	flags.StringVar(delFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
-	flags.StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	flags.StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
-	flags.StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	flags.StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	flags.StringVar(&delFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
+	flags.StringVarP(&delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	flags.StringVarP(&delFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
+	flags.StringVarP(&delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	flags.StringVarP(&delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	flags.StringVar(&delAlertByID, "id", "", "alert ID")
 	flags.BoolVarP(&deleteAll, "all", "a", false, "delete all alerts")
 	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
@@ -499,14 +451,14 @@ func (cli *cliAlerts) inspect(ctx context.Context, details bool, alertIDs ...str
 				return fmt.Errorf("unable to serialize alert with id %s: %w", alertID, err)
 			}
 
-			fmt.Printf("%s\n", string(data))
+			fmt.Fprintln(os.Stdout, string(data))
 		case "raw":
 			data, err := yaml.Marshal(alert)
 			if err != nil {
 				return fmt.Errorf("unable to serialize alert with id %s: %w", alertID, err)
 			}
 
-			fmt.Println(string(data))
+			fmt.Fprintln(os.Stdout, string(data))
 		}
 	}
 
@@ -536,7 +488,7 @@ func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 	var maxItems int
 
-	maxAge := cstime.DurationWithDays(7*24*time.Hour)
+	maxAge := cstime.DurationWithDays(7 * 24 * time.Hour)
 
 	cmd := &cobra.Command{
 		Use: `flush`,

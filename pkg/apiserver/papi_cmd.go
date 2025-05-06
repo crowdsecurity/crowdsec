@@ -264,6 +264,14 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
+
+			deleted, err := p.DBClient.ApplyAllowlistsToExistingDecisions(ctx)
+			if err != nil {
+				log.Errorf("could not apply allowlists to existing decisions: %s", err)
+			}
+			if deleted > 0 {
+				log.Infof("deleted %d decisions from allowlists", deleted)
+			}
 		}
 	case "allowlist_unsubscribe":
 		data, err := json.Marshal(message.Data)
