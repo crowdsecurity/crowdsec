@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema/field"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -22,7 +23,10 @@ func (ConfigItem) Fields() []ent.Field {
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).StructTag(`json:"updated_at"`),
 		field.String("name").Unique().StructTag(`json:"name"`).Immutable(),
-		field.String("value").StructTag(`json:"value"`), // a json object
+		field.String("value").SchemaType(map[string]string{
+			dialect.MySQL:    "longtext",
+			dialect.Postgres: "text",
+		}).StructTag(`json:"value"`), // a json object
 	}
 }
 
