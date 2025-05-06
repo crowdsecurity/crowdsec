@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -439,14 +438,9 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
+			dbCliDel, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 			if err != nil {
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
-			}
-
-			dbCliDel, err := strconv.Atoi(dbCliRet)
-			if err != nil {
-				return 0, fmt.Errorf("converting db ret %d: %w", dbCliDel, err)
 			}
 
 			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
@@ -660,6 +654,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	if data.Links != nil {
 		if len(data.Links.Allowlists) > 0 {
 			hasPulledAllowlists = true
+
 			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
 				log.Errorf("could not update allowlists from CAPI: %s", err)
 			}
@@ -702,6 +697,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		if err != nil {
 			log.Errorf("could not apply allowlists to existing decisions: %s", err)
 		}
+
 		if deleted > 0 {
 			log.Infof("deleted %d decisions from allowlists", deleted)
 		}

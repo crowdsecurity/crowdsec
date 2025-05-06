@@ -134,7 +134,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
-		NbDeleted: nbDeleted,
+		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
