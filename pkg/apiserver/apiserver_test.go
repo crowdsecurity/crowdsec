@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -47,9 +48,9 @@ var (
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := "1h"
+	maxAge := cstime.DurationWithDays(1*time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: &maxAge,
+		MaxAge: maxAge,
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
@@ -97,9 +98,9 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 
 func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := "1h"
+	maxAge := cstime.DurationWithDays(1*time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: &maxAge,
+		MaxAge: maxAge,
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
@@ -363,9 +364,9 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := "1h"
+	maxAge := cstime.DurationWithDays(1*time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: &maxAge,
+		MaxAge: maxAge,
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
@@ -416,9 +417,9 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := "1h"
+	maxAge := cstime.DurationWithDays(1*time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: &maxAge,
+		MaxAge: maxAge,
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")

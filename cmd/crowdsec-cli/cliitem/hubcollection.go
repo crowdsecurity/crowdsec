@@ -76,10 +76,11 @@ cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables -i
 cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables --interactive`,
 		},
 		inspectHelp: cliHelp{
-			example: `# Display metadata, state, metrics and dependencies of collections (installed or not).
+			example: `# Display metadata, state, and dependencies of collections (installed or not).
 cscli collections inspect crowdsecurity/http-cve crowdsecurity/iptables
 
-# Don't collect metrics (avoid error if crowdsec is not running).
+# If the collection is installed, its metrics are collected and shown as well (with an error if crowdsec is not running).
+# To avoid this, use --no-metrics.
 cscli collections inspect crowdsecurity/http-cve crowdsecurity/iptables --no-metrics
 
 # Display difference between a tainted item and the latest one, or the reason for the taint if it's a dependency.
