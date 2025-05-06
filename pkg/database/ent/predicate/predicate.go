@@ -38,6 +38,3 @@ type Meta func(*sql.Selector)
 
 // Metric is the predicate function for metric builders.
 type Metric func(*sql.Selector)
-
-// TokenItem is the predicate function for tokenitem builders.
-type TokenItem func(*sql.Selector)

@@ -34,8 +34,6 @@ type Tx struct {
 	Meta *MetaClient
 	// Metric is the client for interacting with the Metric builders.
 	Metric *MetricClient
-	// TokenItem is the client for interacting with the TokenItem builders.
-	TokenItem *TokenItemClient
 
 	// lazily loaded.
 	client     *Client
@@ -178,7 +176,6 @@ func (tx *Tx) init() {
 	tx.Machine = NewMachineClient(tx.config)
 	tx.Meta = NewMetaClient(tx.config)
 	tx.Metric = NewMetricClient(tx.config)
-	tx.TokenItem = NewTokenItemClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

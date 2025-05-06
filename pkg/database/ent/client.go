@@ -26,7 +26,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/tokenitem"
 )
 
 // Client is the client that holds all ent builders.
@@ -56,8 +55,6 @@ type Client struct {
 	Meta *MetaClient
 	// Metric is the client for interacting with the Metric builders.
 	Metric *MetricClient
-	// TokenItem is the client for interacting with the TokenItem builders.
-	TokenItem *TokenItemClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -80,7 +77,6 @@ func (c *Client) init() {
 	c.Machine = NewMachineClient(c.config)
 	c.Meta = NewMetaClient(c.config)
 	c.Metric = NewMetricClient(c.config)
-	c.TokenItem = NewTokenItemClient(c.config)
 }
 
 type (
@@ -184,7 +180,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Machine:       NewMachineClient(cfg),
 		Meta:          NewMetaClient(cfg),
 		Metric:        NewMetricClient(cfg),
-		TokenItem:     NewTokenItemClient(cfg),
 	}, nil
 }
 
@@ -215,7 +210,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Machine:       NewMachineClient(cfg),
 		Meta:          NewMetaClient(cfg),
 		Metric:        NewMetricClient(cfg),
-		TokenItem:     NewTokenItemClient(cfg),
 	}, nil
 }
 
@@ -246,7 +240,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Alert, c.AllowList, c.AllowListItem, c.Bouncer, c.ConfigItem, c.Decision,
-		c.Event, c.Lock, c.Machine, c.Meta, c.Metric, c.TokenItem,
+		c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
 	} {
 		n.Use(hooks...)
 	}
@@ -257,7 +251,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Alert, c.AllowList, c.AllowListItem, c.Bouncer, c.ConfigItem, c.Decision,
-		c.Event, c.Lock, c.Machine, c.Meta, c.Metric, c.TokenItem,
+		c.Event, c.Lock, c.Machine, c.Meta, c.Metric,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -288,8 +282,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Meta.mutate(ctx, m)
 	case *MetricMutation:
 		return c.Metric.mutate(ctx, m)
-	case *TokenItemMutation:
-		return c.TokenItem.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -1918,147 +1910,14 @@ func (c *MetricClient) mutate(ctx context.Context, m *MetricMutation) (Value, er
 	}
 }
 
-// TokenItemClient is a client for the TokenItem schema.
-type TokenItemClient struct {
-	config
-}
-
-// NewTokenItemClient returns a client for the TokenItem from the given config.
-func NewTokenItemClient(c config) *TokenItemClient {
-	return &TokenItemClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `tokenitem.Hooks(f(g(h())))`.
-func (c *TokenItemClient) Use(hooks ...Hook) {
-	c.hooks.TokenItem = append(c.hooks.TokenItem, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `tokenitem.Intercept(f(g(h())))`.
-func (c *TokenItemClient) Intercept(interceptors ...Interceptor) {
-	c.inters.TokenItem = append(c.inters.TokenItem, interceptors...)
-}
-
-// Create returns a builder for creating a TokenItem entity.
-func (c *TokenItemClient) Create() *TokenItemCreate {
-	mutation := newTokenItemMutation(c.config, OpCreate)
-	return &TokenItemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of TokenItem entities.
-func (c *TokenItemClient) CreateBulk(builders ...*TokenItemCreate) *TokenItemCreateBulk {
-	return &TokenItemCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *TokenItemClient) MapCreateBulk(slice any, setFunc func(*TokenItemCreate, int)) *TokenItemCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &TokenItemCreateBulk{err: fmt.Errorf("calling to TokenItemClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*TokenItemCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &TokenItemCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for TokenItem.
-func (c *TokenItemClient) Update() *TokenItemUpdate {
-	mutation := newTokenItemMutation(c.config, OpUpdate)
-	return &TokenItemUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *TokenItemClient) UpdateOne(ti *TokenItem) *TokenItemUpdateOne {
-	mutation := newTokenItemMutation(c.config, OpUpdateOne, withTokenItem(ti))
-	return &TokenItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *TokenItemClient) UpdateOneID(id int) *TokenItemUpdateOne {
-	mutation := newTokenItemMutation(c.config, OpUpdateOne, withTokenItemID(id))
-	return &TokenItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for TokenItem.
-func (c *TokenItemClient) Delete() *TokenItemDelete {
-	mutation := newTokenItemMutation(c.config, OpDelete)
-	return &TokenItemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *TokenItemClient) DeleteOne(ti *TokenItem) *TokenItemDeleteOne {
-	return c.DeleteOneID(ti.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *TokenItemClient) DeleteOneID(id int) *TokenItemDeleteOne {
-	builder := c.Delete().Where(tokenitem.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &TokenItemDeleteOne{builder}
-}
-
-// Query returns a query builder for TokenItem.
-func (c *TokenItemClient) Query() *TokenItemQuery {
-	return &TokenItemQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeTokenItem},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a TokenItem entity by its id.
-func (c *TokenItemClient) Get(ctx context.Context, id int) (*TokenItem, error) {
-	return c.Query().Where(tokenitem.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *TokenItemClient) GetX(ctx context.Context, id int) *TokenItem {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *TokenItemClient) Hooks() []Hook {
-	return c.hooks.TokenItem
-}
-
-// Interceptors returns the client interceptors.
-func (c *TokenItemClient) Interceptors() []Interceptor {
-	return c.inters.TokenItem
-}
-
-func (c *TokenItemClient) mutate(ctx context.Context, m *TokenItemMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&TokenItemCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&TokenItemUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&TokenItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&TokenItemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown TokenItem mutation op: %q", m.Op())
-	}
-}
-
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
 		Alert, AllowList, AllowListItem, Bouncer, ConfigItem, Decision, Event, Lock,
-		Machine, Meta, Metric, TokenItem []ent.Hook
+		Machine, Meta, Metric []ent.Hook
 	}
 	inters struct {
 		Alert, AllowList, AllowListItem, Bouncer, ConfigItem, Decision, Event, Lock,
-		Machine, Meta, Metric, TokenItem []ent.Interceptor
+		Machine, Meta, Metric []ent.Interceptor
 	}
 )

@@ -16,7 +16,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/tokenitem"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -201,16 +200,4 @@ func init() {
 	metaDescValue := metaFields[3].Descriptor()
 	// meta.ValueValidator is a validator for the "value" field. It is called by the builders before save.
 	meta.ValueValidator = metaDescValue.Validators[0].(func(string) error)
-	tokenitemFields := schema.TokenItem{}.Fields()
-	_ = tokenitemFields
-	// tokenitemDescCreatedAt is the schema descriptor for created_at field.
-	tokenitemDescCreatedAt := tokenitemFields[0].Descriptor()
-	// tokenitem.DefaultCreatedAt holds the default value on creation for the created_at field.
-	tokenitem.DefaultCreatedAt = tokenitemDescCreatedAt.Default.(func() time.Time)
-	// tokenitemDescUpdatedAt is the schema descriptor for updated_at field.
-	tokenitemDescUpdatedAt := tokenitemFields[1].Descriptor()
-	// tokenitem.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	tokenitem.DefaultUpdatedAt = tokenitemDescUpdatedAt.Default.(func() time.Time)
-	// tokenitem.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	tokenitem.UpdateDefaultUpdatedAt = tokenitemDescUpdatedAt.UpdateDefault.(func() time.Time)
 }

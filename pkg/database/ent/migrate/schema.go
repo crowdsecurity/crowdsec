@@ -325,20 +325,6 @@ var (
 		Columns:    MetricsColumns,
 		PrimaryKey: []*schema.Column{MetricsColumns[0]},
 	}
-	// TokenItemsColumns holds the columns for the "token_items" table.
-	TokenItemsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "name", Type: field.TypeString, Unique: true},
-		{Name: "value", Type: field.TypeString, SchemaType: map[string]string{"mysql": "longtext", "postgres": "text"}},
-	}
-	// TokenItemsTable holds the schema information for the "token_items" table.
-	TokenItemsTable = &schema.Table{
-		Name:       "token_items",
-		Columns:    TokenItemsColumns,
-		PrimaryKey: []*schema.Column{TokenItemsColumns[0]},
-	}
 	// AllowListAllowlistItemsColumns holds the columns for the "allow_list_allowlist_items" table.
 	AllowListAllowlistItemsColumns = []*schema.Column{
 		{Name: "allow_list_id", Type: field.TypeInt},
@@ -377,7 +363,6 @@ var (
 		MachinesTable,
 		MetaTable,
 		MetricsTable,
-		TokenItemsTable,
 		AllowListAllowlistItemsTable,
 	}
 )

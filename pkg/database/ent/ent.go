@@ -23,7 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/tokenitem"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -95,7 +94,6 @@ func checkColumn(table, column string) error {
 			machine.Table:       machine.ValidColumn,
 			meta.Table:          meta.ValidColumn,
 			metric.Table:        metric.ValidColumn,
-			tokenitem.Table:     tokenitem.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)
