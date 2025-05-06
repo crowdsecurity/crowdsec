@@ -247,89 +247,86 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	return ret, err
 }
 
-func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	var (
-		tokenString *string
-		expiration  time.Time
-		skip        = true
-		token       *jwt.Token
-		claims      jwt.MapClaims
-		ok          bool
-	)
-
-	tokenString, err := a.dbClient.GetConfigItem(ctx, "apic_token")
+func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time, bool) {
+	token, err := db.GetConfigItem(ctx, "apic_token")
 	if err != nil {
-		log.Debugf("err when looking for a token in database: %s", err)
-		skip = false
+		log.Debugf("error fetching token from DB: %s", err)
+		return "", time.Time{}, false
 	}
 
-	if skip && tokenString == nil {
-		skip = false
-		log.Debug("No token found in database")
+	if token == nil {
+		log.Debug("no token found in DB")
+		return "", time.Time{}, false
 	}
 
-	if skip {
-		parser := new(jwt.Parser)
-		token, _, err = parser.ParseUnverified(*tokenString, jwt.MapClaims{})
-		if err != nil {
-			log.Debugf("error parsing token: %s", err)
-			skip = false
-		}
+	parser := new(jwt.Parser)
+	tok, _, err := parser.ParseUnverified(*token, jwt.MapClaims{})
+	if err != nil {
+		log.Debugf("error parsing token: %s", err)
+		return "", time.Time{}, false
 	}
 
-	if skip {
-		claims, ok = token.Claims.(jwt.MapClaims)
-		if !ok {
-			log.Debugf("error parsing token claims: %s", err)
-			skip = false
-		}
-	}
-	if skip {
-		expValue, ok := claims["exp"].(float64)
-		if !ok {
-			log.Debug("token does not have an exp claim")
-			skip = false
-		}
-		expiration = time.Unix(int64(expValue), 0)
+	claims, ok := tok.Claims.(jwt.MapClaims)
+	if !ok {
+		log.Debugf("error parsing token claims: %s", err)
+		return "", time.Time{}, false
 	}
 
-	if !skip || time.Now().UTC().After(expiration.Add(-time.Minute*1)) {
-		log.Debug("No token found, authenticating")
-
-		scenarios, err := a.FetchScenariosListFromDB(ctx)
-		if err != nil {
-			return fmt.Errorf("get scenario in db: %w", err)
-		}
-
-		password := strfmt.Password(config.Credentials.Password)
-
-		authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
-			MachineID: &config.Credentials.Login,
-			Password:  &password,
-			Scenarios: scenarios,
-		})
-
-		if err != nil {
-			return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
-		}
-
-		if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-			return fmt.Errorf("unable to parse jwt expiration: %w", err)
-		}
-
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
-
-		err = a.dbClient.SetConfigItem(ctx, "apic_token", authResp.Token)
-		if err != nil {
-			return fmt.Errorf("while setting token in db: %w", err)
-		}
-		return nil
+	expFloat, ok := claims["exp"].(float64)
+	if !ok {
+		log.Debug("token missing 'exp' claim")
+		return "", time.Time{}, false
 	}
-	log.Debug("token found in database, skipping authentication")
-	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = *tokenString
-	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = expiration
+
+	exp := time.Unix(int64(expFloat), 0)
+	if time.Now().UTC().After(exp.Add(-1*time.Minute)) {
+		log.Debug("auth token expired")
+		return "", time.Time{}, false
+	}
+
+	return *token, exp, true
+}
+
+func saveAPICToken(ctx context.Context, db *database.Client, token string) error {
+	if err := db.SetConfigItem(ctx, "apic_token", token); err != nil {
+		return fmt.Errorf("saving token to db: %w", err)
+	}
 
 	return nil
+}
+
+func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
+	if token, exp, valid := loadAPICToken(ctx, a.dbClient); valid {
+		log.Debug("using valid token from DB")
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+	}
+
+	log.Debug("No token found, authenticating")
+
+	scenarios, err := a.FetchScenariosListFromDB(ctx)
+	if err != nil {
+		return fmt.Errorf("get scenario in db: %w", err)
+	}
+
+	password := strfmt.Password(config.Credentials.Password)
+
+	authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
+		MachineID: &config.Credentials.Login,
+		Password:  &password,
+		Scenarios: scenarios,
+	})
+	if err != nil {
+		return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
+	}
+
+	if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return fmt.Errorf("unable to parse jwt expiration: %w", err)
+	}
+
+	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+
+	return saveAPICToken(ctx, a.dbClient, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
