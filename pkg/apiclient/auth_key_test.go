@@ -14,6 +14,7 @@ import (
 
 func TestApiAuth(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.TraceLevel)
 
 	mux, urlx, teardown := setup()
@@ -39,7 +40,7 @@ func TestApiAuth(t *testing.T) {
 
 	defer teardown()
 
-	//ok no answer
+	// ok no answer
 	auth := &APIKeyTransport{
 		APIKey: "ixu",
 	}
@@ -52,7 +53,7 @@ func TestApiAuth(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 
-	//ko bad token
+	// ko bad token
 	auth = &APIKeyTransport{
 		APIKey: "bad",
 	}
@@ -68,7 +69,7 @@ func TestApiAuth(t *testing.T) {
 
 	cstest.RequireErrorMessage(t, err, "API error: access forbidden")
 
-	//ko empty token
+	// ko empty token
 	auth = &APIKeyTransport{}
 
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())

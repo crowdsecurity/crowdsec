@@ -104,15 +104,15 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 		if *alerts == nil {
 			// avoid returning "null" in json
 			// could be cleaner if we used slice of alerts directly
-			fmt.Println("[]")
+			fmt.Fprintln(os.Stdout, "[]")
 			return nil
 		}
 
 		x, _ := json.MarshalIndent(alerts, "", " ")
-		fmt.Print(string(x))
+		fmt.Fprint(os.Stdout, string(x))
 	case "human":
 		if len(*alerts) == 0 {
-			fmt.Println("No active alerts")
+			fmt.Fprintln(os.Stdout, "No active alerts")
 			return nil
 		}
 
@@ -156,7 +156,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	alertDecisionsTable(color.Output, cfg.Cscli.Color, alert)
 
 	if len(alert.Meta) > 0 {
-		fmt.Printf("\n - Context  :\n")
+		fmt.Fprintf(os.Stdout, "\n - Context  :\n")
 		sort.Slice(alert.Meta, func(i, j int) bool {
 			return alert.Meta[i].Key < alert.Meta[j].Key
 		})
@@ -183,7 +183,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	}
 
 	if withDetail {
-		fmt.Printf("\n - Events  :\n")
+		fmt.Fprintf(os.Stdout, "\n - Events  :\n")
 
 		for _, event := range alert.Events {
 			alertEventTable(color.Output, cfg.Cscli.Color, event)
@@ -451,14 +451,14 @@ func (cli *cliAlerts) inspect(ctx context.Context, details bool, alertIDs ...str
 				return fmt.Errorf("unable to serialize alert with id %s: %w", alertID, err)
 			}
 
-			fmt.Printf("%s\n", string(data))
+			fmt.Fprintln(os.Stdout, string(data))
 		case "raw":
 			data, err := yaml.Marshal(alert)
 			if err != nil {
 				return fmt.Errorf("unable to serialize alert with id %s: %w", alertID, err)
 			}
 
-			fmt.Println(string(data))
+			fmt.Fprintln(os.Stdout, string(data))
 		}
 	}
 
@@ -488,7 +488,7 @@ func (cli *cliAlerts) newInspectCmd() *cobra.Command {
 func (cli *cliAlerts) newFlushCmd() *cobra.Command {
 	var maxItems int
 
-	maxAge := cstime.DurationWithDays(7*24*time.Hour)
+	maxAge := cstime.DurationWithDays(7 * 24 * time.Hour)
 
 	cmd := &cobra.Command{
 		Use: `flush`,

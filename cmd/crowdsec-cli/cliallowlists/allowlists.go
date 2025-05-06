@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -283,7 +284,7 @@ func (cli *cliAllowLists) create(ctx context.Context, db *database.Client, name 
 		return err
 	}
 
-	fmt.Printf("allowlist '%s' created successfully\n", name)
+	fmt.Fprintf(os.Stdout, "allowlist '%s' created successfully\n", name)
 
 	return nil
 }
@@ -392,7 +393,7 @@ func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name 
 		return err
 	}
 
-	fmt.Printf("allowlist '%s' deleted successfully\n", name)
+	fmt.Fprintf(os.Stdout, "allowlist '%s' deleted successfully\n", name)
 
 	return nil
 }
@@ -475,7 +476,7 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 	}
 
 	if len(toAdd) == 0 {
-		fmt.Println("no new values for allowlist")
+		fmt.Fprintln(os.Stdout, "no new values for allowlist")
 		return nil
 	}
 
@@ -485,7 +486,7 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 	}
 
 	if added > 0 {
-		fmt.Printf("added %d values to allowlist %s\n", added, name)
+		fmt.Fprintf(os.Stdout, "added %d values to allowlist %s\n", added, name)
 	}
 
 	return nil
@@ -614,7 +615,7 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	}
 
 	if len(toRemove) == 0 {
-		fmt.Println("no value to remove from allowlist")
+		fmt.Fprintln(os.Stdout, "no value to remove from allowlist")
 		return nil
 	}
 
@@ -624,7 +625,7 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	}
 
 	if deleted > 0 {
-		fmt.Printf("removed %d values from allowlist %s", deleted, name)
+		fmt.Fprintf(os.Stdout, "removed %d values from allowlist %s", deleted, name)
 	}
 
 	return nil

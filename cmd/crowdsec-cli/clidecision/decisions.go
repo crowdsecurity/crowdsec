@@ -103,22 +103,22 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 		if *alerts == nil {
 			// avoid returning "null" in `json"
 			// could be cleaner if we used slice of alerts directly
-			fmt.Println("[]")
+			fmt.Fprintln(os.Stdout, "[]")
 			return nil
 		}
 
 		x, _ := json.MarshalIndent(alerts, "", " ")
-		fmt.Printf("%s", string(x))
+		fmt.Fprintln(os.Stdout, string(x))
 	case "human":
 		if len(*alerts) == 0 {
-			fmt.Println("No active decisions")
+			fmt.Fprintln(os.Stdout, "No active decisions")
 			return nil
 		}
 
 		cli.decisionsTable(color.Output, alerts, printMachine)
 
 		if skipped > 0 {
-			fmt.Printf("%d duplicated entries skipped\n", skipped)
+			fmt.Fprintf(os.Stdout, "%d duplicated entries skipped\n", skipped)
 		}
 	}
 

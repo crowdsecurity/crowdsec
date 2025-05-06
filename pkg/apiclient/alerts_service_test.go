@@ -18,6 +18,7 @@ import (
 
 func TestAlertsListAsMachine(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -199,6 +200,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 
 func TestAlertsGetAsMachine(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -367,6 +369,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 
 func TestAlertsCreateAsMachine(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -410,6 +413,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 
 func TestAlertsDeleteAsMachine(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()

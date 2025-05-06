@@ -19,6 +19,7 @@ import (
 
 func TestDecisionsList(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -78,6 +79,7 @@ func TestDecisionsList(t *testing.T) {
 
 func TestDecisionsStream(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -154,6 +156,7 @@ func TestDecisionsStream(t *testing.T) {
 
 func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -222,6 +225,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 
 func TestDecisionsStreamV3(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")
@@ -295,6 +299,7 @@ func TestDecisionsStreamV3(t *testing.T) {
 
 func TestDecisionsFromBlocklist(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setupWithPrefix("v3")

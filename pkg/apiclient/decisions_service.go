@@ -25,7 +25,7 @@ type DecisionsListOpts struct {
 	TypeEquals  string `url:"type,omitempty"`
 	IPEquals    string `url:"ip,omitempty"`
 	RangeEquals string `url:"range,omitempty"`
-	Contains    *bool   `url:"contains,omitempty"`
+	Contains    *bool  `url:"contains,omitempty"`
 	ListOpts
 }
 
@@ -65,7 +65,7 @@ type DecisionsDeleteOpts struct {
 	TypeEquals   string `url:"type,omitempty"`
 	IPEquals     string `url:"ip,omitempty"`
 	RangeEquals  string `url:"range,omitempty"`
-	Contains     *bool   `url:"contains,omitempty"`
+	Contains     *bool  `url:"contains,omitempty"`
 	OriginEquals string `url:"origin,omitempty"`
 	//
 	ScenarioEquals string `url:"scenario,omitempty"`
