@@ -48,12 +48,12 @@ type ApiClient struct {
 	UsageMetrics   *UsageMetricsService
 }
 
-func (a *ApiClient) GetClient() *http.Client {
-	return a.client
+func (c *ApiClient) GetClient() *http.Client {
+	return c.client
 }
 
-func (a *ApiClient) IsEnrolled() bool {
-	jwtTransport := a.client.Transport.(*JWTTransport)
+func (c *ApiClient) IsEnrolled() bool {
+	jwtTransport := c.client.Transport.(*JWTTransport)
 	tokenStr := jwtTransport.Token
 
 	token, _ := jwt.Parse(tokenStr, nil)
@@ -72,10 +72,6 @@ type service struct {
 }
 
 func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login string, password string, scenarios []string) error {
-	if lapiClient != nil {
-		return errors.New("client already initialized")
-	}
-
 	apiURL, err := url.Parse(apiUrl)
 	if err != nil {
 		return fmt.Errorf("parsing api url ('%s'): %w", apiURL, err)

@@ -166,18 +166,16 @@ get_latest_version() {
 
     rune -0 cscli parsers install crowdsecurity/whitelists --dry-run
     assert_output - --stderr <<-EOT
-	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
 	Nothing to do.
 	EOT
-    refute_stderr
+    assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     # XXX should this fail with status 1 instead?
     rune -0 cscli parsers install crowdsecurity/whitelists
     assert_output - <<-EOT
-	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
 	Nothing to do.
 	EOT
-    refute_stderr
+    assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     rune -0 cscli parsers install crowdsecurity/whitelists --force
     latest_whitelists=$(get_latest_version parsers crowdsecurity/whitelists)
@@ -230,17 +228,14 @@ get_latest_version() {
     # and maybe re-evaluate the --ignore flag
     rune -0 cscli parsers install crowdsecurity/whitelists --ignore
     assert_output - <<-EOT
-	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
 	Nothing to do.
 	EOT
-    refute_stderr
+    assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     # error on one item, should still install the others
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/pgsql-logs --ignore
-    refute_stderr
     latest_pgsql=$(get_latest_version parsers crowdsecurity/pgsql-logs)
     assert_output - <<-EOT
-	WARN parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite
 	Action plan:
 	📥 download
 	 parsers: crowdsecurity/pgsql-logs ($latest_pgsql)
@@ -252,6 +247,7 @@ get_latest_version() {
 
 	$RELOAD_MESSAGE
 	EOT
+    assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
     rune -0 cscli parsers inspect crowdsecurity/pgsql-logs --no-metrics -o json
     rune -0 jq -e '.installed==true' <(output)
 }
@@ -268,14 +264,14 @@ get_latest_version() {
 
     # attempt to install from hub
     rune -0 cscli parsers install crowdsecurity/sshd-logs
-    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+    assert_stderr --partial 'parsers:crowdsecurity/sshd-logs - not downloading local item'
     rune -0 cscli parsers list -o json
     rune -0 jq -c '.parsers[] | [.name,.status]' <(output)
     assert_json '["crowdsecurity/sshd-logs","enabled,local"]'
 
     # attempt to install from a collection
     rune -0 cscli collections install crowdsecurity/sshd
-    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+    assert_stderr --partial 'parsers:crowdsecurity/sshd-logs - not downloading local item'
 
     # verify it installed the rest of the collection
     assert_line 'enabling contexts:crowdsecurity/bf_base'
@@ -293,11 +289,11 @@ get_latest_version() {
 
     # attempt to install from hub
     rune -0 cscli parsers install crowdsecurity/sshd-logs
-    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+    assert_stderr --partial 'parsers:crowdsecurity/sshd-logs - not downloading local item'
 
     # attempt to install from a collection
     rune -0 cscli collections install crowdsecurity/sshd
-    assert_line 'parsers:crowdsecurity/sshd-logs - not downloading local item'
+    assert_stderr --partial 'parsers:crowdsecurity/sshd-logs - not downloading local item'
 
     # verify it installed the rest of the collection
     assert_line 'enabling contexts:crowdsecurity/bf_base'

@@ -11,8 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/coraza/v3"
-	corazatypes "github.com/crowdsecurity/coraza/v3/types"
+	"github.com/corazawaf/coraza/v3"
+	corazatypes "github.com/corazawaf/coraza/v3/types"
 
 	// load body processors via init()
 	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"

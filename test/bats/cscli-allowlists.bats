@@ -119,20 +119,52 @@ teardown() {
 
     # comment and expiration are applied to all values
     rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e toto
-    assert_stderr 'Error: time: invalid duration "toto"'
+    assert_stderr 'Error: invalid argument "toto" for "-e, --expiration" flag: time: invalid duration "toto"'
     refute_output
 
     rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e '1 day'
     refute_output
-    assert_stderr 'Error: strconv.Atoi: parsing "1 ": invalid syntax'
+    assert_stderr 'Error: invalid argument "1 day" for "-e, --expiration" flag: invalid day value in duration "1 day"'
 
-    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d'
+    rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d12h'
     assert_output 'added 1 values to allowlist foo'
     refute_stderr
 
     rune -0 cscli allowlist add foo 10.20.30.40 -d comment -e '30m'
     assert_output 'added 1 values to allowlist foo'
     refute_stderr
+}
+
+@test "cscli allowlists: check during decisions add" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -1 cscli decisions add -i 192.168.1.1
+    assert_stderr 'Error: 192.168.1.1 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
+    refute_output
+    rune -0 cscli decisions add -i 192.168.1.1 --bypass-allowlist
+    assert_stderr --partial 'Decision successfully added'
+    refute_output
+}
+
+@test "cscli allowlists: check during decisions import" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -0 cscli decisions import -i - <<<'192.168.1.1' --format values
+    assert_output - <<-EOT
+	Parsing values
+	Value 192.168.1.1 is allowlisted by [192.168.0.0/16 from foo]
+	Imported 0 decisions
+	EOT
+    refute_stderr
+}
+
+@test "cscli allowlists: range check" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -1 cscli decisions add -r 192.168.10.20/24
+    assert_stderr --partial '192.168.10.20/24 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
+    rune -0 cscli decisions add -r 192.168.10.20/24 --bypass-allowlist
+    assert_stderr --partial 'Decision successfully added'
 }
 
 @test "cscli allowlists delete" {

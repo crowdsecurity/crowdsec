@@ -7,49 +7,51 @@ import (
 
 	qs "github.com/google/go-querystring/query"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 type AlertsService service
 
 type AlertsListOpts struct {
-	ScopeEquals          *string `url:"scope,omitempty"`
-	ValueEquals          *string `url:"value,omitempty"`
-	ScenarioEquals       *string `url:"scenario,omitempty"`
-	IPEquals             *string `url:"ip,omitempty"`
-	RangeEquals          *string `url:"range,omitempty"`
-	OriginEquals         *string `url:"origin,omitempty"`
-	Since                *string `url:"since,omitempty"`
-	TypeEquals           *string `url:"decision_type,omitempty"`
-	Until                *string `url:"until,omitempty"`
-	IncludeSimulated     *bool   `url:"simulated,omitempty"`
-	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
-	IncludeCAPI          *bool   `url:"include_capi,omitempty"`
-	Limit                *int    `url:"limit,omitempty"`
-	Contains             *bool   `url:"contains,omitempty"`
+	ScopeEquals          *string                 `url:"scope,omitempty"`
+	ValueEquals          *string                 `url:"value,omitempty"`
+	ScenarioEquals       *string                 `url:"scenario,omitempty"`
+	IPEquals             *string                 `url:"ip,omitempty"`
+	RangeEquals          *string                 `url:"range,omitempty"`
+	OriginEquals         *string                 `url:"origin,omitempty"`
+	Since                cstime.DurationWithDays `url:"since,omitempty"`
+	TypeEquals           *string                 `url:"decision_type,omitempty"`
+	Until                cstime.DurationWithDays `url:"until,omitempty"`
+	IncludeSimulated     *bool                   `url:"simulated,omitempty"`
+	ActiveDecisionEquals *bool                   `url:"has_active_decision,omitempty"`
+	IncludeCAPI          *bool                   `url:"include_capi,omitempty"`
+	Limit                *int                    `url:"limit,omitempty"`
+	Contains             *bool                   `url:"contains,omitempty"`
 	ListOpts
 }
 
 type AlertsDeleteOpts struct {
-	ScopeEquals          *string `url:"scope,omitempty"`
-	ValueEquals          *string `url:"value,omitempty"`
-	ScenarioEquals       *string `url:"scenario,omitempty"`
-	IPEquals             *string `url:"ip,omitempty"`
-	RangeEquals          *string `url:"range,omitempty"`
-	Since                *string `url:"since,omitempty"`
-	Until                *string `url:"until,omitempty"`
-	OriginEquals         *string `url:"origin,omitempty"`
-	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
-	SourceEquals         *string `url:"alert_source,omitempty"`
-	Contains             *bool   `url:"contains,omitempty"`
-	Limit                *int    `url:"limit,omitempty"`
+	ScopeEquals          *string                 `url:"scope,omitempty"`
+	ValueEquals          *string                 `url:"value,omitempty"`
+	ScenarioEquals       *string                 `url:"scenario,omitempty"`
+	IPEquals             *string                 `url:"ip,omitempty"`
+	RangeEquals          *string                 `url:"range,omitempty"`
+	Since                cstime.DurationWithDays `url:"since,omitempty"`
+	Until                cstime.DurationWithDays `url:"until,omitempty"`
+	OriginEquals         *string                 `url:"origin,omitempty"`
+	ActiveDecisionEquals *bool                   `url:"has_active_decision,omitempty"`
+	SourceEquals         *string                 `url:"alert_source,omitempty"`
+	Contains             *bool                   `url:"contains,omitempty"`
+	Limit                *int                    `url:"limit,omitempty"`
 	ListOpts
 }
 
 func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest) (*models.AddAlertsResponse, *Response, error) {
 	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodPost, u, &alerts)
+	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, &alerts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,7 +80,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 		URI = fmt.Sprintf("%s?%s", URI, params.Encode())
 	}
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, URI, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodGet, URI, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("building request: %w", err)
 	}
@@ -102,7 +104,7 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 
 	u := fmt.Sprintf("%s/alerts?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -120,7 +122,7 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 func (s *AlertsService) DeleteOne(ctx context.Context, alertID string) (*models.DeleteAlertsResponse, *Response, error) {
 	u := fmt.Sprintf("%s/alerts/%s", s.client.URLPrefix, alertID)
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +140,7 @@ func (s *AlertsService) DeleteOne(ctx context.Context, alertID string) (*models.
 func (s *AlertsService) GetByID(ctx context.Context, alertID int) (*models.Alert, *Response, error) {
 	u := fmt.Sprintf("%s/alerts/%d", s.client.URLPrefix, alertID)
 
-	req, err := s.client.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	req, err := s.client.PrepareRequest(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
