@@ -247,6 +247,13 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	return ret, err
 }
 
+// loadAPICToken attempts to retrieve and validate a JWT token from the local database.
+// It returns the token string, its expiration time, and a boolean indicating whether the token is valid.
+//
+// A token is considered valid if:
+//   - it exists in the database,
+//   - it is a properly formatted JWT with an "exp" claim,
+//   - it is not expired or near expiry.
 func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time, bool) {
 	token, err := db.GetConfigItem(ctx, "apic_token")
 	if err != nil {
@@ -287,6 +294,7 @@ func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time,
 	return *token, exp, true
 }
 
+// saveAPICToken stores the given JWT token in the local database under the "apic_token" config item.
 func saveAPICToken(ctx context.Context, db *database.Client, token string) error {
 	if err := db.SetConfigItem(ctx, "apic_token", token); err != nil {
 		return fmt.Errorf("saving token to db: %w", err)
@@ -295,6 +303,11 @@ func saveAPICToken(ctx context.Context, db *database.Client, token string) error
 	return nil
 }
 
+// Authenticate ensures the API client is authorized to communicate with the CAPI.
+// It attempts to reuse a previously saved JWT token from the database, falling back to
+// an authentication request if the token is missing, invalid, or expired.
+//
+// If a new token is obtained, it is saved back to the database for caching.
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
 	if token, exp, valid := loadAPICToken(ctx, a.dbClient); valid {
 		log.Debug("using valid token from DB")
