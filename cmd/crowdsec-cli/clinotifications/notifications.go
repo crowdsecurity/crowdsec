@@ -30,6 +30,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -286,6 +288,14 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
+
+			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
+				log.Infof("Crowdsec CTI helper enabled")
+				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+					log.Errorf("failed to init crowdsec cti: %s", err)
+				}
+			}
+
 			// Create a single profile with plugin name as notification name
 			return pluginBroker.Init(ctx, cfg.PluginConfig, []*csconfig.ProfileCfg{
 				{
@@ -390,6 +400,27 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if alertOverride != "" {
 				if err := json.Unmarshal([]byte(alertOverride), alert); err != nil {
 					return fmt.Errorf("can't parse data in the alert flag: %w", err)
+				}
+			}
+
+			if cfg.API.Server != nil && cfg.API.Server.DbConfig != nil {
+				dbClient, err := database.NewClient(ctx, cfg.API.Server.DbConfig)
+				if err != nil {
+					log.Errorf("failed to get database client: %s", err)
+				}
+
+				err = exprhelpers.Init(dbClient)
+				if err != nil {
+					log.Errorf("failed to init expr helpers: %s", err)
+				}
+			} else {
+				log.Warnf("no database client available, expr helpers will not be available")
+			}
+
+			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
+				log.Infof("Crowdsec CTI helper enabled")
+				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+					log.Errorf("failed to init crowdsec cti: %s", err)
 				}
 			}
 

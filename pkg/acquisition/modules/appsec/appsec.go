@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -361,7 +362,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 		listener, err := net.Listen("unix", socket)
 		if err != nil {
-			serverError <- fmt.Errorf("appsec server failed: %w", err)
+			serverError <- csnet.WrapSockErr(err, socket)
 			return
 		}
 
