@@ -1,0 +1,31 @@
+name: Customize Release Notes
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  append-license:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get release notes
+        id: get_release
+        run: |
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          gh release view ${{ github.event.release.tag_name }} \
+            --repo "${{ github.repository }}" \
+            --json body -q '.body' >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Append additional information
+        run: |
+          echo -e >updated_notes.md \
+            "${{ steps.get_release.outputs.release_notes }}\n\n## Geolite2 notice\n\nThis product includes GeoLite2 data created by MaxMind, available from <a href=\"https://www.maxmind.com\">https://www.maxmind.com</a>.\n\n## Installation\n\nTake a look at the [installation instructions](https://doc.crowdsec.net/docs/getting_started/install_crowdsec)."
+          gh release edit "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --notes-file updated_notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
