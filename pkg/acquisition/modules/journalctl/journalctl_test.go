@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -21,9 +20,7 @@ import (
 )
 
 func TestBadConfiguration(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	tests := []struct {
 		config      string
@@ -59,9 +56,7 @@ journalctl_filter:
 }
 
 func TestConfigureDSN(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	cstest.SkipOnWindows(t)
 
 	tests := []struct {
 		dsn         string
@@ -107,11 +102,9 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config         string
@@ -190,11 +183,9 @@ journalctl_filter:
 }
 
 func TestStreaming(t *testing.T) {
-	ctx := t.Context()
+	cstest.SkipOnWindows(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	tests := []struct {
 		config         string

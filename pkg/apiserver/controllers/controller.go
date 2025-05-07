@@ -98,6 +98,8 @@ func (c *Controller) NewV1() error {
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
+	c.Router.UnescapePathValues = true
+	c.Router.UseRawPath = true
 	c.Router.NoRoute(func(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 	})
@@ -127,6 +129,7 @@ func (c *Controller) NewV1() error {
 		jwtAuth.GET("/allowlists/:allowlist_name", c.HandlerV1.GetAllowlist)
 		jwtAuth.GET("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.HEAD("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
+		jwtAuth.POST("/allowlists/check", c.HandlerV1.CheckInAllowlistBulk)
 	}
 
 	apiKeyAuth := groupV1.Group("")

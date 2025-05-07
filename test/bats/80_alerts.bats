@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -44,6 +43,15 @@ teardown() {
     assert_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 }
 
+@test "cscli alerts list, accept duration parameters with days" {
+    rune -1 cscli alerts list --until toto
+    assert_stderr 'Error: invalid argument "toto" for "--until" flag: time: invalid duration "toto"'
+    rune -0 cscli alerts list --until 2d12h --debug
+    assert_stderr --partial "until=60h0m0s"
+    rune -0 cscli alerts list --since 2d12h --debug
+    assert_stderr --partial "since=60h0m0s"
+}
+
 @test "cscli alerts list, human/json/raw" {
     rune -0 cscli decisions add -i 10.20.30.40 -t ban
 
@@ -67,10 +75,10 @@ teardown() {
 
 @test "cscli alerts inspect" {
     rune -1 cscli alerts inspect
-    assert_stderr --partial 'missing alert_id'
+    assert_stderr 'Error: requires at least 1 arg(s), only received 0'
 
     rune -0 cscli decisions add -i 10.20.30.40 -t ban
-    rune -0 cscli alerts list -o raw <(output)
+    rune -0 cscli alerts list -o raw
     rune -0 grep 10.20.30.40 <(output)
     rune -0 cut -d, -f1 <(output)
     ALERT_ID="$output"

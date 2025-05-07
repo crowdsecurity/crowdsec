@@ -1,4 +1,3 @@
-# .github/workflows/build-docker-image.yml
 name: Release
 
 on:
@@ -7,7 +6,7 @@ on:
       - prereleased
 
 permissions:
-  # Use write for: hub release edit
+  # Use write for: gh release upload
   contents: write
 
 jobs:

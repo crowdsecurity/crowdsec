@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -44,6 +43,7 @@ setup() {
     assert_stderr --partial "single file mode : log_media=stdout daemonize=false"
     assert_stderr --regexp "Adding file .* to filelist"
     assert_stderr --regexp "reading .* at once"
+    assert_stderr --partial "Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 0s)"
     assert_stderr --regexp "Acquisition is finished, shutting down"
     assert_stderr --regexp "Killing parser routines"
     assert_stderr --regexp "Bucket routine exiting"

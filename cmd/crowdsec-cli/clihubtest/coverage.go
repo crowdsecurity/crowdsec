@@ -9,16 +9,17 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
 // getCoverage returns the coverage and the percentage of tests that passed
-func getCoverage(show bool, getCoverageFunc func() ([]hubtest.Coverage, error)) ([]hubtest.Coverage, int, error) {
+func getCoverage(show bool, getCoverageFunc func(string) ([]hubtest.Coverage, error), hubDir string) ([]hubtest.Coverage, int, error) {
 	if !show {
 		return nil, 0, nil
 	}
 
-	coverage, err := getCoverageFunc()
+	coverage, err := getCoverageFunc(hubDir)
 	if err != nil {
 		return nil, 0, fmt.Errorf("while getting coverage: %w", err)
 	}
@@ -45,7 +46,7 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 
 	// for this one we explicitly don't do for appsec
 	if err := HubTest.LoadAllTests(); err != nil {
-		return fmt.Errorf("unable to load all tests: %+v", err)
+		return fmt.Errorf("unable to load all tests: %w", err)
 	}
 
 	var err error
@@ -57,17 +58,17 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		showAppsecCov = true
 	}
 
-	parserCoverage, parserCoveragePercent, err := getCoverage(showParserCov, HubTest.GetParsersCoverage)
+	parserCoverage, parserCoveragePercent, err := getCoverage(showParserCov, HubTest.GetParsersCoverage, cfg.Hub.HubDir)
 	if err != nil {
 		return err
 	}
 
-	scenarioCoverage, scenarioCoveragePercent, err := getCoverage(showScenarioCov, HubTest.GetScenariosCoverage)
+	scenarioCoverage, scenarioCoveragePercent, err := getCoverage(showScenarioCov, HubTest.GetScenariosCoverage, cfg.Hub.HubDir)
 	if err != nil {
 		return err
 	}
 
-	appsecRuleCoverage, appsecRuleCoveragePercent, err := getCoverage(showAppsecCov, HubTest.GetAppsecCoverage)
+	appsecRuleCoverage, appsecRuleCoveragePercent, err := getCoverage(showAppsecCov, HubTest.GetAppsecCoverage, cfg.Hub.HubDir)
 	if err != nil {
 		return err
 	}
@@ -151,6 +152,7 @@ func (cli *cliHubTest) newCoverageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.coverage(showScenarioCov, showParserCov, showAppsecCov, showOnlyPercent)

@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -41,6 +40,14 @@ teardown() {
     rune -0 config_set 'del(.api.server.listen_socket) | .api.server.listen_uri="127.0.0.1:-80"'
     rune -1 "$CROWDSEC" -no-cs
     assert_stderr --partial "local API server stopped with error: listening on 127.0.0.1:-80: listen tcp: address -80: invalid port"
+}
+
+@test "lapi (socket path too long)" {
+    LONG_NAME="12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+    export LONG_NAME
+    rune -0 config_set '.api.server.listen_socket = strenv(BATS_FILE_TMPDIR) + "/" + strenv(LONG_NAME)'
+    rune -1 "$CROWDSEC" -no-cs
+    assert_stderr --partial "local API server stopped with error: listen unix $BATS_FILE_TMPDIR/$LONG_NAME: bind: invalid argument (path length exceeds system limit"
 }
 
 @test "lapi (listen on random port)" {

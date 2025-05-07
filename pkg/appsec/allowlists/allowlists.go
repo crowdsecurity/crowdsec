@@ -36,31 +36,34 @@ type AppsecAllowlist struct {
 	tomb       *tomb.Tomb
 }
 
-func NewAppsecAllowlist(client *apiclient.ApiClient, logger *log.Entry) *AppsecAllowlist {
+func NewAppsecAllowlist(logger *log.Entry) *AppsecAllowlist {
 	a := &AppsecAllowlist{
-		LAPIClient: client,
-		logger:     logger.WithField("component", "appsec-allowlist"),
-		ips:        []ipAllowlist{},
-		ranges:     []rangeAllowlist{},
-	}
-
-	if err := a.FetchAllowlists(); err != nil {
-		a.logger.Errorf("failed to fetch allowlists: %s", err)
+		logger: logger.WithField("component", "appsec-allowlist"),
+		ips:    []ipAllowlist{},
+		ranges: []rangeAllowlist{},
 	}
 
 	return a
 }
 
-func (a *AppsecAllowlist) FetchAllowlists() error {
+func (a *AppsecAllowlist) Start(ctx context.Context, client *apiclient.ApiClient) error {
+	a.LAPIClient = client
+	err := a.FetchAllowlists(ctx)
+	return err
+}
+
+func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 	a.logger.Debug("fetching allowlists")
 
-	allowlists, _, err := a.LAPIClient.Allowlists.List(context.TODO(), apiclient.AllowlistListOpts{WithContent: true})
+	allowlists, _, err := a.LAPIClient.Allowlists.List(ctx, apiclient.AllowlistListOpts{WithContent: true})
 	if err != nil {
 		return err
 	}
 
 	a.lock.Lock()
 	defer a.lock.Unlock()
+	prevIPsLen := len(a.ips)
+	prevRangesLen := len(a.ranges)
 	a.ranges = []rangeAllowlist{}
 	a.ips = []ipAllowlist{}
 
@@ -92,6 +95,9 @@ func (a *AppsecAllowlist) FetchAllowlists() error {
 		}
 	}
 
+	if (len(a.ips) != 0 || len(a.ranges) != 0) && (prevIPsLen != len(a.ips) || prevRangesLen != len(a.ranges)) {
+		a.logger.Infof("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
+	}
 	a.logger.Debugf("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
 	a.logger.Tracef("allowlisted ips: %+v", a.ips)
 	a.logger.Tracef("allowlisted ranges: %+v", a.ranges)
@@ -99,25 +105,28 @@ func (a *AppsecAllowlist) FetchAllowlists() error {
 	return nil
 }
 
-func (a *AppsecAllowlist) updateAllowlists() error {
+func (a *AppsecAllowlist) updateAllowlists(ctx context.Context) {
 	ticker := time.NewTicker(allowlistRefreshInterval)
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := a.FetchAllowlists(); err != nil {
+			if err := a.FetchAllowlists(ctx); err != nil {
 				a.logger.Errorf("failed to fetch allowlists: %s", err)
 			}
 		case <-a.tomb.Dying():
 			ticker.Stop()
-			return nil
+			return
 		}
 	}
 }
 
-func (a *AppsecAllowlist) StartRefresh(t *tomb.Tomb) {
+func (a *AppsecAllowlist) StartRefresh(ctx context.Context, t *tomb.Tomb) {
 	a.tomb = t
-	a.tomb.Go(a.updateAllowlists)
+	a.tomb.Go(func() error {
+		a.updateAllowlists(ctx)
+		return nil
+	})
 }
 
 func (a *AppsecAllowlist) IsAllowlisted(sourceIP string) (bool, string) {

@@ -143,8 +143,7 @@ func (a *Alert) FormatAsStrings(machineID string, logger *log.Logger) []string {
 			decision = "(simulated decision)"
 		}
 
-		if logger.GetLevel() >= log.DebugLevel {
-			/*spew is expensive*/
+		if logger.IsLevelEnabled(log.DebugLevel) {
 			logger.Debug(spew.Sdump(decisionItem))
 		}
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -15,7 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
-func (cli cliItem) removePlan(hub *cwhub.Hub, args []string, purge bool, force bool, all bool) (*hubops.ActionPlan, error) {
+func (cli *cliItem) removePlan(hub *cwhub.Hub, args []string, purge bool, force bool, all bool) (*hubops.ActionPlan, error) {
 	plan := hubops.NewActionPlan(hub)
 
 	if all {
@@ -77,7 +78,7 @@ func installedParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
 	for _, parent := range item.Ancestors() {
-		if parent.State.Installed {
+		if parent.State.IsInstalled() {
 			ret = append(ret, parent.Name)
 		}
 	}
@@ -85,7 +86,7 @@ func installedParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (cli cliItem) remove(ctx context.Context, args []string, interactive bool, dryRun bool, purge bool, force bool, all bool) error {
+func (cli *cliItem) remove(ctx context.Context, args []string, interactive bool, dryRun bool, purge bool, force bool, all bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cli.cfg(), log.StandardLogger())
@@ -106,13 +107,13 @@ func (cli cliItem) remove(ctx context.Context, args []string, interactive bool, 
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
-		fmt.Println("\n" + msg)
+		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
 	return nil
 }
 
-func (cli cliItem) newRemoveCmd() *cobra.Command {
+func (cli *cliItem) newRemoveCmd() *cobra.Command {
 	var (
 		interactive bool
 		dryRun      bool

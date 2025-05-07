@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/downloader"
@@ -38,13 +39,13 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 	i := c.Item
 
 	if i.State.IsLocal() {
-		plan.Info(i.FQName() + " - not downloading local item")
+		log.Infof("%s - not downloading local item", i.FQName())
 		return false, nil
 	}
 
 	// XXX: if it's tainted do we upgrade the dependencies anyway?
 	if i.State.Tainted && !c.Force {
-		plan.Warning(i.FQName() + " is tainted, use '--force' to overwrite")
+		log.Warnf("%s is tainted, use '--force' to overwrite", i.FQName())
 		return false, nil
 	}
 
@@ -52,7 +53,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 
 	var disableKeys []*cwhub.Item
 
-	if i.State.Installed {
+	if i.State.IsInstalled() {
 		for sub := range i.CurrentDependencies().SubItems(plan.hub) {
 			disableKeys = append(disableKeys, sub)
 			toDisable[sub] = struct{}{}
@@ -64,7 +65,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 			return false, err
 		}
 
-		if i.State.Installed {
+		if i.State.IsInstalled() {
 			// ensure the _new_ dependencies are installed too
 			if err := plan.AddCommand(NewEnableCommand(sub, c.Force)); err != nil {
 				return false, err
@@ -84,7 +85,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 		}
 	}
 
-	if i.State.Downloaded && i.State.UpToDate {
+	if i.State.IsDownloaded() && i.State.UpToDate {
 		return false, nil
 	}
 
@@ -118,6 +119,13 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				continue
 			}
 
+			// twopenny validation
+			if u, err := url.Parse(dataS.SourceURL); err != nil {
+				return false, err
+			} else if u.Scheme == "" {
+				return false, fmt.Errorf("a valid URL was expected (note: local items can download data too): %s", dataS.SourceURL)
+			}
+
 			// XXX: check context cancellation
 			destPath, err := cwhub.SafePath(dataFolder, dataS.DestPath)
 			if err != nil {
@@ -132,7 +140,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				BeforeRequest(func(req *http.Request) {
 					fmt.Printf("downloading %s\n", req.URL)
 				}).
-				WithLogger(logrus.WithField("url", dataS.SourceURL))
+				WithLogger(log.WithField("url", dataS.SourceURL))
 
 			if !force {
 				d = d.WithLastModified().
@@ -157,7 +165,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	fmt.Printf("downloading %s\n", colorizeItemName(i.FQName()))
 
 	// ensure that target file is within target dir
-	finalPath, err := i.DownloadPath()
+	finalPath, err := i.PathForDownload()
 	if err != nil {
 		return err
 	}
@@ -171,7 +179,6 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 		plan.ReloadNeeded = true
 	}
 
-	i.State.Downloaded = true
 	i.State.Tainted = false
 	i.State.UpToDate = true
 
@@ -208,7 +215,7 @@ func (c *DownloadCommand) Detail() string {
 
 	version := color.YellowString(i.Version)
 
-	if i.State.Downloaded {
+	if i.State.IsDownloaded() {
 		version = c.Item.State.LocalVersion + " -> " + color.YellowString(i.Version)
 	}
 

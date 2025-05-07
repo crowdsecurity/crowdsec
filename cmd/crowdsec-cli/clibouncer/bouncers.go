@@ -34,7 +34,6 @@ func (cli *cliBouncers) NewCommand() *cobra.Command {
 		Long: `To list/add/delete/prune bouncers.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
-		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"bouncer"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {

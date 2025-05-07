@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -228,7 +229,6 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 		Use:               "allowlists [action]",
 		Short:             "Manage centralized allowlists",
 		Aliases:           []string{"allowlist"},
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 	}
 
@@ -284,7 +284,7 @@ func (cli *cliAllowLists) create(ctx context.Context, db *database.Client, name 
 		return err
 	}
 
-	fmt.Printf("allowlist '%s' created successfully\n", name)
+	fmt.Fprintf(os.Stdout, "allowlist '%s' created successfully\n", name)
 
 	return nil
 }
@@ -294,7 +294,7 @@ func (cli *cliAllowLists) newListCmd() *cobra.Command {
 		Use:     "list",
 		Example: `cscli allowlists list`,
 		Short:   "List all allowlists",
-		Args:    cobra.NoArgs,
+		Args:    args.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
@@ -393,15 +393,15 @@ func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name 
 		return err
 	}
 
-	fmt.Printf("allowlist '%s' deleted successfully\n", name)
+	fmt.Fprintf(os.Stdout, "allowlist '%s' deleted successfully\n", name)
 
 	return nil
 }
 
 func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 	var (
-		expirationStr string
-		comment       string
+		expiration cstime.DurationWithDays
+		comment    string
 	)
 
 	cmd := &cobra.Command{
@@ -425,25 +425,16 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 				return err
 			}
 
-			var expiration time.Duration
-
-			if expirationStr != "" {
-				expiration, err = cstime.ParseDuration(expirationStr)
-				if err != nil {
-					return err
-				}
-			}
-
 			name := args[0]
 			values := args[1:]
 
-			return cli.add(ctx, db, name, values, expiration, comment)
+			return cli.add(ctx, db, name, values, time.Duration(expiration), comment)
 		},
 	}
 
 	flags := cmd.Flags()
 
-	flags.StringVarP(&expirationStr, "expiration", "e", "", "expiration duration")
+	flags.VarP(&expiration, "expiration", "e", "expiration duration")
 	flags.StringVarP(&comment, "comment", "d", "", "comment for the value")
 
 	return cmd
@@ -485,7 +476,7 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 	}
 
 	if len(toAdd) == 0 {
-		fmt.Println("no new values for allowlist")
+		fmt.Fprintln(os.Stdout, "no new values for allowlist")
 		return nil
 	}
 
@@ -495,7 +486,15 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 	}
 
 	if added > 0 {
-		fmt.Printf("added %d values to allowlist %s\n", added, name)
+		fmt.Fprintf(os.Stdout, "added %d values to allowlist %s\n", added, name)
+	}
+
+	deleted, err := db.ApplyAllowlistsToExistingDecisions(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to apply allowlists to existing decisions: %w", err)
+	}
+	if deleted > 0 {
+		fmt.Printf("%d decisions deleted by allowlists\n", deleted)
 	}
 
 	return nil
@@ -624,7 +623,7 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	}
 
 	if len(toRemove) == 0 {
-		fmt.Println("no value to remove from allowlist")
+		fmt.Fprintln(os.Stdout, "no value to remove from allowlist")
 		return nil
 	}
 
@@ -634,7 +633,7 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	}
 
 	if deleted > 0 {
-		fmt.Printf("removed %d values from allowlist %s", deleted, name)
+		fmt.Fprintf(os.Stdout, "removed %d values from allowlist %s", deleted, name)
 	}
 
 	return nil

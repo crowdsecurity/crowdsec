@@ -24,11 +24,14 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -56,7 +59,6 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 		Use:               "notifications [action]",
 		Short:             "Helper for notification plugin configuration",
 		Long:              "To list/inspect/test notification template",
-		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
@@ -158,7 +160,7 @@ func (cli *cliNotifications) newListCmd() *cobra.Command {
 		Short:             "list notifications plugins",
 		Long:              `list notifications plugins and their status (active or not)`,
 		Example:           `cscli notifications list`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
@@ -207,7 +209,7 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 		Short:             "Inspect notifications plugin",
 		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		ValidArgsFunction: cli.notificationConfigFilter,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -272,7 +274,7 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 		Short:             "send a generic test alert to notification plugin",
 		Long:              `send a generic test alert to a notification plugin even if it is not active in profiles`,
 		Example:           `cscli notifications test [plugin_name]`,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: cli.notificationConfigFilter,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -286,6 +288,14 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
+
+			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
+				log.Infof("Crowdsec CTI helper enabled")
+				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+					log.Errorf("failed to init crowdsec cti: %s", err)
+				}
+			}
+
 			// Create a single profile with plugin name as notification name
 			return pluginBroker.Init(ctx, cfg.PluginConfig, []*csconfig.ProfileCfg{
 				{
@@ -367,7 +377,7 @@ cscli notifications reinject <alert_id>
 cscli notifications reinject <alert_id> -a '{"remediation": false,"scenario":"notification/test"}'
 cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"notification/test"}'
 `,
-		Args:              cobra.ExactArgs(1),
+		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
@@ -390,6 +400,27 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if alertOverride != "" {
 				if err := json.Unmarshal([]byte(alertOverride), alert); err != nil {
 					return fmt.Errorf("can't parse data in the alert flag: %w", err)
+				}
+			}
+
+			if cfg.API.Server != nil && cfg.API.Server.DbConfig != nil {
+				dbClient, err := database.NewClient(ctx, cfg.API.Server.DbConfig)
+				if err != nil {
+					log.Errorf("failed to get database client: %s", err)
+				}
+
+				err = exprhelpers.Init(dbClient)
+				if err != nil {
+					log.Errorf("failed to init expr helpers: %s", err)
+				}
+			} else {
+				log.Warnf("no database client available, expr helpers will not be available")
+			}
+
+			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
+				log.Infof("Crowdsec CTI helper enabled")
+				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+					log.Errorf("failed to init crowdsec cti: %s", err)
 				}
 			}
 

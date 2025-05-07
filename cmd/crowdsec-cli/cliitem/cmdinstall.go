@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -42,7 +44,7 @@ func suggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) str
 	return msg
 }
 
-func (cli cliItem) install(ctx context.Context, args []string, interactive bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
+func (cli *cliItem) install(ctx context.Context, args []string, interactive bool, dryRun bool, downloadOnly bool, force bool, ignoreError bool) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -90,7 +92,7 @@ func (cli cliItem) install(ctx context.Context, args []string, interactive bool,
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
-		fmt.Println("\n" + msg)
+		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
 	return nil
@@ -115,7 +117,7 @@ func compAllItems(itemType string, args []string, toComplete string, cfg configG
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli cliItem) newInstallCmd() *cobra.Command {
+func (cli *cliItem) newInstallCmd() *cobra.Command {
 	var (
 		interactive  bool
 		dryRun       bool
@@ -129,7 +131,7 @@ func (cli cliItem) newInstallCmd() *cobra.Command {
 		Short:             cmp.Or(cli.installHelp.short, "Install given "+cli.oneOrMore),
 		Long:              cmp.Or(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
 		Example:           cli.installHelp.example,
-		Args:              cobra.MinimumNArgs(1),
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cli.name, args, toComplete, cli.cfg)

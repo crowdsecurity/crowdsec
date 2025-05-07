@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -42,10 +43,10 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 		Example: `cscli hub list
 cscli hub update
 cscli hub upgrade`,
-		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 	}
 
+	cmd.AddCommand(cli.newBranchCmd())
 	cmd.AddCommand(cli.newListCmd())
 	cmd.AddCommand(cli.newUpdateCmd())
 	cmd.AddCommand(cli.newUpgradeCmd())
@@ -84,13 +85,35 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
 	return nil
 }
 
+func (cli *cliHub) newBranchCmd() *cobra.Command {
+	var all bool
+
+	cmd := &cobra.Command{
+		Use:               "branch",
+		Short:             "Show selected hub branch",
+		Long:              "Display the hub branch to be used, depending on configuration and crowdsec version",
+		Args:              args.NoArgs,
+		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			branch := require.HubBranch(cmd.Context(), cli.cfg())
+			fmt.Println(branch)
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
+
+	return cmd
+}
+
 func (cli *cliHub) newListCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), log.StandardLogger())
@@ -152,7 +175,7 @@ cscli hub update
 
 # Download a 4x bigger version with all item contents (effectively pre-caching item downloads, but not data files).
 cscli hub update --with-content`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if cmd.Flags().Changed("with-content") {
@@ -228,7 +251,7 @@ cscli hub upgrade --force
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
 cscli hub upgrade --interactive
 cscli hub upgrade -i`,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.upgrade(cmd.Context(), interactive, dryRun, force)
@@ -276,7 +299,7 @@ func (cli *cliHub) newTypesCmd() *cobra.Command {
 		Long: `
 List the types of supported hub items.
 `,
-		Args:              cobra.NoArgs,
+		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.types()

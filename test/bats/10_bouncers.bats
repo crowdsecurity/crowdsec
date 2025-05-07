@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -134,6 +133,13 @@ teardown() {
 }
 
 @test "cscli bouncers prune" {
+    rune -1 cscli bouncers prune --duration foobar
+    assert_stderr 'Error: invalid argument "foobar" for "-d, --duration" flag: time: invalid duration "foobar"'
+
+    # duration takes days as well
+    rune -0 cscli bouncers prune --duration 1d30m
+    assert_output 'No bouncers to prune.'
+
     rune -0 cscli bouncers prune
     assert_output 'No bouncers to prune.'
     rune -0 cscli bouncers add ciTestBouncer

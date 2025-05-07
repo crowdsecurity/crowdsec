@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# vim: ft=bats:list:ts=8:sts=4:sw=4:et:ai:si:
 
 set -u
 
@@ -152,33 +151,56 @@ teardown() {
     assert_output --partial "Nothing to do."
 }
 
+@test "when upgrading the hub, a local item's data will be downloaded" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    cat >"$CONFIG_DIR"/collections/foobar.yaml <<-EOT
+        data:
+          - source_url: https://localhost:1234/database.mmdb
+            dest_file: database.mmdb
+	EOT
+    rune -1 cscli hub upgrade
+    assert_line "downloading https://localhost:1234/database.mmdb"
+    assert_stderr --partial 'Get "https://localhost:1234/database.mmdb":'
+    assert_stderr --partial 'connect: connection refused'
+
+    # bad link, or local path
+    cat >"$CONFIG_DIR"/collections/foobar.yaml <<-EOT
+        data:
+          - source_url: /tmp/meh
+            dest_file: database.mmdb
+	EOT
+    rune -1 cscli hub upgrade
+    refute_line "downloading /tmp/meh"
+    assert_stderr --partial 'a valid URL was expected (note: local items can download data too): /tmp/meh'
+}
+
 @test "a local item cannot be removed by cscli" {
     rune -0 mkdir -p "$CONFIG_DIR/scenarios"
     rune -0 touch "$CONFIG_DIR/scenarios/foobar.yaml"
     rune -0 cscli scenarios remove foobar.yaml
+    assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	WARN scenarios:foobar.yaml is a local item, please delete manually
 	Nothing to do.
 	EOT
     rune -0 cscli scenarios remove foobar.yaml --purge
+    assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	WARN scenarios:foobar.yaml is a local item, please delete manually
 	Nothing to do.
 	EOT
     rune -0 cscli scenarios remove foobar.yaml --force
+    assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	WARN scenarios:foobar.yaml is a local item, please delete manually
 	Nothing to do.
 	EOT
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
 
     rune -0 cscli scenarios remove --all
-    assert_line "WARN scenarios:foobar.yaml is a local item, please delete manually"
     assert_line "disabling scenarios:crowdsecurity/ssh-bf"
+    assert_stderr --partial "scenarios:foobar.yaml is a local item, please delete manually"
 
     rune -0 cscli scenarios remove --all --purge
-    assert_line "WARN scenarios:foobar.yaml is a local item, please delete manually"
+    assert_stderr --partial "scenarios:foobar.yaml is a local item, please delete manually"
     assert_line "purging scenarios:crowdsecurity/ssh-bf"
 }
 

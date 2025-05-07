@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -20,23 +22,20 @@ func RemoveInstallLink(i *cwhub.Item) error {
 		return fmt.Errorf("%s isn't managed by hub", i.Name)
 	}
 
-	hubpath, err := os.Readlink(i.State.LocalPath)
+	target, err := os.Readlink(i.State.LocalPath)
 	if err != nil {
 		return fmt.Errorf("while reading symlink: %w", err)
 	}
 
-	src, err := i.DownloadPath()
-	if err != nil {
-		return err
-	}
-
-	if hubpath != src {
+	if target != i.State.DownloadPath {
 		return fmt.Errorf("%s isn't managed by hub", i.Name)
 	}
 
 	if err := os.Remove(i.State.LocalPath); err != nil {
 		return fmt.Errorf("while removing symlink: %w", err)
 	}
+
+	i.State.LocalPath = ""
 
 	return nil
 }
@@ -56,7 +55,7 @@ func (c *DisableCommand) Prepare(plan *ActionPlan) (bool, error) {
 	i := c.Item
 
 	if i.State.IsLocal() {
-		plan.Warning(i.FQName() + " is a local item, please delete manually")
+		log.Warnf("%s is a local item, please delete manually", i.FQName())
 		return false, nil
 	}
 
@@ -64,7 +63,7 @@ func (c *DisableCommand) Prepare(plan *ActionPlan) (bool, error) {
 		return false, fmt.Errorf("%s is tainted, use '--force' to remove", i.Name)
 	}
 
-	if !i.State.Installed {
+	if !i.State.IsInstalled() {
 		return false, nil
 	}
 
@@ -74,7 +73,7 @@ func (c *DisableCommand) Prepare(plan *ActionPlan) (bool, error) {
 	}
 
 	for _, sub := range subsToRemove {
-		if !sub.State.Installed {
+		if !sub.State.IsInstalled() {
 			continue
 		}
 
@@ -97,7 +96,6 @@ func (c *DisableCommand) Run(ctx context.Context, plan *ActionPlan) error {
 
 	plan.ReloadNeeded = true
 
-	i.State.Installed = false
 	i.State.Tainted = false
 
 	return nil

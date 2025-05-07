@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -40,7 +42,9 @@ func handleScopeFilter(scope string, predicates *[]predicate.Alert) {
 }
 
 func handleTimeFilters(param, value string, predicates *[]predicate.Alert) error {
-	duration, err := ParseDuration(value)
+	// crowsdec now always sends duration without days, but we allow them for
+	// compatibility with other tools
+	duration, err := cstime.ParseDurationWithDays(value)
 	if err != nil {
 		return fmt.Errorf("while parsing duration: %w", err)
 	}
@@ -62,7 +66,7 @@ func handleTimeFilters(param, value string, predicates *[]predicate.Alert) error
 	return nil
 }
 
-func handleIPv4Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) {
+func handleAlertIPv4Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) {
 	if contains { // decision contains {start_ip,end_ip}
 		*predicates = append(*predicates, alert.And(
 			alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
@@ -78,7 +82,7 @@ func handleIPv4Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip,
 	}
 }
 
-func handleIPv6Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) {
+func handleAlertIPv6Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) {
 	if contains { // decision contains {start_ip,end_ip}
 		*predicates = append(*predicates, alert.And(
 			// matching addr size
@@ -132,12 +136,13 @@ func handleIPv6Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip,
 	}
 }
 
-func handleIPPredicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) error {
-	if ip_sz == 4 {
-		handleIPv4Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
-	} else if ip_sz == 16 {
-		handleIPv6Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
-	} else if ip_sz != 0 {
+func handleAlertIPPredicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) error {
+	switch {
+	case ip_sz == 4:
+		handleAlertIPv4Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
+	case ip_sz == 16:
+		handleAlertIPv6Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
+	case ip_sz != 0:
 		return errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 
@@ -170,7 +175,7 @@ func handleIncludeCapiFilter(value string, predicates *[]predicate.Alert) error 
 	return nil
 }
 
-func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, error) {
+func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, error) {
 	predicates := make([]predicate.Alert, 0)
 
 	var (
@@ -241,7 +246,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		}
 	}
 
-	if err := handleIPPredicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, &predicates); err != nil {
+	if err := handleAlertIPPredicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, &predicates); err != nil {
 		return nil, err
 	}
 
@@ -249,7 +254,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 }
 
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
-	preds, err := AlertPredicatesFromFilter(filter)
+	preds, err := alertPredicatesFromFilter(filter)
 	if err != nil {
 		return nil, err
 	}

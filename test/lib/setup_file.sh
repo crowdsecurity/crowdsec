@@ -200,50 +200,6 @@ is_stdin_empty() {
 }
 export -f is_stdin_empty
 
-assert_stderr() {
-    # it is never useful to call this without arguments
-    if [[ "$#" -eq 0 ]]; then
-        # maybe the caller forgot to use '-' with an heredoc
-        if ! is_stdin_empty; then
-            fail "${FUNCNAME[0]}: called with stdin and no arguments (heredoc?)"
-        fi
-        fail "${FUNCNAME[0]}: called with no arguments"
-    fi
-
-    local oldout="${output}"
-    run -0 echo "${stderr}"
-    assert_output "$@"
-    output="${oldout}"
-}
-export -f assert_stderr
-
-# like refute_output, but for stderr
-refute_stderr() {
-    # calling this without arguments is ok, as long as stdin in empty
-    if ! is_stdin_empty; then
-        fail "${FUNCNAME[0]}: called with stdin (heredoc?)"
-    fi
-
-    local oldout="${output}"
-    run -0 echo "${stderr}"
-    refute_output "$@"
-    output="${oldout}"
-}
-export -f refute_stderr
-
-# like assert_output, but for stderr
-assert_stderr_line() {
-    if [[ "$#" -eq 0 ]]; then
-        fail "${FUNCNAME[0]}: called with no arguments"
-    fi
-
-    local oldout="${output}"
-    run -0 echo "${stderr}"
-    assert_line "$@"
-    output="${oldout}"
-}
-export -f assert_stderr_line
-
 # remove all installed items and data
 hub_purge_all() {
     local CONFIG_DIR
