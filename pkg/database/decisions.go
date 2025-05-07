@@ -25,16 +25,16 @@ type DecisionsByScenario struct {
 	Type     string
 }
 
-func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
 	// Allow a bouncer to ask for non-deduplicated results
-	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := applyDecisionFilter(query, filters)
+	query, err := applyDecisionFilter(query, filter)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
@@ -51,16 +51,16 @@ func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filters map[s
 	return data, nil
 }
 
-func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
 	// Allow a bouncer to ask for non-deduplicated results
-	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := applyDecisionFilter(query, filters)
+	query, err := applyDecisionFilter(query, filter)
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
@@ -161,7 +161,7 @@ func longestDecisionForScopeTypeValue(s *sql.Selector) {
 	)
 }
 
-func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filter map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
@@ -171,11 +171,11 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, sinc
 	}
 
 	// Allow a bouncer to ask for non-deduplicated results
-	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := applyDecisionFilter(query, filters)
+	query, err := applyDecisionFilter(query, filter)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
@@ -192,7 +192,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, sinc
 	return data, nil
 }
 
-func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filter map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
@@ -202,11 +202,11 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 	}
 
 	// Allow a bouncer to ask for non-deduplicated results
-	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := applyDecisionFilter(query, filters)
+	query, err := applyDecisionFilter(query, filter)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
