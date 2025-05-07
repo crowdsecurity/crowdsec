@@ -99,7 +99,7 @@ func assertTotalValidDecisionCount(t *testing.T, dbClient *database.Client, coun
 	assert.Len(t, d, count)
 }
 
-func jsonMarshalX(v interface{}) []byte {
+func jsonMarshalX(v any) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {
 		panic(err)

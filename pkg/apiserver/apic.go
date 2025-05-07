@@ -243,6 +243,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	}
 
 	err = ret.Authenticate(ctx, config)
+
 	return ret, err
 }
 
@@ -266,6 +267,7 @@ func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time,
 	}
 
 	parser := new(jwt.Parser)
+
 	tok, _, err := parser.ParseUnverified(token, jwt.MapClaims{})
 	if err != nil {
 		log.Debugf("error parsing token: %s", err)
@@ -285,7 +287,7 @@ func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time,
 	}
 
 	exp := time.Unix(int64(expFloat), 0)
-	if time.Now().UTC().After(exp.Add(-1*time.Minute)) {
+	if time.Now().UTC().After(exp.Add(-1 * time.Minute)) {
 		log.Debug("auth token expired")
 		return "", time.Time{}, false
 	}
@@ -310,6 +312,7 @@ func saveAPICToken(ctx context.Context, db *database.Client, token string) error
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
 	if token, exp, valid := loadAPICToken(ctx, a.dbClient); valid {
 		log.Debug("using valid token from DB")
+
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
 	}

@@ -11,6 +11,7 @@ import (
 
 func (c *Client) GetConfigItem(ctx context.Context, key string) (string, error) {
 	result, err := c.Ent.ConfigItem.Query().Where(configitem.NameEQ(key)).First(ctx)
+
 	switch {
 	case ent.IsNotFound(err):
 		return "", nil
@@ -23,6 +24,7 @@ func (c *Client) GetConfigItem(ctx context.Context, key string) (string, error) 
 
 func (c *Client) SetConfigItem(ctx context.Context, key string, value string) error {
 	nbUpdated, err := c.Ent.ConfigItem.Update().SetValue(value).Where(configitem.NameEQ(key)).Save(ctx)
+
 	switch {
 	case ent.IsNotFound(err) || nbUpdated == 0:
 		// not found, create
@@ -33,5 +35,6 @@ func (c *Client) SetConfigItem(ctx context.Context, key string, value string) er
 	case err != nil:
 		return errors.Wrapf(QueryFail, "update config item: %s", err)
 	}
+
 	return nil
 }

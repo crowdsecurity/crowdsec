@@ -49,7 +49,7 @@ type Source struct {
 
 type Message struct {
 	Header *Header
-	Data   interface{} `json:"data"`
+	Data   any `json:"data"`
 }
 
 type OperationChannels struct {
