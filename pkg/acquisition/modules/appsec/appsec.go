@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -361,7 +362,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 		listener, err := net.Listen("unix", socket)
 		if err != nil {
-			serverError <- fmt.Errorf("appsec server failed: %w", err)
+			serverError <- csnet.WrapSockErr(err, socket)
 			return
 		}
 
@@ -418,10 +419,10 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 
 	err = w.appsecAllowlistClient.Start(ctx, apiClient)
 	if err != nil {
-		return fmt.Errorf("failed to fetch allowlists: %w", err)
+		w.logger.Errorf("failed to fetch allowlists for appsec, disabling them: %s", err)
+	} else {
+		w.appsecAllowlistClient.StartRefresh(ctx, t)
 	}
-
-	w.appsecAllowlistClient.StartRefresh(ctx, t)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/appsec/live")

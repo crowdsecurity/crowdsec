@@ -29,6 +29,8 @@ import (
 	"github.com/umahmood/haversine"
 	"github.com/wasilibs/go-re2"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -57,6 +59,13 @@ var dbClient *database.Client
 
 var exprFunctionOptions []expr.Option
 
+func init() { //nolint:gochecknoinits
+	exprFunctionOptions = make([]expr.Option, len(exprFuncs))
+	for i, fn := range exprFuncs {
+		exprFunctionOptions[i] = expr.Function(fn.name, fn.function, fn.signature...)
+	}
+}
+
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 var (
@@ -65,23 +74,13 @@ var (
 	geoIPRangeReader *maxminddb.Reader
 )
 
-func GetExprOptions(ctx map[string]interface{}) []expr.Option {
-	if len(exprFunctionOptions) == 0 {
-		exprFunctionOptions = []expr.Option{}
-		for _, function := range exprFuncs {
-			exprFunctionOptions = append(exprFunctionOptions,
-				expr.Function(function.name,
-					function.function,
-					function.signature...,
-				))
-		}
-	}
+func GetExprOptions(ctx map[string]any) []expr.Option {
+	// copy the pre‑built options + one Env(...) for this call
+	opts := make([]expr.Option, len(exprFunctionOptions)+1)
+	copy(opts, exprFunctionOptions)
+	opts[len(opts)-1] = expr.Env(ctx)
 
-	ret := []expr.Option{}
-	ret = append(ret, exprFunctionOptions...)
-	ret = append(ret, expr.Env(ctx))
-
-	return ret
+	return opts
 }
 
 func GeoIPInit(datadir string) error {
@@ -199,6 +198,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
 		return nil
 	}
+
 	if err != nil {
 		return err
 	}
@@ -244,13 +244,13 @@ func Distinct(params ...any) (any, error) {
 		return nil, nil
 	}
 
-	array := params[0].([]interface{})
+	array := params[0].([]any)
 	if array == nil {
-		return []interface{}{}, nil
+		return []any{}, nil
 	}
 
 	exists := make(map[any]bool)
-	ret := make([]interface{}, 0)
+	ret := make([]any, 0)
 
 	for _, val := range array {
 		if _, ok := exists[val]; !ok {
@@ -270,7 +270,7 @@ func Flatten(params ...any) (any, error) {
 	return flatten(nil, reflect.ValueOf(params)), nil
 }
 
-func flatten(args []interface{}, v reflect.Value) []interface{} {
+func flatten(args []any, v reflect.Value) []any {
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
 	}
@@ -501,9 +501,11 @@ func RegexpInFile(params ...any) (any, error) {
 
 // func IpInRange(ip string, ipRange string) bool {
 func IpInRange(params ...any) (any, error) {
-	var err error
-	var ipParsed net.IP
-	var ipRangeParsed *net.IPNet
+	var (
+		err           error
+		ipParsed      net.IP
+		ipRangeParsed *net.IPNet
+	)
 
 	ip := params[0].(string)
 	ipRange := params[1].(string)
@@ -513,13 +515,16 @@ func IpInRange(params ...any) (any, error) {
 		log.Debugf("'%s' is not a valid IP", ip)
 		return false, nil
 	}
+
 	if _, ipRangeParsed, err = net.ParseCIDR(ipRange); err != nil {
 		log.Debugf("'%s' is not a valid IP Range", ipRange)
 		return false, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
+
 	if ipRangeParsed.Contains(ipParsed) {
 		return true, nil
 	}
+
 	return false, nil
 }
 
@@ -527,6 +532,7 @@ func IpInRange(params ...any) (any, error) {
 func IsIPV6(params ...any) (any, error) {
 	ip := params[0].(string)
 	ipParsed := net.ParseIP(ip)
+
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
 		return false, nil
@@ -540,10 +546,12 @@ func IsIPV6(params ...any) (any, error) {
 func IsIPV4(params ...any) (any, error) {
 	ip := params[0].(string)
 	ipParsed := net.ParseIP(ip)
+
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
 		return false, nil
 	}
+
 	return ipParsed.To4() != nil, nil
 }
 
@@ -551,10 +559,12 @@ func IsIPV4(params ...any) (any, error) {
 func IsIP(params ...any) (any, error) {
 	ip := params[0].(string)
 	ipParsed := net.ParseIP(ip)
+
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
 		return false, nil
 	}
+
 	return true, nil
 }
 
@@ -563,6 +573,7 @@ func IpToRange(params ...any) (any, error) {
 	ip := params[0].(string)
 	cidr := params[1].(string)
 	cidr = strings.TrimPrefix(cidr, "/")
+
 	mask, err := strconv.Atoi(cidr)
 	if err != nil {
 		log.Errorf("bad cidr '%s': %s", cidr, err)
@@ -574,11 +585,13 @@ func IpToRange(params ...any) (any, error) {
 		log.Errorf("can't parse IP address '%s'", ip)
 		return "", nil
 	}
+
 	ipRange := iplib.NewNet(ipAddr, mask)
 	if ipRange.IP() == nil {
 		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
 		return "", nil
 	}
+
 	return ipRange.String(), nil
 }
 
@@ -591,46 +604,52 @@ func TimeNow(params ...any) (any, error) {
 func ParseUri(params ...any) (any, error) {
 	uri := params[0].(string)
 	ret := make(map[string][]string)
+
 	u, err := url.Parse(uri)
 	if err != nil {
 		log.Errorf("Could not parse URI: %s", err)
 		return ret, nil
 	}
+
 	parsed, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
 		log.Errorf("Could not parse query uri : %s", err)
 		return ret, nil
 	}
+
 	for k, v := range parsed {
 		ret[k] = v
 	}
+
 	return ret, nil
 }
 
 // func KeyExists(key string, dict map[string]interface{}) bool {
 func KeyExists(params ...any) (any, error) {
 	key := params[0].(string)
-	dict := params[1].(map[string]interface{})
+	dict := params[1].(map[string]any)
 	_, ok := dict[key]
+
 	return ok, nil
 }
 
 // func GetDecisionsCount(value string) int {
 func GetDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
+
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsCount()")
 		return 0, nil
-
 	}
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
+
 	return count, nil
 }
 
@@ -638,11 +657,13 @@ func GetDecisionsCount(params ...any) (any, error) {
 func GetDecisionsSinceCount(params ...any) (any, error) {
 	value := params[0].(string)
 	since := params[1].(string)
+
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsSinceCount()")
 		return 0, nil
 	}
-	sinceDuration, err := time.ParseDuration(since)
+
+	sinceDuration, err := cstime.ParseDurationWithDays(since)
 	if err != nil {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
 		return 0, nil
@@ -651,84 +672,100 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 
-	count, err := dbClient.CountDecisionsSinceByValue(ctx, value, sinceTime)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, &sinceTime, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
+
 	return count, nil
 }
 
 func GetActiveDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
+
 	if dbClient == nil {
 		log.Error("No database config to call GetActiveDecisionsCount()")
 		return 0, nil
 	}
+
 	ctx := context.TODO()
-	count, err := dbClient.CountActiveDecisionsByValue(ctx, value)
+
+	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, true)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
 	}
+
 	return count, nil
 }
 
 func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 	value := params[0].(string)
+
 	if dbClient == nil {
 		log.Error("No database config to call GetActiveDecisionsTimeLeft()")
 		return 0, nil
 	}
+
 	ctx := context.TODO()
+
 	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value)
 	if err != nil {
 		log.Errorf("Failed to get active decisions time left from value '%s'", value)
 		return 0, err
 	}
+
 	return timeLeft, nil
 }
 
 // func LookupHost(value string) []string {
 func LookupHost(params ...any) (any, error) {
 	value := params[0].(string)
+
 	addresses, err := net.LookupHost(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
 		return []string{}, nil
 	}
+
 	return addresses, nil
 }
 
 // func ParseUnixTime(value string) (time.Time, error) {
 func ParseUnixTime(params ...any) (any, error) {
 	value := params[0].(string)
-	//Splitting string here as some unix timestamp may have milliseconds and break ParseInt
+	// Splitting string here as some unix timestamp may have milliseconds and break ParseInt
 	i, err := strconv.ParseInt(strings.Split(value, ".")[0], 10, 64)
 	if err != nil || i <= 0 {
 		return time.Time{}, fmt.Errorf("unable to parse %s as unix timestamp", value)
 	}
+
 	return time.Unix(i, 0), nil
 }
 
 // func ParseUnix(value string) string {
 func ParseUnix(params ...any) (any, error) {
 	value := params[0].(string)
+
 	t, err := ParseUnixTime(value)
 	if err != nil {
 		log.Error(err)
 		return "", nil
 	}
+
 	return t.(time.Time).Format(time.RFC3339), nil
 }
 
 // func ToString(value interface{}) string {
 func ToString(params ...any) (any, error) {
 	value := params[0]
+
 	s, ok := value.(string)
 	if !ok {
 		return "", nil
 	}
+
 	return s, nil
 }
 
@@ -736,6 +773,7 @@ func ToString(params ...any) (any, error) {
 func GetFromStash(params ...any) (any, error) {
 	cacheName := params[0].(string)
 	key := params[1].(string)
+
 	return cache.GetKey(cacheName, key)
 }
 
@@ -745,6 +783,7 @@ func SetInStash(params ...any) (any, error) {
 	key := params[1].(string)
 	value := params[2].(string)
 	expiration := params[3].(*time.Duration)
+
 	return cache.SetKey(cacheName, key, value, expiration), nil
 }
 
@@ -763,12 +802,15 @@ func Match(params ...any) (any, error) {
 	if pattern == "" {
 		return name == "", nil
 	}
+
 	if name == "" {
 		if pattern == "*" || pattern == "" {
 			return true, nil
 		}
+
 		return false, nil
 	}
+
 	if pattern[0] == '*' {
 		for i := 0; i <= len(name); i++ {
 			matched, _ := Match(pattern[1:], name[i:])
@@ -776,11 +818,14 @@ func Match(params ...any) (any, error) {
 				return matched, nil
 			}
 		}
+
 		return matched, nil
 	}
+
 	if pattern[0] == '?' || pattern[0] == name[0] {
 		return Match(pattern[1:], name[1:])
 	}
+
 	return matched, nil
 }
 
@@ -791,21 +836,24 @@ func FloatApproxEqual(params ...any) (any, error) {
 	if math.Abs(float1-float2) < 1e-6 {
 		return true, nil
 	}
+
 	return false, nil
 }
 
 func B64Decode(params ...any) (any, error) {
 	encoded := params[0].(string)
+
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return "", err
 	}
+
 	return string(decoded), nil
 }
 
 func ParseKV(params ...any) (any, error) {
 	blob := params[0].(string)
-	target := params[1].(map[string]interface{})
+	target := params[1].(map[string]any)
 	prefix := params[2].(string)
 
 	matches := keyValuePattern.FindAllStringSubmatch(blob, -1)
@@ -813,6 +861,7 @@ func ParseKV(params ...any) (any, error) {
 		log.Errorf("could not find any key/value pair in line")
 		return nil, errors.New("invalid input format")
 	}
+
 	if _, ok := target[prefix]; !ok {
 		target[prefix] = make(map[string]string)
 	} else {
@@ -822,21 +871,27 @@ func ParseKV(params ...any) (any, error) {
 			return nil, errors.New("target is not a map[string]string")
 		}
 	}
+
 	for _, match := range matches {
 		key := ""
 		value := ""
+
 		for i, name := range keyValuePattern.SubexpNames() {
-			if name == "key" {
+			switch {
+			case name == "key":
 				key = match[i]
-			} else if name == "quoted_value" && match[i] != "" {
+			case name == "quoted_value" && match[i] != "":
 				value = match[i]
-			} else if name == "value" && match[i] != "" {
+			case name == "value" && match[i] != "":
 				value = match[i]
 			}
 		}
+
 		target[prefix].(map[string]string)[key] = value
 	}
+
 	log.Tracef("unmarshaled KV: %+v", target[prefix])
+
 	return nil, nil
 }
 
@@ -845,5 +900,6 @@ func Hostname(params ...any) (any, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return hostname, nil
 }

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -254,11 +253,9 @@ func feedVLogs(ctx context.Context, logger *log.Entry, n int, title string) erro
 }
 
 func TestOneShotAcquisition(t *testing.T) {
-	ctx := t.Context()
+	cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
@@ -319,11 +316,9 @@ since: 1h
 }
 
 func TestStreamingAcquisition(t *testing.T) {
-	ctx := t.Context()
+	cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
@@ -431,11 +426,9 @@ query: >
 }
 
 func TestStopStreaming(t *testing.T) {
-	ctx := t.Context()
+	cstest.SetAWSTestEnv(t)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
+	ctx := t.Context()
 
 	config := `
 mode: tail
