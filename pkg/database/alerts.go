@@ -758,7 +758,7 @@ func (c *Client) AlertsCountPerScenario(ctx context.Context, filters map[string]
 
 	query := c.Ent.Alert.Query()
 
-	query, err := BuildAlertRequestFromFilter(query, filters)
+	query, err := applyAlertFilter(query, filters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build alert request: %w", err)
 	}
@@ -809,7 +809,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 	for {
 		alerts := c.Ent.Alert.Query()
 
-		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
+		alerts, err := applyAlertFilter(alerts, filter)
 		if err != nil {
 			return nil, err
 		}
