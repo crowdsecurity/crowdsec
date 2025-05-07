@@ -215,7 +215,7 @@ wowo: ajsajasjas
 	}
 }
 
-func TestLoadAcquisitionFromFile(t *testing.T) {
+func TestLoadAcquisitionFromFiles(t *testing.T) {
 	appendMockSource()
 	t.Setenv("TEST_ENV", "test_value2")
 
@@ -293,7 +293,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
+			dss, err := LoadAcquisitionFromFiles(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
