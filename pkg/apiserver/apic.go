@@ -315,6 +315,8 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+
+		return nil
 	}
 
 	log.Debug("No token found, authenticating")
