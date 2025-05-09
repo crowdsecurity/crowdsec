@@ -103,6 +103,8 @@ func TestConfigureDSN(t *testing.T) {
 
 func TestOneShot(t *testing.T) {
 	ctx := t.Context()
+	tmpDir := t.TempDir()
+	deletedFile := filepath.Join(tmpDir, "test_delete.log")
 
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
@@ -166,7 +168,7 @@ filename: /do/not/exist`,
 			name: "test.log",
 			config: `
 mode: cat
-filename: test_files/test.log`,
+filename: testdata/test.log`,
 			expectedLines: 5,
 			logLevel:      log.WarnLevel,
 		},
@@ -174,7 +176,7 @@ filename: test_files/test.log`,
 			name: "test.log.gz",
 			config: `
 mode: cat
-filename: test_files/test.log.gz`,
+filename: testdata/test.log.gz`,
 			expectedLines: 5,
 			logLevel:      log.WarnLevel,
 		},
@@ -182,24 +184,24 @@ filename: test_files/test.log.gz`,
 			name: "unexpected end of gzip stream",
 			config: `
 mode: cat
-filename: test_files/bad.gz`,
-			expectedErr:   "failed to read gz test_files/bad.gz: unexpected EOF",
+filename: testdata/bad.gz`,
+			expectedErr:   "failed to read gz testdata/bad.gz: unexpected EOF",
 			expectedLines: 0,
 			logLevel:      log.WarnLevel,
 		},
 		{
 			name: "deleted file",
-			config: `
+			config: fmt.Sprintf(`
 mode: cat
-filename: test_files/test_delete.log`,
+filename: %s`, deletedFile),
 			setup: func() {
-				f, _ := os.Create("test_files/test_delete.log")
+				f, _ := os.Create(deletedFile)
 				f.Close()
 			},
 			afterConfigure: func() {
-				os.Remove("test_files/test_delete.log")
+				os.Remove(deletedFile)
 			},
-			expectedErr: "could not stat file test_files/test_delete.log",
+			expectedErr: "could not stat file " + deletedFile,
 		},
 	}
 
@@ -252,14 +254,14 @@ func TestLiveAcquisition(t *testing.T) {
 	ctx := t.Context()
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
-	testPattern := "test_files/*.log"
+	tmpDir := t.TempDir()
+	testPattern := filepath.Join(tmpDir, "*.log")
 
 	if runtime.GOOS == "windows" {
 		// Technically, this is not a permission denied error, but we just want to test what happens
 		// if we do not have access to the file
 		permDeniedFile = `C:\Windows\System32\config\SAM`
 		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
-		testPattern = `test_files\*.log`
 	}
 
 	tests := []struct {
@@ -320,10 +322,10 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "GlobInotify",
 			afterConfigure: func() {
-				f, _ := os.Create("test_files/a.log")
+				f, _ := os.Create(filepath.Join(tmpDir, "a.log"))
 				f.Close()
 				time.Sleep(1 * time.Second)
-				os.Remove("test_files/a.log")
+				os.Remove(f.Name())
 			},
 		},
 		{
@@ -336,18 +338,18 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "GlobInotifyChmod",
 			afterConfigure: func() {
-				f, err := os.Create("test_files/a.log")
+				f, err := os.Create(filepath.Join(tmpDir, "a.log"))
 				require.NoError(t, err)
 				err = f.Close()
 				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
-				err = os.Chmod("test_files/a.log", 0o000)
+				err = os.Chmod(f.Name(), 0o000)
 				require.NoError(t, err)
 			},
 			teardown: func() {
-				err := os.Chmod("test_files/a.log", 0o644)
+				err := os.Chmod(filepath.Join(tmpDir, "a.log"), 0o644)
 				require.NoError(t, err)
-				err = os.Remove("test_files/a.log")
+				err = os.Remove(filepath.Join(tmpDir, "a.log"))
 				require.NoError(t, err)
 			},
 		},
@@ -361,11 +363,11 @@ force_inotify: true`, testPattern),
 			logLevel:      log.DebugLevel,
 			name:          "InotifyMkDir",
 			afterConfigure: func() {
-				err := os.Mkdir("test_files/pouet/", 0o700)
+				err := os.Mkdir(filepath.Join(tmpDir, "pouet"), 0o700)
 				require.NoError(t, err)
 			},
 			teardown: func() {
-				os.Remove("test_files/pouet/")
+				os.Remove(filepath.Join(tmpDir, "pouet"))
 			},
 		},
 	}
@@ -419,7 +421,7 @@ force_inotify: true`, testPattern),
 
 			if tc.expectedLines != 0 {
 				// f.IsTailing is path delimiter sensitive
-				streamLogFile := filepath.Join("test_files", "stream.log")
+				streamLogFile := filepath.Join(tmpDir, "stream.log")
 
 				fd, err := os.Create(streamLogFile)
 				require.NoError(t, err, "could not create test file")
@@ -475,7 +477,7 @@ force_inotify: true`, testPattern),
 }
 
 func TestExclusion(t *testing.T) {
-	config := `filenames: ["test_files/*.log*"]
+	config := `filenames: ["testdata/*.log*"]
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
 	// logger.SetLevel(ts.logLevel)
@@ -487,7 +489,7 @@ exclude_regexps: ["\\.gz$"]`
 
 	require.NotNil(t, hook.LastEntry())
 	assert.Contains(t, hook.LastEntry().Message, `Skipping file: matches exclude regex "\\.gz`)
-	assert.Equal(t, filepath.Join("test_files", "test.log.gz"), hook.LastEntry().Data["file"])
+	assert.Equal(t, filepath.Join("testdata", "test.log.gz"), hook.LastEntry().Data["file"])
 	hook.Reset()
 }
 
