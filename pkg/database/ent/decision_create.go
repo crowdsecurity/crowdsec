@@ -55,14 +55,6 @@ func (dc *DecisionCreate) SetUntil(t time.Time) *DecisionCreate {
 	return dc
 }
 
-// SetNillableUntil sets the "until" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableUntil(t *time.Time) *DecisionCreate {
-	if t != nil {
-		dc.SetUntil(*t)
-	}
-	return dc
-}
-
 // SetScenario sets the "scenario" field.
 func (dc *DecisionCreate) SetScenario(s string) *DecisionCreate {
 	dc.mutation.SetScenario(s)
@@ -281,6 +273,9 @@ func (dc *DecisionCreate) check() error {
 	if _, ok := dc.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Decision.updated_at"`)}
 	}
+	if _, ok := dc.mutation.Until(); !ok {
+		return &ValidationError{Name: "until", err: errors.New(`ent: missing required field "Decision.until"`)}
+	}
 	if _, ok := dc.mutation.Scenario(); !ok {
 		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "Decision.scenario"`)}
 	}
@@ -335,7 +330,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.Until(); ok {
 		_spec.SetField(decision.FieldUntil, field.TypeTime, value)
-		_node.Until = &value
+		_node.Until = value
 	}
 	if value, ok := dc.mutation.Scenario(); ok {
 		_spec.SetField(decision.FieldScenario, field.TypeString, value)
