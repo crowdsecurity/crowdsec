@@ -1,4 +1,5 @@
 //go:build expr_debug
+
 package exprhelpers
 
 import (
@@ -271,6 +272,20 @@ func TestBaseDbg(t *testing.T) {
 				{Code: "Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"/someotherurl?account-name=admin&account...\""}, FuncResults: []string{"\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "contains Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
 				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: true},
+			},
+		},
+		{
+			Name: "if",
+			Expr: `if base_int != 42 { 
+    true
+} else {
+    false
+}`,
+			Env: defaultEnv,
+			ExpectedOutputs: []OpOutput{
+				{Code: "!= 42 {", CodeDepth: 0, Negated: true, Comparison: true, Left: "42", Right: "42", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "if base_int != 42 {", CodeDepth: 0, ConditionResult: boolPtr(false), Finalized: false, IfFalse: true, JumpIf: true, StrConditionResult: "false"},
+				{Code: "false }", CodeDepth: 0, StrConditionResult: "false", Condition: true, ConditionResult: boolPtr(false), Finalized: true},
 			},
 		},
 	}

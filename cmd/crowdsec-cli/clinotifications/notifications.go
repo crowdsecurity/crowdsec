@@ -70,7 +70,7 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 				return fmt.Errorf("loading api client: %w", err)
 			}
 
-			return require.Notifications(cfg)
+			return nil
 		},
 	}
 
@@ -176,7 +176,7 @@ func (cli *cliNotifications) newListCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to serialize notification configuration: %w", err)
 				}
-				fmt.Printf("%s", string(x))
+				fmt.Fprint(os.Stdout, string(x))
 			} else if cfg.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"Name", "Type", "Profile name"})
@@ -223,19 +223,19 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
 			}
 			if cfg.Cscli.Output == "human" || cfg.Cscli.Output == "raw" {
-				fmt.Printf(" - %15s: %15s\n", "Type", ncfg.Config.Type)
-				fmt.Printf(" - %15s: %15s\n", "Name", ncfg.Config.Name)
-				fmt.Printf(" - %15s: %15s\n", "Timeout", ncfg.Config.TimeOut)
-				fmt.Printf(" - %15s: %15s\n", "Format", ncfg.Config.Format)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Type", ncfg.Config.Type)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Name", ncfg.Config.Name)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Timeout", ncfg.Config.TimeOut)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Format", ncfg.Config.Format)
 				for k, v := range ncfg.Config.Config {
-					fmt.Printf(" - %15s: %15v\n", k, v)
+					fmt.Fprintf(os.Stdout, " - %15s: %15v\n", k, v)
 				}
 			} else if cfg.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(cfg, "", " ")
 				if err != nil {
 					return fmt.Errorf("failed to serialize notification configuration: %w", err)
 				}
-				fmt.Printf("%s", string(x))
+				fmt.Fprint(os.Stdout, string(x))
 			}
 
 			return nil

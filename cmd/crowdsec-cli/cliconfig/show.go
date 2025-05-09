@@ -25,7 +25,7 @@ func (cli *cliConfig) showKey(key string) error {
 	}
 
 	opts := []expr.Option{}
-	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
+	opts = append(opts, exprhelpers.GetExprOptions(map[string]any{})...)
 	opts = append(opts, expr.Env(Env{}))
 
 	program, err := expr.Compile(key, opts...)
@@ -44,7 +44,7 @@ func (cli *cliConfig) showKey(key string) error {
 		// that would break compatibility with previous versions
 		switch output.(type) {
 		case string:
-			fmt.Println(output)
+			fmt.Fprintln(os.Stdout, output)
 		default:
 			litter.Dump(output)
 		}
@@ -54,7 +54,7 @@ func (cli *cliConfig) showKey(key string) error {
 			return fmt.Errorf("failed to serialize configuration: %w", err)
 		}
 
-		fmt.Println(string(data))
+		fmt.Fprintln(os.Stdout, string(data))
 	}
 
 	return nil
@@ -67,6 +67,7 @@ func (cli *cliConfig) template() string {
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
    - Data Folder            : {{.ConfigPaths.DataDir}}
    - Hub Folder             : {{.ConfigPaths.HubDir}}
+   - Notification Folder    : {{.ConfigPaths.NotificationDir}}
    - Simulation File        : {{.ConfigPaths.SimulationFilePath}}
 {{- end }}
 
@@ -216,14 +217,14 @@ func (cli *cliConfig) show() error {
 			return fmt.Errorf("failed to serialize configuration: %w", err)
 		}
 
-		fmt.Println(string(data))
+		fmt.Fprintln(os.Stdout, string(data))
 	case "raw":
 		data, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to serialize configuration: %w", err)
 		}
 
-		fmt.Println(string(data))
+		fmt.Fprintln(os.Stdout, string(data))
 	}
 
 	return nil
