@@ -9,9 +9,13 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/cstime"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
 )
+
+const defaultPruneDuration = 60 * time.Minute
 
 func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force bool) error {
 	if duration < 2*time.Minute {
@@ -59,12 +63,9 @@ func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force
 }
 
 func (cli *cliBouncers) newPruneCmd() *cobra.Command {
-	var (
-		duration time.Duration
-		force    bool
-	)
+	var force bool
 
-	const defaultDuration = 60 * time.Minute
+	duration := cstime.DurationWithDays(defaultPruneDuration)
 
 	cmd := &cobra.Command{
 		Use:               "prune",
@@ -74,12 +75,12 @@ func (cli *cliBouncers) newPruneCmd() *cobra.Command {
 		Example: `cscli bouncers prune -d 45m
 cscli bouncers prune -d 45m --force`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.prune(cmd.Context(), duration, force)
+			return cli.prune(cmd.Context(), time.Duration(duration), force)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.DurationVarP(&duration, "duration", "d", defaultDuration, "duration of time since last pull")
+	flags.VarP(&duration, "duration", "d", "duration of time since last pull")
 	flags.BoolVar(&force, "force", false, "force prune without asking for confirmation")
 
 	return cmd
