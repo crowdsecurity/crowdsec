@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestApiAuth(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.TraceLevel)
 
 	mux, urlx, teardown := setup()
@@ -40,7 +40,7 @@ func TestApiAuth(t *testing.T) {
 
 	defer teardown()
 
-	//ok no answer
+	// ok no answer
 	auth := &APIKeyTransport{
 		APIKey: "ixu",
 	}
@@ -48,12 +48,12 @@ func TestApiAuth(t *testing.T) {
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	require.NoError(t, err)
 
-	alert := DecisionsListOpts{IPEquals: ptr.Of("1.2.3.4")}
+	alert := DecisionsListOpts{IPEquals: "1.2.3.4"}
 	_, resp, err := newcli.Decisions.List(ctx, alert)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 
-	//ko bad token
+	// ko bad token
 	auth = &APIKeyTransport{
 		APIKey: "bad",
 	}
@@ -69,7 +69,7 @@ func TestApiAuth(t *testing.T) {
 
 	cstest.RequireErrorMessage(t, err, "API error: access forbidden")
 
-	//ko empty token
+	// ko empty token
 	auth = &APIKeyTransport{}
 
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())

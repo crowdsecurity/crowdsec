@@ -54,9 +54,13 @@ teardown() {
     assert_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 }
 
-@test "cscli decisions list, incorrect parameters" {
+@test "cscli decisions list, accept duration parameters with days" {
     rune -1 cscli decisions list --until toto
-    assert_stderr 'Error: unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration "toto"'
+    assert_stderr 'Error: invalid argument "toto" for "--until" flag: time: invalid duration "toto"'
+    rune -0 cscli decisions list --until 2d12h --debug
+    assert_stderr --partial "until=60h0m0s"
+    rune -0 cscli decisions list --since 2d12h --debug
+    assert_stderr --partial "since=60h0m0s"
 }
 
 @test "cscli decisions import" {
