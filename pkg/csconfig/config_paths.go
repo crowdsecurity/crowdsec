@@ -19,8 +19,13 @@ type ConfigurationPaths struct {
 
 func (c *Config) loadConfigurationPaths() error {
 	var err error
+
 	if c.ConfigPaths == nil {
 		return errors.New("no configuration paths provided")
+	}
+
+	if c.ConfigPaths.ConfigDir == "" {
+		c.ConfigPaths.ConfigDir = filepath.Dir(c.FilePath)
 	}
 
 	if c.ConfigPaths.DataDir == "" {
@@ -33,6 +38,10 @@ func (c *Config) loadConfigurationPaths() error {
 
 	if c.ConfigPaths.HubIndexFile == "" {
 		c.ConfigPaths.HubIndexFile = filepath.Join(c.ConfigPaths.HubDir, ".index.json")
+	}
+
+	if c.ConfigPaths.NotificationDir == "" {
+		c.ConfigPaths.NotificationDir = filepath.Join(c.ConfigPaths.ConfigDir, "notifications")
 	}
 
 	if c.ConfigPaths.PatternDir == "" {
@@ -53,6 +62,7 @@ func (c *Config) loadConfigurationPaths() error {
 		if *k == "" {
 			continue
 		}
+
 		*k, err = filepath.Abs(*k)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
