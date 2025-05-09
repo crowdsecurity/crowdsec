@@ -25,8 +25,10 @@ require (
 	github.com/creack/pty v1.1.21 // indirect
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/go-cs-lib v0.0.19
+	github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4
 	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.2
+	github.com/daulet/tokenizers v0.9.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dghubble/sling v1.4.2
 	github.com/distribution/reference v0.6.0 // indirect
