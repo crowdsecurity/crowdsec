@@ -19,6 +19,7 @@ type ConfigurationPaths struct {
 
 func (c *Config) loadConfigurationPaths() error {
 	var err error
+
 	if c.ConfigPaths == nil {
 		return errors.New("no configuration paths provided")
 	}
@@ -61,6 +62,7 @@ func (c *Config) loadConfigurationPaths() error {
 		if *k == "" {
 			continue
 		}
+
 		*k, err = filepath.Abs(*k)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
