@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,7 +55,7 @@ const timeoutMessage = "no events before timeout"
 func (c *LongPollClient) doQuery(ctx context.Context) (*http.Response, error) {
 	logger := c.logger.WithField("method", "doQuery")
 	query := c.url.Query()
-	query.Set("since_time", fmt.Sprintf("%d", c.since))
+	query.Set("since_time", strconv.FormatInt(c.since, 10))
 	query.Set("timeout", c.timeout)
 	c.url.RawQuery = query.Encode()
 

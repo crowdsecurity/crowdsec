@@ -2,6 +2,7 @@ package ja4h
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"slices"
@@ -120,7 +121,7 @@ func jA4H_b(req *http.Request) string {
 // hashTruncated computes a truncated SHA256 hash for the given input.
 func hashTruncated(input string) string {
 	hash := sha256.Sum256([]byte(input))
-	return fmt.Sprintf("%x", hash)[:truncatedHashLength]
+	return hex.EncodeToString(hash[:])[:truncatedHashLength]
 }
 
 // jA4H_c computes a truncated SHA256 hash of sorted cookie names.

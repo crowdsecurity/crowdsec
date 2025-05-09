@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"strconv"
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
@@ -62,7 +63,7 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 	} else if asndata != nil {
 		record := asndata.(*geoip2.ASN)
 		src.AsName = record.AutonomousSystemOrganization
-		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+		src.AsNumber = strconv.FormatUint(uint64(record.AutonomousSystemNumber), 10)
 	}
 
 	cityData, err := exprhelpers.GeoIPEnrich(src.IP)
@@ -422,7 +423,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 		var name string
 		version := ""
 		hash := ""
-		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
+		ruleNameProm := strconv.Itoa(rule.Rule().ID())
 
 		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
 			// Only set them for custom rules, not for rules written in seclang

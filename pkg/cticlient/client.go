@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
@@ -129,7 +130,7 @@ func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
 	paramsMap := make(map[string]string)
 
 	if params.Page != nil {
-		paramsMap["page"] = fmt.Sprintf("%d", *params.Page)
+		paramsMap["page"] = strconv.Itoa(*params.Page)
 	}
 
 	if params.Since != nil {
@@ -137,7 +138,7 @@ func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
 	}
 
 	if params.Limit != nil {
-		paramsMap["limit"] = fmt.Sprintf("%d", *params.Limit)
+		paramsMap["limit"] = strconv.Itoa(*params.Limit)
 	}
 
 	body, err := c.doRequest(ctx, http.MethodGet, fireEndpoint, paramsMap)

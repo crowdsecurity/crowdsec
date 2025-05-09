@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"strconv"
 	"strings"
 
 	cztypes "github.com/corazawaf/coraza/v3/types"
@@ -94,7 +95,7 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 	h.Write([]byte(appsecRuleName))
 	h.Write([]byte(rule.Match.Type))
 	h.Write([]byte(rule.Match.Value))
-	h.Write([]byte(fmt.Sprintf("%d", depth)))
+	h.Write([]byte(strconv.Itoa(depth)))
 	for _, zone := range rule.Zones {
 		h.Write([]byte(zone))
 	}
