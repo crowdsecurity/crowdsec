@@ -192,6 +192,7 @@ jobs:
           git diff --name-only
           exit 1
         fi
+        chmod -R u+w .
 
     # check if some component stubs are missing
     - name: "Build profile: minimal"
