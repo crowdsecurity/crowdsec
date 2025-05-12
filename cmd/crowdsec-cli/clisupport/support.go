@@ -256,13 +256,13 @@ func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *
 	return nil
 }
 
-func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub) error {
+func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub, db *database.Client) error {
 	log.Info("Collecting CAPI status")
 
 	out := new(bytes.Buffer)
 	cc := clicapi.New(cli.cfg)
 
-	err := cc.Status(ctx, out, hub)
+	err := cc.Status(ctx, db, out, hub)
 	if err != nil {
 		fmt.Fprintf(out, "%s\n", err)
 	}
@@ -534,7 +534,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 	}
 
 	if !skipCAPI {
-		if err = cli.dumpCAPIStatus(ctx, zipWriter, hub); err != nil {
+		if err = cli.dumpCAPIStatus(ctx, zipWriter, hub, db); err != nil {
 			log.Warnf("could not collect CAPI status: %s", err)
 		}
 

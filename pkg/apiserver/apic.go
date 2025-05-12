@@ -17,7 +17,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
-	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -247,70 +246,13 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	return ret, err
 }
 
-// loadAPICToken attempts to retrieve and validate a JWT token from the local database.
-// It returns the token string, its expiration time, and a boolean indicating whether the token is valid.
-//
-// A token is considered valid if:
-//   - it exists in the database,
-//   - it is a properly formatted JWT with an "exp" claim,
-//   - it is not expired or near expiry.
-func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time, bool) {
-	token, err := db.GetConfigItem(ctx, "apic_token")
-	if err != nil {
-		log.Debugf("error fetching token from DB: %s", err)
-		return "", time.Time{}, false
-	}
-
-	if token == "" {
-		log.Debug("no token found in DB")
-		return "", time.Time{}, false
-	}
-
-	parser := new(jwt.Parser)
-
-	tok, _, err := parser.ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		log.Debugf("error parsing token: %s", err)
-		return "", time.Time{}, false
-	}
-
-	claims, ok := tok.Claims.(jwt.MapClaims)
-	if !ok {
-		log.Debugf("error parsing token claims: %s", err)
-		return "", time.Time{}, false
-	}
-
-	expFloat, ok := claims["exp"].(float64)
-	if !ok {
-		log.Debug("token missing 'exp' claim")
-		return "", time.Time{}, false
-	}
-
-	exp := time.Unix(int64(expFloat), 0)
-	if time.Now().UTC().After(exp.Add(-1 * time.Minute)) {
-		log.Debug("auth token expired")
-		return "", time.Time{}, false
-	}
-
-	return token, exp, true
-}
-
-// saveAPICToken stores the given JWT token in the local database under the "apic_token" config item.
-func saveAPICToken(ctx context.Context, db *database.Client, token string) error {
-	if err := db.SetConfigItem(ctx, "apic_token", token); err != nil {
-		return fmt.Errorf("saving token to db: %w", err)
-	}
-
-	return nil
-}
-
 // Authenticate ensures the API client is authorized to communicate with the CAPI.
 // It attempts to reuse a previously saved JWT token from the database, falling back to
 // an authentication request if the token is missing, invalid, or expired.
 //
 // If a new token is obtained, it is saved back to the database for caching.
-func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	if token, exp, valid := loadAPICToken(ctx, a.dbClient); valid {
+func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg,) error {
+	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
 		log.Debug("using valid token from DB")
 
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
@@ -343,7 +285,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return saveAPICToken(ctx, a.dbClient, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
