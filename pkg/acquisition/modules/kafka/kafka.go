@@ -55,6 +55,7 @@ type KafkaBatchConfiguration struct {
 	BatchMaxBytes  int           `yaml:"max_bytes"`
 	BatchMaxWait   time.Duration `yaml:"max_wait"`
 	BatchQueueSize int           `yaml:"queue_size"`
+	CommitInterval time.Duration `yaml:"commit_interval"`
 }
 
 type KafkaSource struct {
@@ -313,6 +314,9 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry)
 	}
 	if kc.BatchConfiguration.BatchQueueSize != 0 {
 		rConf.QueueCapacity = kc.BatchConfiguration.BatchQueueSize
+	}
+	if kc.BatchConfiguration.CommitInterval != 0 {
+		rConf.CommitInterval = kc.BatchConfiguration.CommitInterval
 	}
 
 	if err := rConf.Validate(); err != nil {
