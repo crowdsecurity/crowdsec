@@ -251,7 +251,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 // an authentication request if the token is missing, invalid, or expired.
 //
 // If a new token is obtained, it is saved back to the database for caching.
-func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg,) error {
+func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
 	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
 		log.Debug("using valid token from DB")
 

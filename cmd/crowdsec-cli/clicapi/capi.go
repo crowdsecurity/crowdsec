@@ -121,7 +121,7 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 
 		log.Infof("Central API credentials written to '%s'", dumpFile)
 	} else {
-		fmt.Println(string(apiConfigDump))
+		fmt.Fprintln(os.Stdout, string(apiConfigDump))
 	}
 
 	if msg := reload.UserMessage(); msg != "" {
