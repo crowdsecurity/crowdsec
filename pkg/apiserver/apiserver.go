@@ -340,7 +340,6 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
 	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
 
-	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 	if s.apic.apiClient.IsEnrolled() {
 		if s.papi != nil {
 			if s.papi.URL != "" {

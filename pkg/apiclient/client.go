@@ -85,6 +85,11 @@ func (c *ApiClient) GetSubscriptionType() string {
 	return subscriptionType
 }
 
+func (c *ApiClient) GetTokenRefreshChan() chan struct{} {
+	jwtTransport := c.client.Transport.(*JWTTransport)
+	return jwtTransport.TokenRefreshChan
+}
+
 type service struct {
 	client *ApiClient
 }

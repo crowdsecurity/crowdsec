@@ -30,13 +30,17 @@ type JWTTransport struct {
 	RetryConfig   *RetryConfig
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
-	Transport         http.RoundTripper
-	UpdateScenario    func(context.Context) ([]string, error)
+	Transport        http.RoundTripper
+	UpdateScenario   func(context.Context) ([]string, error)
+	TokenRefreshChan chan struct{} // will write to this channel when the token is refreshed
+
 	refreshTokenMutex sync.Mutex
 }
 
 func (t *JWTTransport) refreshJwtToken() error {
 	var err error
+
+	log.Infof("refreshing jwt token for '%s'", *t.MachineID)
 
 	ctx := context.TODO()
 
@@ -136,6 +140,14 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
 
+	select {
+	case t.TokenRefreshChan <- struct{}{}:
+		log.Info("sending token refresh signal")
+	default:
+		log.Info("no one is waiting for the token refresh, ignoring")
+		// Do not block if no one is waiting for the token refresh (ie, PAPI fully disabled)
+	}
+
 	return nil
 }
 
@@ -149,6 +161,8 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 	// and will cause overload on CAPI. We use a mutex to avoid this.
 	t.refreshTokenMutex.Lock()
 	defer t.refreshTokenMutex.Unlock()
+
+	fmt.Printf("request: %s\n", req.URL.String())
 
 	// We bypass the refresh if we are requesting the login endpoint, as it does not require a token,
 	// and it leads to do 2 requests instead of one (refresh + actual login request).

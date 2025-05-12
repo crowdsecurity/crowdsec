@@ -257,32 +257,63 @@ func (p *Papi) Pull(ctx context.Context) error {
 		}
 	}
 
-	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+	tokenRefreshChan := p.apiClient.GetTokenRefreshChan()
+	var papiChan chan longpollclient.Event = nil // For the chan to nil so it will block until PAPI actually establishes the connection
 
-	for event := range p.Client.Start(ctx, lastTimestamp) {
-		logger := p.Logger.WithField("request-id", event.RequestId)
-		// update last timestamp in database
-		newTime := time.Now().UTC()
+	currentSubscriptionType := p.apiClient.GetSubscriptionType()
 
-		binTime, err := newTime.MarshalText()
-		if err != nil {
-			return fmt.Errorf("failed to serialize last timestamp: %w", err)
-		}
-
-		err = p.handleEvent(event, false)
-		if err != nil {
-			logger.Errorf("failed to handle event: %s", err)
-			continue
-		}
-
-		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
-			return fmt.Errorf("failed to update last timestamp: %w", err)
-		}
-
-		logger.Debugf("set last timestamp to %s", newTime)
+	if currentSubscriptionType == apiclient.SubscriptionTypeEnterprise {
+		// If allowed to use PAPI, start it
+		// Otherwise it will be started when the token is refreshed with an ent subscription
+		p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+		papiChan = p.Client.Start(ctx, lastTimestamp)
 	}
 
-	return nil
+	for {
+		select {
+		case <-tokenRefreshChan:
+			subType := p.apiClient.GetSubscriptionType()
+			if subType == currentSubscriptionType {
+				continue
+			}
+			currentSubscriptionType = subType
+			p.Logger.Infof("subscription type changed to %s", subType)
+			switch subType {
+			case apiclient.SubscriptionTypeEnterprise:
+				p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+				papiChan = p.Client.Start(ctx, lastTimestamp)
+			default:
+				// PAPI got started but the user downgraded (or removed the engine from the console)
+				p.Logger.Info("Stopping PAPI")
+				p.Client.Stop()
+				papiChan = nil
+				return nil
+			}
+		case event := <-papiChan:
+			logger := p.Logger.WithField("request-id", event.RequestId)
+			// update last timestamp in database
+			newTime := time.Now().UTC()
+
+			binTime, err := newTime.MarshalText()
+			if err != nil {
+				return fmt.Errorf("failed to serialize last timestamp: %w", err)
+			}
+
+			lastTimestamp = newTime
+
+			err = p.handleEvent(event, false)
+			if err != nil {
+				logger.Errorf("failed to handle event: %s", err)
+				continue
+			}
+
+			if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
+				return fmt.Errorf("failed to update last timestamp: %w", err)
+			}
+
+			logger.Debugf("set last timestamp to %s", newTime)
+		}
+	}
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {
