@@ -67,7 +67,6 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	credentials   *csconfig.ApiCredentialsCfg
-	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
@@ -196,7 +195,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
 		metricsTomb:               tomb.Tomb{},
-		scenarioList:              make([]string, 0),
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
@@ -223,18 +221,12 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.scenarioList, err = ret.FetchScenariosListFromDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("while fetching scenarios from db: %w", err)
-	}
-
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
-		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
 	if err != nil {
