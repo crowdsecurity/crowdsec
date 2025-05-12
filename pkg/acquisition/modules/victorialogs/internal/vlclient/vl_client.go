@@ -46,6 +46,7 @@ type Config struct {
 	FailMaxDuration time.Duration
 
 	Limit int
+	ProgramKey string
 }
 
 func updateURI(uri string, newStart time.Time) string {
@@ -210,10 +211,48 @@ func (lc *VLClient) readResponse(ctx context.Context, resp *http.Response, c cha
 		b = bytes.Trim(b, "\n")
 
 		var logLine Log
+		timeKey := "_time"
+		messageKey := "_msg"
 
-		if err := json.Unmarshal(b, &logLine); err != nil {
+		// Unmarshal in stages, first just get the keys of the top level JSON map
+		var tmp map[string]json.RawMessage
+		if err := json.Unmarshal(b, &tmp); err != nil {
 			lc.Logger.Warnf("cannot unmarshal line in response: %s", string(b))
 			continue
+		}
+
+		// Unmarshal the message field
+		rawMessage, ok := tmp[messageKey]
+		if !ok {
+			lc.Logger.Warnf("missing message field %s in response, skipping", messageKey)
+			continue
+		}
+		err = json.Unmarshal(rawMessage, &logLine.Message)
+		if err != nil {
+			lc.Logger.Warnf("cannot unmarshal message field %s in response: %s", messageKey, string(rawMessage))
+			continue
+		}
+
+		// Unmarshal the time field
+		rawTime, ok := tmp[timeKey]
+		if !ok {
+			lc.Logger.Warnf("missing time field %s in response, skipping", timeKey)
+			continue
+		}
+		err = json.Unmarshal(rawTime, &logLine.Time)
+		if err != nil {
+			lc.Logger.Warnf("cannot unmarshal time field %s in response: %s", timeKey, string(rawTime))
+			continue
+		}
+
+		// Extract the program name
+		rawProgram, ok := tmp[lc.config.ProgramKey]
+		if ok {
+			err = json.Unmarshal(rawProgram, &logLine.Program)
+			if err != nil {
+				lc.Logger.Warnf("cannot unmarshal program field %s in response: %s", lc.config.ProgramKey, string(rawProgram))
+				// no continue here, we just leave logLine.Program empty
+			}
 		}
 
 		n++
