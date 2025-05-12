@@ -131,6 +131,16 @@ setup() {
         "$CROWDSEC"
     assert_stderr --partial "using valid token from DB"
     refute_stderr --partial "No token found, authenticating"
+
+    # "cscli capi status" also saves the token
+
+    rune -0 ./instance-db exec_sql "UPDATE config_items SET VALUE='abc' WHERE name='apic_token'"
+    rune -0 cscli capi status
+    rune -0 wait-for \
+        --err "CAPI manager configured successfully" \
+        "$CROWDSEC"
+    assert_stderr --partial "using valid token from DB"
+    refute_stderr --partial "No token found, authenticating"
 }
 
 @test "capi register must be run from lapi" {
