@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/nettest"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
@@ -69,8 +70,10 @@ func setupUnixSocketWithPrefix(t *testing.T, socket string, urlPrefix string) (m
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))
 
 	server := httptest.NewUnstartedServer(apiHandler)
-	l, _ := net.Listen("unix", socket)
-	_ = server.Listener.Close()
+	l, err := net.Listen("unix", socket)
+	require.NoError(t, err)
+	err = server.Listener.Close()
+	require.NoError(t, err)
 	server.Listener = l
 	server.Start()
 
@@ -117,8 +120,8 @@ func TestNewClientOk(t *testing.T) {
 
 func TestNewClientOk_UnixSocket(t *testing.T) {
 	ctx := t.Context()
-	tmpDir := t.TempDir()
-	socket := path.Join(tmpDir, "socket")
+	socket, err := nettest.LocalPath()
+	require.NoError(t, err)
 
 	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
@@ -221,8 +224,8 @@ func TestNewDefaultClient(t *testing.T) {
 func TestNewDefaultClient_UnixSocket(t *testing.T) {
 	ctx := t.Context()
 
-	tmpDir := t.TempDir()
-	socket := path.Join(tmpDir, "socket")
+	socket, err := nettest.LocalPath()
+	require.NoError(t, err)
 
 	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()

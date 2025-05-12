@@ -20,12 +20,12 @@ import (
 type DecisionsService service
 
 type DecisionsListOpts struct {
-	ScopeEquals *string `url:"scope,omitempty"`
-	ValueEquals *string `url:"value,omitempty"`
-	TypeEquals  *string `url:"type,omitempty"`
-	IPEquals    *string `url:"ip,omitempty"`
-	RangeEquals *string `url:"range,omitempty"`
-	Contains    *bool   `url:"contains,omitempty"`
+	ScopeEquals string `url:"scope,omitempty"`
+	ValueEquals string `url:"value,omitempty"`
+	TypeEquals  string `url:"type,omitempty"`
+	IPEquals    string `url:"ip,omitempty"`
+	RangeEquals string `url:"range,omitempty"`
+	Contains    *bool  `url:"contains,omitempty"`
 	ListOpts
 }
 
@@ -60,15 +60,15 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 }
 
 type DecisionsDeleteOpts struct {
-	ScopeEquals  *string `url:"scope,omitempty"`
-	ValueEquals  *string `url:"value,omitempty"`
-	TypeEquals   *string `url:"type,omitempty"`
-	IPEquals     *string `url:"ip,omitempty"`
-	RangeEquals  *string `url:"range,omitempty"`
-	Contains     *bool   `url:"contains,omitempty"`
-	OriginEquals *string `url:"origin,omitempty"`
+	ScopeEquals  string `url:"scope,omitempty"`
+	ValueEquals  string `url:"value,omitempty"`
+	TypeEquals   string `url:"type,omitempty"`
+	IPEquals     string `url:"ip,omitempty"`
+	RangeEquals  string `url:"range,omitempty"`
+	Contains     *bool  `url:"contains,omitempty"`
+	OriginEquals string `url:"origin,omitempty"`
 	//
-	ScenarioEquals *string `url:"scenario,omitempty"`
+	ScenarioEquals string `url:"scenario,omitempty"`
 	ListOpts
 }
 
@@ -174,7 +174,7 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 	return &v2Decisions, resp, nil
 }
 
-func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, lastPullTimestamp *string) ([]*models.Decision, bool, error) {
+func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, lastPullTimestamp string) ([]*models.Decision, bool, error) {
 	if blocklist.URL == nil {
 		return nil, false, errors.New("blocklist URL is nil")
 	}
@@ -188,8 +188,8 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 		return nil, false, err
 	}
 
-	if lastPullTimestamp != nil {
-		req.Header.Set("If-Modified-Since", *lastPullTimestamp)
+	if lastPullTimestamp != "" {
+		req.Header.Set("If-Modified-Since", lastPullTimestamp)
 	}
 
 	log.Debugf("[URL] %s %s", req.Method, req.URL)
@@ -217,8 +217,8 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 	}
 
 	if resp.StatusCode == http.StatusNotModified {
-		if lastPullTimestamp != nil {
-			log.Debugf("Blocklist %s has not been modified since %s", *blocklist.URL, *lastPullTimestamp)
+		if lastPullTimestamp != "" {
+			log.Debugf("Blocklist %s has not been modified since %s", *blocklist.URL, lastPullTimestamp)
 		} else {
 			log.Debugf("Blocklist %s has not been modified (decisions about to expire)", *blocklist.URL)
 		}

@@ -497,7 +497,7 @@ delete_plugins() {
     rm -rf ${CROWDSEC_PLUGIN_DIR}
 }
 
-install_plugins(){
+install_plugins() {
     mkdir -p ${CROWDSEC_PLUGIN_DIR}
     mkdir -p /etc/crowdsec/notifications
 
@@ -508,14 +508,11 @@ install_plugins(){
     cp ${SENTINEL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${FILE_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
-    if [[ ${DOCKER_MODE} == "false" ]]; then
-        cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${SENTINEL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${FILE_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-    fi
+    for yaml_conf in ${SLACK_PLUGIN_CONFIG} ${SPLUNK_PLUGIN_CONFIG} ${HTTP_PLUGIN_CONFIG} ${EMAIL_PLUGIN_CONFIG} ${SENTINEL_PLUGIN_CONFIG} ${FILE_PLUGIN_CONFIG}; do
+        if [[ ! -e /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]]; then
+            cp "$yaml_conf" /etc/crowdsec/notifications/
+        fi
+    done
 }
 
 check_running_bouncers() {

@@ -24,6 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -178,7 +179,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		}
 	}
 
-	if log.GetLevel() < log.DebugLevel {
+	if !log.IsLevelEnabled(log.DebugLevel) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -464,7 +465,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 
 		listener, err := net.Listen("unix", socket)
 		if err != nil {
-			serverError <- fmt.Errorf("while creating unix listener: %w", err)
+			serverError <- csnet.WrapSockErr(err, socket)
 			return
 		}
 

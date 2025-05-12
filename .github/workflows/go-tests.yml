@@ -167,7 +167,7 @@ jobs:
 
     - name: Generate codecov configuration
       run: |
-          .github/generate-codecov-yml.sh >> .github/codecov.yml
+          .github/generate-codecov-yml.sh > .github/codecov.yml
 
     - name: Ensure we can do a dynamic build
       run: |
@@ -198,6 +198,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v7
       with:
-        version: v2.0
+        version: v2.1
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

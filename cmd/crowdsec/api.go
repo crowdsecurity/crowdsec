@@ -32,10 +32,6 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 			return nil, errors.New("plugins are enabled, but the plugin_config section is missing in the configuration")
 		}
 
-		if cConfig.ConfigPaths.NotificationDir == "" {
-			return nil, errors.New("plugins are enabled, but config_paths.notification_dir is not defined")
-		}
-
 		if cConfig.ConfigPaths.PluginDir == "" {
 			return nil, errors.New("plugins are enabled, but config_paths.plugin_dir is not defined")
 		}
