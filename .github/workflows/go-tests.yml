@@ -167,7 +167,7 @@ jobs:
 
     - name: Generate codecov configuration
       run: |
-          .github/generate-codecov-yml.sh >> .github/codecov.yml
+          .github/generate-codecov-yml.sh > .github/codecov.yml
 
     - name: Ensure we can do a dynamic build
       run: |
