@@ -66,7 +66,7 @@ bats-environment:
 bats-check-requirements:  ## Check dependencies for functional tests
 	@$(TEST_DIR)/bin/check-requirements
 
-bats-update-tools:  ## Install/update tools required for functional tests
+bats-tools:  ## Install/update tools required for functional tests
 	# yq v4.44.3
 	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@bbdd97482f2d439126582a59689eb1c855944955
 	# cfssl v1.6.5
@@ -86,7 +86,7 @@ bats-build: bats-environment  ## Build binaries for functional tests
 	@install -m 0755 cmd/notification-*/notification-* $(BATS_PLUGIN_DIR)/
 
 # Create a reusable package with initial configuration + data
-bats-fixture: bats-check-requirements bats-update-tools  ## Build fixture for functional tests
+bats-fixture: bats-check-requirements bats-tools  ## Build fixture for functional tests
 	@echo "Creating functional test fixture."
 	@$(TEST_DIR)/instance-data make
 
