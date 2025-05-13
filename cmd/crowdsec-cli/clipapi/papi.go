@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
@@ -76,17 +74,17 @@ func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Clie
 
 	lastTimestampStr, err := db.GetConfigItem(ctx, apiserver.PapiPullKey)
 	if err != nil {
-		lastTimestampStr = ptr.Of("never")
+		lastTimestampStr = "never"
 	}
 
 	// both can and did happen
-	if lastTimestampStr == nil || *lastTimestampStr == "0001-01-01T00:00:00Z" {
-		lastTimestampStr = ptr.Of("never")
+	if lastTimestampStr == "" || lastTimestampStr == "0001-01-01T00:00:00Z" {
+		lastTimestampStr = "never"
 	}
 
 	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
 	fmt.Fprintf(out, "Console plan: %s\n", perms.Plan)
-	fmt.Fprintf(out, "Last order received: %s\n", *lastTimestampStr)
+	fmt.Fprintf(out, "Last order received: %s\n", lastTimestampStr)
 	fmt.Fprint(out, "PAPI subscriptions:\n")
 
 	for _, sub := range perms.Categories {

@@ -25,5 +25,5 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: crowdsecurity/crowdsec
-          short-description: ${{ github.event.repository.description }}
+          short-description: "Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours."
           readme-filepath: "./docker/README.md"

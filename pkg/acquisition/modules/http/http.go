@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -38,6 +39,7 @@ type HttpConfiguration struct {
 	// IPFilter                       []string           `yaml:"ip_filter"`
 	// ChunkSize                      *int64             `yaml:"chunk_size"`
 	ListenAddr                        string             `yaml:"listen_addr"`
+	ListenSocket                      string             `yaml:"listen_socket"`
 	Path                              string             `yaml:"path"`
 	AuthType                          string             `yaml:"auth_type"`
 	BasicAuth                         *BasicAuthConfig   `yaml:"basic_auth"`
@@ -89,8 +91,8 @@ func (h *HTTPSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (hc *HttpConfiguration) Validate() error {
-	if hc.ListenAddr == "" {
-		return errors.New("listen_addr is required")
+	if hc.ListenAddr == "" && hc.ListenSocket == "" {
+		return errors.New("listen_addr or listen_socket is required")
 	}
 
 	if hc.Path == "" {
@@ -350,6 +352,11 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 			return
 		}
 
+		if r.RemoteAddr == "@" {
+			//We check if request came from unix socket and if so we set to loopback
+			r.RemoteAddr = "127.0.0.1:65535"
+		}
+
 		err := h.processRequest(w, r, &h.Config, out)
 		if err != nil {
 			h.logger.Errorf("failed to process request from '%s': %s", r.RemoteAddr, err)
@@ -396,7 +403,38 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	}
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/http/server")
+		if h.Config.ListenSocket == "" {
+			return nil
+		}
+
+		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
+		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
+		_ = os.Remove(h.Config.ListenSocket)
+		listener, err := net.Listen("unix", h.Config.ListenSocket)
+		if err != nil {
+			return csnet.WrapSockErr(err, h.Config.ListenSocket)
+		}
+		if h.Config.TLS != nil {
+			err := h.Server.ServeTLS(listener, h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
+			if err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("https server failed: %w", err)
+			}
+		} else {
+			err := h.Server.Serve(listener)
+			if err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("http server failed: %w", err)
+			}
+		}
+
+		return nil
+	})
+
+	t.Go(func() error {
+		if h.Config.ListenAddr == "" {
+			return nil
+		}
+
+		defer trace.CatchPanic("crowdsec/acquis/http/server/tcp")
 
 		if h.Config.TLS != nil {
 			h.logger.Infof("start https server on %s", h.Config.ListenAddr)

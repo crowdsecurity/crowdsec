@@ -9,7 +9,7 @@ import (
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/cstime"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -30,7 +30,6 @@ const (
 
 func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
 	maxItems := 0
-	maxAge := ""
 
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
 		return nil, errors.New("max_items can't be zero or negative")
@@ -40,14 +39,10 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		maxItems = *config.MaxItems
 	}
 
-	if config.MaxAge != nil && *config.MaxAge != "" {
-		maxAge = *config.MaxAge
-	}
-
 	// Init & Start cronjob every minute for alerts
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, ctx, maxAge, maxItems)
+	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, ctx, time.Duration(config.MaxAge), maxItems)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
 	}
@@ -56,7 +51,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 	// Init & Start cronjob every hour for bouncers/agents
 	if config.AgentsGC != nil {
 		if config.AgentsGC.Cert != nil {
-			duration, err := ParseDuration(*config.AgentsGC.Cert)
+			duration, err := cstime.ParseDurationWithDays(*config.AgentsGC.Cert)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing agents cert auto-delete duration: %w", err)
 			}
@@ -65,7 +60,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.AgentsGC.LoginPassword != nil {
-			duration, err := ParseDuration(*config.AgentsGC.LoginPassword)
+			duration, err := cstime.ParseDurationWithDays(*config.AgentsGC.LoginPassword)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing agents login/password auto-delete duration: %w", err)
 			}
@@ -80,7 +75,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 
 	if config.BouncersGC != nil {
 		if config.BouncersGC.Cert != nil {
-			duration, err := ParseDuration(*config.BouncersGC.Cert)
+			duration, err := cstime.ParseDurationWithDays(*config.BouncersGC.Cert)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing bouncers cert auto-delete duration: %w", err)
 			}
@@ -89,7 +84,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.BouncersGC.Api != nil {
-			duration, err := ParseDuration(*config.BouncersGC.Api)
+			duration, err := cstime.ParseDurationWithDays(*config.BouncersGC.Api)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing bouncers api auto-delete duration: %w", err)
 			}
@@ -109,7 +104,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 
 	baJob.SingletonMode()
 
-	metricsJob, err := scheduler.Every(flushInterval).Do(c.flushMetrics, ctx, config.MetricsMaxAge)
+	metricsJob, err := scheduler.Every(flushInterval).Do(c.flushMetrics, ctx, time.Duration(config.MetricsMaxAge))
 	if err != nil {
 		return nil, fmt.Errorf("while starting flushMetrics scheduler: %w", err)
 	}
@@ -129,15 +124,15 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 }
 
 // flushMetrics deletes metrics older than maxAge, regardless if they have been pushed to CAPI or not
-func (c *Client) flushMetrics(ctx context.Context, maxAge *time.Duration) {
-	if maxAge == nil {
-		maxAge = ptr.Of(defaultMetricsMaxAge)
+func (c *Client) flushMetrics(ctx context.Context, maxAge time.Duration) {
+	if maxAge == 0 {
+		maxAge = defaultMetricsMaxAge
 	}
 
 	c.Log.Debugf("flushing metrics older than %s", maxAge)
 
 	deleted, err := c.Ent.Metric.Delete().Where(
-		metric.ReceivedAtLTE(time.Now().UTC().Add(-*maxAge)),
+		metric.ReceivedAtLTE(time.Now().UTC().Add(-maxAge)),
 	).Exec(ctx)
 	if err != nil {
 		c.Log.Errorf("while flushing metrics: %s", err)
@@ -230,7 +225,7 @@ func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig
 	return nil
 }
 
-func (c *Client) FlushAlerts(ctx context.Context, maxAge string, maxItems int) error {
+func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems int) error {
 	var (
 		deletedByAge    int
 		deletedByNbItem int
@@ -255,9 +250,9 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge string, maxItems int) e
 
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 
-	if maxAge != "" {
+	if maxAge != 0 {
 		filter := map[string][]string{
-			"created_before": {maxAge},
+			"created_before": {maxAge.String()},
 		}
 
 		nbDeleted, err := c.DeleteAlertWithFilter(ctx, filter)

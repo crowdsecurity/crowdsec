@@ -147,6 +147,11 @@ teardown() {
 
     # defaults
 
+    config_set 'del(.config_paths.config_dir)'
+    rune -0 cscli config show --key Config.ConfigPaths.ConfigDir
+    assert_output "$configdir"
+    echo "$config" > "$CONFIG_YAML"
+
     config_set 'del(.config_paths.hub_dir)'
     rune -0 cscli hub list
     rune -0 cscli config show --key Config.ConfigPaths.HubDir

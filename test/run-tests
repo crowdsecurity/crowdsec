@@ -26,7 +26,7 @@ fi
 
 dump_backend="$(cat "$LOCAL_INIT_DIR/.backend")"
 if [[ "$DB_BACKEND" != "$dump_backend" ]]; then
-    die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
+    die "Can't run with backend '$DB_BACKEND' because 'make bats-fixture' was ran with '$dump_backend'"
 fi
 
 if [[ $# -ge 1 ]]; then
@@ -37,10 +37,10 @@ if [[ $# -ge 1 ]]; then
         --print-output-on-failure \
         "$@"
 else
-    echo "test files: $TEST_DIR/bats $TEST_DIR/dyn-bats"
+    echo "test files: $TEST_DIR/bats"
     "$TEST_DIR/lib/bats-core/bin/bats" \
         --jobs 1 \
         --timing \
         --print-output-on-failure \
-        "$TEST_DIR/bats" "$TEST_DIR/dyn-bats"
+        "$TEST_DIR/bats"
 fi
