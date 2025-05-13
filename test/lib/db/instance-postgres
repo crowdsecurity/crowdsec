@@ -39,7 +39,6 @@ exec_sql() {
     cmd="${1?Missing required sql command}"
     psql <<< "${cmd}"
     # flush...
-    psql -c "CHECKPOINT;"
 }
 
 setup() {
@@ -93,6 +92,8 @@ case "$1" in
         restore "$@"
         ;;
     exec_sql)
+        PGDATABASE=${PGDATABASE:-crowdsec_test}
+        export PGDATABASE
         shift
         exec_sql "$@"
         ;;
