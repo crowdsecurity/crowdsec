@@ -204,11 +204,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 /* for now mimic a leak routine */
 //LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
 func LeakRoutine(leaky *Leaky) error {
-	var (
-		durationTickerChan = make(<-chan time.Time)
-		durationTicker     *time.Ticker
-		firstEvent         = true
-	)
+	firstEvent := true
 
 	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
 
@@ -233,11 +229,29 @@ func LeakRoutine(leaky *Leaky) error {
 		if err != nil {
 			leaky.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
 			close(leaky.Signal)
-			return fmt.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
+			return fmt.Errorf("problem at bucket initializiation. Bail out %T : %v", f, err)
 		}
 	}
 
 	leaky.logger.Debugf("Leaky routine starting, lifetime : %s", leaky.Duration)
+
+	timer := time.NewTimer(leaky.Duration)
+	defer timer.Stop()
+
+	drain := func() {
+		select {
+			case <-timer.C:
+		default:
+		}
+	}
+
+	reset := func() {
+		if !timer.Stop() {
+			drain()
+		}
+		timer.Reset(leaky.Duration)
+	}
+
 	for {
 		select {
 		/*receiving an event*/
@@ -276,13 +290,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 			// reinitialize the durationTicker when it's not a counter bucket
 			if !leaky.timedOverflow || firstEvent {
-				if firstEvent {
-					durationTicker = time.NewTicker(leaky.Duration)
-					durationTickerChan = durationTicker.C
-					defer durationTicker.Stop()
-				} else {
-					durationTicker.Reset(leaky.Duration)
-				}
+				reset()
 			}
 			firstEvent = false
 			/*we overflowed*/
@@ -301,7 +309,7 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
 		/*we underflow or reach bucket deadline (timers)*/
-		case <-durationTickerChan:
+		case <-timer.C:
 			var (
 				alert types.RuntimeAlert
 				err   error
