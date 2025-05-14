@@ -38,7 +38,6 @@ check_requirements() {
 exec_sql() {
     cmd="${1?Missing required sql command}"
     psql <<< "${cmd}"
-    # flush...
 }
 
 setup() {
