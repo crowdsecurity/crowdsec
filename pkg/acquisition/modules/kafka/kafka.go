@@ -54,6 +54,7 @@ type KafkaSource struct {
 	Config       KafkaConfiguration
 	logger       *log.Entry
 	Reader       *kafka.Reader
+	client       *kafka.Client
 }
 
 func (k *KafkaSource) GetUuid() string {
@@ -148,8 +149,12 @@ func (k *KafkaSource) Dump() any {
 }
 
 func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) error {
-	// Start processing from latest Offset
-	k.Reader.SetOffsetAt(ctx, time.Now())
+	if k.Config.GroupID == "" {
+		err := k.Reader.SetOffset(kafka.LastOffset)
+		if err != nil {
+			return fmt.Errorf("while setting offset for reader on topic '%s': %w", k.Config.Topic, err)
+		}
+	}
 
 	for {
 		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
@@ -270,6 +275,7 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 		}
 		dialer.TLS = tlsConfig
 	}
+
 	return dialer, nil
 }
 
@@ -288,6 +294,8 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry)
 
 	if kc.GroupID != "" {
 		rConf.GroupID = kc.GroupID
+		// kafka-go does not support calling SetOffset while using a consumer group
+		rConf.StartOffset = kafka.LastOffset
 	} else if kc.Partition != 0 {
 		rConf.Partition = kc.Partition
 	} else {
