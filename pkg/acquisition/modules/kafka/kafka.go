@@ -54,7 +54,6 @@ type KafkaSource struct {
 	Config       KafkaConfiguration
 	logger       *log.Entry
 	Reader       *kafka.Reader
-	client       *kafka.Client
 }
 
 func (k *KafkaSource) GetUuid() string {
