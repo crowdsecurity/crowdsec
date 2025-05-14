@@ -91,6 +91,8 @@ case "$1" in
         restore "$@"
         ;;
     exec_sql)
+        PGDATABASE=${PGDATABASE:-crowdsec_test}
+        export PGDATABASE
         shift
         exec_sql "$@"
         ;;
