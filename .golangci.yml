@@ -146,7 +146,6 @@ linters:
       enable-all: true
       disabled-checks:
         - paramTypeCombine
-        - ifElseChain
         - hugeParam
         - commentedOutCode
         - commentedOutImport
@@ -162,6 +161,10 @@ linters:
         - docStub
         - preferFprint
         - importShadow
+
+      settings:
+        ifElseChain:
+          minThreshold: 4
 
     gomoddirectives:
       replace-allow-list:
