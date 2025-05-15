@@ -173,7 +173,6 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID: login,
 		Password:  passwd,
-		Scenarios: itemsForAPI,
 		URL:       apiURL,
 		// I don't believe papi is neede to check enrollement
 		// PapiURL:       papiURL,

@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -122,22 +123,29 @@ func TestWatcherAuth(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
+	updateScenario := func(_ context.Context) ([]string, error) {
+		return []string{"crowdsecurity/test"}, nil
+	}
+
 	// ok auth
 	clientConfig := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+		UpdateScenario: updateScenario,
 	}
 
 	client, err := NewClient(clientConfig)
 	require.NoError(t, err)
 
+	scenarios, err := clientConfig.UpdateScenario(ctx)
+	require.NoError(t, err)
+
 	_, _, err = client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &clientConfig.MachineID,
 		Password:  &clientConfig.Password,
-		Scenarios: clientConfig.Scenarios,
+		Scenarios: scenarios,
 	})
 	require.NoError(t, err)
 
@@ -205,12 +213,16 @@ func TestWatcherUnregister(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
+	updateScenario := func(_ context.Context) ([]string, error) {
+		return []string{"crowdsecurity/test"}, nil
+	}
+
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+		UpdateScenario: updateScenario,
 	}
 
 	client, err := NewClient(mycfg)
@@ -260,12 +272,16 @@ func TestWatcherEnroll(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
+	updateScenario := func(_ context.Context) ([]string, error) {
+		return []string{"crowdsecurity/test"}, nil
+	}
+
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+		UpdateScenario: updateScenario,
 	}
 
 	client, err := NewClient(mycfg)
