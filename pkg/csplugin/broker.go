@@ -209,6 +209,10 @@ func (pb *PluginBroker) loadConfig(path string) error {
 		for _, pluginConfig := range pluginConfigs {
 			SetRequiredFields(&pluginConfig)
 
+			if pluginConfig.Type == "" {
+				return fmt.Errorf("plugin %s has no type", pluginConfig.Name)
+			}
+
 			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
 				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
 			}
