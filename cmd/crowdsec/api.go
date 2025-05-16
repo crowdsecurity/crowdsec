@@ -38,7 +38,7 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 
 		err = pluginBroker.Init(ctx, cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
 		if err != nil {
-			return nil, fmt.Errorf("unable to run plugin broker: %w", err)
+			return nil, fmt.Errorf("plugin broker: %w", err)
 		}
 
 		log.Info("initiated plugin broker")

@@ -19,6 +19,7 @@ setup_file() {
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
     config_set "$(config_get '.config_paths.notification_dir')/http.yaml" '
+        .type="http" |
         .url=strenv(MOCK_URL) |
         .group_wait="5s" |
         .group_threshold=2
