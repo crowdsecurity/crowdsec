@@ -13,6 +13,7 @@ import (
 
 	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
+	dockerTypesEvents "github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -50,6 +51,15 @@ source: docker`,
 			config: `
 mode: cat
 source: docker
+container_name:
+ - toto`,
+			expectedErr: "",
+		},
+		{
+			config: `
+mode: cat
+source: docker
+check_interval: 10s
 container_name:
  - toto`,
 			expectedErr: "",
@@ -271,6 +281,14 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 	}
 
 	return r, nil
+}
+
+// Since we are mocking the docker client, we return channels that will never be used
+func (cli *mockDockerCli) Events(ctx context.Context, options dockerTypesEvents.ListOptions) (<-chan dockerTypesEvents.Message, <-chan error) {
+	eventsChan := make(chan dockerTypesEvents.Message)
+	errChan := make(chan error)
+
+	return eventsChan, errChan
 }
 
 func TestOneShot(t *testing.T) {
