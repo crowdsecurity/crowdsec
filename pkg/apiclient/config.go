@@ -7,6 +7,8 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
+const TokenDBField = "apic_token"
+
 type Config struct {
 	MachineID         string
 	Password          strfmt.Password
@@ -17,4 +19,5 @@ type Config struct {
 	UserAgent         string
 	RegistrationToken string
 	UpdateScenario    func(context.Context) ([]string, error)
+	TokenSave         func(context.Context, string, string) error
 }
