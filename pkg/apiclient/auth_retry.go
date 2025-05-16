@@ -16,7 +16,6 @@ type retryRoundTripper struct {
 	maxAttempts      int
 	retryStatusCodes []int
 	withBackOff      bool
-	onBeforeRequest  func(attempt int)
 }
 
 func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
@@ -50,10 +49,6 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 				return nil, req.Context().Err()
 			case <-time.After(time.Duration(backoff) * time.Second):
 			}
-		}
-
-		if r.onBeforeRequest != nil {
-			r.onBeforeRequest(i)
 		}
 
 		clonedReq := cloneRequest(req)
