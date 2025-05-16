@@ -9,11 +9,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 )
-
-const apicTokenKey = "apic_token"
 
 func (c *Client) GetConfigItem(ctx context.Context, key string) (string, error) {
 	result, err := c.Ent.ConfigItem.Query().Where(configitem.NameEQ(key)).First(ctx)
@@ -53,7 +52,7 @@ func (c *Client) SetConfigItem(ctx context.Context, key string, value string) er
 //   - it is a properly formatted JWT with an "exp" claim,
 //   - it is not expired or near expiry.
 func (c *Client) LoadAPICToken(ctx context.Context, logger logrus.FieldLogger) (string, time.Time, bool) {
-	token, err := c.GetConfigItem(ctx, apicTokenKey)
+	token, err := c.GetConfigItem(ctx, apiclient.TokenDBField) // TokenKey is a constant string representing the key for the token in the database
 	if err != nil {
 		logger.Debugf("error fetching token from DB: %s", err)
 		return "", time.Time{}, false
@@ -78,6 +77,18 @@ func (c *Client) LoadAPICToken(ctx context.Context, logger logrus.FieldLogger) (
 		return "", time.Time{}, false
 	}
 
+	iatFloat, ok := claims["iat"].(float64)
+	if !ok {
+		logger.Debug("token missing 'iat' claim")
+		return "", time.Time{}, false
+	}
+
+	iat := time.Unix(int64(iatFloat), 0)
+	if time.Now().UTC().After(iat.Add(1 * time.Minute)) {
+		logger.Debug("token is more than 1 minute old, not using it")
+		return "", time.Time{}, false
+	}
+
 	expFloat, ok := claims["exp"].(float64)
 	if !ok {
 		logger.Debug("token missing 'exp' claim")
@@ -94,8 +105,8 @@ func (c *Client) LoadAPICToken(ctx context.Context, logger logrus.FieldLogger) (
 }
 
 // SaveAPICToken stores the given JWT token in the local database under the appropriate config item.
-func (c *Client) SaveAPICToken(ctx context.Context, token string) error {
-	if err := c.SetConfigItem(ctx, apicTokenKey, token); err != nil {
+func (c *Client) SaveAPICToken(ctx context.Context, tokenKey string, token string) error {
+	if err := c.SetConfigItem(ctx, tokenKey, token); err != nil {
 		return fmt.Errorf("saving token to db: %w", err)
 	}
 

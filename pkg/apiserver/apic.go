@@ -75,7 +75,11 @@ type apic struct {
 	pullBlocklists bool
 	pullCommunity  bool
 	shareSignals   bool
+
+	TokenSave apiclient.TokenSave
 }
+
+type authCache struct{}
 
 // randomDuration returns a duration value between d-delta and d+delta
 func randomDuration(d time.Duration, delta time.Duration) time.Duration {
@@ -236,6 +240,9 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		VersionPrefix:  "v3",
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
+		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
+			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("while creating api client: %w", err)
@@ -285,7 +292,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return a.dbClient.SaveAPICToken(ctx, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
