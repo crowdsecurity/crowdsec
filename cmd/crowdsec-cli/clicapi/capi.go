@@ -43,13 +43,16 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-
-			return require.CAPI(cfg)
+			// Only require CAPI for subcommands other than 'register'
+			if cmd.Name() != "register" {
+				return require.CAPI(cfg)
+			}
+			return nil
 		},
 	}
 
