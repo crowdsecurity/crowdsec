@@ -286,9 +286,8 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 	}
 }
 
-// Tail live-tailing for logs
-// See: https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
-func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
+func (lc *VLClient) getTailResponse(ctx context.Context) (*http.Response, error) {
+
 	t := time.Now().Add(-1 * lc.config.Since)
 	u := lc.getURLFor("select/logsql/tail", map[string]string{
 		"limit": strconv.Itoa(lc.config.Limit),
@@ -304,23 +303,11 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 		err  error
 	)
 
-	for {
-		resp, err = lc.Get(ctx, u)
-		lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
+	resp, err = lc.Get(ctx, u)
+	lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
 
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil, nil
-			}
-
-			if ok := lc.shouldRetry(); !ok {
-				return nil, fmt.Errorf("error tailing logs: %w", err)
-			}
-
-			continue
-		}
-
-		break
+	if err != nil {
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -333,14 +320,65 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 		}
 	}
 
-	responseChan := make(chan *Log)
+	return resp, nil
+}
 
-	lc.t.Go(func() error {
-		_, _, err = lc.readResponse(ctx, resp, responseChan)
+func (lc *VLClient) getTailResponseWithRetry(ctx context.Context) (*http.Response, error) {
+
+	retryInterval := 2*time.Second
+
+	var (
+		resp *http.Response
+		err  error
+	)
+
+	for {
+		resp, err = lc.getTailResponse(ctx)
 		if err != nil {
-			return fmt.Errorf("error while reading tail response: %w", err)
+			if errors.Is(err, context.Canceled) {
+				return nil, nil
+			}
+
+			if ok := lc.shouldRetry(); !ok {
+				return nil, fmt.Errorf("error tailing logs: %w", err)
+			}
+
+			// Wait a little bit to be nice
+			<- time.After(retryInterval)
+			continue
 		}
 
+		// we got a successful response, reset the retry state
+		lc.failStart = time.Time{}
+		return resp, nil
+	}
+}
+
+// Tail live-tailing for logs
+// See: https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
+func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
+
+	resp, err := lc.getTailResponseWithRetry(ctx)
+	if resp == nil {
+		return nil, err
+	}
+
+	responseChan := make(chan *Log)
+	lc.t.Go(func() error {
+
+		for {
+			_, _, err = lc.readResponse(ctx, resp, responseChan)
+			if err != nil {
+				lc.Logger.Warnf("error while reading tail response: %w", err)
+			} else if ctx.Err() != nil {
+				return nil
+			}
+
+			resp, err = lc.getTailResponseWithRetry(ctx)
+			if resp == nil {
+				return err
+			}
+		}
 		return nil
 	})
 
