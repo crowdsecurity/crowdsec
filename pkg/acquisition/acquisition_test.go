@@ -236,57 +236,57 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 		{
 			TestName: "invalid_yaml_file",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/badyaml.yaml"},
+				AcquisitionFiles: []string{"testdata/badyaml.yaml"},
 			},
-			ExpectedError: "failed to parse test_files/badyaml.yaml: yaml: unmarshal errors",
+			ExpectedError: "failed to parse testdata/badyaml.yaml: yaml: unmarshal errors",
 			ExpectedLen:   0,
 		},
 		{
 			TestName: "invalid_empty_yaml",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/emptyitem.yaml"},
+				AcquisitionFiles: []string{"testdata/emptyitem.yaml"},
 			},
 			ExpectedLen: 0,
 		},
 		{
 			TestName: "basic_valid",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/basic_filemode.yaml"},
+				AcquisitionFiles: []string{"testdata/basic_filemode.yaml"},
 			},
 			ExpectedLen: 2,
 		},
 		{
 			TestName: "missing_labels",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/missing_labels.yaml"},
+				AcquisitionFiles: []string{"testdata/missing_labels.yaml"},
 			},
-			ExpectedError: "missing labels in test_files/missing_labels.yaml",
+			ExpectedError: "missing labels in testdata/missing_labels.yaml",
 		},
 		{
 			TestName: "backward_compat",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/backward_compat.yaml"},
+				AcquisitionFiles: []string{"testdata/backward_compat.yaml"},
 			},
 			ExpectedLen: 2,
 		},
 		{
 			TestName: "bad_type",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
+				AcquisitionFiles: []string{"testdata/bad_source.yaml"},
 			},
-			ExpectedError: "in file test_files/bad_source.yaml (position 0) - unknown data source does_not_exist",
+			ExpectedError: "in file testdata/bad_source.yaml (position 0) - unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/bad_filetype.yaml"},
+				AcquisitionFiles: []string{"testdata/bad_filetype.yaml"},
 			},
-			ExpectedError: "while configuring datasource of type file from test_files/bad_filetype.yaml",
+			ExpectedError: "while configuring datasource of type file from testdata/bad_filetype.yaml",
 		},
 		{
 			TestName: "from_env",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/env.yaml"},
+				AcquisitionFiles: []string{"testdata/env.yaml"},
 			},
 			ExpectedLen: 1,
 		},

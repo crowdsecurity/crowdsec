@@ -18,5 +18,5 @@ format: |
   {{.|toJson}}
 
 #
-output_file: ./out        # notifications will be appended here. optional
+output_file: ${OUTFILE}
 

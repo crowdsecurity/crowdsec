@@ -258,18 +258,18 @@ func TestOneShotAcquisition(t *testing.T) {
 		},
 		{
 			name:          "existing file",
-			dsn:           `wineventlog://test_files/Setup.evtx`,
+			dsn:           `wineventlog://testdata/Setup.evtx`,
 			expectedCount: 24,
 			expectedErr:   "",
 		},
 		{
 			name:          "filter on event_id",
-			dsn:           `wineventlog://test_files/Setup.evtx?event_id=2`,
+			dsn:           `wineventlog://testdata/Setup.evtx?event_id=2`,
 			expectedCount: 1,
 		},
 		{
 			name:          "filter on event_id",
-			dsn:           `wineventlog://test_files/Setup.evtx?event_id=2&event_id=3`,
+			dsn:           `wineventlog://testdata/Setup.evtx?event_id=2&event_id=3`,
 			expectedCount: 24,
 		},
 	}
