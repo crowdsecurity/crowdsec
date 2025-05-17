@@ -17,6 +17,7 @@ setup_file() {
     DUMMY_YAML="$(config_get '.config_paths.notification_dir')/dummy.yaml"
 
     config_set "$DUMMY_YAML" '
+       .type="dummy" |
        .group_wait="5s" |
        .group_threshold=2 |
        .output_file=strenv(tempfile) |
