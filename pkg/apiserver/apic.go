@@ -79,8 +79,6 @@ type apic struct {
 	TokenSave apiclient.TokenSave
 }
 
-type authCache struct{}
-
 // randomDuration returns a duration value between d-delta and d+delta
 func randomDuration(d time.Duration, delta time.Duration) time.Duration {
 	ret := d + time.Duration(rand.Int63n(int64(2*delta))) - delta
