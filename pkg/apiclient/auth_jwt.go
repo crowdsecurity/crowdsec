@@ -138,7 +138,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if t.TokenSave != nil {
 		err = t.TokenSave(ctx, TokenDBField, t.Token)
 		if err != nil {
-			log.Errorf("unable to save token: %w", err)
+			log.Errorf("unable to save token: %s", err)
 		}
 	}
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
