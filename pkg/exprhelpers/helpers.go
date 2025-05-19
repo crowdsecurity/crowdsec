@@ -9,6 +9,7 @@ import (
 	"maps"
 	"math"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/c-robinson/iplib"
 	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
@@ -581,19 +581,19 @@ func IpToRange(params ...any) (any, error) {
 		return "", nil
 	}
 
-	ipAddr := net.ParseIP(ip)
-	if ipAddr == nil {
-		log.Errorf("can't parse IP address '%s'", ip)
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		log.Errorf("can't parse IP address '%s': %v", ip, err)
 		return "", nil
 	}
 
-	ipRange := iplib.NewNet(ipAddr, mask)
-	if ipRange.IP() == nil {
-		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
+	prefix, err := addr.Prefix(mask)
+	if err != nil {
+		log.Errorf("can't create prefix from IP address '%s' and mask '%d': %v", ip, mask, err)
 		return "", nil
 	}
 
-	return ipRange.String(), nil
+	return prefix.String(), nil
 }
 
 // func TimeNow() string {
