@@ -30,7 +30,7 @@ func TestBadConfiguration(t *testing.T) {
 		{
 			name:        "extra configuration key",
 			config:      "foobar: asd.log",
-			expectedErr: "line 1: field foobar not found in type fileacquisition.FileConfiguration",
+			expectedErr: `cannot parse FileAcquisition configuration: [1:1] unknown field "foobar"`,
 		},
 		{
 			name:        "missing filenames",
@@ -47,6 +47,12 @@ func TestBadConfiguration(t *testing.T) {
 			config: `filenames: ["asd.log"]
 exclude_regexps: ["as[a-$d"]`,
 			expectedErr: "could not compile regexp as",
+		},
+		{
+			name: "duplicate keys",
+			config: `filenames: ["asd.log"]
+filenames: ["ase.log"]`,
+			expectedErr: `cannot parse FileAcquisition configuration: [2:1] mapping key "filenames" already defined at [1:1]`,
 		},
 	}
 
@@ -520,7 +526,7 @@ discovery_poll_enable: true
 discovery_poll_interval: "invalid"
 mode: tail
 `,
-			wantErr: "cannot unmarshal !!str `invalid` into time.Duration",
+			wantErr: `cannot parse FileAcquisition configuration: time: invalid duration "invalid"`,
 		},
 		{
 			name: "polling disabled",

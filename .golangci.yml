@@ -97,13 +97,8 @@ linters:
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
         yaml:
           files:
-            - '!**/pkg/acquisition/acquisition.go'
-            - '!**/pkg/acquisition/acquisition_test.go'
             - '!**/pkg/acquisition/modules/appsec/appsec.go'
             - '!**/pkg/acquisition/modules/cloudwatch/cloudwatch.go'
-            - '!**/pkg/acquisition/modules/docker/docker.go'
-            - '!**/pkg/acquisition/modules/file/file.go'
-            - '!**/pkg/acquisition/modules/journalctl/journalctl.go'
             - '!**/pkg/acquisition/modules/kafka/kafka.go'
             - '!**/pkg/acquisition/modules/kinesis/kinesis.go'
             - '!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go'
@@ -497,8 +492,6 @@ linters:
           - noctx
         text: "net.LookupHost must not be called"
     paths:
-      - pkg/yamlpatch/merge.go
-      - pkg/yamlpatch/merge_test.go
       - pkg/time/rate
       - pkg/metabase
       - third_party$

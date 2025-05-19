@@ -12,8 +12,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	yaml "github.com/goccy/go-yaml"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -182,9 +182,9 @@ func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
 func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	j.config = JournalCtlConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &j.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &j.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse JournalCtlSource configuration: %w", err)
+		return fmt.Errorf("cannot parse JournalCtlSource configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if j.config.Mode == "" {
