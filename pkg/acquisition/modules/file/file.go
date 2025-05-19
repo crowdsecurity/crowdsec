@@ -22,7 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -70,9 +70,9 @@ func (f *FileSource) GetUuid() string {
 func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	f.config = FileConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &f.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &f.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse FileAcquisition configuration: %w", err)
+		return fmt.Errorf("cannot parse FileAcquisition configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if f.logger != nil {
