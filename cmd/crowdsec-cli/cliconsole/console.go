@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -85,9 +85,11 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 	c, _ := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
-		Scenarios:     hub.GetInstalledListForAPI(),
 		URL:           apiURL,
 		VersionPrefix: "v3",
+		UpdateScenario: func(_ context.Context) ([]string, error) {
+			return hub.GetInstalledListForAPI(), nil
+		},
 	})
 
 	resp, err := c.Auth.EnrollWatcher(ctx, key, name, tags, overwrite)
@@ -157,12 +159,14 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 		// discard all elements == opt
 
 		j := 0
+
 		for _, o := range opts {
 			if o != opt {
 				opts[j] = o
 				j++
 			}
 		}
+
 		opts = opts[:j]
 	}
 
@@ -323,7 +327,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to serialize configuration: %w", err)
 				}
-				fmt.Println(string(data))
+				fmt.Fprintln(os.Stdout, string(data))
 			case "raw":
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"option", "enabled"})
