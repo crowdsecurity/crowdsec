@@ -571,7 +571,7 @@ func (d *DockerSource) subscribeEvents(ctx context.Context) (<-chan dockerTypesE
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()
 		case <-d.t.Dying():
-			return nil, nil, nil
+			return nil, nil, errors.New("connection aborted, shutting down docker watcher")
 		default:
 		}
 
@@ -594,7 +594,7 @@ func (d *DockerSource) subscribeEvents(ctx context.Context) (<-chan dockerTypesE
 			case <-ctx.Done():
 				return nil, nil, ctx.Err()
 			case <-d.t.Dying():
-				return nil, nil, errors.New("reconnect aborted, shutting down docker watcher")
+				return nil, nil, errors.New("connection aborted, shutting down docker watcher")
 			}
 
 			backoff = max(backoff*backoffFactor, maxBackoff)
@@ -643,6 +643,7 @@ func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *Conta
 			if recErr != nil {
 				return recErr
 			}
+
 			eventsChan, errChan = newEvents, newErr
 
 			d.logger.Info("Successfully reconnected to Docker events")
