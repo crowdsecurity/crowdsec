@@ -563,6 +563,8 @@ func (d *DockerSource) subscribeEvents(ctx context.Context) (<-chan dockerTypesE
 	backoff := initialBackoff
 	retries := 0
 
+	d.logger.Infof("Subscribing to Docker events")
+
 	for {
 		// bail out immediately if the context is canceled
 		select {
@@ -573,15 +575,14 @@ func (d *DockerSource) subscribeEvents(ctx context.Context) (<-chan dockerTypesE
 		default:
 		}
 
-		d.logger.Infof("Attempting to reconnect to Docker events (attempt %d)", retries+1)
-
 		// Try to reconnect
 		eventsChan, errChan := d.Client.Events(ctx, options)
 
 		// Retry if the connection is immediately broken
 		select {
 		case err := <-errChan:
-			d.logger.Errorf("Reconnect failed: %v", err)
+			d.logger.Errorf("Connection to Docker failed (attempt %d): %v", retries+1, err)
+
 			retries++
 
 			d.logger.Infof("Sleeping %s before next retry", backoff)
