@@ -73,6 +73,7 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
  */
 func TestWatcherRegister(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -111,6 +112,7 @@ func TestWatcherRegister(t *testing.T) {
 
 func TestWatcherAuth(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -129,10 +131,10 @@ func TestWatcherAuth(t *testing.T) {
 
 	// ok auth
 	clientConfig := &Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		URL:           apiURL,
-		VersionPrefix: "v1",
+		MachineID:      "test_login",
+		Password:       "test_password",
+		URL:            apiURL,
+		VersionPrefix:  "v1",
 		UpdateScenario: updateScenario,
 	}
 
@@ -179,6 +181,7 @@ func TestWatcherAuth(t *testing.T) {
 
 func TestWatcherUnregister(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -218,10 +221,10 @@ func TestWatcherUnregister(t *testing.T) {
 	}
 
 	mycfg := &Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		URL:           apiURL,
-		VersionPrefix: "v1",
+		MachineID:      "test_login",
+		Password:       "test_password",
+		URL:            apiURL,
+		VersionPrefix:  "v1",
 		UpdateScenario: updateScenario,
 	}
 
@@ -236,6 +239,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 func TestWatcherEnroll(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -277,10 +281,10 @@ func TestWatcherEnroll(t *testing.T) {
 	}
 
 	mycfg := &Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		URL:           apiURL,
-		VersionPrefix: "v1",
+		MachineID:      "test_login",
+		Password:       "test_password",
+		URL:            apiURL,
+		VersionPrefix:  "v1",
 		UpdateScenario: updateScenario,
 	}
 
