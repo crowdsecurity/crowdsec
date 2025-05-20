@@ -12,7 +12,7 @@ import (
 type rawBodyProcessor struct{}
 
 type setterInterface interface {
-	Set(string)
+	Set(value string)
 }
 
 func (*rawBodyProcessor) ProcessRequest(reader io.Reader, v plugintypes.TransactionVariables, options plugintypes.BodyProcessorOptions) error {
