@@ -280,8 +280,7 @@ journalctl_filter:
 
 func TestMain(m *testing.M) {
 	if os.Getenv("USE_SYSTEM_JOURNALCTL") == "" {
-		currentDir, _ := os.Getwd()
-		fullPath := filepath.Join(currentDir, "test_files")
+		fullPath, _ := filepath.Abs("./testdata")
 		os.Setenv("PATH", fullPath+":"+os.Getenv("PATH"))
 	}
 

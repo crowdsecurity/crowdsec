@@ -181,7 +181,18 @@ jobs:
     - name: Unit tests
       run: |
         go install gotest.tools/gotestsum@v1.12.1
+        # make the repo read-only, with the exception of coverage output
+        touch coverage.out
+        chmod -R a-w .
+        chmod u+w coverage.out
         make testcover
+        # ignore changes to codecov.yml
+        if [[ $(git status --porcelain -- . ":(exclude).github/codecov.yml") ]]; then
+          echo "Error: Unit tests should not create or alter files inside the repository. Please use the appropriate testing helpers or otherwise temporary locations."
+          git diff --name-only
+          exit 1
+        fi
+        chmod -R u+w .
 
     # check if some component stubs are missing
     - name: "Build profile: minimal"
