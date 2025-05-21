@@ -26,6 +26,8 @@ var (
 	lapiClient         *ApiClient
 )
 
+type TokenSave func(ctx context.Context, tokenKey string, token string) error
+
 type ApiClient struct {
 	/*The http client used to make requests*/
 	client *http.Client
@@ -147,6 +149,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 			WithStatusCodeConfig(http.StatusServiceUnavailable, 5, true, false),
 			WithStatusCodeConfig(http.StatusGatewayTimeout, 5, true, false),
 		),
+		TokenSave: config.TokenSave,
 	}
 
 	transport, baseURL := createTransport(config.URL)

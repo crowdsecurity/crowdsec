@@ -33,6 +33,7 @@ type JWTTransport struct {
 	Transport         http.RoundTripper
 	UpdateScenario    func(context.Context) ([]string, error)
 	refreshTokenMutex sync.Mutex
+	TokenSave         TokenSave
 }
 
 func (t *JWTTransport) refreshJwtToken() error {
@@ -134,6 +135,12 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	t.Token = response.Token
 
+	if t.TokenSave != nil {
+		err = t.TokenSave(ctx, TokenDBField, t.Token)
+		if err != nil {
+			log.Errorf("unable to save token: %s", err)
+		}
+	}
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
 
 	return nil
