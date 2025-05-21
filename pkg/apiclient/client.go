@@ -26,6 +26,8 @@ var (
 	lapiClient         *ApiClient
 )
 
+type TokenSave func(ctx context.Context, tokenKey string, token string) error
+
 type ApiClient struct {
 	/*The http client used to make requests*/
 	client *http.Client
@@ -110,7 +112,6 @@ func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login st
 	client, err := NewClient(&Config{
 		MachineID:     login,
 		Password:      pwd,
-		Scenarios:     scenarios,
 		URL:           apiURL,
 		PapiURL:       papiURL,
 		VersionPrefix: "v1",
@@ -161,7 +162,6 @@ func NewClient(config *Config) (*ApiClient, error) {
 	t := &JWTTransport{
 		MachineID:      &config.MachineID,
 		Password:       &config.Password,
-		Scenarios:      config.Scenarios,
 		UserAgent:      userAgent,
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
@@ -172,6 +172,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 			WithStatusCodeConfig(http.StatusServiceUnavailable, 5, true, false),
 			WithStatusCodeConfig(http.StatusGatewayTimeout, 5, true, false),
 		),
+		TokenSave: config.TokenSave,
 	}
 
 	transport, baseURL := createTransport(config.URL)

@@ -21,6 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -120,7 +121,7 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 
 		log.Infof("Central API credentials written to '%s'", dumpFile)
 	} else {
-		fmt.Println(string(apiConfigDump))
+		fmt.Fprintln(os.Stdout, string(apiConfigDump))
 	}
 
 	if msg := reload.UserMessage(); msg != "" {
@@ -154,8 +155,8 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	return cmd
 }
 
-// queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolle in the console.
-func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, string, error) {
+// queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolled in the console.
+func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, string, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
 		return false, false, "", err
@@ -172,7 +173,6 @@ func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID: login,
 		Password:  passwd,
-		Scenarios: itemsForAPI,
 		URL:       apiURL,
 		// I don't believe papi is neede to check enrollement
 		// PapiURL:       papiURL,
@@ -198,6 +198,10 @@ func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 		return false, false, "", err
 	}
 
+	if err := db.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token); err != nil {
+		return false, false, "", err
+	}
+
 	client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
 	if client.IsEnrolled() {
@@ -207,7 +211,7 @@ func queryCAPIStatus(ctx context.Context, hub *cwhub.Hub, credURL string, login 
 	return true, false, "", nil
 }
 
-func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) error {
+func (cli *cliCapi) Status(ctx context.Context, db *database.Client, out io.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
 
 	if err := require.CAPIRegistered(cfg); err != nil {
@@ -219,7 +223,7 @@ func (cli *cliCapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
-	auth, enrolled, subType, err := queryCAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
+	auth, enrolled, subType, err := queryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
@@ -264,12 +268,20 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			hub, err := require.Hub(cli.cfg(), nil)
+			cfg := cli.cfg()
+			ctx := cmd.Context()
+
+			hub, err := require.Hub(cfg, nil)
 			if err != nil {
 				return err
 			}
 
-			return cli.Status(cmd.Context(), color.Output, hub)
+			db, err := require.DBClient(ctx, cfg.DbConfig)
+			if err != nil {
+				return err
+			}
+
+			return cli.Status(ctx, db, color.Output, hub)
 		},
 	}
 

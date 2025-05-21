@@ -35,6 +35,7 @@ type JWTTransport struct {
 	TokenRefreshChan chan struct{} // will write to this channel when the token is refreshed
 
 	refreshTokenMutex sync.Mutex
+	TokenSave         TokenSave
 }
 
 func (t *JWTTransport) refreshJwtToken() error {
@@ -138,6 +139,12 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	t.Token = response.Token
 
+	if t.TokenSave != nil {
+		err = t.TokenSave(ctx, TokenDBField, t.Token)
+		if err != nil {
+			log.Errorf("unable to save token: %s", err)
+		}
+	}
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
 
 	select {
