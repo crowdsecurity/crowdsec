@@ -461,6 +461,11 @@ linters:
           - containedctx
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
+
+      - linters:
+          - staticcheck
+        text: "SA1019: yamlpatch.NewPatcher is deprecated: use csyaml.NewPatcher instead"
+
     paths:
       - pkg/time/rate
       - pkg/metabase
