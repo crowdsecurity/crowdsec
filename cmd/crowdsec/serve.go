@@ -323,7 +323,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}
-	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnShutdown {
+	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
 		log.Warning("Unregistering watcher")
 		lapiClient, err := apiclient.GetLAPIClient()
 		if err != nil {
