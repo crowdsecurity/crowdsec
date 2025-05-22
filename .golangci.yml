@@ -491,6 +491,11 @@ linters:
       - linters:
           - noctx
         text: "net.LookupHost must not be called"
+
+      - linters:
+          - staticcheck
+        text: "SA1019: yamlpatch.NewPatcher is deprecated: use csyaml.NewPatcher instead"
+
     paths:
       - pkg/time/rate
       - pkg/metabase
