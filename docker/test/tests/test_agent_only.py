@@ -57,7 +57,7 @@ def test_unregister_on_exit(crowdsec, flavor: str) -> None:
     }
 
     cs_lapi = crowdsec(name=lapiname, environment=lapi_env, flavor=flavor)
-    cs_agent = crowdsec(name=agentname, environment=agent_env, flavor=flavor)
+    cs_agent = crowdsec(name=agentname, environment=agent_env, flavor=flavor, stop_timeout=5)
 
     with cs_lapi as lapi:
         lapi.wait_for_log("*CrowdSec Local API listening on *:8080*")
