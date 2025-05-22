@@ -92,6 +92,7 @@ teardown() {
 }
 
 @test "register, validate and then remove a machine" {
+    ./instance-crowdsec start
     rune -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_stderr --partial "Successfully registered to Local API (LAPI)"
     assert_stderr --partial "Local API credentials written to '/dev/null'"
@@ -118,6 +119,7 @@ teardown() {
     rune -0 cscli machines list -o json
     rune -0 jq '. | length' <(output)
     assert_output 1
+    ./instance-crowdsec stop
 }
 
 @test "cscli machines prune" {
