@@ -63,7 +63,6 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 		pullTomb:     tomb.Tomb{},
 		pushTomb:     tomb.Tomb{},
 		metricsTomb:  tomb.Tomb{},
-		scenarioList: make([]string, 0),
 		consoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  ptr.Of(false),
 			ShareTaintedScenarios: ptr.Of(false),
@@ -99,7 +98,7 @@ func assertTotalValidDecisionCount(t *testing.T, dbClient *database.Client, coun
 	assert.Len(t, d, count)
 }
 
-func jsonMarshalX(v interface{}) []byte {
+func jsonMarshalX(v any) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
@@ -932,7 +931,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	blocklistConfigItemName := "blocklist:blocklist1:last_pull"
 	lastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
-	assert.NotEmpty(t, *lastPullTimestamp)
+	assert.NotEmpty(t, lastPullTimestamp)
 
 	// new call should return 304 and should not change lastPullTimestamp
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
@@ -944,7 +943,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	require.NoError(t, err)
 	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
-	assert.Equal(t, *lastPullTimestamp, *secondLastPullTimestamp)
+	assert.Equal(t, lastPullTimestamp, secondLastPullTimestamp)
 }
 
 func TestAPICPullTopBLCacheForceCall(t *testing.T) {

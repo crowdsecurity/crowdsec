@@ -849,6 +849,33 @@ paths:
           description: "missing ip_or_range"
           schema:
             $ref: "#/definitions/ErrorResponse"
+  /allowlists/check:
+    post:
+      description: Check multiple IPs or ranges against allowlists
+      summary: postCheckAllowlist
+      tags:
+        - watchers
+      operationId: postCheckAllowlist
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          description: IP addresses or CIDR ranges to check
+          schema:
+            $ref: '#/definitions/BulkCheckAllowlistRequest'
+      responses:
+        '200':
+          description: Allowlists check results for each target
+          schema:
+            $ref: '#/definitions/BulkCheckAllowlistResponse'
+        '400':
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 definitions:
   WatcherRegistrationRequest:
     title: WatcherRegistrationRequest
@@ -1412,6 +1439,40 @@ definitions:
       reason:
         type: string
         description: 'item that matched the provided value'
+  BulkCheckAllowlistRequest:
+    type: object
+    properties:
+      targets:
+        type: array
+        items:
+          type: string
+        description: Array of IP addresses or CIDR ranges to check
+    required:
+      - targets
+  BulkCheckAllowlistResult:
+    type: object
+    properties:
+      target:
+        type: string
+        description: The IP or range that is allowlisted
+      allowlists:
+        type: array
+        items:
+          type: string
+        description: Matching ip or range, name of the allowlist and comment related to the target
+    required:
+      - target
+      - allowlists
+  BulkCheckAllowlistResponse:
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          $ref: '#/definitions/BulkCheckAllowlistResult'
+        description: Per-target allowlist membership results
+    required:
+      - results
   ErrorResponse:
     type: "object"
     required:

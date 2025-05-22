@@ -30,6 +30,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -68,7 +70,7 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 				return fmt.Errorf("loading api client: %w", err)
 			}
 
-			return require.Notifications(cfg)
+			return nil
 		},
 	}
 
@@ -174,7 +176,7 @@ func (cli *cliNotifications) newListCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to serialize notification configuration: %w", err)
 				}
-				fmt.Printf("%s", string(x))
+				fmt.Fprint(os.Stdout, string(x))
 			} else if cfg.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"Name", "Type", "Profile name"})
@@ -221,19 +223,19 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
 			}
 			if cfg.Cscli.Output == "human" || cfg.Cscli.Output == "raw" {
-				fmt.Printf(" - %15s: %15s\n", "Type", ncfg.Config.Type)
-				fmt.Printf(" - %15s: %15s\n", "Name", ncfg.Config.Name)
-				fmt.Printf(" - %15s: %15s\n", "Timeout", ncfg.Config.TimeOut)
-				fmt.Printf(" - %15s: %15s\n", "Format", ncfg.Config.Format)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Type", ncfg.Config.Type)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Name", ncfg.Config.Name)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Timeout", ncfg.Config.TimeOut)
+				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Format", ncfg.Config.Format)
 				for k, v := range ncfg.Config.Config {
-					fmt.Printf(" - %15s: %15v\n", k, v)
+					fmt.Fprintf(os.Stdout, " - %15s: %15v\n", k, v)
 				}
 			} else if cfg.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(cfg, "", " ")
 				if err != nil {
 					return fmt.Errorf("failed to serialize notification configuration: %w", err)
 				}
-				fmt.Printf("%s", string(x))
+				fmt.Fprint(os.Stdout, string(x))
 			}
 
 			return nil
@@ -286,6 +288,14 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
+
+			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
+				log.Infof("Crowdsec CTI helper enabled")
+				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+					log.Errorf("failed to init crowdsec cti: %s", err)
+				}
+			}
+
 			// Create a single profile with plugin name as notification name
 			return pluginBroker.Init(ctx, cfg.PluginConfig, []*csconfig.ProfileCfg{
 				{
@@ -390,6 +400,27 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if alertOverride != "" {
 				if err := json.Unmarshal([]byte(alertOverride), alert); err != nil {
 					return fmt.Errorf("can't parse data in the alert flag: %w", err)
+				}
+			}
+
+			if cfg.API.Server != nil && cfg.API.Server.DbConfig != nil {
+				dbClient, err := database.NewClient(ctx, cfg.API.Server.DbConfig)
+				if err != nil {
+					log.Errorf("failed to get database client: %s", err)
+				}
+
+				err = exprhelpers.Init(dbClient)
+				if err != nil {
+					log.Errorf("failed to init expr helpers: %s", err)
+				}
+			} else {
+				log.Warnf("no database client available, expr helpers will not be available")
+			}
+
+			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
+				log.Infof("Crowdsec CTI helper enabled")
+				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+					log.Errorf("failed to init crowdsec cti: %s", err)
 				}
 			}
 

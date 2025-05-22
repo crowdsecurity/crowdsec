@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -68,7 +67,6 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	credentials   *csconfig.ApiCredentialsCfg
-	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
@@ -76,6 +74,8 @@ type apic struct {
 	pullBlocklists bool
 	pullCommunity  bool
 	shareSignals   bool
+
+	TokenSave apiclient.TokenSave
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -197,7 +197,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
 		metricsTomb:               tomb.Tomb{},
-		scenarioList:              make([]string, 0),
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
@@ -214,8 +213,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		shareSignals:              *config.Sharing,
 	}
 
-	password := strfmt.Password(config.Credentials.Password)
-
 	apiURL, err := url.Parse(config.Credentials.URL)
 	if err != nil {
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.URL, err)
@@ -226,47 +223,66 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.scenarioList, err = ret.FetchScenariosListFromDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("while fetching scenarios from db: %w", err)
-	}
-
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
-		Password:       password,
+		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
-		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
+		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
+			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("while creating api client: %w", err)
 	}
 
-	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
-	// Explicit authentication will provoke a useless supplementary call to CAPI
-	scenarios, err := ret.FetchScenariosListFromDB(ctx)
-	if err != nil {
-		return ret, fmt.Errorf("get scenario in db: %w", err)
+	err = ret.Authenticate(ctx, config)
+
+	return ret, err
+}
+
+// Authenticate ensures the API client is authorized to communicate with the CAPI.
+// It attempts to reuse a previously saved JWT token from the database, falling back to
+// an authentication request if the token is missing, invalid, or expired.
+//
+// If a new token is obtained, it is saved back to the database for caching.
+func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
+	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
+		log.Debug("using valid token from DB")
+
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
+		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+
+		return nil
 	}
 
-	authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
+	log.Debug("No token found, authenticating")
+
+	scenarios, err := a.FetchScenariosListFromDB(ctx)
+	if err != nil {
+		return fmt.Errorf("get scenario in db: %w", err)
+	}
+
+	password := strfmt.Password(config.Credentials.Password)
+
+	authResp, _, err := a.apiClient.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &config.Credentials.Login,
 		Password:  &password,
 		Scenarios: scenarios,
 	})
 	if err != nil {
-		return ret, fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
+		return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
 	}
 
-	if err = ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-		return ret, fmt.Errorf("unable to parse jwt expiration: %w", err)
+	if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return fmt.Errorf("unable to parse jwt expiration: %w", err)
 	}
 
-	ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return ret, err
+	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
@@ -439,14 +455,9 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 				filter["scopes"] = []string{*scope}
 			}
 
-			dbCliRet, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
+			dbCliDel, _, err := a.dbClient.ExpireDecisionsWithFilter(ctx, filter)
 			if err != nil {
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
-			}
-
-			dbCliDel, err := strconv.Atoi(dbCliRet)
-			if err != nil {
-				return 0, fmt.Errorf("converting db ret %d: %w", dbCliDel, err)
 			}
 
 			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
@@ -588,6 +599,8 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	var err error
 
+	hasPulledAllowlists := false
+
 	// A mutex with TryLock would be a bit simpler
 	// But go does not guarantee that TryLock will be able to acquire the lock even if it is available
 	select {
@@ -649,7 +662,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	// process deleted decisions
 	nbDeleted, err := a.HandleDeletedDecisionsV3(ctx, data.Deleted, deleteCounters)
 	if err != nil {
-		return err
+		log.Errorf("could not delete decisions from CAPI: %s", err)
 	}
 
 	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
@@ -657,8 +670,10 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	// Update allowlists before processing decisions
 	if data.Links != nil {
 		if len(data.Links.Allowlists) > 0 {
+			hasPulledAllowlists = true
+
 			if err := a.UpdateAllowlists(ctx, data.Links.Allowlists, forcePull); err != nil {
-				return fmt.Errorf("while updating allowlists: %w", err)
+				log.Errorf("could not update allowlists from CAPI: %s", err)
 			}
 		}
 	}
@@ -675,7 +690,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 		err = a.SaveAlerts(ctx, alertsFromCapi, addCounters, deleteCounters)
 		if err != nil {
-			return fmt.Errorf("while saving alerts: %w", err)
+			log.Errorf("could not save alert for CAPI pull: %s", err)
 		}
 	} else {
 		if a.pullCommunity {
@@ -689,8 +704,19 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 	if data.Links != nil {
 		if len(data.Links.Blocklists) > 0 {
 			if err := a.UpdateBlocklists(ctx, data.Links.Blocklists, addCounters, forcePull); err != nil {
-				return fmt.Errorf("while updating blocklists: %w", err)
+				log.Errorf("could not update blocklists from CAPI: %s", err)
 			}
+		}
+	}
+
+	if hasPulledAllowlists {
+		deleted, err := a.dbClient.ApplyAllowlistsToExistingDecisions(ctx)
+		if err != nil {
+			log.Errorf("could not apply allowlists to existing decisions: %s", err)
+		}
+
+		if deleted > 0 {
+			log.Infof("deleted %d decisions from allowlists", deleted)
 		}
 	}
 
@@ -961,7 +987,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
 
 	var (
-		lastPullTimestamp *string
+		lastPullTimestamp string
 		err               error
 	)
 
@@ -978,10 +1004,10 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	}
 
 	if !hasChanged {
-		if lastPullTimestamp == nil {
+		if lastPullTimestamp == "" {
 			log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
 		} else {
-			log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
+			log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, lastPullTimestamp)
 		}
 
 		return nil

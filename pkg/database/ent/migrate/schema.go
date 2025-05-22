@@ -148,7 +148,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "name", Type: field.TypeString, Unique: true},
-		{Name: "value", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString, SchemaType: map[string]string{"mysql": "longtext", "postgres": "text"}},
 	}
 	// ConfigItemsTable holds the schema information for the "config_items" table.
 	ConfigItemsTable = &schema.Table{

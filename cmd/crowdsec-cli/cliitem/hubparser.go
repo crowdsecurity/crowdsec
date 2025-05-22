@@ -76,10 +76,11 @@ cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs -i
 cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs --interactive`,
 		},
 		inspectHelp: cliHelp{
-			example: `# Display metadata, state, metrics and ancestor collections of parsers (installed or not).
+			example: `# Display metadata, state and ancestor collections of parsers (installed or not).
 cscli parsers inspect crowdsecurity/httpd-logs crowdsecurity/sshd-logs
 
-# Don't collect metrics (avoid error if crowdsec is not running).
+# If the parser is installed, its metrics are collected and shown as well (with an error if crowdsec is not running).
+# To avoid this, use --no-metrics.
 cscli parsers inspect crowdsecurity/httpd-logs --no-metrics
 
 # Display difference between a tainted item and the latest one.

@@ -28,7 +28,7 @@ func (cli *cliMetrics) NewCommand() *cobra.Command {
 		Use:   "metrics",
 		Short: "Display crowdsec prometheus metrics.",
 		Long:  `Fetch metrics from a Local API server and display them`,
-		Example: `# Show all Metrics, skip empty tables (same as "cecli metrics show")
+		Example: `# Show all Metrics, skip empty tables (same as "cscli metrics show")
 cscli metrics
 
 # Show only some metrics, connect to a different url
