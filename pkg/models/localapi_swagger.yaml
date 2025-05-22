@@ -319,6 +319,7 @@ paths:
           description: "400 response"
           schema:
             $ref: "#/definitions/ErrorResponse"
+  /watchers/self:
     delete:
       description: watcher self-delete
       summary: DeleteWatcher
