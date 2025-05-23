@@ -808,17 +808,24 @@ update-notifier-motd.timer              enabled enabled
     rune -1 cscli setup validate /dev/stdin <<-EOT
 	se tup:
 	EOT
-    assert_output - <<-EOT
+    assert_stderr --partial "invalid setup file"
+    rune -0 plaintext < <(output)
+    assert_output --partial - <<-EOT
 	[1:1] unknown field "se tup"
-	>  1 | se tup:
+	>  1 | se tup: null
 	       ^
 	EOT
-    assert_stderr --partial "invalid setup file"
 
     rune -1 cscli setup validate /dev/stdin <<-EOT
 	setup:
 	alsdk al; sdf
 	EOT
-    assert_output "while parsing setup file: yaml: line 2: could not find expected ':'"
     assert_stderr --partial "invalid setup file"
+    rune -0 plaintext < <(output)
+    assert_output --partial - <<-EOT
+	[2:1] string was used where sequence is expected
+	   1 | setup:
+	>  2 | alsdk al; sdf
+	       ^
+	EOT
 }
