@@ -115,7 +115,6 @@ func GetConfig() Config {
 func NewDefaultConfig() *Config {
 	logLevel := log.InfoLevel
 	commonCfg := CommonCfg{
-		Daemonize: false,
 		LogMedia:  "stdout",
 		LogLevel:  &logLevel,
 	}
