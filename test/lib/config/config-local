@@ -77,7 +77,6 @@ config_generate() {
        "${CONFIG_DIR}/notifications/"
 
     yq e '
-    .common.daemonize=true |
     del(.common.pid_dir) |
     .common.log_level="info" |
     .common.log_dir=strenv(LOG_DIR) |

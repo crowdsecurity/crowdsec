@@ -301,22 +301,12 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.OnlineClient = nil
 		}
-		// if the api is disabled as well, just read file and exit, don't daemonize
-		if cConfig.DisableAPI {
-			cConfig.Common.Daemonize = false
-		}
 
-		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
+		log.Infof("single file mode : log_media=%s", cConfig.Common.LogMedia)
 	}
 
 	if cConfig.Common.PidDir != "" {
 		log.Warn("Deprecation warning: the pid_dir config can be safely removed and is not required")
-	}
-
-	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
-		log.Debug("Daemonization is not supported on Windows, disabling")
-
-		cConfig.Common.Daemonize = false
 	}
 
 	// recap of the enabled feature flags, because logging
