@@ -80,3 +80,27 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		gctx.Status(http.StatusCreated)
 	}
 }
+
+func (c *Controller) DeleteMachine(gctx *gin.Context) {
+	ctx := gctx.Request.Context()
+
+	machineID, err := getMachineIDFromContext(gctx)
+
+	if err != nil {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+	if machineID == "" {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": "machineID not found in claims"})
+		return
+	}
+
+	if err := c.DBClient.DeleteWatcher(ctx, machineID); err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+
+	log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": machineID}).Info("Deleted machine")
+
+	gctx.Status(http.StatusNoContent)
+}

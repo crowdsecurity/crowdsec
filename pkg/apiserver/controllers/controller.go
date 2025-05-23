@@ -130,6 +130,7 @@ func (c *Controller) NewV1() error {
 		jwtAuth.GET("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.HEAD("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.POST("/allowlists/check", c.HandlerV1.CheckInAllowlistBulk)
+		jwtAuth.DELETE("/watchers/self", c.HandlerV1.DeleteMachine)
 	}
 
 	apiKeyAuth := groupV1.Group("")

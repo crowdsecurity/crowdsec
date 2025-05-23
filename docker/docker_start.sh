@@ -474,6 +474,8 @@ else
     conf_set '.api.server.enable=true'
 fi
 
+conf_set_if "$UNREGISTER_ON_EXIT" '.api.client.unregister_on_exit=env(UNREGISTER_ON_EXIT)'
+
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
     ARGS="-c $CONFIG_FILE"
