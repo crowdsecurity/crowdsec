@@ -22,7 +22,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -125,7 +124,7 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 					threshold = 1
 				}
 
-				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
+				for chunk := range slices.Chunk(tmpAlerts, threshold) {
 					if err := pb.pushNotificationsToPlugin(ctx, pluginName, chunk); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
