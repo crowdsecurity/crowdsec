@@ -109,3 +109,21 @@ bats-lint:  ## Static checks for the test scripts.
 bats-test-package: bats-environment  ## CI only - test a binary package (deb, rpm, ...)
 	$(TEST_DIR)/instance-data make
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
+
+.PHONY: .bats-mysql
+bats-mysql:  ## Start a mysql container
+	docker run -d \
+		--name mysql \
+		-e MYSQL_ROOT_PASSWORD=secret \
+		-p 3306:3306 \
+		docker.io/library/mysql:8.0 \
+		--default-authentication-plugin=mysql_native_password
+
+.PHONY: .bats-postgres
+bats-postgres:  ## Start a postgres container
+	docker run -d \
+		--name postgres \
+		-e POSTGRES_PASSWORD=secret \
+		-p 5432:5432 \
+		docker.io/library/postgres:17
+
