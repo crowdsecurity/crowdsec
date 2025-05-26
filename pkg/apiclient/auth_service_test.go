@@ -188,7 +188,7 @@ func TestWatcherUnregister(t *testing.T) {
 	defer teardown()
 	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
-	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/self", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		assert.Equal(t, int64(0), r.ContentLength)
 		w.WriteHeader(http.StatusOK)
