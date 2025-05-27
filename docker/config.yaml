@@ -1,5 +1,4 @@
 common:
-  daemonize: true
   log_media: stdout
   log_level: info
   log_dir: /var/log/
