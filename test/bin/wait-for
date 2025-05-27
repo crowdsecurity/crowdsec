@@ -15,22 +15,31 @@ DEFAULT_TIMEOUT = 30
 # TODO: print unmatched patterns
 
 
-async def terminate(p):
-    # Terminate the process group (shell, crowdsec plugins)
+async def terminate_group(p: asyncio.subprocess.Process):
+    """
+    Terminate the process group (shell, crowdsec plugins)
+    """
     try:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM)
     except ProcessLookupError:
         pass
 
 
-async def monitor(cmd, args, want_out, want_err, timeout):
-    """Monitor a process and terminate it if a pattern is matched in stdout or stderr.
+async def monitor(
+        cmd: str,
+        args: list[str],
+        out_regex: re.Pattern[str] | None,
+        err_regex: re.Pattern[str] | None,
+        timeout: float
+) -> int:
+    """
+    Run a subprocess, monitor its stdout/stderr for matches, and handle timeouts or pattern hits.
 
     Args:
         cmd: The command to run.
         args: A list of arguments to pass to the command.
-        stdout: A regular expression pattern to search for in stdout.
-        stderr: A regular expression pattern to search for in stderr.
+        out_regex: A compiled regular expression to search for in stdout.
+        err_regex: A compiled regular expression to search for in stderr.
         timeout: The maximum number of seconds to wait for the process to terminate.
 
     Returns:
@@ -39,17 +48,18 @@ async def monitor(cmd, args, want_out, want_err, timeout):
 
     status = None
 
-    async def read_stream(stream, outstream, pattern):
+    async def read_stream(stream: asyncio.StreamReader | None, out, pattern: re.Pattern[str] | None):
         nonlocal status
         if stream is None:
             return
+
         while True:
             line = await stream.readline()
             if line:
                 line = line.decode('utf-8')
-                outstream.write(line)
+                out.write(line)
                 if pattern and pattern.search(line):
-                    await terminate(process)
+                    await terminate_group(process)
                     # this is nasty.
                     # if we timeout, we want to return a different exit code
                     # in case of a match, so that the caller can tell
@@ -76,9 +86,6 @@ async def monitor(cmd, args, want_out, want_err, timeout):
         # (required to kill child processes when cmd is a shell)
         preexec_fn=os.setsid)
 
-    out_regex = re.compile(want_out) if want_out else None
-    err_regex = re.compile(want_err) if want_err else None
-
     # Apply a timeout
     try:
         await asyncio.wait_for(
@@ -90,27 +97,38 @@ async def monitor(cmd, args, want_out, want_err, timeout):
         if status is None:
             status = process.returncode
     except asyncio.TimeoutError:
-        await terminate(process)
+        await terminate_group(process)
         status = 241
 
     # Return the same exit code, stdout and stderr as the spawned process
-    return status
+    return status or 0
+
+
+class Args(argparse.Namespace):
+    cmd: str = ''
+    args: list[str] = []
+    out: str = ''
+    err: str = ''
+    timeout: float = DEFAULT_TIMEOUT
 
 
 async def main():
     parser = argparse.ArgumentParser(
         description='Monitor a process and terminate it if a pattern is matched in stdout or stderr.')
-    parser.add_argument('cmd', help='The command to run.')
-    parser.add_argument('args', nargs=argparse.REMAINDER, help='A list of arguments to pass to the command.')
-    parser.add_argument('--out', default='', help='A regular expression pattern to search for in stdout.')
-    parser.add_argument('--err', default='', help='A regular expression pattern to search for in stderr.')
-    parser.add_argument('--timeout', type=float, default=DEFAULT_TIMEOUT)
-    args = parser.parse_args()
+    _ = parser.add_argument('cmd', help='The command to run.')
+    _ = parser.add_argument('args', nargs=argparse.REMAINDER, help='A list of arguments to pass to the command.')
+    _ = parser.add_argument('--out', help='A regular expression pattern to search for in stdout.')
+    _ = parser.add_argument('--err', help='A regular expression pattern to search for in stderr.')
+    _ = parser.add_argument('--timeout', type=float, default=DEFAULT_TIMEOUT)
+    args: Args = parser.parse_args(namespace=Args())
 
-    exit_code = await monitor(args.cmd, args.args, args.out, args.err, args.timeout)
+    out_regex = re.compile(args.out) if args.out else None
+    err_regex = re.compile(args.err) if args.err else None
 
-    sys.exit(exit_code)
+    exit_code = await monitor(args.cmd, args.args, out_regex, err_regex, args.timeout)
+
+    return exit_code
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))
