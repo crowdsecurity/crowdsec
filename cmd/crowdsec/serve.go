@@ -418,7 +418,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		return nil
 	}
 
-	if cConfig.Common != nil && cConfig.Common.Daemonize {
+	if cConfig.Common != nil && !flags.haveTimeMachine() {
 		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)
