@@ -144,7 +144,7 @@ func (l *labelsMap) String() string {
 }
 
 func (l *labelsMap) Set(label string) error {
-	for _, pair := range strings.Split(label, ",") {
+	for pair := range strings.SplitSeq(label, ",") {
 		split := strings.Split(pair, ":")
 		if len(split) != 2 {
 			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
@@ -233,7 +233,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	if err := trace.Init(filepath.Join(cConfig.ConfigPaths.DataDir, "trace")); err != nil {
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
+
 	var logLevelViaFlag bool
+
 	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, flags)
 
 	if dumpFolder != "" {

@@ -9,7 +9,7 @@ import (
 
 /*daemonization/service related stuff*/
 type CommonCfg struct {
-	Daemonize      string                                  // TODO: This is just for backward compat. Remove this later
+	Daemonize      string     // TODO: This is just for backward compat. Remove this later
 	PidDir         string     `yaml:"pid_dir,omitempty"` // TODO: This is just for backward compat. Remove this later
 	LogMedia       string     `yaml:"log_media"`
 	LogDir         string     `yaml:"log_dir,omitempty"` // if LogMedia = file
