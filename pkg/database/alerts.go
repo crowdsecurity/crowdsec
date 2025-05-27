@@ -1,6 +1,7 @@
 package database
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -170,7 +171,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 
 	decisions := []*ent.Decision{}
 
-	for builderChunk := range slices.Chunk(decisionBuilders, c.decisionBulkSize) {
+	for builderChunk := range slices.Chunk(decisionBuilders, max(1, cmp.Or(c.decisionBulkSize, len(decisionBuilders)))) {
 		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(ctx)
 		if err != nil {
 			return "", fmt.Errorf("creating alert decisions: %w", err)
@@ -181,7 +182,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 
 	// now that we bulk created missing decisions, let's update the alert
 
-	for decisionChunk := range slices.Chunk(decisions, c.decisionBulkSize) {
+	for decisionChunk := range slices.Chunk(decisions, max(1, cmp.Or(c.decisionBulkSize, len(decisions)))) {
 		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisionChunk...).Exec(ctx)
 		if err != nil {
 			return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
@@ -332,7 +333,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		valueList = append(valueList, *decisionItem.Value)
 	}
 
-	for deleteChunk := range slices.Chunk(valueList, c.decisionBulkSize) {
+	for deleteChunk := range slices.Chunk(valueList, max(1, cmp.Or(c.decisionBulkSize, len(valueList)))) {
 		// Deleting older decisions from capi
 		deletedDecisions, err := txClient.Decision.Delete().
 			Where(decision.And(
@@ -347,7 +348,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		deleted += deletedDecisions
 	}
 
-	for builderChunk := range slices.Chunk(decisionBuilders, c.decisionBulkSize) {
+	for builderChunk := range slices.Chunk(decisionBuilders, max(1, cmp.Or(c.decisionBulkSize, len(decisionBuilders)))) {
 		insertedDecisions, err := txClient.Decision.CreateBulk(builderChunk...).Save(ctx)
 		if err != nil {
 			return 0, 0, 0, rollbackOnError(txClient, err, "bulk creating decisions")
@@ -547,7 +548,7 @@ func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.C
 func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
 	decisions := []*ent.Decision{}
 
-	for decisionChunk := range slices.Chunk(alertItem.Decisions, client.decisionBulkSize) {
+	for decisionChunk := range slices.Chunk(alertItem.Decisions, max(1, cmp.Or(client.decisionBulkSize, len(alertItem.Decisions)))) {
 		decisionRet, err := client.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
 		if err != nil {
 			return nil, 0, fmt.Errorf("creating alert decisions: %w", err)
@@ -602,7 +603,7 @@ func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate
 
 		d := alertDecisions[i]
 
-		for d2 := range slices.Chunk(d, c.decisionBulkSize) {
+		for d2 := range slices.Chunk(d, max(1, cmp.Or(c.decisionBulkSize, len(d)))) {
 			if err := retryOnBusy(func() error {
 				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
 				return err
@@ -720,7 +721,7 @@ func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []
 
 	alertIDs := []string{}
 
-	for alertChunk := range slices.Chunk(alertList, alertCreateBulkSize) {
+	for alertChunk := range slices.Chunk(alertList, max(1, cmp.Or(alertCreateBulkSize, len(alertList)))) {
 		ids, err := c.createAlertChunk(ctx, machineID, owner, alertChunk)
 		if err != nil {
 			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
