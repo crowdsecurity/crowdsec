@@ -74,14 +74,6 @@ func DB(c *csconfig.Config) error {
 	return nil
 }
 
-func Notifications(c *csconfig.Config) error {
-	if c.ConfigPaths.NotificationDir == "" {
-		return errors.New("config_paths.notification_dir is not set in crowdsec config")
-	}
-
-	return nil
-}
-
 func HubDownloader(ctx context.Context, c *csconfig.Config) *cwhub.Downloader {
 	// set branch in config, and log if necessary
 	branch := HubBranch(ctx, c)

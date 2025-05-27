@@ -370,7 +370,7 @@ check_golangci-lint:
 ifeq ($(OS),Windows_NT)
 	@where golangci-lint >nul || (echo "Error: golangci-lint is not installed. Install it from https://github.com/golangci/golangci-lint" && exit 1)
 else
-	@command -v galangci-lint > /dev/null 2>&1 || (echo "Error: golangci-lint is not installed. Install it from https://github.com/golangci/golangci-lint" && exit 1)
+	@command -v golangci-lint > /dev/null 2>&1 || (echo "Error: golangci-lint is not installed. Install it from https://github.com/golangci/golangci-lint" && exit 1)
 endif
 
 .PHONY: lint

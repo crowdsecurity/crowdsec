@@ -12,6 +12,9 @@ setup_file() {
 
     PROFILES_PATH=$(config_get '.api.server.profiles_path')
     export PROFILES_PATH
+
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    export CONFIG_DIR
 }
 
 teardown_file() {
@@ -35,7 +38,7 @@ teardown() {
     config_set '.plugin_config.user="" | .plugin_config.group="nogroup"'
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: while getting process attributes: both plugin user and group must be set" \
+        --err "api server init: plugin broker: loading plugin: while getting process attributes: both plugin user and group must be set" \
         "$CROWDSEC"
 }
 
@@ -43,7 +46,7 @@ teardown() {
     config_set '(.plugin_config.user="nobody") | (.plugin_config.group="")'
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: while getting process attributes: both plugin user and group must be set" \
+        --err "api server init: plugin broker: loading plugin: while getting process attributes: both plugin user and group must be set" \
         "$CROWDSEC"
 }
 
@@ -51,7 +54,7 @@ teardown() {
     config_set '(.plugin_config.user="userdoesnotexist") | (.plugin_config.group="groupdoesnotexist")'
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: while getting process attributes: user: unknown user userdoesnotexist" \
+        --err "api server init: plugin broker: loading plugin: while getting process attributes: user: unknown user userdoesnotexist" \
         "$CROWDSEC"
 }
 
@@ -59,7 +62,7 @@ teardown() {
     config_set '(.plugin_config.user=strenv(USER)) | (.plugin_config.group="groupdoesnotexist")'
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: while getting process attributes: group: unknown group groupdoesnotexist" \
+        --err "api server init: plugin broker: loading plugin: while getting process attributes: group: unknown group groupdoesnotexist" \
         "$CROWDSEC"
 }
 
@@ -67,12 +70,11 @@ teardown() {
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     cp "$PLUGIN_DIR"/notification-http "$PLUGIN_DIR"/badname
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: plugin name ${PLUGIN_DIR}/badname is invalid. Name should be like {type-name}" \
+        --err "api server init: plugin broker: loading plugin: plugin name ${PLUGIN_DIR}/badname is invalid. Name should be like {type-name}" \
         "$CROWDSEC"
 }
 
 @test "duplicate notification config" {
-    CONFIG_DIR=$(dirname "$CONFIG_YAML")
     # email_default has two configurations
     rune -0 yq -i '.name="email_default"' "$CONFIG_DIR/notifications/http.yaml"
     # enable a notification, otherwise plugins are ignored
@@ -88,7 +90,7 @@ teardown() {
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     chmod g+w "$PLUGIN_DIR"/notification-http
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: plugin at ${PLUGIN_DIR}/notification-http is group writable, group writable plugins are invalid" \
+        --err "api server init: plugin broker: loading plugin: plugin at ${PLUGIN_DIR}/notification-http is group writable, group writable plugins are invalid" \
         "$CROWDSEC"
 }
 
@@ -96,7 +98,7 @@ teardown() {
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     chmod o+w "$PLUGIN_DIR"/notification-http
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin: plugin at ${PLUGIN_DIR}/notification-http is world writable, world writable plugins are invalid" \
+        --err "api server init: plugin broker: loading plugin: plugin at ${PLUGIN_DIR}/notification-http is world writable, world writable plugins are invalid" \
         "$CROWDSEC"
 }
 
@@ -110,10 +112,8 @@ teardown() {
 
 @test "config.yaml: missing config_paths.notification_dir" {
     config_set 'del(.config_paths.notification_dir)'
-    config_set "$PROFILES_PATH" '.notifications=["http_default"]'
-    rune -0 wait-for \
-        --err "api server init: plugins are enabled, but config_paths.notification_dir is not defined" \
-        "$CROWDSEC"
+    rune -0 cscli config show --key Config.ConfigPaths.NotificationDir
+    assert_output "$CONFIG_DIR/notifications"
 }
 
 @test "config.yaml: missing config_paths.plugin_dir" {
@@ -124,10 +124,22 @@ teardown() {
         "$CROWDSEC"
 }
 
-@test "unable to run plugin broker: while reading plugin config" {
+@test "plugin broker: missing notification dir" {
     config_set '.config_paths.notification_dir="/this/path/does/not/exist"'
     config_set "$PROFILES_PATH" '.notifications=["http_default"]'
     rune -0 wait-for \
-        --err "api server init: unable to run plugin broker: while loading plugin config: open /this/path/does/not/exist: no such file or directory" \
+        --err "api server init: plugin broker: loading config: open /this/path/does/not/exist: no such file or directory" \
         "$CROWDSEC"
+}
+
+@test "misconfigured notification: missing plugin type" {
+    rune -0 yq -i 'del(.type)' "$CONFIG_DIR/notifications/http.yaml"
+    # enable a notification, otherwise plugins are ignored
+    config_set "$PROFILES_PATH" '.notifications=["http_default"]'
+    # the slack plugin may fail or not, but we just need the logs
+    config_set '.common.log_media="stdout"'
+    rune wait-for \
+        --err "api server init: plugin broker: loading plugin config" \
+        "$CROWDSEC"
+    assert_stderr --partial "field 'type' missing in $CONFIG_DIR/notifications/http.yaml (position 0)"
 }

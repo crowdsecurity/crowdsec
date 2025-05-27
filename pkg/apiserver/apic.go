@@ -17,7 +17,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
-	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -68,7 +67,6 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	credentials   *csconfig.ApiCredentialsCfg
-	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
@@ -76,6 +74,8 @@ type apic struct {
 	pullBlocklists bool
 	pullCommunity  bool
 	shareSignals   bool
+
+	TokenSave apiclient.TokenSave
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -197,7 +197,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
 		metricsTomb:               tomb.Tomb{},
-		scenarioList:              make([]string, 0),
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
@@ -224,82 +223,24 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.scenarioList, err = ret.FetchScenariosListFromDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("while fetching scenarios from db: %w", err)
-	}
-
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
-		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
+		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
+			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("while creating api client: %w", err)
 	}
 
 	err = ret.Authenticate(ctx, config)
+
 	return ret, err
-}
-
-// loadAPICToken attempts to retrieve and validate a JWT token from the local database.
-// It returns the token string, its expiration time, and a boolean indicating whether the token is valid.
-//
-// A token is considered valid if:
-//   - it exists in the database,
-//   - it is a properly formatted JWT with an "exp" claim,
-//   - it is not expired or near expiry.
-func loadAPICToken(ctx context.Context, db *database.Client) (string, time.Time, bool) {
-	token, err := db.GetConfigItem(ctx, "apic_token")
-	if err != nil {
-		log.Debugf("error fetching token from DB: %s", err)
-		return "", time.Time{}, false
-	}
-
-	if token == nil {
-		log.Debug("no token found in DB")
-		return "", time.Time{}, false
-	}
-
-	parser := new(jwt.Parser)
-	tok, _, err := parser.ParseUnverified(*token, jwt.MapClaims{})
-	if err != nil {
-		log.Debugf("error parsing token: %s", err)
-		return "", time.Time{}, false
-	}
-
-	claims, ok := tok.Claims.(jwt.MapClaims)
-	if !ok {
-		log.Debugf("error parsing token claims: %s", err)
-		return "", time.Time{}, false
-	}
-
-	expFloat, ok := claims["exp"].(float64)
-	if !ok {
-		log.Debug("token missing 'exp' claim")
-		return "", time.Time{}, false
-	}
-
-	exp := time.Unix(int64(expFloat), 0)
-	if time.Now().UTC().After(exp.Add(-1*time.Minute)) {
-		log.Debug("auth token expired")
-		return "", time.Time{}, false
-	}
-
-	return *token, exp, true
-}
-
-// saveAPICToken stores the given JWT token in the local database under the "apic_token" config item.
-func saveAPICToken(ctx context.Context, db *database.Client, token string) error {
-	if err := db.SetConfigItem(ctx, "apic_token", token); err != nil {
-		return fmt.Errorf("saving token to db: %w", err)
-	}
-
-	return nil
 }
 
 // Authenticate ensures the API client is authorized to communicate with the CAPI.
@@ -308,10 +249,13 @@ func saveAPICToken(ctx context.Context, db *database.Client, token string) error
 //
 // If a new token is obtained, it is saved back to the database for caching.
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	if token, exp, valid := loadAPICToken(ctx, a.dbClient); valid {
+	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
 		log.Debug("using valid token from DB")
+
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+
+		return nil
 	}
 
 	log.Debug("No token found, authenticating")
@@ -338,7 +282,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return saveAPICToken(ctx, a.dbClient, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
@@ -1043,7 +987,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
 
 	var (
-		lastPullTimestamp *string
+		lastPullTimestamp string
 		err               error
 	)
 
@@ -1060,10 +1004,10 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	}
 
 	if !hasChanged {
-		if lastPullTimestamp == nil {
+		if lastPullTimestamp == "" {
 			log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
 		} else {
-			log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
+			log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, lastPullTimestamp)
 		}
 
 		return nil

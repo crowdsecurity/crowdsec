@@ -17,6 +17,7 @@ setup_file() {
     # the $alert is not a shell variable
     # shellcheck disable=SC2016
     config_set "$DUMMY_YAML" '
+       .type="dummy" |
        .group_wait="5s" |
        .group_threshold=2 |
        .output_file=strenv(tempfile) |
