@@ -1,6 +1,7 @@
 package csplugin
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -124,7 +125,7 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 					threshold = 1
 				}
 
-				for chunk := range slices.Chunk(tmpAlerts, threshold) {
+				for chunk := range slices.Chunk(tmpAlerts, max(1, cmp.Or(threshold, len(tmpAlerts)))) {
 					if err := pb.pushNotificationsToPlugin(ctx, pluginName, chunk); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
