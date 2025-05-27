@@ -66,7 +66,7 @@ bats-environment:
 bats-check-requirements:  ## Check dependencies for functional tests
 	@$(TEST_DIR)/bin/check-requirements
 
-bats-update-tools:  ## Install/update tools required for functional tests
+bats-tools:  ## Install/update tools required for functional tests
 	# yq v4.44.3
 	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@bbdd97482f2d439126582a59689eb1c855944955
 	# cfssl v1.6.5
@@ -86,7 +86,7 @@ bats-build: bats-environment  ## Build binaries for functional tests
 	@install -m 0755 cmd/notification-*/notification-* $(BATS_PLUGIN_DIR)/
 
 # Create a reusable package with initial configuration + data
-bats-fixture: bats-check-requirements bats-update-tools  ## Build fixture for functional tests
+bats-fixture: bats-check-requirements bats-tools  ## Build fixture for functional tests
 	@echo "Creating functional test fixture."
 	@$(TEST_DIR)/instance-data make
 
@@ -109,3 +109,21 @@ bats-lint:  ## Static checks for the test scripts.
 bats-test-package: bats-environment  ## CI only - test a binary package (deb, rpm, ...)
 	$(TEST_DIR)/instance-data make
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
+
+.PHONY: .bats-mysql
+bats-mysql:  ## Start a mysql container
+	docker run -d \
+		--name mysql \
+		-e MYSQL_ROOT_PASSWORD=secret \
+		-p 3306:3306 \
+		docker.io/library/mysql:8.0 \
+		--default-authentication-plugin=mysql_native_password
+
+.PHONY: .bats-postgres
+bats-postgres:  ## Start a postgres container
+	docker run -d \
+		--name postgres \
+		-e POSTGRES_PASSWORD=secret \
+		-p 5432:5432 \
+		docker.io/library/postgres:17
+
