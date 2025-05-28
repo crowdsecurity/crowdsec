@@ -400,6 +400,7 @@ force_inotify: true`, testPattern),
 			if tc.expectedLines != 0 {
 				var stopReading bool
 				defer func() { stopReading = true }()
+
 				go func() {
 					for {
 						select {
@@ -437,6 +438,7 @@ force_inotify: true`, testPattern),
 							time.Sleep(50 * time.Millisecond)
 							continue
 						}
+
 						waitingForTail = false
 					}
 				}

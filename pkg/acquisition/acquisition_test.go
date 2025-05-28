@@ -68,7 +68,7 @@ func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *to
 func (f *MockSource) CanRun() error                            { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockSource) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockSource) Dump() interface{}                        { return f }
+func (f *MockSource) Dump() any                                { return f }
 func (f *MockSource) GetName() string                          { return "mock" }
 func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
@@ -356,7 +356,7 @@ func (f *MockCat) StreamingAcquisition(context.Context, chan types.Event, *tomb.
 func (f *MockCat) CanRun() error                            { return nil }
 func (f *MockCat) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockCat) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockCat) Dump() interface{}                        { return f }
+func (f *MockCat) Dump() any                                { return f }
 func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
 }
@@ -403,7 +403,7 @@ func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Even
 func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockTail) Dump() interface{}                        { return f }
+func (f *MockTail) Dump() any                                { return f }
 func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
 }
@@ -538,7 +538,7 @@ func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event
 func (f *MockSourceByDSN) CanRun() error                            { return nil }
 func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockSourceByDSN) Dump() interface{}                        { return f }
+func (f *MockSourceByDSN) Dump() any                                { return f }
 func (f *MockSourceByDSN) GetName() string                          { return "mockdsn" }
 func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
