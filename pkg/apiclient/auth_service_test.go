@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -72,6 +73,7 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
  */
 func TestWatcherRegister(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -110,6 +112,7 @@ func TestWatcherRegister(t *testing.T) {
 
 func TestWatcherAuth(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -122,22 +125,29 @@ func TestWatcherAuth(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
+	updateScenario := func(_ context.Context) ([]string, error) {
+		return []string{"crowdsecurity/test"}, nil
+	}
+
 	// ok auth
 	clientConfig := &Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		URL:           apiURL,
-		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+		MachineID:      "test_login",
+		Password:       "test_password",
+		URL:            apiURL,
+		VersionPrefix:  "v1",
+		UpdateScenario: updateScenario,
 	}
 
 	client, err := NewClient(clientConfig)
 	require.NoError(t, err)
 
+	scenarios, err := clientConfig.UpdateScenario(ctx)
+	require.NoError(t, err)
+
 	_, _, err = client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &clientConfig.MachineID,
 		Password:  &clientConfig.Password,
-		Scenarios: clientConfig.Scenarios,
+		Scenarios: scenarios,
 	})
 	require.NoError(t, err)
 
@@ -171,13 +181,14 @@ func TestWatcherAuth(t *testing.T) {
 
 func TestWatcherUnregister(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
 	defer teardown()
 	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
-	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/self", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		assert.Equal(t, int64(0), r.ContentLength)
 		w.WriteHeader(http.StatusOK)
@@ -205,12 +216,16 @@ func TestWatcherUnregister(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
+	updateScenario := func(_ context.Context) ([]string, error) {
+		return []string{"crowdsecurity/test"}, nil
+	}
+
 	mycfg := &Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		URL:           apiURL,
-		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+		MachineID:      "test_login",
+		Password:       "test_password",
+		URL:            apiURL,
+		VersionPrefix:  "v1",
+		UpdateScenario: updateScenario,
 	}
 
 	client, err := NewClient(mycfg)
@@ -224,6 +239,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 func TestWatcherEnroll(t *testing.T) {
 	ctx := t.Context()
+
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -260,12 +276,16 @@ func TestWatcherEnroll(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
+	updateScenario := func(_ context.Context) ([]string, error) {
+		return []string{"crowdsecurity/test"}, nil
+	}
+
 	mycfg := &Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		URL:           apiURL,
-		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+		MachineID:      "test_login",
+		Password:       "test_password",
+		URL:            apiURL,
+		VersionPrefix:  "v1",
+		UpdateScenario: updateScenario,
 	}
 
 	client, err := NewClient(mycfg)

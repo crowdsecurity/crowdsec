@@ -19,7 +19,7 @@ type enrollRequest struct {
 }
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
-	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
+	u := fmt.Sprintf("%s/watchers/self", s.client.URLPrefix)
 
 	req, err := s.client.PrepareRequest(ctx, http.MethodDelete, u, nil)
 	if err != nil {
