@@ -286,6 +286,60 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 	}
 }
 
+func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
+
+	minBackoff := 100 * time.Millisecond
+	maxBackoff := 10 * time.Second
+	backoffInterval := minBackoff
+
+	for {
+		// Wait for the backoff interval, respect context ending as well
+		// Putting this first keeps the logic simpler
+		if backoffInterval > maxBackoff {
+			backoffInterval = maxBackoff
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-lc.t.Dying():
+			return lc.t.Err()
+		case <-time.After(backoffInterval):
+			// now we can make the next request
+		}
+
+		// Make the HTTP request
+		resp, err := lc.Get(ctx, uri)
+		if err != nil {
+			lc.Logger.Warnf("error tailing logs: %w", err)
+			backoffInterval *= 2
+			continue
+		}
+
+		// Verify the HTTP response code
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			lc.Logger.Warnf("bad HTTP response code for tail request: %d: %s: %w", resp.StatusCode, body, err)
+			backoffInterval *= 2
+			continue
+		}
+
+		// Read all the responses
+		n, largestTime, err := lc.readResponse(ctx, resp, c)
+		if err != nil {
+			lc.Logger.Warnf("error while reading tail response: %w", err)
+			backoffInterval *= 2
+		} else if n > 0 {
+			// as long as we get results, reset the backoff interval
+			backoffInterval = minBackoff
+			uri = updateURI(uri, largestTime)
+		} else {
+			backoffInterval *= 2
+		}
+
+	}
+}
+
 // Tail live-tailing for logs
 // See: https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
 func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
@@ -296,55 +350,16 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 		"query": lc.config.Query,
 	})
 
+	c := make(chan *Log)
+
 	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, t)
+
 	lc.Logger.Infof("Connecting to %s", u)
-
-	var (
-		resp *http.Response
-		err  error
-	)
-
-	for {
-		resp, err = lc.Get(ctx, u)
-		lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
-
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil, nil
-			}
-
-			if ok := lc.shouldRetry(); !ok {
-				return nil, fmt.Errorf("error tailing logs: %w", err)
-			}
-
-			continue
-		}
-
-		break
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		lc.Logger.Warnf("bad HTTP response code for tail request: %d", resp.StatusCode)
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		if ok := lc.shouldRetry(); !ok {
-			return nil, fmt.Errorf("bad HTTP response code: %d: %s: %w", resp.StatusCode, string(body), err)
-		}
-	}
-
-	responseChan := make(chan *Log)
-
 	lc.t.Go(func() error {
-		_, _, err = lc.readResponse(ctx, resp, responseChan)
-		if err != nil {
-			return fmt.Errorf("error while reading tail response: %w", err)
-		}
-
-		return nil
+		return lc.doTail(ctx, u, c)
 	})
 
-	return responseChan, nil
+	return c, nil
 }
 
 // QueryRange queries the logs
