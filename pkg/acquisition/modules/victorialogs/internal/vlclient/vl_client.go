@@ -287,47 +287,56 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 }
 
 func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
-	lc.currentTickerInterval = 100 * time.Millisecond
-	ticker := time.NewTicker(lc.currentTickerInterval)
 
-	defer ticker.Stop()
+	minBackoff := 100 * time.Millisecond
+	maxBackoff := 10 * time.Second
+	backoffInterval := minBackoff
 
 	for {
+		// Wait for the backoff interval, respect context ending as well
+		// Putting this first keeps the logic simpler
+		if backoffInterval > maxBackoff {
+			backoffInterval = maxBackoff
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-lc.t.Dying():
 			return lc.t.Err()
-		case <-ticker.C:
-			// Attempt the HTTP request
-			resp, err := lc.Get(ctx, uri)
-			if err != nil {
-				lc.Logger.Warnf("error tailing logs: %w", err)
-				lc.increaseTicker(ticker)
-				continue
-			}
-
-			// Verify the HTTP response code
-			if resp.StatusCode != http.StatusOK {
-				body, _ := io.ReadAll(resp.Body)
-				resp.Body.Close()
-				lc.Logger.Warnf("bad HTTP response code for tail request: %d: %s: %w", resp.StatusCode, body, err)
-				lc.increaseTicker(ticker)
-				continue
-			}
-
-			n, largestTime, err := lc.readResponse(ctx, resp, c)
-			if err != nil {
-				lc.Logger.Warnf("error while reading tail response: %w", err)
-				lc.increaseTicker(ticker)
-			} else if n > 0 {
-				// as long as we get results, we keep lowest ticker
-				lc.decreaseTicker(ticker)
-				uri = updateURI(uri, largestTime)
-			} else {
-				lc.increaseTicker(ticker)
-			}
+		case <-time.After(backoffInterval):
+			// now we can make the next request
 		}
+
+		// Make the HTTP request
+		resp, err := lc.Get(ctx, uri)
+		if err != nil {
+			lc.Logger.Warnf("error tailing logs: %w", err)
+			backoffInterval *= 2
+			continue
+		}
+
+		// Verify the HTTP response code
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			lc.Logger.Warnf("bad HTTP response code for tail request: %d: %s: %w", resp.StatusCode, body, err)
+			backoffInterval *= 2
+			continue
+		}
+
+		// Read all the responses
+		n, largestTime, err := lc.readResponse(ctx, resp, c)
+		if err != nil {
+			lc.Logger.Warnf("error while reading tail response: %w", err)
+			backoffInterval *= 2
+		} else if n > 0 {
+			// as long as we get results, reset the backoff interval
+			backoffInterval = minBackoff
+			uri = updateURI(uri, largestTime)
+		} else {
+			backoffInterval *= 2
+		}
+
 	}
 }
 
