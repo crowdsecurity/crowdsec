@@ -63,8 +63,8 @@ func (w AppsecEvent) GetVar(varName string) string {
 }
 
 // getters
-func (w MatchedRules) GetField(field Field) []interface{} {
-	ret := make([]interface{}, 0)
+func (w MatchedRules) GetField(field Field) []any {
+	ret := make([]any, 0)
 	for _, rule := range w {
 		ret = append(ret, rule[field.String()])
 	}
@@ -72,39 +72,57 @@ func (w MatchedRules) GetField(field Field) []interface{} {
 }
 
 func (w MatchedRules) GetURI() string {
-	for _, rule := range w {
-		return rule["uri"].(string)
+	if len(w) == 0 {
+		return ""
+	}
+	// we assume that all rules have the same URI, so we return the first one
+	uri, ok := w[0]["uri"].(string)
+	if ok {
+		return uri
 	}
 	return ""
 }
 
 func (w MatchedRules) GetHash() string {
-	for _, rule := range w {
-		//@sbl : let's fix this
-		return rule["hash"].(string)
+	if len(w) == 0 {
+		return ""
+	}
+	hash, ok := w[0]["hash"].(string)
+	if ok {
+		return hash
 	}
 	return ""
 }
 
 func (w MatchedRules) GetVersion() string {
-	for _, rule := range w {
-		//@sbl : let's fix this
-		return rule["version"].(string)
+	if len(w) == 0 {
+		return ""
+	}
+	version, ok := w[0]["version"].(string)
+	if ok {
+		return version
 	}
 	return ""
 }
 
 func (w MatchedRules) GetName() string {
-	for _, rule := range w {
-		//@sbl : let's fix this
-		return rule["name"].(string)
+	if len(w) == 0 {
+		return ""
+	}
+	name, ok := w[0]["name"].(string)
+	if ok {
+		return name
 	}
 	return ""
 }
 
 func (w MatchedRules) GetMethod() string {
-	for _, rule := range w {
-		return rule["method"].(string)
+	if len(w) == 0 {
+		return ""
+	}
+	method, ok := w[0]["method"].(string)
+	if ok {
+		return method
 	}
 	return ""
 }
@@ -112,7 +130,11 @@ func (w MatchedRules) GetMethod() string {
 func (w MatchedRules) GetRuleIDs() []int {
 	ret := make([]int, 0)
 	for _, rule := range w {
-		ret = append(ret, rule["id"].(int))
+		id, ok := rule["id"].(int)
+		if !ok {
+			continue
+		}
+		ret = append(ret, id)
 	}
 	return ret
 }

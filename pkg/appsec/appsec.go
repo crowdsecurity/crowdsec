@@ -108,9 +108,11 @@ type AppsecRuntimeConfig struct {
 	// CorazaLogger              debuglog.Logger
 
 	// those are ephemeral, created/destroyed with every req
-	OutOfBandTx ExtendedTransaction // is it a good idea ?
-	InBandTx    ExtendedTransaction // is it a good idea ?
-	Response    AppsecTempResponse
+	OutOfBandTx            ExtendedTransaction // is it a good idea ?
+	InBandTx               ExtendedTransaction // is it a good idea ?
+	Response               AppsecTempResponse
+	EarlyTermination       bool   // Set by the user with DropRequest()
+	EarlyTerminationReason string // Set by the user with DropRequest()
 	// should we store matched rules here ?
 
 	Logger *log.Entry
@@ -719,6 +721,14 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 func (w *AppsecRuntimeConfig) SetHTTPCode(code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
 	w.Response.UserHTTPResponseCode = code
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) DropRequest(reason string) error {
+	w.Logger.Debugf("dropping request, reason: %s", reason)
+	w.EarlyTermination = true
+	w.EarlyTerminationReason = reason
+
 	return nil
 }
 
