@@ -275,15 +275,14 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 		r.logger.Debugf("request dropped by expr: %s", r.AppsecRuntime.EarlyTerminationReason)
 		r.logger.Infof("before setting values: BouncerHTTPResponseCode=%d, UserHTTPResponseCode=%d, Action=%s", r.AppsecRuntime.Response.BouncerHTTPResponseCode, r.AppsecRuntime.Response.UserHTTPResponseCode, r.AppsecRuntime.Response.Action)
 		r.AppsecRuntime.Response.InBandInterrupt = true
-		//if r.AppsecRuntime.Response.BouncerHTTPResponseCode == 0 {
 		r.AppsecRuntime.Response.BouncerHTTPResponseCode = r.AppsecRuntime.Config.BouncerBlockedHTTPCode
-		//}
-		//if r.AppsecRuntime.Response.UserHTTPResponseCode == 0 {
 		r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.UserBlockedHTTPCode
-		//}
 		if r.AppsecRuntime.Response.Action == "" {
 			r.AppsecRuntime.Response.Action = r.AppsecRuntime.DefaultRemediation
 		}
+
+		//FIXME: should we call OnMatch rules here ?
+
 		// Should the in band match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
