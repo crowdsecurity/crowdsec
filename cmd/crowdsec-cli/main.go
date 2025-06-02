@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"slices"
 	"time"
 
@@ -310,9 +313,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := cmd.Execute(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+	if err := cmd.ExecuteContext(ctx); err != nil {
 		red := color.New(color.FgRed).SprintFunc()
 		fmt.Fprintln(os.Stderr, red("Error:"), err)
 		os.Exit(1)
 	}
+
+	stop()
 }

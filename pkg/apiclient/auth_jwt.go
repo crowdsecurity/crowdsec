@@ -36,10 +36,8 @@ type JWTTransport struct {
 	TokenSave         TokenSave
 }
 
-func (t *JWTTransport) refreshJwtToken() error {
+func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 	var err error
-
-	ctx := context.TODO()
 
 	if t.UpdateScenario != nil {
 		t.Scenarios, err = t.UpdateScenario(ctx)
@@ -160,7 +158,7 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 	// We bypass the refresh if we are requesting the login endpoint, as it does not require a token,
 	// and it leads to do 2 requests instead of one (refresh + actual login request).
 	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && t.needsTokenRefresh() {
-		if err := t.refreshJwtToken(); err != nil {
+		if err := t.refreshJwtToken(req.Context()); err != nil {
 			return nil, err
 		}
 	}
