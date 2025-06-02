@@ -149,9 +149,9 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	select {
 	case t.TokenRefreshChan <- struct{}{}:
-		log.Info("sending token refresh signal")
+		log.Debug("sending token refresh signal")
 	default:
-		log.Info("no one is waiting for the token refresh, ignoring")
+		log.Debug("no one is waiting for the token refresh, ignoring")
 		// Do not block if no one is waiting for the token refresh (ie, PAPI fully disabled)
 	}
 
