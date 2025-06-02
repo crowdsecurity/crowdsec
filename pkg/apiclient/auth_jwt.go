@@ -41,7 +41,7 @@ type JWTTransport struct {
 func (t *JWTTransport) refreshJwtToken() error {
 	var err error
 
-	log.Infof("refreshing jwt token for '%s'", *t.MachineID)
+	log.Debugf("refreshing jwt token for '%s'", *t.MachineID)
 
 	ctx := context.TODO()
 
