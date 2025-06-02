@@ -109,7 +109,7 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 			close(c.c)
 			return nil
 		case <-ctx.Done():
-			logger.Debugf("context cancelled")
+			logger.Debugf("context canceled")
 			close(c.c)
 			return ctx.Err()
 		default:
@@ -163,7 +163,7 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 			c.logger.Debug("dying")
 			return nil
 		case <-ctx.Done():
-			c.logger.Debug("context cancelled")
+			c.logger.Debug("context canceled")
 			return ctx.Err()
 		default:
 			c.logger.Debug("Polling PAPI")
@@ -181,7 +181,7 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 					c.logger.Debug("dying during backoff")
 					return nil
 				case <-ctx.Done():
-					c.logger.Debug("context cancelled during backoff")
+					c.logger.Debug("context canceled during backoff")
 					return ctx.Err()
 				case <-time.After(currentBackoff):
 				}

@@ -259,7 +259,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 	}
 
 	tokenRefreshChan := p.apiClient.GetTokenRefreshChan()
-	var papiChan chan longpollclient.Event = nil // For the chan to nil so it will block until PAPI actually establishes the connection
+	var papiChan chan longpollclient.Event // Chan is nil by default to block until PAPI actually establishes the connection
 
 	currentSubscriptionType := p.apiClient.GetSubscriptionType()
 
