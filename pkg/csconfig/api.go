@@ -124,7 +124,7 @@ func (o *OnlineApiClientCfg) Load() error {
 		o.Credentials = nil
 	}
 
-	if o.Credentials.PapiURL == "" {
+	if o.Credentials != nil && o.Credentials.PapiURL == "" {
 		o.Credentials.PapiURL = types.PAPIBaseURL
 	}
 

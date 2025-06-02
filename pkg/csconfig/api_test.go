@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
@@ -93,6 +94,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				URL:      "http://crowdsec.api",
 				Login:    "test",
 				Password: "testpassword",
+				PapiURL:  types.PAPIBaseURL,
 			},
 		},
 		{
@@ -211,6 +213,7 @@ func TestLoadAPIServer(t *testing.T) {
 						URL:      "http://crowdsec.api",
 						Login:    "test",
 						Password: "testpassword",
+						PapiURL:  types.PAPIBaseURL,
 					},
 					Sharing: ptr.Of(true),
 					PullConfig: CapiPullConfig{
