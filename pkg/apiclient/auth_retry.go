@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"slices"
 )
 
 type retryRoundTripper struct {
@@ -19,13 +20,7 @@ type retryRoundTripper struct {
 }
 
 func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
-	for _, code := range r.retryStatusCodes {
-		if code == statusCode {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(r.retryStatusCodes, statusCode)
 }
 
 func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {

@@ -65,10 +65,7 @@ func (o *OpOutput) String() string {
 		ret = fmt.Sprintf("%*cBLOCK_START [%s]", o.CodeDepth-IndentStep, ' ', o.Code)
 		return ret
 	case o.BlockEnd:
-		indent := o.CodeDepth - (IndentStep * 2)
-		if indent < 0 {
-			indent = 0
-		}
+		indent := max(o.CodeDepth-(IndentStep*2), 0)
 
 		ret = fmt.Sprintf("%*cBLOCK_END [%s]", indent, ' ', o.Code)
 

@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
+	"slices"
 )
 
 type SimulationConfig struct {
@@ -24,10 +25,8 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 		simulated = true
 	}
 
-	for _, excluded := range s.Exclusions {
-		if excluded == scenario {
-			return !simulated
-		}
+	if slices.Contains(s.Exclusions, scenario) {
+		return !simulated
 	}
 
 	return simulated

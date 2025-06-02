@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"slices"
 )
 
 // cloneRequest returns a clone of the provided *http.Request. The clone is a
@@ -16,7 +17,7 @@ func cloneRequest(r *http.Request) *http.Request {
 	r2.Header = make(http.Header, len(r.Header))
 
 	for k, s := range r.Header {
-		r2.Header[k] = append([]string(nil), s...)
+		r2.Header[k] = slices.Clone(s)
 	}
 
 	if r.Body != nil {

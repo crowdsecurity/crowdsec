@@ -173,11 +173,8 @@ func (w MatchedRules) ByTags(match []string) MatchedRules {
 	ret := MatchedRules{}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
-			for _, match_tag := range match {
-				if tag == match_tag {
-					ret = append(ret, rule)
-					break
-				}
+			if slices.Contains(match, tag) {
+				ret = append(ret, rule)
 			}
 		}
 	}
@@ -187,11 +184,8 @@ func (w MatchedRules) ByTags(match []string) MatchedRules {
 func (w MatchedRules) ByTag(match string) MatchedRules {
 	ret := MatchedRules{}
 	for _, rule := range w {
-		for _, tag := range rule["tags"].([]string) {
-			if tag == match {
-				ret = append(ret, rule)
-				break
-			}
+		if slices.Contains(rule["tags"].([]string), match) {
+			ret = append(ret, rule)
 		}
 	}
 	return ret

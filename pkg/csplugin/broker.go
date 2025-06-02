@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"slices"
 )
 
 var pluginMutex sync.Mutex
@@ -180,10 +181,8 @@ func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 
 func (pb *PluginBroker) profilesContainPlugin(pluginName string) bool {
 	for _, profileCfg := range pb.profileConfigs {
-		for _, name := range profileCfg.Notifications {
-			if pluginName == name {
-				return true
-			}
+		if slices.Contains(profileCfg.Notifications, pluginName) {
+			return true
 		}
 	}
 

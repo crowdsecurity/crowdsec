@@ -84,7 +84,7 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 					continue
 				}
 
-				for _, line := range strings.Split(string(c), "\n") {
+				for line := range strings.SplitSeq(string(c), "\n") {
 					if strings.HasPrefix(line, "#") {
 						continue
 					}

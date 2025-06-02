@@ -35,6 +35,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"maps"
 )
 
 var (
@@ -617,9 +618,7 @@ func ParseUri(params ...any) (any, error) {
 		return ret, nil
 	}
 
-	for k, v := range parsed {
-		ret[k] = v
-	}
+	maps.Copy(ret, parsed)
 
 	return ret, nil
 }

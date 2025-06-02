@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	dbg "github.com/corazawaf/coraza/v3/debuglog"
+	"maps"
 )
 
 var DebugRules = map[int]bool{}
@@ -146,9 +147,7 @@ func (c *crzLogger) NewEvt(lvl log.Level) dbg.Event {
 	evt := &crzLogEvent{fields: map[string]interface{}{}, logger: c.logger, level: lvl}
 
 	if c.defaultFields != nil {
-		for k, v := range c.defaultFields {
-			evt.fields[k] = v
-		}
+		maps.Copy(evt.fields, c.defaultFields)
 	}
 
 	return evt
