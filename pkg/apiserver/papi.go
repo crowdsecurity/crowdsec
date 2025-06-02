@@ -263,7 +263,10 @@ func (p *Papi) Pull(ctx context.Context) error {
 
 	currentSubscriptionType := p.apiClient.GetSubscriptionType()
 
-	if currentSubscriptionType == apiclient.SubscriptionTypeEnterprise {
+	p.Logger.Debugf("current subscription type is %s", currentSubscriptionType)
+	p.Logger.Debugf("refresh token channel is %v", tokenRefreshChan)
+
+	if currentSubscriptionType == apiclient.SubscriptionTypeEnterprise || currentSubscriptionType == apiclient.SubscriptionTypeSecOps {
 		// If allowed to use PAPI, start it
 		// Otherwise it will be started when the token is refreshed with an ent subscription
 		p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
@@ -278,17 +281,16 @@ func (p *Papi) Pull(ctx context.Context) error {
 				continue
 			}
 			currentSubscriptionType = subType
-			p.Logger.Infof("subscription type changed to %s", subType)
+			p.Logger.Infof("Subscription type changed to %s", subType)
 			switch subType {
-			case apiclient.SubscriptionTypeEnterprise:
+			case apiclient.SubscriptionTypeEnterprise, apiclient.SubscriptionTypeSecOps:
 				p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
 				papiChan = p.Client.Start(ctx, lastTimestamp)
 			default:
 				// PAPI got started but the user downgraded (or removed the engine from the console)
-				p.Logger.Info("Stopping PAPI")
+				p.Logger.Info("Stopping PAPI because of plan downgrade or engine removal")
 				p.Client.Stop()
 				papiChan = nil
-				return nil
 			}
 		case event := <-papiChan:
 			logger := p.Logger.WithField("request-id", event.RequestId)

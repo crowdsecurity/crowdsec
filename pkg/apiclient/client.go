@@ -172,7 +172,8 @@ func NewClient(config *Config) (*ApiClient, error) {
 			WithStatusCodeConfig(http.StatusServiceUnavailable, 5, true, false),
 			WithStatusCodeConfig(http.StatusGatewayTimeout, 5, true, false),
 		),
-		TokenSave: config.TokenSave,
+		TokenSave:        config.TokenSave,
+		TokenRefreshChan: make(chan struct{}),
 	}
 
 	transport, baseURL := createTransport(config.URL)

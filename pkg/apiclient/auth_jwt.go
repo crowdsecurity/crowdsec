@@ -169,8 +169,6 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 	t.refreshTokenMutex.Lock()
 	defer t.refreshTokenMutex.Unlock()
 
-	fmt.Printf("request: %s\n", req.URL.String())
-
 	// We bypass the refresh if we are requesting the login endpoint, as it does not require a token,
 	// and it leads to do 2 requests instead of one (refresh + actual login request).
 	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && t.needsTokenRefresh() {
