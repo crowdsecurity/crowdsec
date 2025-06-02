@@ -17,6 +17,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.8
+	github.com/cenkalti/backoff/v5 v5.0.2
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/corazawaf/coraza/v3 v3.3.3
 	github.com/corazawaf/libinjection-go v0.2.2
