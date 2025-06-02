@@ -57,6 +57,7 @@ type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
+	UnregisterOnExit    bool               `yaml:"unregister_on_exit,omitempty"`
 }
 
 type CTICfg struct {

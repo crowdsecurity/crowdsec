@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -322,6 +323,18 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}
+	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
+		log.Warning("Unregistering watcher")
+		lapiClient, err := apiclient.GetLAPIClient()
+		if err != nil {
+			return err
+		}
+		_, err = lapiClient.Auth.UnregisterWatcher(context.TODO())
+		if err != nil {
+			return fmt.Errorf("failed to unregister watcher: %w", err)
+		}
+		log.Warning("Watcher unregistered")
+	}
 
 	return err
 }
@@ -418,7 +431,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		return nil
 	}
 
-	if cConfig.Common != nil && cConfig.Common.Daemonize {
+	if cConfig.Common != nil && !flags.haveTimeMachine() {
 		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)

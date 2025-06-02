@@ -289,6 +289,7 @@ config.yaml) each time the container is run.
 | __Agent__               | | (these don't work with DISABLE_AGENT) |
 | `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |
 | `DSN`                   | | Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"` |
+| `UNREGISTER_ON_EXIT`    | | Remove the agent from the LAPI when its container is stopped. |
 |                         | | |
 | __Bouncers__            | | |
 | `BOUNCER_KEY_<name>`    | | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable. |
