@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"syscall"
 	"slices"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -174,6 +174,7 @@ func (cli *cliRoot) initialize() error {
 	if csConfig.DbConfig != nil {
 		csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
 	}
+
 	return nil
 }
 
