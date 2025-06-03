@@ -57,8 +57,10 @@ setup() {
     rune -1 cscli capi status
     assert_stderr --partial "no scenarios or appsec-rules installed, abort"
 
+    # For the time, PAPI is always enabled config-wise
     rune -1 cscli papi status
-    assert_stderr --partial "no PAPI URL in configuration"
+    assert_stderr --partial "unable to get PAPI permissions"
+    assert_stderr --partial "Forbidden for plan"
 
     rune -0 cscli console enable console_management
     rune -1 cscli papi status
