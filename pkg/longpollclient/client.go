@@ -202,12 +202,14 @@ func (c *LongPollClient) Start(ctx context.Context, since time.Time) chan Event 
 	c.c = make(chan Event)
 	c.since = since.Unix() * 1000
 	c.timeout = "45"
+	c.t = tomb.Tomb{}
 	c.t.Go(func() error { return c.pollEvents(ctx) })
 	return c.c
 }
 
 func (c *LongPollClient) Stop() error {
 	c.t.Kill(nil)
+	c.t.Wait()
 	return nil
 }
 

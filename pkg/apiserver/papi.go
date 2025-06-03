@@ -260,6 +260,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 
 	tokenRefreshChan := p.apiClient.GetTokenRefreshChan()
 	var papiChan chan longpollclient.Event // Chan is nil by default to block until PAPI actually establishes the connection
+	papiCtx, cancel := context.WithCancel(ctx)
 
 	currentSubscriptionType := p.apiClient.GetSubscriptionType()
 
@@ -270,7 +271,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 		// If allowed to use PAPI, start it
 		// Otherwise it will be started when the token is refreshed with an ent subscription
 		p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
-		papiChan = p.Client.Start(ctx, lastTimestamp)
+		papiChan = p.Client.Start(papiCtx, lastTimestamp)
 	}
 
 	for {
@@ -285,22 +286,22 @@ func (p *Papi) Pull(ctx context.Context) error {
 			switch subType {
 			case apiclient.SubscriptionTypeEnterprise, apiclient.SubscriptionTypeSecOps:
 				p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
-				papiChan = p.Client.Start(ctx, lastTimestamp)
+				papiChan = p.Client.Start(papiCtx, lastTimestamp)
 			default:
 				// PAPI got started but the user downgraded (or removed the engine from the console)
 				p.Logger.Info("Stopping PAPI because of plan downgrade or engine removal")
+				cancel() // This will stop any ongoing PAPI pull
 				p.Client.Stop()
+				papiCtx, cancel = context.WithCancel(ctx) // Recreate the context if the pull is restarted
 				papiChan = nil
+				p.Logger.Debug("done stopping PAPI pull")
 			}
 		case event := <-papiChan:
 			logger := p.Logger.WithField("request-id", event.RequestId)
 			// update last timestamp in database
 			newTime := time.Now().UTC()
 
-			binTime, err := newTime.MarshalText()
-			if err != nil {
-				return fmt.Errorf("failed to serialize last timestamp: %w", err)
-			}
+			binTime, _ := newTime.MarshalText() // No need to check the error, time.Now().UTC() always returns a valid time
 
 			lastTimestamp = newTime
 
@@ -311,7 +312,8 @@ func (p *Papi) Pull(ctx context.Context) error {
 			}
 
 			if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
-				return fmt.Errorf("failed to update last timestamp: %w", err)
+				// Killing PAPI is overkill if we cannot update the last timestamp
+				logger.Errorf("failed to update last timestamp in database: %s", err)
 			}
 
 			logger.Debugf("set last timestamp to %s", newTime)
