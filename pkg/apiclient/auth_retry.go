@@ -3,6 +3,7 @@ package apiclient
 import (
 	"math/rand"
 	"net/http"
+	"slices"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -19,13 +20,7 @@ type retryRoundTripper struct {
 }
 
 func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
-	for _, code := range r.retryStatusCodes {
-		if code == statusCode {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(r.retryStatusCodes, statusCode)
 }
 
 func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {

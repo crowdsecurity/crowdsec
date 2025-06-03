@@ -36,12 +36,6 @@ check_jq() {
     fi
 }
 
-check_base64() {
-    if ! command -v base64 >/dev/null; then
-        die "missing required program 'base64'"
-    fi
-}
-
 check_pkill() {
     if ! command -v pkill >/dev/null; then
         die "missing required program 'pkill'"
@@ -60,6 +54,5 @@ check_bats_core
 check_curl
 check_daemonizer
 check_jq
-check_base64
 check_python3
 check_pkill

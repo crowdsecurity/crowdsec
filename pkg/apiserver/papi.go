@@ -387,11 +387,7 @@ func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.Decis
 	batchSize := 50
 
 	for start := 0; start < len(cache); start += batchSize {
-		end := start + batchSize
-
-		if end > len(cache) {
-			end = len(cache)
-		}
+		end := min(start+batchSize, len(cache))
 
 		if err := p.sendDeletedDecisionsBatch(ctx, cache[start:end]); err != nil {
 			p.Logger.Errorf("sending deleted decisions to central API: %s", err)
