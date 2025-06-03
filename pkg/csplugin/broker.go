@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"text/template"
@@ -64,7 +65,7 @@ type PluginConfig struct {
 
 	Format string `yaml:"format,omitempty"` // specific to notification plugins
 
-	Config map[string]interface{} `yaml:",inline"` // to keep the plugin-specific config
+	Config map[string]any `yaml:",inline"` // to keep the plugin-specific config
 }
 
 type ProfileAlert struct {
@@ -84,11 +85,11 @@ func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg,
 	pb.pluginsTypesToDispatch = make(map[string]struct{})
 
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
-		return fmt.Errorf("while loading plugin config: %w", err)
+		return fmt.Errorf("loading config: %w", err)
 	}
 
 	if err := pb.loadPlugins(ctx, configPaths.PluginDir); err != nil {
-		return fmt.Errorf("while loading plugin: %w", err)
+		return fmt.Errorf("loading plugin: %w", err)
 	}
 
 	pb.watcher = PluginWatcher{}
@@ -180,10 +181,8 @@ func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 
 func (pb *PluginBroker) profilesContainPlugin(pluginName string) bool {
 	for _, profileCfg := range pb.profileConfigs {
-		for _, name := range profileCfg.Notifications {
-			if pluginName == name {
-				return true
-			}
+		if slices.Contains(profileCfg.Notifications, pluginName) {
+			return true
 		}
 	}
 
@@ -409,8 +408,12 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
 
+	idx := -1
+
 	for {
-		pc := PluginConfig{}
+		var pc PluginConfig
+
+		idx += 1
 
 		err = dec.Decode(&pc)
 		if err != nil {
@@ -420,9 +423,14 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 
 			return nil, fmt.Errorf("while decoding %s got error %s", path, err)
 		}
+
 		// if the yaml document is empty, skip
 		if reflect.DeepEqual(pc, PluginConfig{}) {
 			continue
+		}
+
+		if pc.Type == "" {
+			return nil, fmt.Errorf("field 'type' missing in %s (position %d)", path, idx)
 		}
 
 		parsedConfigs = append(parsedConfigs, pc)

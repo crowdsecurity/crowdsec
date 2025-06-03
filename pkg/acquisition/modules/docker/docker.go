@@ -13,6 +13,8 @@ import (
 
 	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
+	dockerTypesEvents "github.com/docker/docker/api/types/events"
+	dockerFilter "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -23,6 +25,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"slices"
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -53,7 +56,6 @@ type DockerSource struct {
 	runningContainerState map[string]*ContainerConfig
 	compiledContainerName []*regexp.Regexp
 	compiledContainerID   []*regexp.Regexp
-	CheckIntervalDuration time.Duration
 	logger                *log.Entry
 	Client                client.CommonAPIClient
 	t                     *tomb.Tomb
@@ -75,9 +77,8 @@ func (d *DockerSource) GetUuid() string {
 
 func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
-		FollowStdout:  true, // default
-		FollowStdErr:  true, // default
-		CheckInterval: "1s", // default
+		FollowStdout: true, // default
+		FollowStdErr: true, // default
 	}
 
 	err := yaml.UnmarshalStrict(yamlConfig, &d.Config)
@@ -97,9 +98,8 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
 	}
 
-	d.CheckIntervalDuration, err = time.ParseDuration(d.Config.CheckInterval)
-	if err != nil {
-		return fmt.Errorf("parsing 'check_interval' parameters: %s", d.CheckIntervalDuration)
+	if d.Config.CheckInterval != "" {
+		d.logger.Warn("check_interval is deprecated, it will be removed in a future version")
 	}
 
 	if d.Config.Mode == "" {
@@ -408,10 +408,8 @@ func (d *DockerSource) getContainerLabels(ctx context.Context, containerId strin
 }
 
 func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.Container) *ContainerConfig {
-	for _, containerID := range d.Config.ContainerID {
-		if containerID == container.ID {
-			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(ctx, container.ID)}
-		}
+	if slices.Contains(d.Config.ContainerID, container.ID) {
+		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(ctx, container.ID)}
 	}
 
 	for _, containerName := range d.Config.ContainerName {
@@ -495,63 +493,164 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 	return nil
 }
 
+func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+	// to track for garbage collection
+	runningContainersID := make(map[string]bool)
+
+	runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
+			for idx, container := range d.runningContainerState {
+				if d.runningContainerState[idx].t.Alive() {
+					d.logger.Infof("killing tail for container %s", container.Name)
+					d.runningContainerState[idx].t.Kill(nil)
+
+					if err := d.runningContainerState[idx].t.Wait(); err != nil {
+						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
+					}
+				}
+
+				delete(d.runningContainerState, idx)
+			}
+		} else {
+			log.Errorf("container list err: %s", err)
+		}
+
+		return err
+	}
+
+	for _, container := range runningContainers {
+		runningContainersID[container.ID] = true
+
+		// don't need to re eval an already monitored container
+		if _, ok := d.runningContainerState[container.ID]; ok {
+			continue
+		}
+
+		if containerConfig := d.EvalContainer(ctx, container); containerConfig != nil {
+			monitChan <- containerConfig
+		}
+	}
+
+	for containerStateID, containerConfig := range d.runningContainerState {
+		if _, ok := runningContainersID[containerStateID]; !ok {
+			deleteChan <- containerConfig
+		}
+	}
+
+	d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
+	return nil
+}
+
+// subscribeEvents will loop until it can successfully call d.Client.Events()
+// without immediately receiving an error. It applies exponential backoff on failures.
+// Returns the new (eventsChan, errChan) pair or an error if context/tomb is done.
+func (d *DockerSource) subscribeEvents(ctx context.Context) (<-chan dockerTypesEvents.Message, <-chan error, error) {
+	const (
+		initialBackoff = 2 * time.Second
+		backoffFactor  = 2
+		maxBackoff     = 60 * time.Second
+	)
+
+	f := dockerFilter.NewArgs()
+	f.Add("type", "container")
+
+	options := dockerTypesEvents.ListOptions{
+		Filters: f,
+	}
+
+	backoff := initialBackoff
+	retries := 0
+
+	d.logger.Infof("Subscribing to Docker events")
+
+	for {
+		// bail out immediately if the context is canceled
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		case <-d.t.Dying():
+			return nil, nil, errors.New("connection aborted, shutting down docker watcher")
+		default:
+		}
+
+		// Try to reconnect
+		eventsChan, errChan := d.Client.Events(ctx, options)
+
+		// Retry if the connection is immediately broken
+		select {
+		case err := <-errChan:
+			d.logger.Errorf("Connection to Docker failed (attempt %d): %v", retries+1, err)
+
+			retries++
+
+			d.logger.Infof("Sleeping %s before next retry", backoff)
+
+			// Wait for 'backoff', but still allow cancellation
+			select {
+			case <-time.After(backoff):
+				// Continue after backoff
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			case <-d.t.Dying():
+				return nil, nil, errors.New("connection aborted, shutting down docker watcher")
+			}
+
+			backoff = max(backoff*backoffFactor, maxBackoff)
+
+			continue
+		default:
+			// great success!
+			return eventsChan, errChan, nil
+		}
+	}
+}
+
 func (d *DockerSource) WatchContainer(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
-	ticker := time.NewTicker(d.CheckIntervalDuration)
-	d.logger.Infof("Container watcher started, interval: %s", d.CheckIntervalDuration.String())
+	err := d.checkContainers(ctx, monitChan, deleteChan)
+	if err != nil {
+		return err
+	}
+
+	eventsChan, errChan, err := d.subscribeEvents(ctx)
+	if err != nil {
+		return err
+	}
 
 	for {
 		select {
 		case <-d.t.Dying():
 			d.logger.Infof("stopping container watcher")
 			return nil
-		case <-ticker.C:
-			// to track for garbage collection
-			runningContainersID := make(map[string]bool)
 
-			runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
-			if err != nil {
-				if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
-					for idx, container := range d.runningContainerState {
-						if d.runningContainerState[idx].t.Alive() {
-							d.logger.Infof("killing tail for container %s", container.Name)
-							d.runningContainerState[idx].t.Kill(nil)
-
-							if err := d.runningContainerState[idx].t.Wait(); err != nil {
-								d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
-							}
-						}
-
-						delete(d.runningContainerState, idx)
-					}
-				} else {
-					log.Errorf("container list err: %s", err)
+		case event := <-eventsChan:
+			if event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie {
+				if err := d.checkContainers(ctx, monitChan, deleteChan); err != nil {
+					d.logger.Warnf("Failed to check containers: %v", err)
 				}
+			}
 
+		case err := <-errChan:
+			if err == nil {
 				continue
 			}
 
-			for _, container := range runningContainers {
-				runningContainersID[container.ID] = true
+			d.logger.Errorf("Docker events error: %v", err)
 
-				// don't need to re eval an already monitored container
-				if _, ok := d.runningContainerState[container.ID]; ok {
-					continue
-				}
-
-				if containerConfig := d.EvalContainer(ctx, container); containerConfig != nil {
-					monitChan <- containerConfig
-				}
+			// try to reconnect, replacing our channels on success. They are never nil if err is nil.
+			newEvents, newErr, recErr := d.subscribeEvents(ctx)
+			if recErr != nil {
+				return recErr
 			}
 
-			for containerStateID, containerConfig := range d.runningContainerState {
-				if _, ok := runningContainersID[containerStateID]; !ok {
-					deleteChan <- containerConfig
-				}
+			eventsChan, errChan = newEvents, newErr
+
+			d.logger.Info("Successfully reconnected to Docker events")
+			// We check containers after a reconnection because the docker daemon might have restarted
+			// and the container tombs may have self deleted
+			if err := d.checkContainers(ctx, monitChan, deleteChan); err != nil {
+				d.logger.Warnf("Failed to check containers: %v", err)
 			}
-
-			d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
-
-			ticker.Reset(d.CheckIntervalDuration)
 		}
 	}
 }

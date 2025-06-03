@@ -42,7 +42,7 @@ setup() {
 
     config_set 'del(.api.server.online_client)'
     rune -1 cscli capi status
-    assert_stderr --regexp "no configuration for Central API \(CAPI\) in '$(echo $CONFIG_YAML|sed s#//#/#g)'"
+    assert_stderr --regexp "no configuration for Central API \(CAPI\) in '${CONFIG_YAML//\/\//\/}'"
 }
 
 @test "cscli {capi,papi} status" {
@@ -98,6 +98,49 @@ setup() {
     ./instance-crowdsec start
     rune -0 cscli capi status
     assert_output --partial "You can successfully interact with Central API (CAPI)"
+}
+
+@test "CAPI login: use cached token from the db" {
+    ./instance-crowdsec stop
+
+    config_set '.common.log_media="stdout" | .common.log_level="debug"'
+
+    # a correct token was set in the previous test
+
+    rune -0 wait-for \
+        --err "CAPI manager configured successfully" \
+        "$CROWDSEC"
+    assert_stderr --partial "using valid token from DB"
+    refute_stderr --partial "No token found, authenticating"
+
+    # not valid anymore
+
+    rune -0 ./instance-db exec_sql "UPDATE config_items SET VALUE='abc' WHERE name='apic_token'"
+
+    rune -0 wait-for \
+        --err "CAPI manager configured successfully" \
+        "$CROWDSEC"
+    refute_stderr --partial "using valid token from DB"
+    assert_stderr --partial "error parsing token: token contains an invalid number of segments"
+    assert_stderr --partial "No token found, authenticating"
+
+    # token was re-created
+
+    rune -0 wait-for \
+        --err "CAPI manager configured successfully" \
+        "$CROWDSEC"
+    assert_stderr --partial "using valid token from DB"
+    refute_stderr --partial "No token found, authenticating"
+
+    # "cscli capi status" also saves the token
+
+    rune -0 ./instance-db exec_sql "UPDATE config_items SET VALUE='abc' WHERE name='apic_token'"
+    rune -0 cscli capi status
+    rune -0 wait-for \
+        --err "CAPI manager configured successfully" \
+        "$CROWDSEC"
+    assert_stderr --partial "using valid token from DB"
+    refute_stderr --partial "No token found, authenticating"
 }
 
 @test "capi register must be run from lapi" {

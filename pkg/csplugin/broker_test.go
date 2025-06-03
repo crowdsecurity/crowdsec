@@ -163,7 +163,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one now
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	err = json.Unmarshal(content, &alerts)
@@ -171,7 +171,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	assert.Len(t, alerts, 1)
 
 	// remove it
-	os.Remove("./out")
+	os.Remove(s.outFile)
 
 	// and another one
 	log.Printf("second send")
@@ -180,7 +180,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one again, as we cleaned the file
-	content, err = os.ReadFile("./out")
+	content, err = os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	err = json.Unmarshal(content, &alerts)
@@ -216,10 +216,10 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 
 	time.Sleep(500 * time.Millisecond)
 	// because of group threshold, we shouldn't have data yet
-	assert.NoFileExists(t, "./out")
+	assert.NoFileExists(t, s.outFile)
 	time.Sleep(1 * time.Second)
 	// after 1 seconds, we should have data
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err)
 
 	var alerts []models.Alert
@@ -254,13 +254,13 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	time.Sleep(100 * time.Millisecond)
 
 	// because of group threshold, we shouldn't have data yet
-	assert.NoFileExists(t, "./out")
+	assert.NoFileExists(t, s.outFile)
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(100 * time.Millisecond)
 
 	// and now we should
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	var alerts []models.Alert
@@ -295,7 +295,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	time.Sleep(time.Second)
 
 	// because of group threshold, we shouldn't have data yet
-	assert.NoFileExists(t, "./out")
+	assert.NoFileExists(t, s.outFile)
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -303,7 +303,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	time.Sleep(time.Second)
 
 	// and now we should
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	decoder := json.NewDecoder(bytes.NewReader(content))
@@ -347,11 +347,11 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	time.Sleep(200 * time.Millisecond)
 
 	// we shouldn't have data yet
-	assert.NoFileExists(t, "./out")
+	assert.NoFileExists(t, s.outFile)
 	time.Sleep(1 * time.Second)
 
 	// and now we should
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	var alerts []models.Alert
@@ -372,16 +372,16 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 
-	assert.NoFileExists(t, "./out")
+	assert.NoFileExists(t, s.outFile)
 
-	defer os.Remove("./out")
+	defer os.Remove(s.outFile)
 
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	// make it wait a bit, CI can be slow
 	time.Sleep(time.Second)
 
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	decoder := json.NewDecoder(bytes.NewReader(content))

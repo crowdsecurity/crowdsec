@@ -68,7 +68,7 @@ func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *to
 func (f *MockSource) CanRun() error                            { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockSource) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockSource) Dump() interface{}                        { return f }
+func (f *MockSource) Dump() any                                { return f }
 func (f *MockSource) GetName() string                          { return "mock" }
 func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
@@ -236,57 +236,57 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 		{
 			TestName: "invalid_yaml_file",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/badyaml.yaml"},
+				AcquisitionFiles: []string{"testdata/badyaml.yaml"},
 			},
-			ExpectedError: "failed to parse test_files/badyaml.yaml: yaml: unmarshal errors",
+			ExpectedError: "failed to parse testdata/badyaml.yaml: yaml: unmarshal errors",
 			ExpectedLen:   0,
 		},
 		{
 			TestName: "invalid_empty_yaml",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/emptyitem.yaml"},
+				AcquisitionFiles: []string{"testdata/emptyitem.yaml"},
 			},
 			ExpectedLen: 0,
 		},
 		{
 			TestName: "basic_valid",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/basic_filemode.yaml"},
+				AcquisitionFiles: []string{"testdata/basic_filemode.yaml"},
 			},
 			ExpectedLen: 2,
 		},
 		{
 			TestName: "missing_labels",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/missing_labels.yaml"},
+				AcquisitionFiles: []string{"testdata/missing_labels.yaml"},
 			},
-			ExpectedError: "missing labels in test_files/missing_labels.yaml",
+			ExpectedError: "missing labels in testdata/missing_labels.yaml",
 		},
 		{
 			TestName: "backward_compat",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/backward_compat.yaml"},
+				AcquisitionFiles: []string{"testdata/backward_compat.yaml"},
 			},
 			ExpectedLen: 2,
 		},
 		{
 			TestName: "bad_type",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
+				AcquisitionFiles: []string{"testdata/bad_source.yaml"},
 			},
-			ExpectedError: "in file test_files/bad_source.yaml (position 0) - unknown data source does_not_exist",
+			ExpectedError: "in file testdata/bad_source.yaml (position 0) - unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/bad_filetype.yaml"},
+				AcquisitionFiles: []string{"testdata/bad_filetype.yaml"},
 			},
-			ExpectedError: "while configuring datasource of type file from test_files/bad_filetype.yaml",
+			ExpectedError: "while configuring datasource of type file from testdata/bad_filetype.yaml",
 		},
 		{
 			TestName: "from_env",
 			Config: csconfig.CrowdsecServiceCfg{
-				AcquisitionFiles: []string{"test_files/env.yaml"},
+				AcquisitionFiles: []string{"testdata/env.yaml"},
 			},
 			ExpectedLen: 1,
 		},
@@ -356,7 +356,7 @@ func (f *MockCat) StreamingAcquisition(context.Context, chan types.Event, *tomb.
 func (f *MockCat) CanRun() error                            { return nil }
 func (f *MockCat) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockCat) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockCat) Dump() interface{}                        { return f }
+func (f *MockCat) Dump() any                                { return f }
 func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
 }
@@ -403,7 +403,7 @@ func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Even
 func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockTail) Dump() interface{}                        { return f }
+func (f *MockTail) Dump() any                                { return f }
 func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return errors.New("not supported")
 }
@@ -538,7 +538,7 @@ func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event
 func (f *MockSourceByDSN) CanRun() error                            { return nil }
 func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector { return nil }
-func (f *MockSourceByDSN) Dump() interface{}                        { return f }
+func (f *MockSourceByDSN) Dump() any                                { return f }
 func (f *MockSourceByDSN) GetName() string                          { return "mockdsn" }
 func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")

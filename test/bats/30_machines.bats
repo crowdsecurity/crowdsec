@@ -13,7 +13,6 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     ./instance-data load
-    ./instance-crowdsec start
 }
 
 teardown() {
@@ -93,6 +92,7 @@ teardown() {
 }
 
 @test "register, validate and then remove a machine" {
+    ./instance-crowdsec start
     rune -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_stderr --partial "Successfully registered to Local API (LAPI)"
     assert_stderr --partial "Local API credentials written to '/dev/null'"
@@ -119,6 +119,7 @@ teardown() {
     rune -0 cscli machines list -o json
     rune -0 jq '. | length' <(output)
     assert_output 1
+    ./instance-crowdsec stop
 }
 
 @test "cscli machines prune" {
@@ -144,3 +145,21 @@ teardown() {
     rune -0 cscli machines prune
     assert_output 'No machines to prune.'
 }
+
+#### THIS TEST MUST BE LAST
+
+#@test "machine auto-delete" {
+#    config_set '.api.client.unregister_on_exit = true'
+#
+#    # Stop and start crowdsec to make the machine delete itself
+#    ./instance-crowdsec start
+#
+#    ./instance-crowdsec stop
+#
+#    # we have 0 machines now
+#    rune -0 cscli machines list -o json
+#    rune -0 jq '. | length' <(output)
+#    assert_output 0
+#}
+
+####

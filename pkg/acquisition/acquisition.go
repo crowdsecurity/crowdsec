@@ -24,6 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"maps"
 )
 
 type DataSourceUnavailableError struct {
@@ -354,9 +355,7 @@ func copyEvent(evt types.Event, line string) types.Event {
 	evtCopy.Line.Raw = line
 	evtCopy.Line.Labels = make(map[string]string)
 
-	for k, v := range evt.Line.Labels {
-		evtCopy.Line.Labels[k] = v
-	}
+	maps.Copy(evtCopy.Line.Labels, evt.Line.Labels)
 
 	return evtCopy
 }
@@ -388,8 +387,8 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 			case string:
 				logger.Tracef("transform expression returned %s", v)
 				output <- copyEvent(evt, v)
-			case []interface{}:
-				logger.Tracef("transform expression returned %v", v) //nolint:asasalint // We actually want to log the slice content
+			case []any:
+				logger.Tracef("transform expression returned %v", v) // We actually want to log the slice content
 
 				for _, line := range v {
 					l, ok := line.(string)
