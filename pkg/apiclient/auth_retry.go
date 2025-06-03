@@ -19,7 +19,7 @@ type retryRoundTripper struct {
 	withBackOff      bool
 }
 
-func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
+func (r retryRoundTripper) shouldRetry(statusCode int) bool {
 	return slices.Contains(r.retryStatusCodes, statusCode)
 }
 
@@ -62,7 +62,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			return nil, fmt.Errorf("retryable error: %w", err)
 		}
 
-		if r.ShouldRetry(resp.StatusCode) {
+		if r.shouldRetry(resp.StatusCode) {
 			log.Errorf("request returned status %d: %s; %d retries left", resp.StatusCode, resp.Status, attemptLeft)
 	        	return nil, fmt.Errorf("retryable status: %d", resp.StatusCode)
 		}
