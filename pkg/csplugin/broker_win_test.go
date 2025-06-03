@@ -76,16 +76,16 @@ func (s *PluginSuite) TestBrokerRun() {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 
-	assert.NoFileExists(t, "./out")
-	defer os.Remove("./out")
+	assert.NoFileExists(t, s.outFile)
+	defer os.Remove(s.outFile)
 
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(time.Second * 4)
 
-	assert.FileExists(t, ".\\out")
+	assert.FileExists(t, s.outFile)
 
-	content, err := os.ReadFile("./out")
+	content, err := os.ReadFile(s.outFile)
 	require.NoError(t, err, "Error reading file")
 
 	decoder := json.NewDecoder(bytes.NewReader(content))

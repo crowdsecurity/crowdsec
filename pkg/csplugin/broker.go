@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"text/template"
@@ -64,7 +65,7 @@ type PluginConfig struct {
 
 	Format string `yaml:"format,omitempty"` // specific to notification plugins
 
-	Config map[string]interface{} `yaml:",inline"` // to keep the plugin-specific config
+	Config map[string]any `yaml:",inline"` // to keep the plugin-specific config
 }
 
 type ProfileAlert struct {
@@ -180,10 +181,8 @@ func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 
 func (pb *PluginBroker) profilesContainPlugin(pluginName string) bool {
 	for _, profileCfg := range pb.profileConfigs {
-		for _, name := range profileCfg.Notifications {
-			if pluginName == name {
-				return true
-			}
+		if slices.Contains(profileCfg.Notifications, pluginName) {
+			return true
 		}
 	}
 
@@ -432,7 +431,6 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 
 		if pc.Type == "" {
 			return nil, fmt.Errorf("field 'type' missing in %s (position %d)", path, idx)
-
 		}
 
 		parsedConfigs = append(parsedConfigs, pc)

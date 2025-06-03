@@ -28,6 +28,7 @@ type PluginSuite struct {
 	notifDir     string // (config_paths.notification_dir)
 	pluginBinary string // full path to the plugin binary (unique for each test)
 	pluginConfig string // full path to the notification config (unique for each test)
+	outFile      string // full path to the output file (unique for each test)
 
 	pluginBroker *PluginBroker
 }
@@ -125,6 +126,9 @@ func (s *PluginSuite) SetupSubTest() {
 	s.pluginConfig = filepath.Join(s.notifDir, "dummy.yaml")
 	err = copyFile("testdata/dummy.yaml", s.pluginConfig)
 	require.NoError(t, err, "while copying plugin config")
+
+	s.outFile = filepath.Join(t.TempDir(), "out")
+	t.Setenv("OUTFILE", s.outFile)
 }
 
 func (s *PluginSuite) TearDownSubTest() {
@@ -139,8 +143,6 @@ func (s *PluginSuite) TearDownSubTest() {
 	if runtime.GOOS != "windows" {
 		require.NoError(t, err)
 	}
-
-	os.Remove("./out")
 }
 
 func (s *PluginSuite) InitBroker(ctx context.Context, procCfg *csconfig.PluginCfg) (*PluginBroker, error) {

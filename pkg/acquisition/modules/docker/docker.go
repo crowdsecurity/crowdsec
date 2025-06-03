@@ -25,6 +25,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"slices"
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -407,10 +408,8 @@ func (d *DockerSource) getContainerLabels(ctx context.Context, containerId strin
 }
 
 func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.Container) *ContainerConfig {
-	for _, containerID := range d.Config.ContainerID {
-		if containerID == container.ID {
-			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(ctx, container.ID)}
-		}
+	if slices.Contains(d.Config.ContainerID, container.ID) {
+		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(ctx, container.ID)}
 	}
 
 	for _, containerName := range d.Config.ContainerName {
