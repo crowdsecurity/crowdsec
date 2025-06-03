@@ -292,7 +292,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 				p.Logger.Info("Stopping PAPI because of plan downgrade or engine removal")
 				cancel() // This will stop any ongoing PAPI pull
 				p.Client.Stop()
-				papiCtx, cancel = context.WithCancel(ctx) // Recreate the context if the pull is restarted
+				papiCtx, cancel = context.WithCancel(ctx) //nolint:fatcontext // Recreate the context if the pull is restarted
 				papiChan = nil
 				p.Logger.Debug("done stopping PAPI pull")
 			}
