@@ -134,16 +134,13 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 
 	t.Go(func() error { return papi.SyncDecisions(ctx) })
 
-	papiCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	err = papi.PullOnce(papiCtx, time.Time{}, true)
+	err = papi.PullOnce(ctx, time.Time{}, true)
 	if err != nil {
 		return fmt.Errorf("unable to sync decisions: %w", err)
 	}
 
 	log.Infof("Sending acknowledgements to CAPI")
 
-	cancel() // Force PAPI to stop pulling
 	apic.Shutdown()
 	papi.Shutdown()
 	t.Wait()

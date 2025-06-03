@@ -209,7 +209,6 @@ func (c *LongPollClient) Start(ctx context.Context, since time.Time) chan Event 
 
 func (c *LongPollClient) Stop() error {
 	c.t.Kill(nil)
-	c.t.Wait()
 	return nil
 }
 
