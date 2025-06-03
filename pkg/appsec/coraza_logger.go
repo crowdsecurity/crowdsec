@@ -3,10 +3,10 @@ package appsec
 import (
 	"fmt"
 	"io"
-
-	log "github.com/sirupsen/logrus"
+	"maps"
 
 	dbg "github.com/corazawaf/coraza/v3/debuglog"
+	log "github.com/sirupsen/logrus"
 )
 
 var DebugRules = map[int]bool{}
@@ -95,7 +95,7 @@ func (e *crzLogEvent) Int(key string, i int) dbg.Event {
 		}
 		// this allows us to have per-rule debug logging
 		e.muted = false
-		e.fields = map[string]interface{}{}
+		e.fields = map[string]any{}
 		e.level = log.DebugLevel
 	}
 
@@ -143,12 +143,10 @@ func (c *crzLogger) NewMutedEvt(lvl log.Level) dbg.Event {
 }
 
 func (c *crzLogger) NewEvt(lvl log.Level) dbg.Event {
-	evt := &crzLogEvent{fields: map[string]interface{}{}, logger: c.logger, level: lvl}
+	evt := &crzLogEvent{fields: map[string]any{}, logger: c.logger, level: lvl}
 
 	if c.defaultFields != nil {
-		for k, v := range c.defaultFields {
-			evt.fields[k] = v
-		}
+		maps.Copy(evt.fields, c.defaultFields)
 	}
 
 	return evt

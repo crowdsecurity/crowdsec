@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"slices"
 )
 
 var openedStreams = prometheus.NewGaugeVec(
@@ -411,7 +412,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 					// stream exists, but is dead, remove it from list
 					if !stream.t.Alive() {
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
-						cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
+						cw.monitoredStreams = slices.Delete(cw.monitoredStreams, idx, idx+1)
 
 						if cw.metricsLevel != configuration.METRICS_NONE {
 							openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
