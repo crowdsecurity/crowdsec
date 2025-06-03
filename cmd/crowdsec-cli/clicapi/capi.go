@@ -225,7 +225,6 @@ func (cli *cliCapi) Status(ctx context.Context, db *database.Client, out io.Writ
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
 	status, err := queryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
-//	auth, enrolled, subType, err := queryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
