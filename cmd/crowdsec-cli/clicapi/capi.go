@@ -2,7 +2,6 @@ package clicapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -163,10 +162,6 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 	}
 
 	itemsForAPI := hub.GetInstalledListForAPI()
-
-	if len(itemsForAPI) == 0 {
-		return false, false, "", errors.New("no scenarios or appsec-rules installed, abort")
-	}
 
 	passwd := strfmt.Password(password)
 
