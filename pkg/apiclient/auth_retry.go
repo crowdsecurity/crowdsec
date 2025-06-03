@@ -38,6 +38,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		// DefaultRandomizationFactor = 0.5
 		// DefaultMultiplier          = 1.5
 		// DefaultMaxInterval         = 60 * time.Second
+		// MaxElapsedTime             = 15 * time.Minute
 		exp := backoff.NewExponentialBackOff()
 		exp.InitialInterval = 20 * time.Second
 		exp.Multiplier = 2
