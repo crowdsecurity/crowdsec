@@ -3,12 +3,12 @@ package apiclient
 import (
 	"math/rand"
 	"net/http"
+	"slices"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	"slices"
 )
 
 type retryRoundTripper struct {

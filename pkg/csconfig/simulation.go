@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
-	"slices"
 )
 
 type SimulationConfig struct {
