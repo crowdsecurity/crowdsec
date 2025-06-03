@@ -6,8 +6,8 @@ import (
 	"slices"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/cenkalti/backoff/v5"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -59,12 +59,13 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			if attemptLeft > 0 {
 				log.Errorf("while performing request: %s; %d retries left", err, attemptLeft)
 			}
+
 			return nil, fmt.Errorf("retryable error: %w", err)
 		}
 
 		if r.shouldRetry(resp.StatusCode) {
 			log.Errorf("request returned status %d: %s; %d retries left", resp.StatusCode, resp.Status, attemptLeft)
-	        	return nil, fmt.Errorf("retryable status: %d", resp.StatusCode)
+			return nil, fmt.Errorf("retryable status: %d", resp.StatusCode)
 		}
 
 		return resp, nil
@@ -74,7 +75,6 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		backoff.WithBackOff(bo),
 		backoff.WithMaxTries(maxAttempts),
 	)
-
 	if err != nil {
 		return nil, err
 	}
