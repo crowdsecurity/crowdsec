@@ -6,7 +6,7 @@ on:
     paths:
       - 'pkg/**'
       - 'cmd/**'
-      - 'mk/**'
+      - 'build/**'
       - 'docker/docker_start.sh'
       - 'docker/config.yaml'
       - '.github/workflows/publish-docker-master.yml'
