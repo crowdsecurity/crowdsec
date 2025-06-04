@@ -63,7 +63,7 @@ func addURLParam(rawURL string, param string, value string) (string, error) {
 // It uses a temporary file to avoid partial downloads, and won't overwrite the original
 // if it has not changed.
 // Return true if the file has been updated, false if already up to date.
-func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withContent bool, logger *logrus.Logger) (bool, error) {
+func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withContent bool, logger *logrus.Logger) (downloaded bool, err error) {
 	url, err := d.urlTo(".index.json")
 	if err != nil {
 		return false, fmt.Errorf("failed to build hub index request: %w", err)
@@ -76,7 +76,7 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 		}
 	}
 
-	downloaded, err := downloader.
+	downloaded, err = downloader.
 		New().
 		WithHTTPClient(HubClient).
 		ToFile(destPath).
@@ -97,13 +97,13 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 // FetchContent downloads the content to the specified path, through a temporary file
 // to avoid partial downloads.
 // If the hash does not match, it will not overwrite and log a warning.
-func (d *Downloader) FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (bool, string, error) {
-	url, err := d.urlTo(remotePath)
+func (d *Downloader) FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (downloaded bool, url string, err error) {
+	url, err = d.urlTo(remotePath)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to build request: %w", err)
 	}
 
-	downloaded, err := downloader.
+	downloaded, err = downloader.
 		New().
 		WithHTTPClient(HubClient).
 		ToFile(destPath).
