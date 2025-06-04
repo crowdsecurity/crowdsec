@@ -612,6 +612,27 @@ func (h *Hub) localSync() error {
 	return nil
 }
 
+func (i *Item) detectVersionFromHash(hash string) (version string, found bool, err error) {
+	// let's reverse sort the versions to deal with hash collisions (#154)
+	versions := make([]string, 0, len(i.Versions))
+	for k := range i.Versions {
+		versions = append(versions, k)
+	}
+
+	sorted, err := sortedVersions(versions)
+	if err != nil {
+		return "", false, fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
+	}
+
+	for _, version := range sorted {
+		if i.Versions[version].Digest == hash {
+			return version, true, nil
+		}
+	}
+
+	return "?", false, nil
+}
+
 func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
@@ -619,37 +640,22 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 		i.State.LocalPath = path
 	}
 
-	i.State.LocalHash, err = downloader.SHA256(path)
+	hash, err := downloader.SHA256(path)
 	if err != nil {
 		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
 	}
+	i.State.LocalHash = hash
 
-	// let's reverse sort the versions to deal with hash collisions (#154)
-	versions := make([]string, 0, len(i.Versions))
-	for k := range i.Versions {
-		versions = append(versions, k)
-	}
-
-	versions, err = sortedVersions(versions)
+	version, found, err := i.detectVersionFromHash(hash)
 	if err != nil {
-		return fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
+		return err
 	}
+	i.State.LocalVersion = version
 
-	i.State.LocalVersion = "?"
-
-	for _, version := range versions {
-		if i.Versions[version].Digest == i.State.LocalHash {
-			i.State.LocalVersion = version
-			break
-		}
-	}
-
-	if i.State.LocalVersion == "?" {
+	if !found {
 		i.hub.logger.Tracef("got tainted match for %s: %s", i.Name, path)
-
 		i.State.UpToDate = false
 		i.addTaint(i)
-
 		return nil
 	}
 
