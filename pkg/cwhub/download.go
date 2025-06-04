@@ -32,31 +32,20 @@ type ContentProvider interface {
 }
 
 // urlTo builds the URL to download a file from the remote hub.
-func (d *Downloader) urlTo(remotePath string) (string, error) {
+func (d *Downloader) urlTo(remotePath string) (*url.URL, error) {
 	// the template must contain two string placeholders
 	if fmt.Sprintf(d.URLTemplate, "%s", "%s") != d.URLTemplate {
-		return "", fmt.Errorf("invalid URL template '%s'", d.URLTemplate)
+		return nil, fmt.Errorf("invalid URL template '%s'", d.URLTemplate)
 	}
 
-	return fmt.Sprintf(d.URLTemplate, d.Branch, remotePath), nil
-}
+	raw := fmt.Sprintf(d.URLTemplate, d.Branch, remotePath)
 
-// addURLParam adds a parameter with a value (ex. "with_content=true") to the URL if it's not already present.
-func addURLParam(rawURL string, param string, value string) (string, error) {
-	parsedURL, err := url.Parse(rawURL)
+	parsed, err := url.Parse(raw)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse URL: %w", err)
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
 	}
 
-	query := parsedURL.Query()
-
-	if _, exists := query[param]; !exists {
-		query.Add(param, value)
-	}
-
-	parsedURL.RawQuery = query.Encode()
-
-	return parsedURL.String(), nil
+	return parsed, nil
 }
 
 // FetchIndex downloads the index from the hub and writes it to the filesystem.
@@ -70,10 +59,9 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 	}
 
 	if withContent {
-		url, err = addURLParam(url, "with_content", "true")
-		if err != nil {
-			return false, fmt.Errorf("failed to add 'with_content' parameter to URL: %w", err)
-		}
+		q := url.Query()
+		q.Set("with_content", "true")
+		url.RawQuery = q.Encode()
 	}
 
 	downloaded, err = downloader.
@@ -86,7 +74,7 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 		BeforeRequest(func(_ *http.Request) {
 			fmt.Println("Downloading " + destPath)
 		}).
-		Download(ctx, url)
+		Download(ctx, url.String())
 	if err != nil {
 		return false, err
 	}
@@ -98,7 +86,7 @@ func (d *Downloader) FetchIndex(ctx context.Context, destPath string, withConten
 // to avoid partial downloads.
 // If the hash does not match, it will not overwrite and log a warning.
 func (d *Downloader) FetchContent(ctx context.Context, remotePath, destPath, wantHash string, logger *logrus.Logger) (downloaded bool, url string, err error) {
-	url, err = d.urlTo(remotePath)
+	u, err := d.urlTo(remotePath)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to build request: %w", err)
 	}
@@ -112,7 +100,7 @@ func (d *Downloader) FetchContent(ctx context.Context, remotePath, destPath, wan
 		WithLogger(logger.WithField("url", url)).
 		CompareContent().
 		VerifyHash("sha256", wantHash).
-		Download(ctx, url)
+		Download(ctx, u.String())
 
 	var hasherr downloader.HashMismatchError
 
@@ -123,5 +111,5 @@ func (d *Downloader) FetchContent(ctx context.Context, remotePath, destPath, wan
 		return false, "", err
 	}
 
-	return downloaded, url, nil
+	return downloaded, u.String(), nil
 }
