@@ -10,7 +10,7 @@ import (
 
 type UsageMetricsService service
 
-func (s *UsageMetricsService) Add(ctx context.Context, metrics *models.AllMetrics) (interface{}, *Response, error) {
+func (s *UsageMetricsService) Add(ctx context.Context, metrics *models.AllMetrics) (any, *Response, error) {
 	u := fmt.Sprintf("%s/usage-metrics", s.client.URLPrefix)
 
 	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, &metrics)
@@ -18,7 +18,7 @@ func (s *UsageMetricsService) Add(ctx context.Context, metrics *models.AllMetric
 		return nil, nil, err
 	}
 
-	var response interface{}
+	var response any
 
 	resp, err := s.client.Do(ctx, req, &response)
 	if err != nil {

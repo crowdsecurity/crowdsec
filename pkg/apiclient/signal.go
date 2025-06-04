@@ -12,7 +12,7 @@ import (
 
 type SignalService service
 
-func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsRequest) (interface{}, *Response, error) {
+func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsRequest) (any, *Response, error) {
 	u := fmt.Sprintf("%s/signals", s.client.URLPrefix)
 
 	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, &signals)
@@ -20,7 +20,7 @@ func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsReque
 		return nil, nil, fmt.Errorf("while building request: %w", err)
 	}
 
-	var response interface{}
+	var response any
 
 	resp, err := s.client.Do(ctx, req, &response)
 	if err != nil {

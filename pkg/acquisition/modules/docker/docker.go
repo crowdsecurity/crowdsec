@@ -398,10 +398,10 @@ func (d *DockerSource) getContainerTTY(ctx context.Context, containerId string) 
 	return containerDetails.Config.Tty
 }
 
-func (d *DockerSource) getContainerLabels(ctx context.Context, containerId string) map[string]interface{} {
+func (d *DockerSource) getContainerLabels(ctx context.Context, containerId string) map[string]any {
 	containerDetails, err := d.Client.ContainerInspect(ctx, containerId)
 	if err != nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	return parseLabels(containerDetails.Config.Labels)
@@ -466,7 +466,7 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 			return nil
 		}
 
-		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
+		labelsTypeCast, ok := parsedLabels["labels"].(map[string]any)
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
 			return nil
@@ -669,7 +669,7 @@ func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan types.
 	return d.WatchContainer(ctx, monitChan, deleteChan)
 }
 
-func (d *DockerSource) Dump() interface{} {
+func (d *DockerSource) Dump() any {
 	return d
 }
 

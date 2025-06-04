@@ -53,7 +53,7 @@ type DataSource interface {
 	StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
 	CanRun() error                                                            // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	GetUuid() string                                                          // Get the unique identifier of the datasource
-	Dump() interface{}
+	Dump() any
 }
 
 var (
@@ -180,7 +180,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	uniqueId := uuid.NewString()
 
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -308,7 +308,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig
 			}
 
 			if sub.TransformExpr != "" {
-				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 				if err != nil {
 					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 				}
@@ -372,7 +372,7 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 		case evt := <-transformChan:
 			logger.Tracef("Received event %s", evt.Line.Raw)
 
-			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
+			out, err := expr.Run(transformRuntime, map[string]any{"evt": &evt})
 			if err != nil {
 				logger.Errorf("while running transform expression: %s, sending event as-is", err)
 				output <- evt
