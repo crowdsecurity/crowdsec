@@ -108,6 +108,10 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 			logger.Debugf("dying")
 			close(c.c)
 			return nil
+		case <-ctx.Done():
+			logger.Debugf("context canceled")
+			close(c.c)
+			return ctx.Err()
 		default:
 			var pollResp pollResponse
 			err = decoder.Decode(&pollResp)
@@ -148,23 +152,45 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 }
 
 func (c *LongPollClient) pollEvents(ctx context.Context) error {
+
+	initialBackoff := 1 * time.Second
+	maxBackoff := 30 * time.Second
+	currentBackoff := initialBackoff
+
 	for {
 		select {
 		case <-c.t.Dying():
 			c.logger.Debug("dying")
 			return nil
+		case <-ctx.Done():
+			c.logger.Debug("context canceled")
+			return ctx.Err()
 		default:
 			c.logger.Debug("Polling PAPI")
 			err := c.poll(ctx)
 			if err != nil {
-				c.logger.Errorf("failed to poll: %s", err)
 				if errors.Is(err, errUnauthorized) {
+					c.logger.Errorf("unauthorized, stopping polling")
 					c.t.Kill(err)
 					close(c.c)
 					return err
 				}
+				c.logger.Errorf("failed to poll: %s, retrying in %s", err, currentBackoff)
+				select {
+				case <-c.t.Dying():
+					return nil
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(currentBackoff):
+				}
+
+				currentBackoff *= 2
+				if currentBackoff > maxBackoff {
+					currentBackoff = maxBackoff
+				}
 				continue
 			}
+			currentBackoff = initialBackoff
 		}
 	}
 }
@@ -174,7 +200,8 @@ func (c *LongPollClient) Start(ctx context.Context, since time.Time) chan Event 
 	c.c = make(chan Event)
 	c.since = since.Unix() * 1000
 	c.timeout = "45"
-	c.t.Go(func() error {return c.pollEvents(ctx)})
+	c.t = tomb.Tomb{}
+	c.t.Go(func() error { return c.pollEvents(ctx) })
 	return c.c
 }
 

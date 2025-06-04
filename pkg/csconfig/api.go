@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type APICfg struct {
@@ -121,6 +122,10 @@ func (o *OnlineApiClientCfg) Load() error {
 	case o.Credentials.URL == "":
 		log.Warningf("can't load CAPI credentials from '%s' (missing url field)", o.CredentialsFilePath)
 		o.Credentials = nil
+	}
+
+	if o.Credentials != nil && o.Credentials.PapiURL == "" {
+		o.Credentials.PapiURL = types.PAPIBaseURL
 	}
 
 	return nil
