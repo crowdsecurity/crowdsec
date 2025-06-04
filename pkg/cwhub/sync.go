@@ -163,12 +163,12 @@ func newItemSpec(path, hubDir, installDir string) (*itemSpec, error) {
 		err  error
 	)
 
-	if subs := relativePathComponents(path, hubDir); len(subs) > 0 {
+	if subs, ok := relativePathComponents(path, hubDir); ok {
 		spec, err = newHubItemSpec(path, subs)
 		if err != nil {
 			return nil, err
 		}
-	} else if subs := relativePathComponents(path, installDir); len(subs) > 0 {
+	} else if subs, ok := relativePathComponents(path, installDir); ok {
 		spec, err = newInstallItemSpec(path, subs)
 		if err != nil {
 			return nil, err
