@@ -96,7 +96,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
           push: ${{ inputs.push }}
           tags: ${{ steps.slim.outputs.tags }}
           target: slim
@@ -112,7 +112,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
           push: ${{ inputs.push }}
           tags: ${{ steps.full.outputs.tags }}
           target: full
