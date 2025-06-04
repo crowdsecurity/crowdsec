@@ -286,7 +286,7 @@ func (cw *CloudwatchSource) CanRun() error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Dump() interface{} {
+func (cw *CloudwatchSource) Dump() any {
 	return cw
 }
 

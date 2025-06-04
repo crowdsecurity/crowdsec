@@ -37,8 +37,8 @@ type DroppedEntry struct {
 }
 
 type LokiResponse struct {
-	Streams        []Stream      `json:"streams"`
-	DroppedEntries []interface{} `json:"dropped_entries"` //We don't care about the actual content i think ?
+	Streams        []Stream `json:"streams"`
+	DroppedEntries []any    `json:"dropped_entries"` //We don't care about the actual content i think ?
 }
 
 // LokiQuery GET response.
@@ -49,7 +49,7 @@ type LokiQueryRangeResponse struct {
 }
 
 type Data struct {
-	ResultType string      `json:"resultType"`
-	Result     []Stream    `json:"result"` // Warning, just stream value is handled
-	Stats      interface{} `json:"stats"`  // Stats is boring, just ignore it
+	ResultType string   `json:"resultType"`
+	Result     []Stream `json:"result"` // Warning, just stream value is handled
+	Stats      any      `json:"stats"`  // Stats is boring, just ignore it
 }

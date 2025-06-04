@@ -367,7 +367,7 @@ func (l *LokiSource) GetUuid() string {
 	return l.Config.UniqueId
 }
 
-func (l *LokiSource) Dump() interface{} {
+func (l *LokiSource) Dump() any {
 	return l
 }
 

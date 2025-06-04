@@ -450,7 +450,7 @@ func (w *AppsecSource) GetUuid() string {
 	return w.config.UniqueId
 }
 
-func (w *AppsecSource) Dump() interface{} {
+func (w *AppsecSource) Dump() any {
 	return w
 }
 

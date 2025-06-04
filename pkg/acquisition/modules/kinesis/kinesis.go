@@ -599,6 +599,6 @@ func (k *KinesisSource) CanRun() error {
 	return nil
 }
 
-func (k *KinesisSource) Dump() interface{} {
+func (k *KinesisSource) Dump() any {
 	return k
 }

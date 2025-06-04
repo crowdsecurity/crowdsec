@@ -10,7 +10,7 @@ import (
 
 type MetricsService service
 
-func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (interface{}, *Response, error) {
+func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (any, *Response, error) {
 	u := fmt.Sprintf("%s/metrics/", s.client.URLPrefix)
 
 	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, &metrics)
@@ -18,7 +18,7 @@ func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (inte
 		return nil, nil, err
 	}
 
-	var response interface{}
+	var response any
 
 	resp, err := s.client.Do(ctx, req, &response)
 	if err != nil {

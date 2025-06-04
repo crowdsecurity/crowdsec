@@ -5,15 +5,15 @@ import (
 	"strings"
 )
 
-func parseLabels(labels map[string]string) map[string]interface{} {
-	result := make(map[string]interface{})
+func parseLabels(labels map[string]string) map[string]any {
+	result := make(map[string]any)
 	for key, value := range labels {
 		parseKeyToMap(result, key, value)
 	}
 	return result
 }
 
-func parseKeyToMap(m map[string]interface{}, key string, value string) {
+func parseKeyToMap(m map[string]any, key string, value string) {
 	if !strings.HasPrefix(key, "crowdsec") {
 		return
 	}
@@ -29,9 +29,9 @@ func parseKeyToMap(m map[string]interface{}, key string, value string) {
 
 	for i := 1; i < len(parts)-1; i++ {
 		if _, ok := m[parts[i]]; !ok {
-			m[parts[i]] = make(map[string]interface{})
+			m[parts[i]] = make(map[string]any)
 		}
-		m = m[parts[i]].(map[string]interface{})
+		m = m[parts[i]].(map[string]any)
 	}
 	m[parts[len(parts)-1]] = value
 }
