@@ -1,6 +1,7 @@
 package dockeracquisition
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -22,10 +23,8 @@ func parseKeyToMap(m map[string]interface{}, key string, value string) {
 		return
 	}
 
-	for i := range parts {
-		if parts[i] == "" {
-			return
-		}
+	if slices.Contains(parts, "") {
+		return
 	}
 
 	for i := 1; i < len(parts)-1; i++ {
