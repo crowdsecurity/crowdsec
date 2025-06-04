@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - 'docker/README.md'
+      - 'build/docker/README.md'
 
 jobs:
   update-docker-hub-readme:
@@ -26,4 +26,4 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: crowdsecurity/crowdsec
           short-description: "Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours."
-          readme-filepath: "./docker/README.md"
+          readme-filepath: "./build/docker/README.md"
