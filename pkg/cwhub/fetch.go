@@ -1,13 +1,17 @@
 package cwhub
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/crowdsecurity/go-cs-lib/downloader"
 )
 
 // writeEmbeddedContentTo writes the embedded content to the specified path and checks the hash.
@@ -24,24 +28,32 @@ func (i *Item) writeEmbeddedContentTo(destPath, wantHash string) error {
 	}
 
 	dir := filepath.Dir(destPath)
+	reader := bytes.NewReader(content)
+	hash := crypto.SHA256.New()
 
+	tee := io.TeeReader(reader, hash)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("while creating %s: %w", dir, err)
 	}
 
-	// check sha256
-	hash := crypto.SHA256.New()
-	if _, err := hash.Write(content); err != nil {
-		return fmt.Errorf("while hashing %s: %w", i.Name, err)
+	f, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	if _, err := io.Copy(f, tee); err != nil {
+		return err
 	}
 
 	gotHash := hex.EncodeToString(hash.Sum(nil))
 	if gotHash != wantHash {
-		return fmt.Errorf("hash mismatch: expected %s, got %s. The index file is invalid, please run 'cscli hub update' and try again", wantHash, gotHash)
-	}
-
-	if err := os.WriteFile(destPath, content, 0o600); err != nil {
-		return fmt.Errorf("while writing %s: %w", destPath, err)
+		return fmt.Errorf("%w. The index file is invalid, please run 'cscli hub update' and try again",
+			downloader.HashMismatchError{
+				Expected: wantHash,
+				Got: gotHash,
+			})
 	}
 
 	return nil
