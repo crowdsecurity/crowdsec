@@ -469,15 +469,12 @@ func (i *Item) checkSubItemVersions() []string {
 	return warn
 }
 
-// syncDir scans a directory for items, and updates the Hub state accordingly.
-func (h *Hub) syncDir(dir string) error {
-	specs := []*itemSpec{}
-
+func (h *Hub) collectSpecs(root string) (specs []*itemSpec, err error) {
 	// For each, scan PARSERS, POSTOVERFLOWS... and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
 		// i.e. /etc/crowdsec/parsers, /etc/crowdsec/hub/parsers, ...
-		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
+		cpath, err := filepath.Abs(filepath.Join(root, scan))
 		if err != nil {
 			h.logger.Errorf("failed %s: %s", cpath, err)
 			continue
@@ -503,8 +500,18 @@ func (h *Hub) syncDir(dir string) error {
 		}
 
 		if err = filepath.WalkDir(cpath, specCollector); err != nil {
-			return err
+			return nil, err
 		}
+	}
+
+	return specs, nil
+}
+
+// syncDir scans a directory for items, and updates the Hub state accordingly.
+func (h *Hub) syncDir(dir string) error {
+	specs, err := h.collectSpecs(dir)
+	if err != nil {
+		return err
 	}
 
 	// add non-local items first, so they can find the place in the index
