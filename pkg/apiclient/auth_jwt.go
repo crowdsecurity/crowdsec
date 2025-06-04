@@ -148,9 +148,7 @@ func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 
 	select {
 	case t.TokenRefreshChan <- struct{}{}:
-		log.Debug("sending token refresh signal")
 	default:
-		log.Debug("no one is waiting for the token refresh, ignoring")
 		// Do not block if no one is waiting for the token refresh (ie, PAPI fully disabled)
 	}
 

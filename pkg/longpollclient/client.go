@@ -178,10 +178,8 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 				c.logger.Errorf("failed to poll: %s, retrying in %s", err, currentBackoff)
 				select {
 				case <-c.t.Dying():
-					c.logger.Debug("dying during backoff")
 					return nil
 				case <-ctx.Done():
-					c.logger.Debug("context canceled during backoff")
 					return ctx.Err()
 				case <-time.After(currentBackoff):
 				}

@@ -265,7 +265,6 @@ func (p *Papi) Pull(ctx context.Context) error {
 	currentSubscriptionType := p.apiClient.GetSubscriptionType()
 
 	p.Logger.Debugf("current subscription type is %s", currentSubscriptionType)
-	p.Logger.Debugf("refresh token channel is %v", tokenRefreshChan)
 
 	if currentSubscriptionType == apiclient.SubscriptionTypeEnterprise || currentSubscriptionType == apiclient.SubscriptionTypeSecOps {
 		// If allowed to use PAPI, start it

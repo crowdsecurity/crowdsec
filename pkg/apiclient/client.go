@@ -80,11 +80,11 @@ func (c *ApiClient) GetSubscriptionType() string {
 
 	claims := token.Claims.(jwt.MapClaims)
 	subscriptionType, ok := claims["subscription_type"].(string)
-	if !ok {
-		return ""
+	if ok {
+		return subscriptionType
 	}
 
-	return subscriptionType
+	return ""
 }
 
 func (c *ApiClient) GetTokenRefreshChan() chan struct{} {
