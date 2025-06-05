@@ -29,7 +29,7 @@ type Command interface {
 	// an error if the preparation failed.
 	// NOTE: Returning an error will bubble up from the plan.AddCommand() method,
 	// but Prepare() might already have modified the plan's command slice.
-	Prepare(*ActionPlan) (bool, error)
+	Prepare(plan *ActionPlan) (bool, error)
 
 	// Run executes the command within the provided context and ActionPlan.
 	// It performs the actual operation and returns an error if execution fails.
