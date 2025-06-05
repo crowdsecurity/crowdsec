@@ -163,12 +163,12 @@ func newItemSpec(path, hubDir, installDir string) (*itemSpec, error) {
 		err  error
 	)
 
-	if subs := relativePathComponents(path, hubDir); len(subs) > 0 {
+	if subs, ok := relativePathComponents(path, hubDir); ok {
 		spec, err = newHubItemSpec(path, subs)
 		if err != nil {
 			return nil, err
 		}
-	} else if subs := relativePathComponents(path, installDir); len(subs) > 0 {
+	} else if subs, ok := relativePathComponents(path, installDir); ok {
 		spec, err = newInstallItemSpec(path, subs)
 		if err != nil {
 			return nil, err
@@ -469,15 +469,12 @@ func (i *Item) checkSubItemVersions() []string {
 	return warn
 }
 
-// syncDir scans a directory for items, and updates the Hub state accordingly.
-func (h *Hub) syncDir(dir string) error {
-	specs := []*itemSpec{}
-
+func (h *Hub) collectSpecs(root string) (specs []*itemSpec, err error) {
 	// For each, scan PARSERS, POSTOVERFLOWS... and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
 		// i.e. /etc/crowdsec/parsers, /etc/crowdsec/hub/parsers, ...
-		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
+		cpath, err := filepath.Abs(filepath.Join(root, scan))
 		if err != nil {
 			h.logger.Errorf("failed %s: %s", cpath, err)
 			continue
@@ -503,8 +500,18 @@ func (h *Hub) syncDir(dir string) error {
 		}
 
 		if err = filepath.WalkDir(cpath, specCollector); err != nil {
-			return err
+			return nil, err
 		}
+	}
+
+	return specs, nil
+}
+
+// syncDir scans a directory for items, and updates the Hub state accordingly.
+func (h *Hub) syncDir(dir string) error {
+	specs, err := h.collectSpecs(dir)
+	if err != nil {
+		return err
 	}
 
 	// add non-local items first, so they can find the place in the index
@@ -612,6 +619,27 @@ func (h *Hub) localSync() error {
 	return nil
 }
 
+func (i *Item) detectVersionFromHash(hash string) (version string, found bool, err error) {
+	// let's reverse sort the versions to deal with hash collisions (#154)
+	versions := make([]string, 0, len(i.Versions))
+	for k := range i.Versions {
+		versions = append(versions, k)
+	}
+
+	sorted, err := sortedVersions(versions)
+	if err != nil {
+		return "", false, fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
+	}
+
+	for _, version := range sorted {
+		if i.Versions[version].Digest == hash {
+			return version, true, nil
+		}
+	}
+
+	return "?", false, nil
+}
+
 func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
@@ -619,37 +647,22 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 		i.State.LocalPath = path
 	}
 
-	i.State.LocalHash, err = downloader.SHA256(path)
+	hash, err := downloader.SHA256(path)
 	if err != nil {
 		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
 	}
+	i.State.LocalHash = hash
 
-	// let's reverse sort the versions to deal with hash collisions (#154)
-	versions := make([]string, 0, len(i.Versions))
-	for k := range i.Versions {
-		versions = append(versions, k)
-	}
-
-	versions, err = sortedVersions(versions)
+	version, found, err := i.detectVersionFromHash(hash)
 	if err != nil {
-		return fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
+		return err
 	}
+	i.State.LocalVersion = version
 
-	i.State.LocalVersion = "?"
-
-	for _, version := range versions {
-		if i.Versions[version].Digest == i.State.LocalHash {
-			i.State.LocalVersion = version
-			break
-		}
-	}
-
-	if i.State.LocalVersion == "?" {
+	if !found {
 		i.hub.logger.Tracef("got tainted match for %s: %s", i.Name, path)
-
 		i.State.UpToDate = false
 		i.addTaint(i)
-
 		return nil
 	}
 
