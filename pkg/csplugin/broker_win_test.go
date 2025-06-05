@@ -79,8 +79,8 @@ func (s *PluginSuite) TestBrokerRun() {
 	assert.NoFileExists(t, s.outFile)
 	defer os.Remove(s.outFile)
 
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(time.Second * 4)
 
 	assert.FileExists(t, s.outFile)

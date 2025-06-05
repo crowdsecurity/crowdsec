@@ -345,7 +345,7 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 				return fmt.Errorf("failed to parse alert override: %w", err)
 			}
 
-			pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+			pluginBroker.PluginChannel <- models.ProfileAlert{
 				ProfileID: uint(0),
 				Alert:     alert,
 			}
@@ -452,7 +452,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			loop:
 				for {
 					select {
-					case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+					case pluginBroker.PluginChannel <- models.ProfileAlert{
 						ProfileID: uint(id),
 						Alert:     alert,
 					}:
