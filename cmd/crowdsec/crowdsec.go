@@ -70,11 +70,7 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*par
 	return csParsers, datasources, nil
 }
 
-// runCrowdsec starts the log processor service
-func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
-	inputEventChan = make(chan types.Event)
-	inputLineChan = make(chan types.Event)
-
+func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 	// start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 
@@ -99,7 +95,9 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		return nil
 	})
 	parserWg.Wait()
+}
 
+func startBucketRoutines(cConfig *csconfig.Config) {
 	bucketWg := &sync.WaitGroup{}
 
 	bucketsTomb.Go(func() error {
@@ -126,15 +124,14 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		return nil
 	})
 	bucketWg.Wait()
+}
 
-	apiClient, err := apiclient.GetLAPIClient()
-	if err != nil {
-		return err
-	}
-
+func startHeartBeat(cConfig *csconfig.Config, apiClient *apiclient.ApiClient) {
 	log.Debugf("Starting HeartBeat service")
 	apiClient.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
+}
 
+func startOutputRoutines(cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient) {
 	outputWg := &sync.WaitGroup{}
 
 	outputsTomb.Go(func() error {
@@ -153,7 +150,9 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		return nil
 	})
 	outputWg.Wait()
+}
 
+func startLPMetrics(cConfig *csconfig.Config, apiClient *apiclient.ApiClient, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
 	mp := NewMetricsProvider(
 		apiClient,
 		lpMetricsDefaultInterval,
@@ -176,6 +175,31 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
 			return fmt.Errorf("while fetching prometheus metrics for datasources: %w", err)
 		}
+	}
+
+	return nil
+}
+
+// runCrowdsec starts the log processor service
+func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
+	inputEventChan = make(chan types.Event)
+	inputLineChan = make(chan types.Event)
+
+	startParserRoutines(cConfig, parsers)
+
+	startBucketRoutines(cConfig)
+
+	apiClient, err := apiclient.GetLAPIClient()
+	if err != nil {
+		return err
+	}
+
+	startHeartBeat(cConfig, apiClient)
+
+	startOutputRoutines(cConfig, parsers, apiClient)
+
+	if err := startLPMetrics(cConfig, apiClient, hub, datasources); err != nil {
+		return err
 	}
 
 	log.Info("Starting processing data")
