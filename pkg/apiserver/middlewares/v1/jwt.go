@@ -238,8 +238,6 @@ func (j *JWT) Authenticator(c *gin.Context) (any, error) {
 
 	if err := j.DbClient.UpdateMachineVersion(ctx, useragent[1], auth.clientMachine.ID); err != nil {
 		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
-		log.Errorf("bad user agent from : %s", clientIP)
-
 		return nil, jwt.ErrFailedAuthentication
 	}
 
