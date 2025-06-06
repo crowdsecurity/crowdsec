@@ -338,14 +338,18 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, data)
 }
 
+func authIP(gctx *gin.Context, trustedIPs []net.IPNet) (ip string, trusted bool) {
+	ip = gctx.ClientIP()
+	return ip, ip == "127.0.0.1" || ip == "::1" || networksContainIP(trustedIPs, ip) || isUnixSocket(gctx)
+}
+
 // DeleteAlertByID delete the alert associated to the ID
 func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 	var err error
 
 	ctx := gctx.Request.Context()
 
-	incomingIP := gctx.ClientIP()
-	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) && !isUnixSocket(gctx) {
+	if incomingIP, trusted := authIP(gctx, c.TrustedIPs); !trusted {
 		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
@@ -373,8 +377,7 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	ctx := gctx.Request.Context()
 
-	incomingIP := gctx.ClientIP()
-	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) && !isUnixSocket(gctx) {
+	if incomingIP, trusted := authIP(gctx, c.TrustedIPs); !trusted {
 		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
