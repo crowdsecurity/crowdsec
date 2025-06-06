@@ -143,7 +143,7 @@ func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
 		return nil
 	}
 	// cache is implicitly disabled if no cache config is provided
-	if cacheCfg.Strategy == nil && cacheCfg.TTL == nil && cacheCfg.Size == nil {
+	if cacheCfg.Strategy == "" && cacheCfg.TTL == nil && cacheCfg.Size == nil {
 		return nil
 	}
 	// cache is enabled
@@ -156,8 +156,8 @@ func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
 	gc := gcache.New(size)
 
 	strategy := "LRU"
-	if cacheCfg.Strategy != nil {
-		strategy = *cacheCfg.Strategy
+	if cacheCfg.Strategy != "" {
+		strategy = cacheCfg.Strategy
 	}
 
 	switch strategy {
