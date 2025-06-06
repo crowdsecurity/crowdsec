@@ -281,6 +281,57 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 	return true, NodeHasOKGrok, nil
 }
 
+func (n *Node) processStash(p *types.Event, cachedExprEnv map[string]interface{}, logger *log.Entry) error {
+	for idx, stash := range n.Stash {
+		var (
+			key   string
+			value string
+		)
+
+		if stash.ValueExpression == nil {
+			logger.Warningf("Stash %d has no value expression, skipping", idx)
+			continue
+		}
+
+		if stash.KeyExpression == nil {
+			logger.Warningf("Stash %d has no key expression, skipping", idx)
+			continue
+		}
+		// collect the data
+		output, err := exprhelpers.Run(stash.ValueExpression, cachedExprEnv, logger, n.Debug)
+		if err != nil {
+			logger.Warningf("Error while running stash val expression : %v", err)
+		}
+		// can we expect anything else than a string ?
+		switch output := output.(type) {
+		case string:
+			value = output
+		default:
+			logger.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Value)
+			continue
+		}
+
+		// collect the key
+		output, err = exprhelpers.Run(stash.KeyExpression, cachedExprEnv, logger, n.Debug)
+		if err != nil {
+			logger.Warningf("Error while running stash key expression : %v", err)
+		}
+		// can we expect anything else than a string ?
+		switch output := output.(type) {
+		case string:
+			key = output
+		default:
+			logger.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
+			continue
+		}
+		if err = cache.SetKey(stash.Name, key, value, &stash.TTLVal); err != nil {
+			logger.Warningf("failed to store data in cache: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
 func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
 	clog := n.Logger
 
@@ -311,53 +362,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		return false, err
 	}
 
-	// Process the stash (data collection) if : a grok was present and succeeded, or if there is no grok
+	// Process the stash (data collection) if: a grok was present and succeeded, or if there is no grok
 	if NodeHasOKGrok || n.Grok.RunTimeRegexp == nil {
-		for idx, stash := range n.Stash {
-			var (
-				key   string
-				value string
-			)
-
-			if stash.ValueExpression == nil {
-				clog.Warningf("Stash %d has no value expression, skipping", idx)
-				continue
-			}
-
-			if stash.KeyExpression == nil {
-				clog.Warningf("Stash %d has no key expression, skipping", idx)
-				continue
-			}
-			// collect the data
-			output, err := exprhelpers.Run(stash.ValueExpression, cachedExprEnv, clog, n.Debug)
-			if err != nil {
-				clog.Warningf("Error while running stash val expression : %v", err)
-			}
-			// can we expect anything else than a string ?
-			switch output := output.(type) {
-			case string:
-				value = output
-			default:
-				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Value)
-				continue
-			}
-
-			// collect the key
-			output, err = exprhelpers.Run(stash.KeyExpression, cachedExprEnv, clog, n.Debug)
-			if err != nil {
-				clog.Warningf("Error while running stash key expression : %v", err)
-			}
-			// can we expect anything else than a string ?
-			switch output := output.(type) {
-			case string:
-				key = output
-			default:
-				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
-				continue
-			}
-			if err = cache.SetKey(stash.Name, key, value, &stash.TTLVal); err != nil {
-				clog.Warningf("failed to store data in cache: %s", err.Error())
-			}
+		if err := n.processStash(p, cachedExprEnv, clog); err != nil {
+			return false, err
 		}
 	}
 
