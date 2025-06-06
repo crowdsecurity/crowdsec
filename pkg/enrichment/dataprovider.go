@@ -10,7 +10,7 @@ type DataProvider struct {
 	Type      string `yaml:"type"`
 	//Control cache strategy on expensive regexps
 	Cache    *bool          `yaml:"cache"`
-	Strategy *string        `yaml:"strategy"`
+	Strategy string        `yaml:"strategy"`
 	Size     *int           `yaml:"size"`
 	TTL      *time.Duration `yaml:"ttl"`
 }
