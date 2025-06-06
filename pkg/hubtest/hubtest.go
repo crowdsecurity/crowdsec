@@ -1,10 +1,13 @@
 package hubtest
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -58,6 +61,45 @@ http:
 `
 )
 
+// resolveBinaryPath returns the absolute path to an executable.
+// - If the `binary` argument is relative, it is resolved as absolute.
+// - If it's not a path, it's looked up in $PATH.
+// In all cases it returns an error if the file doesn’t exist (after following links) or is a directory.
+func resolveBinaryPath(binary string) (string, error) {
+	var resolved string
+
+	switch {
+	case filepath.IsAbs(binary):
+		resolved = binary
+	case strings.Contains(binary, string(os.PathSeparator)):
+		absPath, err := filepath.Abs(binary)
+		if err != nil {
+			return "", err
+		}
+		resolved = absPath
+	default:
+		p, err := exec.LookPath(binary)
+		if err != nil {
+			return "", err
+		}
+		resolved = p
+	}
+
+	f, err := os.Stat(resolved)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "", err
+	case err != nil:
+		return "", err
+	}
+
+	if f.IsDir() {
+		return "", fmt.Errorf("%q is a directory, not a file", resolved)
+	}
+
+	return resolved, nil
+}
+
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
 	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
@@ -74,17 +116,13 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
 	}
 	// we can't use hubtest without crowdsec binary
-	if _, err = exec.LookPath(crowdsecPath); err != nil {
-		if _, err = os.Stat(crowdsecPath); os.IsNotExist(err) {
-			return HubTest{}, fmt.Errorf("path to crowdsec binary '%s' doesn't exist or is not in $PATH, can't run", crowdsecPath)
-		}
+	if crowdsecPath, err = resolveBinaryPath(crowdsecPath); err != nil {
+		return HubTest{}, fmt.Errorf("can't find crowdsec binary: %w", err)
 	}
 
 	// we can't use hubtest without cscli binary
-	if _, err = exec.LookPath(cscliPath); err != nil {
-		if _, err = os.Stat(cscliPath); os.IsNotExist(err) {
-			return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist or is not in $PATH, can't run", cscliPath)
-		}
+	if cscliPath, err = resolveBinaryPath(cscliPath); err != nil {
+		return HubTest{}, fmt.Errorf("can't find cscli binary: %w", err)
 	}
 
 	if isAppsecTest {
