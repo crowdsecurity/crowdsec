@@ -164,3 +164,8 @@ func (a *Alert) FormatAsStrings(machineID string, logger *log.Logger) []string {
 
 	return retStr
 }
+
+type ProfileAlert struct {
+	ProfileID uint
+	Alert     *Alert
+}

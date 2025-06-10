@@ -11,7 +11,6 @@ import (
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -22,7 +21,7 @@ type Controller struct {
 	Profiles                      []*csconfig.ProfileCfg
 	AlertsAddChan                 chan []*models.Alert
 	DecisionDeleteChan            chan []*models.Decision
-	PluginChannel                 chan csplugin.ProfileAlert
+	PluginChannel                 chan models.ProfileAlert
 	Log                           *log.Logger
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
