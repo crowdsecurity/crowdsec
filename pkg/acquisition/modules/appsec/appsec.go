@@ -37,6 +37,11 @@ const (
 	OutOfBand = "outofband"
 )
 
+var (
+	errMissingAPIKey = errors.New("missing API key")
+	errInvalidAPIKey = errors.New("invalid API key")
+)
+
 var DefaultAuthCacheDuration = (1 * time.Minute)
 
 // configuration structure of the acquis for the application security engine
@@ -98,6 +103,12 @@ func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
 	ac.mu.RUnlock()
 
 	return expiration, exists
+}
+
+func (ac *AuthCache) Delete(apiKey string) {
+	ac.mu.Lock()
+	delete(ac.APIKeys, apiKey)
+	ac.mu.Unlock()
 }
 
 // @tko + @sbl : we might want to get rid of that or improve it
@@ -456,11 +467,11 @@ func (w *AppsecSource) Dump() interface{} {
 	return w
 }
 
-func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
+func (w *AppsecSource) isValidKey(ctx context.Context, apiKey string) (bool, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, http.NoBody)
 	if err != nil {
 		w.logger.Errorf("Error creating request: %s", err)
-		return false
+		return false, err
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
@@ -481,12 +492,53 @@ func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
 	resp, err := client.Do(req)
 	if err != nil {
 		w.logger.Errorf("Error performing request: %s", err)
-		return false
+		return false, err
 	}
 
 	defer resp.Body.Close()
 
-	return resp.StatusCode == http.StatusOK
+	return resp.StatusCode == http.StatusOK, nil
+}
+
+func (w *AppsecSource) checkAuth(ctx context.Context, apiKey string) error {
+
+	if apiKey == "" {
+		return errMissingAPIKey
+	}
+
+	w.authMutex.Lock()
+	defer w.authMutex.Unlock()
+
+	expiration, exists := w.AuthCache.Get(apiKey)
+	now := time.Now()
+
+	if !exists { // No key in cache, require a valid check
+		isAuth, err := w.isValidKey(ctx, apiKey)
+		if err != nil || !isAuth {
+			if err != nil {
+				w.logger.Errorf("Error checking auth for API key: %s", err)
+			}
+			return errInvalidAPIKey
+		}
+		// Cache the valid API key
+		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		return nil
+	}
+
+	if now.After(expiration) { // Key is expired, recheck the value OR keep it if we cannot contact LAPI
+		isAuth, err := w.isValidKey(ctx, apiKey)
+		if isAuth {
+			w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		} else if err != nil { // General error when querying LAPI, consider the key still valid
+			w.logger.Errorf("Error checking auth for API key: %s, extending cache duration", err)
+			w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		} else { // Key is not valid, remove it from cache
+			w.AuthCache.Delete(apiKey)
+			return errInvalidAPIKey
+		}
+	}
+
+	return nil
 }
 
 // should this be in the runner ?
@@ -498,27 +550,11 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	clientIP := r.Header.Get(appsec.IPHeaderName)
 	remoteIP := r.RemoteAddr
 
-	if apiKey == "" {
-		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
+	if err := w.checkAuth(ctx, apiKey); err != nil {
+		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s): %s", remoteIP, clientIP, err)
 		rw.WriteHeader(http.StatusUnauthorized)
-
 		return
 	}
-
-	w.authMutex.Lock()
-	expiration, exists := w.AuthCache.Get(apiKey)
-	// if the apiKey is not in cache or has expired, just recheck the auth
-	if !exists || time.Now().After(expiration) {
-		if !w.IsAuth(ctx, apiKey) {
-			rw.WriteHeader(http.StatusUnauthorized)
-			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
-			w.authMutex.Unlock()
-			return
-		}
-		// apiKey is valid, store it in cache
-		w.AuthCache.Set(apiKey, time.Now().Add(*w.config.AuthCacheDuration))
-	}
-	w.authMutex.Unlock()
 
 	// parse the request only once
 	parsedRequest, err := appsec.NewParsedRequestFromRequest(r, w.logger)
