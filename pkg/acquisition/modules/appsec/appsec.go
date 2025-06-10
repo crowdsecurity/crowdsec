@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -462,6 +463,7 @@ func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
+	req.Header.Add("User-Agent", useragent.AppsecUserAgent())
 
 	client := &http.Client{
 		Timeout: 200 * time.Millisecond,
