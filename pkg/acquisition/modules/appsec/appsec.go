@@ -70,6 +70,7 @@ type AppsecSource struct {
 	AppsecRunners         []AppsecRunner // one for each go-routine
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
+	authMutex             sync.Mutex
 }
 
 // Struct to handle cache of authentication
@@ -504,19 +505,20 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.authMutex.Lock()
 	expiration, exists := w.AuthCache.Get(apiKey)
 	// if the apiKey is not in cache or has expired, just recheck the auth
 	if !exists || time.Now().After(expiration) {
 		if !w.IsAuth(ctx, apiKey) {
 			rw.WriteHeader(http.StatusUnauthorized)
 			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
-
+			w.authMutex.Unlock()
 			return
 		}
-
 		// apiKey is valid, store it in cache
 		w.AuthCache.Set(apiKey, time.Now().Add(*w.config.AuthCacheDuration))
 	}
+	w.authMutex.Unlock()
 
 	// parse the request only once
 	parsedRequest, err := appsec.NewParsedRequestFromRequest(r, w.logger)
