@@ -53,11 +53,11 @@ jobs:
         run: docker network create net-test
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
         with:
           version: 0.5.24
           enable-cache: true
-          cache-dependency-glob: "./docker/test/uv.lock"
+          working-directory: "./docker/test"
 
       - name: "Set up Python"
         uses: actions/setup-python@v5

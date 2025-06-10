@@ -200,14 +200,14 @@ jobs:
         make build BUILD_PROFILE=minimal
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         files: coverage.out
         flags: unit-linux
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v7
+      uses: golangci/golangci-lint-action@v8
       with:
         version: v2.2
         args: --issues-exit-code=1 --timeout 10m
