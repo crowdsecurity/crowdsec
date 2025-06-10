@@ -75,7 +75,7 @@ jobs:
       if: ${{ always() }}
 
     - name: Upload bats coverage to codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         files: ./coverage-bats.out
         flags: bats
