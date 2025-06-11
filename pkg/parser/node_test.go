@@ -7,7 +7,7 @@ import (
 )
 
 func TestParserConfigs(t *testing.T) {
-	pctx, err := NewUnixParserCtx("../../config/patterns/", "./tests/")
+	pctx, err := NewUnixParserCtx("../../config/patterns/", "./testdata/")
 	if err != nil {
 		t.Fatalf("unable to load patterns : %s", err)
 	}

@@ -13,7 +13,7 @@ func TestJsonExtract(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := FileInit(TestFolder, "test_data_re.txt", "regex")
+	err := FileInit("testdata", "test_data_re.txt", "regex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestJsonExtractUnescape(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := FileInit(TestFolder, "test_data_re.txt", "regex")
+	err := FileInit("testdata", "test_data_re.txt", "regex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestJsonExtractSlice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := FileInit(TestFolder, "test_data_re.txt", "regex")
+	err := FileInit("testdata", "test_data_re.txt", "regex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestJsonExtractObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := FileInit(TestFolder, "test_data_re.txt", "regex")
+	err := FileInit("testdata", "test_data_re.txt", "regex")
 	if err != nil {
 		t.Fatal(err)
 	}
