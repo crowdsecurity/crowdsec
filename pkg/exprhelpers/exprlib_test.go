@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -971,7 +972,7 @@ func TestGetDecisionsCount(t *testing.T) {
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
+	rng, err := csnet.NewRange(existingIP)
 	if err != nil {
 		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
 	}
@@ -982,11 +983,11 @@ func TestGetDecisionsCount(t *testing.T) {
 	decision := dbClient.Ent.Decision.Create().
 		SetUntil(time.Now().Add(time.Hour)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
@@ -1061,7 +1062,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
+	rng, err := csnet.NewRange(existingIP)
 	if err != nil {
 		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
 	}
@@ -1071,11 +1072,11 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	decision := dbClient.Ent.Decision.Create().
 		SetUntil(time.Now().Add(time.Hour)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
@@ -1089,11 +1090,11 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetCreatedAt(time.Now().AddDate(0, 0, -1)).
 		SetUntil(time.Now().AddDate(0, 0, -1)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
@@ -1186,7 +1187,7 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
+	rng, err := csnet.NewRange(existingIP)
 	if err != nil {
 		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
 	}
@@ -1197,11 +1198,11 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 	decision := dbClient.Ent.Decision.Create().
 		SetUntil(time.Now().UTC().Add(time.Hour)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
@@ -1215,11 +1216,11 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 	expiredDecision := dbClient.Ent.Decision.Create().
 		SetUntil(time.Now().UTC().Add(-time.Hour)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
@@ -1294,7 +1295,7 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
 
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
+	rng, err := csnet.NewRange(existingIP)
 	if err != nil {
 		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
 	}
@@ -1305,11 +1306,11 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 	decision := dbClient.Ent.Decision.Create().
 		SetUntil(time.Now().UTC().Add(time.Hour)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
@@ -1323,11 +1324,11 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 	longerDecision := dbClient.Ent.Decision.Create().
 		SetUntil(time.Now().UTC().Add(2 * time.Hour)).
 		SetScenario("crowdsec/test").
-		SetStartIP(start_ip).
-		SetStartSuffix(start_sfx).
-		SetEndIP(end_ip).
-		SetEndSuffix(end_sfx).
-		SetIPSize(int64(ip_sz)).
+		SetStartIP(rng.Start.Addr).
+		SetStartSuffix(rng.Start.Sfx).
+		SetEndIP(rng.End.Addr).
+		SetEndSuffix(rng.End.Sfx).
+		SetIPSize(int64(rng.Size())).
 		SetType("ban").
 		SetScope("IP").
 		SetValue(existingIP).
