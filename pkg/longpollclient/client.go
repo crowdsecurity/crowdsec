@@ -68,6 +68,9 @@ func (c *LongPollClient) doQuery(ctx context.Context) (*http.Response, error) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, ctx.Err() // Don't log
+		}
 		logger.Errorf("failed to execute request: %s", err)
 		return nil, err
 	}
@@ -174,6 +177,10 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 					c.t.Kill(err)
 					close(c.c)
 					return err
+				}
+				if errors.Is(err, context.Canceled) {
+					c.logger.Debug("context canceled, stopping polling")
+					return nil
 				}
 				c.logger.Errorf("failed to poll: %s, retrying in %s", err, currentBackoff)
 				select {

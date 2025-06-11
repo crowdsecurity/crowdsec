@@ -70,6 +70,7 @@ type Papi struct {
 	consoleConfig *csconfig.ConsoleConfig
 	Logger        *log.Entry
 	apic          *apic
+	stopChan      chan struct{}
 }
 
 type PapiPermCheckError struct {
@@ -118,6 +119,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		apic:          apic,
 		consoleConfig: consoleConfig,
 		Logger:        logger.WithFields(log.Fields{"interval": SyncInterval.Seconds(), "source": "papi"}),
+		stopChan:      make(chan struct{}),
 	}
 
 	return papi, nil
@@ -316,8 +318,11 @@ func (p *Papi) Pull(ctx context.Context) error {
 			}
 
 			logger.Debugf("set last timestamp to %s", newTime)
+		case <-p.stopChan:
+			cancel()
 		}
 	}
+
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {
@@ -398,5 +403,9 @@ func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.Decis
 func (p *Papi) Shutdown() {
 	p.Logger.Infof("Shutting down PAPI")
 	p.syncTomb.Kill(nil)
+	select {
+	case p.stopChan <- struct{}{}: // Cancel any HTTP request still in progress
+	default:
+	}
 	p.Client.Stop()
 }
