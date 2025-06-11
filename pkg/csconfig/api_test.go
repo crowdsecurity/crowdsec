@@ -259,7 +259,7 @@ func TestLoadAPIServer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.input.LoadAPIServer(false)
+			err := tc.input.LoadAPIServer(false, false)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedErr != "" {
