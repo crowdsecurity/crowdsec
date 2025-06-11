@@ -42,7 +42,7 @@ type HCLogAdapter struct {
 }
 
 func (h HCLogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
-	switch level {
+	switch level { //nolint:exhaustive
 	case hclog.NoLevel:
 		return
 	case hclog.Trace:
@@ -140,7 +140,7 @@ func (h HCLogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Write
 
 // level2logrus maps hclog levels to Logrus levels.
 func level2logrus(level hclog.Level) logrus.Level {
-	switch level {
+	switch level { //nolint:exhaustive
 	case hclog.NoLevel:
 		// Logrus does not have NoLevel, so use Info instead.
 		return logrus.InfoLevel
@@ -160,7 +160,7 @@ func level2logrus(level hclog.Level) logrus.Level {
 }
 
 func level2hclog(level logrus.Level) hclog.Level {
-	switch level {
+	switch level { //nolint:exhaustive
 	case logrus.TraceLevel:
 		return hclog.Trace
 	case logrus.DebugLevel:
