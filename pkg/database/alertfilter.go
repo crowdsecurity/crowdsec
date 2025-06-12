@@ -11,6 +11,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -66,87 +67,89 @@ func handleTimeFilters(param, value string, predicates *[]predicate.Alert) error
 	return nil
 }
 
-func handleAlertIPv4Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) {
+func handleAlertIPv4Predicates(rng csnet.Range, contains bool, predicates *[]predicate.Alert) {
 	if contains { // decision contains {start_ip,end_ip}
 		*predicates = append(*predicates, alert.And(
-			alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
-			alert.HasDecisionsWith(decision.EndIPGTE(end_ip)),
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+			alert.HasDecisionsWith(decision.StartIPLTE(rng.Start.Addr)),
+			alert.HasDecisionsWith(decision.EndIPGTE(rng.End.Addr)),
+			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
 		))
 	} else { // decision is contained within {start_ip,end_ip}
 		*predicates = append(*predicates, alert.And(
-			alert.HasDecisionsWith(decision.StartIPGTE(start_ip)),
-			alert.HasDecisionsWith(decision.EndIPLTE(end_ip)),
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+			alert.HasDecisionsWith(decision.StartIPGTE(rng.Start.Addr)),
+			alert.HasDecisionsWith(decision.EndIPLTE(rng.End.Addr)),
+			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
 		))
 	}
 }
 
-func handleAlertIPv6Predicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) {
+func handleAlertIPv6Predicates(rng csnet.Range, contains bool, predicates *[]predicate.Alert) {
 	if contains { // decision contains {start_ip,end_ip}
 		*predicates = append(*predicates, alert.And(
 			// matching addr size
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
 			alert.Or(
 				// decision.start_ip < query.start_ip
-				alert.HasDecisionsWith(decision.StartIPLT(start_ip)),
+				alert.HasDecisionsWith(decision.StartIPLT(rng.Start.Addr)),
 				alert.And(
 					// decision.start_ip == query.start_ip
-					alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
+					alert.HasDecisionsWith(decision.StartIPEQ(rng.Start.Addr)),
 					// decision.start_suffix <= query.start_suffix
-					alert.HasDecisionsWith(decision.StartSuffixLTE(start_sfx)),
+					alert.HasDecisionsWith(decision.StartSuffixLTE(rng.Start.Sfx)),
 				),
 			),
 			alert.Or(
 				// decision.end_ip > query.end_ip
-				alert.HasDecisionsWith(decision.EndIPGT(end_ip)),
+				alert.HasDecisionsWith(decision.EndIPGT(rng.End.Addr)),
 				alert.And(
 					// decision.end_ip == query.end_ip
-					alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
+					alert.HasDecisionsWith(decision.EndIPEQ(rng.End.Addr)),
 					// decision.end_suffix >= query.end_suffix
-					alert.HasDecisionsWith(decision.EndSuffixGTE(end_sfx)),
+					alert.HasDecisionsWith(decision.EndSuffixGTE(rng.End.Sfx)),
 				),
 			),
 		))
 	} else { // decision is contained within {start_ip,end_ip}
 		*predicates = append(*predicates, alert.And(
 			// matching addr size
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
 			alert.Or(
 				// decision.start_ip > query.start_ip
-				alert.HasDecisionsWith(decision.StartIPGT(start_ip)),
+				alert.HasDecisionsWith(decision.StartIPGT(rng.Start.Addr)),
 				alert.And(
 					// decision.start_ip == query.start_ip
-					alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
+					alert.HasDecisionsWith(decision.StartIPEQ(rng.Start.Addr)),
 					// decision.start_suffix >= query.start_suffix
-					alert.HasDecisionsWith(decision.StartSuffixGTE(start_sfx)),
+					alert.HasDecisionsWith(decision.StartSuffixGTE(rng.Start.Sfx)),
 				),
 			),
 			alert.Or(
 				// decision.end_ip < query.end_ip
-				alert.HasDecisionsWith(decision.EndIPLT(end_ip)),
+				alert.HasDecisionsWith(decision.EndIPLT(rng.End.Addr)),
 				alert.And(
 					// decision.end_ip == query.end_ip
-					alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
+					alert.HasDecisionsWith(decision.EndIPEQ(rng.End.Addr)),
 					// decision.end_suffix <= query.end_suffix
-					alert.HasDecisionsWith(decision.EndSuffixLTE(end_sfx)),
+					alert.HasDecisionsWith(decision.EndSuffixLTE(rng.End.Sfx)),
 				),
 			),
 		))
 	}
 }
 
-func handleAlertIPPredicates(ip_sz int, contains bool, start_ip, start_sfx, end_ip, end_sfx int64, predicates *[]predicate.Alert) error {
-	switch {
-	case ip_sz == 4:
-		handleAlertIPv4Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
-	case ip_sz == 16:
-		handleAlertIPv6Predicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, predicates)
-	case ip_sz != 0:
-		return errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+func handleAlertIPPredicates(rng csnet.Range, contains bool, predicates *[]predicate.Alert) error {
+	switch rng.Size() {
+	case 4:
+		handleAlertIPv4Predicates(rng, contains, predicates)
+		return nil
+	case 16:
+		handleAlertIPv6Predicates(rng, contains, predicates)
+		return nil
+	case 0:
+		return nil
+	default:
+		return errors.Wrapf(InvalidFilter, "Unknown ip size %d", rng.Size())
 	}
-
-	return nil
 }
 
 func handleIncludeCapiFilter(value string, predicates *[]predicate.Alert) error {
@@ -180,9 +183,8 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 
 	var (
 		err                                  error
-		start_ip, start_sfx, end_ip, end_sfx int64
 		hasActiveDecision                    bool
-		ip_sz                                int
+		rng csnet.Range
 	)
 
 	contains := true
@@ -207,7 +209,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "scenario":
 			predicates = append(predicates, alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
 		case "ip", "range":
-			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
+			rng, err = csnet.NewRange(value[0])
 			if err != nil {
 				return nil, err
 			}
@@ -246,7 +248,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		}
 	}
 
-	if err := handleAlertIPPredicates(ip_sz, contains, start_ip, start_sfx, end_ip, end_sfx, &predicates); err != nil {
+	if err := handleAlertIPPredicates(rng, contains, &predicates); err != nil {
 		return nil, err
 	}
 
