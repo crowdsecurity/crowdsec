@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -81,7 +81,7 @@ webhook_path: /k8s-audit`,
 
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
 			err = f.StreamingAcquisition(ctx, out, tb)
@@ -255,7 +255,7 @@ webhook_path: /k8s-audit`,
 			f := KubernetesAuditSource{}
 			err := f.UnmarshalConfig([]byte(test.config))
 			require.NoError(t, err)
-			err = f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
 

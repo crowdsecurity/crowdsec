@@ -20,6 +20,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -58,7 +59,7 @@ type LokiConfiguration struct {
 }
 
 type LokiSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       LokiConfiguration
 
 	Client *lokiclient.LokiClient
@@ -120,7 +121,7 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
+func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = LokiConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -315,7 +316,7 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	ll.Process = true
 	ll.Module = l.GetName()
 
-	if l.metricsLevel != configuration.METRICS_NONE {
+	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
 	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)

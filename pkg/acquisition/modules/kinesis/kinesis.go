@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -40,7 +41,7 @@ type KinesisConfiguration struct {
 }
 
 type KinesisSource struct {
-	metricsLevel    int
+	metricsLevel    metrics.AcquisitionMetricsLevel
 	Config          KinesisConfiguration
 	logger          *log.Entry
 	kClient         *kinesis.Kinesis
@@ -161,7 +162,7 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	k.logger = logger
 	k.metricsLevel = metricsLevel
 
@@ -314,12 +315,12 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry, shardId string) {
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
-			if k.metricsLevel != configuration.METRICS_NONE {
+			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
 				linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
 			}
 		} else {
-			if k.metricsLevel != configuration.METRICS_NONE {
+			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
 				linesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
 			}

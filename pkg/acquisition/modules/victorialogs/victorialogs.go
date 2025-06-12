@@ -16,6 +16,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -49,7 +50,7 @@ type VLConfiguration struct {
 }
 
 type VLSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       VLConfiguration
 
 	Client *vlclient.VLClient
@@ -106,7 +107,7 @@ func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
+func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = VLConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -275,7 +276,7 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	ll.Process = true
 	ll.Module = l.GetName()
 
-	if l.metricsLevel != configuration.METRICS_NONE {
+	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
 	expectMode := types.LIVE

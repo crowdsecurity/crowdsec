@@ -23,9 +23,11 @@ import (
 
 	"github.com/crowdsecurity/dlog"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"slices"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -51,7 +53,7 @@ type DockerConfiguration struct {
 }
 
 type DockerSource struct {
-	metricsLevel          int
+	metricsLevel          metrics.AcquisitionMetricsLevel
 	Config                DockerConfiguration
 	runningContainerState map[string]*ContainerConfig
 	compiledContainerName []*regexp.Regexp
@@ -136,7 +138,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	d.logger = logger
 	d.metricsLevel = metricsLevel
 
@@ -342,7 +344,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					l.Process = true
 					l.Module = d.GetName()
 
-					if d.metricsLevel != configuration.METRICS_NONE {
+					if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 						linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 					}
 

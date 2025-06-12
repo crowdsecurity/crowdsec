@@ -19,10 +19,12 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"slices"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"slices"
 )
 
 var openedStreams = prometheus.NewGaugeVec(
@@ -45,7 +47,7 @@ var linesRead = prometheus.NewCounterVec(
 
 // CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
 type CloudwatchSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       CloudwatchSourceConfiguration
 	/*runtime stuff*/
 	logger           *log.Entry
@@ -155,7 +157,7 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	err := cw.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -414,7 +416,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
 						cw.monitoredStreams = slices.Delete(cw.monitoredStreams, idx, idx+1)
 
-						if cw.metricsLevel != configuration.METRICS_NONE {
+						if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 							openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
 						}
 
@@ -429,7 +431,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 
 			// let's start watching this stream
 			if shouldCreate {
-				if cw.metricsLevel != configuration.METRICS_NONE {
+				if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 					openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
 				}
 
@@ -449,7 +451,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 				if !cw.monitoredStreams[idx].t.Alive() {
 					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
 
-					if cw.metricsLevel != configuration.METRICS_NONE {
+					if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 						openedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
 					}
 				} else {
@@ -541,7 +543,7 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 							} else {
 								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
 
-								if cw.metricsLevel != configuration.METRICS_NONE {
+								if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 									linesRead.With(prometheus.Labels{"group": cfg.GroupName, "stream": cfg.StreamName}).Inc()
 								}
 								outChan <- evt

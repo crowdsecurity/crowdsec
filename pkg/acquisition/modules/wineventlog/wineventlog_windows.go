@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -37,7 +38,7 @@ type WinEventLogConfiguration struct {
 }
 
 type WinEventLogSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       WinEventLogConfiguration
 	logger       *log.Entry
 	evtConfig    *winlog.SubscribeConfig
@@ -195,7 +196,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					continue
 				}
 				for _, event := range renderedEvents {
-					if w.metricsLevel != configuration.METRICS_NONE {
+					if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 						linesRead.With(prometheus.Labels{"source": w.name}).Inc()
 					}
 					l := types.Line{}
@@ -287,7 +288,7 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	w.logger = logger
 	w.metricsLevel = metricsLevel
 
@@ -420,7 +421,7 @@ OUTER_LOOP:
 			w.logger.Debugf("Got %d events", len(evts))
 			for _, evt := range evts {
 				w.logger.Tracef("Event: %s", evt)
-				if w.metricsLevel != configuration.METRICS_NONE {
+				if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
 				}
 				l := types.Line{}

@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -41,18 +42,18 @@ var linesRead = prometheus.NewCounterVec(
 
 type FileConfiguration struct {
 	Filenames                         []string
-	ExcludeRegexps                    []string      `yaml:"exclude_regexps"`
+	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
 	Filename                          string
 	ForceInotify                      bool          `yaml:"force_inotify"`
 	MaxBufferSize                     int           `yaml:"max_buffer_size"`
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
-	configuration.DataSourceCommonCfg               `yaml:",inline"`
+	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 type FileSource struct {
-	metricsLevel       int
+	metricsLevel       metrics.AcquisitionMetricsLevel
 	config             FileConfiguration
 	watcher            *fsnotify.Watcher
 	watchedDirectories map[string]bool
@@ -107,7 +108,7 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	f.metricsLevel = metricsLevel
 
@@ -578,12 +579,12 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				continue
 			}
 
-			if f.metricsLevel != configuration.METRICS_NONE {
+			if f.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
 			}
 
 			src := tail.Filename
-			if f.metricsLevel == configuration.METRICS_AGGREGATE {
+			if f.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 				src = filepath.Base(tail.Filename)
 			}
 

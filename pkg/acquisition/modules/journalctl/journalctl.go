@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -27,7 +28,7 @@ type JournalCtlConfiguration struct {
 }
 
 type JournalCtlSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       JournalCtlConfiguration
 	logger       *log.Entry
 	src          string
@@ -143,7 +144,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			l.Process = true
 			l.Module = j.GetName()
 
-			if j.metricsLevel != configuration.METRICS_NONE {
+			if j.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			}
 
@@ -210,7 +211,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	j.logger = logger
 	j.metricsLevel = metricsLevel
 

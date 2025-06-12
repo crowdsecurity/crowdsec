@@ -13,7 +13,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -325,7 +325,7 @@ stream_name: test_stream`,
 			dbgLogger.Infof("starting test")
 
 			cw := CloudwatchSource{}
-			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
+			err := cw.Configure([]byte(tc.config), dbgLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
@@ -442,7 +442,7 @@ stream_name: test_stream`,
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 
 			cw := CloudwatchSource{}
-			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
+			err := cw.Configure([]byte(tc.config), dbgLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {

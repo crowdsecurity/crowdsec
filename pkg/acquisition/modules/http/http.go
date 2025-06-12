@@ -23,6 +23,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -65,7 +66,7 @@ type TLSConfig struct {
 }
 
 type HTTPSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       HttpConfiguration
 	logger       *log.Entry
 	Server       *http.Server
@@ -159,7 +160,7 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	h.logger = logger
 	h.metricsLevel = metricsLevel
 
@@ -315,16 +316,16 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			Module:  h.GetName(),
 		}
 
-		if h.metricsLevel == configuration.METRICS_AGGREGATE {
+		if h.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 			line.Src = hc.Path
 		}
 
 		evt := types.MakeEvent(h.Config.UseTimeMachine, types.LOG, true)
 		evt.Line = line
 
-		if h.metricsLevel == configuration.METRICS_AGGREGATE {
+		if h.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 			linesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
-		} else if h.metricsLevel == configuration.METRICS_FULL {
+		} else if h.metricsLevel == metrics.AcquisitionMetricsLevelFull {
 			linesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
 		}
 

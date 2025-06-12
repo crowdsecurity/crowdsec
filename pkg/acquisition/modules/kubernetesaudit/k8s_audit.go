@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -29,7 +30,7 @@ type KubernetesAuditConfiguration struct {
 }
 
 type KubernetesAuditSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       KubernetesAuditConfiguration
 	logger       *log.Entry
 	mux          *http.ServeMux
@@ -97,7 +98,7 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
+func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	ka.logger = logger
 	ka.metricsLevel = metricsLevel
 
@@ -179,7 +180,7 @@ func (ka *KubernetesAuditSource) Dump() interface{} {
 }
 
 func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.Request) {
-	if ka.metricsLevel != configuration.METRICS_NONE {
+	if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		requestCount.WithLabelValues(ka.addr).Inc()
 	}
 
@@ -213,7 +214,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 	remoteIP := strings.Split(r.RemoteAddr, ":")[0]
 
 	for idx := range auditEvents.Items {
-		if ka.metricsLevel != configuration.METRICS_NONE {
+		if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 			eventCount.WithLabelValues(ka.addr).Inc()
 		}
 

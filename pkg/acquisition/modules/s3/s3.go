@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -47,7 +48,7 @@ type S3Configuration struct {
 }
 
 type S3Source struct {
-	MetricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       S3Configuration
 	logger       *log.Entry
 	s3Client     s3iface.S3API
@@ -347,7 +348,7 @@ func (s *S3Source) sqsPoll() error {
 			logger.Tracef("SQS output: %v", out)
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
-				if s.MetricsLevel != configuration.METRICS_NONE {
+				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 					sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
 				}
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
@@ -429,7 +430,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		default:
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
-			if s.MetricsLevel != configuration.METRICS_NONE {
+			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				linesRead.WithLabelValues(bucket).Inc()
 			}
 			l := types.Line{}
@@ -438,9 +439,9 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = s.GetName()
-			if s.MetricsLevel == configuration.METRICS_FULL {
+			if s.metricsLevel == metrics.AcquisitionMetricsLevelFull {
 				l.Src = bucket + "/" + key
-			} else if s.MetricsLevel == configuration.METRICS_AGGREGATE {
+			} else if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 				l.Src = bucket
 			}
 			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
@@ -451,7 +452,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
 	}
-	if s.MetricsLevel != configuration.METRICS_NONE {
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		objectsRead.WithLabelValues(bucket).Inc()
 	}
 	return nil
@@ -513,7 +514,7 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err

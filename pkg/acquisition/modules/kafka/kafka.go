@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -59,7 +60,7 @@ type KafkaBatchConfiguration struct {
 }
 
 type KafkaSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       KafkaConfiguration
 	logger       *log.Entry
 	Reader       *kafka.Reader
@@ -94,7 +95,7 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	return err
 }
 
-func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	k.logger = logger
 	k.metricsLevel = metricsLevel
 
@@ -189,7 +190,7 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 		}
 		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
 
-		if k.metricsLevel != configuration.METRICS_NONE {
+		if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 			linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		}
 
