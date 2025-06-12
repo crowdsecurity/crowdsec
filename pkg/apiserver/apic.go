@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net"
+	"net/netip"
 	"net/http"
 	"net/url"
 	"slices"
@@ -844,12 +844,16 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 
 // if decisions is whitelisted: return representation of the whitelist ip or cidr
 // if not whitelisted: empty string
-func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []net.IP, additionalRanges []*net.IPNet) string {
+func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []netip.Addr, additionalRanges []netip.Prefix) string {
 	if decision.Value == nil {
 		return ""
 	}
 
-	ipval := net.ParseIP(*decision.Value)
+	ipval, err := netip.ParseAddr(*decision.Value)
+	if err != nil {
+		// XXX: handle error
+	}
+
 	for _, cidr := range a.whitelists.Cidrs {
 		if cidr.Contains(ipval) {
 			return cidr.String()
@@ -857,13 +861,13 @@ func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []net.IP, 
 	}
 
 	for _, ip := range a.whitelists.Ips {
-		if ip != nil && ip.Equal(ipval) {
+		if ip == ipval {
 			return ip.String()
 		}
 	}
 
 	for _, ip := range additionalIPs {
-		if ip.Equal(ipval) {
+		if ip == ipval {
 			return ip.String()
 		}
 	}
