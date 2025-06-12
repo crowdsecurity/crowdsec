@@ -2,7 +2,7 @@ package parser
 
 import (
 	"fmt"
-	"net"
+	"net/netip"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
@@ -16,9 +16,9 @@ import (
 type Whitelist struct {
 	Reason  string   `yaml:"reason,omitempty"`
 	Ips     []string `yaml:"ip,omitempty"`
-	B_Ips   []net.IP
+	B_Ips   []netip.Addr
 	Cidrs   []string `yaml:"cidr,omitempty"`
-	B_Cidrs []*net.IPNet
+	B_Cidrs []netip.Prefix
 	Exprs   []string `yaml:"expression,omitempty"`
 	B_Exprs []*ExprWhitelist
 }
@@ -52,7 +52,7 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 			break
 		}
 		for _, v := range n.Whitelist.B_Ips {
-			if v.Equal(src) {
+			if v == src {
 				n.Logger.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
 				break
@@ -115,14 +115,17 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event)
 
 func (n *Node) CompileWLs() (bool, error) {
 	for _, v := range n.Whitelist.Ips {
-		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, net.ParseIP(v))
-		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
+		if addr, err := netip.ParseAddr(v); err == nil {
+			n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, addr)
+			n.Logger.Debugf("adding ip %s to whitelists", addr)
+		}
+		// XXX: handle error?
 	}
 
 	for _, v := range n.Whitelist.Cidrs {
-		_, tnet, err := net.ParseCIDR(v)
+		tnet, err := netip.ParsePrefix(v)
 		if err != nil {
-			return false, fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
+			return false, fmt.Errorf("parsing whitelist: %w", err)
 		}
 		n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
 		n.Logger.Debugf("adding cidr %s to whitelists", tnet)

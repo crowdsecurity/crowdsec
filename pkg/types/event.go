@@ -1,7 +1,7 @@
 package types
 
 import (
-	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -117,17 +117,23 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
-func (e *Event) ParseIPSources() []net.IP {
-	var srcs []net.IP
+func (e *Event) ParseIPSources() []netip.Addr {
+	var srcs []netip.Addr
 
 	switch e.Type {
 	case LOG:
-		if _, ok := e.Meta["source_ip"]; ok {
-			srcs = append(srcs, net.ParseIP(e.Meta["source_ip"]))
+		if val, ok := e.Meta["source_ip"]; ok {
+			if addr, err := netip.ParseAddr(val); err == nil {
+				srcs = append(srcs, addr)
+			}
+			// XXX handle error?
 		}
 	case OVFLW:
 		for k := range e.Overflow.Sources {
-			srcs = append(srcs, net.ParseIP(k))
+			if addr, err := netip.ParseAddr(k); err == nil {
+				srcs = append(srcs, addr)
+			}
+			// XXX handle error?
 		}
 	}
 
