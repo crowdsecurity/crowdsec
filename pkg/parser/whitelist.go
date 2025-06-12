@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -44,7 +45,7 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 	if !n.ContainsIPLists() {
 		return isWhitelisted
 	}
-	NodesWlHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
+	metrics.NodesWlHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
 	for _, src := range srcs {
 		if isWhitelisted {
 			break
@@ -67,7 +68,7 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 		}
 	}
 	if isWhitelisted {
-		NodesWlHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
+		metrics.NodesWlHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
 	}
 	return isWhitelisted
 }
@@ -78,7 +79,7 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event)
 	if !n.ContainsExprLists() {
 		return false, nil
 	}
-	NodesWlHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
+	metrics.NodesWlHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
 		//if we already know the event is whitelisted, skip the rest of the expressions
@@ -103,7 +104,7 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event)
 		}
 	}
 	if isWhitelisted {
-		NodesWlHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
+		metrics.NodesWlHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason}).Inc()
 	}
 	return isWhitelisted, nil
 }

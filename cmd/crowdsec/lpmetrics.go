@@ -158,13 +158,12 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 		return nil
 	}
 
-	met := m.metricsPayload()
-
 	ticker := time.NewTicker(1) // Send on start
 
 	for {
 		select {
 		case <-ticker.C:
+			met := m.metricsPayload()
 			m.sendMetrics(ctx, met)
 			ticker.Reset(m.interval)
 		case <-myTomb.Dying():
