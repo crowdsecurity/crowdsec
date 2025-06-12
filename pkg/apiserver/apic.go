@@ -851,7 +851,8 @@ func (a *apic) whitelistedBy(decision *models.Decision, additionalIPs []netip.Ad
 
 	ipval, err := netip.ParseAddr(*decision.Value)
 	if err != nil {
-		// XXX: handle error
+		// XXX: handle error?
+		return ""
 	}
 
 	for _, cidr := range a.whitelists.Cidrs {
