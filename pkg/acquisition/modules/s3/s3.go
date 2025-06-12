@@ -29,6 +29,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	s3_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/s3"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -99,30 +100,6 @@ const (
 	PollMethodSQS           = "sqs"
 	SQSFormatEventBridge    = "eventbridge"
 	SQSFormatS3Notification = "s3notification"
-)
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_s3_hits_total",
-		Help: "Number of events read per bucket.",
-	},
-	[]string{"bucket"},
-)
-
-var objectsRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_s3_objects_total",
-		Help: "Number of objects read per bucket.",
-	},
-	[]string{"bucket"},
-)
-
-var sqsMessagesReceived = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_s3_sqs_messages_total",
-		Help: "Number of SQS messages received per queue.",
-	},
-	[]string{"queue"},
 )
 
 func (s *S3Source) newS3Client() error {
@@ -349,7 +326,7 @@ func (s *S3Source) sqsPoll() error {
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
 				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
+					s3_metrics.S3DataSourceSQSMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
 				}
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
@@ -431,7 +408,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				linesRead.WithLabelValues(bucket).Inc()
+				s3_metrics.S3DataSourceLinesRead.WithLabelValues(bucket).Inc()
 			}
 			l := types.Line{}
 			l.Raw = text
@@ -453,7 +430,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
 	}
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		objectsRead.WithLabelValues(bucket).Inc()
+		s3_metrics.S3DataSourceObjectsRead.WithLabelValues(bucket).Inc()
 	}
 	return nil
 }
@@ -463,11 +440,11 @@ func (s *S3Source) GetUuid() string {
 }
 
 func (s *S3Source) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
+	return []prometheus.Collector{s3_metrics.S3DataSourceLinesRead, s3_metrics.S3DataSourceObjectsRead, s3_metrics.S3DataSourceSQSMessagesReceived}
 }
 
 func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
+	return []prometheus.Collector{s3_metrics.S3DataSourceLinesRead, s3_metrics.S3DataSourceObjectsRead, s3_metrics.S3DataSourceSQSMessagesReceived}
 }
 
 func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {

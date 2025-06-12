@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	wineventlog_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -57,13 +58,6 @@ type Select struct {
 
 // 0 identifies the local machine in windows APIs
 const localMachine = 0
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_winevtlogsource_hits_total",
-		Help: "Total event that were read.",
-	},
-	[]string{"source"})
 
 func logLevelToInt(logLevel string) ([]string, error) {
 	switch strings.ToUpper(logLevel) {
@@ -197,7 +191,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 				}
 				for _, event := range renderedEvents {
 					if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+						wineventlog_metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name}).Inc()
 					}
 					l := types.Line{}
 					l.Raw = event
@@ -422,7 +416,7 @@ OUTER_LOOP:
 			for _, evt := range evts {
 				w.logger.Tracef("Event: %s", evt)
 				if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+					wineventlog_metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name}).Inc()
 				}
 				l := types.Line{}
 				l.Raw = evt
@@ -442,11 +436,11 @@ OUTER_LOOP:
 }
 
 func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{wineventlog_metrics.WineventlogDataSourceLinesRead}
 }
 
 func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{wineventlog_metrics.WineventlogDataSourceLinesRead}
 }
 
 func (w *WinEventLogSource) GetName() string {

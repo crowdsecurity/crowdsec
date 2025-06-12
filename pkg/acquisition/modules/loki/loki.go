@@ -21,6 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	loki_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/loki"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -30,13 +31,6 @@ const (
 	readySleep   time.Duration = 10 * time.Second
 	lokiLimit    int           = 100
 )
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_lokisource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 type LokiAuthConfiguration struct {
 	Username string `yaml:"username"`
@@ -69,11 +63,11 @@ type LokiSource struct {
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{loki_metrics.LokiDataSourceLinesRead}
 }
 
 func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{loki_metrics.LokiDataSourceLinesRead}
 }
 
 func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -317,7 +311,7 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	ll.Module = l.GetName()
 
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+		loki_metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 	}
 	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
 	evt.Line = ll

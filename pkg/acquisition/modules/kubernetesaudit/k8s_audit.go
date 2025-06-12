@@ -19,6 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	kubernetesaudit_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/kubernetesaudit"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -39,30 +40,16 @@ type KubernetesAuditSource struct {
 	addr         string
 }
 
-var eventCount = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_k8sauditsource_hits_total",
-		Help: "Total number of events received by k8s-audit source",
-	},
-	[]string{"source"})
-
-var requestCount = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_k8sauditsource_requests_total",
-		Help: "Total number of requests received",
-	},
-	[]string{"source"})
-
 func (ka *KubernetesAuditSource) GetUuid() string {
 	return ka.config.UniqueId
 }
 
 func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{eventCount, requestCount}
+	return []prometheus.Collector{kubernetesaudit_metrics.K8SAuditDataSourceEventCount, kubernetesaudit_metrics.K8SAuditDataSourceRequestCount}
 }
 
 func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{eventCount, requestCount}
+	return []prometheus.Collector{kubernetesaudit_metrics.K8SAuditDataSourceEventCount, kubernetesaudit_metrics.K8SAuditDataSourceRequestCount}
 }
 
 func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -181,7 +168,7 @@ func (ka *KubernetesAuditSource) Dump() interface{} {
 
 func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		requestCount.WithLabelValues(ka.addr).Inc()
+		kubernetesaudit_metrics.K8SAuditDataSourceRequestCount.WithLabelValues(ka.addr).Inc()
 	}
 
 	if r.Method != http.MethodPost {
@@ -215,7 +202,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 
 	for idx := range auditEvents.Items {
 		if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			eventCount.WithLabelValues(ka.addr).Inc()
+			kubernetesaudit_metrics.K8SAuditDataSourceEventCount.WithLabelValues(ka.addr).Inc()
 		}
 
 		bytesEvent, err := json.Marshal(auditEvents.Items[idx])

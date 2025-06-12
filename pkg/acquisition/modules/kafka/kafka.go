@@ -21,17 +21,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	kafka_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/kafka"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const dataSourceName = "kafka"
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_kafkasource_hits_total",
-		Help: "Total lines that were read from topic",
-	},
-	[]string{"topic"})
 
 type KafkaConfiguration struct {
 	Brokers                           []string                `yaml:"brokers"`
@@ -146,11 +140,11 @@ func (*KafkaSource) CanRun() error {
 }
 
 func (*KafkaSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{kafka_metrics.KafkaDataSourceLinesRead}
 }
 
 func (*KafkaSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{kafka_metrics.KafkaDataSourceLinesRead}
 }
 
 func (k *KafkaSource) Dump() any {
@@ -191,7 +185,7 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
 
 		if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
+			kafka_metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		}
 
 		evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)

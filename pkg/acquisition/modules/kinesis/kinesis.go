@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	kinesis_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/kinesis"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -62,22 +63,6 @@ type CloudwatchSubscriptionLogEvent struct {
 	Message   string `json:"message"`
 	Timestamp int64  `json:"timestamp"`
 }
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_kinesis_stream_hits_total",
-		Help: "Number of event read per stream.",
-	},
-	[]string{"stream"},
-)
-
-var linesReadShards = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_kinesis_shards_hits_total",
-		Help: "Number of event read per shards.",
-	},
-	[]string{"stream", "shard"},
-)
 
 func (k *KinesisSource) GetUuid() string {
 	return k.Config.UniqueId
@@ -120,11 +105,11 @@ func (k *KinesisSource) newClient() error {
 }
 
 func (k *KinesisSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, linesReadShards}
+	return []prometheus.Collector{kinesis_metrics.KinesisDataSourceLinesRead, kinesis_metrics.KinesisDataSourceLinesReadShards}
 }
 
 func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, linesReadShards}
+	return []prometheus.Collector{kinesis_metrics.KinesisDataSourceLinesRead, kinesis_metrics.KinesisDataSourceLinesReadShards}
 }
 
 func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -316,13 +301,13 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
-				linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
+				kinesis_metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+				kinesis_metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
 			}
 		} else {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
-				linesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
+				kinesis_metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+				kinesis_metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
 			}
 		}
 

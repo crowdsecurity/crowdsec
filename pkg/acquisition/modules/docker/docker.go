@@ -27,15 +27,9 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	docker_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/docker"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_dockersource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 type DockerConfiguration struct {
 	CheckInterval                     string   `yaml:"check_interval"`
@@ -345,7 +339,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					l.Module = d.GetName()
 
 					if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
+						docker_metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 					}
 
 					evt := types.MakeEvent(true, types.LOG, true)
@@ -376,11 +370,11 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 }
 
 func (d *DockerSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{docker_metrics.DockerDatasourceLinesRead}
 }
 
 func (d *DockerSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{docker_metrics.DockerDatasourceLinesRead}
 }
 
 func (d *DockerSource) GetName() string {
@@ -725,7 +719,7 @@ func (d *DockerSource) TailDocker(ctx context.Context, container *ContainerConfi
 			l.Module = d.GetName()
 			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
+			docker_metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():

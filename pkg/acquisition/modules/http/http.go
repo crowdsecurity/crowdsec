@@ -24,17 +24,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	http_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/http"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var dataSourceName = "http"
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_httpsource_hits_total",
-		Help: "Total lines that were read from http source",
-	},
-	[]string{"path", "src"})
+const dataSourceName = "http"
 
 type HttpConfiguration struct {
 	// IPFilter                       []string           `yaml:"ip_filter"`
@@ -197,11 +191,11 @@ func (h *HTTPSource) CanRun() error {
 }
 
 func (h *HTTPSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{http_metrics.HTTPDataSourceLinesRead}
 }
 
 func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{http_metrics.HTTPDataSourceLinesRead}
 }
 
 func (h *HTTPSource) Dump() interface{} {
@@ -324,9 +318,9 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 		evt.Line = line
 
 		if h.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
-			linesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
+			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
 		} else if h.metricsLevel == metrics.AcquisitionMetricsLevelFull {
-			linesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
+			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
