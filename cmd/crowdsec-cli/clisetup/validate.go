@@ -3,6 +3,7 @@ package clisetup
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -18,20 +19,19 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.validate(args[0])
+			input, err := os.Open(args[0])
+			if err != nil {
+				return err
+			}
+			return cli.validate(input)
 		},
 	}
 
 	return cmd
 }
 
-func (cli *cliSetup) validate(fromFile string) error {
-	input, err := os.ReadFile(fromFile)
-	if err != nil {
-		return fmt.Errorf("while reading stdin: %w", err)
-	}
-
-	if err = setup.Validate(input); err != nil {
+func (cli *cliSetup) validate(input io.Reader) error {
+	if err := setup.Validate(input); err != nil {
 		fmt.Printf("%v\n", err)
 		return errors.New("invalid setup file")
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,14 +20,19 @@ import (
 // AcquisDocument is created from a SetupItem. It represents a single YAML document, and can be part of a multi-document file.
 type AcquisDocument struct {
 	AcquisFilename string
-	DataSource     map[string]interface{}
+	DataSource     map[string]any
 }
 
-func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
+func decodeSetup(input io.Reader, fancyErrors bool) (Setup, error) {
 	ret := Setup{}
 
+	inputBytes, err := io.ReadAll(input)
+	if err != nil {
+		return ret, fmt.Errorf("while reading setup file: %w", err)
+	}
+
 	// parse with goccy to have better error messages in many cases
-	dec := goccyyaml.NewDecoder(bytes.NewBuffer(input), goccyyaml.Strict())
+	dec := goccyyaml.NewDecoder(bytes.NewBuffer(inputBytes), goccyyaml.Strict())
 
 	if err := dec.Decode(&ret); err != nil {
 		if fancyErrors {
@@ -37,7 +43,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 	}
 
 	// parse again because goccy is not strict enough anyway
-	dec2 := yaml.NewDecoder(bytes.NewBuffer(input))
+	dec2 := yaml.NewDecoder(bytes.NewBuffer(inputBytes))
 	dec2.KnownFields(true)
 
 	if err := dec2.Decode(&ret); err != nil {
@@ -48,7 +54,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, input []byte, interactive, dryRun, showPlan, verbosePlan bool) error {
+func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, input io.Reader, interactive, dryRun, showPlan, verbosePlan bool) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
@@ -212,7 +218,7 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 }
 
 // Validate checks the validity of a setup file.
-func Validate(input []byte) error {
+func Validate(input io.Reader) error {
 	_, err := decodeSetup(input, true)
 	if err != nil {
 		return err
@@ -222,7 +228,7 @@ func Validate(input []byte) error {
 }
 
 // DataSources generates the acquisition documents from a setup file.
-func DataSources(input []byte, toDir string) (string, error) {
+func DataSources(input io.Reader, toDir string) (string, error) {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return "", err
@@ -236,6 +242,13 @@ func DataSources(input []byte, toDir string) (string, error) {
 		}
 
 		return basename + ext
+	}
+
+	if len(setupEnvelope.Setup) > 0 && toDir != "" {
+		// XXX: interactive
+		if err := os.MkdirAll(toDir, 0o700); err != nil {
+			return "", err
+		}
 	}
 
 	for _, setupItem := range setupEnvelope.Setup {

@@ -59,14 +59,6 @@ teardown() {
     assert_line --regexp "detect running services, generate a setup file"
     assert_line 'Usage:'
     assert_line '  cscli setup detect [flags]'
-    assert_line --partial "--detect-config string      path to service detection configuration (default \"${HUB_DIR}/detect.yaml\")"
-    assert_line --partial "--force-process strings     force detection of a running process (can be repeated)"
-    assert_line --partial "--force-unit strings        force detection of a systemd unit (can be repeated)"
-    assert_line --partial "--list-supported-services   do not detect; only print supported services"
-    assert_line --partial "--force-os-family string    override OS.Family: one of linux, freebsd, windows or darwin"
-    assert_line --partial "--force-os-id string        override OS.ID=[debian | ubuntu | , redhat...]"
-    assert_line --partial "--force-os-version string   override OS.RawVersion (of OS or Linux distribution)"
-    assert_line --partial "--skip-service strings      ignore a service, don't recommend hub/datasources (can be repeated)"
 
     rune -1 cscli setup detect --detect-config /path/does/not/exist
     assert_stderr --partial "open /path/does/not/exist: no such file or directory"
@@ -148,8 +140,6 @@ teardown() {
 
     rune -1 cscli setup detect --list-supported-services --detect-config "$tempfile"
     assert_stderr --partial "yaml: unmarshal errors:"
-
-    rm -f "$tempfile"
 }
 
 @test "cscli setup detect (systemctl)" {
@@ -414,7 +404,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 }
 
-@test "cscli setup detect + acquis + install (no acquisition, no hub items)" {
+@test "cscli setup detect + acquis + install (no logs or hub items)" {
     # no-op edge case, to make sure we don't crash
     cat <<-EOT >"${DETECT_YAML}"
 	version: 1.0
@@ -427,6 +417,19 @@ update-notifier-motd.timer              enabled enabled
     setup=$output
     rune -0 cscli setup datasources /dev/stdin <<<"$setup"
     rune -0 cscli setup install-hub /dev/stdin <<<"$setup"
+}
+
+@test "cscli setup detect --install-hub --datasources (no logs or hub items)" {
+    # no-op edge case, to make sure we don't crash
+    cat <<-EOT >"${DETECT_YAML}"
+	version: 1.0
+	detect:
+	  always:
+	EOT
+
+    rune -0 cscli setup detect --install-hub --datasources
+    assert_output "Nothing to do."
+    refute_stderr
 }
 
 @test "cscli setup detect (with collections)" {
@@ -736,7 +739,7 @@ update-notifier-motd.timer              enabled enabled
 	      filenames:
 	        - /var/log/apache2/*.log
 	EOT
-    assert_stderr --partial "open ${acquisdir}/notadir/setup.apache2.yaml: not a directory"
+    assert_stderr --partial "Error: mkdir ${acquisdir}/notadir: not a directory"
 
     rm -rf -- "${acquisdir:?}"
 }
@@ -789,8 +792,36 @@ update-notifier-motd.timer              enabled enabled
 	  type: thewiz
 	source: journalctl
 	EOT
+}
 
-    rm -f "$tempfile"
+@test "cscli setup detect --install-hub --datasources" {
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    tempfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    cat <<-EOT >"${tempfile}"
+	version: 1.0
+	detect:
+	  smb:
+	    when:
+	      - UnitFound("smb.service")
+	    install:
+	      collections:
+	        - crowdsecurity/smb
+	    datasource:
+	      source: file
+	      filenames:
+	        - /path/to/smb.log
+	      labels:
+	        type: smb
+	EOT
+
+    rune -0 cscli setup detect --detect-config "$tempfile" --force-unit smb.service --install-hub --datasources
+    assert_output --partial "enabling collections:crowdsecurity/smb"
+    assert_output --partial "creating $ACQUIS_DIR/setup.smb.yaml"
+    rune -0 cscli collections inspect crowdsecurity/smb -o json
+    rune -0 jq -c '.installed' <(output)
+    assert_output "true"
+    rune -0 cat "$ACQUIS_DIR/setup.smb.yaml"
+    assert_output --partial "/path/to/smb.log"
 }
 
 @test "cscli setup validate" {

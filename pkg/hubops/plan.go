@@ -219,6 +219,7 @@ func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool,
 	// verbosePlan: plan summary is displaying each step in order
 	if len(p.commands) == 0 {
 		fmt.Println("Nothing to do.")
+		// XXX: TODO: fmt.Println("Nothing to install or remove.")
 		return nil
 	}
 
