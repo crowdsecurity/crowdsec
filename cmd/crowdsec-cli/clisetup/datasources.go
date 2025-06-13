@@ -16,7 +16,7 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "datasources [setup_file] [flags]",
-		Short:             "generate datasource (acquisition) configuration from a setup file",
+		Short:             "install log sources (acquisition) from a setup file",
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

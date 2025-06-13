@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -30,8 +31,6 @@ type detectFlags struct {
 	outYaml               bool
 	installHub            bool
 	datasources           bool
-	interactive           bool
-	dryRun                bool
 }
 
 func (f *detectFlags) bind(cmd *cobra.Command) {
@@ -48,11 +47,6 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.StringVar(&f.forcedOSVersion, "force-os-version", "", "override OS.RawVersion (of OS or Linux distribution)")
 	flags.BoolVar(&f.snubSystemd, "snub-systemd", false, "don't use systemd, even if available")
 	flags.BoolVar(&f.outYaml, "yaml", false, "output yaml, not json")
-	flags.BoolVar(&f.installHub, "install-hub", false, "install detected collections")
-	flags.BoolVar(&f.datasources, "datasources", false, "install detected log sources")
-	flags.BoolVarP(&f.interactive, "interactive", "i", false, "Ask for confirmation before proceeding (with --install-hub)")
-	flags.BoolVar(&f.dryRun, "dry-run", false, "don't install anything; print out what would have been (with --install-hub)")
-	// XXX TODO: mutually exclusive options, etc.
 
 	flags.SortFlags = false
 }
@@ -66,7 +60,46 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.detect(cmd.Context(), f)
+			var (
+				detectReader *os.File
+				err error
+			)
+
+			switch f.detectConfigFile {
+			case "-":
+				log.Tracef("Reading detection rules from stdin")
+
+				detectReader = os.Stdin
+			default:
+				log.Tracef("Reading detection rules: %s", f.detectConfigFile)
+
+				detectReader, err = os.Open(f.detectConfigFile)
+				if err != nil {
+					return err
+				}
+			}
+
+			if f.listSupportedServices {
+				supported, err := setup.ListSupported(detectReader)
+				if err != nil {
+					return err
+				}
+
+				for _, svc := range supported {
+					fmt.Println(svc)
+				}
+
+				return nil
+			}
+
+			setupYaml, err := cli.detect(cmd.Context(), detectReader, f)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(os.Stdout, setupYaml)
+
+			return nil
 		},
 	}
 
@@ -75,25 +108,10 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) detect(ctx context.Context, f detectFlags) error {
+func (cli *cliSetup) detect(ctx context.Context, detectReader io.Reader, f detectFlags) (string, error) {
 	var (
-		detectReader *os.File
 		err          error
 	)
-
-	switch f.detectConfigFile {
-	case "-":
-		log.Tracef("Reading detection rules from stdin")
-
-		detectReader = os.Stdin
-	default:
-		log.Tracef("Reading detection rules: %s", f.detectConfigFile)
-
-		detectReader, err = os.Open(f.detectConfigFile)
-		if err != nil {
-			return err
-		}
-	}
 
 	if !f.snubSystemd {
 		_, err = exec.LookPath("systemctl")
@@ -110,19 +128,6 @@ func (cli *cliSetup) detect(ctx context.Context, f detectFlags) error {
 		f.forcedOSFamily = "linux"
 	}
 
-	if f.listSupportedServices {
-		supported, err := setup.ListSupported(detectReader)
-		if err != nil {
-			return err
-		}
-
-		for _, svc := range supported {
-			fmt.Println(svc)
-		}
-
-		return nil
-	}
-
 	opts := setup.DetectOptions{
 		ForcedUnits:     f.forcedUnits,
 		ForcedProcesses: f.forcedProcesses,
@@ -137,33 +142,10 @@ func (cli *cliSetup) detect(ctx context.Context, f detectFlags) error {
 
 	hubSetup, err := setup.Detect(detectReader, opts)
 	if err != nil {
-		return fmt.Errorf("detecting services: %w", err)
+		return "", fmt.Errorf("detecting services: %w", err)
 	}
 
-	setup, err := setupAsString(hubSetup, f.outYaml)
-	if err != nil {
-		return err
-	}
-
-	if f.installHub {
-		if err := cli.install(ctx, f.interactive, f.dryRun, bytes.NewBufferString(setup)); err != nil {
-			return err
-		}
-	}
-
-	if f.datasources {
-		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
-		if err := cli.dataSources(bytes.NewBufferString(setup), acquisDir); err != nil {
-			return err
-		}
-	}
-
-	if !f.installHub && !f.datasources {
-		fmt.Println(setup)
-	}
-
-
-	return nil
+	return setupAsString(hubSetup, f.outYaml)
 }
 
 func setupAsString(cs setup.Setup, outYaml bool) (string, error) {
