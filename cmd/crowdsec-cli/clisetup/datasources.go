@@ -2,6 +2,7 @@ package clisetup
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -19,7 +20,11 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.dataSources(args[0], toDir)
+			input, err := os.Open(args[0])
+			if err != nil {
+				return err
+			}
+			return cli.dataSources(input, toDir)
 		},
 	}
 
@@ -29,12 +34,7 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) dataSources(fromFile string, toDir string) error {
-	input, err := os.ReadFile(fromFile)
-	if err != nil {
-		return fmt.Errorf("while reading setup file: %w", err)
-	}
-
+func (cli *cliSetup) dataSources(input io.Reader, toDir string) error {
 	output, err := setup.DataSources(input, toDir)
 	if err != nil {
 		return err

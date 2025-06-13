@@ -2,7 +2,7 @@ package clisetup
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -25,7 +25,11 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.install(cmd.Context(), interactive, dryRun, args[0])
+			input, err := os.Open(args[0])
+			if err != nil {
+				return err
+			}
+			return cli.install(cmd.Context(), interactive, dryRun, input)
 		},
 	}
 
@@ -37,12 +41,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, fromFile string) error {
-	input, err := os.ReadFile(fromFile)
-	if err != nil {
-		return fmt.Errorf("while reading file %s: %w", fromFile, err)
-	}
-
+func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, input io.Reader) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
