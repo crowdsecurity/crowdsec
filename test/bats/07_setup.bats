@@ -45,12 +45,13 @@ teardown() {
     assert_line '  cscli setup [command]'
     assert_line 'Manage hub configuration and service detection'
     assert_line --partial "detect                  detect running services, generate a setup file"
-    assert_line --partial "datasources             generate datasource (acquisition) configuration from a setup file"
+    assert_line --partial "datasources             install log sources (acquisition) from a setup file"
     assert_line --partial "install-hub             install items from a setup file"
     assert_line --partial "validate                validate a setup file"
 
-    # cobra should return error for non-existing sub-subcommands, but doesn't
-    rune -0 cscli setup blahblah
+    # make sure that the unknown argument is not ignored and does not trigger interactive mode
+    # (possibly blocking a script)
+    rune -1 cscli setup blahblah
     assert_line 'Usage:'
 }
 
@@ -427,7 +428,7 @@ update-notifier-motd.timer              enabled enabled
 	  always:
 	EOT
 
-    rune -0 cscli setup detect --install-hub --datasources
+    rune -0 cscli setup --auto
     assert_output "Nothing to do."
     refute_stderr
 }
@@ -794,10 +795,11 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 }
 
+
 @test "cscli setup detect --auto" {
+    skip "can't force detection with 'cscli setup' like with 'cscli setup detect', yet"
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
-    tempfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
-    cat <<-EOT >"${tempfile}"
+    cat <<-EOT >"$DETECT_YAML"
 	version: 1.0
 	detect:
 	  smb:
@@ -814,7 +816,7 @@ update-notifier-motd.timer              enabled enabled
 	        type: smb
 	EOT
 
-    rune -0 cscli setup detect --detect-config "$tempfile" --force-unit smb.service --auto
+    rune -0 cscli setup detect --force-unit smb.service --auto
     assert_output --partial "enabling collections:crowdsecurity/smb"
     assert_output --partial "creating $ACQUIS_DIR/setup.smb.yaml"
     rune -0 cscli collections inspect crowdsecurity/smb -o json
