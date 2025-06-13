@@ -486,7 +486,8 @@ func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
 				if !silent {
 					log.Infof("%s is not allowlisted", args[0])
 				}
-				os.Exit(1) //To allow the user to use exit code to check if the value is allowlisted
+				//nolint:revive //To allow the user to use exit code to check if the value is allowlisted
+				os.Exit(2)
 			}
 
 			if !silent {
