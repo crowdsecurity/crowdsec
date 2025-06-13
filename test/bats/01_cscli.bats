@@ -269,11 +269,11 @@ teardown() {
 @test "feature.yaml for subcommands" {
     # it is possible to enable subcommands with feature flags defined in feature.yaml
 
-    rune -1 cscli setup
+    rune -1 cscli setup detect
     assert_stderr --partial 'unknown command "setup" for "cscli"'
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
     echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
-    rune -0 cscli setup
+    rune -0 cscli setup detect
     assert_output --partial 'cscli setup [command]'
 }
 

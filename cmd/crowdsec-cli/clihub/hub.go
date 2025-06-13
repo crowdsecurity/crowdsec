@@ -44,6 +44,7 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 cscli hub update
 cscli hub upgrade`,
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
 	}
 
 	cmd.AddCommand(cli.newBranchCmd())

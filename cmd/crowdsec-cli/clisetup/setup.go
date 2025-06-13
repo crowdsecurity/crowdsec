@@ -10,6 +10,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
 type configGetter func() *csconfig.Config
@@ -103,10 +104,13 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "setup",
+		// XXX: TODO: better description
 		Short:             "Tools to configure crowdsec",
 		Long:              "Manage hub configuration and service detection",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Args:              args.NoArgs,
+		// XXX: TODO: examples!
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.setup(cmd.Context(), !auto)
 		},
 	}
