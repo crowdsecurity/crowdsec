@@ -419,7 +419,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup install-hub /dev/stdin <<<"$setup"
 }
 
-@test "cscli setup detect --install-hub --datasources (no logs or hub items)" {
+@test "cscli setup detect --auto (no logs or hub items)" {
     # no-op edge case, to make sure we don't crash
     cat <<-EOT >"${DETECT_YAML}"
 	version: 1.0
@@ -794,7 +794,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 }
 
-@test "cscli setup detect --install-hub --datasources" {
+@test "cscli setup detect --auto" {
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
     tempfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
     cat <<-EOT >"${tempfile}"
@@ -814,7 +814,7 @@ update-notifier-motd.timer              enabled enabled
 	        type: smb
 	EOT
 
-    rune -0 cscli setup detect --detect-config "$tempfile" --force-unit smb.service --install-hub --datasources
+    rune -0 cscli setup detect --detect-config "$tempfile" --force-unit smb.service --auto
     assert_output --partial "enabling collections:crowdsecurity/smb"
     assert_output --partial "creating $ACQUIS_DIR/setup.smb.yaml"
     rune -0 cscli collections inspect crowdsecurity/smb -o json

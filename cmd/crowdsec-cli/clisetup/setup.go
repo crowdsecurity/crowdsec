@@ -1,7 +1,13 @@
 package clisetup
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
+	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -18,13 +24,95 @@ func New(cfg configGetter) *cliSetup {
 	}
 }
 
+func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
+	detect := true
+	if interactive {
+		prompt := survey.Confirm{
+			Message: "Detect and configure services?",
+		}
+
+		if err := survey.AskOne(&prompt, &detect); err != nil {
+			return err
+		}
+	}
+
+	if !detect {
+		fmt.Println("Quitting crowdsec configuration.")
+		fmt.Println("You can always run 'crowdsec setup' later.")
+		return nil
+	}
+
+	defaultServiceDetect := csconfig.DefaultConfigPath("hub", "detect.yaml")
+
+	detectReader, err := os.Open(defaultServiceDetect)
+	if err != nil {
+		return err
+	}
+
+	flags := detectFlags{}
+
+	setupYaml, err := cli.detect(ctx, detectReader, flags)
+	if err != nil {
+		return err
+	}
+
+	// list detected services
+
+	// XXX: TODO: only if something needs installing
+	installHub := true
+	if interactive {
+		prompt := survey.Confirm{
+			Message: "Install collections?",
+		}
+
+		if err := survey.AskOne(&prompt, &installHub); err != nil {
+			return err
+		}
+	}
+
+	if installHub {
+		if err := cli.install(ctx, interactive, false, bytes.NewBufferString(setupYaml)); err != nil {
+			return err
+		}
+	}
+
+	// XXX: TODO: only if something needs installing
+	installAcquis := true
+	if interactive {
+		prompt := survey.Confirm{
+			Message: "Generate acquisition configuration?",
+		}
+
+		if err := survey.AskOne(&prompt, &installAcquis); err != nil {
+			return err
+		}
+	}
+
+	if installAcquis {
+		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
+		if err := cli.dataSources(bytes.NewBufferString(setupYaml), acquisDir); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cli *cliSetup) NewCommand() *cobra.Command {
+	var auto bool
+
 	cmd := &cobra.Command{
 		Use:               "setup",
 		Short:             "Tools to configure crowdsec",
 		Long:              "Manage hub configuration and service detection",
 		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.setup(cmd.Context(), !auto)
+		},
 	}
+
+	flags := cmd.Flags()
+	flags.BoolVar(&auto, "auto", false, "Unattended setup -- automatically detect services and generate configuration.")
 
 	cmd.AddCommand(cli.newDetectCmd())
 	cmd.AddCommand(cli.newInstallHubCmd())
