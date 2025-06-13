@@ -238,6 +238,7 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 	cmd.AddCommand(cli.newAddCmd())
 	cmd.AddCommand(cli.newRemoveCmd())
 	cmd.AddCommand(cli.newInspectCmd())
+	cmd.AddCommand(cli.newCheckCmd())
 
 	return cmd
 }
@@ -440,6 +441,69 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
+
+	var silent bool
+
+	cmd := &cobra.Command{
+		Use:     "check [value]",
+		Short:   "Check if a value is in an allowlist",
+		Example: `cscli allowlists check 1.2.3.4`,
+		Args:    args.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
+
+			if err := require.LAPI(cfg); err != nil {
+				return err
+			}
+
+			if err := cfg.LoadAPIClient(); err != nil {
+				return fmt.Errorf("loading api client: %w", err)
+			}
+
+			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
+			if err != nil {
+				return fmt.Errorf("parsing api url: %w", err)
+			}
+
+			client, err := apiclient.NewClient(&apiclient.Config{
+				MachineID:     cfg.API.Client.Credentials.Login,
+				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
+				URL:           apiURL,
+				VersionPrefix: "v1",
+			})
+
+			if err != nil {
+				return fmt.Errorf("creating api client: %w", err)
+			}
+
+			resp, err := cli.check(cmd.Context(), client, args[0])
+			if err != nil {
+				return fmt.Errorf("cannot check if %s is in allowlist: %w", args[0], err)
+			}
+
+			if !resp.Allowlisted {
+				if !silent {
+					log.Infof("%s is not allowlisted", args[0])
+				}
+				os.Exit(1) //To allow the user to use exit code to check if the value is allowlisted
+			}
+
+			if !silent {
+				log.Infof("%s is allowlisted by item %s", args[0], resp.Reason)
+			}
+
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.BoolVarP(&silent, "silent", "s", false, "silent mode")
+
+	return cmd
+}
+
 func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
@@ -637,4 +701,9 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	}
 
 	return nil
+}
+
+func (cli *cliAllowLists) check(ctx context.Context, client *apiclient.ApiClient, value string) (*models.CheckAllowlistResponse, error) {
+	resp, _, err := client.Allowlists.CheckIfAllowlistedWithReason(ctx, value)
+	return resp, err
 }
