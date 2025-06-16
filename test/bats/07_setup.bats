@@ -468,6 +468,22 @@ update-notifier-motd.timer              enabled enabled
     assert_json '[{install:{collections:["crowdsecurity/apache2"]},detected_service:"apache2"},{install:{collections:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
 }
 
+@test "cscli setup detect (unknown item type)" {
+    skip 'TODO'
+    cat <<-EOT >"${DETECT_YAML}"
+	version: 1.0
+	detect:
+	  foobar:
+	    install:
+	      barbapapa:
+	        - crowdsecurity/foobar
+	EOT
+
+    rune -0 cscli setup detect --force-process force-apache2,force-foobar
+    rune -0 jq -Sc '.setup | sort' <(output)
+    assert_json '[{install:{collections:["crowdsecurity/apache2"]},detected_service:"apache2"},{install:{collections:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
+}
+
 @test "cscli setup detect (with acquisition)" {
     cat <<-EOT >"${DETECT_YAML}"
 	version: 1.0
