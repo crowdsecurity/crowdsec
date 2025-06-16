@@ -195,8 +195,7 @@ teardown() {
 }
 
 @test "cscli hub foobar" {
-    # XXX: should exit with 1
-    rune -0 cscli hub foobar
-    assert_stderr --partial "Usage:"
-    assert_stderr --partial "command foobar:"
+    rune -1 cscli hub foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli hub"'
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/shirou/gopsutil/v3/process"
 	log "github.com/sirupsen/logrus"
+	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
@@ -31,7 +32,7 @@ type HubItems struct {
 	PostOverflows []string `yaml:"postoverflows,omitempty"`
 }
 
-type DataSourceItem map[string]interface{}
+type DataSourceItem map[string]any
 
 // ServiceSetup describes the recommendations (hub objects and datasources) for a detected service.
 type ServiceSetup struct {
@@ -43,6 +44,139 @@ type ServiceSetup struct {
 // Setup is a container for a list of ServiceSetup objects, allowing for future extensions.
 type Setup struct {
 	Setup []ServiceSetup `yaml:"setup"`
+}
+
+func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
+	s := Setup{}
+
+	// explicitly initialize to avoid json mashaling an empty slice as "null"
+	s.Setup = make([]ServiceSetup, 0)
+
+	sc, err := readDetectConfig(detectReader)
+	if err != nil {
+		return s, err
+	}
+
+	//	// generate acquis.yaml snippet for this service
+	//	for key := range sc.Detect {
+	//		svc := sc.Detect[key]
+	//		if svc.Acquis != nil {
+	//			svc.AcquisYAML, err = yaml.Marshal(svc.Acquis)
+	//			if err != nil {
+	//				return ret, err
+	//			}
+	//			sc.Detect[key] = svc
+	//		}
+	//	}
+
+	var osfull *osinfo.OSInfo
+
+	os := opts.ForcedOS
+	if os == (ExprOS{}) {
+		osfull, err = osinfo.GetOSInfo()
+		if err != nil {
+			return s, fmt.Errorf("detecting OS: %w", err)
+		}
+
+		log.Tracef("Detected OS - %+v", *osfull)
+
+		os = ExprOS{
+			Family:     osfull.Family,
+			ID:         osfull.ID,
+			RawVersion: osfull.Version,
+		}
+	} else {
+		log.Tracef("Forced OS - %+v", os)
+	}
+
+	if len(opts.ForcedUnits) > 0 {
+		log.Tracef("Forced units - %v", opts.ForcedUnits)
+	}
+
+	if len(opts.ForcedProcesses) > 0 {
+		log.Tracef("Forced processes - %v", opts.ForcedProcesses)
+	}
+
+	env := NewExprEnvironment(opts, os)
+
+	detected, err := filterWithRules(sc, env)
+	if err != nil {
+		return s, err
+	}
+
+	if err = checkConsumedForcedItems(env); err != nil {
+		return s, err
+	}
+
+	// remove services the user asked to ignore
+	for _, name := range opts.SkipServices {
+		delete(detected, name)
+	}
+
+	// sort the keys (service names) to have them in a predictable
+	// order in the final output
+
+	keys := make([]string, 0)
+	for k := range detected {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		svc := detected[name]
+		//		if svc.DataSource != nil {
+		//			if svc.DataSource.Labels["type"] == "" {
+		//				return Setup{}, fmt.Errorf("missing type label for service %s", name)
+		//			}
+		//			err = yaml.Unmarshal(svc.AcquisYAML, svc.DataSource)
+		//			if err != nil {
+		//				return Setup{}, fmt.Errorf("while parsing datasource for service %s: %w", name, err)
+		//			}
+		//		}
+
+		s.Setup = append(s.Setup, ServiceSetup{
+			DetectedService: name,
+			Install:         svc.Install,
+			DataSource:      svc.DataSource,
+		})
+	}
+
+	return s, nil
+}
+
+func (s *Setup) ToYAML(outYaml bool) ([]byte, error) {
+	var (
+		ret []byte
+		err error
+	)
+
+	indentLevel := 2
+	buf := &bytes.Buffer{}
+	enc := yaml.NewEncoder(buf)
+	enc.SetIndent(indentLevel)
+
+	if err = enc.Encode(s); err != nil {
+		return nil, err
+	}
+
+	if err = enc.Close(); err != nil {
+		return nil, err
+	}
+
+	ret = buf.Bytes()
+
+	if !outYaml {
+		// take a general approach to output json, so we avoid the
+		// double tags in the structures and can use go-yaml features
+		// missing from the json package
+		ret, err = goccyyaml.YAMLToJSON(ret)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ret, nil
 }
 
 func validateDataSource(opaqueDS DataSourceItem) error {
@@ -455,108 +589,6 @@ type DetectOptions struct {
 	ForcedOS        ExprOS
 	SkipServices    []string
 	SnubSystemd     bool
-}
-
-// Detect performs the service detection from a given configuration.
-// It outputs a setup file that can be used as input to "cscli setup install-hub"
-// or "cscli setup datasources".
-func Detect(detectReader io.Reader, opts DetectOptions) (Setup, error) {
-	ret := Setup{}
-
-	// explicitly initialize to avoid json mashaling an empty slice as "null"
-	ret.Setup = make([]ServiceSetup, 0)
-
-	sc, err := readDetectConfig(detectReader)
-	if err != nil {
-		return ret, err
-	}
-
-	//	// generate acquis.yaml snippet for this service
-	//	for key := range sc.Detect {
-	//		svc := sc.Detect[key]
-	//		if svc.Acquis != nil {
-	//			svc.AcquisYAML, err = yaml.Marshal(svc.Acquis)
-	//			if err != nil {
-	//				return ret, err
-	//			}
-	//			sc.Detect[key] = svc
-	//		}
-	//	}
-
-	var osfull *osinfo.OSInfo
-
-	os := opts.ForcedOS
-	if os == (ExprOS{}) {
-		osfull, err = osinfo.GetOSInfo()
-		if err != nil {
-			return ret, fmt.Errorf("detecting OS: %w", err)
-		}
-
-		log.Tracef("Detected OS - %+v", *osfull)
-
-		os = ExprOS{
-			Family:     osfull.Family,
-			ID:         osfull.ID,
-			RawVersion: osfull.Version,
-		}
-	} else {
-		log.Tracef("Forced OS - %+v", os)
-	}
-
-	if len(opts.ForcedUnits) > 0 {
-		log.Tracef("Forced units - %v", opts.ForcedUnits)
-	}
-
-	if len(opts.ForcedProcesses) > 0 {
-		log.Tracef("Forced processes - %v", opts.ForcedProcesses)
-	}
-
-	env := NewExprEnvironment(opts, os)
-
-	detected, err := filterWithRules(sc, env)
-	if err != nil {
-		return ret, err
-	}
-
-	if err = checkConsumedForcedItems(env); err != nil {
-		return ret, err
-	}
-
-	// remove services the user asked to ignore
-	for _, name := range opts.SkipServices {
-		delete(detected, name)
-	}
-
-	// sort the keys (service names) to have them in a predictable
-	// order in the final output
-
-	keys := make([]string, 0)
-	for k := range detected {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	for _, name := range keys {
-		svc := detected[name]
-		//		if svc.DataSource != nil {
-		//			if svc.DataSource.Labels["type"] == "" {
-		//				return Setup{}, fmt.Errorf("missing type label for service %s", name)
-		//			}
-		//			err = yaml.Unmarshal(svc.AcquisYAML, svc.DataSource)
-		//			if err != nil {
-		//				return Setup{}, fmt.Errorf("while parsing datasource for service %s: %w", name, err)
-		//			}
-		//		}
-
-		ret.Setup = append(ret.Setup, ServiceSetup{
-			DetectedService: name,
-			Install:         svc.Install,
-			DataSource:      svc.DataSource,
-		})
-	}
-
-	return ret, nil
 }
 
 // ListSupported parses the configuration file and outputs a list of the supported services.

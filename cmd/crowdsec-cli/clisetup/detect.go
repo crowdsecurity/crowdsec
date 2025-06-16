@@ -1,17 +1,12 @@
 package clisetup
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 
-	goccyyaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -29,8 +24,6 @@ type detectFlags struct {
 	skipServices          []string
 	snubSystemd           bool
 	outYaml               bool
-	installHub            bool
-	datasources           bool
 }
 
 func (f *detectFlags) bind(cmd *cobra.Command) {
@@ -51,6 +44,34 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.SortFlags = false
 }
 
+func (f *detectFlags) detectOptions() setup.DetectOptions {
+	if !f.snubSystemd {
+		if _, err := exec.LookPath("systemctl"); err != nil {
+			log.Debug("systemctl not available: snubbing systemd")
+
+			f.snubSystemd = true
+		}
+	}
+
+	if f.forcedOSFamily == "" && f.forcedOSID != "" {
+		log.Debug("force-os-id is set: force-os-family defaults to 'linux'")
+
+		f.forcedOSFamily = "linux"
+	}
+
+	return setup.DetectOptions{
+		ForcedUnits:     f.forcedUnits,
+		ForcedProcesses: f.forcedProcesses,
+		ForcedOS: setup.ExprOS{
+			Family:     f.forcedOSFamily,
+			ID:         f.forcedOSID,
+			RawVersion: f.forcedOSVersion,
+		},
+		SkipServices: f.skipServices,
+		SnubSystemd:  f.snubSystemd,
+	}
+}
+
 func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	f := detectFlags{}
 
@@ -65,14 +86,13 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				err error
 			)
 
+			rulesFrom := f.detectConfigFile
+
 			switch f.detectConfigFile {
 			case "-":
-				log.Tracef("Reading detection rules from stdin")
-
+				rulesFrom = "<stdin>"
 				detectReader = os.Stdin
 			default:
-				log.Tracef("Reading detection rules: %s", f.detectConfigFile)
-
 				detectReader, err = os.Open(f.detectConfigFile)
 				if err != nil {
 					return err
@@ -82,7 +102,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 			if f.listSupportedServices {
 				supported, err := setup.ListSupported(detectReader)
 				if err != nil {
-					return err
+					return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 				}
 
 				for _, svc := range supported {
@@ -92,12 +112,18 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return nil
 			}
 
-			setupYaml, err := cli.detect(cmd.Context(), detectReader, f)
+			stup, err := setup.NewSetup(detectReader, f.detectOptions())
 			if err != nil {
-				return err
+				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
 
-			fmt.Fprintln(os.Stdout, setupYaml)
+			yamlBytes, err := stup.ToYAML(f.outYaml)
+			if err != nil {
+				return fmt.Errorf("while serializing setup: %w", err)
+				
+			}
+
+			fmt.Fprintln(os.Stdout, string(yamlBytes))
 
 			return nil
 		},
@@ -106,82 +132,4 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	f.bind(cmd)
 
 	return cmd
-}
-
-func (cli *cliSetup) detect(ctx context.Context, detectReader io.Reader, f detectFlags) (string, error) {
-	var (
-		err          error
-	)
-
-	if !f.snubSystemd {
-		_, err = exec.LookPath("systemctl")
-		if err != nil {
-			log.Debug("systemctl not available: snubbing systemd")
-
-			f.snubSystemd = true
-		}
-	}
-
-	if f.forcedOSFamily == "" && f.forcedOSID != "" {
-		log.Debug("force-os-id is set: force-os-family defaults to 'linux'")
-
-		f.forcedOSFamily = "linux"
-	}
-
-	opts := setup.DetectOptions{
-		ForcedUnits:     f.forcedUnits,
-		ForcedProcesses: f.forcedProcesses,
-		ForcedOS: setup.ExprOS{
-			Family:     f.forcedOSFamily,
-			ID:         f.forcedOSID,
-			RawVersion: f.forcedOSVersion,
-		},
-		SkipServices: f.skipServices,
-		SnubSystemd:  f.snubSystemd,
-	}
-
-	hubSetup, err := setup.Detect(detectReader, opts)
-	if err != nil {
-		return "", fmt.Errorf("detecting services: %w", err)
-	}
-
-	return setupAsString(hubSetup, f.outYaml)
-}
-
-func setupAsString(cs setup.Setup, outYaml bool) (string, error) {
-	var (
-		ret []byte
-		err error
-	)
-
-	wrap := func(err error) error {
-		return fmt.Errorf("while serializing setup: %w", err)
-	}
-
-	indentLevel := 2
-	buf := &bytes.Buffer{}
-	enc := yaml.NewEncoder(buf)
-	enc.SetIndent(indentLevel)
-
-	if err = enc.Encode(cs); err != nil {
-		return "", wrap(err)
-	}
-
-	if err = enc.Close(); err != nil {
-		return "", wrap(err)
-	}
-
-	ret = buf.Bytes()
-
-	if !outYaml {
-		// take a general approach to output json, so we avoid the
-		// double tags in the structures and can use go-yaml features
-		// missing from the json package
-		ret, err = goccyyaml.YAMLToJSON(ret)
-		if err != nil {
-			return "", wrap(err)
-		}
-	}
-
-	return string(ret), nil
 }

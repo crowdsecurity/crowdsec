@@ -3,7 +3,7 @@ package fflag
 var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
 var (
-	CscliSetup              = &Feature{Name: "cscli_setup", Description: "Enable cscli setup command (service detection)"}
+	CscliSetup              = &Feature{Name: "cscli_setup", Description: "Enable cscli setup command (service detection)", enabled:true}
 	DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Description: "Disable http retry backoff"}
 	ChunkedDecisionsStream  = &Feature{Name: "chunked_decisions_stream", Description: "Enable chunked decisions stream"}
 	PapiClient              = &Feature{Name: "papi_client", Description: "Enable Polling API client", State: DeprecatedState}
