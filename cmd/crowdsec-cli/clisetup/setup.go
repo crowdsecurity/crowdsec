@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/AlecAivazis/survey/v2"
@@ -25,6 +26,7 @@ func New(cfg configGetter) *cliSetup {
 	}
 }
 
+
 func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 
 	// XXX: TODO: check if anything (collections, acquisitions, parsers, scenarios) is already installed
@@ -34,12 +36,15 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 	if interactive {
 		prompt := survey.Confirm{
 			Message: "Detect and configure services?",
+			Default: true,
 		}
 
 		if err := survey.AskOne(&prompt, &detect); err != nil {
 			return err
 		}
 	}
+
+	fmt.Fprintln(os.Stdout)
 
 	if !detect {
 		fmt.Println("Quitting crowdsec configuration.")
@@ -59,29 +64,40 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		return err
 	}
 
-	// XXX: TODO: leet user exclude services
-	for _, serviceName := range stup.DetectedServices() {
-		fmt.Printf("Detected service: %s\n", serviceName)
-	}
-
-	// list detected services
-
-	// XXX: TODO: only if something needs installing
-	installHub := true
 	if interactive {
-		prompt := survey.Confirm{
-			Message: "Install collections?",
+		svcDetected := stup.DetectedServices()
+		svcSelected := []string{}
+
+		prompt := &survey.MultiSelect{
+			Message: "Confirm the services to configure. Excluding them will skip the related scenarios and log acquisition.\n",
+			Options: svcDetected,
+			Default: svcDetected,
 		}
 
-		if err := survey.AskOne(&prompt, &installHub); err != nil {
+		err := survey.AskOne(prompt, &svcSelected)
+		if err != nil {
 			return err
+		}
+
+		svcFiltered := []setup.ServiceSetup{}
+		for _, svc := range stup.Setup {
+			if slices.Contains(svcSelected, svc.DetectedService) {
+				svcFiltered = append(svcFiltered, svc)
+			}
+		}
+
+		stup.Setup = svcFiltered
+	} else {
+		fmt.Println("The following services will be configured.")
+		for _, svc := range stup.DetectedServices() {
+			fmt.Printf("- %s\n", svc)
 		}
 	}
 
-	if installHub {
-		if err := cli.install(ctx, interactive, false, stup); err != nil {
-			return err
-		}
+	fmt.Fprintln(os.Stdout)
+
+	if err := cli.install(ctx, interactive, false, stup); err != nil {
+		return err
 	}
 
 	// XXX: TODO: only if something needs installing
@@ -89,6 +105,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 	if interactive {
 		prompt := survey.Confirm{
 			Message: "Generate acquisition configuration?",
+			Default: true,
 		}
 
 		if err := survey.AskOne(&prompt, &installAcquis); err != nil {

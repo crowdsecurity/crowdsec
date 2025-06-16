@@ -33,70 +33,22 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 			continue
 		}
 
-		for _, collection := range setupItem.Install.Collections {
-			item := hub.GetItem(cwhub.COLLECTIONS, collection)
-			if item == nil {
-				return fmt.Errorf("collection %s not found", collection)
-			}
-
-			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
-				return err
-			}
-
-			if !downloadOnly {
-				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+		for itemType, items := range setupItem.Install {
+			for _, itemName := range items {
+				fqName := itemType + ":" + itemName
+				item, err  := hub.GetItemFQ(fqName)
+				if err != nil {
 					return err
 				}
-			}
-		}
 
-		for _, parser := range setupItem.Install.Parsers {
-			item := hub.GetItem(cwhub.PARSERS, parser)
-			if item == nil {
-				return fmt.Errorf("parser %s not found", parser)
-			}
-
-			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
-				return err
-			}
-
-			if !downloadOnly {
-				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+				if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
 					return err
 				}
-			}
-		}
 
-		for _, scenario := range setupItem.Install.Scenarios {
-			item := hub.GetItem(cwhub.SCENARIOS, scenario)
-			if item == nil {
-				return fmt.Errorf("scenario %s not found", scenario)
-			}
-
-			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
-				return err
-			}
-
-			if !downloadOnly {
-				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
-					return err
-				}
-			}
-		}
-
-		for _, postoverflow := range setupItem.Install.PostOverflows {
-			item := hub.GetItem(cwhub.POSTOVERFLOWS, postoverflow)
-			if item == nil {
-				return fmt.Errorf("postoverflow %s not found", postoverflow)
-			}
-
-			if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
-				return err
-			}
-
-			if !downloadOnly {
-				if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
-					return err
+				if !downloadOnly {
+					if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
+						return err
+					}
 				}
 			}
 		}
