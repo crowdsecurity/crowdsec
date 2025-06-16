@@ -31,7 +31,7 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) validate(input io.Reader) error {
-	if err := setup.Validate(input); err != nil {
+	if _, err := setup.NewSetupFromYAML(input, true); err != nil {
 		fmt.Printf("%v\n", err)
 		return errors.New("invalid setup file")
 	}

@@ -2,7 +2,6 @@ package clisetup
 
 import (
 	"context"
-	"io"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -29,7 +28,13 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return cli.install(cmd.Context(), interactive, dryRun, input)
+
+			stup, err := setup.NewSetupFromYAML(input, true)
+			if err != nil {
+				return err
+			}
+
+			return cli.install(cmd.Context(), interactive, dryRun, stup)
 		},
 	}
 
@@ -41,7 +46,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, input io.Reader) error {
+func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, stup setup.Setup) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -54,5 +59,5 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	return setup.InstallHubItems(ctx, hub, contentProvider, input, interactive, dryRun, showPlan, verbosePlan)
+	return setup.InstallHubItems(ctx, hub, contentProvider, stup, interactive, dryRun, showPlan, verbosePlan)
 }
