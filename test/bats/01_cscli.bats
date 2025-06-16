@@ -240,6 +240,7 @@ teardown() {
 
 @test "cscli doc" {
     cd "$BATS_TEST_TMPDIR"
+    export CROWDSEC_FEATURE_CSCLI_SETUP="false"
     rune -1 cscli doc
     refute_output
     assert_stderr --regexp 'failed to generate cscli documentation: open doc/.*: no such file or directory'
@@ -266,33 +267,38 @@ teardown() {
 
 }
 
-@test "feature.yaml for subcommands" {
-    # it is possible to enable subcommands with feature flags defined in feature.yaml
+@test "feature flags for subcommands" {
+    # it is possible to enable subcommands with feature flags
+    # defined in feature.yaml or envvars
 
+    export CROWDSEC_FEATURE_CSCLI_SETUP="false"
     rune -1 cscli setup detect
     assert_stderr --partial 'unknown command "setup" for "cscli"'
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
-    echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
-    rune -0 cscli setup detect
+    # currently, we have no subcommands guarded by feature flags
+    # echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
+    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
+    rune -0 cscli setup --help
     assert_output --partial 'cscli setup [command]'
 }
 
 @test "cscli config feature-flags" {
     # disabled
     rune -0 cscli config feature-flags
-    assert_line '✗ cscli_setup: Enable cscli setup command (service detection)'
+    assert_line '✗ re2_grok_support: Enable RE2 support for GROK patterns'
 
     # enabled in feature.yaml
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
-    echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
+    echo ' - re2_grok_support' >> "$CONFIG_DIR"/feature.yaml
     rune -0 cscli config feature-flags
-    assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
+    assert_line '✓ re2_grok_support: Enable RE2 support for GROK patterns'
+    rune rm "$CONFIG_DIR"/feature.yaml
 
     # enabled in environment
     # shellcheck disable=SC2031
-    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
+    export CROWDSEC_FEATURE_RE2_GROK_SUPPORT="true"
     rune -0 cscli config feature-flags
-    assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
+    assert_line '✓ re2_grok_support: Enable RE2 support for GROK patterns'
 
     # there are no retired features
     rune -0 cscli config feature-flags --retired
