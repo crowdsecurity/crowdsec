@@ -66,7 +66,7 @@ teardown() {
 
     # - is stdin
     rune -1 cscli setup detect --detect-config - <<< "{}"
-    assert_stderr --partial "detecting services: missing version tag (must be 1.0)"
+    assert_stderr --partial "Error: parsing <stdin>: missing version tag (must be 1.0)"
 
     # rm -f "${HUB_DIR}/detect.yaml"
 }
@@ -301,7 +301,7 @@ update-notifier-motd.timer              enabled enabled
     assert_json '[{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}},detected_service:"apache2"},{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache3"}},detected_service:"apache3"}]'
 
     rune -1 cscli setup detect --force-unit mock-doesnotexist
-    assert_stderr --partial "detecting services: unit(s) forced but not supported: [mock-doesnotexist]"
+    assert_stderr --partial "Error: parsing $DETECT_YAML: unit(s) required but not supported: [mock-doesnotexist]"
 }
 
 @test "cscli setup detect (process)" {
@@ -429,7 +429,13 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     rune -0 cscli setup --auto
-    assert_output "Nothing to do."
+    assert_output <<-EOT
+	
+	The following services will be configured.
+	- always
+
+        Nothing to do.
+	EOT
     refute_stderr
 }
 
@@ -489,7 +495,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     rune -1 cscli setup detect --force-process mock-doesnotexist
-    assert_stderr --partial "detecting services: process(es) forced but not supported: [mock-doesnotexist]"
+    assert_stderr --partial "Error: parsing $DETECT_YAML: process(es) required but not supported: [mock-doesnotexist]"
 }
 
 @test "cscli setup detect (datasource validation)" {
@@ -503,7 +509,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     rune -1 cscli setup detect
-    assert_stderr --partial "detecting services: invalid datasource for foobar: source is empty"
+    assert_stderr --partial "Error: parsing $DETECT_YAML: invalid datasource for foobar: source is empty"
 
     # more datasource-specific tests are in detect_test.go
 }
@@ -552,7 +558,7 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
 
     rune -1 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
-    assert_stderr --partial 'collection crowdsecurity/foo not found'
+    assert_stderr --partial 'Error: item collections:crowdsecurity/foo not found'
 
 }
 
