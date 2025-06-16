@@ -24,20 +24,15 @@ import (
 // ExecCommand can be replaced with a mock during tests.
 var ExecCommand = exec.Command
 
-// HubItems contains the objects that are recommended to support a service.
-type HubItems struct {
-	Collections   []string `yaml:"collections,omitempty"`
-	Parsers       []string `yaml:"parsers,omitempty"`
-	Scenarios     []string `yaml:"scenarios,omitempty"`
-	PostOverflows []string `yaml:"postoverflows,omitempty"`
-}
+// HubItems contains the objects (mostly collections) that are recommended to support a service.
+type HubItems map[string][]string
 
 type DataSourceItem map[string]any
 
 // ServiceSetup describes the recommendations (hub objects and datasources) for a detected service.
 type ServiceSetup struct {
 	DetectedService string         `yaml:"detected_service"`
-	Install         *HubItems      `yaml:"install,omitempty"`
+	Install         HubItems       `yaml:"install,omitempty"`
 	DataSource      DataSourceItem `yaml:"datasource,omitempty"`
 }
 
@@ -300,7 +295,7 @@ func readDetectConfig(fin io.Reader) (DetectConfig, error) {
 // Service describes the rules for detecting a service and its recommended items.
 type Service struct {
 	When       []string       `yaml:"when"`
-	Install    *HubItems      `yaml:"install,omitempty"`
+	Install    HubItems       `yaml:"install,omitempty"`
 	DataSource DataSourceItem `yaml:"datasource,omitempty"`
 	// AcquisYAML []byte
 }
