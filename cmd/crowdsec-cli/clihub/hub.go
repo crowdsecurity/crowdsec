@@ -45,6 +45,9 @@ cscli hub update
 cscli hub upgrade`,
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newBranchCmd())
