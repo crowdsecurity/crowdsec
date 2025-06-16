@@ -380,7 +380,7 @@ func TestDetectSimpleRule(t *testing.T) {
 	  ugly:
 	`)
 
-	detected, err := setup.Detect(&f, setup.DetectOptions{})
+	got, err := setup.NewSetup(&f, setup.DetectOptions{})
 	require.NoError(err)
 
 	expected := []setup.ServiceSetup{
@@ -388,7 +388,7 @@ func TestDetectSimpleRule(t *testing.T) {
 		{DetectedService: "ugly"},
 	}
 
-	require.ElementsMatch(expected, detected.Setup)
+	require.ElementsMatch(expected, got.Setup)
 }
 
 func TestDetectUnitError(t *testing.T) {
@@ -423,9 +423,9 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
-			detected, err := setup.Detect(&f, setup.DetectOptions{})
+			got, err := setup.NewSetup(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, detected)
+			require.Equal(tc.expected, got)
 		})
 	}
 }
@@ -502,7 +502,7 @@ detect:
 							// XXX this should not be DataSourceItem ??
 							"source":            "journalctl",
 							"labels":            setup.DataSourceItem{"type": "syslog"},
-							"journalctl_filter": []interface{}{"_MY_CUSTOM_FILTER=something"},
+							"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
 						},
 					},
 				},
@@ -515,9 +515,9 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
-			detected, err := setup.Detect(&f, setup.DetectOptions{})
+			got, err := setup.NewSetup(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, detected)
+			require.Equal(tc.expected, got)
 		})
 	}
 }
@@ -542,7 +542,7 @@ func TestDetectForcedUnit(t *testing.T) {
 	        - _SYSTEMD_UNIT=crowdsec-setup-forced.service
 	`)
 
-	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
+	got, err := setup.NewSetup(&f, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
 	require.NoError(err)
 
 	expected := setup.Setup{
@@ -552,12 +552,12 @@ func TestDetectForcedUnit(t *testing.T) {
 				DataSource: setup.DataSourceItem{
 					"source":            "journalctl",
 					"labels":            setup.DataSourceItem{"type": "syslog"},
-					"journalctl_filter": []interface{}{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
+					"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
 				},
 			},
 		},
 	}
-	require.Equal(expected, detected)
+	require.Equal(expected, got)
 }
 
 func TestDetectForcedProcess(t *testing.T) {
@@ -576,7 +576,7 @@ func TestDetectForcedProcess(t *testing.T) {
 	      - ProcessRunning("foobar")
 	`)
 
-	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
+	got, err := setup.NewSetup(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
 	require.NoError(err)
 
 	expected := setup.Setup{
@@ -584,7 +584,7 @@ func TestDetectForcedProcess(t *testing.T) {
 			{DetectedService: "wizard"},
 		},
 	}
-	require.Equal(expected, detected)
+	require.Equal(expected, got)
 }
 
 func TestDetectSkipService(t *testing.T) {
@@ -603,11 +603,11 @@ func TestDetectSkipService(t *testing.T) {
 	      - ProcessRunning("foobar")
 	`)
 
-	detected, err := setup.Detect(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
+	got, err := setup.NewSetup(&f, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
 	require.NoError(err)
 
 	expected := setup.Setup{[]setup.ServiceSetup{}}
-	require.Equal(expected, detected)
+	require.Equal(expected, got)
 }
 
 func TestDetectForcedOS(t *testing.T) {
@@ -817,9 +817,9 @@ func TestDetectForcedOS(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
-			detected, err := setup.Detect(&f, setup.DetectOptions{ForcedOS: tc.forced})
+			got, err := setup.NewSetup(&f, setup.DetectOptions{ForcedOS: tc.forced})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, detected)
+			require.Equal(tc.expected, got)
 		})
 	}
 }
@@ -999,9 +999,9 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
-			detected, err := setup.Detect(&f, setup.DetectOptions{})
+			got, err := setup.NewSetup(&f, setup.DetectOptions{})
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, detected)
+			require.Equal(tc.expected, got)
 		})
 	}
 }

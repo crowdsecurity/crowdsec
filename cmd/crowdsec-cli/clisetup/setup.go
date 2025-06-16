@@ -10,6 +10,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 )
 
@@ -26,6 +27,10 @@ func New(cfg configGetter) *cliSetup {
 }
 
 func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
+
+	// XXX: TODO: check if anything (collections, acquisitions, parsers, scenarios) is already installed
+	// if so, return if interactive is false - and change the first option
+
 	detect := true
 	if interactive {
 		prompt := survey.Confirm{
@@ -50,9 +55,13 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		return err
 	}
 
-	flags := detectFlags{}
+	stup, err := setup.NewSetup(detectReader, setup.DetectOptions{})
+	if err != nil {
+		return err
+	}
 
-	setupYaml, err := cli.detect(ctx, detectReader, flags)
+	// XXX: TODO:
+	setupYaml, err := stup.ToYAML(false)
 	if err != nil {
 		return err
 	}
@@ -72,7 +81,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 	}
 
 	if installHub {
-		if err := cli.install(ctx, interactive, false, bytes.NewBufferString(setupYaml)); err != nil {
+		if err := cli.install(ctx, interactive, false, bytes.NewReader(setupYaml)); err != nil {
 			return err
 		}
 	}
@@ -91,7 +100,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 
 	if installAcquis {
 		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
-		if err := cli.dataSources(bytes.NewBufferString(setupYaml), acquisDir); err != nil {
+		if err := cli.dataSources(bytes.NewReader(setupYaml), acquisDir); err != nil {
 			return err
 		}
 	}
