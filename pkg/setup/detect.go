@@ -145,6 +145,46 @@ func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 	return s, nil
 }
 
+func (s *Setup) DetectedServices() []string {
+	ret := make([]string, 0, len(s.Setup))
+
+	for _, svc := range s.Setup {
+		ret = append(ret, svc.DetectedService)
+	}
+
+	return ret
+}
+
+func NewSetupFromYAML(input io.Reader, fancyErrors bool) (Setup, error) {
+	inputBytes, err := io.ReadAll(input)
+	if err != nil {
+		return Setup{}, fmt.Errorf("while reading setup file: %w", err)
+	}
+
+	// parse with goccy to have better error messages in many cases
+	dec := goccyyaml.NewDecoder(bytes.NewBuffer(inputBytes), goccyyaml.Strict())
+
+	s := Setup{}
+
+	if err := dec.Decode(&s); err != nil {
+		if fancyErrors {
+			return Setup{}, fmt.Errorf("%v", goccyyaml.FormatError(err, true, true))
+		}
+		// XXX errors here are multiline, should we just print them to stderr instead of logging?
+		return Setup{}, fmt.Errorf("%v", err)
+	}
+
+	// parse again because goccy is not strict enough anyway
+	dec2 := yaml.NewDecoder(bytes.NewBuffer(inputBytes))
+	dec2.KnownFields(true)
+
+	if err := dec2.Decode(&s); err != nil {
+		return Setup{}, fmt.Errorf("while parsing setup file: %w", err)
+	}
+
+	return s, nil
+}
+
 func (s *Setup) ToYAML(outYaml bool) ([]byte, error) {
 	var (
 		ret []byte
