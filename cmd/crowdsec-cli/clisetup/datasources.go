@@ -2,7 +2,6 @@ package clisetup
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -24,7 +23,13 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return cli.dataSources(input, toDir)
+
+			stup, err := setup.NewSetupFromYAML(input, true)
+			if err != nil {
+				return err
+			}
+
+			return cli.dataSources(stup, toDir)
 		},
 	}
 
@@ -34,8 +39,8 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) dataSources(input io.Reader, toDir string) error {
-	output, err := setup.DataSources(input, toDir)
+func (cli *cliSetup) dataSources(stup setup.Setup, toDir string) error {
+	output, err := setup.DataSources(stup, toDir)
 	if err != nil {
 		return err
 	}
