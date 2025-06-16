@@ -1,7 +1,6 @@
 package clisetup
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -60,10 +59,9 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		return err
 	}
 
-	// XXX: TODO:
-	setupYaml, err := stup.ToYAML(false)
-	if err != nil {
-		return err
+	// XXX: TODO: leet user exclude services
+	for _, serviceName := range stup.DetectedServices() {
+		fmt.Printf("Detected service: %s\n", serviceName)
 	}
 
 	// list detected services
@@ -81,7 +79,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 	}
 
 	if installHub {
-		if err := cli.install(ctx, interactive, false, bytes.NewReader(setupYaml)); err != nil {
+		if err := cli.install(ctx, interactive, false, stup); err != nil {
 			return err
 		}
 	}
@@ -100,7 +98,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 
 	if installAcquis {
 		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
-		if err := cli.dataSources(bytes.NewReader(setupYaml), acquisDir); err != nil {
+		if err := cli.dataSources(stup, acquisDir); err != nil {
 			return err
 		}
 	}
