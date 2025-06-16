@@ -199,7 +199,7 @@ If you want to disable systemd unit detection, use `cscli setup detect... --snub
 
 If you used the `--force-process` or `--force-unit` flags, but none of the
 defined services is looking for them, you'll have an error like "detecting
-services: process(es) forced but not supported".
+services: process(es) required but not supported".
 
 > **_NOTE_**: XXX XXX - having an error for this is maybe too much, but can tell that a configuration is outdated. Could this be a warning with optional flag to make it an error?
 

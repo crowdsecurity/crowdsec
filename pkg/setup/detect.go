@@ -320,7 +320,7 @@ type ExprState struct {
 	runningProcesses map[string]bool
 }
 
-// ExprServiceState keep a local state during the detection of a single service. It is reset before each service rules' evaluation.
+// ExprServiceState keeps a local state during the detection of a single service. It is reset before each service rules' evaluation.
 type ExprServiceState struct {
 	detectedUnits []string
 }
@@ -593,14 +593,14 @@ func checkConsumedForcedItems(e ExprEnvironment) error {
 
 	unitMsg := ""
 	if len(unconsumed) > 0 {
-		unitMsg = fmt.Sprintf("unit(s) forced but not supported: %v", unconsumed)
+		unitMsg = fmt.Sprintf("unit(s) required but not supported: %v", unconsumed)
 	}
 
 	unconsumed = e.unsearchedProcesses()
 
 	procsMsg := ""
 	if len(unconsumed) > 0 {
-		procsMsg = fmt.Sprintf("process(es) forced but not supported: %v", unconsumed)
+		procsMsg = fmt.Sprintf("process(es) required but not supported: %v", unconsumed)
 	}
 
 	join := ""
