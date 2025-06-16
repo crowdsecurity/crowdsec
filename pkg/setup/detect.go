@@ -36,11 +36,14 @@ type ServiceSetup struct {
 	DataSource      DataSourceItem `yaml:"datasource,omitempty"`
 }
 
+// XXX: TODO: validate ServiceSetup, item types and existing items?
+
 // Setup is a container for a list of ServiceSetup objects, allowing for future extensions.
 type Setup struct {
 	Setup []ServiceSetup `yaml:"setup"`
 }
 
+// XXX: this could be a Detect() method? as a constuctor, it's not symmetrical
 func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 	s := Setup{}
 
