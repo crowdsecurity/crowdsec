@@ -27,7 +27,7 @@ type detectFlags struct {
 }
 
 func (f *detectFlags) bind(cmd *cobra.Command) {
-	defaultServiceDetect := csconfig.DefaultConfigPath("hub", "detect.yaml")
+	defaultServiceDetect := csconfig.DefaultConfigPath("detect.yaml")
 
 	flags := cmd.Flags()
 	flags.StringVar(&f.detectConfigFile, "detect-config", defaultServiceDetect, "path to service detection configuration")

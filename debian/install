@@ -1,4 +1,5 @@
 config/config.yaml      etc/crowdsec/
+config/detect.yaml      etc/crowdsec/
 config/profiles.yaml    etc/crowdsec/
 config/simulation.yaml  etc/crowdsec/
 

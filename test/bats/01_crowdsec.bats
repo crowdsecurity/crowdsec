@@ -213,12 +213,13 @@ teardown() {
 
 # TODO: move acquisition tests to test/bats/crowdsec-acquisition.bats
 
-@test "crowdsec (error if the acquisition_path file is defined but missing)" {
+@test "crowdsec (no error if acquis.yaml is missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     rm -f "$ACQUIS_YAML"
 
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "acquis.yaml: no such file or directory"
+    refute_stderr --partial "no such file or directory"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (error if acquisition_path is not defined and acquisition_dir is empty)" {

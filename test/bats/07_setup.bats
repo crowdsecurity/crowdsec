@@ -9,7 +9,8 @@ setup_file() {
     # remove trailing slash if any (like in default config.yaml from package)
     HUB_DIR=${HUB_DIR%/}
     export HUB_DIR
-    DETECT_YAML="${HUB_DIR}/detect.yaml"
+    CONFIG_DIR=$(config_get '.config_paths.config_dir')
+    DETECT_YAML="${CONFIG_DIR}/detect.yaml"
     export DETECT_YAML
     # shellcheck disable=SC2154
     TESTDATA="${BATS_TEST_DIRNAME}/testdata/07_setup"

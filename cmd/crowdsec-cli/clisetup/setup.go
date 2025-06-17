@@ -79,7 +79,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		return nil
 	}
 
-	defaultServiceDetect := csconfig.DefaultConfigPath("hub", "detect.yaml")
+	defaultServiceDetect := csconfig.DefaultConfigPath("detect.yaml")
 
 	detectReader, err := os.Open(defaultServiceDetect)
 	if err != nil {
