@@ -3,6 +3,7 @@ package csconfig
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -45,11 +46,19 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 
 	if c.AcquisitionFilePath != "" {
 		log.Debugf("non-empty acquisition_path %s", c.AcquisitionFilePath)
-		if _, err := os.Stat(c.AcquisitionFilePath); err != nil {
+		_, err := os.Stat(c.AcquisitionFilePath)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			log.Infof("acquisition_path: %s does not exist, skipping", c.AcquisitionFilePath)
+		case err != nil:
 			return nil, fmt.Errorf("while checking acquisition_path: %w", err)
+		default:
+			ret = append(ret, c.AcquisitionFilePath)
 		}
-		ret = append(ret, c.AcquisitionFilePath)
 	}
+
+	// XXX: TODO: set default AcquisitionDirPath
+	// XXX: do not distribute an example config.yaml? remove it from the configuration?
 
 	if c.AcquisitionDirPath != "" {
 		// XXX: shouldn't we assume this is absolute, and reject relative paths?
