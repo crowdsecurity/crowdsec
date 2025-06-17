@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 type configGetter func() *csconfig.Config
@@ -26,11 +27,37 @@ func New(cfg configGetter) *cliSetup {
 	}
 }
 
-
 func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
+	cfg := cli.cfg()
 
-	// XXX: TODO: check if anything (collections, acquisitions, parsers, scenarios) is already installed
-	// if so, return if interactive is false - and change the first option
+	if err := require.Agent(cfg); err != nil {
+		return err
+	}
+
+	acquisFiles := cfg.Crowdsec.AcquisitionFiles
+
+	// XXX: TODO: filter out the _generated_ files
+	if len(acquisFiles) != 0 {
+		fmt.Fprintln(os.Stdout, "Found the following acquisition files:")
+
+		for _, f := range acquisFiles {
+			fmt.Fprintln(os.Stdout, " - " + f)
+		}
+	}
+
+	// XXX: TODO: review all prompts, cli help, examples, etc.
+
+	// XXX: TODO: agent configuration vs lapi?
+	// what if agent is disabled?
+	
+	// XXX: TODO: reuse or re-implement part of LoadAcquisition to collect the list of acquisition files
+	// then we to process them to see whether they are auto-generated or not
+	// scan all document, discard empty
+	// check for comments inside
+
+	// XXX: TODO: if some acquisition is already defined:
+	//   interactive == false -> skip detect+install
+	//   interactive == true -> change messages/prompt?
 
 	detect := true
 	if interactive {
@@ -69,7 +96,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		svcSelected := []string{}
 
 		prompt := &survey.MultiSelect{
-			Message: "Confirm the services to configure. Excluding them will skip the related scenarios and log acquisition.\n",
+			Message: "Please confirm the services to configure. Excluding them will skip the related scenarios and log acquisition.\n",
 			Options: svcDetected,
 			Default: svcDetected,
 		}
@@ -113,6 +140,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		}
 	}
 
+	// XXX TODO: warn user not to alter the generated files
 	if installAcquis {
 		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
 		if err := cli.dataSources(stup, acquisDir); err != nil {
@@ -140,7 +168,7 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.BoolVar(&auto, "auto", false, "Unattended setup -- automatically detect services and generate configuration.")
+	flags.BoolVar(&auto, "auto", false, "Unattended setup -- automatically detect services and generate configuration")
 
 	cmd.AddCommand(cli.newDetectCmd())
 	cmd.AddCommand(cli.newInstallHubCmd())
