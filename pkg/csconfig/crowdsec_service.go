@@ -1,6 +1,7 @@
 package csconfig
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +32,65 @@ type CrowdsecServiceCfg struct {
 	ContextToSend      map[string][]string `yaml:"-"`
 }
 
+var ErrNoAcquisitionDefined = errors.New("no acquisition_path or acquisition_dir specified")
+
+func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
+	ret := []string{}
+	
+	// agent section missing in the configuration file.
+	// likely a lapi-only setup, not much we can do here
+	if c == nil {
+		return nil, nil
+	}
+
+	if c.AcquisitionFilePath != "" {
+		log.Debugf("non-empty acquisition_path %s", c.AcquisitionFilePath)
+		if _, err := os.Stat(c.AcquisitionFilePath); err != nil {
+			return nil, fmt.Errorf("while checking acquisition_path: %w", err)
+		}
+		ret = append(ret, c.AcquisitionFilePath)
+	}
+
+	if c.AcquisitionDirPath != "" {
+		// XXX: shouldn't we assume this is absolute, and reject relative paths?
+		// this is having a side effect of resolving relative paths according to the cwd at the time of first call,
+		// so this function can't be idempotent -- *and* cscli has different cwd than the agent
+		dirPath, err := filepath.Abs(c.AcquisitionDirPath)
+		if err != nil {
+			return nil, fmt.Errorf("can't get absolute path of '%s': %w", c.AcquisitionDirPath, err)
+		}
+		c.AcquisitionDirPath = dirPath
+
+		dirFiles, err := filepath.Glob(c.AcquisitionDirPath + "/*.yaml")
+		if err != nil {
+			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
+		}
+		ret = append(ret, dirFiles...)
+
+		dirFiles, err = filepath.Glob(c.AcquisitionDirPath + "/*.yml")
+		if err != nil {
+			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
+		}
+		ret = append(ret, dirFiles...)
+	}
+
+	if c.AcquisitionDirPath == "" && c.AcquisitionFilePath == "" {
+		return nil, ErrNoAcquisitionDefined
+	}
+
+	// Convert relative paths to absolute paths
+	// XXX: see above
+	for i, file := range ret {
+		f, err := filepath.Abs(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get absolute path of '%s': %w", file, err)
+		}
+		ret[i] = f
+	}
+
+	return ret, nil
+}
+
 func (c *Config) LoadCrowdsec() error {
 	var err error
 
@@ -51,41 +111,15 @@ func (c *Config) LoadCrowdsec() error {
 		return nil
 	}
 
-	if c.Crowdsec.AcquisitionFiles == nil {
+	acquisitionFiles, err := c.Crowdsec.CollectAcquisitionFiles()
+	switch {
+	case errors.Is(err, ErrNoAcquisitionDefined):
+		log.Warning(err)
 		c.Crowdsec.AcquisitionFiles = []string{}
-	}
-
-	if c.Crowdsec.AcquisitionFilePath != "" {
-		log.Debugf("non-empty acquisition_path %s", c.Crowdsec.AcquisitionFilePath)
-		if _, err = os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
-			return fmt.Errorf("while checking acquisition_path: %w", err)
-		}
-		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
-	}
-
-	if c.Crowdsec.AcquisitionDirPath != "" {
-		c.Crowdsec.AcquisitionDirPath, err = filepath.Abs(c.Crowdsec.AcquisitionDirPath)
-		if err != nil {
-			return fmt.Errorf("can't get absolute path of '%s': %w", c.Crowdsec.AcquisitionDirPath, err)
-		}
-
-		var files []string
-
-		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
-		if err != nil {
-			return fmt.Errorf("while globbing acquis_dir: %w", err)
-		}
-		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
-
-		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yml")
-		if err != nil {
-			return fmt.Errorf("while globbing acquis_dir: %w", err)
-		}
-		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
-	}
-
-	if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
-		log.Warning("no acquisition_path or acquisition_dir specified")
+	case err != nil:
+		return err
+	default:
+		c.Crowdsec.AcquisitionFiles = acquisitionFiles
 	}
 
 	if len(c.Crowdsec.AcquisitionFiles) == 0 {
@@ -121,15 +155,6 @@ func (c *Config) LoadCrowdsec() error {
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
 		}
-	}
-
-	// Convert relative paths to absolute paths
-	for i, file := range c.Crowdsec.AcquisitionFiles {
-		f, err := filepath.Abs(file)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", file, err)
-		}
-		c.Crowdsec.AcquisitionFiles[i] = f
 	}
 
 	if err = c.LoadAPIClient(); err != nil {
