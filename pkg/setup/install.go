@@ -25,8 +25,6 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 	plan := hubops.NewActionPlan(hub)
 
 	for _, setupItem := range stup.Setup {
-		forceAction := false
-		downloadOnly := false
 		install := setupItem.Install
 
 		if install == nil {
@@ -41,14 +39,12 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 					return err
 				}
 
-				if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, forceAction)); err != nil {
+				if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, false)); err != nil {
 					return err
 				}
 
-				if !downloadOnly {
-					if err := plan.AddCommand(hubops.NewEnableCommand(item, forceAction)); err != nil {
-						return err
-					}
+				if err := plan.AddCommand(hubops.NewEnableCommand(item, false)); err != nil {
+					return err
 				}
 			}
 		}

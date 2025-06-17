@@ -11,16 +11,6 @@ if [ "$1" = configure ]; then
         mkdir -p /var/lib/crowdsec/data
     fi
 
-    . /usr/share/crowdsec/wizard.sh -n
-    if ! [[ -f /etc/crowdsec/acquis.yaml ]]; then
-        echo Creating /etc/crowdsec/acquis.yaml
-        set +e
-        SILENT=true detect_services
-        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
-        set -e
-        COLLECTIONS=true
-    fi
-
     if [[ -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
         chmod 600 /etc/crowdsec/local_api_credentials.yaml
     fi
@@ -70,11 +60,8 @@ if [ "$1" = configure ]; then
     /usr/bin/cscli hub update
     /usr/bin/cscli hub upgrade
 
-    if [ "$COLLECTIONS" = true ]; then
-        set +e
-        CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
-        set -e
-    fi
+    echo "Creating acquisition configuration"
+    cscli setup --auto
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
@@ -105,4 +92,4 @@ if [ "$1" = configure ]; then
     echo -e " * Subscribe to ${BOLD}additional blocklists${RESET}, ${BOLD}visualize${RESET} your alerts and more with the console: ${GREEN}${BOLD}https://app.crowdsec.net${RESET}"
 fi
 
-echo "You can always run the configuration again interactively by using '/usr/share/crowdsec/wizard.sh -c'"
+echo "You can always run the configuration again interactively by using 'cscli setup'"
