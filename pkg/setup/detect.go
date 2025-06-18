@@ -30,11 +30,15 @@ type HubItems map[string][]string
 
 type DataSourceItem map[string]any
 
-// ServicePlan describes the recommendations (hub objects and datasources) for a detected service.
-type ServicePlan struct {
-	Name       string         `yaml:"detected_service"`
+type ServiceRecommendation struct {
 	Install    HubItems       `yaml:"install,omitempty"`
 	DataSource DataSourceItem `yaml:"datasource,omitempty"`
+}
+
+// ServicePlan describes the actions to perform for a detected service.
+type ServicePlan struct {
+	Name       string     `yaml:"detected_service"`
+	ServiceRecommendation `yaml:",inline"`
 }
 
 // XXX: TODO: validate ServiceSetup, item types and existing items?
@@ -135,9 +139,8 @@ func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 		//		}
 
 		s.Setup = append(s.Setup, ServicePlan{
-			Name:       name,
-			Install:    svc.Install,
-			DataSource: svc.DataSource,
+			Name:                  name,
+			ServiceRecommendation: svc.ServiceRecommendation,
 		})
 	}
 
@@ -322,18 +325,17 @@ func readDetectConfig(fin io.Reader) (DetectConfig, error) {
 	return dc, nil
 }
 
-// Service describes the rules for detecting a service and its recommended items.
-type Service struct {
-	When       []string       `yaml:"when"`
-	Install    HubItems       `yaml:"install,omitempty"`
-	DataSource DataSourceItem `yaml:"datasource,omitempty"`
+// ServiceRules describes the rules for detecting a service and its recommended items.
+type ServiceRules struct {
+	When []string         `yaml:"when"`
+	ServiceRecommendation `yaml:",inline"`
 	// AcquisYAML []byte
 }
 
 // DetectConfig is the container of all detection rules (detect.yaml).
 type DetectConfig struct {
-	Version string             `yaml:"version"`
-	Detect  map[string]Service `yaml:"detect"`
+	Version string                  `yaml:"version"`
+	Detect  map[string]ServiceRules `yaml:"detect"`
 }
 
 // ExprState keeps a global state for the duration of the service detection (cache etc.)
@@ -518,11 +520,11 @@ func (e ExprEnvironment) ProcessRunning(processName string) (bool, error) {
 	return e._state.runningProcesses[processName], nil
 }
 
-// applyRules checks if the 'when' expressions are true and returns a Service struct,
+// applyRules checks if the 'when' expressions are true and returns a ServiceRules struct,
 // augmented with default values and anything that might be useful later on
 //
 // All expressions are evaluated (no short-circuit) because we want to know if there are errors.
-func applyRules(svc Service, env ExprEnvironment) (Service, bool, error) {
+func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, error) {
 	newsvc := svc
 	svcok := true
 	env._serviceState = &ExprServiceState{}
@@ -532,12 +534,12 @@ func applyRules(svc Service, env ExprEnvironment) (Service, bool, error) {
 		log.Tracef("  Rule '%s' -> %t, %v", rule, out, err)
 
 		if err != nil {
-			return Service{}, false, fmt.Errorf("rule '%s': %w", rule, err)
+			return ServiceRules{}, false, fmt.Errorf("rule '%s': %w", rule, err)
 		}
 
 		outbool, ok := out.(bool)
 		if !ok {
-			return Service{}, false, fmt.Errorf("rule '%s': type must be a boolean", rule)
+			return ServiceRules{}, false, fmt.Errorf("rule '%s': type must be a boolean", rule)
 		}
 
 		svcok = svcok && outbool
@@ -559,8 +561,8 @@ func applyRules(svc Service, env ExprEnvironment) (Service, bool, error) {
 
 // filterWithRules decorates a DetectConfig map by filtering according to the when: clauses,
 // and applying default values or whatever useful to the Service items.
-func filterWithRules(dc DetectConfig, env ExprEnvironment) (map[string]Service, error) {
-	ret := make(map[string]Service)
+func filterWithRules(dc DetectConfig, env ExprEnvironment) (map[string]ServiceRules, error) {
+	ret := make(map[string]ServiceRules)
 
 	for name := range dc.Detect {
 		//
