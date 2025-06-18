@@ -537,7 +537,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 jq -e '.installed == false' <(output)
 
     # we install it
-    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_line --regexp 'download collections:crowdsecurity/apache2'
     assert_line --regexp 'enable collections:crowdsecurity/apache2'
 
@@ -547,7 +547,7 @@ update-notifier-motd.timer              enabled enabled
 
     # same with dependencies
     rune -0 cscli collections remove --all
-    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/linux'
 }
 
@@ -557,7 +557,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 jq -e '.installed == false' <(output)
 
     # we install it
-    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/apache2'
 
     # still not installed
@@ -566,7 +566,7 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
-    rune -0 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/aws-console'
     assert_line --regexp 'enable collections:crowdsecurity/caddy'
     assert_line --regexp 'enable parsers:crowdsecurity/asterisk-logs'
@@ -574,7 +574,7 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable postoverflows:crowdsecurity/cdn-whitelist'
     assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
 
-    rune -1 cscli setup install-hub /dev/stdin --dry-run --output raw <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
+    rune -1 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
     assert_stderr --partial 'Error: item collections:crowdsecurity/foo not found'
 
 }
@@ -597,7 +597,7 @@ update-notifier-motd.timer              enabled enabled
 	        - /var/log/httpd/*.log
 	EOT
 
-    # remove diclaimer
+    # remove disclaimer
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	filenames:
@@ -610,47 +610,50 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     # multiple items
+    # XXX: invalid because datasources have no Name (detected_service) for the acquisition file
+    # but we don't validate them yet
+    # TODO: validate ServicePlan etc.
 
-    rune -0 cscli setup datasources /dev/stdin <<-EOT
-	setup:
-	  - datasource:
-	      labels:
-	        type: syslog
-	      filenames:
-	        - /var/log/apache2/*.log
-	        - /var/log/*http*/*.log
-	        - /var/log/httpd/*.log
-	  - datasource:
-	      labels:
-	        type: foobar
-	      filenames:
-	        - /var/log/foobar/*.log
-	  - datasource:
-	      labels:
-	        type: barbaz
-	      filenames:
-	        - /path/to/barbaz.log
-	EOT
-
-    rune -0 yq '. head_comment=""' <(output)
-    assert_output - <<-EOT
-	filenames:
-	  - /var/log/apache2/*.log
-	  - /var/log/*http*/*.log
-	  - /var/log/httpd/*.log
-	labels:
-	  type: syslog
-	---
-	filenames:
-	  - /var/log/foobar/*.log
-	labels:
-	  type: foobar
-	---
-	filenames:
-	  - /path/to/barbaz.log
-	labels:
-	  type: barbaz
-	EOT
+#    rune -0 cscli setup datasources /dev/stdin <<-EOT
+#	setup:
+#	  - datasource:
+#	      labels:
+#	        type: syslog
+#	      filenames:
+#	        - /var/log/apache2/*.log
+#	        - /var/log/*http*/*.log
+#	        - /var/log/httpd/*.log
+#	  - datasource:
+#	      labels:
+#	        type: foobar
+#	      filenames:
+#	        - /var/log/foobar/*.log
+#	  - datasource:
+#	      labels:
+#	        type: barbaz
+#	      filenames:
+#	        - /path/to/barbaz.log
+#	EOT
+#
+#    rune -0 yq '. head_comment=""' <(output)
+#    assert_output - <<-EOT
+#	filenames:
+#	  - /var/log/apache2/*.log
+#	  - /var/log/*http*/*.log
+#	  - /var/log/httpd/*.log
+#	labels:
+#	  type: syslog
+#	---
+#	filenames:
+#	  - /var/log/foobar/*.log
+#	labels:
+#	  type: foobar
+#	---
+#	filenames:
+#	  - /path/to/barbaz.log
+#	labels:
+#	  type: barbaz
+#	EOT
 
     # multiple items, to a directory
 
