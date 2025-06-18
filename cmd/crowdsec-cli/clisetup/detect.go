@@ -99,8 +99,13 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				}
 			}
 
+			detector, err := setup.NewDetector(detectReader)
+			if err != nil {
+				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
+			}
+
 			if f.listSupportedServices {
-				supported, err := setup.ListSupported(detectReader)
+				supported, err := detector.ListSupportedServices()
 				if err != nil {
 					return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 				}
@@ -112,7 +117,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return nil
 			}
 
-			stup, err := setup.NewSetup(detectReader, f.detectOptions())
+			stup, err := setup.NewSetup(detector, f.detectOptions())
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
