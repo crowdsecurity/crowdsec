@@ -435,7 +435,7 @@ update-notifier-motd.timer              enabled enabled
 	The following services will be configured.
 	- always
 
-        Nothing to do.
+        Nothing to install or remove.
 	EOT
     refute_stderr
 }
