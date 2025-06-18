@@ -106,9 +106,9 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 			return err
 		}
 
-		svcFiltered := []setup.ServiceSetup{}
+		svcFiltered := []setup.ServicePlan{}
 		for _, svc := range stup.Setup {
-			if slices.Contains(svcSelected, svc.DetectedService) {
+			if slices.Contains(svcSelected, svc.Name) {
 				svcFiltered = append(svcFiltered, svc)
 			}
 		}
