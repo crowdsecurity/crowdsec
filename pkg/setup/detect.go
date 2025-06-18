@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
@@ -173,6 +174,8 @@ func (s *Setup) DetectedServices() []string {
 	for _, svc := range s.Setup {
 		ret = append(ret, svc.Name)
 	}
+
+	slices.Sort(ret)
 
 	return ret
 }

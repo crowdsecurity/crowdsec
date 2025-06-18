@@ -56,8 +56,8 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 
 	contentProvider := require.HubDownloader(ctx, cfg)
 
-	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
-	verbosePlan := (cfg.Cscli.Output == "raw")
+	showPlan := interactive
+	verbosePlan := false
 
 	return setup.InstallHubItems(ctx, hub, contentProvider, stup, interactive, dryRun, showPlan, verbosePlan)
 }
