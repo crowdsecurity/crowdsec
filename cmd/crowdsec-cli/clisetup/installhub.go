@@ -34,7 +34,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.install(cmd.Context(), interactive, dryRun, stup)
+			return cli.install(cmd.Context(), interactive, dryRun, stup.WantedHubItems())
 		},
 	}
 
@@ -46,7 +46,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, stup setup.Setup) error {
+func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, wantedItems []setup.HubItems) error {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -57,7 +57,8 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 	contentProvider := require.HubDownloader(ctx, cfg)
 
 	showPlan := interactive
-	verbosePlan := false
+	// in dry-run, it can be useful to see the _order_ in which files are installed.
+	verbosePlan := dryRun
 
-	return setup.InstallHubItems(ctx, hub, contentProvider, stup, interactive, dryRun, showPlan, verbosePlan)
+	return setup.InstallHubItems(ctx, hub, contentProvider, wantedItems, interactive, dryRun, showPlan, verbosePlan)
 }
