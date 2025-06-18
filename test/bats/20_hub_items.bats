@@ -90,14 +90,14 @@ teardown() {
     rune -0 rm "$(output)"
 
     rune -0 cscli parsers remove crowdsecurity/syslog-logs
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
 
     rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
     rune -0 jq -r '.path' <(output)
     rune -0 rm "$HUB_DIR/$(output)"
 
     rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
 }
 
 @test "a local item is not tainted" {
@@ -144,11 +144,11 @@ teardown() {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
     rune -0 cscli collections install foobar.yaml
-    assert_output --partial "Nothing to do."
+    assert_output --partial "Nothing to install or remove."
     rune -0 cscli collections install foobar.yaml --force
-    assert_output --partial "Nothing to do."
+    assert_output --partial "Nothing to install or remove."
     rune -0 cscli collections install --download-only foobar.yaml
-    assert_output --partial "Nothing to do."
+    assert_output --partial "Nothing to install or remove."
 }
 
 @test "when upgrading the hub, a local item's data will be downloaded" {
@@ -180,17 +180,17 @@ teardown() {
     rune -0 cscli scenarios remove foobar.yaml
     assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     rune -0 cscli scenarios remove foobar.yaml --purge
     assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     rune -0 cscli scenarios remove foobar.yaml --force
     assert_stderr --partial 'scenarios:foobar.yaml is a local item, please delete manually'
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf

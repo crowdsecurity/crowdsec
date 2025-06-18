@@ -2,6 +2,7 @@ package clisetup
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -10,6 +11,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -115,7 +117,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 
 		stup.Setup = svcFiltered
 	} else {
-		fmt.Println("The following services will be configured.")
+		fmt.Println("The following services will be configured:")
 		for _, svc := range stup.DetectedServices() {
 			fmt.Printf("- %s\n", svc)
 		}
@@ -123,9 +125,11 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 
 	fmt.Fprintln(os.Stdout)
 
-	if err := cli.install(ctx, interactive, false, stup); err != nil {
+	if err = cli.install(ctx, interactive, false, stup); err != nil {
 		return err
 	}
+
+	fmt.Fprintln(os.Stdout)
 
 	// XXX: TODO: only if something needs installing
 	installAcquis := true
@@ -141,6 +145,8 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 	}
 
 	// XXX TODO: warn user not to alter the generated files
+	// XXX TODO: and they are responsible to remove them and
+	// the collections when removing the associated software
 	if installAcquis {
 		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
 		if err := cli.dataSources(stup, acquisDir); err != nil {
@@ -163,7 +169,14 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 		Args:              args.NoArgs,
 		// XXX: TODO: examples!
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.setup(cmd.Context(), !auto)
+			err := cli.setup(cmd.Context(), !auto)
+			if  errors.Is(err, hubops.ErrUserCanceled) {
+				fmt.Fprintln(os.Stdout, err.Error())
+				fmt.Println("You can always run 'crowdsec setup' later.")
+				return nil
+			}
+
+			return err
 		},
 	}
 
