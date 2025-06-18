@@ -14,7 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
-// AcquisDocument is created from a SetupItem. It represents a single YAML document, and can be part of a multi-document file.
+// AcquisDocument is created from a ServicePlan. It represents a single YAML document, and can be part of a multi-document file.
 type AcquisDocument struct {
 	AcquisFilename string
 	DataSource     map[string]any
@@ -24,14 +24,14 @@ type AcquisDocument struct {
 func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, stup Setup, interactive, dryRun, showPlan, verbosePlan bool) error {
 	plan := hubops.NewActionPlan(hub)
 
-	for _, setupItem := range stup.Setup {
-		install := setupItem.Install
+	for _, servicePlan := range stup.Setup {
+		install := servicePlan.Install
 
 		if install == nil {
 			continue
 		}
 
-		for itemType, items := range setupItem.Install {
+		for itemType, items := range servicePlan.Install {
 			for _, itemName := range items {
 				fqName := itemType + ":" + itemName
 				item, err  := hub.GetItemFQ(fqName)
@@ -146,12 +146,12 @@ func DataSources(stup Setup, toDir string) (string, error) {
 		}
 	}
 
-	for _, setupItem := range stup.Setup {
-		datasource := setupItem.DataSource
+	for _, servicePlan := range stup.Setup {
+		datasource := servicePlan.DataSource
 
 		basename := ""
 		if toDir != "" {
-			basename = "setup." + setupItem.DetectedService
+			basename = "setup." + servicePlan.Name
 		}
 
 		if datasource == nil {

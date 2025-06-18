@@ -29,18 +29,18 @@ type HubItems map[string][]string
 
 type DataSourceItem map[string]any
 
-// ServiceSetup describes the recommendations (hub objects and datasources) for a detected service.
-type ServiceSetup struct {
-	DetectedService string         `yaml:"detected_service"`
-	Install         HubItems       `yaml:"install,omitempty"`
-	DataSource      DataSourceItem `yaml:"datasource,omitempty"`
+// ServicePlan describes the recommendations (hub objects and datasources) for a detected service.
+type ServicePlan struct {
+	Name       string         `yaml:"detected_service"`
+	Install    HubItems       `yaml:"install,omitempty"`
+	DataSource DataSourceItem `yaml:"datasource,omitempty"`
 }
 
 // XXX: TODO: validate ServiceSetup, item types and existing items?
 
 // Setup is a container for a list of ServiceSetup objects, allowing for future extensions.
 type Setup struct {
-	Setup []ServiceSetup `yaml:"setup"`
+	Setup []ServicePlan `yaml:"setup"`
 }
 
 // XXX: this could be a Detect() method? as a constuctor, it's not symmetrical
@@ -48,7 +48,7 @@ func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json mashaling an empty slice as "null"
-	s.Setup = make([]ServiceSetup, 0)
+	s.Setup = make([]ServicePlan, 0)
 
 	sc, err := readDetectConfig(detectReader)
 	if err != nil {
@@ -133,21 +133,45 @@ func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 		//			}
 		//		}
 
-		s.Setup = append(s.Setup, ServiceSetup{
-			DetectedService: name,
-			Install:         svc.Install,
-			DataSource:      svc.DataSource,
+		s.Setup = append(s.Setup, ServicePlan{
+			Name:       name,
+			Install:    svc.Install,
+			DataSource: svc.DataSource,
 		})
 	}
 
 	return s, nil
 }
 
+// NeedHub returns true if the setup requires the installation of hub items.
+func (s *Setup) NeedsHub() bool {
+	for _, svc := range s.Setup {
+		if len(svc.Install) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// NeedHub returns true if the setup requires the generation of acquisition files.
+func (s *Setup) NeedsAcquisition() bool {
+	for _, svc := range s.Setup {
+		if len(svc.DataSource) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+
+
 func (s *Setup) DetectedServices() []string {
 	ret := make([]string, 0, len(s.Setup))
 
 	for _, svc := range s.Setup {
-		ret = append(ret, svc.DetectedService)
+		ret = append(ret, svc.Name)
 	}
 
 	return ret
