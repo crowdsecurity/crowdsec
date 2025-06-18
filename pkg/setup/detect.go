@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bytes"
+	"github.com/mohae/deepcopy"
 	"errors"
 	"fmt"
 	"io"
@@ -41,135 +42,34 @@ type ServicePlan struct {
 	ServiceRecommendation `yaml:",inline"`
 }
 
-// XXX: TODO: validate ServiceSetup, item types and existing items?
+// XXX: TODO: Setup is not validated in any way. it can contain non-existent items, malformed acquisition etc.
 
 // Setup is a container for a list of ServiceSetup objects, allowing for future extensions.
 type Setup struct {
 	Setup []ServicePlan `yaml:"setup"`
 }
 
-// XXX: this could be a Detect() method? as a constuctor, it's not symmetrical
-func NewSetup(detectReader io.Reader, opts DetectOptions) (Setup, error) {
-	s := Setup{}
+func (s *Setup) WantedHubItems() []HubItems {
+	ret := []HubItems{}
 
-	// explicitly initialize to avoid json mashaling an empty slice as "null"
-	s.Setup = make([]ServicePlan, 0)
-
-	sc, err := readDetectConfig(detectReader)
-	if err != nil {
-		return s, err
-	}
-
-	//	// generate acquis.yaml snippet for this service
-	//	for key := range sc.Detect {
-	//		svc := sc.Detect[key]
-	//		if svc.Acquis != nil {
-	//			svc.AcquisYAML, err = yaml.Marshal(svc.Acquis)
-	//			if err != nil {
-	//				return ret, err
-	//			}
-	//			sc.Detect[key] = svc
-	//		}
-	//	}
-
-	var osfull *osinfo.OSInfo
-
-	os := opts.ForcedOS
-	if os == (ExprOS{}) {
-		osfull, err = osinfo.GetOSInfo()
-		if err != nil {
-			return s, fmt.Errorf("detecting OS: %w", err)
-		}
-
-		log.Tracef("Detected OS - %+v", *osfull)
-
-		os = ExprOS{
-			Family:     osfull.Family,
-			ID:         osfull.ID,
-			RawVersion: osfull.Version,
-		}
-	} else {
-		log.Tracef("Forced OS - %+v", os)
-	}
-
-	if len(opts.ForcedUnits) > 0 {
-		log.Tracef("Forced units - %v", opts.ForcedUnits)
-	}
-
-	if len(opts.ForcedProcesses) > 0 {
-		log.Tracef("Forced processes - %v", opts.ForcedProcesses)
-	}
-
-	env := NewExprEnvironment(opts, os)
-
-	detected, err := filterWithRules(sc, env)
-	if err != nil {
-		return s, err
-	}
-
-	if err = checkConsumedForcedItems(env); err != nil {
-		return s, err
-	}
-
-	// remove services the user asked to ignore
-	for _, name := range opts.SkipServices {
-		delete(detected, name)
-	}
-
-	// sort the keys (service names) to have them in a predictable
-	// order in the final output
-
-	keys := make([]string, 0)
-	for k := range detected {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	for _, name := range keys {
-		svc := detected[name]
-		//		if svc.DataSource != nil {
-		//			if svc.DataSource.Labels["type"] == "" {
-		//				return Setup{}, fmt.Errorf("missing type label for service %s", name)
-		//			}
-		//			err = yaml.Unmarshal(svc.AcquisYAML, svc.DataSource)
-		//			if err != nil {
-		//				return Setup{}, fmt.Errorf("while parsing datasource for service %s: %w", name, err)
-		//			}
-		//		}
-
-		s.Setup = append(s.Setup, ServicePlan{
-			Name:                  name,
-			ServiceRecommendation: svc.ServiceRecommendation,
-		})
-	}
-
-	return s, nil
-}
-
-// NeedHub returns true if the setup requires the installation of hub items.
-func (s *Setup) NeedsHub() bool {
 	for _, svc := range s.Setup {
-		if len(svc.Install) > 0 {
-			return true
-		}
+		ret = append(ret, svc.Install)
 	}
 
-	return false
+	return ret
 }
 
-// NeedHub returns true if the setup requires the generation of acquisition files.
-func (s *Setup) NeedsAcquisition() bool {
+func (s *Setup) WantedAcquisition() map[string]DataSourceItem {
+	ret := map[string]DataSourceItem{}
+
 	for _, svc := range s.Setup {
 		if len(svc.DataSource) > 0 {
-			return true
+			ret[svc.Name] = svc.DataSource
 		}
 	}
 
-	return false
+	return ret
 }
-
-
 
 func (s *Setup) DetectedServices() []string {
 	ret := make([]string, 0, len(s.Setup))
@@ -291,49 +191,134 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 	return nil
 }
 
-func readDetectConfig(fin io.Reader) (DetectConfig, error) {
-	var dc DetectConfig
+func NewDetector(detectReader io.Reader) (*Detector, error) {
+	d := Detector{}
 
-	yamlBytes, err := io.ReadAll(fin)
+	yamlBytes, err := io.ReadAll(detectReader)
 	if err != nil {
-		return DetectConfig{}, err
+		return nil, err
 	}
 
 	dec := yaml.NewDecoder(bytes.NewBuffer(yamlBytes))
 	dec.KnownFields(true)
 
-	if err = dec.Decode(&dc); err != nil {
-		return DetectConfig{}, err
+	if err = dec.Decode(&d); err != nil {
+		return nil, err
 	}
 
-	switch dc.Version {
+	switch d.Version {
 	case "":
-		return DetectConfig{}, errors.New("missing version tag (must be 1.0)")
+		return nil, errors.New("missing version tag (must be 1.0)")
 	case "1.0":
 		// all is well
 	default:
-		return DetectConfig{}, fmt.Errorf("invalid version tag '%s' (must be 1.0)", dc.Version)
+		return nil, fmt.Errorf("invalid version tag '%s' (must be 1.0)", d.Version)
 	}
 
-	for name, svc := range dc.Detect {
+	for name, svc := range d.Detect {
 		err = validateDataSource(svc.DataSource)
 		if err != nil {
-			return DetectConfig{}, fmt.Errorf("invalid datasource for %s: %w", name, err)
+			return nil, fmt.Errorf("invalid datasource for %s: %w", name, err)
 		}
 	}
 
-	return dc, nil
+	return &d, nil
 }
+
+// ListSupported parses the configuration file and outputs a list of the supported services.
+func (d *Detector) ListSupportedServices() ([]string, error) {
+	keys := make([]string, 0)
+	for k := range d.Detect {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys, nil
+}
+
+func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
+	s := Setup{}
+
+	// explicitly initialize to avoid json mashaling an empty slice as "null"
+	s.Setup = make([]ServicePlan, 0)
+
+	os := opts.ForcedOS
+	if os == (ExprOS{}) {
+		osfull, err := osinfo.GetOSInfo()
+		if err != nil {
+			return nil, fmt.Errorf("detecting OS: %w", err)
+		}
+
+		log.Tracef("Detected OS - %+v", *osfull)
+
+		os = ExprOS{
+			Family:     osfull.Family,
+			ID:         osfull.ID,
+			RawVersion: osfull.Version,
+		}
+	} else {
+		log.Tracef("Forced OS - %+v", os)
+	}
+
+	if len(opts.ForcedUnits) > 0 {
+		log.Tracef("Forced units - %v", opts.ForcedUnits)
+	}
+
+	if len(opts.ForcedProcesses) > 0 {
+		log.Tracef("Forced processes - %v", opts.ForcedProcesses)
+	}
+
+	env := NewExprEnvironment(opts, os)
+
+	detected, err := filterWithRules(detector, env)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = checkConsumedForcedItems(env); err != nil {
+		return nil, err
+	}
+
+	// remove services the user asked to ignore
+	for _, name := range opts.SkipServices {
+		delete(detected, name)
+	}
+
+	// sort the keys (service names) to have them in a predictable
+	// order in the final output
+
+	keys := make([]string, 0)
+	for k := range detected {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		svc := detected[name]
+
+		s.Setup = append(s.Setup, ServicePlan{
+			Name:                  name,
+			ServiceRecommendation: svc.ServiceRecommendation,
+		})
+	}
+
+	return &s, nil
+}
+
+
+
+
 
 // ServiceRules describes the rules for detecting a service and its recommended items.
 type ServiceRules struct {
 	When []string         `yaml:"when"`
 	ServiceRecommendation `yaml:",inline"`
-	// AcquisYAML []byte
 }
 
-// DetectConfig is the container of all detection rules (detect.yaml).
-type DetectConfig struct {
+// Detector is generated from the detection rules (detect.yaml) and can generate the setup plan.
+type Detector struct {
 	Version string                  `yaml:"version"`
 	Detect  map[string]ServiceRules `yaml:"detect"`
 }
@@ -525,7 +510,8 @@ func (e ExprEnvironment) ProcessRunning(processName string) (bool, error) {
 //
 // All expressions are evaluated (no short-circuit) because we want to know if there are errors.
 func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, error) {
-	newsvc := svc
+	// make a copy because we need the original to detect more stuff
+	newsvc := deepcopy.Copy(svc).(ServiceRules)
 	svcok := true
 	env._serviceState = &ExprServiceState{}
 
@@ -545,6 +531,7 @@ func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, erro
 		svcok = svcok && outbool
 	}
 
+	// XXX: want to get fancy, and generate a filter from the name of the unit? or maybe not
 	//	if newsvc.Acquis == nil || (newsvc.Acquis.LogFiles == nil && newsvc.Acquis.JournalCTLFilter == nil) {
 	//		for _, unitName := range env._serviceState.detectedUnits {
 	//			if newsvc.Acquis == nil {
@@ -561,10 +548,10 @@ func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, erro
 
 // filterWithRules decorates a DetectConfig map by filtering according to the when: clauses,
 // and applying default values or whatever useful to the Service items.
-func filterWithRules(dc DetectConfig, env ExprEnvironment) (map[string]ServiceRules, error) {
+func filterWithRules(detector *Detector, env ExprEnvironment) (map[string]ServiceRules, error) {
 	ret := make(map[string]ServiceRules)
 
-	for name := range dc.Detect {
+	for name := range detector.Detect {
 		//
 		// an empty list of when: clauses defaults to true, if we want
 		// to change this behavior, the place is here.
@@ -574,7 +561,7 @@ func filterWithRules(dc DetectConfig, env ExprEnvironment) (map[string]ServiceRu
 		//
 		log.Trace("Evaluating rules for: ", name)
 
-		svc, ok, err := applyRules(dc.Detect[name], env)
+		svc, ok, err := applyRules(detector.Detect[name], env)
 		if err != nil {
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
 		}
@@ -658,19 +645,3 @@ type DetectOptions struct {
 	SnubSystemd     bool
 }
 
-// ListSupported parses the configuration file and outputs a list of the supported services.
-func ListSupported(detectConfig io.Reader) ([]string, error) {
-	dc, err := readDetectConfig(detectConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, 0)
-	for k := range dc.Detect {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	return keys, nil
-}

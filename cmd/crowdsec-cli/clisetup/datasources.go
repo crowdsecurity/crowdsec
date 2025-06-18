@@ -29,7 +29,7 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.dataSources(stup, toDir)
+			return cli.dataSources(stup.WantedAcquisition(), toDir)
 		},
 	}
 
@@ -39,8 +39,8 @@ func (cli *cliSetup) newDataSourcesCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) dataSources(stup setup.Setup, toDir string) error {
-	output, err := setup.DataSources(stup, toDir)
+func (cli *cliSetup) dataSources(wantedAcquisition map[string]setup.DataSourceItem, toDir string) error {
+	output, err := setup.GenerateAcquisition(wantedAcquisition, toDir)
 	if err != nil {
 		return err
 	}

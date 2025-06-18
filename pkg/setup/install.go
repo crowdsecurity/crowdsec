@@ -21,18 +21,16 @@ type AcquisDocument struct {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, stup Setup, interactive, dryRun, showPlan, verbosePlan bool) error {
+func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, wantedItems []HubItems, interactive, dryRun, showPlan, verbosePlan bool) error {
 	plan := hubops.NewActionPlan(hub)
 
-	for _, servicePlan := range stup.Setup {
-		install := servicePlan.Install
-
-		if install == nil {
+	for _, itemMap := range wantedItems {
+		if len(itemMap) == 0 {
 			continue
 		}
 
-		for itemType, items := range servicePlan.Install {
-			for _, itemName := range items {
+		for itemType, itemNames := range itemMap {
+			for _, itemName := range itemNames {
 				fqName := itemType + ":" + itemName
 				item, err  := hub.GetItemFQ(fqName)
 				if err != nil {
@@ -127,8 +125,8 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 	return sb.String(), nil
 }
 
-// DataSources generates the acquisition documents from a setup file.
-func DataSources(stup Setup, toDir string) (string, error) {
+// GenerateAcquisition generates the acquisition, as a single file or multiple files in a directory.
+func GenerateAcquisition(wantedAcquisition map[string]DataSourceItem, toDir string) (string, error) {
 	ads := make([]AcquisDocument, 0)
 
 	filename := func(basename string, ext string) string {
@@ -139,19 +137,17 @@ func DataSources(stup Setup, toDir string) (string, error) {
 		return basename + ext
 	}
 
-	if len(stup.Setup) > 0 && toDir != "" {
+	if len(wantedAcquisition) > 0 && toDir != "" {
 		// XXX: interactive
 		if err := os.MkdirAll(toDir, 0o700); err != nil {
 			return "", err
 		}
 	}
 
-	for _, servicePlan := range stup.Setup {
-		datasource := servicePlan.DataSource
-
+	for serviceName, datasource := range wantedAcquisition {
 		basename := ""
 		if toDir != "" {
-			basename = "setup." + servicePlan.Name
+			basename = "setup." + serviceName
 		}
 
 		if datasource == nil {

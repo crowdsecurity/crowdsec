@@ -88,13 +88,23 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		return err
 	}
 
-	stup, err := setup.NewSetup(detectReader, setup.DetectOptions{})
+	detector, err := setup.NewDetector(detectReader)
 	if err != nil {
 		return err
 	}
 
-	if interactive {
-		svcDetected := stup.DetectedServices()
+	stup, err := setup.NewSetup(detector, setup.DetectOptions{})
+	if err != nil {
+		return err
+	}
+
+	svcDetected := stup.DetectedServices()
+
+	switch {
+	case len(svcDetected) == 0:
+		fmt.Fprintln(os.Stdout, "No services detected.")
+		return nil
+	case interactive:
 		svcSelected := []string{}
 
 		prompt := &survey.MultiSelect{
@@ -116,41 +126,48 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		}
 
 		stup.Setup = svcFiltered
-	} else {
+	default:
 		fmt.Println("The following services will be configured:")
-		for _, svc := range stup.DetectedServices() {
+		for _, svc := range svcDetected {
 			fmt.Printf("- %s\n", svc)
 		}
 	}
 
 	fmt.Fprintln(os.Stdout)
 
-	if err = cli.install(ctx, interactive, false, stup); err != nil {
-		return err
-	}
+	wantedItems := stup.WantedHubItems()
 
-	fmt.Fprintln(os.Stdout)
-
-	// XXX: TODO: only if something needs installing
-	installAcquis := true
-	if interactive {
-		prompt := survey.Confirm{
-			Message: "Generate acquisition configuration?",
-			Default: true,
-		}
-
-		if err := survey.AskOne(&prompt, &installAcquis); err != nil {
+	if len(wantedItems) > 0 {
+		if err = cli.install(ctx, interactive, false, wantedItems); err != nil {
 			return err
 		}
+
+		fmt.Fprintln(os.Stdout)
 	}
 
-	// XXX TODO: warn user not to alter the generated files
-	// XXX TODO: and they are responsible to remove them and
-	// the collections when removing the associated software
-	if installAcquis {
-		acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
-		if err := cli.dataSources(stup, acquisDir); err != nil {
-			return err
+	wantedAcquisition := stup.WantedAcquisition()
+
+	if len(wantedAcquisition) > 0 {
+		installAcquis := true
+		if interactive {
+			prompt := survey.Confirm{
+				Message: "Generate acquisition configuration?",
+				Default: true,
+			}
+	
+			if err := survey.AskOne(&prompt, &installAcquis); err != nil {
+				return err
+			}
+		}
+
+		// XXX TODO: warn user not to alter the generated files
+		// XXX TODO: and they are responsible to remove them and
+		// the collections when removing the associated software
+		if installAcquis {
+			acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
+			if err := cli.dataSources(wantedAcquisition, acquisDir); err != nil {
+				return err
+			}
 		}
 	}
 
