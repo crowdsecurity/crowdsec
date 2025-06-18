@@ -336,7 +336,7 @@ func TestApplyRules(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			svc := setup.Service{When: tc.rules}
+			svc := setup.ServiceRules{When: tc.rules}
 			_, actualOk, err := setup.ApplyRules(svc, env) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			require.Equal(tc.expectedOk, actualOk)
@@ -498,11 +498,13 @@ detect:
 				Setup: []setup.ServicePlan{
 					{
 						Name: "wizard",
-						DataSource: setup.DataSourceItem{
-							// XXX this should not be DataSourceItem ??
-							"source":            "journalctl",
-							"labels":            setup.DataSourceItem{"type": "syslog"},
-							"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
+						ServiceRecommendation: setup.ServiceRecommendation{
+							DataSource: setup.DataSourceItem{
+								// XXX this should not be DataSourceItem ??
+								"source":            "journalctl",
+								"labels":            setup.DataSourceItem{"type": "syslog"},
+								"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
+							},
 						},
 					},
 				},
@@ -549,10 +551,12 @@ func TestDetectForcedUnit(t *testing.T) {
 		Setup: []setup.ServicePlan{
 			{
 				Name: "wizard",
-				DataSource: setup.DataSourceItem{
-					"source":            "journalctl",
-					"labels":            setup.DataSourceItem{"type": "syslog"},
-					"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
+				ServiceRecommendation: setup.ServiceRecommendation{
+					DataSource: setup.DataSourceItem{
+						"source":            "journalctl",
+						"labels":            setup.DataSourceItem{"type": "syslog"},
+						"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
+					},
 				},
 			},
 		},
@@ -924,7 +928,9 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				Setup: []setup.ServicePlan{
 					{
 						Name:       "foobar",
-						DataSource: setup.DataSourceItem{"source": "syslog"},
+						ServiceRecommendation: setup.ServiceRecommendation{
+							DataSource: setup.DataSourceItem{"source": "syslog"},
+						},
 					},
 				},
 			},
