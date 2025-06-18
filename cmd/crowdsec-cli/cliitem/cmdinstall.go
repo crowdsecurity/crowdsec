@@ -83,12 +83,15 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
-		if !ignoreError {
-			return err
-		}
-
+	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
+	switch {
+	case errors.Is(err, hubops.ErrUserCanceled):
+		// not a real error, and we'll want to print the reload message anyway
+		fmt.Fprintln(os.Stdout, err.Error())
+	case ignoreError:
 		log.Error(err)
+	case err != nil:
+		return err
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {

@@ -58,10 +58,8 @@ config_generate() {
     cp ../config/profiles.yaml \
        ../config/simulation.yaml \
        ../config/online_api_credentials.yaml \
+       ../config/detect.yaml \
        "${CONFIG_DIR}/"
-
-    cp ../config/detect.yaml \
-       "${HUB_DIR}"
 
     # the default acquis file contains files that are not readable by everyone
     touch "$LOG_DIR/empty.log"

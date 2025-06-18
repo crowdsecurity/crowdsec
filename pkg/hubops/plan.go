@@ -16,6 +16,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+var ErrUserCanceled = errors.New("operation canceled")
+
 // Command represents an operation that can be performed on a CrowdSec hub item.
 //
 // Each concrete implementation defines a Prepare() method to check for errors and preconditions,
@@ -207,8 +209,6 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println()
-
 	return answer, nil
 }
 
@@ -218,8 +218,7 @@ func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool,
 	// alwaysShowPlan: print plan even if interactive and dry-run are false
 	// verbosePlan: plan summary is displaying each step in order
 	if len(p.commands) == 0 {
-		fmt.Println("Nothing to do.")
-		// XXX: TODO: fmt.Println("Nothing to install or remove.")
+		fmt.Println("Nothing to install or remove.")
 		return nil
 	}
 
@@ -230,8 +229,7 @@ func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool,
 		}
 
 		if !answer {
-			fmt.Println("Operation canceled.")
-			return nil
+			return ErrUserCanceled
 		}
 	} else {
 		if dryRun || alwaysShowPlan {

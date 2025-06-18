@@ -3,6 +3,7 @@ package cliitem
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -64,7 +65,12 @@ func (cli *cliItem) upgrade(ctx context.Context, args []string, interactive bool
 	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
+	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
+	switch {
+	case errors.Is(err, hubops.ErrUserCanceled):
+		// not a real error, and we'll want to print the reload message anyway
+		fmt.Fprintln(os.Stdout, err.Error())
+	case err != nil:
 		return err
 	}
 
