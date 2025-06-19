@@ -5,24 +5,25 @@ import (
 	"strings"
 )
 
-// relativePathComponents returns the list of path components after baseDir.
-// If path is not inside baseDir, it returns an empty slice.
-func relativePathComponents(path string, baseDir string) []string {
+// relativePathComponents returns the list of path components after baseDir,
+// and a boolean indicating whether path is inside baseDir at all.
+func relativePathComponents(path string, baseDir string) ([]string, bool) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return []string{}
+		// cwd disappeared??
+		return nil, false
 	}
 
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
-		return []string{}
+		return nil, false
 	}
 
 	// is path inside baseDir?
 	relPath, err := filepath.Rel(absBaseDir, absPath)
 	if err != nil || strings.HasPrefix(relPath, "..") || relPath == "." {
-		return []string{}
+		return nil, false
 	}
 
-	return strings.Split(relPath, string(filepath.Separator))
+	return strings.Split(relPath, string(filepath.Separator)), true
 }
