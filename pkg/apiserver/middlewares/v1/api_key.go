@@ -29,7 +29,6 @@ type APIKey struct {
 	TlsAuth    *TLSAuth
 }
 
-//
 func GenerateAPIKey(n int) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
@@ -127,6 +126,10 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 		bouncer, err := a.DbClient.SelectBouncers(ctx, hashStr, types.ApiKeyAuthType)
 		if err != nil {
 			logger.Errorf("while fetching bouncer info: %s", err)
+			return nil
+		}
+		if len(bouncer) == 0 {
+			logger.Debugf("no bouncer found with this key")
 			return nil
 		}
 		return bouncer[0]
