@@ -23,14 +23,15 @@ import (
 // ExecCommand can be replaced with a mock during tests.
 var ExecCommand = exec.Command
 
-// HubItems contains the objects (mostly collections) that are recommended to support a service.
-type HubItems map[string][]string
+// HubSpec contains the items (mostly collections) that are recommended to support a service.
+type HubSpec map[string][]string
 
-type DataSourceItem map[string]any
+// AcquisitionSpec contains the configuration of the datasource recommended to support a service.
+type AcquisitionSpec map[string]any
 
 // Validate checks if the DataSourceItem represents a valid configuration for an acquisition.DataSource.
-func (d *DataSourceItem) Validate() error {
-	if len(*d) == 0 {
+func (a *AcquisitionSpec) Validate() error {
+	if len(*a) == 0 {
 		// empty datasource is valid
 		return nil
 	}
@@ -39,7 +40,7 @@ func (d *DataSourceItem) Validate() error {
 
 	commonDS := configuration.DataSourceCommonCfg{}
 
-	body, err := yaml.Marshal(d)
+	body, err := yaml.Marshal(a)
 	if err != nil {
 		return err
 	}
@@ -72,15 +73,15 @@ func (d *DataSourceItem) Validate() error {
 	return nil
 }
 
-type ServiceRecommendation struct {
-	Install    HubItems       `yaml:"install,omitempty"`
-	DataSource DataSourceItem `yaml:"datasource,omitempty"`
+type InstallRecommendation struct {
+	HubSpec    HubSpec    `yaml:"install,omitempty"`
+	AcquisitionSpec AcquisitionSpec `yaml:"datasource,omitempty"`
 }
 
 // ServicePlan describes the actions to perform for a detected service.
 type ServicePlan struct {
 	Name       string     `yaml:"detected_service"`
-	ServiceRecommendation `yaml:",inline"`
+	InstallRecommendation `yaml:",inline"`
 }
 
 // XXX: TODO: Setup is not validated in any way. it can contain non-existent items, malformed acquisition etc.
@@ -90,22 +91,22 @@ type Setup struct {
 	Plans []ServicePlan `yaml:"setup"`
 }
 
-func (s *Setup) WantedHubItems() []HubItems {
-	ret := []HubItems{}
+func (s *Setup) CollectHubSpecs() []HubSpec {
+	ret := []HubSpec{}
 
 	for _, svc := range s.Plans {
-		ret = append(ret, svc.Install)
+		ret = append(ret, svc.HubSpec)
 	}
 
 	return ret
 }
 
-func (s *Setup) WantedAcquisition() map[string]DataSourceItem {
-	ret := map[string]DataSourceItem{}
+func (s *Setup) CollectAcquisitionSpecs() map[string]AcquisitionSpec {
+	ret := map[string]AcquisitionSpec{}
 
 	for _, svc := range s.Plans {
-		if len(svc.DataSource) > 0 {
-			ret[svc.Name] = svc.DataSource
+		if len(svc.AcquisitionSpec) > 0 {
+			ret[svc.Name] = svc.AcquisitionSpec
 		}
 	}
 
@@ -219,7 +220,7 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 	}
 
 	for name, svc := range d.Detect {
-		if err := svc.DataSource.Validate(); err != nil {
+		if err := svc.AcquisitionSpec.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid datasource for %s: %w", name, err)
 		}
 	}
@@ -307,7 +308,7 @@ func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
 // ServiceRules describes the rules for detecting a service and its recommended items.
 type ServiceRules struct {
 	When []string         `yaml:"when"`
-	ServiceRecommendation `yaml:",inline"`
+	InstallRecommendation `yaml:",inline"`
 }
 
 // This is not required with Masterminds/semver
@@ -415,7 +416,7 @@ func buildPlans(detector *Detector, env ExprEnvironment) (map[string]ServicePlan
 
 		ret[name] = ServicePlan{
 			Name:                  name,
-			ServiceRecommendation: svc.ServiceRecommendation,
+			InstallRecommendation: svc.InstallRecommendation,
 		}
 	}
 
