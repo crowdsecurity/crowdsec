@@ -41,7 +41,7 @@ const (
 // It receives all the events from the main process and stacks them up
 // It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
-	PluginChannel                   chan ProfileAlert
+	PluginChannel                   chan models.ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
 	profileConfigs                  []*csconfig.ProfileCfg
 	pluginConfigByName              map[string]PluginConfig
@@ -96,13 +96,8 @@ func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
 type PluginConfigList []PluginConfig
 
 
-type ProfileAlert struct {
-	ProfileID uint
-	Alert     *models.Alert
-}
-
 func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
-	pb.PluginChannel = make(chan ProfileAlert)
+	pb.PluginChannel = make(chan models.ProfileAlert)
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
 	pb.pluginMap = make(map[string]plugin.Plugin)
@@ -193,7 +188,7 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 	}
 }
 
-func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
+func (pb *PluginBroker) addProfileAlert(profileAlert models.ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
 			log.Errorf("plugin %s is not configured properly.", pluginName)

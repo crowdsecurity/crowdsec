@@ -158,7 +158,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	go pb.Run(&tomb)
 
 	// send one item, it should be processed right now
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -175,7 +175,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 
 	// and another one
 	log.Printf("second send")
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -210,9 +210,9 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	go pb.Run(&tomb)
 
 	// send data
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(500 * time.Millisecond)
 	// because of group threshold, we shouldn't have data yet
@@ -247,15 +247,15 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	go pb.Run(&tomb)
 
 	// send data
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(100 * time.Millisecond)
 
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, s.outFile)
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -288,17 +288,17 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	go pb.Run(&tomb)
 
 	// send data
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(time.Second)
 
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, s.outFile)
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(time.Second)
 
@@ -342,7 +342,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	go pb.Run(&tomb)
 
 	// send data
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -376,8 +376,8 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 
 	defer os.Remove(s.outFile)
 
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	// make it wait a bit, CI can be slow
 	time.Sleep(time.Second)
 
