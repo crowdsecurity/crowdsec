@@ -27,6 +27,7 @@ var ExecCommand = exec.Command
 type HubSpec map[string][]string
 
 // AcquisitionSpec contains the configuration of the datasource recommended to support a service.
+// TODO: make me a struct with a filename and spec
 type AcquisitionSpec map[string]any
 
 // Validate checks if the DataSourceItem represents a valid configuration for an acquisition.DataSource.
@@ -371,23 +372,9 @@ func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, erro
 		svcok = svcok && outbool
 	}
 
-	// XXX: want to get fancy, and generate a filter from the name of the unit? or maybe not
-	//	if newsvc.Acquis == nil || (newsvc.Acquis.LogFiles == nil && newsvc.Acquis.JournalCTLFilter == nil) {
-	//		for _, unitName := range env._serviceState.detectedUnits {
-	//			if newsvc.Acquis == nil {
-	//				newsvc.Acquis = &AcquisItem{}
-	//			}
-	//			// if there is reference to more than one unit in the rules, we use the first one
-	//			newsvc.Acquis.JournalCTLFilter = []string{fmt.Sprintf(`_SYSTEMD_UNIT=%s`, unitName)}
-	//			break //nolint  // we want to exit after one iteration
-	//		}
-	//	}
-
 	return newsvc, svcok, nil
 }
 
-// filterWithRules decorates a DetectConfig map by filtering according to the when: clauses,
-// and applying default values or whatever useful to the Service items.
 func buildPlans(detector *Detector, env ExprEnvironment) (map[string]ServicePlan, error) {
 	ret := make(map[string]ServicePlan)
 
