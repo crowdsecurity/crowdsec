@@ -9,7 +9,7 @@ import (
 
 /*daemonization/service related stuff*/
 type CommonCfg struct {
-	Daemonize      bool
+	Daemonize      string     // TODO: This is just for backward compat. Remove this later
 	PidDir         string     `yaml:"pid_dir,omitempty"` // TODO: This is just for backward compat. Remove this later
 	LogMedia       string     `yaml:"log_media"`
 	LogDir         string     `yaml:"log_dir,omitempty"` // if LogMedia = file
@@ -28,6 +28,10 @@ func (c *Config) loadCommon() error {
 
 	if c.Common == nil {
 		c.Common = &CommonCfg{}
+	}
+
+	if c.Common.Daemonize != "" {
+		log.Debug("the option 'daemonize' is deprecated and ignored")
 	}
 
 	if c.Common.LogMedia == "" {

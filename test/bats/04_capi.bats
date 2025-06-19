@@ -54,11 +54,16 @@ setup() {
     assert_stderr --partial "the Central API (CAPI) must be configured with 'cscli capi register'"
 
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
-    rune -1 cscli capi status
-    assert_stderr --partial "no scenarios or appsec-rules installed, abort"
-
+    rune -0 cscli capi status
+    assert_output --partial "Loaded credentials from"
+    assert_output --partial "Trying to authenticate with username"
+    assert_output --partial " on https://api.crowdsec.net/"
+    assert_output --partial "You can successfully interact with Central API (CAPI)"
+    
+    # For the time, PAPI is always enabled config-wise
     rune -1 cscli papi status
-    assert_stderr --partial "no PAPI URL in configuration"
+    assert_stderr --partial "unable to get PAPI permissions"
+    assert_stderr --partial "Forbidden for plan"
 
     rune -0 cscli console enable console_management
     rune -1 cscli papi status

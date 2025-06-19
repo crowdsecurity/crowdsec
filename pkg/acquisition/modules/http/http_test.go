@@ -544,7 +544,7 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 	readLines := []types.Event{}
 
-	for i := 0; i < len(expected); i++ {
+	for range expected {
 		select {
 		case event := <-out:
 			readLines = append(readLines, event)

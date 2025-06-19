@@ -30,16 +30,18 @@ type JWTTransport struct {
 	RetryConfig   *RetryConfig
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
-	Transport         http.RoundTripper
-	UpdateScenario    func(context.Context) ([]string, error)
+	Transport        http.RoundTripper
+	UpdateScenario   func(context.Context) ([]string, error)
+	TokenRefreshChan chan struct{} // will write to this channel when the token is refreshed
+
 	refreshTokenMutex sync.Mutex
 	TokenSave         TokenSave
 }
 
-func (t *JWTTransport) refreshJwtToken() error {
+func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 	var err error
 
-	ctx := context.TODO()
+	log.Debugf("refreshing jwt token for '%s'", *t.MachineID)
 
 	if t.UpdateScenario != nil {
 		t.Scenarios, err = t.UpdateScenario(ctx)
@@ -141,7 +143,14 @@ func (t *JWTTransport) refreshJwtToken() error {
 			log.Errorf("unable to save token: %s", err)
 		}
 	}
+
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
+
+	select {
+	case t.TokenRefreshChan <- struct{}{}:
+	default:
+		// Do not block if no one is waiting for the token refresh (ie, PAPI fully disabled)
+	}
 
 	return nil
 }
@@ -160,7 +169,7 @@ func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) 
 	// We bypass the refresh if we are requesting the login endpoint, as it does not require a token,
 	// and it leads to do 2 requests instead of one (refresh + actual login request).
 	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && t.needsTokenRefresh() {
-		if err := t.refreshJwtToken(); err != nil {
+		if err := t.refreshJwtToken(req.Context()); err != nil {
 			return nil, err
 		}
 	}

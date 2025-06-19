@@ -11,9 +11,10 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 const (
@@ -56,7 +57,7 @@ type ReqDumpFilter struct {
 	HeadersDrop           bool
 
 	BodyDrop bool
-	//BodyContentFilters []string TBD
+	// BodyContentFilters []string TBD
 
 	ArgsContentFilters []string
 	ArgsNameFilters    []string
@@ -141,20 +142,24 @@ func (r *ReqDumpFilter) FilterArgs(out *ParsedRequest) error {
 	if r.ArgsDrop {
 		return nil
 	}
+
 	if len(r.ArgsContentFilters) == 0 && len(r.ArgsNameFilters) == 0 {
 		out.Args = r.req.Args
 		return nil
 	}
+
 	out.Args = make(url.Values)
+
 	for k, vals := range r.req.Args {
 		reject := false
-		//exclude by match on name
+		// exclude by match on name
 		for _, filter := range r.ArgsNameFilters {
 			ok, err := regexp.MatchString("(?i)"+filter, k)
 			if err != nil {
 				log.Debugf("error while matching string '%s' with '%s': %s", filter, k, err)
 				continue
 			}
+
 			if ok {
 				reject = true
 				break
@@ -162,25 +167,26 @@ func (r *ReqDumpFilter) FilterArgs(out *ParsedRequest) error {
 		}
 
 		for _, v := range vals {
-			//exclude by content
+			// exclude by content
 			for _, filter := range r.ArgsContentFilters {
 				ok, err := regexp.MatchString("(?i)"+filter, v)
 				if err != nil {
 					log.Debugf("error while matching string '%s' with '%s': %s", filter, v, err)
 					continue
 				}
+
 				if ok {
 					reject = true
 					break
 				}
-
 			}
 		}
-		//if it was not rejected, let's add it
+		// if it was not rejected, let's add it
 		if !reject {
 			out.Args[k] = vals
 		}
 	}
+
 	return nil
 }
 
@@ -195,15 +201,17 @@ func (r *ReqDumpFilter) FilterHeaders(out *ParsedRequest) error {
 	}
 
 	out.Headers = make(http.Header)
+
 	for k, vals := range r.req.Headers {
 		reject := false
-		//exclude by match on name
+		// exclude by match on name
 		for _, filter := range r.HeadersNameFilters {
 			ok, err := regexp.MatchString("(?i)"+filter, k)
 			if err != nil {
 				log.Debugf("error while matching string '%s' with '%s': %s", filter, k, err)
 				continue
 			}
+
 			if ok {
 				reject = true
 				break
@@ -211,25 +219,26 @@ func (r *ReqDumpFilter) FilterHeaders(out *ParsedRequest) error {
 		}
 
 		for _, v := range vals {
-			//exclude by content
+			// exclude by content
 			for _, filter := range r.HeadersContentFilters {
 				ok, err := regexp.MatchString("(?i)"+filter, v)
 				if err != nil {
 					log.Debugf("error while matching string '%s' with '%s': %s", filter, v, err)
 					continue
 				}
+
 				if ok {
 					reject = true
 					break
 				}
-
 			}
 		}
-		//if it was not rejected, let's add it
+		// if it was not rejected, let's add it
 		if !reject {
 			out.Headers[k] = vals
 		}
 	}
+
 	return nil
 }
 
@@ -279,10 +288,7 @@ func (r *ReqDumpFilter) ToJSON() error {
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
 func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
 	var err error
-	contentLength := r.ContentLength
-	if contentLength < 0 {
-		contentLength = 0
-	}
+	contentLength := max(r.ContentLength, 0)
 	body := make([]byte, contentLength)
 	if r.Body != nil {
 		_, err = io.ReadFull(r.Body, body)

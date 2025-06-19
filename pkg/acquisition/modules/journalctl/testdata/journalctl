@@ -4,17 +4,17 @@ import argparse
 import time
 import sys
 
+
 class CustomParser(argparse.ArgumentParser):
-    #small hack to make argparse errors the same as journalctl
+    # small hack to make argparse errors the same as journalctl
     def error(self, message):
         if 'unrecognized arguments:' in message:
-            sys.stderr.write("journalctl: invalid option -- '_'\n")
-            sys.stderr.flush()
-            exit(1)
+            _ = sys.stderr.write("journalctl: invalid option -- '_'\n")
         else:
-            sys.stderr.write(message)
-            sys.stderr.flush()
-            exit(1)
+            _ = sys.stderr.write(message)
+        _ = sys.stderr.flush()
+        exit(1)
+
 
 LOGS = """-- Logs begin at Fri 2019-07-26 17:13:13 CEST, end at Mon 2020-11-23 09:17:34 CET. --
 Nov 22 11:22:19 zeroed sshd[1480]: Invalid user wqeqwe from 127.0.0.1 port 55818
@@ -32,9 +32,9 @@ Nov 22 11:23:27 zeroed sshd[1791]: Invalid user wqeqwe5 from 127.0.0.1 port 5583
 Nov 22 11:23:27 zeroed sshd[1791]: Failed password for invalid user wqeqwe5 from 127.0.0.1 port 55834 ssh2"""
 
 parser = CustomParser()
-parser.add_argument('filter', metavar='FILTER', type=str, nargs='?')
-parser.add_argument('-n', dest='n', type=int)
-parser.add_argument('--follow', dest='follow', action='store_true', default=False)
+_ = parser.add_argument('filter', metavar='FILTER', type=str, nargs='?')
+_ = parser.add_argument('-n', dest='n', type=int)
+_ = parser.add_argument('--follow', dest='follow', action='store_true', default=False)
 
 args = parser.parse_args()
 

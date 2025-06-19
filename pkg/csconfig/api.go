@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type APICfg struct {
@@ -56,6 +57,7 @@ type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
+	UnregisterOnExit    bool               `yaml:"unregister_on_exit,omitempty"`
 }
 
 type CTICfg struct {
@@ -121,6 +123,10 @@ func (o *OnlineApiClientCfg) Load() error {
 	case o.Credentials.URL == "":
 		log.Warningf("can't load CAPI credentials from '%s' (missing url field)", o.CredentialsFilePath)
 		o.Credentials = nil
+	}
+
+	if o.Credentials != nil && o.Credentials.PapiURL == "" {
+		o.Credentials.PapiURL = types.PAPIBaseURL
 	}
 
 	return nil

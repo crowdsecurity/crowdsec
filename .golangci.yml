@@ -194,7 +194,7 @@ linters:
       min-complexity: 16
 
     nlreturn:
-      block-size: 5
+      block-size: 6
 
     nolintlint:
       require-explanation: false  # don't require an explanation for nolint directives
