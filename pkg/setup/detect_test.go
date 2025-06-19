@@ -85,7 +85,7 @@ func TestPathExists(t *testing.T) {
 
 	type test struct {
 		path     string
-		expected bool
+		want bool
 	}
 
 	tests := []test{
@@ -105,7 +105,7 @@ func TestPathExists(t *testing.T) {
 			t.Parallel()
 
 			actual := env.PathExists(tc.path)
-			require.Equal(t, tc.expected, actual)
+			require.Equal(t, tc.want, actual)
 		})
 	}
 }
@@ -116,8 +116,8 @@ func TestVersionCheck(t *testing.T) {
 	tests := []struct {
 		version     string
 		constraint  string
-		expected    bool
-		expectedErr string
+		want    bool
+		wantErr string
 	}{
 		{"1", "=1", true, ""},
 		{"1", "!=1", false, ""},
@@ -158,8 +158,8 @@ func TestVersionCheck(t *testing.T) {
 			t.Parallel()
 
 			actual, err := e.VersionCheck(tc.constraint)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(t, tc.expected, actual)
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			require.Equal(t, tc.want, actual)
 		})
 	}
 }
@@ -171,7 +171,7 @@ func TestNormalizeVersion(t *testing.T) {
 
 	tests := []struct {
 		version  string
-		expected string
+		want string
 	}{
 		{"0", "0"},
 		{"2", "2"},
@@ -192,7 +192,7 @@ func TestNormalizeVersion(t *testing.T) {
 		t.Run(tc.version, func(t *testing.T) {
 			t.Parallel()
 			actual := setup.NormalizeVersion(tc.version)
-			require.Equal(t, tc.expected, actual)
+			require.Equal(t, tc.want, actual)
 		})
 	}
 }
@@ -204,8 +204,8 @@ func TestListSupported(t *testing.T) {
 	tests := []struct {
 		name        string
 		yml         string
-		expected    []string
-		expectedErr string
+		want    []string
+		wantErr string
 	}{
 		{
 			"list configured services",
@@ -256,12 +256,12 @@ func TestListSupported(t *testing.T) {
 			f := tempYAML(t, tc.yml)
 
 			detector, err := setup.NewDetector(&f)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			if tc.expectedErr != "" {
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			if tc.wantErr != "" {
 				return
 			}
 			supported := detector.ListSupportedServices()
-			require.ElementsMatch(t, tc.expected, supported)
+			require.ElementsMatch(t, tc.want, supported)
 		})
 	}
 }
@@ -273,8 +273,8 @@ func TestApplyRules(t *testing.T) {
 	tests := []struct {
 		name        string
 		rules       []string
-		expectedOk  bool
-		expectedErr string
+		want  bool
+		wantErr string
 	}{
 		{
 			"empty list is always true", // XXX or false?
@@ -341,9 +341,9 @@ func TestApplyRules(t *testing.T) {
 			t.Parallel()
 
 			svc := setup.ServiceRules{When: tc.rules}
-			_, actualOk, err := setup.ApplyRules(svc, env) //nolint:typecheck,nolintlint  // exported only for tests
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expectedOk, actualOk)
+			_, got, err := setup.ApplyRules(svc, env) //nolint:typecheck,nolintlint  // exported only for tests
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			require.Equal(tc.want, got)
 		})
 	}
 }
@@ -385,12 +385,12 @@ func TestDetectSimpleRule(t *testing.T) {
 	got, err := setup.NewSetup(detector, setup.DetectOptions{})
 	require.NoError(err)
 
-	expected := []setup.ServicePlan{
+	want := []setup.ServicePlan{
 		{Name: "good"},
 		{Name: "ugly"},
 	}
 
-	require.ElementsMatch(expected, got.Setup)
+	require.ElementsMatch(want, got.Plans)
 }
 
 func TestDetectUnitError(t *testing.T) {
@@ -404,8 +404,8 @@ func TestDetectUnitError(t *testing.T) {
 	tests := []struct {
 		name        string
 		config      string
-		expected    *setup.Setup
-		expectedErr string
+		want    *setup.Setup
+		wantErr string
 	}{
 		{
 			"error is reported if systemctl does not exist",
@@ -428,8 +428,8 @@ detect:
 			detector, err := setup.NewDetector(&f)
 			require.NoError(err)
 			got, err := setup.NewSetup(detector, setup.DetectOptions{})
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, got)
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			require.Equal(tc.want, got)
 		})
 	}
 }
@@ -443,8 +443,8 @@ func TestDetectUnit(t *testing.T) {
 	tests := []struct {
 		name        string
 		config      string
-		expected    *setup.Setup
-		expectedErr string
+		want    *setup.Setup
+		wantErr string
 	}{
 		//		{
 		//			"detect a single unit, with default log filter",
@@ -499,7 +499,7 @@ detect:
       journalctl_filter:
         - _MY_CUSTOM_FILTER=something`,
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{
 						Name: "wizard",
 						ServiceRecommendation: setup.ServiceRecommendation{
@@ -524,8 +524,8 @@ detect:
 			detector, err := setup.NewDetector(&f)
 			require.NoError(err)
 			got, err := setup.NewSetup(detector, setup.DetectOptions{})
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, got)
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			require.Equal(tc.want, got)
 		})
 	}
 }
@@ -555,8 +555,8 @@ func TestDetectForcedUnit(t *testing.T) {
 	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
 	require.NoError(err)
 
-	expected := &setup.Setup{
-		Setup: []setup.ServicePlan{
+	want := &setup.Setup{
+		Plans: []setup.ServicePlan{
 			{
 				Name: "wizard",
 				ServiceRecommendation: setup.ServiceRecommendation{
@@ -569,7 +569,7 @@ func TestDetectForcedUnit(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(expected, got)
+	require.Equal(want, got)
 }
 
 func TestDetectForcedProcess(t *testing.T) {
@@ -593,12 +593,12 @@ func TestDetectForcedProcess(t *testing.T) {
 	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
 	require.NoError(err)
 
-	expected := &setup.Setup{
-		Setup: []setup.ServicePlan{
+	want := &setup.Setup{
+		Plans: []setup.ServicePlan{
 			{Name: "wizard"},
 		},
 	}
-	require.Equal(expected, got)
+	require.Equal(want, got)
 }
 
 func TestDetectSkipService(t *testing.T) {
@@ -622,8 +622,8 @@ func TestDetectSkipService(t *testing.T) {
 	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
 	require.NoError(err)
 
-	expected := &setup.Setup{[]setup.ServicePlan{}}
-	require.Equal(expected, got)
+	want := &setup.Setup{[]setup.ServicePlan{}}
+	require.Equal(want, got)
 }
 
 func TestDetectForcedOS(t *testing.T) {
@@ -636,8 +636,8 @@ func TestDetectForcedOS(t *testing.T) {
 		name        string
 		config      string
 		forced      setup.ExprOS
-		expected    *setup.Setup
-		expectedErr string
+		want    *setup.Setup
+		wantErr string
 	}
 
 	tests := []test{
@@ -651,7 +651,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.Family == "linux"`,
 			setup.ExprOS{Family: "linux"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -667,7 +667,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.Family == "windows"`,
 			setup.ExprOS{Family: "windows"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "windows"},
 				},
 			},
@@ -695,7 +695,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.Family == "linux" && OS.ID == "ubuntu"`,
 			setup.ExprOS{Family: "linux", ID: "ubuntu"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -711,7 +711,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.Family == "linux" && OS.ID == "ubuntu" && OS.VersionCheck("19.04")`,
 			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.04"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -751,7 +751,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
 			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -767,7 +767,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
 			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "22.04"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -821,7 +821,7 @@ func TestDetectForcedOS(t *testing.T) {
 	      - OS.VersionCheck("<20.04")`,
 			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
 			&setup.Setup{
-				Setup: []setup.ServicePlan{
+				Plans: []setup.ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -836,8 +836,8 @@ func TestDetectForcedOS(t *testing.T) {
 			detector, err := setup.NewDetector(&f)
 			require.NoError(err)
 			got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedOS: tc.forced})
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(tc.expected, got)
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			require.Equal(tc.want, got)
 		})
 	}
 }
@@ -853,8 +853,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	type test struct {
 		name        string
 		config      string
-		expected    *setup.Setup
-		expectedErr string
+		want    *setup.Setup
+		wantErr string
 	}
 
 	tests := []test{
@@ -867,8 +867,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      labels:
 				        type: something`,
-			expected:    nil,
-			expectedErr: "invalid datasource for wizard: source is empty",
+			want:    nil,
+			wantErr: "invalid datasource for wizard: source is empty",
 		}, {
 			name: "source is unknown",
 			config: `
@@ -877,8 +877,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: wombat`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: unknown data source wombat",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: unknown data source wombat",
 		}, {
 			name: "source is misplaced",
 			config: `
@@ -887,8 +887,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				    source: file`,
-			expected:    nil,
-			expectedErr: "yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
+			want:    nil,
+			wantErr: "yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
 		}, {
 			name: "source is mismatched",
 			config: `
@@ -898,8 +898,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: journalctl
 				      filename: /path/to/file.log`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
 		}, {
 			name: "source file: required fields",
 			config: `
@@ -908,8 +908,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: file`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: no filename or filenames configuration provided",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: no filename or filenames configuration provided",
 		}, {
 			name: "source journalctl: required fields",
 			config: `
@@ -918,8 +918,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: journalctl`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: journalctl_filter is required",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: journalctl_filter is required",
 		}, {
 			name: "source cloudwatch: required fields",
 			config: `
@@ -928,8 +928,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: cloudwatch`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: group_name is mandatory for CloudwatchSource",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: group_name is mandatory for CloudwatchSource",
 		}, {
 			name: "source syslog: all fields are optional",
 			config: `
@@ -938,8 +938,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: syslog`,
-			expected: &setup.Setup{
-				Setup: []setup.ServicePlan{
+			want: &setup.Setup{
+				Plans: []setup.ServicePlan{
 					{
 						Name:       "foobar",
 						ServiceRecommendation: setup.ServiceRecommendation{
@@ -956,8 +956,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: docker`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: no containers names or containers ID configuration provided",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: no containers names or containers ID configuration provided",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
 			config: `
@@ -966,8 +966,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: kinesis`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: stream_name is mandatory when use_enhanced_fanout is false",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: stream_name is mandatory when use_enhanced_fanout is false",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=true)",
 			config: `
@@ -977,8 +977,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: kinesis
 				      use_enhanced_fanout: true`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
 		}, {
 			name: "source kafka: required fields",
 			config: `
@@ -987,8 +987,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: kafka`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
 		}, {
 			name: "source loki: required fields",
 			config: `
@@ -997,8 +997,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: loki`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: loki query is mandatory",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: loki query is mandatory",
 		},
 	}
 
@@ -1011,8 +1011,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: wineventlog`,
-			expected:    nil,
-			expectedErr: "invalid datasource for foobar: event_channel or xpath_query must be set",
+			want:    nil,
+			wantErr: "invalid datasource for foobar: event_channel or xpath_query must be set",
 		})
 	}
 
@@ -1021,13 +1021,13 @@ func TestDetectDatasourceValidation(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
 			detector, err := setup.NewDetector(&f)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			if tc.expectedErr != "" {
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+			if tc.wantErr != "" {
 				return
 			}
 			got, err := setup.NewSetup(detector, setup.DetectOptions{})
 			require.NoError(err)
-			require.Equal(tc.expected, got)
+			require.Equal(tc.want, got)
 		})
 	}
 }

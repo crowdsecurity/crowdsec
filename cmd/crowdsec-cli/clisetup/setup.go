@@ -119,13 +119,13 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		}
 
 		svcFiltered := []setup.ServicePlan{}
-		for _, svc := range stup.Setup {
+		for _, svc := range stup.Plans {
 			if slices.Contains(svcSelected, svc.Name) {
 				svcFiltered = append(svcFiltered, svc)
 			}
 		}
 
-		stup.Setup = svcFiltered
+		stup.Plans = svcFiltered
 	default:
 		fmt.Println("The following services will be configured:")
 		for _, svc := range svcDetected {
