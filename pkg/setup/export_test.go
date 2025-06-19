@@ -2,8 +2,7 @@ package setup
 
 var (
 	SystemdUnitList = systemdUnitList
-	FilterWithRules = filterWithRules
-	ApplyRules      = applyRules
+	ApplyRules = applyRules
 
 //	NormalizeVersion   = normalizeVersion
 )
