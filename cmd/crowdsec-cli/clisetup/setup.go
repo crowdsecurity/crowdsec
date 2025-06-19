@@ -165,7 +165,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		// the collections when removing the associated software
 		if installAcquis {
 			acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
-			if err := cli.dataSources(acquisitionSpecs, acquisDir); err != nil {
+			if err := cli.acquisition(acquisitionSpecs, acquisDir); err != nil {
 				return err
 			}
 		}
@@ -202,7 +202,7 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 
 	cmd.AddCommand(cli.newDetectCmd())
 	cmd.AddCommand(cli.newInstallHubCmd())
-	cmd.AddCommand(cli.newDataSourcesCmd())
+	cmd.AddCommand(cli.newAcquisitionCmd())
 	cmd.AddCommand(cli.newValidateCmd())
 
 	return cmd
