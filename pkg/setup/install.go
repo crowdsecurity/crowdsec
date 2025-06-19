@@ -21,10 +21,10 @@ type AcquisDocument struct {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, wantedItems []HubItems, interactive, dryRun, showPlan, verbosePlan bool) error {
+func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.ContentProvider, hubSpecs []HubSpec, interactive, dryRun, showPlan, verbosePlan bool) error {
 	plan := hubops.NewActionPlan(hub)
 
-	for _, itemMap := range wantedItems {
+	for _, itemMap := range hubSpecs {
 		if len(itemMap) == 0 {
 			continue
 		}
@@ -125,8 +125,8 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 	return sb.String(), nil
 }
 
-// GenerateAcquisition generates the acquisition, as a single file or multiple files in a directory.
-func GenerateAcquisition(wantedAcquisition map[string]DataSourceItem, toDir string) (string, error) {
+// GenerateAcquisition generates the datasource configuration, as a single file or multiple files in a directory.
+func GenerateAcquisition(acquisitionSpecs map[string]AcquisitionSpec, toDir string) (string, error) {
 	ads := make([]AcquisDocument, 0)
 
 	filename := func(basename string, ext string) string {
@@ -137,14 +137,14 @@ func GenerateAcquisition(wantedAcquisition map[string]DataSourceItem, toDir stri
 		return basename + ext
 	}
 
-	if len(wantedAcquisition) > 0 && toDir != "" {
+	if len(acquisitionSpecs) > 0 && toDir != "" {
 		// XXX: interactive
 		if err := os.MkdirAll(toDir, 0o700); err != nil {
 			return "", err
 		}
 	}
 
-	for serviceName, datasource := range wantedAcquisition {
+	for serviceName, datasource := range acquisitionSpecs {
 		basename := ""
 		if toDir != "" {
 			basename = "setup." + serviceName

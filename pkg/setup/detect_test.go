@@ -502,11 +502,10 @@ detect:
 				Plans: []setup.ServicePlan{
 					{
 						Name: "wizard",
-						ServiceRecommendation: setup.ServiceRecommendation{
-							DataSource: setup.DataSourceItem{
-								// XXX this should not be DataSourceItem ??
+						InstallRecommendation: setup.InstallRecommendation{
+							AcquisitionSpec: setup.AcquisitionSpec{
 								"source":            "journalctl",
-								"labels":            setup.DataSourceItem{"type": "syslog"},
+								"labels":            setup.AcquisitionSpec{"type": "syslog"},
 								"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
 							},
 						},
@@ -559,10 +558,10 @@ func TestDetectForcedUnit(t *testing.T) {
 		Plans: []setup.ServicePlan{
 			{
 				Name: "wizard",
-				ServiceRecommendation: setup.ServiceRecommendation{
-					DataSource: setup.DataSourceItem{
+				InstallRecommendation: setup.InstallRecommendation{
+					AcquisitionSpec: setup.AcquisitionSpec{
 						"source":            "journalctl",
-						"labels":            setup.DataSourceItem{"type": "syslog"},
+						"labels":            setup.AcquisitionSpec{"type": "syslog"},
 						"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
 					},
 				},
@@ -942,8 +941,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				Plans: []setup.ServicePlan{
 					{
 						Name:       "foobar",
-						ServiceRecommendation: setup.ServiceRecommendation{
-							DataSource: setup.DataSourceItem{"source": "syslog"},
+						InstallRecommendation: setup.InstallRecommendation{
+							AcquisitionSpec: setup.AcquisitionSpec{"source": "syslog"},
 						},
 					},
 				},
