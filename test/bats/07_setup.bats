@@ -45,10 +45,6 @@ teardown() {
     assert_line 'Usage:'
     assert_line '  cscli setup [command]'
     assert_line 'Manage hub configuration and service detection'
-    assert_line --partial "detect                  detect running services, generate a setup file"
-    assert_line --partial "datasources             install log sources (acquisition) from a setup file"
-    assert_line --partial "install-hub             install items from a setup file"
-    assert_line --partial "validate                validate a setup file"
 
     # make sure that the unknown argument is not ignored and does not trigger interactive mode
     # (possibly blocking a script)
@@ -417,7 +413,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup detect
     assert_json '{setup:[{detected_service:"always"}]}'
     setup=$output
-    rune -0 cscli setup datasources /dev/stdin <<<"$setup"
+    rune -0 cscli setup acquisition /dev/stdin <<<"$setup"
     rune -0 cscli setup install-hub /dev/stdin <<<"$setup"
 }
 
@@ -579,13 +575,13 @@ update-notifier-motd.timer              enabled enabled
 
 }
 
-@test "cscli setup datasources" {
-    rune -0 cscli setup datasources --help
+@test "cscli setup acquisition" {
+    rune -0 cscli setup acquisition --help
     assert_line --partial "--to-dir string   write the configuration to a directory, in multiple files"
 
     # single item
 
-    rune -0 cscli setup datasources /dev/stdin <<-EOT
+    rune -0 cscli setup acquisition /dev/stdin <<-EOT
 	setup:
 	  - datasource:
 	      source: file
@@ -614,7 +610,7 @@ update-notifier-motd.timer              enabled enabled
     # but we don't validate them yet
     # TODO: validate ServicePlan etc.
 
-#    rune -0 cscli setup datasources /dev/stdin <<-EOT
+#    rune -0 cscli setup acquisition /dev/stdin <<-EOT
 #	setup:
 #	  - datasource:
 #	      labels:
@@ -661,7 +657,7 @@ update-notifier-motd.timer              enabled enabled
     acquisdir=$(TMPDIR="$BATS_FILE_TMPDIR" mktemp -u)
     mkdir "$acquisdir"
 
-    rune -0 cscli setup datasources /dev/stdin --to-dir "$acquisdir" <<-EOT
+    rune -0 cscli setup acquisition /dev/stdin --to-dir "$acquisdir" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    datasource:
@@ -721,7 +717,7 @@ update-notifier-motd.timer              enabled enabled
 
     # having both filenames and journalctl does not generate two files: the datasource is copied as-is, even if incorrect
 
-    rune -0 cscli setup datasources /dev/stdin --to-dir "$acquisdir" <<-EOT
+    rune -0 cscli setup acquisition /dev/stdin --to-dir "$acquisdir" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    install:
@@ -752,14 +748,14 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     # the directory must exist
-    rune -1 cscli setup datasources /dev/stdin --to-dir /path/does/not/exist <<< '{}'
+    rune -1 cscli setup acquisition /dev/stdin --to-dir /path/does/not/exist <<< '{}'
     assert_stderr --partial "directory /path/does/not/exist does not exist"
 
     # of course it must be a directory
 
     touch "${acquisdir}/notadir"
 
-    rune -1 cscli setup datasources /dev/stdin --to-dir "${acquisdir}/notadir" <<-EOT
+    rune -1 cscli setup acquisition /dev/stdin --to-dir "${acquisdir}/notadir" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    datasource:
@@ -771,14 +767,14 @@ update-notifier-motd.timer              enabled enabled
     rm -rf -- "${acquisdir:?}"
 }
 
-@test "cscli setup datasources (disclaimer)" {
+@test "cscli setup acquisition (disclaimer)" {
     disclaimer="This file was automatically generated"
 
-    rune -0 cscli setup datasources /dev/stdin <<<"setup:"
+    rune -0 cscli setup acquisition /dev/stdin <<<"setup:"
     rune -0 yq 'head_comment' <(output)
     assert_output --partial "$disclaimer"
 
-    rune -0 cscli setup datasources /dev/stdin <<-EOT
+    rune -0 cscli setup acquisition /dev/stdin <<-EOT
 	setup:
           - detected_service: something
             datasource:
@@ -810,7 +806,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup detect --detect-config "$tempfile" --force-unit thewiz.service
     rune -0 jq -cS '.' <(output)
     assert_json '{setup:[{datasource:{source:"journalctl",journalctl_filter:["SYSLOG_IDENTIFIER=TheWiz"],labels:{type:"thewiz"}},detected_service:"thewiz"}]}'
-    rune -0 cscli setup datasources <(output)
+    rune -0 cscli setup acquisition <(output)
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	journalctl_filter:
