@@ -30,14 +30,18 @@ type JWTTransport struct {
 	RetryConfig   *RetryConfig
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
-	Transport         http.RoundTripper
-	UpdateScenario    func(context.Context) ([]string, error)
+	Transport        http.RoundTripper
+	UpdateScenario   func(context.Context) ([]string, error)
+	TokenRefreshChan chan struct{} // will write to this channel when the token is refreshed
+
 	refreshTokenMutex sync.Mutex
 	TokenSave         TokenSave
 }
 
 func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 	var err error
+
+	log.Debugf("refreshing jwt token for '%s'", *t.MachineID)
 
 	if t.UpdateScenario != nil {
 		t.Scenarios, err = t.UpdateScenario(ctx)
@@ -141,6 +145,12 @@ func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 	}
 
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
+
+	select {
+	case t.TokenRefreshChan <- struct{}{}:
+	default:
+		// Do not block if no one is waiting for the token refresh (ie, PAPI fully disabled)
+	}
 
 	return nil
 }

@@ -13,6 +13,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -93,6 +95,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				URL:      "http://crowdsec.api",
 				Login:    "test",
 				Password: "testpassword",
+				PapiURL:  types.PAPIBaseURL,
 			},
 		},
 		{
@@ -211,6 +214,7 @@ func TestLoadAPIServer(t *testing.T) {
 						URL:      "http://crowdsec.api",
 						Login:    "test",
 						Password: "testpassword",
+						PapiURL:  types.PAPIBaseURL,
 					},
 					Sharing: ptr.Of(true),
 					PullConfig: CapiPullConfig{
