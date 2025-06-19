@@ -135,19 +135,19 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 
 	fmt.Fprintln(os.Stdout)
 
-	wantedItems := stup.WantedHubItems()
+	hubSpecs := stup.CollectHubSpecs()
 
-	if len(wantedItems) > 0 {
-		if err = cli.install(ctx, interactive, false, wantedItems); err != nil {
+	if len(hubSpecs) > 0 {
+		if err = cli.install(ctx, interactive, false, hubSpecs); err != nil {
 			return err
 		}
 
 		fmt.Fprintln(os.Stdout)
 	}
 
-	wantedAcquisition := stup.WantedAcquisition()
+	acquisitionSpecs := stup.CollectAcquisitionSpecs()
 
-	if len(wantedAcquisition) > 0 {
+	if len(acquisitionSpecs) > 0 {
 		installAcquis := true
 		if interactive {
 			prompt := survey.Confirm{
@@ -165,7 +165,7 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		// the collections when removing the associated software
 		if installAcquis {
 			acquisDir := cli.cfg().Crowdsec.AcquisitionDirPath
-			if err := cli.dataSources(wantedAcquisition, acquisDir); err != nil {
+			if err := cli.dataSources(acquisitionSpecs, acquisDir); err != nil {
 				return err
 			}
 		}
