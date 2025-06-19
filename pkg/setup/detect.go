@@ -28,6 +28,50 @@ type HubItems map[string][]string
 
 type DataSourceItem map[string]any
 
+// Validate checks if the DataSourceItem represents a valid configuration for an acquisition.DataSource.
+func (d *DataSourceItem) Validate() error {
+	if len(*d) == 0 {
+		// empty datasource is valid
+		return nil
+	}
+
+	// formally validate YAML
+
+	commonDS := configuration.DataSourceCommonCfg{}
+
+	body, err := yaml.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(body, &commonDS)
+	if err != nil {
+		return err
+	}
+
+	// source is mandatory // XXX unless it's not?
+
+	if commonDS.Source == "" {
+		return errors.New("source is empty")
+	}
+
+	// source must be known
+
+	ds, err := acquisition.GetDataSourceIface(commonDS.Source)
+	if err != nil {
+		return err
+	}
+
+	// unmarshal and validate the rest with the specific implementation
+
+	err = ds.UnmarshalConfig(body)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type ServiceRecommendation struct {
 	Install    HubItems       `yaml:"install,omitempty"`
 	DataSource DataSourceItem `yaml:"datasource,omitempty"`
@@ -43,13 +87,13 @@ type ServicePlan struct {
 
 // Setup is a container for a list of ServicePlan objects, allowing for future extensions.
 type Setup struct {
-	Setup []ServicePlan `yaml:"setup"`
+	Plans []ServicePlan `yaml:"setup"`
 }
 
 func (s *Setup) WantedHubItems() []HubItems {
 	ret := []HubItems{}
 
-	for _, svc := range s.Setup {
+	for _, svc := range s.Plans {
 		ret = append(ret, svc.Install)
 	}
 
@@ -59,7 +103,7 @@ func (s *Setup) WantedHubItems() []HubItems {
 func (s *Setup) WantedAcquisition() map[string]DataSourceItem {
 	ret := map[string]DataSourceItem{}
 
-	for _, svc := range s.Setup {
+	for _, svc := range s.Plans {
 		if len(svc.DataSource) > 0 {
 			ret[svc.Name] = svc.DataSource
 		}
@@ -69,9 +113,9 @@ func (s *Setup) WantedAcquisition() map[string]DataSourceItem {
 }
 
 func (s *Setup) DetectedServices() []string {
-	ret := make([]string, 0, len(s.Setup))
+	ret := make([]string, 0, len(s.Plans))
 
-	for _, svc := range s.Setup {
+	for _, svc := range s.Plans {
 		ret = append(ret, svc.Name)
 	}
 
@@ -144,49 +188,6 @@ func (s *Setup) ToYAML(outYaml bool) ([]byte, error) {
 	return ret, nil
 }
 
-func validateDataSource(opaqueDS DataSourceItem) error {
-	if len(opaqueDS) == 0 {
-		// empty datasource is valid
-		return nil
-	}
-
-	// formally validate YAML
-
-	commonDS := configuration.DataSourceCommonCfg{}
-
-	body, err := yaml.Marshal(opaqueDS)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(body, &commonDS)
-	if err != nil {
-		return err
-	}
-
-	// source is mandatory // XXX unless it's not?
-
-	if commonDS.Source == "" {
-		return errors.New("source is empty")
-	}
-
-	// source must be known
-
-	ds, err := acquisition.GetDataSourceIface(commonDS.Source)
-	if err != nil {
-		return err
-	}
-
-	// unmarshal and validate the rest with the specific implementation
-
-	err = ds.UnmarshalConfig(body)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Detector is generated from the detection rules (detect.yaml) and can generate the setup plan.
 type Detector struct {
 	Version string                  `yaml:"version"`
@@ -218,8 +219,7 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 	}
 
 	for name, svc := range d.Detect {
-		err = validateDataSource(svc.DataSource)
-		if err != nil {
+		if err := svc.DataSource.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid datasource for %s: %w", name, err)
 		}
 	}
@@ -243,7 +243,7 @@ func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
-	s.Setup = make([]ServicePlan, 0)
+	s.Plans = make([]ServicePlan, 0)
 
 	os := opts.ForcedOS
 	if os == (ExprOS{}) {
@@ -298,7 +298,7 @@ func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
 	sort.Strings(keys)
 
 	for _, name := range keys {
-		s.Setup = append(s.Setup, detected[name])
+		s.Plans = append(s.Plans, detected[name])
 	}
 
 	return &s, nil
