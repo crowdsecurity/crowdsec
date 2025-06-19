@@ -20,8 +20,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const TestFolder = "tests"
-
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 
@@ -272,7 +270,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	filename := "test_data_re.txt"
-	err = FileInit(TestFolder, filename, "regex")
+	err = FileInit("testdata", filename, "regex")
 	require.NoError(t, err)
 
 	// cache with no TTL
@@ -305,7 +303,7 @@ func TestRegexpInFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := FileInit(TestFolder, "test_data_re.txt", "regex")
+	err := FileInit("testdata", "test_data_re.txt", "regex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +395,7 @@ func TestFileInit(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := FileInit(TestFolder, test.filename, test.types)
+		err := FileInit("testdata", test.filename, test.types)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -438,7 +436,7 @@ func TestFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := FileInit(TestFolder, "test_data.txt", "string")
+	err := FileInit("testdata", "test_data.txt", "string")
 	if err != nil {
 		t.Fatal(err)
 	}
