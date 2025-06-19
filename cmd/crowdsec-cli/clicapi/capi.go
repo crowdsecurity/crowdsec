@@ -42,14 +42,6 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			cfg := cli.cfg()
-			if err := require.LAPI(cfg); err != nil {
-				return err
-			}
-
-			return require.CAPI(cfg)
-		},
 	}
 
 	cmd.AddCommand(cli.newRegisterCmd())
@@ -142,6 +134,15 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+			if err := require.LAPINoOnlineCreds(cfg); err != nil {
+				return err
+			}
+
+			if err := require.CAPI(cfg); err != nil {
+				return err
+			}
+
 			return cli.register(cmd.Context(), capiUserPrefix, outputFile)
 		},
 	}
@@ -271,6 +272,14 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			ctx := cmd.Context()
+
+			if err := require.LAPI(cfg); err != nil {
+				return err
+			}
+
+			if err := require.CAPI(cfg); err != nil {
+				return err
+			}
 
 			hub, err := require.Hub(cfg, nil)
 			if err != nil {
