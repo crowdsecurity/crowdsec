@@ -226,7 +226,7 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 }
 
 // ListSupported parses the configuration file and outputs a list of the supported services.
-func (d *Detector) ListSupportedServices() ([]string, error) {
+func (d *Detector) ListSupportedServices() []string {
 	keys := make([]string, 0)
 	for k := range d.Detect {
 		keys = append(keys, k)
@@ -234,7 +234,7 @@ func (d *Detector) ListSupportedServices() ([]string, error) {
 
 	sort.Strings(keys)
 
-	return keys, nil
+	return keys
 }
 
 func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
@@ -306,10 +306,6 @@ func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
 
 	return &s, nil
 }
-
-
-
-
 
 // ServiceRules describes the rules for detecting a service and its recommended items.
 type ServiceRules struct {

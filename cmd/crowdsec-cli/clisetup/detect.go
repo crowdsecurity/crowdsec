@@ -105,12 +105,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 			}
 
 			if f.listSupportedServices {
-				supported, err := detector.ListSupportedServices()
-				if err != nil {
-					return fmt.Errorf("parsing %s: %w", rulesFrom, err)
-				}
-
-				for _, svc := range supported {
+				for _, svc := range detector.ListSupportedServices() {
 					fmt.Println(svc)
 				}
 
