@@ -44,7 +44,7 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.SortFlags = false
 }
 
-func (f *detectFlags) detectOptions() setup.DetectOptions {
+func (f *detectFlags) toDetectOptions() setup.DetectOptions {
 	if !f.snubSystemd {
 		if _, err := exec.LookPath("systemctl"); err != nil {
 			log.Debug("systemctl not available: snubbing systemd")
@@ -112,7 +112,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return nil
 			}
 
-			stup, err := setup.NewSetup(detector, f.detectOptions())
+			stup, err := setup.NewSetup(detector, f.toDetectOptions())
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
