@@ -364,10 +364,6 @@ func TestUnitFound(t *testing.T) {
 	require.True(installed)
 }
 
-// TODO apply rules to filter a list of Service structs
-// func testFilterWithRules(t *testing.T) {
-// }
-
 func TestDetectSimpleRule(t *testing.T) {
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
