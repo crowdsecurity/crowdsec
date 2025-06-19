@@ -119,49 +119,6 @@ log_dbg() {
     fi
 }
 
-detect_services () {
-    DETECTED_SERVICES=()
-    HMENU=()
-    # list systemd services
-    SYSTEMD_SERVICES=$(systemctl  --state=enabled list-unit-files '*.service' | cut -d ' ' -f1)
-    # raw ps
-    PSAX=$(ps ax -o comm=)
-    for SVC in ${SUPPORTED_SERVICES} ; do
-        log_dbg "Checking if service '${SVC}' is running (ps+systemd)"
-        for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
-            echo ${SRC} | grep ${SVC} >/dev/null
-            if [ $? -eq 0 ]; then
-                # on centos, apache2 is named httpd
-                if [[ ${SVC} == "httpd" ]] ; then
-                    SVC="apache2";
-                fi
-                DETECTED_SERVICES+=(${SVC})
-                HMENU+=(${SVC} "on")
-                log_dbg "Found '${SVC}' running"
-                break;
-            fi;
-        done;
-    done;
-    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]] || [[ ${OSTYPE} == "linux" ]]; then
-        DETECTED_SERVICES+=("linux")
-        HMENU+=("linux" "on")
-    else
-        log_info "NOT A LINUX"
-    fi;
-
-    if [[ ${SILENT} == "false" ]]; then
-        # we put whiptail results in an array, notice the dark magic fd redirection
-        DETECTED_SERVICES=($(whiptail --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
-        if [ $? -eq 1 ]; then
-            log_err "user bailed out at services selection"
-            exit 1;
-        fi;
-        log_dbg "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
-    else
-        log_dbg "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
-    fi;
-}
-
 declare -A log_input_tags
 log_input_tags[apache2]='type: apache2'
 log_input_tags[nginx]='type: nginx'
@@ -181,43 +138,6 @@ log_locations[telnet]='/var/log/telnetd*.log'
 log_locations[mysql]='/var/log/mysql/error.log'
 log_locations[smb]='/var/log/samba*.log'
 log_locations[linux]='/var/log/syslog,/var/log/kern.log,/var/log/messages'
-
-# $1 is service name, such those in SUPPORTED_SERVICES
-find_logs_for() {
-    x=${1}
-    # we have trailing and starting quotes because of whiptail
-    SVC="${x%\"}"
-    SVC="${SVC#\"}"
-    DETECTED_LOGFILES=()
-    HMENU=()
-    # log_info "Searching logs for ${SVC} : ${log_locations[${SVC}]}"
-
-    # split the line into an array with ',' separator
-    OIFS=${IFS}
-    IFS=',' read -r -a a <<< "${log_locations[${SVC}]},"
-    IFS=${OIFS}
-    # readarray -td, a <<<"${log_locations[${SVC}]},"; unset 'a[-1]';
-    for poss_path in "${a[@]}"; do
-        # Split /var/log/nginx/*.log into '/var/log/nginx' and '*.log' so we can use find
-	    path=${poss_path%/*}
-	    fname=${poss_path##*/}
-	    candidates=$(find "${path}" -type f -mtime -5 -ctime -5 -name "$fname" 2>/dev/null)
-	    # We have some candidates, add them
-	    for final_file in ${candidates} ; do
-	        log_dbg "Found logs file for '${SVC}': ${final_file}"
-	        DETECTED_LOGFILES+=(${final_file})
-            HMENU+=(${final_file} "on")
-	    done;
-    done;
-
-    if [[ ${SILENT} == "false" ]]; then
-        DETECTED_LOGFILES=($(whiptail --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
-        if [ $? -eq 1 ]; then
-            log_err "user bailed out at log file selection"
-            exit 1;
-        fi;
-    fi
-}
 
 in_array() {
     str=$1
@@ -277,60 +197,6 @@ install_collection() {
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/browse/#bouncers" 20 50
     fi
-}
-
-# $1 is the service name, $... is the list of candidate logs (from find_logs_for)
-genyamllog() {
-    local service="${1}"
-    shift
-    local files=("${@}")
-
-    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >> ${TMP_ACQUIS_FILE}
-
-    echo "filenames:"  >> ${TMP_ACQUIS_FILE}
-    for fd in ${files[@]}; do
-	echo "  - ${fd}"  >> ${TMP_ACQUIS_FILE}
-    done
-    echo "labels:"  >> ${TMP_ACQUIS_FILE}
-    echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
-    echo "---"  >> ${TMP_ACQUIS_FILE}
-    log_dbg "${ACQUIS_FILE_MSG}"
-}
-
-genyamljournal() {
-    local service="${1}"
-    shift
-
-    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >> ${TMP_ACQUIS_FILE}
-
-    echo "journalctl_filter:"  >> ${TMP_ACQUIS_FILE}
-    echo " - _SYSTEMD_UNIT="${service}".service"  >> ${TMP_ACQUIS_FILE}
-    echo "labels:"  >> ${TMP_ACQUIS_FILE}
-    echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
-    echo "---"  >> ${TMP_ACQUIS_FILE}
-    log_dbg "${ACQUIS_FILE_MSG}"
-}
-
-genacquisition() {
-    if skip_tmp_acquis; then
-        TMP_ACQUIS_FILE="${ACQUIS_TARGET}"
-        ACQUIS_FILE_MSG="acquisition file generated to: ${TMP_ACQUIS_FILE}"
-    else
-        TMP_ACQUIS_FILE="tmp-acquis.yaml"
-        ACQUIS_FILE_MSG="tmp acquisition file generated to: ${TMP_ACQUIS_FILE}"
-    fi
-
-    log_dbg "Found following services : "${DETECTED_SERVICES[@]}
-    for PSVG in ${DETECTED_SERVICES[@]} ; do
-        find_logs_for ${PSVG}
-        if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]] ; then
-            log_info "service '${PSVG}': ${DETECTED_LOGFILES[*]}"
-            genyamllog ${PSVG} ${DETECTED_LOGFILES[@]}
-	elif [[ ${PSVG} != "linux" ]] ; then
-	    log_info "using journald for '${PSVG}'"
-	    genyamljournal ${PSVG}
-        fi;
-    done
 }
 
 detect_cs_install () {

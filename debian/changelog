@@ -1,3 +1,9 @@
+crowdsec (1.6.9) UNRELEASED; urgency=medium
+
+  * Fix small stuff
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 26 Apr 2021 09:30:14 +0100
+
 crowdsec (1.0.13-3) UNRELEASED; urgency=medium
 
   * Fix small stuff
