@@ -1,4 +1,4 @@
-package cticlient
+package ctiexpr
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"github.com/bluele/gcache"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -26,12 +27,12 @@ var (
 	CTIBackOffDuration = 5 * time.Minute
 )
 
-var ctiClient *CrowdsecCTIClient
+var ctiClient *cticlient.CrowdsecCTIClient
 
 func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.Level) error {
 	if key == nil || *key == "" {
 		log.Warningf("CTI API key not set or empty, CTI will not be available")
-		return ErrDisabled
+		return cticlient.ErrDisabled
 	}
 	CTIApiKey = *key
 	if size == nil {
@@ -48,7 +49,7 @@ func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.L
 	}
 	subLogger := clog.WithField("type", "crowdsec-cti")
 	CrowdsecCTIInitCache(*size, *ttl)
-	ctiClient = NewCrowdsecCTIClient(WithAPIKey(CTIApiKey), WithLogger(subLogger))
+	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(CTIApiKey), cticlient.WithLogger(subLogger))
 	CTIApiEnabled = true
 	return nil
 }
@@ -76,16 +77,16 @@ func CrowdsecCTIInitCache(size int, ttl time.Duration) {
 func CrowdsecCTI(params ...any) (any, error) {
 	var ip string
 	if !CTIApiEnabled {
-		return &SmokeItem{}, ErrDisabled
+		return &cticlient.SmokeItem{}, cticlient.ErrDisabled
 	}
 	var ok bool
 	if ip, ok = params[0].(string); !ok {
-		return &SmokeItem{}, fmt.Errorf("invalid type for ip : %T", params[0])
+		return &cticlient.SmokeItem{}, fmt.Errorf("invalid type for ip : %T", params[0])
 	}
 
 	if val, err := CTICache.Get(ip); err == nil && val != nil {
 		ctiClient.Logger.Debugf("cti cache fetch for %s", ip)
-		ret, ok := val.(*SmokeItem)
+		ret, ok := val.(*cticlient.SmokeItem)
 		if ok {
 			return ret, nil
 		}
@@ -95,7 +96,7 @@ func CrowdsecCTI(params ...any) (any, error) {
 
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
 		//ctiClient.Logger.Warningf("Crowdsec CTI client is in backoff mode, ending in %s", time.Until(CTIBackOffUntil))
-		return &SmokeItem{}, ErrLimit
+		return &cticlient.SmokeItem{}, cticlient.ErrLimit
 	}
 
 	ctiClient.Logger.Infof("cti call for %s", ip)
@@ -104,23 +105,23 @@ func CrowdsecCTI(params ...any) (any, error) {
 	ctiClient.Logger.Debugf("request for %s took %v", ip, time.Since(before))
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrUnauthorized):
+		case errors.Is(err, cticlient.ErrUnauthorized):
 			CTIApiEnabled = false
 			ctiClient.Logger.Errorf("Invalid API key provided, disabling CTI API")
-			return &SmokeItem{}, ErrUnauthorized
-		case errors.Is(err, ErrLimit):
+			return &cticlient.SmokeItem{}, cticlient.ErrUnauthorized
+		case errors.Is(err, cticlient.ErrLimit):
 			CTIBackOffUntil = time.Now().Add(CTIBackOffDuration)
 			ctiClient.Logger.Errorf("CTI API is throttled, will try again in %s", CTIBackOffDuration)
-			return &SmokeItem{}, ErrLimit
+			return &cticlient.SmokeItem{}, cticlient.ErrLimit
 		default:
 			ctiClient.Logger.Warnf("CTI API error : %s", err)
-			return &SmokeItem{}, fmt.Errorf("unexpected error: %w", err)
+			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error: %w", err)
 		}
 	}
 
 	if err := CTICache.SetWithExpire(ip, ctiResp, CacheExpiration); err != nil {
 		ctiClient.Logger.Warningf("IpCTI : error while caching CTI : %s", err)
-		return &SmokeItem{}, ErrUnknown
+		return &cticlient.SmokeItem{}, cticlient.ErrUnknown
 	}
 
 	ctiClient.Logger.Tracef("CTI response : %v", *ctiResp)

@@ -1,4 +1,4 @@
-package cticlient
+package ctiexpr
 
 import (
 	"bytes"
@@ -14,14 +14,26 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
 
-var sampledata = map[string]SmokeItem{
+const validApiKey = "my-api-key"
+
+// RoundTripFunc .
+type RoundTripFunc func(req *http.Request) *http.Response
+
+// RoundTrip .
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req), nil
+}
+
+var sampledata = map[string]cticlient.SmokeItem{
 	//1.2.3.4 is a known false positive
 	"1.2.3.4": {
 		Ip: "1.2.3.4",
-		Classifications: CTIClassifications{
-			FalsePositives: []CTIClassification{
+		Classifications: cticlient.CTIClassifications{
+			FalsePositives: []cticlient.CTIClassification{
 				{
 					Name:  "example_false_positive",
 					Label: "Example False Positive",
@@ -32,8 +44,8 @@ var sampledata = map[string]SmokeItem{
 	//1.2.3.5 is a known bad-guy, and part of FIRE
 	"1.2.3.5": {
 		Ip: "1.2.3.5",
-		Classifications: CTIClassifications{
-			Classifications: []CTIClassification{
+		Classifications: cticlient.CTIClassifications{
+			Classifications: []cticlient.CTIClassification{
 				{
 					Name:        "community-blocklist",
 					Label:       "CrowdSec Community Blocklist",
@@ -46,10 +58,10 @@ var sampledata = map[string]SmokeItem{
 	"1.2.3.6": {
 		Ip:                   "1.2.3.6",
 		BackgroundNoiseScore: new(int),
-		Behaviors: []*CTIBehavior{
+		Behaviors: []*cticlient.CTIBehavior{
 			{Name: "ssh:bruteforce", Label: "SSH Bruteforce", Description: "SSH Bruteforce"},
 		},
-		AttackDetails: []*CTIAttackDetails{
+		AttackDetails: []*cticlient.CTIAttackDetails{
 			{Name: "crowdsecurity/ssh-bf", Label: "Example Attack"},
 			{Name: "crowdsecurity/ssh-slow-bf", Label: "Example Attack"},
 		},
@@ -58,7 +70,7 @@ var sampledata = map[string]SmokeItem{
 	"1.2.3.7": {},
 }
 
-func smokeHandler2(req *http.Request) *http.Response {
+func smokeHandler(req *http.Request) *http.Response {
 	apiKey := req.Header.Get("X-Api-Key")
 	if apiKey != validApiKey {
 		return &http.Response{
@@ -102,13 +114,13 @@ func smokeHandler2(req *http.Request) *http.Response {
 func TestNilClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
-	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, ErrDisabled) {
+	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 
 	item, err := CrowdsecCTI("1.2.3.4")
-	assert.Equal(t, err, ErrDisabled)
-	assert.Equal(t, &SmokeItem{}, item)
+	assert.Equal(t, err, cticlient.ErrDisabled)
+	assert.Equal(t, &cticlient.SmokeItem{}, item)
 }
 
 func TestInvalidAuth(t *testing.T) {
@@ -118,40 +130,40 @@ func TestInvalidAuth(t *testing.T) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient = NewCrowdsecCTIClient(WithAPIKey("asdasd"), WithHTTPClient(&http.Client{
-		Transport: RoundTripFunc(smokeHandler2),
+	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
+		Transport: RoundTripFunc(smokeHandler),
 	}))
 
 	item, err := CrowdsecCTI("1.2.3.4")
-	assert.Equal(t, &SmokeItem{}, item)
+	assert.Equal(t, &cticlient.SmokeItem{}, item)
 	assert.False(t, CTIApiEnabled)
-	assert.Equal(t, err, ErrUnauthorized)
+	assert.Equal(t, err, cticlient.ErrUnauthorized)
 
 	//CTI is now disabled, all requests should return empty
-	ctiClient = NewCrowdsecCTIClient(WithAPIKey(validApiKey), WithHTTPClient(&http.Client{
-		Transport: RoundTripFunc(smokeHandler2),
+	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(validApiKey), cticlient.WithHTTPClient(&http.Client{
+		Transport: RoundTripFunc(smokeHandler),
 	}))
 
 	item, err = CrowdsecCTI("1.2.3.4")
-	assert.Equal(t, &SmokeItem{}, item)
+	assert.Equal(t, &cticlient.SmokeItem{}, item)
 	assert.False(t, CTIApiEnabled)
-	assert.Equal(t, err, ErrDisabled)
+	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
 func TestNoKey(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
 	err := InitCrowdsecCTI(nil, nil, nil, nil)
-	require.ErrorIs(t, err, ErrDisabled)
+	require.ErrorIs(t, err, cticlient.ErrDisabled)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient = NewCrowdsecCTIClient(WithAPIKey("asdasd"), WithHTTPClient(&http.Client{
-		Transport: RoundTripFunc(smokeHandler2),
+	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
+		Transport: RoundTripFunc(smokeHandler),
 	}))
 
 	item, err := CrowdsecCTI("1.2.3.4")
-	assert.Equal(t, &SmokeItem{}, item)
+	assert.Equal(t, &cticlient.SmokeItem{}, item)
 	assert.False(t, CTIApiEnabled)
-	assert.Equal(t, err, ErrDisabled)
+	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
 func TestCache(t *testing.T) {
@@ -162,19 +174,19 @@ func TestCache(t *testing.T) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient = NewCrowdsecCTIClient(WithAPIKey(validApiKey), WithHTTPClient(&http.Client{
-		Transport: RoundTripFunc(smokeHandler2),
+	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(validApiKey), cticlient.WithHTTPClient(&http.Client{
+		Transport: RoundTripFunc(smokeHandler),
 	}))
 
 	item, err := CrowdsecCTI("1.2.3.4")
-	ctiResp := item.(*SmokeItem)
+	ctiResp := item.(*cticlient.SmokeItem)
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
 	assert.True(t, CTIApiEnabled)
 	assert.Equal(t, 1, CTICache.Len(true))
 	require.NoError(t, err)
 
 	item, err = CrowdsecCTI("1.2.3.4")
-	ctiResp = item.(*SmokeItem)
+	ctiResp = item.(*cticlient.SmokeItem)
 
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
 	assert.True(t, CTIApiEnabled)
@@ -186,7 +198,7 @@ func TestCache(t *testing.T) {
 	assert.Equal(t, 0, CTICache.Len(true))
 
 	item, err = CrowdsecCTI("1.2.3.4")
-	ctiResp = item.(*SmokeItem)
+	ctiResp = item.(*cticlient.SmokeItem)
 
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
 	assert.True(t, CTIApiEnabled)

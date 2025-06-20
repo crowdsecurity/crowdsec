@@ -9,6 +9,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 )
 
 type exprCustomFunc struct {
@@ -20,7 +21,7 @@ type exprCustomFunc struct {
 var exprFuncs = []exprCustomFunc{
 	{
 		name:     "CrowdsecCTI",
-		function: cticlient.CrowdsecCTI,
+		function: ctiexpr.CrowdsecCTI,
 		signature: []interface{}{
 			new(func(string) (*cticlient.SmokeItem, error)),
 		},

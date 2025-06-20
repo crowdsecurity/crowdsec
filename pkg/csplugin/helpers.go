@@ -7,7 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -24,7 +24,7 @@ var helpers = template.FuncMap{
 		return metaValues
 	},
 	"CrowdsecCTI": func(x string) any {
-		ret, err := cticlient.CrowdsecCTI(x)
+		ret, err := ctiexpr.CrowdsecCTI(x)
 		if err != nil {
 			log.Warningf("error while calling CrowdsecCTI : %s", err)
 		}

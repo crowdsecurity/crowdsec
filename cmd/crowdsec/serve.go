@@ -17,7 +17,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -374,7 +374,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 
-		if err := cticlient.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
+		if err := ctiexpr.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
 			return fmt.Errorf("failed to init crowdsec cti: %w", err)
 		}
 	}
