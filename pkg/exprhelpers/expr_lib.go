@@ -20,7 +20,7 @@ type exprCustomFunc struct {
 var exprFuncs = []exprCustomFunc{
 	{
 		name:     "CrowdsecCTI",
-		function: CrowdsecCTI,
+		function: cticlient.CrowdsecCTI,
 		signature: []interface{}{
 			new(func(string) (*cticlient.SmokeItem, error)),
 		},

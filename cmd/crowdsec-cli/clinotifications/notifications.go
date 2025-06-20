@@ -30,6 +30,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -291,7 +292,7 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 
 			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
 				log.Infof("Crowdsec CTI helper enabled")
-				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+				if err := cticlient.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
 					log.Errorf("failed to init crowdsec cti: %s", err)
 				}
 			}
@@ -419,7 +420,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 
 			if cfg.API.CTI != nil && cfg.API.CTI.Enabled != nil && *cfg.API.CTI.Enabled {
 				log.Infof("Crowdsec CTI helper enabled")
-				if err := exprhelpers.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
+				if err := cticlient.InitCrowdsecCTI(cfg.API.CTI.Key, cfg.API.CTI.CacheTimeout, cfg.API.CTI.CacheSize, cfg.API.CTI.LogLevel); err != nil {
 					log.Errorf("failed to init crowdsec cti: %s", err)
 				}
 			}
