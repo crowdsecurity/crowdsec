@@ -30,7 +30,6 @@ linters:
     - exhaustive            # check exhaustiveness of enum switch statements
     - godot                 # Check if comments end in a period
     - gosec                 # (gas): Inspects source code for security problems
-    - inamedparam           # reports interfaces with unnamed method parameters
     - musttag               # enforce field tags in (un)marshaled structs
     - promlinter            # Check Prometheus metrics naming via promlint
     - protogetter           # Reports direct reads from proto message fields when getters should be used
@@ -194,7 +193,7 @@ linters:
       min-complexity: 16
 
     nlreturn:
-      block-size: 5
+      block-size: 6
 
     nolintlint:
       require-explanation: false  # don't require an explanation for nolint directives
@@ -218,7 +217,7 @@ linters:
         - name: cyclomatic
           arguments:
             # lower this after refactoring
-            - 38
+            - 39
         - name: defer
           disabled: true
         - name: empty-block

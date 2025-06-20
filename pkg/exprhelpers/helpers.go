@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net"
 	"net/url"
@@ -631,9 +632,7 @@ func ParseUri(params ...any) (any, error) {
 		return ret, nil
 	}
 
-	for k, v := range parsed {
-		ret[k] = v
-	}
+	maps.Copy(ret, parsed)
 
 	return ret, nil
 }

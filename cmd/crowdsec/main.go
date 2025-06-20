@@ -274,7 +274,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	if !cConfig.DisableAPI {
-		if err := cConfig.LoadAPIServer(false); err != nil {
+		if err := cConfig.LoadAPIServer(false, false); err != nil {
 			return nil, err
 		}
 	}
