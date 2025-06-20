@@ -29,7 +29,7 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 var sampledata = map[string]cticlient.SmokeItem{
-	//1.2.3.4 is a known false positive
+	// 1.2.3.4 is a known false positive
 	"1.2.3.4": {
 		Ip: "1.2.3.4",
 		Classifications: cticlient.CTIClassifications{
@@ -41,7 +41,7 @@ var sampledata = map[string]cticlient.SmokeItem{
 			},
 		},
 	},
-	//1.2.3.5 is a known bad-guy, and part of FIRE
+	// 1.2.3.5 is a known bad-guy, and part of FIRE
 	"1.2.3.5": {
 		Ip: "1.2.3.5",
 		Classifications: cticlient.CTIClassifications{
@@ -54,7 +54,7 @@ var sampledata = map[string]cticlient.SmokeItem{
 			},
 		},
 	},
-	//1.2.3.6 is a bad guy (high bg noise), but not in FIRE
+	// 1.2.3.6 is a bad guy (high bg noise), but not in FIRE
 	"1.2.3.6": {
 		Ip:                   "1.2.3.6",
 		BackgroundNoiseScore: new(int),
@@ -66,7 +66,7 @@ var sampledata = map[string]cticlient.SmokeItem{
 			{Name: "crowdsecurity/ssh-slow-bf", Label: "Example Attack"},
 		},
 	},
-	//1.2.3.7 is a ok guy, but part of a bad range
+	// 1.2.3.7 is a ok guy, but part of a bad range
 	"1.2.3.7": {},
 }
 
@@ -129,7 +129,7 @@ func TestInvalidAuth(t *testing.T) {
 	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
-	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
+	// Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
@@ -139,7 +139,7 @@ func TestInvalidAuth(t *testing.T) {
 	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrUnauthorized)
 
-	//CTI is now disabled, all requests should return empty
+	// CTI is now disabled, all requests should return empty
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(validApiKey), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
@@ -155,7 +155,7 @@ func TestNoKey(t *testing.T) {
 
 	err := InitCrowdsecCTI(nil, nil, nil, nil)
 	require.ErrorIs(t, err, cticlient.ErrDisabled)
-	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
+	// Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
@@ -173,7 +173,7 @@ func TestCache(t *testing.T) {
 	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
-	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
+	// Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(validApiKey), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))

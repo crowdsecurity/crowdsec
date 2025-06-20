@@ -34,23 +34,31 @@ func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.L
 		log.Warningf("CTI API key not set or empty, CTI will not be available")
 		return cticlient.ErrDisabled
 	}
+
 	CTIApiKey = *key
+
 	if size == nil {
 		size = new(int)
 		*size = 1000
 	}
+
 	if ttl == nil {
 		ttl = new(time.Duration)
 		*ttl = 5 * time.Minute
 	}
+
 	clog := log.New()
 	if err := types.ConfigureLogger(clog, logLevel); err != nil {
 		return fmt.Errorf("while configuring datasource logger: %w", err)
 	}
+
 	subLogger := clog.WithField("type", "crowdsec-cti")
+
 	CrowdsecCTIInitCache(*size, *ttl)
+
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(CTIApiKey), cticlient.WithLogger(subLogger))
 	CTIApiEnabled = true
+
 	return nil
 }
 
@@ -58,6 +66,7 @@ func ShutdownCrowdsecCTI() {
 	if CTICache != nil {
 		CTICache.Purge()
 	}
+
 	CTIApiKey = ""
 	CTIApiEnabled = false
 }
@@ -76,31 +85,39 @@ func CrowdsecCTIInitCache(size int, ttl time.Duration) {
 // func CrowdsecCTI(ip string) (*cticlient.SmokeItem, error) {
 func CrowdsecCTI(params ...any) (any, error) {
 	var ip string
+
 	if !CTIApiEnabled {
 		return &cticlient.SmokeItem{}, cticlient.ErrDisabled
 	}
+
 	var ok bool
+
 	if ip, ok = params[0].(string); !ok {
 		return &cticlient.SmokeItem{}, fmt.Errorf("invalid type for ip : %T", params[0])
 	}
 
 	if val, err := CTICache.Get(ip); err == nil && val != nil {
 		ctiClient.Logger.Debugf("cti cache fetch for %s", ip)
+
 		ret, ok := val.(*cticlient.SmokeItem)
 		if ok {
 			return ret, nil
 		}
+
 		ctiClient.Logger.Warningf("CrowdsecCTI: invalid type in cache, removing")
+
 		CTICache.Remove(ip)
 	}
 
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
-		//ctiClient.Logger.Warningf("Crowdsec CTI client is in backoff mode, ending in %s", time.Until(CTIBackOffUntil))
+		// ctiClient.Logger.Warningf("Crowdsec CTI client is in backoff mode, ending in %s", time.Until(CTIBackOffUntil))
 		return &cticlient.SmokeItem{}, cticlient.ErrLimit
 	}
 
 	ctiClient.Logger.Infof("cti call for %s", ip)
+
 	before := time.Now()
+
 	ctiResp, err := ctiClient.GetIPInfo(ip)
 	ctiClient.Logger.Debugf("request for %s took %v", ip, time.Since(before))
 	if err != nil {
