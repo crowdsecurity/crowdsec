@@ -865,7 +865,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 			ret = append(ret, result...)
 		}
 
-		if len(ret) == limit || len(ret) < paginationSize {
+		if len(ret) == limit || len(result) < paginationSize {
 			c.Log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}
