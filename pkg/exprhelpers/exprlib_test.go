@@ -548,11 +548,13 @@ func TestIpToRange(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
 	tests := []struct {
-		name   string
-		env    map[string]interface{}
-		code   string
-		result string
-		err    string
+		name           string
+		env            map[string]interface{}
+		code           string
+		want           string
+		wantCompileErr string
+		wantRunErr     string
+		wantLog        string
 	}{
 		{
 			name: "IpToRange() test: IPv4",
@@ -561,8 +563,7 @@ func TestIpToRange(t *testing.T) {
 				"netmask": "16",
 			},
 			code:   "IpToRange(ip, netmask)",
-			result: "192.168.0.0/16",
-			err:    "",
+			want: "192.168.0.0/16",
 		},
 		{
 			name: "IpToRange() test: IPv6",
@@ -571,8 +572,7 @@ func TestIpToRange(t *testing.T) {
 				"netmask": "/64",
 			},
 			code:   "IpToRange(ip, netmask)",
-			result: "2001:db8::/64",
-			err:    "",
+			want: "2001:db8::/64",
 		},
 		{
 			name: "IpToRange() test: malformed netmask",
@@ -581,8 +581,7 @@ func TestIpToRange(t *testing.T) {
 				"netmask": "test",
 			},
 			code:   "IpToRange(ip, netmask)",
-			result: "",
-			err:    "",
+			want: "",
 		},
 		{
 			name: "IpToRange() test: malformed IP",
@@ -591,8 +590,6 @@ func TestIpToRange(t *testing.T) {
 				"netmask": "24",
 			},
 			code:   "IpToRange(ip, netmask)",
-			result: "",
-			err:    "",
 		},
 		{
 			name: "IpToRange() test: too high netmask",
@@ -601,18 +598,32 @@ func TestIpToRange(t *testing.T) {
 				"netmask": "35",
 			},
 			code:   "IpToRange(ip, netmask)",
-			result: "",
-			err:    "",
+			wantLog: "can't create prefix from IP address '192.168.1.1' and mask '35': prefix length 35 too large for IPv4",
 		},
 	}
 
-	for _, test := range tests {
-		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
-		require.NoError(t, err)
-		output, err := expr.Run(program, test.env)
-		require.NoError(t, err)
-		require.Equal(t, test.result, output)
-		log.Printf("test '%s' : OK", test.name)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := cstest.CaptureLogs(t)
+
+			program, err := expr.Compile(tc.code, GetExprOptions(tc.env)...)
+			cstest.RequireErrorContains(t, err, tc.wantCompileErr)
+			if tc.wantCompileErr != "" {
+				return
+			}
+
+			output, err := expr.Run(program, tc.env)
+			cstest.RequireErrorContains(t, err, tc.wantRunErr)
+			if tc.wantRunErr != "" {
+				return
+			}
+
+			if tc.wantLog != "" {
+				assert.Contains(t, buf.String(), tc.wantLog)
+			}
+
+			require.Equal(t, tc.want, output)
+		})
 	}
 }
 
