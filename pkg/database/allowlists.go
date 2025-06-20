@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -14,8 +14,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func (c *Client) CreateAllowList(ctx context.Context, name string, description string, allowlistID string, fromConsole bool) (*ent.AllowList, error) {
@@ -142,7 +142,7 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 	for _, item := range items {
 		c.Log.Debugf("adding value %s to allowlist %s", item.Value, list.Name)
 
-		sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(item.Value)
+		rng, err := csnet.NewRange(item.Value)
 		if err != nil {
 			c.Log.Error(err)
 			continue
@@ -150,11 +150,11 @@ func (c *Client) AddToAllowlist(ctx context.Context, list *ent.AllowList, items 
 
 		query := txClient.AllowListItem.Create().
 			SetValue(item.Value).
-			SetIPSize(int64(sz)).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
+			SetIPSize(int64(rng.Size())).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
 			SetComment(item.Description)
 
 		if !time.Time(item.Expiration).IsZero() {
@@ -245,7 +245,7 @@ func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, e
 		- value is an IP/range in a range in allowlist
 		- value is a range and an IP/range belonging to it is in allowlist
 	*/
-	sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(value)
+	rng, err := csnet.NewRange(value)
 	if err != nil {
 		return nil, err
 	}
@@ -258,57 +258,57 @@ func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, e
 			allowlistitem.ExpiresAtGTE(now),
 			allowlistitem.ExpiresAtIsNil(),
 		),
-		allowlistitem.IPSizeEQ(int64(sz)),
+		allowlistitem.IPSizeEQ(int64(rng.Size())),
 	)
 
-	if sz == 4 {
+	if rng.Size() == 4 {
 		query = query.Where(
 			allowlistitem.Or(
 				// Value contained inside a range or exact match
 				allowlistitem.And(
-					allowlistitem.StartIPLTE(start_ip),
-					allowlistitem.EndIPGTE(end_ip),
+					allowlistitem.StartIPLTE(rng.Start.Addr),
+					allowlistitem.EndIPGTE(rng.End.Addr),
 				),
 				// Value contains another allowlisted value
 				allowlistitem.And(
-					allowlistitem.StartIPGTE(start_ip),
-					allowlistitem.EndIPLTE(end_ip),
+					allowlistitem.StartIPGTE(rng.Start.Addr),
+					allowlistitem.EndIPLTE(rng.End.Addr),
 				),
 			))
 	}
 
-	if sz == 16 {
+	if rng.Size() == 16 {
 		query = query.Where(
 			// Value contained inside a range or exact match
 			allowlistitem.Or(
 				allowlistitem.And(
 					allowlistitem.Or(
-						allowlistitem.StartIPLT(start_ip),
+						allowlistitem.StartIPLT(rng.Start.Addr),
 						allowlistitem.And(
-							allowlistitem.StartIPEQ(start_ip),
-							allowlistitem.StartSuffixLTE(start_sfx),
+							allowlistitem.StartIPEQ(rng.Start.Addr),
+							allowlistitem.StartSuffixLTE(rng.Start.Sfx),
 						)),
 					allowlistitem.Or(
-						allowlistitem.EndIPGT(end_ip),
+						allowlistitem.EndIPGT(rng.End.Addr),
 						allowlistitem.And(
-							allowlistitem.EndIPEQ(end_ip),
-							allowlistitem.EndSuffixGTE(end_sfx),
+							allowlistitem.EndIPEQ(rng.End.Addr),
+							allowlistitem.EndSuffixGTE(rng.End.Sfx),
 						),
 					),
 				),
 				// Value contains another allowlisted value
 				allowlistitem.And(
 					allowlistitem.Or(
-						allowlistitem.StartIPGT(start_ip),
+						allowlistitem.StartIPGT(rng.Start.Addr),
 						allowlistitem.And(
-							allowlistitem.StartIPEQ(start_ip),
-							allowlistitem.StartSuffixGTE(start_sfx),
+							allowlistitem.StartIPEQ(rng.Start.Addr),
+							allowlistitem.StartSuffixGTE(rng.Start.Sfx),
 						)),
 					allowlistitem.Or(
-						allowlistitem.EndIPLT(end_ip),
+						allowlistitem.EndIPLT(rng.End.Addr),
 						allowlistitem.And(
-							allowlistitem.EndIPEQ(end_ip),
-							allowlistitem.EndSuffixLTE(end_sfx),
+							allowlistitem.EndIPEQ(rng.End.Addr),
+							allowlistitem.EndSuffixLTE(rng.End.Sfx),
 						),
 					),
 				),
@@ -354,22 +354,22 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 	return true, reason, nil
 }
 
-func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*net.IPNet, error) {
+func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]netip.Addr, []netip.Prefix, error) {
 	allowlists, err := c.ListAllowLists(ctx, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get allowlists: %w", err)
 	}
 
 	var (
-		ips  []net.IP
-		nets []*net.IPNet
+		ips  []netip.Addr
+		nets []netip.Prefix
 	)
 
 	for _, allowlist := range allowlists {
 		for _, item := range allowlist.Edges.AllowlistItems {
 			if item.ExpiresAt.IsZero() || item.ExpiresAt.After(time.Now().UTC()) {
 				if strings.Contains(item.Value, "/") {
-					_, ipNet, err := net.ParseCIDR(item.Value)
+					ipNet, err := netip.ParsePrefix(item.Value)
 					if err != nil {
 						c.Log.Errorf("unable to parse CIDR %s: %s", item.Value, err)
 						continue
@@ -377,8 +377,8 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 
 					nets = append(nets, ipNet)
 				} else {
-					ip := net.ParseIP(item.Value)
-					if ip == nil {
+					ip, err := netip.ParseAddr(item.Value)
+					if err != nil {
 						c.Log.Errorf("unable to parse IP %s", item.Value)
 						continue
 					}
