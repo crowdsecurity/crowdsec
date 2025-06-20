@@ -17,6 +17,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -323,16 +324,20 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}
+
 	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
 		log.Warning("Unregistering watcher")
+
 		lapiClient, err := apiclient.GetLAPIClient()
 		if err != nil {
 			return err
 		}
+
 		_, err = lapiClient.Auth.UnregisterWatcher(context.TODO())
 		if err != nil {
 			return fmt.Errorf("failed to unregister watcher: %w", err)
 		}
+
 		log.Warning("Watcher unregistered")
 	}
 
@@ -373,7 +378,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 
-		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
+		if err := ctiexpr.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
 			return fmt.Errorf("failed to init crowdsec cti: %w", err)
 		}
 	}
