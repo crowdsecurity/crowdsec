@@ -51,7 +51,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		/*
 		** According to current Event layout we only have to handle struct and map
 		 */
-		switch iter.Kind() {
+		switch iter.Kind() { //nolint:exhaustive
 		case reflect.Map:
 			tmp := iter.MapIndex(reflect.ValueOf(f))
 			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
