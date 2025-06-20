@@ -1,5 +1,5 @@
-include mk/platform.mk
-include mk/gmsl
+include build/mk/platform.mk
+include build/mk/gmsl
 
 # By default, this build requires the C++ re2 library to be installed.
 #
@@ -399,4 +399,4 @@ else
 include test/bats.mk
 endif
 
-include mk/help.mk
+include build/mk/help.mk

@@ -10,11 +10,11 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 else
 	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
-	include mk/platform/unix_common.mk
+	include build/mk/platform/unix_common.mk
 endif
 
-ifneq ("$(wildcard mk/platform/$(SYSTEM).mk)", "")
-	include mk/platform/$(SYSTEM).mk
+ifneq ("$(wildcard build/mk/platform/$(SYSTEM).mk)", "")
+	include build/mk/platform/$(SYSTEM).mk
 else
-	include mk/platform/linux.mk
+	include build/mk/platform/linux.mk
 endif
