@@ -13,7 +13,7 @@ import (
 func BenchmarkPredictLabel(b *testing.B) {
 	log.Println("Starting benchmark for PredictLabel")
 
-	tarFilePath := "tests/anomaly_detection_bundle_test.tar"
+	tarFilePath := "testdata/anomaly_detection_bundle_test.tar"
 
 	pipeline, err := NewRobertaInferencePipeline(tarFilePath)
 	if err != nil {
@@ -91,7 +91,7 @@ func TestPredictLabel(t *testing.T) {
 		},
 	}
 
-	tarFilePath := "tests/anomaly_detection_bundle_test.tar"
+	tarFilePath := "testdata/anomaly_detection_bundle_test.tar"
 
 	pipeline, err := NewRobertaInferencePipeline(tarFilePath)
 	if err != nil {

@@ -39,7 +39,7 @@ func TestAnomalyDetection(t *testing.T) {
 		},
 	}
 
-	tarFilePath := "tests/anomaly_detection_bundle_test.tar"
+	tarFilePath := "testdata/anomaly_detection_bundle_test.tar"
 
 	if err := InitRobertaInferencePipeline(tarFilePath); err != nil {
 		t.Fatalf("failed to initialize RobertaInferencePipeline: %v", err)
