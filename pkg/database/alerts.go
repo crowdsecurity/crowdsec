@@ -16,13 +16,13 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -119,15 +119,12 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 
 	decisionBuilders := []*ent.DecisionCreate{}
 
-	for _, decisionItem := range missingDecisions {
-		var (
-			start_ip, start_sfx, end_ip, end_sfx int64
-			sz                                   int
-		)
+	var rng csnet.Range
 
+	for _, decisionItem := range missingDecisions {
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
 				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
 				continue
@@ -154,11 +151,11 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			SetUntil(decisionUntil).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetIPSize(int64(sz)).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
@@ -281,11 +278,6 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	valueList := make([]string, 0, len(alertItem.Decisions))
 
 	for _, decisionItem := range alertItem.Decisions {
-		var (
-			start_ip, start_sfx, end_ip, end_sfx int64
-			sz                                   int
-		)
-
 		if decisionItem.Duration == nil {
 			log.Warning("nil duration in community decision")
 			continue
@@ -301,9 +293,11 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			continue
 		}
 
+		var rng csnet.Range
+
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
 				return 0, 0, 0, rollbackOnError(txClient, err, "invalid ip addr/range")
 			}
@@ -314,11 +308,11 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			SetUntil(ts.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetIPSize(int64(sz)).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
@@ -378,10 +372,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
-		var (
-			start_ip, start_sfx, end_ip, end_sfx int64
-			sz                                   int
-		)
+		var rng csnet.Range
 
 		duration, err := cstime.ParseDurationWithDays(*decisionItem.Duration)
 		if err != nil {
@@ -390,7 +381,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
 				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
 				continue
@@ -401,11 +392,11 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			SetUntil(stopAtTime.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetIPSize(int64(sz)).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
