@@ -52,6 +52,13 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		return
 	}
 
+	// For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
+	if gctx.Request.Method == http.MethodHead {
+		gctx.String(http.StatusOK, "")
+
+		return
+	}
+
 	data, err = c.DBClient.QueryDecisionWithFilter(ctx, gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
@@ -67,13 +74,6 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	} else {
 		PrometheusBouncersHasEmptyDecision(gctx)
 	}
-
-	if gctx.Request.Method == http.MethodHead {
-		gctx.String(http.StatusOK, "")
-
-		return
-	}
-
 	if bouncerInfo.LastPull == nil || time.Now().UTC().Sub(*bouncerInfo.LastPull) >= time.Minute {
 		if err := c.DBClient.UpdateBouncerLastPull(ctx, time.Now().UTC(), bouncerInfo.ID); err != nil {
 			log.Errorf("failed to update bouncer last pull: %v", err)
