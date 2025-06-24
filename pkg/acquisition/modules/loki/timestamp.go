@@ -7,7 +7,7 @@ import (
 
 type timestamp time.Time
 
-func (t *timestamp) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *timestamp) UnmarshalYAML(unmarshal func(any) error) error {
 	var tt time.Time
 	err := unmarshal(&tt)
 	if err == nil {

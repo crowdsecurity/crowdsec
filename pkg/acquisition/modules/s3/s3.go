@@ -701,6 +701,6 @@ func (s *S3Source) CanRun() error {
 	return nil
 }
 
-func (s *S3Source) Dump() interface{} {
+func (s *S3Source) Dump() any {
 	return s
 }

@@ -51,7 +51,7 @@ type LokiQuery struct {
 type Data struct {
 	ResultType string         `json:"resultType"`
 	Result     []StreamResult `json:"result"` // Warning, just stream value is handled
-	Stats      interface{}    `json:"stats"`  // Stats is boring, just ignore it
+	Stats      any            `json:"stats"`  // Stats is boring, just ignore it
 }
 
 type StreamResult struct {
