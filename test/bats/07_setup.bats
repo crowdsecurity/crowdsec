@@ -96,7 +96,7 @@ teardown() {
 @test "cscli setup detect --force-os-*" {
     rune -0 cscli setup detect --force-os-family linux --detect-config "${TESTDATA}/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="linux")' <(output)
-    assert_json '{detected_service:"linux",install:{collections:["crowdsecurity/linux"]},datasource:{source:"file",labels:{type:"syslog"},filenames:["/var/log/syslog","/var/log/kern.log","/var/log/messages"]}}'
+    assert_json '{detected_service:"linux",install:{collections:["crowdsecurity/linux"]},acquisition:{filename:"linux.yaml", datasource:{source:"file",labels:{type:"syslog"},filenames:["/var/log/syslog","/var/log/kern.log","/var/log/messages"]}}}'
 
     rune -0 cscli setup detect --force-os-family freebsd --detect-config "${TESTDATA}/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="freebsd")' <(output)
@@ -147,11 +147,13 @@ teardown() {
 	  apache2:
 	    when:
 	      - UnitFound("mock-apache2.service")
-	    datasource:
-	      source: file
-	      filename: dummy.log
-	      labels:
-	        type: apache2
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	          type: apache2
 	EOT
 
     # transparently mock systemctl. It's easier if you can tell the application
@@ -199,7 +201,7 @@ update-notifier-motd.timer              enabled enabled
 
     # If a call to UnitFoundwas part of the expression and it returned true,
     # there is a default journalctl_filter derived from the unit's name.
-    assert_json '[{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}},detected_service:"apache2"}]'
+    assert_json '[{acquisition:{filename:"apache.yaml",datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}}},detected_service:"apache2"}]'
 
     # the command was called exactly once
     [[ $(mock_get_call_num "$mock") -eq 1 ]]
@@ -222,11 +224,13 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("mock-apache2.service")
-	    datasource:
-	      source: file
-	      filename: dummy.log
-	      labels:
-	        type: apache2
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	          type: apache2
 	EOT
 
     # transparently mock systemctl. It's easier if you can tell the application
@@ -269,33 +273,37 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("force-apache2")
-	    datasource:
-	      source: file
-	      filename: dummy.log
-	      labels:
-	        type: apache2
+	    acquisition:
+	      filename: apache2.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	          type: apache2
 	  apache3:
 	    when:
 	      - UnitFound("force-apache3")
-	    datasource:
-	      source: file
-	      filename: dummy.log
-	      labels:
-	        type: apache3
+	    acquisition:
+	      filename: apache3.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	            type: apache3
 	EOT
 
     rune -0 cscli setup detect --force-unit force-apache2
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache2"}},detected_service:"apache2"}]'
+    assert_json '[{acquisition:{filename:"apache2.yaml",datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache2"}}},detected_service:"apache2"}]'
 
     rune -0 cscli setup detect --force-unit force-apache2,force-apache3
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}},detected_service:"apache2"},{datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache3"}},detected_service:"apache3"}]'
+    assert_json '[{acquisition:{filename:"apache2.yaml",datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}}},detected_service:"apache2"},{acquisition:{filename:"apache3.yaml",datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache3"}}},detected_service:"apache3"}]'
 
     # force-unit can be specified multiple times, the order does not matter
     rune -0 cscli setup detect --force-unit force-apache3 --force-unit force-apache2
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}},detected_service:"apache2"},{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache3"}},detected_service:"apache3"}]'
+    assert_json '[{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache2.yaml"},"detected_service":"apache2"},{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache3"},"source":"file"},"filename":"apache3.yaml"},"detected_service":"apache3"}]'
 
     rune -1 cscli setup detect --force-unit mock-doesnotexist
     assert_stderr --partial "Error: parsing $DETECT_YAML: unit(s) required but not supported: [mock-doesnotexist]"
@@ -346,26 +354,30 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("force-apache2")
-	    datasource:
-	      source: file
-	      filename: dummy.log
-	      labels:
-	        type: apache2
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	          type: apache2
 	EOT
 
     rune -0 cscli setup detect --force-unit force-apache2
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}},detected_service:"apache2"}]'
+    assert_json '[{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache.yaml"},"detected_service":"apache2"}]'
 
     rune -0 cscli setup detect --force-unit force-apache2 --yaml
     assert_output - <<-EOT
 	setup:
 	  - detected_service: apache2
-	    datasource:
-	      filename: dummy.log
-	      labels:
-	        type: apache2
-	      source: file
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        filename: dummy.log
+	        labels:
+	          type: apache2
+	        source: file
 	EOT
 }
 
@@ -375,30 +387,34 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  foobar:
-            datasource:
-              filenames:
-                - /path/to/log/*.log
-              exclude_regexps:
-                - ^/path/to/log/excludeme\.log$
-              force_inotify: true
-              mode: tail
-              labels:
-                type: foolog
+	    acquisition:
+	      filename: foo.yaml
+	      datasource:
+	        filenames:
+	          - /path/to/log/*.log
+	        exclude_regexps:
+	          - ^/path/to/log/excludeme\.log$
+	        force_inotify: true
+	        mode: tail
+	        labels:
+	          type: foolog
 	EOT
 
     rune -0 cscli setup detect --yaml
     assert_output - <<-EOT
 	setup:
 	  - detected_service: foobar
+	    acquisition:
+	      filename: foo.yaml
 	    datasource:
-              filenames:
-                - /path/to/log/*.log
-              exclude_regexps:
-                - ^/path/to/log/excludeme.log$
-              force_inotify: true
-              mode: tail
-              labels:
-                type: foolog
+	      filenames:
+	        - /path/to/log/*.log
+	      exclude_regexps:
+	        - ^/path/to/log/excludeme.log$
+	      force_inotify: true
+	      mode: tail
+	      labels:
+	        type: foolog
 	EOT
 }
 
@@ -430,8 +446,8 @@ update-notifier-motd.timer              enabled enabled
 	
 	The following services will be configured.
 	- always
-
-        Nothing to install or remove.
+	
+	Nothing to install or remove.
 	EOT
     refute_stderr
 }
@@ -488,22 +504,25 @@ update-notifier-motd.timer              enabled enabled
 	  foobar:
 	    when:
 	      - ProcessRunning("force-foobar")
-	    datasource:
-	      source: file
-	      labels:
-	        type: foobar
-	      filenames:
-	        - /var/log/apache2/*.log
-	        - /var/log/*http*/*.log
+	    acquisition:
+	      filename: foo.yaml
+	      datasource:
+	        source: file
+	        labels:
+	          type: foobar
+	        filenames:
+	          - /var/log/apache2/*.log
+	          - /var/log/*http*/*.log
 	EOT
 
     rune -0 cscli setup detect --force-process force-foobar
     rune -0 yq -op '.setup | sort_keys(..)' <(output)
     assert_output - <<-EOT
-	0.datasource.filenames.0 = /var/log/apache2/*.log
-	0.datasource.filenames.1 = /var/log/*http*/*.log
-	0.datasource.labels.type = foobar
-	0.datasource.source = file
+	0.acquisition.datasource.filenames.0 = /var/log/apache2/*.log
+	0.acquisition.datasource.filenames.1 = /var/log/*http*/*.log
+	0.acquisition.datasource.labels.type = foobar
+	0.acquisition.datasource.source = file
+	0.acquisition.filename = foo.yaml
 	0.detected_service = foobar
 	EOT
 
@@ -516,13 +535,15 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  foobar:
-	    datasource:
-              labels:
-                type: something
+	    acquisition:
+	      filename: foo.yaml
+	      datasource:
+	        labels:
+	          type: something
 	EOT
 
     rune -1 cscli setup detect
-    assert_stderr --partial "Error: parsing $DETECT_YAML: invalid datasource for foobar: source is empty"
+    assert_stderr --partial "Error: parsing $DETECT_YAML: invalid acquisition spec for foobar: source is empty"
 
     # more datasource-specific tests are in detect_test.go
 }
@@ -583,14 +604,16 @@ update-notifier-motd.timer              enabled enabled
 
     rune -0 cscli setup acquisition /dev/stdin <<-EOT
 	setup:
-	  - datasource:
-	      source: file
-	      labels:
-	        type: syslog
-	      filenames:
-	        - /var/log/apache2/*.log
-	        - /var/log/*http*/*.log
-	        - /var/log/httpd/*.log
+	  - acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	          - /var/log/*http*/*.log
+	          - /var/log/httpd/*.log
 	EOT
 
     # remove disclaimer
@@ -660,30 +683,37 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup acquisition /dev/stdin --to-dir "$acquisdir" <<-EOT
 	setup:
 	  - detected_service: apache2
-	    datasource:
-	      labels:
-	        type: syslog
-	      filenames:
-	        - /var/log/apache2/*.log
-	        - /var/log/*http*/*.log
-	        - /var/log/httpd/*.log
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	          - /var/log/*http*/*.log
+	          - /var/log/httpd/*.log
 	  - detected_service: foobar
-	    datasource:
-	      labels:
-	        type: foobar
-	      filenames:
-	        - /var/log/foobar/*.log
+	    acquisition:
+	      filename: foo.yaml
+	      datasource:
+	        labels:
+	          type: foobar
+	        filenames:
+	          - /var/log/foobar/*.log
 	  - detected_service: barbaz
-	    datasource:
-	      labels:
-	        type: barbaz
-	      filenames:
-	        - /path/to/barbaz.log
+	    acquisition:
+	      filename: bar.yaml
+	      datasource:
+	        labels:
+	          type: barbaz
+	        filenames:
+	          - /path/to/barbaz.log
 	EOT
 
     # XXX what if detected_service is missing?
 
-    rune -0 cat "${acquisdir}/setup.apache2.yaml"
+    ls "$acquisdir"
+    rune -0 cat "${acquisdir}/setup.apache.yaml"
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	filenames:
@@ -694,7 +724,7 @@ update-notifier-motd.timer              enabled enabled
 	  type: syslog
 	EOT
 
-    rune -0 cat "${acquisdir}/setup.foobar.yaml"
+    rune -0 cat "${acquisdir}/setup.foo.yaml"
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	filenames:
@@ -703,7 +733,7 @@ update-notifier-motd.timer              enabled enabled
 	  type: foobar
 	EOT
 
-    rune -0 cat "${acquisdir}/setup.barbaz.yaml"
+    rune -0 cat "${acquisdir}/setup.bar.yaml"
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	filenames:
@@ -723,18 +753,20 @@ update-notifier-motd.timer              enabled enabled
 	    install:
 	      collections:
 	        - crowdsecurity/apache2
-	    datasource:
-	      labels:
-	        type: apache2
-	      filenames:
-	        - /var/log/apache2/*.log
-	        - /var/log/*http*/*.log
-	        - /var/log/httpd/*.log
-	      journalctl_filter:
-	        - _SYSTEMD_UNIT=apache2.service
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        labels:
+	          type: apache2
+	        filenames:
+	          - /var/log/apache2/*.log
+	          - /var/log/*http*/*.log
+	          - /var/log/httpd/*.log
+	        journalctl_filter:
+	          - _SYSTEMD_UNIT=apache2.service
 	EOT
 
-    rune -0 cat "${acquisdir}/setup.apache2.yaml"
+    rune -0 cat "${acquisdir}/setup.apache.yaml"
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	filenames:
@@ -758,9 +790,11 @@ update-notifier-motd.timer              enabled enabled
     rune -1 cscli setup acquisition /dev/stdin --to-dir "${acquisdir}/notadir" <<-EOT
 	setup:
 	  - detected_service: apache2
-	    datasource:
-	      filenames:
-	        - /var/log/apache2/*.log
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        filenames:
+	          - /var/log/apache2/*.log
 	EOT
     assert_stderr --partial "Error: mkdir ${acquisdir}/notadir: not a directory"
 
@@ -776,12 +810,14 @@ update-notifier-motd.timer              enabled enabled
 
     rune -0 cscli setup acquisition /dev/stdin <<-EOT
 	setup:
-          - detected_service: something
-            datasource:
-              labels:
-                type: syslog
-              filenames:
-                - /var/log/something.log
+	  - detected_service: something
+	    acquisition:
+	      filename: something.yaml
+	      datasource:
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/something.log
 	EOT
     rune -0 yq 'head_comment' <(output)
     assert_output --partial "$disclaimer"
@@ -795,17 +831,19 @@ update-notifier-motd.timer              enabled enabled
 	  thewiz:
 	    when:
 	      - UnitFound("thewiz.service")
-	    datasource:
-	      source: journalctl
-	      labels:
-	        type: thewiz
-	      journalctl_filter:
-	        - "SYSLOG_IDENTIFIER=TheWiz"
+	    acquisition:
+	      filename: thewiz.yaml
+	      datasource:
+	        source: journalctl
+	        labels:
+	          type: thewiz
+	        journalctl_filter:
+	          - "SYSLOG_IDENTIFIER=TheWiz"
 	EOT
 
     rune -0 cscli setup detect --detect-config "$tempfile" --force-unit thewiz.service
     rune -0 jq -cS '.' <(output)
-    assert_json '{setup:[{datasource:{source:"journalctl",journalctl_filter:["SYSLOG_IDENTIFIER=TheWiz"],labels:{type:"thewiz"}},detected_service:"thewiz"}]}'
+    assert_json '{"setup":[{"acquisition":{"datasource":{"journalctl_filter":["SYSLOG_IDENTIFIER=TheWiz"],"labels":{"type":"thewiz"},"source":"journalctl"},"filename":"thewiz.yaml"},"detected_service":"thewiz"}]}'
     rune -0 cscli setup acquisition <(output)
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
@@ -830,12 +868,14 @@ update-notifier-motd.timer              enabled enabled
 	    install:
 	      collections:
 	        - crowdsecurity/smb
-	    datasource:
-	      source: file
-	      filenames:
-	        - /path/to/smb.log
-	      labels:
-	        type: smb
+	    acquisition:
+	      filename: smb.yaml
+	      datasource:
+	        source: file
+	        filenames:
+	          - /path/to/smb.log
+	        labels:
+	          type: smb
 	EOT
 
     rune -0 cscli setup detect --force-unit smb.service --auto
