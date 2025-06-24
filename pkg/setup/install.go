@@ -126,16 +126,8 @@ func marshalAcquisDocuments(ads []AcquisDocument, toDir string) (string, error) 
 }
 
 // GenerateAcquisition generates the datasource configuration, as a single file or multiple files in a directory.
-func GenerateAcquisition(acquisitionSpecs map[string]AcquisitionSpec, toDir string) (string, error) {
+func GenerateAcquisition(acquisitionSpecs []AcquisitionSpec, toDir string) (string, error) {
 	ads := make([]AcquisDocument, 0)
-
-	filename := func(basename string, ext string) string {
-		if basename == "" {
-			return basename
-		}
-
-		return basename + ext
-	}
 
 	if len(acquisitionSpecs) > 0 && toDir != "" {
 		// XXX: interactive
@@ -144,19 +136,19 @@ func GenerateAcquisition(acquisitionSpecs map[string]AcquisitionSpec, toDir stri
 		}
 	}
 
-	for serviceName, datasource := range acquisitionSpecs {
-		basename := ""
-		if toDir != "" {
-			basename = "setup." + serviceName
-		}
-
-		if datasource == nil {
+	for _, spec := range acquisitionSpecs {
+		if spec.Datasource == nil {
 			continue
 		}
 
+		filename := ""
+		if toDir != "" {
+			filename = "setup." + spec.Filename
+		}
+
 		ad := AcquisDocument{
-			AcquisFilename: filename(basename, ".yaml"),
-			DataSource:     datasource,
+			AcquisFilename: filename,
+			DataSource:     spec.Datasource,
 		}
 		ads = append(ads, ad)
 	}

@@ -492,21 +492,26 @@ detect:
   wizard:
     when:
       - UnitFound("crowdsec-setup-detect.service")
-    datasource:
-      source: journalctl
-      labels:
-        type: syslog
-      journalctl_filter:
-        - _MY_CUSTOM_FILTER=something`,
+    acquisition:
+      filename: wizard.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - _MY_CUSTOM_FILTER=something`,
 			&setup.Setup{
 				Plans: []setup.ServicePlan{
 					{
 						Name: "wizard",
 						InstallRecommendation: setup.InstallRecommendation{
 							AcquisitionSpec: setup.AcquisitionSpec{
-								"source":            "journalctl",
-								"labels":            setup.AcquisitionSpec{"type": "syslog"},
-								"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
+								Filename: "wizard.yaml",
+								Datasource: setup.DatasourceConfig{
+									"source":            "journalctl",
+									"labels":            setup.DatasourceConfig{"type": "syslog"},
+									"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
+								},
 							},
 						},
 					},
@@ -541,12 +546,14 @@ func TestDetectForcedUnit(t *testing.T) {
 	  wizard:
 	    when:
 	      - UnitFound("crowdsec-setup-forced.service")
-	    datasource:
-	      source: journalctl
-	      labels:
-	        type: syslog
-	      journalctl_filter:
-	        - _SYSTEMD_UNIT=crowdsec-setup-forced.service
+	    acquisition:
+	      filename: wizard.yaml
+	      datasource:
+	        source: journalctl
+	        labels:
+	          type: syslog
+	        journalctl_filter:
+	          - _SYSTEMD_UNIT=crowdsec-setup-forced.service
 	`)
 
 	detector, err := setup.NewDetector(&f)
@@ -560,9 +567,12 @@ func TestDetectForcedUnit(t *testing.T) {
 				Name: "wizard",
 				InstallRecommendation: setup.InstallRecommendation{
 					AcquisitionSpec: setup.AcquisitionSpec{
-						"source":            "journalctl",
-						"labels":            setup.AcquisitionSpec{"type": "syslog"},
-						"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
+						Filename: "wizard.yaml",
+						Datasource: setup.DatasourceConfig{
+							"source":            "journalctl",
+							"labels":            setup.DatasourceConfig{"type": "syslog"},
+							"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
+						},
 					},
 				},
 			},
@@ -858,91 +868,145 @@ func TestDetectDatasourceValidation(t *testing.T) {
 
 	tests := []test{
 		{
+			name: "datasource config is missing",
+			config: `
+				version: 1.0
+				detect:
+				  wizard:
+				    acquisition:
+				      filename: wizard.yaml`,
+			want:    nil,
+			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
+		}, {
+			name: "datasource config is empty",
+			config: `
+				version: 1.0
+				detect:
+				  wizard:
+				    acquisition:
+				      filename: wizard.yaml
+				      datasource: {}`,
+			want:    nil,
+			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
+		}, {
+			name: "missing acquisition file name",
+			config: `
+				version: 1.0
+				detect:
+				  wizard:
+				    acquisition:
+				      datasource:
+				        labels:
+				          type: something`,
+			want:    nil,
+			wantErr: "invalid acquisition spec for wizard: a filename for the datasource configuration is mandatory",
+		}, {
 			name: "source is empty",
 			config: `
 				version: 1.0
 				detect:
 				  wizard:
-				    datasource:
-				      labels:
-				        type: something`,
+				    acquisition:
+				      filename: something.yaml
+				      datasource:
+				        labels:
+				          type: something`,
 			want:    nil,
-			wantErr: "invalid datasource for wizard: source is empty",
+			wantErr: "invalid acquisition spec for wizard: source is empty",
 		}, {
 			name: "source is unknown",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: wombat`,
+				    acquisition:
+				      filename: wombat.yaml
+				      datasource:
+				        source: wombat`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: unknown data source wombat",
+			wantErr: "invalid acquisition spec for foobar: unknown data source wombat",
 		}, {
 			name: "source is misplaced",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				    source: file`,
+				    acquisition:
+				      filename: file.yaml
+				      datasource:
+				      source: file`,
 			want:    nil,
-			wantErr: "yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
+			wantErr: "yaml: unmarshal errors:\n  line 8: field source not found in type setup.AcquisitionSpec",
 		}, {
 			name: "source is mismatched",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: journalctl
-				      filename: /path/to/file.log`,
+				    acquisition:
+				      filename: journalctl.yaml
+				      datasource:
+				        source: journalctl
+				        filename: /path/to/file.log`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
+			wantErr: "invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
 		}, {
 			name: "source file: required fields",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: file`,
+				    acquisition:
+				      filename: file.yaml
+				      datasource:
+				        source: file`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: no filename or filenames configuration provided",
+			wantErr: "invalid acquisition spec for foobar: no filename or filenames configuration provided",
 		}, {
 			name: "source journalctl: required fields",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: journalctl`,
+				    acquisition:
+				      filename: foobar.yaml
+				      datasource:
+				        source: journalctl`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: journalctl_filter is required",
+			wantErr: "invalid acquisition spec for foobar: journalctl_filter is required",
 		}, {
 			name: "source cloudwatch: required fields",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: cloudwatch`,
+				    acquisition:
+				      filename: cloudwatch.yaml
+				      datasource:
+				        source: cloudwatch`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: group_name is mandatory for CloudwatchSource",
+			wantErr: "invalid acquisition spec for foobar: group_name is mandatory for CloudwatchSource",
 		}, {
 			name: "source syslog: all fields are optional",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: syslog`,
+				    acquisition:
+				      filename: syslog.yaml
+				      datasource:
+				        source: syslog`,
 			want: &setup.Setup{
 				Plans: []setup.ServicePlan{
 					{
 						Name:       "foobar",
 						InstallRecommendation: setup.InstallRecommendation{
-							AcquisitionSpec: setup.AcquisitionSpec{"source": "syslog"},
+							AcquisitionSpec: setup.AcquisitionSpec{
+								Filename: "syslog.yaml",
+								Datasource: setup.DatasourceConfig{
+									"source": "syslog",
+								},
+							},
 						},
 					},
 				},
@@ -953,51 +1017,61 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: docker`,
+				    acquisition:
+				      filename: docker.yaml
+				      datasource:
+				        source: docker`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: no containers names or containers ID configuration provided",
+			wantErr: "invalid acquisition spec for foobar: no containers names or containers ID configuration provided",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: kinesis`,
+				    acquisition:
+				      filename: kinesis.yaml
+				      datasource:
+				        source: kinesis`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: stream_name is mandatory when use_enhanced_fanout is false",
+			wantErr: "invalid acquisition spec for foobar: stream_name is mandatory when use_enhanced_fanout is false",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=true)",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: kinesis
-				      use_enhanced_fanout: true`,
+				    acquisition:
+				      filename: kinesis.yaml
+				      datasource:
+				        source: kinesis
+				        use_enhanced_fanout: true`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
+			wantErr: "invalid acquisition spec for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
 		}, {
 			name: "source kafka: required fields",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: kafka`,
+				    acquisition:
+				      filename: kafka.yaml
+				      datasource:
+				        source: kafka`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
+			wantErr: "invalid acquisition spec for foobar: cannot create a kafka reader with an empty list of broker addresses",
 		}, {
 			name: "source loki: required fields",
 			config: `
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: loki`,
+				    acquisition:
+				      filename: loki.yaml
+				      datasource:
+				        source: loki`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: loki query is mandatory",
+			wantErr: "invalid acquisition spec for foobar: loki query is mandatory",
 		},
 	}
 
@@ -1008,10 +1082,12 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				version: 1.0
 				detect:
 				  foobar:
-				    datasource:
-				      source: wineventlog`,
+			            acquisition:
+			              filename: wineventlog.yaml
+				      datasource:
+				        source: wineventlog`,
 			want:    nil,
-			wantErr: "invalid datasource for foobar: event_channel or xpath_query must be set",
+			wantErr: "invalid acquisition spec for foobar: event_channel or xpath_query must be set",
 		})
 	}
 
