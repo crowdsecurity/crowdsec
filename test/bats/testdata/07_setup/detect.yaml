@@ -10,14 +10,16 @@ detect:
     install:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      labels:
-        type: apache2
-      filenames:
-        - /var/log/apache2/*.log
-        - /var/log/*http*/*.log
-        - /var/log/httpd/*.log
+    acquisition:
+      filename: apache.yaml
+      datasource:
+        source: file
+        labels:
+          type: apache2
+        filenames:
+          - /var/log/apache2/*.log
+          - /var/log/*http*/*.log
+          - /var/log/httpd/*.log
 
   apache2-systemd:
     when:
@@ -26,12 +28,14 @@ detect:
     install:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: journalctl
-      journalctl_filter:
-        - "_SYSTEMD_UNIT=mock-apache2.service"
-      labels:
-        type: apache2
+    acquisition:
+      filename: apache.yaml
+      datasource:
+        source: journalctl
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=mock-apache2.service"
+        labels:
+          type: apache2
 
   apache2-systemd-centos:
     when:
@@ -40,10 +44,12 @@ detect:
     install:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: journalctl
-      journalctl_filter:
-        - "_SYSTEMD_UNIT=httpd.service"
+    acquisition:
+      filename: apache.yaml
+      datasource:
+        source: journalctl
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=httpd.service"
 
   ssh-systemd:
     when:
@@ -51,12 +57,14 @@ detect:
     install:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: journalctl
-      journalctl_filter:
-        - "_SYSTEMD_UNIT=ssh.service"
-      labels:
-        type: syslog
+    acquisition:
+      filename: ssh.yaml
+      datasource:
+        source: journalctl
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=ssh.service"
+        labels:
+          type: syslog
 
   linux:
     when:
@@ -64,14 +72,16 @@ detect:
     install:
       collections:
         - crowdsecurity/linux
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/syslog
-        - /var/log/kern.log
-        - /var/log/messages
+    acquisition:
+      filename: linux.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/syslog
+          - /var/log/kern.log
+          - /var/log/messages
 
   freebsd:
     when:
