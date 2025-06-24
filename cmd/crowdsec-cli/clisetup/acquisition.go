@@ -39,7 +39,7 @@ func (cli *cliSetup) newAcquisitionCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliSetup) acquisition(acquisitionSpecs map[string]setup.AcquisitionSpec, toDir string) error {
+func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir string) error {
 	output, err := setup.GenerateAcquisition(acquisitionSpecs, toDir)
 	if err != nil {
 		return err

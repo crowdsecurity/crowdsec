@@ -19,12 +19,14 @@ detect:
     install:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      filenames:
-        - /var/log/apache2/*.log
-      labels:
-        type: apache2
+    acquisition:
+      filename: apache2.yaml
+      datasource:
+        source: file
+        filenames:
+          - /var/log/apache2/*.log
+        labels:
+          type: apache2
 
   apache2-systemd-rpm:
     when:
@@ -33,13 +35,15 @@ detect:
     install:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      filenames:
-        - /var/log/httpd/*.log
-        # XXX /var/log/*http*/*.log
-      labels:
-        type: apache2
+    acquisition:
+      filename: apache2.yaml
+      datasource:
+        source: file
+        filenames:
+          - /var/log/httpd/*.log
+          # XXX /var/log/*http*/*.log
+        labels:
+          type: apache2
 
   #
   # crowdsecurity/asterisk
@@ -51,12 +55,14 @@ detect:
     install:
       collections:
         - crowdsecurity/asterisk
-    datasource:
-      source: file
-      labels:
-        type: asterisk
-      filenames:
-        - /var/log/asterisk/*.log
+    acquisition:
+      filename: asterisk.yaml
+      datasource:
+        source: file
+        labels:
+          type: asterisk
+        filenames:
+          - /var/log/asterisk/*.log
 
   #
   # crowdsecurity/caddy
@@ -68,12 +74,14 @@ detect:
     install:
       collections:
         - crowdsecurity/caddy
-    datasource:
-      source: file
-      labels:
-        type: caddy
-      filenames:
-        - /var/log/caddy/*.log
+    acquisition:
+      filename: caddy.yaml
+      datasource:
+        source: file
+        labels:
+          type: caddy
+        filenames:
+          - /var/log/caddy/*.log
 
   #
   # crowdsecurity/dovecot
@@ -85,12 +93,14 @@ detect:
     install:
       collections:
         - crowdsecurity/dovecot
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/mail.log
+    acquisition:
+      filename: dovecot.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/mail.log
 
   #
   # LePresidente/emby
@@ -102,12 +112,14 @@ detect:
     install:
       collections:
         - LePresidente/emby
-    datasource:
-      source: file
-      labels:
-        type: emby
-      filenames:
-        - /var/log/embyserver.txt
+    acquisition:
+      filename: emby.yaml
+      datasource:
+        source: file
+        labels:
+          type: emby
+        filenames:
+          - /var/log/embyserver.txt
 
   #
   # crowdsecurity/endlessh
@@ -119,13 +131,15 @@ detect:
     install:
       collections:
         - crowdsecurity/endlessh
-    datasource:
-      source: journalctl
-      labels:
-        type: syslog
-      # XXX this? or /var/log/syslog?
-      journalctl_filter:
-        - "_SYSTEMD_UNIT=endlessh.service"
+    acquisition:
+      filename: endlessh.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        # XXX this? or /var/log/syslog?
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=endlessh.service"
 
   #
   # crowdsecurity/gitea
@@ -139,12 +153,14 @@ detect:
     install:
       collections:
         - crowdsecurity/gitea
-    datasource:
-      source: file
-      labels:
-        type: gitea
-      filenames:
-        - /var/log/gitea.log
+    acquisition:
+      filename: gitea.yaml
+      datasource:
+        source: file
+        labels:
+          type: gitea
+        filenames:
+          - /var/log/gitea.log
 
   #
   # crowdsecurity/haproxy
@@ -156,12 +172,14 @@ detect:
     install:
       collections:
         - crowdsecurity/haproxy
-    datasource:
-      source: file
-      labels:
-        type: haproxy
-      filenames:
-        - /var/log/haproxy/*.log
+    acquisition:
+      filename: haproxy.yaml
+      datasource:
+        source: file
+        labels:
+          type: haproxy
+        filenames:
+          - /var/log/haproxy/*.log
 
   #
   # firewallservices/lemonldap-ng
@@ -173,10 +191,12 @@ detect:
     install:
       collections:
         - firewallservices/lemonldap-ng
-    #datasource:
-    #  # XXX todo where are the logs?
-    #  labels:
-    #    type: syslog
+    #acquisition:
+    #  filename: lemondap-ng.yaml
+    #  datasource:
+    #    # XXX todo where are the logs?
+    #    labels:
+    #      type: syslog
 
   #
   # crowdsecurity/mariadb
@@ -188,12 +208,14 @@ detect:
     install:
       collections:
         - crowdsecurity/mariadb
-    datasource:
-      source: file
-      labels:
-        type: mysql
-      filenames:
-        - /var/log/mysql/error.log
+    acquisition:
+      filename: mariadb.yaml
+      datasource:
+        source: file
+        labels:
+          type: mysql
+        filenames:
+          - /var/log/mysql/error.log
 
   #
   # crowdsecurity/mysql
@@ -205,12 +227,14 @@ detect:
     install:
       collections:
         - crowdsecurity/mysql
-    datasource:
-      source: file
-      labels:
-        type: mysql
-      filenames:
-        - /var/log/mysql/error.log
+    acquisition:
+      filename: mysql.yaml
+      datasource:
+        source: file
+        labels:
+          type: mysql
+        filenames:
+          - /var/log/mysql/error.log
 
   #
   # crowdsecurity/nginx
@@ -222,12 +246,14 @@ detect:
     install:
       collections:
         - crowdsecurity/nginx
-    datasource:
-      source: file
-      labels:
-        type: nginx
-      filenames:
-        - /var/log/nginx/*.log
+    acquisition:
+      filename: nginx.yaml
+      datasource:
+        source: file
+        labels:
+          type: nginx
+        filenames:
+          - /var/log/nginx/*.log
 
   openresty-systemd:
     when:
@@ -235,12 +261,14 @@ detect:
     install:
       collections:
         - crowdsecurity/nginx
-    datasource:
-      source: file
-      labels:
-        type: nginx
-      filenames:
-        - /usr/local/openresty/nginx/logs/*.log
+    acquisition:
+      filename: openresty.yaml
+      datasource:
+        source: file
+        labels:
+          type: nginx
+        filenames:
+          - /usr/local/openresty/nginx/logs/*.log
 
   #
   # crowdsecurity/odoo
@@ -252,12 +280,14 @@ detect:
     install:
       collections:
         - crowdsecurity/odoo
-    datasource:
-      source: file
-      labels:
-        type: odoo
-      filenames:
-        - /var/log/odoo/*.log
+    acquisition:
+      filename: odoo.yaml
+      datasource:
+        source: file
+        labels:
+          type: odoo
+        filenames:
+          - /var/log/odoo/*.log
 
   #
   # LePresidente/ombi
@@ -274,12 +304,14 @@ detect:
     install:
       collections:
         - LePresidente/ombi
-    datasource:
-      source: file
-      labels:
-        type: ombi
-      filenames:
-        - /var/log/ombi/log-*.txt
+    acquisition:
+      filename: ombi.yaml
+      datasource:
+        source: file
+        labels:
+          type: ombi
+        filenames:
+          - /var/log/ombi/log-*.txt
 
   #
   # crowdsecurity/pgsql
@@ -292,12 +324,14 @@ detect:
     install:
       collections:
         - crowdsecurity/pgsql
-    datasource:
-      source: file
-      labels:
-        type: postgres
-      filenames:
-        - /var/log/postgresql/*.log
+    acquisition:
+      filename: pgsql.yaml
+      datasource:
+        source: file
+        labels:
+          type: postgres
+        filenames:
+          - /var/log/postgresql/*.log
 
   pgsql-systemd-rpm:
     when:
@@ -306,12 +340,14 @@ detect:
     install:
       collections:
         - crowdsecurity/pgsql
-    datasource:
-      source: file
-      labels:
-        type: postgres
-      filenames:
-        - /var/lib/pgsql/data/log/*.log
+    acquisition:
+      filename: pgsql.yaml
+      datasource:
+        source: file
+        labels:
+          type: postgres
+        filenames:
+          - /var/lib/pgsql/data/log/*.log
 
   #
   # crowdsecurity/postfix
@@ -323,12 +359,14 @@ detect:
     install:
       collections:
         - crowdsecurity/postfix
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/mail.log
+    acquisition:
+      filename: postfix.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/mail.log
 
   #
   # crowdsecurity/proftpd
@@ -340,12 +378,14 @@ detect:
     install:
       collections:
         - crowdsecurity/proftpd
-    datasource:
-      source: file
-      labels:
-        type: proftpd
-      filenames:
-        - /var/log/proftpd/*.log
+    acquisition:
+      filename: proftpd.yaml
+      datasource:
+        source: file
+        labels:
+          type: proftpd
+        filenames:
+          - /var/log/proftpd/*.log
 
   #
   # fulljackz/pureftpd
@@ -358,12 +398,14 @@ detect:
       collections:
         - fulljackz/pureftpd
     # XXX ?
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/pure-ftpd/*.log
+    acquisition:
+      filename: pureftpd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/pure-ftpd/*.log
 
   #
   # crowdsecurity/smb
@@ -377,12 +419,14 @@ detect:
     install:
       collections:
         - crowdsecurity/smb
-    datasource:
-      source: file
-      labels:
-        type: smb
-      filenames:
-        - /var/log/samba*.log
+    acquisition:
+      filename: smb.yaml
+      datasource:
+        source: file
+        labels:
+          type: smb
+        filenames:
+          - /var/log/samba*.log
 
   #
   # crowdsecurity/sshd
@@ -396,14 +440,16 @@ detect:
     install:
       collections:
         - crowdsecurity/sshd
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/auth.log
-        - /var/log/sshd.log
-        - /var/log/secure
+    acquisition:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/sshd.log
+          - /var/log/secure
 
   #
   # crowdsecurity/suricata
@@ -415,12 +461,14 @@ detect:
     install:
       collections:
         - crowdsecurity/suricata
-    datasource:
-      source: file
-      labels:
-        type: suricata-evelogs
-      filenames:
-        - /var/log/suricata/eve.json
+    acquisition:
+      filename: suricata.yaml
+      datasource:
+        source: file
+        labels:
+          type: suricata-evelogs
+        filenames:
+          - /var/log/suricata/eve.json
 
   #
   # crowdsecurity/vsftpd
@@ -432,12 +480,14 @@ detect:
     install:
       collections:
         - crowdsecurity/vsftpd
-    datasource:
-      source: file
-      labels:
-        type: vsftpd
-      filenames:
-        - /var/log/vsftpd/*.log
+    acquisition:
+      filename: vsftpd.yaml
+      datasource:
+        source: file
+        labels:
+          type: vsftpd
+        filenames:
+          - /var/log/vsftpd/*.log
 
   #
   # Operating Systems
@@ -449,14 +499,16 @@ detect:
     install:
       collections:
         - crowdsecurity/linux
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/syslog
-        - /var/log/kern.log
-        - /var/log/messages
+    acquisition:
+      filename: linux.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/syslog
+          - /var/log/kern.log
+          - /var/log/messages
 
   freebsd:
     when:

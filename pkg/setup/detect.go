@@ -26,22 +26,24 @@ var ExecCommand = exec.Command
 // HubSpec contains the items (mostly collections) that are recommended to support a service.
 type HubSpec map[string][]string
 
-// AcquisitionSpec contains the configuration of the datasource recommended to support a service.
-// TODO: make me a struct with a filename and spec
-type AcquisitionSpec map[string]any
+var (
+	ErrEmptyDatasourceConfig = errors.New("datasource configuration is empty")
+	ErrMissingAcquisitionFilename = errors.New("a filename for the datasource configuration is mandatory")
+)
+
+type DatasourceConfig map[string]any
 
 // Validate checks if the DataSourceItem represents a valid configuration for an acquisition.DataSource.
-func (a *AcquisitionSpec) Validate() error {
-	if len(*a) == 0 {
-		// empty datasource is valid
-		return nil
+func (d DatasourceConfig) Validate() error {
+	if len(d) == 0 {
+		return ErrEmptyDatasourceConfig
 	}
 
 	// formally validate YAML
 
 	commonDS := configuration.DataSourceCommonCfg{}
 
-	body, err := yaml.Marshal(a)
+	body, err := yaml.Marshal(d)
 	if err != nil {
 		return err
 	}
@@ -74,9 +76,15 @@ func (a *AcquisitionSpec) Validate() error {
 	return nil
 }
 
+// Acquisition contains the datasource configuration to support a detected service.
+type AcquisitionSpec struct {
+	Filename string
+	Datasource DatasourceConfig
+}
+
 type InstallRecommendation struct {
-	HubSpec    HubSpec    `yaml:"install,omitempty"`
-	AcquisitionSpec AcquisitionSpec `yaml:"datasource,omitempty"`
+	HubSpec         HubSpec         `yaml:"install,omitempty"`
+	AcquisitionSpec AcquisitionSpec `yaml:"acquisition,omitempty"`
 }
 
 // ServicePlan describes the actions to perform for a detected service.
@@ -102,13 +110,12 @@ func (s *Setup) CollectHubSpecs() []HubSpec {
 	return ret
 }
 
-func (s *Setup) CollectAcquisitionSpecs() map[string]AcquisitionSpec {
-	ret := map[string]AcquisitionSpec{}
+func (s *Setup) CollectAcquisitionSpecs() []AcquisitionSpec {
+	ret := make([]AcquisitionSpec, len(s.Plans))
 
-	for _, svc := range s.Plans {
-		if len(svc.AcquisitionSpec) > 0 {
-			ret[svc.Name] = svc.AcquisitionSpec
-		}
+	for idx, svc := range s.Plans {
+		// XXX: assume no filename name conflict
+		ret[idx] = svc.AcquisitionSpec
 	}
 
 	return ret
@@ -221,8 +228,19 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 	}
 
 	for name, svc := range d.Detect {
-		if err := svc.AcquisitionSpec.Validate(); err != nil {
-			return nil, fmt.Errorf("invalid datasource for %s: %w", name, err)
+		if svc.AcquisitionSpec.Filename == "" {
+			if len(svc.AcquisitionSpec.Datasource) == 0 {
+				// missing acquisition is ok - only hub items
+				continue
+			}
+
+			// if a datasource is specified, we must have a filename
+			return nil, fmt.Errorf("invalid acquisition spec for %s: %w", name, ErrMissingAcquisitionFilename)
+		}
+
+		// but empty datasource config is not ok
+		if err := svc.AcquisitionSpec.Datasource.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid acquisition spec for %s: %w", name, err)
 		}
 	}
 
