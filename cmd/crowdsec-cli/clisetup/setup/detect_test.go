@@ -14,7 +14,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 )
 
 func nullLogger() *logrus.Logger {
