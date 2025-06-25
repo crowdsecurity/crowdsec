@@ -2,18 +2,26 @@ package setup_test
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
 	"testing"
 
 	"github.com/lithammer/dedent"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
+
+func nullLogger() *logrus.Logger {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	return logger
+}
 
 //nolint:dupword
 const fakeSystemctlOutput = `UNIT FILE                                 STATE    VENDOR PRESET
@@ -341,7 +349,7 @@ func TestApplyRules(t *testing.T) {
 			t.Parallel()
 
 			svc := setup.ServiceRules{When: tc.rules}
-			_, got, err := setup.ApplyRules(svc, env) //nolint:typecheck,nolintlint  // exported only for tests
+			_, got, err := setup.ApplyRules(svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(tc.want, got)
 		})
@@ -353,7 +361,6 @@ func TestApplyRules(t *testing.T) {
 func TestUnitFound(t *testing.T) {
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
-
 	defer func() { setup.ExecCommand = exec.Command }()
 
 	env := setup.NewExprEnvironment(setup.DetectOptions{}, setup.ExprOS{})
@@ -382,7 +389,7 @@ func TestDetectSimpleRule(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{})
+	got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
 	require.NoError(err)
 
 	want := []setup.ServicePlan{
@@ -398,7 +405,6 @@ func TestDetectUnitError(t *testing.T) {
 
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommandNotFound
-
 	defer func() { setup.ExecCommand = exec.Command }()
 
 	tests := []struct {
@@ -427,7 +433,7 @@ detect:
 
 			detector, err := setup.NewDetector(&f)
 			require.NoError(err)
-			got, err := setup.NewSetup(detector, setup.DetectOptions{})
+			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(tc.want, got)
 		})
@@ -437,7 +443,6 @@ detect:
 func TestDetectUnit(t *testing.T) {
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
-
 	defer func() { setup.ExecCommand = exec.Command }()
 
 	tests := []struct {
@@ -527,7 +532,7 @@ detect:
 
 			detector, err := setup.NewDetector(&f)
 			require.NoError(err)
-			got, err := setup.NewSetup(detector, setup.DetectOptions{})
+			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(tc.want, got)
 		})
@@ -537,7 +542,6 @@ detect:
 func TestDetectForcedUnit(t *testing.T) {
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
-
 	defer func() { setup.ExecCommand = exec.Command }()
 
 	f := tempYAML(t, `
@@ -558,7 +562,7 @@ func TestDetectForcedUnit(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}})
+	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}}, nullLogger())
 	require.NoError(err)
 
 	want := &setup.Setup{
@@ -599,7 +603,7 @@ func TestDetectForcedProcess(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}})
+	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}}, nullLogger())
 	require.NoError(err)
 
 	want := &setup.Setup{
@@ -628,7 +632,7 @@ func TestDetectSkipService(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}})
+	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}}, nullLogger())
 	require.NoError(err)
 
 	want := &setup.Setup{[]setup.ServicePlan{}}
@@ -844,7 +848,7 @@ func TestDetectForcedOS(t *testing.T) {
 
 			detector, err := setup.NewDetector(&f)
 			require.NoError(err)
-			got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedOS: tc.forced})
+			got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedOS: tc.forced}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(tc.want, got)
 		})
@@ -1100,7 +1104,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 			if tc.wantErr != "" {
 				return
 			}
-			got, err := setup.NewSetup(detector, setup.DetectOptions{})
+			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
 			require.NoError(err)
 			require.Equal(tc.want, got)
 		})

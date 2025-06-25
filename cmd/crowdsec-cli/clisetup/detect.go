@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
@@ -44,17 +44,17 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.SortFlags = false
 }
 
-func (f *detectFlags) toDetectOptions() setup.DetectOptions {
+func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions {
 	if !f.snubSystemd {
 		if _, err := exec.LookPath("systemctl"); err != nil {
-			log.Debug("systemctl not available: snubbing systemd")
+			logger.Debug("systemctl not available: snubbing systemd")
 
 			f.snubSystemd = true
 		}
 	}
 
 	if f.forcedOSFamily == "" && f.forcedOSID != "" {
-		log.Debug("force-os-id is set: force-os-family defaults to 'linux'")
+		logger.Debug("force-os-id is set: force-os-family defaults to 'linux'")
 
 		f.forcedOSFamily = "linux"
 	}
@@ -105,7 +105,9 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return nil
 			}
 
-			stup, err := setup.NewSetup(detector, f.toDetectOptions())
+			logger := logrus.StandardLogger()
+
+			stup, err := setup.NewSetup(detector, f.toDetectOptions(logger), logger)
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
