@@ -10,10 +10,10 @@ setup_file() {
     HUB_DIR=${HUB_DIR%/}
     export HUB_DIR
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
-    DETECT_YAML="${CONFIG_DIR}/detect.yaml"
+    DETECT_YAML="$CONFIG_DIR/detect.yaml"
     export DETECT_YAML
     # shellcheck disable=SC2154
-    TESTDATA="${BATS_TEST_DIRNAME}/testdata/07_setup"
+    TESTDATA="$BATS_TEST_DIRNAME/testdata/cscli-setup"
     export TESTDATA
 
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
@@ -36,15 +36,12 @@ teardown() {
 
 #----------
 
-#shellcheck disable=SC2154
-@test "cscli setup" {
+@test "cscli setup --help" {
     rune -0 cscli help
     assert_line --regexp '^ +setup +Tools to configure crowdsec$'
 
     rune -0 cscli setup --help
     assert_line 'Usage:'
-    assert_line '  cscli setup [command]'
-    assert_line 'Manage hub configuration and service detection'
 
     # make sure that the unknown argument is not ignored and does not trigger interactive mode
     # (possibly blocking a script)
@@ -52,11 +49,9 @@ teardown() {
     assert_line 'Usage:'
 }
 
-@test "cscli setup detect --help; --detect-config" {
+@test "cscli setup detect --help" {
     rune -0 cscli setup detect --help
-    assert_line --regexp "detect running services, generate a setup file"
     assert_line 'Usage:'
-    assert_line '  cscli setup detect [flags]'
 
     rune -1 cscli setup detect --detect-config /path/does/not/exist
     assert_stderr --partial "open /path/does/not/exist: no such file or directory"
@@ -64,14 +59,13 @@ teardown() {
     # - is stdin
     rune -1 cscli setup detect --detect-config - <<< "{}"
     assert_stderr --partial "Error: parsing <stdin>: missing version tag (must be 1.0)"
-
-    # rm -f "${HUB_DIR}/detect.yaml"
 }
 
-@test "cscli setup detect (linux), --skip-service" {
+@test "cscli setup detect (linux)" {
+    # Basic OS detection.
+
     [[ ${OSTYPE} =~ linux.* ]] || skip
-    tempfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
-    cat <<-EOT >"${tempfile}"
+    rune -0 cscli setup detect --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  linux:
@@ -80,25 +74,41 @@ teardown() {
 	    install:
 	      collections:
 	        - crowdsecurity/linux
-	  thewiz:
+	  notalinux:
 	    when:
 	      - OS.Family != "linux"
+	EOT
+
+    assert_json '{setup:[{detected_service:"linux",install:{collections:["crowdsecurity/linux"]}}]}'
+}
+
+@test "cscli setup detect --skip-service" {
+    # Services listed in --skip-service will be excluded from the setup file, even if detected.
+
+    rune -0 cscli setup detect --skip-service linux --skip-service always --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  linux:
+	    when:
+	      - OS.Family == "linux"
+	  notalinux:
+	    when:
+	      - OS.Family != "linux"
+	  always:
 	  foobarbaz:
 	EOT
 
-    rune -0 cscli setup detect --detect-config "$tempfile"
-    assert_json '{setup:[{detected_service:"foobarbaz"},{detected_service:"linux",install:{collections:["crowdsecurity/linux"]}}]}'
-
-    rune -0 cscli setup detect --detect-config "$tempfile" --skip-service linux
     assert_json '{setup:[{detected_service:"foobarbaz"}]}'
 }
 
 @test "cscli setup detect --force-os-*" {
-    rune -0 cscli setup detect --force-os-family linux --detect-config "${TESTDATA}/detect.yaml"
+    # Fake another OS. Can be used to generate setup files in a CI.
+
+    rune -0 cscli setup detect --force-os-family linux --detect-config "$TESTDATA/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="linux")' <(output)
     assert_json '{detected_service:"linux",install:{collections:["crowdsecurity/linux"]},acquisition:{filename:"linux.yaml", datasource:{source:"file",labels:{type:"syslog"},filenames:["/var/log/syslog","/var/log/kern.log","/var/log/messages"]}}}'
 
-    rune -0 cscli setup detect --force-os-family freebsd --detect-config "${TESTDATA}/detect.yaml"
+    rune -0 cscli setup detect --force-os-family freebsd --detect-config "$TESTDATA/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="freebsd")' <(output)
     assert_json '{detected_service:"freebsd",install:{collections:["crowdsecurity/freebsd"]}}'
 
@@ -106,17 +116,55 @@ teardown() {
     rune -0 jq -cS '.setup[] | select(.detected_service=="windows")' <(output)
     assert_json '{detected_service:"windows",install:{collections:["crowdsecurity/windows"]}}'
 
-    rune -0 cscli setup detect --force-os-family darwin --detect-config "${TESTDATA}/detect.yaml"
+    # unknown family is not forbidden
+    rune -0 cscli setup detect --force-os-family magillagorilla --detect-config "${TESTDATA}/detect.yaml"
+    assert_json '{setup:[]}'
 
-    # XXX do we want do disallow unknown family?
-    # assert_stderr --partial "detecting services: OS 'darwin' not supported"
+    rune -0 cscli setup detect --force-os-family linux --force-os-id redhat --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  deb:
+	    when:
+	      - OS.Family == "linux"
+	      - OS.ID == "debian"
+	  rpm:
+	    when:
+	      - OS.Family == "linux"
+	      - OS.ID == "redhat"
+	EOT
 
-    # XXX TODO force-os-id, force-os-version
+    assert_json '{setup:[{detected_service:"rpm"}]}'
+
+    rune -0 cscli setup detect --force-os-family linux --force-os-id ubuntu --force-os-version 5.04 --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  warty-warthog:
+	    when:
+	      - OS.Family == "linux"
+	      - OS.ID == "ubuntu"
+	      - OS.VersionCheck("=4.10")
+	  hoary-hedgehog:
+	    when:
+	      - OS.Family == "linux"
+	      - OS.ID == "ubuntu"
+	      - OS.VersionCheck("=5.04")
+	  breezy-badger:
+	    when:
+	      - OS.Family == "linux"
+	      - OS.ID == "ubuntu"
+	      - OS.VersionCheck("=5.10")
+	EOT
+
+    # VersionCheck takes >=, <= or a single =
+    # Can also use VersionAtLeast(), RawVersion
+
+    assert_json '{setup:[{detected_service:"hoary-hedgehog"}]}'
 }
 
 @test "cscli setup detect --list-supported-services" {
-    tempfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
-    cat <<-EOT >"${tempfile}"
+    # List all services potentially detected by the configuration file.
+
+    rune -0 cscli setup detect --list-supported-services --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  thewiz:
@@ -124,7 +172,6 @@ teardown() {
 	  apache2:
 	EOT
 
-    rune -0 cscli setup detect --list-supported-services --detect-config "$tempfile"
     # the service list is sorted
     assert_output - <<-EOT
 	apache2
@@ -132,29 +179,15 @@ teardown() {
 	thewiz
 	EOT
 
-    cat <<-EOT >"${tempfile}"
+    rune -1 cscli setup detect --list-supported-services --detect-config - <<-EOT
 	thisisajoke
 	EOT
 
-    rune -1 cscli setup detect --list-supported-services --detect-config "$tempfile"
     assert_stderr --partial "yaml: unmarshal errors:"
 }
 
 @test "cscli setup detect (systemctl)" {
-    cat <<-EOT >"${DETECT_YAML}"
-	version: 1.0
-	detect:
-	  apache2:
-	    when:
-	      - UnitFound("mock-apache2.service")
-	    acquisition:
-	      filename: apache.yaml
-	      datasource:
-	        source: file
-	        filename: dummy.log
-	        labels:
-	          type: apache2
-	EOT
+    # Detect a service through the presence of a systemd unit.
 
     # transparently mock systemctl. It's easier if you can tell the application
     # under test which executable to call (in which case just call $mock) but
@@ -165,10 +198,10 @@ teardown() {
     mock="$(mock_create)"
     mock_path="${mock%/*}"
     mock_file="${mock##*/}"
-    ln -sf "${mock_path}/${mock_file}" "${mock_path}/${mocked_command}"
+    ln -sf "$mock_path/$mock_file" "$mock_path/$mocked_command"
 
     #shellcheck disable=SC2030
-    PATH="${mock_path}:${PATH}"
+    PATH="$mock_path:$PATH"
 
     mock_set_output "$mock" \
 'UNIT FILE                               STATE   VENDOR PRESET
@@ -196,7 +229,21 @@ update-notifier-motd.timer              enabled enabled
 20 unit files listed.'
     mock_set_status "$mock" 1 2
 
-    rune -0 cscli setup detect
+    rune -0 cscli setup detect --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  apache2:
+	    when:
+	      - UnitFound("mock-apache2.service")
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	          type: apache2
+	EOT
+
     rune -0 jq -c '.setup' <(output)
 
     # If a call to UnitFoundwas part of the expression and it returned true,
@@ -212,13 +259,33 @@ update-notifier-motd.timer              enabled enabled
     rune -1 systemctl
 
     # mock teardown
-    unlink "${mock_path}/${mocked_command}"
+    unlink "$mock_path/$mocked_command"
     PATH="${PATH/${mock_path}:/}"
 }
 
 # XXX this is the same boilerplate as the previous test, can be simplified
 @test "cscli setup detect (snub systemd)" {
-    cat <<-EOT >"${DETECT_YAML}"
+    # Skip detection of services through systemd units.
+ 
+    # transparently mock systemctl. It's easier if you can tell the application
+    # under test which executable to call (in which case just call $mock) but
+    # here we do the symlink and $PATH dance as an example
+    mocked_command="systemctl"
+
+    # mock setup
+    mock="$(mock_create)"
+    mock_path="${mock%/*}"
+    mock_file="${mock##*/}"
+    ln -sf "$mock_path/$mock_file" "$mock_path/$mocked_command"
+
+    #shellcheck disable=SC2031
+    PATH="$mock_path:$PATH"
+
+    # we don't really care about the output, it's not used anyway
+    mock_set_output "$mock" ""
+    mock_set_status "$mock" 1 2
+
+    rune -0 cscli setup detect --snub-systemd --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  apache2:
@@ -233,26 +300,6 @@ update-notifier-motd.timer              enabled enabled
 	          type: apache2
 	EOT
 
-    # transparently mock systemctl. It's easier if you can tell the application
-    # under test which executable to call (in which case just call $mock) but
-    # here we do the symlink and $PATH dance as an example
-    mocked_command="systemctl"
-
-    # mock setup
-    mock="$(mock_create)"
-    mock_path="${mock%/*}"
-    mock_file="${mock##*/}"
-    ln -sf "${mock_path}/${mock_file}" "${mock_path}/${mocked_command}"
-
-    #shellcheck disable=SC2031
-    PATH="${mock_path}:${PATH}"
-
-    # we don't really care about the output, it's not used anyway
-    mock_set_output "$mock" ""
-    mock_set_status "$mock" 1 2
-
-    rune -0 cscli setup detect --snub-systemd
-
     # setup must not be 'null', but an empty list
     assert_json '{setup:[]}'
 
@@ -262,12 +309,14 @@ update-notifier-motd.timer              enabled enabled
     rune -0 systemctl
 
     # mock teardown
-    unlink "${mock_path}/${mocked_command}"
+    unlink "$mock_path/$mocked_command"
     PATH="${PATH/${mock_path}:/}"
 }
 
 @test "cscli setup detect --force-unit" {
-    cat <<-EOT >"${DETECT_YAML}"
+    # Fake the existence of a systemd unit.
+
+    cat <<-EOT >"$DETECT_YAML"
 	version: 1.0
 	detect:
 	  apache2:
@@ -310,28 +359,31 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup detect (process)" {
+    # Detect a service from the presense of a named process.
+
     # This is harder to mock, because gopsutil requires proc/ to be a mount
     # point. So we pick a process that exists for sure.
     expected_process=cscli
 
-    cat <<-EOT >"${DETECT_YAML}"
+    rune -0 cscli setup detect --detect-config - <<-EOT
 	version: 1.0
 	detect:
-	  apache2:
+	  crowdsec-cli:
 	    when:
-	      - ProcessRunning("${expected_process}")
+	      - ProcessRunning("$expected_process")
 	  apache3:
 	    when:
 	      - ProcessRunning("this-does-not-exist")
 	EOT
 
-    rune -0 cscli setup detect
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{detected_service:"apache2"}]'
+    assert_json '[{detected_service:"crowdsec-cli"}]'
 }
 
 @test "cscli setup detect --force-process" {
-    cat <<-EOT >"${DETECT_YAML}"
+    # Fake the existence of a named process.
+
+    rune -0 cscli setup detect --force-process force-apache2 --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  apache2:
@@ -342,13 +394,14 @@ update-notifier-motd.timer              enabled enabled
 	      - ProcessRunning("this-does-not-exist")
 	EOT
 
-    rune -0 cscli setup detect --force-process force-apache2
     rune -0 jq -cS '.setup' <(output)
     assert_json '[{detected_service:"apache2"}]'
 }
 
 @test "cscli setup detect (acquisition only, no hub items)" {
-    cat <<-EOT >"${DETECT_YAML}"
+    # A service can require an acquisition file without requiring any collection or other hub items.
+
+    rune -0 cscli setup detect --force-unit force-apache2 --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  apache2:
@@ -363,11 +416,28 @@ update-notifier-motd.timer              enabled enabled
 	          type: apache2
 	EOT
 
-    rune -0 cscli setup detect --force-unit force-apache2
     rune -0 jq -cS '.setup' <(output)
     assert_json '[{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache.yaml"},"detected_service":"apache2"}]'
+}
 
-    rune -0 cscli setup detect --force-unit force-apache2 --yaml
+@test "cscli setup detect (yaml output)" {
+    # Generate the setup file in YAML format.
+
+    rune -0 cscli setup detect --force-unit force-apache2 --yaml --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  apache2:
+	    when:
+	      - UnitFound("force-apache2")
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        source: file
+	        filename: dummy.log
+	        labels:
+	          type: apache2
+	EOT
+
     assert_output - <<-EOT
 	setup:
 	  - detected_service: apache2
@@ -382,8 +452,9 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup detect (full acquisition section)" {
-    skip "not supported yet"
-    cat <<-EOT >"${DETECT_YAML}"
+    # All the acquisition options are supported an copied as-is.
+
+    rune -0 cscli setup detect --yaml --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  foobar:
@@ -396,52 +467,56 @@ update-notifier-motd.timer              enabled enabled
 	          - ^/path/to/log/excludeme\.log$
 	        force_inotify: true
 	        mode: tail
+	        source: file
 	        labels:
 	          type: foolog
 	EOT
 
-    rune -0 cscli setup detect --yaml
     assert_output - <<-EOT
 	setup:
 	  - detected_service: foobar
 	    acquisition:
 	      filename: foo.yaml
-	    datasource:
-	      filenames:
-	        - /path/to/log/*.log
-	      exclude_regexps:
-	        - ^/path/to/log/excludeme.log$
-	      force_inotify: true
-	      mode: tail
-	      labels:
-	        type: foolog
+	      datasource:
+	        exclude_regexps:
+	          - ^/path/to/log/excludeme\.log$
+	        filenames:
+	          - /path/to/log/*.log
+	        force_inotify: true
+	        labels:
+	          type: foolog
+	        mode: tail
+	        source: file
 	EOT
 }
 
-@test "cscli setup detect + acquis + install (no logs or hub items)" {
-    # no-op edge case, to make sure we don't crash
-    cat <<-EOT >"${DETECT_YAML}"
+@test "cscli setup detect + acquis + hub (no datasource or hub items)" {
+    # No-op edge case, to make sure we don't crash.
+
+    rune -0 cscli setup detect --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  always:
 	EOT
 
-    rune -0 cscli setup detect
     assert_json '{setup:[{detected_service:"always"}]}'
     setup=$output
-    rune -0 cscli setup acquisition /dev/stdin <<<"$setup"
-    rune -0 cscli setup install-hub /dev/stdin <<<"$setup"
+    rune -0 cscli setup install-acquisition - "$BATS_TEST_TMPDIR" <<<"$setup"
+    rune -0 cscli setup install-hub - <<<"$setup"
 }
 
-@test "cscli setup detect --auto (no logs or hub items)" {
-    # no-op edge case, to make sure we don't crash
+@test "cscli setup detect --auto (no datasource or hub items)" {
+    # No-op edge case, to make sure we don't crash.
+
     cat <<-EOT >"${DETECT_YAML}"
 	version: 1.0
 	detect:
 	  always:
 	EOT
 
+    # XXX: cscli setup should support --detect-config -
     rune -0 cscli setup --auto
+
     assert_output <<-EOT
 	
 	The following services will be configured.
@@ -452,8 +527,10 @@ update-notifier-motd.timer              enabled enabled
     refute_stderr
 }
 
-@test "cscli setup detect (with collections)" {
-    cat <<-EOT >"${DETECT_YAML}"
+@test "cscli setup detect (with hub items)" {
+    # Detect service and install the corresponding collections.
+
+    rune -0 cscli setup detect --force-process force-apache2,force-foobar --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  foobar:
@@ -476,14 +553,14 @@ update-notifier-motd.timer              enabled enabled
 	        - crowdsecurity/apache2
 	EOT
 
-    rune -0 cscli setup detect --force-process force-apache2,force-foobar
     rune -0 jq -Sc '.setup | sort' <(output)
     assert_json '[{install:{collections:["crowdsecurity/apache2"]},detected_service:"apache2"},{install:{collections:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
 }
 
 @test "cscli setup detect (unknown item type)" {
-    skip 'TODO'
-    cat <<-EOT >"${DETECT_YAML}"
+    # We can reference hub types that are not (yet?) known to this executable.
+
+    rune -0 cscli setup detect --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  foobar:
@@ -492,13 +569,12 @@ update-notifier-motd.timer              enabled enabled
 	        - crowdsecurity/foobar
 	EOT
 
-    rune -0 cscli setup detect --force-process force-apache2,force-foobar
     rune -0 jq -Sc '.setup | sort' <(output)
-    assert_json '[{install:{collections:["crowdsecurity/apache2"]},detected_service:"apache2"},{install:{collections:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
+    assert_json '[{install:{barbapapa:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
 }
 
 @test "cscli setup detect (with acquisition)" {
-    cat <<-EOT >"${DETECT_YAML}"
+    rune -0 cscli setup detect --force-process force-foobar --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  foobar:
@@ -515,7 +591,6 @@ update-notifier-motd.timer              enabled enabled
 	          - /var/log/*http*/*.log
 	EOT
 
-    rune -0 cscli setup detect --force-process force-foobar
     rune -0 yq -op '.setup | sort_keys(..)' <(output)
     assert_output - <<-EOT
 	0.acquisition.datasource.filenames.0 = /var/log/apache2/*.log
@@ -531,7 +606,9 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup detect (datasource validation)" {
-    cat <<-EOT >"${DETECT_YAML}"
+    # Minimal validation of the acquisition spec, like required fields.
+
+    rune -1 cscli setup detect --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  foobar:
@@ -542,19 +619,20 @@ update-notifier-motd.timer              enabled enabled
 	          type: something
 	EOT
 
-    rune -1 cscli setup detect
-    assert_stderr --partial "Error: parsing $DETECT_YAML: invalid acquisition spec for foobar: source is empty"
+    assert_stderr --partial "Error: parsing <stdin>: invalid acquisition spec for foobar: source is empty"
 
     # more datasource-specific tests are in detect_test.go
 }
 
-@test "cscli setup install-hub (dry run)" {
+@test "cscli setup install-hub (dry run: single collection)" {
+    # Dry run mode of "cscli setup install-hub".
+
     # it's not installed
     rune -0 cscli collections inspect crowdsecurity/apache2 -o json
     rune -0 jq -e '.installed == false' <(output)
 
-    # we install it
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
+    # we "install" it
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_line --regexp 'download collections:crowdsecurity/apache2'
     assert_line --regexp 'enable collections:crowdsecurity/apache2'
 
@@ -564,26 +642,14 @@ update-notifier-motd.timer              enabled enabled
 
     # same with dependencies
     rune -0 cscli collections remove --all
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/linux'
 }
 
-@test "cscli setup install-hub (dry run: install multiple collections)" {
-    # it's not installed
-    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
-    rune -0 jq -e '.installed == false' <(output)
-
-    # we install it
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
-    assert_line --regexp 'enable collections:crowdsecurity/apache2'
-
-    # still not installed
-    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
-    rune -0 jq -e '.installed == false' <(output)
-}
-
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
+    # Dry run mode of "cscli setup install-hub", with more stuff.
+
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/aws-console'
     assert_line --regexp 'enable collections:crowdsecurity/caddy'
     assert_line --regexp 'enable parsers:crowdsecurity/asterisk-logs'
@@ -591,18 +657,37 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable postoverflows:crowdsecurity/cdn-whitelist'
     assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
 
-    rune -1 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
+    rune -1 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
     assert_stderr --partial 'Error: item collections:crowdsecurity/foo not found'
-
 }
 
-@test "cscli setup acquisition" {
-    rune -0 cscli setup acquisition --help
-    assert_line --partial "--to-dir string   write the configuration to a directory, in multiple files"
+@test "cscli setup install-hub (missing arguments or directory)" {
+    rune -1 cscli setup install-acquisition
+    assert_output --partial "Usage:"
+    assert_stderr --partial "Error: accepts 2 arg(s), received 0"
 
-    # single item
+    rune -1 cscli setup install-acquisition - "$BATS_TEST_TMPDIR/does/not/exist" <<< '{}'
+    assert_stderr "Error: stat $BATS_TEST_TMPDIR/does/not/exist: no such file or directory"
 
-    rune -0 cscli setup acquisition /dev/stdin <<-EOT
+    # of course it must be a directory
+
+    touch "$BATS_TEST_TMPDIR/notadir"
+
+    rune -1 cscli setup install-acquisition - "$BATS_TEST_TMPDIR/notadir" <<-EOT
+	setup:
+	  - detected_service: apache2
+	    acquisition:
+	      filename: apache.yaml
+	      datasource:
+	        filenames:
+	          - /var/log/apache2/*.log
+	EOT
+
+    assert_stderr --partial "Error: open $BATS_TEST_TMPDIR/notadir: not a directory"
+}
+
+@test "cscli setup install-acquisition (single service)" {
+    rune -0 cscli setup install-acquisition - "$BATS_TEST_TMPDIR" <<-EOT
 	setup:
 	  - acquisition:
 	      filename: apache.yaml
@@ -616,8 +701,8 @@ update-notifier-motd.timer              enabled enabled
 	          - /var/log/httpd/*.log
 	EOT
 
-    # remove disclaimer
-    rune -0 yq '. head_comment=""' <(output)
+    # remove marker
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.apache.yaml"
     assert_output - <<-EOT
 	filenames:
 	  - /var/log/apache2/*.log
@@ -627,13 +712,15 @@ update-notifier-motd.timer              enabled enabled
 	  type: syslog
 	source: file
 	EOT
+}
 
+@test "cscli setup install-acquisition (multiple services)" {
     # multiple items
     # XXX: invalid because datasources have no Name (detected_service) for the acquisition file
     # but we don't validate them yet
     # TODO: validate ServicePlan etc.
 
-#    rune -0 cscli setup acquisition /dev/stdin <<-EOT
+#    rune -0 cscli setup install-acquisition - <<-EOT
 #	setup:
 #	  - datasource:
 #	      labels:
@@ -677,10 +764,8 @@ update-notifier-motd.timer              enabled enabled
     # multiple items, to a directory
 
     # avoid the BATS_TEST_TMPDIR variable, it can have a double //
-    acquisdir=$(TMPDIR="$BATS_FILE_TMPDIR" mktemp -u)
-    mkdir "$acquisdir"
 
-    rune -0 cscli setup acquisition /dev/stdin --to-dir "$acquisdir" <<-EOT
+    rune -0 cscli setup install-acquisition - "$BATS_TEST_TMPDIR" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    acquisition:
@@ -710,11 +795,7 @@ update-notifier-motd.timer              enabled enabled
 	          - /path/to/barbaz.log
 	EOT
 
-    # XXX what if detected_service is missing?
-
-    ls "$acquisdir"
-    rune -0 cat "${acquisdir}/setup.apache.yaml"
-    rune -0 yq '. head_comment=""' <(output)
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.apache.yaml"
     assert_output - <<-EOT
 	filenames:
 	  - /var/log/apache2/*.log
@@ -724,8 +805,7 @@ update-notifier-motd.timer              enabled enabled
 	  type: syslog
 	EOT
 
-    rune -0 cat "${acquisdir}/setup.foo.yaml"
-    rune -0 yq '. head_comment=""' <(output)
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.foo.yaml"
     assert_output - <<-EOT
 	filenames:
 	  - /var/log/foobar/*.log
@@ -733,21 +813,19 @@ update-notifier-motd.timer              enabled enabled
 	  type: foobar
 	EOT
 
-    rune -0 cat "${acquisdir}/setup.bar.yaml"
-    rune -0 yq '. head_comment=""' <(output)
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.bar.yaml"
     assert_output - <<-EOT
 	filenames:
 	  - /path/to/barbaz.log
 	labels:
 	  type: barbaz
 	EOT
+}
 
-    rm -rf -- "${acquisdir:?}"
-    mkdir "$acquisdir"
+@test "cscli setup install-acquisition (multiple items, incorrect acquisition)" {
+    # Having both filenames and journalctl does not generate two files: the datasource is copied as-is, even if incorrect.
 
-    # having both filenames and journalctl does not generate two files: the datasource is copied as-is, even if incorrect
-
-    rune -0 cscli setup acquisition /dev/stdin --to-dir "$acquisdir" <<-EOT
+    rune -0 cscli setup install-acquisition - "$BATS_TEST_TMPDIR" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    install:
@@ -766,8 +844,7 @@ update-notifier-motd.timer              enabled enabled
 	          - _SYSTEMD_UNIT=apache2.service
 	EOT
 
-    rune -0 cat "${acquisdir}/setup.apache.yaml"
-    rune -0 yq '. head_comment=""' <(output)
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.apache.yaml"
     assert_output - <<-EOT
 	filenames:
 	  - /var/log/apache2/*.log
@@ -778,37 +855,14 @@ update-notifier-motd.timer              enabled enabled
 	labels:
 	  type: apache2
 	EOT
-
-    # the directory must exist
-    rune -1 cscli setup acquisition /dev/stdin --to-dir /path/does/not/exist <<< '{}'
-    assert_stderr --partial "directory /path/does/not/exist does not exist"
-
-    # of course it must be a directory
-
-    touch "${acquisdir}/notadir"
-
-    rune -1 cscli setup acquisition /dev/stdin --to-dir "${acquisdir}/notadir" <<-EOT
-	setup:
-	  - detected_service: apache2
-	    acquisition:
-	      filename: apache.yaml
-	      datasource:
-	        filenames:
-	          - /var/log/apache2/*.log
-	EOT
-    assert_stderr --partial "Error: mkdir ${acquisdir}/notadir: not a directory"
-
-    rm -rf -- "${acquisdir:?}"
 }
 
-@test "cscli setup acquisition (disclaimer)" {
-    disclaimer="This file was automatically generated"
+@test "cscli setup install-acquisition (auto-generated file marker)" {
+    # The acquisition file has a marker in a top-level comment, to indicate it was generated by cscli setup.
 
-    rune -0 cscli setup acquisition /dev/stdin <<<"setup:"
-    rune -0 yq 'head_comment' <(output)
-    assert_output --partial "$disclaimer"
+    marker='generated by "cscli setup"'
 
-    rune -0 cscli setup acquisition /dev/stdin <<-EOT
+    rune -0 cscli setup install-acquisition - "$BATS_FILE_TMPDIR" <<-EOT
 	setup:
 	  - detected_service: something
 	    acquisition:
@@ -819,13 +873,14 @@ update-notifier-motd.timer              enabled enabled
 	        filenames:
 	          - /var/log/something.log
 	EOT
+
+    rune -0 cat "$BATS_FILE_TMPDIR/setup.something.yaml"
     rune -0 yq 'head_comment' <(output)
-    assert_output --partial "$disclaimer"
+    assert_output --partial "$marker"
 }
 
 @test "cscli setup (custom journalctl filter)" {
-    tempfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
-    cat <<-EOT >"${tempfile}"
+    rune -0 cscli setup detect --force-unit thewiz.service --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  thewiz:
@@ -841,10 +896,12 @@ update-notifier-motd.timer              enabled enabled
 	          - "SYSLOG_IDENTIFIER=TheWiz"
 	EOT
 
-    rune -0 cscli setup detect --detect-config "$tempfile" --force-unit thewiz.service
     rune -0 jq -cS '.' <(output)
     assert_json '{"setup":[{"acquisition":{"datasource":{"journalctl_filter":["SYSLOG_IDENTIFIER=TheWiz"],"labels":{"type":"thewiz"},"source":"journalctl"},"filename":"thewiz.yaml"},"detected_service":"thewiz"}]}'
-    rune -0 cscli setup acquisition <(output)
+    rune -0 cscli setup install-acquisition <(output) "$BATS_TEST_TMPDIR"
+
+    rune -0 cat "$BATS_TEST_TMPDIR/setup.thewiz.yaml"
+
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	journalctl_filter:
@@ -854,7 +911,6 @@ update-notifier-motd.timer              enabled enabled
 	source: journalctl
 	EOT
 }
-
 
 @test "cscli setup detect --auto" {
     skip "can't force detection with 'cscli setup' like with 'cscli setup detect', yet"
@@ -895,12 +951,12 @@ update-notifier-motd.timer              enabled enabled
     assert_stderr --partial "invalid setup file"
 
     # this is ok; install nothing
-    rune -0 cscli setup validate /dev/stdin <<-EOT
+    rune -0 cscli setup validate - <<-EOT
 	setup:
 	EOT
     refute_output
 
-    rune -1 cscli setup validate /dev/stdin <<-EOT
+    rune -1 cscli setup validate - <<-EOT
 	se tup:
 	EOT
     assert_output - <<-EOT
@@ -910,7 +966,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
     assert_stderr --partial "invalid setup file"
 
-    rune -1 cscli setup validate /dev/stdin <<-EOT
+    rune -1 cscli setup validate - <<-EOT
 	setup:
 	alsdk al; sdf
 	EOT
