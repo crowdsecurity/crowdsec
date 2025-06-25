@@ -209,12 +209,13 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	})
 
 	for _, content := range allowlist.Items {
+		createdAt := time.Time(content.CreatedAt).Format(time.RFC3339)
 		expiration := "never"
 		if !time.Time(content.Expiration).IsZero() {
 			expiration = content.Expiration.String()
 		}
 
-		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
+		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, createdAt})
 	}
 
 	fmt.Fprintln(out, infoTable.Render())
