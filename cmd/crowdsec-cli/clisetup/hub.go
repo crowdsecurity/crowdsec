@@ -28,7 +28,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 				return err
 			}
 
-			stup, err := setup.NewSetupFromYAML(inputReader, true)
+			stup, err := setup.NewSetupFromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {
 				return err
 			}
