@@ -126,7 +126,7 @@ teardown() {
     rune -0 cscli metrics
 
     rune -1 cscli machines prune --duration foobar
-    assert_stderr 'Error: invalid argument "foobar" for "-d, --duration" flag: time: invalid duration "foobar"'
+    assert_stderr 'Error: cscli machines prune: invalid argument "foobar" for "-d, --duration" flag: time: invalid duration "foobar"'
 
     # if the fixture has been created some time ago,
     # the machines may be old enough to trigger a user prompt.

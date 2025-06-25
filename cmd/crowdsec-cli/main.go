@@ -323,7 +323,17 @@ func mainWrap() error {
 		return err
 	}
 
-	return cmd.ExecuteContext(ctx)
+	err = cmd.ExecuteContext(ctx)
+	if err != nil {
+		cmdName := cmd.Name()
+		subCmd, _, subErr := cmd.Find(os.Args[1:])
+		if subErr == nil {
+			cmdName = subCmd.CommandPath()
+		}
+		return fmt.Errorf("%s: %w", cmdName, err)
+	}
+
+	return nil
 }
 
 func main() {
