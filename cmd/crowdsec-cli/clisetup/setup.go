@@ -287,8 +287,21 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 
 	cmd.AddCommand(cli.newDetectCmd())
 	cmd.AddCommand(cli.newInstallHubCmd())
-	cmd.AddCommand(cli.newAcquisitionCmd())
+	cmd.AddCommand(cli.newInstallAcquisitionCmd())
 	cmd.AddCommand(cli.newValidateCmd())
 
 	return cmd
+}
+
+func maybeStdinFile(path string) (*os.File, error) {
+	if path == "-" {
+		return os.Stdin, nil
+	}
+
+	reader, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return reader, nil
 }
