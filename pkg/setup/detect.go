@@ -14,7 +14,7 @@ import (
 
 	"github.com/blackfireio/osinfo"
 	"github.com/expr-lang/expr"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
 
@@ -325,7 +325,7 @@ func (d *Detector) ListSupportedServices() []string {
 	return keys
 }
 
-func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
+func NewSetup(detector *Detector, opts DetectOptions, logger *logrus.Logger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
@@ -338,7 +338,7 @@ func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
 			return nil, fmt.Errorf("detecting OS: %w", err)
 		}
 
-		log.Tracef("Detected OS - %+v", *osfull)
+		logger.Tracef("Detected OS - %+v", *osfull)
 
 		os = ExprOS{
 			Family:     osfull.Family,
@@ -346,20 +346,20 @@ func NewSetup(detector *Detector, opts DetectOptions) (*Setup, error) {
 			RawVersion: osfull.Version,
 		}
 	} else {
-		log.Tracef("Forced OS - %+v", os)
+		logger.Tracef("Forced OS - %+v", os)
 	}
 
 	if len(opts.ForcedUnits) > 0 {
-		log.Tracef("Forced units - %v", opts.ForcedUnits)
+		logger.Tracef("Forced units - %v", opts.ForcedUnits)
 	}
 
 	if len(opts.ForcedProcesses) > 0 {
-		log.Tracef("Forced processes - %v", opts.ForcedProcesses)
+		logger.Tracef("Forced processes - %v", opts.ForcedProcesses)
 	}
 
 	env := NewExprEnvironment(opts, os)
 
-	detected, err := buildPlans(detector, env)
+	detected, err := buildPlans(detector, env, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +400,7 @@ type ServiceRules struct {
 // augmented with default values and anything that might be useful later on
 //
 // All expressions are evaluated (no short-circuit) because we want to know if there are errors.
-func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, error) {
+func applyRules(svc ServiceRules, env ExprEnvironment, logger *logrus.Logger) (ServiceRules, bool, error) {
 	// make a copy because we need the original to detect more stuff
 	newsvc := deepcopy.Copy(svc).(ServiceRules)
 	svcok := true
@@ -408,7 +408,7 @@ func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, erro
 
 	for _, rule := range svc.When {
 		out, err := expr.Eval(rule, env)
-		log.Tracef("  Rule '%s' -> %t, %v", rule, out, err)
+		logger.Tracef("  Rule '%s' -> %t, %v", rule, out, err)
 
 		if err != nil {
 			return ServiceRules{}, false, fmt.Errorf("rule '%s': %w", rule, err)
@@ -425,24 +425,24 @@ func applyRules(svc ServiceRules, env ExprEnvironment) (ServiceRules, bool, erro
 	return newsvc, svcok, nil
 }
 
-func buildPlans(detector *Detector, env ExprEnvironment) (map[string]ServicePlan, error) {
+func buildPlans(detector *Detector, env ExprEnvironment, logger *logrus.Logger) (map[string]ServicePlan, error) {
 	ret := make(map[string]ServicePlan)
 
 	for name := range detector.Detect {
-		log.Trace("Evaluating rules for: ", name)
+		logger.Trace("Evaluating rules for: ", name)
 
-		svc, ok, err := applyRules(detector.Detect[name], env)
+		svc, ok, err := applyRules(detector.Detect[name], env, logger)
 		if err != nil {
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
 		}
 
 		if !ok {
-			log.Tracef("  Skipping %s", name)
+			logger.Tracef("  Skipping %s", name)
 
 			continue
 		}
 
-		log.Tracef("  Detected %s", name)
+		logger.Tracef("  Detected %s", name)
 
 		ret[name] = ServicePlan{
 			Name:                  name,

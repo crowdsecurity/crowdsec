@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // systemdUnitList returns all enabled systemd units.
@@ -23,8 +21,6 @@ func systemdUnitList() ([]string, error) {
 	if err != nil {
 		return ret, wrap(err)
 	}
-
-	log.Debugf("Running systemctl...")
 
 	if err := cmd.Start(); err != nil {
 		return ret, wrap(err)

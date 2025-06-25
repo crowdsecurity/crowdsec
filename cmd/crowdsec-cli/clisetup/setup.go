@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/AlecAivazis/survey/v2"
 	"gopkg.in/yaml.v3"
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
@@ -178,7 +179,9 @@ func (cli *cliSetup) setup(ctx context.Context, interactive bool) error {
 		return err
 	}
 
-	stup, err := setup.NewSetup(detector, setup.DetectOptions{})
+	logger := logrus.StandardLogger()
+
+	stup, err := setup.NewSetup(detector, setup.DetectOptions{}, logger)
 	if err != nil {
 		return err
 	}
