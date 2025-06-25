@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -31,8 +32,8 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) validate(input io.Reader) error {
-	if _, err := setup.NewSetupFromYAML(input, true); err != nil {
-		fmt.Printf("%v\n", err)
+	if _, err := setup.NewSetupFromYAML(input, true, cli.cfg().Cscli.Color != "no"); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
 		return errors.New("invalid setup file")
 	}
 

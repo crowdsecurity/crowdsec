@@ -91,25 +91,40 @@ const generatedAcquisitionMarker = `
 #
 `
 
-func (a *AcquisitionSpec) WriteTo(toDir string) error {
-	ad := AcquisDocument{
-		AcquisFilename: "setup." + a.Filename,
-		DataSource:     a.Datasource,
+func (a *AcquisitionSpec) Path(toDir string) (string, error) {
+	if a.Filename == "" {
+		return "", errors.New("empty acquisition filename")
 	}
 
-	out, err := goccyyaml.MarshalWithOptions(ad.DataSource, goccyyaml.IndentSequence(true))
+	return filepath.Join(toDir, "setup."+a.Filename), nil
+}
+
+func (a *AcquisitionSpec) ToYAML() ([]byte, error) {
+	out, err := goccyyaml.MarshalWithOptions(a.Datasource, goccyyaml.IndentSequence(true))
 	if err != nil {
-		return fmt.Errorf("while encoding datasource: %w", err)
+		return nil, fmt.Errorf("while encoding datasource: %w", err)
 	}
 
-	if ad.AcquisFilename == "" {
-		return errors.New("empty acquis filename")
+	return out, nil
+}
+
+func (a *AcquisitionSpec) WriteTo(toDir string) error {
+	info, err := os.Stat(toDir)
+	if err != nil {
+		return err
 	}
 
-	fname := filepath.Join(toDir, ad.AcquisFilename)
-	fmt.Println("creating", fname)
+	// check explicitly because os.Create would report the same error with the file's path instead of the directory's path
+	if !info.IsDir() {
+		return fmt.Errorf("open %s: not a directory", toDir)
+	}
 
-	f, err := os.Create(fname)
+	path, err := a.Path(toDir)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("creating acquisition file: %w", err)
 	}
@@ -117,16 +132,21 @@ func (a *AcquisitionSpec) WriteTo(toDir string) error {
 
 	_, err = f.WriteString(generatedAcquisitionMarker)
 	if err != nil {
-		return fmt.Errorf("while writing to %s: %w", ad.AcquisFilename, err)
+		return fmt.Errorf("while writing to %s: %w", path, err)
 	}
 
-	_, err = f.Write(out)
+	content, err := a.ToYAML()
 	if err != nil {
-		return fmt.Errorf("while writing to %s: %w", ad.AcquisFilename, err)
+		return err
+	}
+
+	_, err = f.Write(content)
+	if err != nil {
+		return fmt.Errorf("while writing to %s: %w", path, err)
 	}
 
 	if err = f.Sync(); err != nil {
-		return fmt.Errorf("while syncing %s: %w", ad.AcquisFilename, err)
+		return fmt.Errorf("while syncing %s: %w", path, err)
 	}
 
 	return nil
@@ -183,7 +203,7 @@ func (s *Setup) DetectedServices() []string {
 	return ret
 }
 
-func NewSetupFromYAML(input io.Reader, fancyErrors bool) (Setup, error) {
+func NewSetupFromYAML(input io.Reader, showSource bool, wantColor bool) (Setup, error) {
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
 		return Setup{}, fmt.Errorf("while reading setup file: %w", err)
@@ -195,11 +215,7 @@ func NewSetupFromYAML(input io.Reader, fancyErrors bool) (Setup, error) {
 	s := Setup{}
 
 	if err := dec.Decode(&s); err != nil {
-		if fancyErrors {
-			return Setup{}, fmt.Errorf("%v", goccyyaml.FormatError(err, true, true))
-		}
-		// XXX errors here are multiline, should we just print them to stderr instead of logging?
-		return Setup{}, fmt.Errorf("%v", err)
+		return Setup{}, fmt.Errorf("%v", goccyyaml.FormatError(err, wantColor, showSource))
 	}
 
 	// parse again because goccy is not strict enough anyway
@@ -380,40 +396,6 @@ type ServiceRules struct {
 	InstallRecommendation `yaml:",inline"`
 }
 
-// This is not required with Masterminds/semver
-/*
-// normalizeVersion strips leading zeroes from each part, to allow comparison of ubuntu-like versions.
-func normalizeVersion(version string) string {
-	// if it doesn't match a version string, return unchanged
-	if ok := regexp.MustCompile(`^(\d+)(\.\d+)?(\.\d+)?$`).MatchString(version); !ok {
-		// definitely not an ubuntu-like version, return unchanged
-		return version
-	}
-
-	ret := []rune{}
-
-	var cur rune
-
-	trim := true
-	for _, next := range version + "." {
-		if trim && cur == '0' && next != '.' {
-			cur = next
-
-			continue
-		}
-
-		if cur != 0 {
-			ret = append(ret, cur)
-		}
-
-		trim = (cur == '.' || cur == 0)
-		cur = next
-	}
-
-	return string(ret)
-}
-*/
-
 // applyRules checks if the 'when' expressions are true and returns a ServiceRules struct,
 // augmented with default values and anything that might be useful later on
 //
@@ -447,13 +429,6 @@ func buildPlans(detector *Detector, env ExprEnvironment) (map[string]ServicePlan
 	ret := make(map[string]ServicePlan)
 
 	for name := range detector.Detect {
-		//
-		// an empty list of when: clauses defaults to true, if we want
-		// to change this behavior, the place is here.
-		// if len(svc.When) == 0 {
-		// 	log.Warningf("empty 'when' clause: %+v", svc)
-		// }
-		//
 		log.Trace("Evaluating rules for: ", name)
 
 		svc, ok, err := applyRules(detector.Detect[name], env)
