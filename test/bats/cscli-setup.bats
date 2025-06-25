@@ -666,8 +666,10 @@ update-notifier-motd.timer              enabled enabled
     assert_output --partial "Usage:"
     assert_stderr --partial "Error: accepts 2 arg(s), received 0"
 
-    rune -1 cscli setup install-acquisition - "$BATS_TEST_TMPDIR/does/not/exist" <<< '{}'
-    assert_stderr "Error: stat $BATS_TEST_TMPDIR/does/not/exist: no such file or directory"
+    rune -1 cscli setup install-acquisition - "$BATS_TEST_TMPDIR/does/not/exist" <<< '{setup:}'
+
+    # empty file does not trigger directory error
+    rune -0 cscli setup install-acquisition - "$BATS_TEST_TMPDIR/does/not/exist" <<< '{}'
 
     # of course it must be a directory
 
@@ -947,7 +949,7 @@ update-notifier-motd.timer              enabled enabled
 @test "cscli setup validate" {
     # an empty file is not enough
     rune -1 cscli setup validate /dev/null
-    assert_output "EOF"
+    assert_stderr --partial "EOF"
     assert_stderr --partial "invalid setup file"
 
     # this is ok; install nothing
@@ -956,20 +958,31 @@ update-notifier-motd.timer              enabled enabled
 	EOT
     refute_output
 
-    rune -1 cscli setup validate - <<-EOT
+    rune -1 cscli setup validate --color=no - <<-EOT
 	se tup:
 	EOT
-    assert_output - <<-EOT
+
+    assert_stderr - <<-EOT
 	[1:1] unknown field "se tup"
-	>  1 | se tup:
+	>  1 | se tup: null
 	       ^
+	
+	Error: invalid setup file
 	EOT
     assert_stderr --partial "invalid setup file"
 
-    rune -1 cscli setup validate - <<-EOT
+    rune -1 cscli setup validate --color=no - <<-EOT
 	setup:
 	alsdk al; sdf
 	EOT
-    assert_output "while parsing setup file: yaml: line 2: could not find expected ':'"
+
+    assert_stderr - <<-EOT
+	[2:1] string was used where sequence is expected
+	   1 | setup:
+	>  2 | alsdk al; sdf
+	       ^
+	
+	Error: invalid setup file
+	EOT
     assert_stderr --partial "invalid setup file"
 }

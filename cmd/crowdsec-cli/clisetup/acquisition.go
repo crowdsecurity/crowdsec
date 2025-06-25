@@ -2,6 +2,7 @@ package clisetup
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -27,7 +28,7 @@ func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
 				return errors.New("target directory cannot be empty")
 			}
 
-			stup, err := setup.NewSetupFromYAML(inputReader, true)
+			stup, err := setup.NewSetupFromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {
 				return err
 			}
@@ -40,5 +41,22 @@ func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir string) error {
-	return setup.GenerateAcquisition(acquisitionSpecs, toDir)
+	for _, spec := range acquisitionSpecs {
+		if spec.Datasource == nil {
+			continue
+		}
+
+		path, err := spec.Path(toDir)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("creating " + path)
+
+		if err := spec.WriteTo(toDir); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
