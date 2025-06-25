@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -19,11 +18,12 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			input, err := os.Open(args[0])
+			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err
 			}
-			return cli.validate(input)
+
+			return cli.validate(inputReader)
 		},
 	}
 
