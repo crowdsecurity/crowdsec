@@ -16,8 +16,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
-	"github.com/crowdsecurity/crowdsec/pkg/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
