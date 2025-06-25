@@ -2,7 +2,6 @@ package clisetup
 
 import (
 	"context"
-	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -24,12 +23,12 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			input, err := os.Open(args[0])
+			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err
 			}
 
-			stup, err := setup.NewSetupFromYAML(input, true)
+			stup, err := setup.NewSetupFromYAML(inputReader, true)
 			if err != nil {
 				return err
 			}

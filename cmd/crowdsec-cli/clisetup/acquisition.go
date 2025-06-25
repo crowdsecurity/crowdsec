@@ -1,8 +1,7 @@
 package clisetup
 
 import (
-	"fmt"
-	"os"
+	"errors"
 
 	"github.com/spf13/cobra"
 
@@ -10,21 +9,25 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
 
-func (cli *cliSetup) newAcquisitionCmd() *cobra.Command {
-	var toDir string
-
+func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "acquisition [setup_file] [flags]",
+		Use:               "install-acquisition [setup_file] [target-dir]",
 		Short:             "generate log acquisition configuration (datasources) from a setup file",
-		Args:              args.ExactArgs(1),
+		Args:              args.ExactArgs(2),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			input, err := os.Open(args[0])
+			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err
 			}
 
-			stup, err := setup.NewSetupFromYAML(input, true)
+			toDir := args[1]
+
+			if toDir == "" {
+				return errors.New("target directory cannot be empty")
+			}
+
+			stup, err := setup.NewSetupFromYAML(inputReader, true)
 			if err != nil {
 				return err
 			}
@@ -33,21 +36,9 @@ func (cli *cliSetup) newAcquisitionCmd() *cobra.Command {
 		},
 	}
 
-	flags := cmd.Flags()
-	flags.StringVar(&toDir, "to-dir", "", "write the configuration to a directory, in multiple files")
-
 	return cmd
 }
 
 func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir string) error {
-	output, err := setup.GenerateAcquisition(acquisitionSpecs, toDir)
-	if err != nil {
-		return err
-	}
-
-	if toDir == "" {
-		fmt.Println(output)
-	}
-
-	return nil
+	return setup.GenerateAcquisition(acquisitionSpecs, toDir)
 }

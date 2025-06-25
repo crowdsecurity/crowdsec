@@ -81,22 +81,15 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var (
-				detectReader *os.File
-				err error
-			)
+			detectReader, err := maybeStdinFile(f.detectConfigFile)
+			if err != nil {
+				return err
+			}
 
 			rulesFrom := f.detectConfigFile
 
-			switch f.detectConfigFile {
-			case "-":
+			if detectReader == os.Stdin {
 				rulesFrom = "<stdin>"
-				detectReader = os.Stdin
-			default:
-				detectReader, err = os.Open(f.detectConfigFile)
-				if err != nil {
-					return err
-				}
 			}
 
 			detector, err := setup.NewDetector(detectReader)
