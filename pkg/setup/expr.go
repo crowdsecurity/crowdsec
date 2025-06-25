@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/Masterminds/semver/v3"
 	"github.com/shirou/gopsutil/v3/process"
 )
@@ -104,6 +105,8 @@ func (e ExprEnvironment) UnitFound(unitName string) (bool, error) {
 	// fill initial caches
 	if len(e._state.unitsSearched) == 0 {
 		if !e._state.detectOptions.SnubSystemd {
+			log.Debugf("Running systemctl...")
+
 			units, err := systemdUnitList()
 			if err != nil {
 				return false, err

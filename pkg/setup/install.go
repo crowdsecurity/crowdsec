@@ -12,10 +12,6 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 	plan := hubops.NewActionPlan(hub)
 
 	for _, itemMap := range hubSpecs {
-		if len(itemMap) == 0 {
-			continue
-		}
-
 		for itemType, itemNames := range itemMap {
 			for _, itemName := range itemNames {
 				fqName := itemType + ":" + itemName

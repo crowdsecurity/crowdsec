@@ -3,7 +3,7 @@ package clisetup
 import (
 	"context"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
@@ -48,7 +48,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, hubSpecs []setup.HubSpec) error {
 	cfg := cli.cfg()
 
-	hub, err := require.Hub(cfg, log.StandardLogger())
+	hub, err := require.Hub(cfg, logrus.StandardLogger())
 	if err != nil {
 		return err
 	}
