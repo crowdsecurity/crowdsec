@@ -61,7 +61,7 @@ if [ "$1" = configure ]; then
     /usr/bin/cscli hub upgrade
 
     echo "Creating acquisition configuration"
-    cscli setup --auto
+    cscli setup unattended
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
