@@ -13,9 +13,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+// detectFlags are reused for "unattended" and "interactive"
 type detectFlags struct {
 	detectConfigFile      string
-	listSupportedServices bool
 	forcedUnits           []string
 	forcedProcesses       []string
 	forcedOSFamily        string
@@ -23,7 +23,6 @@ type detectFlags struct {
 	forcedOSVersion       string
 	skipServices          []string
 	snubSystemd           bool
-	outYaml               bool
 }
 
 func (f *detectFlags) bind(cmd *cobra.Command) {
@@ -31,7 +30,6 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 
 	flags := cmd.Flags()
 	flags.StringVar(&f.detectConfigFile, "detect-config", defaultServiceDetect, "path to service detection configuration")
-	flags.BoolVar(&f.listSupportedServices, "list-supported-services", false, "do not detect; only print supported services")
 	flags.StringSliceVar(&f.forcedUnits, "force-unit", nil, "force detection of a systemd unit (can be repeated)")
 	flags.StringSliceVar(&f.forcedProcesses, "force-process", nil, "force detection of a running process (can be repeated)")
 	flags.StringSliceVar(&f.skipServices, "skip-service", nil, "ignore a service, don't recommend hub/datasources (can be repeated)")
@@ -39,7 +37,6 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.StringVar(&f.forcedOSID, "force-os-id", "", "override OS.ID=[debian | ubuntu | redhat...]")
 	flags.StringVar(&f.forcedOSVersion, "force-os-version", "", "override OS.RawVersion (of OS or Linux distribution)")
 	flags.BoolVar(&f.snubSystemd, "snub-systemd", false, "don't use systemd, even if available")
-	flags.BoolVar(&f.outYaml, "yaml", false, "output yaml, not json")
 
 	flags.SortFlags = false
 }
@@ -74,6 +71,10 @@ func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions
 
 func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	f := detectFlags{}
+	var (
+		outYaml bool
+		listSupportedServices bool
+	)
 
 	cmd := &cobra.Command{
 		Use:               "detect",
@@ -97,7 +98,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
 
-			if f.listSupportedServices {
+			if listSupportedServices {
 				for _, svc := range detector.ListSupportedServices() {
 					fmt.Println(svc)
 				}
@@ -112,7 +113,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
 
-			yamlBytes, err := stup.ToYAML(f.outYaml)
+			yamlBytes, err := stup.ToYAML(outYaml)
 			if err != nil {
 				return fmt.Errorf("while serializing setup: %w", err)
 				
@@ -125,6 +126,10 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	}
 
 	f.bind(cmd)
+
+	flags := cmd.Flags()
+	flags.BoolVar(&outYaml, "yaml", false, "output yaml, not json")
+	flags.BoolVar(&listSupportedServices, "list-supported-services", false, "do not detect; only print supported services")
 
 	return cmd
 }
