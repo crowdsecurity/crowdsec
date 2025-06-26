@@ -169,7 +169,7 @@ if [ $1 == 1 ]; then
     cscli hub upgrade
 
     echo "Creating acquisition configuration"
-    cscli setup --auto
+    cscli setup unattended
 
     GREEN='\033[0;32m'
     BOLD='\033[1m'

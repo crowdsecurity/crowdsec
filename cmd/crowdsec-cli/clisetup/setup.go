@@ -24,9 +24,8 @@ func New(cfg configGetter) *cliSetup {
 func (cli *cliSetup) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "setup",
-		// XXX: TODO: better description
 		Short:             "Tools to configure crowdsec",
-		Long:              "Manage hub configuration and service detection",
+		Long:              "Manage service detection and hub/acquisition configuration",
 		DisableAutoGenTag: true,
 		Args:		   args.NoArgs,
 		// XXX: TODO: examples!
@@ -45,6 +44,7 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 	cmd.AddCommand(cli.newInstallAcquisitionCmd())
 	cmd.AddCommand(cli.newValidateCmd())
 	cmd.AddCommand(cli.newInteractiveCmd())
+	cmd.AddCommand(cli.newUnattendedCmd())
 
 	return cmd
 }

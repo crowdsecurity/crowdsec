@@ -13,14 +13,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 )
 
-func (cli *cliSetup) newInteractiveCmd() *cobra.Command {
+func (cli *cliSetup) newUnattendedCmd() *cobra.Command {
 	df := detectFlags{}
 	af := acquisitionFlags{}
 
 	cmd := &cobra.Command{
-		Use:               "interactive",
-		Short:             "Interactive setup",
-		Long:              "Detect services and generate configuration, with user prompts",
+		Use:               "unattended",
+		Short:             "Unattended setup",
+		Long:              "Automatically detect services and generate configuration",
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
 		// XXX: TODO: examples!
@@ -42,7 +42,8 @@ func (cli *cliSetup) newInteractiveCmd() *cobra.Command {
 			}
 
 			logger := logrus.StandardLogger()
-			err = cli.wizard(cmd.Context(), detector, df.toDetectOptions(logger), af.acquisDir, true, logger)
+
+			err = cli.wizard(cmd.Context(), detector, df.toDetectOptions(logger), af.acquisDir, false, logger)
 			if  errors.Is(err, hubops.ErrUserCanceled) {
 				fmt.Fprintln(os.Stdout, err.Error())
 				fmt.Println("You can always run 'crowdsec setup' later.")
