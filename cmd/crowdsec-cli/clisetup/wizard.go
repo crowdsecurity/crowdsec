@@ -142,7 +142,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 	fmt.Fprintln(os.Stdout)
 
 	if !detect {
-		fmt.Println("Quitting crowdsec configuration.")
+		fmt.Println("Leaving crowdsec configuration.")
 		fmt.Println("You can always run 'crowdsec setup' later.")
 		return nil
 	}
