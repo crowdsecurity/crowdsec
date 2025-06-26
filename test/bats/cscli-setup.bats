@@ -685,7 +685,8 @@ update-notifier-motd.timer              enabled enabled
 	          - /var/log/apache2/*.log
 	EOT
 
-    assert_stderr --partial "Error: open $BATS_TEST_TMPDIR/notadir: not a directory"
+    # XXX: the error should inclide the name of the directory, not the file
+    assert_stderr --partial "Error: creating acquisition file: open $BATS_TEST_TMPDIR/notadir/setup.apache.yaml: not a directory"
 }
 
 @test "cscli setup install-acquisition (single service)" {
@@ -903,7 +904,6 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" <(output)
 
     rune -0 cat "$BATS_TEST_TMPDIR/setup.thewiz.yaml"
-
     rune -0 yq '. head_comment=""' <(output)
     assert_output - <<-EOT
 	journalctl_filter:
@@ -953,9 +953,8 @@ update-notifier-motd.timer              enabled enabled
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
 
     rune -0 rm -f "$(config_get '.crowdsec_service.acquisition_path')"
-    rune -0 mkdir -p "$ACQUIS_DIR"
 
-    rune -0 cscli setup unattended --detect-config - <<-EOT
+    rune -0 cscli setup unattended --acquis-dir "$ACQUIS_DIR" --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  always:
@@ -971,6 +970,41 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cat "$ACQUIS_DIR/setup.always.yaml"
     assert_output --partial "/path/to/something.log"
 }
+
+@test "cscli setup unattended (create acquisition directory)" {
+    ACQUIS_DIR="$BATS_TEST_TMPDIR/acquis.d"
+    rune -0 rm -f "$(config_get '.crowdsec_service.acquisition_path')"
+
+    rune -0 cscli setup unattended --acquis-dir "$ACQUIS_DIR" --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  always:
+	    acquisition:
+	      filename: always.yaml
+	      datasource:
+	        source: file
+	        filenames:
+	          - /path/to/something.log
+	EOT
+
+    assert_dir_exists "$ACQUIS_DIR"
+
+    rune -0 touch "$ACQUIS_DIR"2
+    rune -1 cscli setup unattended --acquis-dir "$ACQUIS_DIR"2 --detect-config - <<-EOT
+	version: 1.0
+	detect:
+	  always:
+	    acquisition:
+	      filename: always.yaml
+	      datasource:
+	        source: file
+	        filenames:
+	          - /path/to/something.log
+	EOT
+
+    assert_stderr --partial "Error: creating acquisition file: open ${ACQUIS_DIR}2/setup.always.yaml: not a directory"
+}
+
 
 @test "cscli setup validate" {
     # an empty file is not enough
