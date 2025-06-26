@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,22 +110,18 @@ func (a *AcquisitionSpec) ToYAML() ([]byte, error) {
 }
 
 func (a *AcquisitionSpec) WriteTo(toDir string) error {
-	info, err := os.Stat(toDir)
-	if err != nil {
-		return err
-	}
-
-	// check explicitly because os.Create would report the same error with the file's path instead of the directory's path
-	if !info.IsDir() {
-		return fmt.Errorf("open %s: not a directory", toDir)
-	}
-
 	path, err := a.Path(toDir)
 	if err != nil {
 		return err
 	}
 
 	f, err := os.Create(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(toDir, 0o700); err != nil {
+			return fmt.Errorf("creating acquisition directory: %w", err)
+		}
+		f, err = os.Create(path)
+	}
 	if err != nil {
 		return fmt.Errorf("creating acquisition file: %w", err)
 	}
