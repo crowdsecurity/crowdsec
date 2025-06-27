@@ -189,12 +189,12 @@ Enroll this instance to https://app.crowdsec.net
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
 		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
-		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
-		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-		cscli console enroll --enable console_management YOUR-ENROLL-KEY
-		cscli console enroll --disable context YOUR-ENROLL-KEY
+cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
+cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
+cscli console enroll --enable console_management YOUR-ENROLL-KEY
+cscli console enroll --disable context YOUR-ENROLL-KEY
 
-		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
+valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
