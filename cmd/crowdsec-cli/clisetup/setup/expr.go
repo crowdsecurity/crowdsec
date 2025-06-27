@@ -104,7 +104,7 @@ func (e ExprEnvironment) PathExists(path string) bool {
 func (e ExprEnvironment) UnitFound(unitName string) (bool, error) {
 	// fill initial caches
 	if len(e._state.unitsSearched) == 0 {
-		if !e._state.detectOptions.SnubSystemd {
+		if !e._state.detectOptions.SkipSystemd {
 			log.Debugf("Running systemctl...")
 
 			units, err := systemdUnitList()

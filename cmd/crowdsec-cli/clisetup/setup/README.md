@@ -195,7 +195,7 @@ Here we see two more detection methods:
 If you want to ignore one or more services (i.e. not install anything and not
 generate acquisition rules) you can specify it with `cscli setup detect...
 --skip-service <servicename>`. For example, `--skip-service apache2-systemd`.
-If you want to disable systemd unit detection, use `cscli setup detect... --snub-systemd`.
+If you want to disable systemd unit detection, use `cscli setup detect... --skip-systemd`.
 
 If you used the `--force-process` or `--force-unit` flags, but none of the
 defined services is looking for them, you'll have an error like "detecting
