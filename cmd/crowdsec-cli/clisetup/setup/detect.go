@@ -456,5 +456,5 @@ type DetectOptions struct {
 	ForcedProcesses []string
 	ForcedOS        ExprOS
 	SkipServices    []string
-	SnubSystemd     bool
+	SkipSystemd     bool
 }

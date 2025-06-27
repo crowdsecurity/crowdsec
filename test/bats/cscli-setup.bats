@@ -264,7 +264,7 @@ update-notifier-motd.timer              enabled enabled
 }
 
 # XXX this is the same boilerplate as the previous test, can be simplified
-@test "cscli setup detect (snub systemd)" {
+@test "cscli setup detect (skip systemd)" {
     # Skip detection of services through systemd units.
  
     # transparently mock systemctl. It's easier if you can tell the application
@@ -285,7 +285,7 @@ update-notifier-motd.timer              enabled enabled
     mock_set_output "$mock" ""
     mock_set_status "$mock" 1 2
 
-    rune -0 cscli setup detect --snub-systemd --detect-config - <<-EOT
+    rune -0 cscli setup detect --skip-systemd --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  apache2:
