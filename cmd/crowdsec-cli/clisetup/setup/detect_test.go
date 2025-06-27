@@ -67,23 +67,22 @@ func TestSetupHelperProcess(t *testing.T) {
 
 func tempYAML(t *testing.T, content string) os.File {
 	t.Helper()
-	require := require.New(t)
 	file, err := os.CreateTemp(t.TempDir(), "")
-	require.NoError(err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		require.NoError(file.Close())
-		require.NoError(os.Remove(file.Name()))
+		require.NoError(t, file.Close())
+		require.NoError(t, os.Remove(file.Name()))
 	})
 
 	_, err = file.WriteString(dedent.Dedent(content))
-	require.NoError(err)
+	require.NoError(t, err)
 
 	err = file.Close()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	file, err = os.Open(file.Name())
-	require.NoError(err)
+	require.NoError(t, err)
 
 	return *file
 }
@@ -92,7 +91,7 @@ func TestPathExists(t *testing.T) {
 	t.Parallel()
 
 	type test struct {
-		path     string
+		path string
 		want bool
 	}
 
@@ -122,10 +121,10 @@ func TestVersionCheck(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		version     string
-		constraint  string
-		want    bool
-		wantErr string
+		version    string
+		constraint string
+		want       bool
+		wantErr    string
 	}{
 		{"1", "=1", true, ""},
 		{"1", "!=1", false, ""},
@@ -210,8 +209,8 @@ func TestListSupported(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		yml         string
+		name    string
+		yml     string
 		want    []string
 		wantErr string
 	}{
@@ -265,9 +264,11 @@ func TestListSupported(t *testing.T) {
 
 			detector, err := setup.NewDetector(&f)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
+
 			if tc.wantErr != "" {
 				return
 			}
+
 			supported := detector.ListSupportedServices()
 			require.ElementsMatch(t, tc.want, supported)
 		})
@@ -276,12 +277,10 @@ func TestListSupported(t *testing.T) {
 
 func TestApplyRules(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
-
 	tests := []struct {
-		name        string
-		rules       []string
-		want  bool
+		name    string
+		rules   []string
+		want    bool
 		wantErr string
 	}{
 		{
@@ -351,7 +350,7 @@ func TestApplyRules(t *testing.T) {
 			svc := setup.ServiceRules{When: tc.rules}
 			_, got, err := setup.ApplyRules(svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(tc.want, got)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }

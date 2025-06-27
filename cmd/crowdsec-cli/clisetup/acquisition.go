@@ -2,6 +2,7 @@ package clisetup
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -19,6 +20,8 @@ func (f *acquisitionFlags) bind(cmd *cobra.Command) {
 }
 
 func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
+	var dryRun bool
+
 	f := acquisitionFlags{}
 
 	cmd := &cobra.Command{
@@ -37,16 +40,19 @@ func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.acquisition(stup.CollectAcquisitionSpecs(), f.acquisDir)
+			return cli.acquisition(stup.CollectAcquisitionSpecs(), f.acquisDir, dryRun)
 		},
 	}
 
 	f.bind(cmd)
 
+	flags := cmd.Flags()
+	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
+
 	return cmd
 }
 
-func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir string) error {
+func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir string, dryRun bool) error {
 	for _, spec := range acquisitionSpecs {
 		if spec.Datasource == nil {
 			continue
@@ -57,7 +63,7 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 		if toDir == "" {
 			toDir = cfg.Crowdsec.AcquisitionDirPath
 		}
-		
+
 		if toDir == "" {
 			return fmt.Errorf("no acquisition directory specified, please use --acquis-dir or set crowdsec_services.acquisition_path in %q", cfg.FilePath)
 		}
@@ -67,7 +73,12 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 			return err
 		}
 
-		fmt.Println("creating " + path)
+		if dryRun {
+			fmt.Fprintln(os.Stdout, "(dry run) "+path)
+			continue
+		}
+
+		fmt.Fprintln(os.Stdout, "creating "+path)
 
 		if err := spec.WriteTo(toDir); err != nil {
 			return err

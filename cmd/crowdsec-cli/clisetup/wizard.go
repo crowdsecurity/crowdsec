@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/fatih/color"
 	"gopkg.in/yaml.v3"
 	"github.com/sirupsen/logrus"
 
@@ -88,7 +89,7 @@ func filterGeneratedAcquis(acquisFiles []string) ([]string, error) {
 	return ret, nil
 }
 
-func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts setup.DetectOptions, acquisDir string, interactive bool, logger *logrus.Logger) error {
+func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts setup.DetectOptions, acquisDir string, interactive bool, dryRun bool, logger *logrus.Logger) error {
 	cfg := cli.cfg()
 
 	if err := require.Agent(cfg); err != nil {
@@ -98,6 +99,12 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 	userAcquisFiles, err := filterGeneratedAcquis(cfg.Crowdsec.AcquisitionFiles)
 	if err != nil {
 		return err
+	}
+
+	if dryRun {
+		// XXX: wantColor?
+		fmt.Fprintln(os.Stdout, color.YellowString("Dry run mode enabled. No changes will be made."))
+		fmt.Fprintln(os.Stdout)
 	}
 
 	if len(userAcquisFiles) != 0 {
@@ -192,7 +199,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 	hubSpecs := stup.CollectHubSpecs()
 
 	if len(hubSpecs) > 0 {
-		if err = cli.install(ctx, interactive, false, hubSpecs); err != nil {
+		if err = cli.install(ctx, interactive, dryRun, hubSpecs); err != nil {
 			return err
 		}
 
@@ -219,7 +226,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 		// the collections when removing the associated software
 		if installAcquis {
 			acquisDir = cmp.Or(acquisDir, cli.cfg().Crowdsec.AcquisitionDirPath)
-			if err := cli.acquisition(acquisitionSpecs, acquisDir); err != nil {
+			if err := cli.acquisition(acquisitionSpecs, acquisDir, dryRun); err != nil {
 				return err
 			}
 		}

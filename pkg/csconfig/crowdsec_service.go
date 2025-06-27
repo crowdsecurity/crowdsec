@@ -46,7 +46,9 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 
 	if c.AcquisitionFilePath != "" {
 		log.Debugf("non-empty acquisition_path %s", c.AcquisitionFilePath)
+
 		_, err := os.Stat(c.AcquisitionFilePath)
+
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
 			log.Infof("acquisition_path: %s does not exist, skipping", c.AcquisitionFilePath)
@@ -68,18 +70,21 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("can't get absolute path of '%s': %w", c.AcquisitionDirPath, err)
 		}
+
 		c.AcquisitionDirPath = dirPath
 
 		dirFiles, err := filepath.Glob(c.AcquisitionDirPath + "/*.yaml")
 		if err != nil {
 			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
 		}
+
 		ret = append(ret, dirFiles...)
 
 		dirFiles, err = filepath.Glob(c.AcquisitionDirPath + "/*.yml")
 		if err != nil {
 			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
 		}
+
 		ret = append(ret, dirFiles...)
 	}
 
@@ -94,6 +99,7 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get absolute path of '%s': %w", file, err)
 		}
+
 		ret[i] = f
 	}
 
