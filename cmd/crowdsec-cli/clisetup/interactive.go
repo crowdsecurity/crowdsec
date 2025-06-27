@@ -15,6 +15,7 @@ import (
 func (cli *cliSetup) newInteractiveCmd() *cobra.Command {
 	df := detectFlags{}
 	af := acquisitionFlags{}
+	var 		dryRun      bool
 
 	cmd := &cobra.Command{
 		Use:               "interactive",
@@ -43,7 +44,7 @@ cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-
 
 			logger := logrus.StandardLogger()
 
-			err = cli.wizard(cmd.Context(), detector, df.toDetectOptions(logger), af.acquisDir, true, logger)
+			err = cli.wizard(cmd.Context(), detector, df.toDetectOptions(logger), af.acquisDir, true, dryRun, logger)
 			if  errors.Is(err, hubops.ErrUserCanceled) {
 				fmt.Fprintln(os.Stdout, err.Error())
 				fmt.Println("You can always run 'crowdsec setup' later.")
@@ -56,6 +57,9 @@ cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-
 
 	df.bind(cmd)
 	af.bind(cmd)
+
+	flags := cmd.Flags()
+	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
 
 	return cmd
 }
