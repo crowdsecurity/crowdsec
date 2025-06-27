@@ -22,7 +22,7 @@ type detectFlags struct {
 	forcedOSID            string
 	forcedOSVersion       string
 	skipServices          []string
-	snubSystemd           bool
+	skipSystemd           bool
 }
 
 func (f *detectFlags) detector() (*setup.Detector, string, error){
@@ -56,17 +56,17 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 	flags.StringVar(&f.forcedOSFamily, "force-os-family", "", "override OS.Family: one of linux, freebsd, windows or darwin")
 	flags.StringVar(&f.forcedOSID, "force-os-id", "", "override OS.ID=[debian | ubuntu | redhat...]")
 	flags.StringVar(&f.forcedOSVersion, "force-os-version", "", "override OS.RawVersion (of OS or Linux distribution)")
-	flags.BoolVar(&f.snubSystemd, "snub-systemd", false, "don't use systemd, even if available")
+	flags.BoolVar(&f.skipSystemd, "skip-systemd", false, "don't use systemd, even if available")
 
 	flags.SortFlags = false
 }
 
 func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions {
-	if !f.snubSystemd {
+	if !f.skipSystemd {
 		if _, err := exec.LookPath("systemctl"); err != nil {
-			logger.Debug("systemctl not available: snubbing systemd")
+			logger.Debug("systemctl not available: skipping systemd detection")
 
-			f.snubSystemd = true
+			f.skipSystemd = true
 		}
 	}
 
@@ -85,7 +85,7 @@ func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions
 			RawVersion: f.forcedOSVersion,
 		},
 		SkipServices: f.skipServices,
-		SnubSystemd:  f.snubSystemd,
+		SkipSystemd:  f.skipSystemd,
 	}
 }
 
