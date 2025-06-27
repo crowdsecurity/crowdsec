@@ -285,7 +285,7 @@ func TestApplyRules(t *testing.T) {
 		wantErr string
 	}{
 		{
-			"empty list is always true", // XXX or false?
+			"empty list is always true",
 			[]string{},
 			true,
 			"",

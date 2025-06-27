@@ -10,7 +10,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 )
 
 func (cli *cliSetup) newInteractiveCmd() *cobra.Command {
@@ -25,23 +24,13 @@ func (cli *cliSetup) newInteractiveCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		// XXX: TODO: examples!
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			detectReader, err := maybeStdinFile(df.detectConfigFile)
+			detector, _, err := df.detector()
 			if err != nil {
 				return err
 			}
 
-			rulesFrom := df.detectConfigFile
-
-			if detectReader == os.Stdin {
-				rulesFrom = "<stdin>"
-			}
-
-			detector, err := setup.NewDetector(detectReader)
-			if err != nil {
-				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
-			}
-
 			logger := logrus.StandardLogger()
+
 			err = cli.wizard(cmd.Context(), detector, df.toDetectOptions(logger), af.acquisDir, true, logger)
 			if  errors.Is(err, hubops.ErrUserCanceled) {
 				fmt.Fprintln(os.Stdout, err.Error())

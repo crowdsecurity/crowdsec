@@ -56,8 +56,6 @@ func (d DatasourceConfig) Validate() error {
 		return err
 	}
 
-	// source is mandatory // XXX unless it's not?
-
 	if commonDS.Source == "" {
 		return errors.New("source is empty")
 	}
