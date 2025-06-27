@@ -197,11 +197,10 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 		decision.UntilGT(time.Now().UTC()),
 	)
 
-	// TODO clean error types
-	queryError := fmt.Errorf("%w: new decisions", QueryFail)
+	errorMsg := "new decisions"
 	if since != nil {
 		query = query.Where(decision.CreatedAtGT(*since))
-		queryError = fmt.Errorf("%w since %q", queryError, since)
+		errorMsg = fmt.Sprintf("%s since %q", errorMsg, since)
 	}
 
 	// Allow a bouncer to ask for non-deduplicated results
@@ -212,7 +211,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 	query, err := applyDecisionFilter(query, filter)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
-		return []*ent.Decision{}, queryError
+		return nil, fmt.Errorf("%w: %s", QueryFail, errorMsg)
 	}
 
 	query = query.Order(ent.Asc(decision.FieldID))
@@ -220,7 +219,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 	data, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
-		return []*ent.Decision{}, queryError
+		return nil, fmt.Errorf("%w: %s", QueryFail, errorMsg)
 	}
 
 	return data, nil
