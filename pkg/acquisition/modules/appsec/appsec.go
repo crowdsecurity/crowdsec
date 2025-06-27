@@ -76,6 +76,7 @@ type AppsecSource struct {
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
 	authMutex             sync.Mutex
+	httpClient            *http.Client
 }
 
 // Struct to handle cache of authentication
@@ -306,6 +307,17 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 		return fmt.Errorf("unable to load LAPI CA cert pool: %w", err)
 	}
 
+	w.httpClient = &http.Client{
+		Timeout: 200 * time.Millisecond,
+	}
+	if w.lapiCACertPool != nil {
+		w.httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: w.lapiCACertPool,
+			},
+		}
+	}
+
 	return nil
 }
 
@@ -477,19 +489,7 @@ func (w *AppsecSource) isValidKey(ctx context.Context, apiKey string) (bool, err
 	req.Header.Add("X-Api-Key", apiKey)
 	req.Header.Add("User-Agent", useragent.AppsecUserAgent())
 
-	client := &http.Client{
-		Timeout: 200 * time.Millisecond,
-	}
-
-	if w.lapiCACertPool != nil {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: w.lapiCACertPool,
-			},
-		}
-	}
-
-	resp, err := client.Do(req)
+	resp, err := w.httpClient.Do(req)
 	if err != nil {
 		w.logger.Errorf("Error performing request: %s", err)
 		return false, err
