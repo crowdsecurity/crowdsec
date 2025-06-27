@@ -25,6 +25,26 @@ type detectFlags struct {
 	snubSystemd           bool
 }
 
+func (f *detectFlags) detector() (*setup.Detector, string, error){
+	detectReader, err := maybeStdinFile(f.detectConfigFile)
+	if err != nil {
+		return nil, "", err
+	}
+
+	rulesFrom := f.detectConfigFile
+
+	if detectReader == os.Stdin {
+		rulesFrom = "<stdin>"
+	}
+
+	detector, err := setup.NewDetector(detectReader)
+	if err != nil {
+		return nil, "", fmt.Errorf("parsing %s: %w", rulesFrom, err)
+	}
+
+	return detector, rulesFrom, nil
+}
+
 func (f *detectFlags) bind(cmd *cobra.Command) {
 	defaultServiceDetect := csconfig.DefaultConfigPath("detect.yaml")
 
@@ -82,20 +102,9 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			detectReader, err := maybeStdinFile(f.detectConfigFile)
+			detector, rulesFrom, err := f.detector()
 			if err != nil {
 				return err
-			}
-
-			rulesFrom := f.detectConfigFile
-
-			if detectReader == os.Stdin {
-				rulesFrom = "<stdin>"
-			}
-
-			detector, err := setup.NewDetector(detectReader)
-			if err != nil {
-				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
 
 			if listSupportedServices {
