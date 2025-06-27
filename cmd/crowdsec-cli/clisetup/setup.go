@@ -26,9 +26,14 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 		Use:               "setup",
 		Short:             "Tools to configure crowdsec",
 		Long:              "Manage service detection and hub/acquisition configuration",
+		Example: `# Call one of detect, install-hub, etc.
+cscli setup [command]
+# With no explicit command, will run as "cscli setup interactive".
+# It will not pass through any flag.
+cscli setup
+`,
 		DisableAutoGenTag: true,
 		Args:		   args.NoArgs,
-		// XXX: TODO: examples!
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subCmd, _, err := cmd.Root().Find([]string{"setup", "interactive"})
 			if err != nil {
