@@ -20,9 +20,21 @@ func (cli *cliSetup) newUnattendedCmd() *cobra.Command {
 		Use:               "unattended",
 		Short:             "Unattended setup",
 		Long:              "Automatically detect services and generate configuration",
+		Example: `# Detect running services, install the appropriate collections and acquisition configuration.
+# Never prompt the user. Return early if the user has added to (or modified) the acquisition configuration.
+cscli setup unattended
+
+# Write the acquisition configuration to a specific directory.
+cscli setup unattended --acquis-dir /path/to/acquis.d
+
+# Use a different detection configuration file.
+cscli setup unattended --detect-config /path/to/detact.yaml
+
+# Force the OS to be detected as 'ubuntu 25.04'
+cscli setup unattended --force-os-family linux --force-os-id ubuntu --force-os-version 25.04
+`,
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
-		// XXX: TODO: examples!
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			detector, _, err := df.detector()
 			if err != nil {
