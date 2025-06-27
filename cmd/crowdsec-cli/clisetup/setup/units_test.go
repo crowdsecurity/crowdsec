@@ -10,15 +10,14 @@ import (
 )
 
 func TestSystemdUnitList(t *testing.T) {
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
 	defer func() { setup.ExecCommand = exec.Command }()
 
 	units, err := setup.SystemdUnitList() //nolint:typecheck,nolintlint  // exported only for tests
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.Equal([]string{
+	require.Equal(t, []string{
 		"crowdsec-setup-detect.service",
 		"apache2.service",
 		"apparmor.service",

@@ -15,7 +15,8 @@ func InstallHubItems(ctx context.Context, hub *cwhub.Hub, contentProvider cwhub.
 		for itemType, itemNames := range itemMap {
 			for _, itemName := range itemNames {
 				fqName := itemType + ":" + itemName
-				item, err  := hub.GetItemFQ(fqName)
+
+				item, err := hub.GetItemFQ(fqName)
 				if err != nil {
 					return err
 				}
