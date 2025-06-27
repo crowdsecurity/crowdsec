@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/Masterminds/semver/v3"
 	"github.com/shirou/gopsutil/v3/process"
+	log "github.com/sirupsen/logrus"
 )
 
 // ExprState keeps a global state for the duration of the service detection (cache etc.)

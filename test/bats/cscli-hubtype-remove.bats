@@ -4,7 +4,6 @@
 #
 # Behavior that is specific to a hubtype should be tested in a separate file.
 
-
 set -u
 
 setup_file() {
