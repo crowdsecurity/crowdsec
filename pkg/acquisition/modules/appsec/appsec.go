@@ -172,11 +172,13 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (w *AppsecSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{appsec_metrics.AppsecReqCounter, appsec_metrics.AppsecBlockCounter, appsec_metrics.AppsecRuleHits, appsec_metrics.AppsecOutbandParsingHistogram, appsec_metrics.AppsecInbandParsingHistogram, appsec_metrics.AppsecGlobalParsingHistogram}
+	return []prometheus.Collector{appsec_metrics.AppsecReqCounter, appsec_metrics.AppsecBlockCounter, appsec_metrics.AppsecRuleHits,
+		appsec_metrics.AppsecOutbandParsingHistogram, appsec_metrics.AppsecInbandParsingHistogram, appsec_metrics.AppsecGlobalParsingHistogram}
 }
 
 func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{appsec_metrics.AppsecReqCounter, appsec_metrics.AppsecBlockCounter, appsec_metrics.AppsecRuleHits, appsec_metrics.AppsecOutbandParsingHistogram, appsec_metrics.AppsecInbandParsingHistogram, appsec_metrics.AppsecGlobalParsingHistogram}
+	return []prometheus.Collector{appsec_metrics.AppsecReqCounter, appsec_metrics.AppsecBlockCounter, appsec_metrics.AppsecRuleHits,
+		appsec_metrics.AppsecOutbandParsingHistogram, appsec_metrics.AppsecInbandParsingHistogram, appsec_metrics.AppsecGlobalParsingHistogram}
 }
 
 func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, error) {

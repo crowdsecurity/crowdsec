@@ -880,7 +880,7 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 				assert.Equal(t, "datasource_type", labels[0].GetName())
 				assert.Equal(t, "http", labels[0].GetValue())
 				assert.Equal(t, "label_type", labels[1].GetName())
-				assert.Equal(t, "", labels[1].GetValue())
+				assert.Empty(t, labels[1].GetValue())
 				assert.Equal(t, "path", labels[2].GetName())
 				assert.Equal(t, "/test", labels[2].GetValue())
 				assert.Equal(t, "src", labels[3].GetName())

@@ -529,7 +529,12 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
 
 								if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-									cloudwatch_metrics.CloudWatchDatasourceLinesRead.With(prometheus.Labels{"group": cfg.GroupName, "stream": cfg.StreamName, "datasource_type": "cloudwatch", "label_type": evt.Line.Labels["type"]}).Inc()
+									cloudwatch_metrics.CloudWatchDatasourceLinesRead.With(
+										prometheus.Labels{"group": cfg.GroupName,
+											"stream":          cfg.StreamName,
+											"datasource_type": "cloudwatch",
+											"label_type":      evt.Line.Labels["type"],
+										}).Inc()
 								}
 								outChan <- evt
 							}
