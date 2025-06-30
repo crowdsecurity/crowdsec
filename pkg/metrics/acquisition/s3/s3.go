@@ -14,7 +14,7 @@ var S3DataSourceLinesRead = prometheus.NewCounterVec(
 		Name: S3DataSourceLinesReadMetricName,
 		Help: "Number of events read per bucket.",
 	},
-	[]string{"bucket", "datasource_type"},
+	[]string{"bucket", "datasource_type", "label_type"},
 )
 
 const S3DataSourceObjectsReadMetricName = "cs_s3_objects_total"

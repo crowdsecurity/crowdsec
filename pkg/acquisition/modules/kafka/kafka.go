@@ -185,7 +185,7 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
 
 		if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			kafka_metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": k.Config.Topic, "datasource_type": "kafka"}).Inc()
+			kafka_metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": k.Config.Topic, "datasource_type": "kafka", "label_type": l.Labels["type"]}).Inc()
 		}
 
 		evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)

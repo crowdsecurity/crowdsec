@@ -139,7 +139,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			l.Module = j.GetName()
 
 			if j.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				journalctl_metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl"}).Inc()
+				journalctl_metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "label_type": l.Labels["type"]}).Inc()
 			}
 
 			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)

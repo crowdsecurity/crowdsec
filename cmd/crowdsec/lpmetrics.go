@@ -154,7 +154,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 			metricsLabels := make(map[string]string)
 
 			for labelKey, labelValue := range labelsMap {
-				metricsLabels[labelKey] = getLabelValue(promLabels, labelValue)
+				metricsLabels[labelValue] = getLabelValue(promLabels, labelKey)
 			}
 
 			currentValue := metric.GetCounter().GetValue()
@@ -177,7 +177,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 				Labels: metricsLabels,
 				Value:  ptr.Of(value),
 			}
-			m.logger.Infof("Gathered metric: %s, item: %+v", metricFamily.GetName(), item)
+			m.logger.Debugf("Gathered metric: %s, item: %+v", metricFamily.GetName(), item)
 			items = append(items, item)
 		}
 	}
@@ -189,6 +189,7 @@ func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
 	return m.gatherPromMetrics(acquisitionMetrics.AcquisitionMetricsNames, labelsMapping{
 		"datasource_type": "datasource_type",
 		"source":          "source",
+		"label_type":      "type",
 	}, "read", "line")
 }
 

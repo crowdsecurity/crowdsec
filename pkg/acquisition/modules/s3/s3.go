@@ -408,7 +408,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				s3_metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3"}).Inc()
+				s3_metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "label_type": s.Config.Labels["type"]}).Inc()
 			}
 			l := types.Line{}
 			l.Raw = text

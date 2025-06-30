@@ -14,7 +14,7 @@ var KinesisDataSourceLinesRead = prometheus.NewCounterVec(
 		Name: KinesisDataSourceLinesReadMetricName,
 		Help: "Number of event read per stream.",
 	},
-	[]string{"stream", "datasource_type"},
+	[]string{"stream", "datasource_type", "label_type"},
 )
 
 const KinesisDataSourceLinesReadShardsMetricName = "cs_kinesis_shards_hits_total"
