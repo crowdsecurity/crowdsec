@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"time"
 
@@ -280,6 +281,16 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 
 	defer r.Body.Close()
 
+	if h.logger.Logger.IsLevelEnabled(log.TraceLevel) {
+		h.logger.Tracef("processing request from '%s' with method '%s' and path '%s'", r.RemoteAddr, r.Method, r.URL.Path)
+		bodyContent, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			h.logger.Errorf("failed to dump request: %s", err)
+		} else {
+			h.logger.Tracef("request body: %s", bodyContent)
+		}
+	}
+
 	reader := r.Body
 
 	if r.Header.Get("Content-Encoding") == "gzip" {
@@ -347,6 +358,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 
 		switch r.Method {
 		case http.MethodGet, http.MethodHead: // Return a 200 if the auth was successful
+			h.logger.Infof("successful %s request from '%s'", r.Method, r.RemoteAddr)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 			return
