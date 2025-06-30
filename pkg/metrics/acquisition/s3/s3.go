@@ -1,6 +1,11 @@
+//go:build !no_datasource_s3
+
 package s3_metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const S3DataSourceLinesReadMetricName = "cs_s3_hits_total"
 
@@ -9,7 +14,7 @@ var S3DataSourceLinesRead = prometheus.NewCounterVec(
 		Name: S3DataSourceLinesReadMetricName,
 		Help: "Number of events read per bucket.",
 	},
-	[]string{"bucket"},
+	[]string{"bucket", "datasource_type"},
 )
 
 const S3DataSourceObjectsReadMetricName = "cs_s3_objects_total"
@@ -31,3 +36,8 @@ var S3DataSourceSQSMessagesReceived = prometheus.NewCounterVec(
 	},
 	[]string{"queue"},
 )
+
+//nolint:gochecknoinits
+func init() {
+	acquisition.RegisterAcquisitionMetric(S3DataSourceLinesReadMetricName)
+}

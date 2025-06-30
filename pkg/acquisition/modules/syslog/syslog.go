@@ -178,7 +178,7 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 	logger := s.logger.WithField("client", syslogLine.Client)
 	logger.Tracef("raw: %s", syslogLine)
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		syslog_metrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+		syslog_metrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client, "datasource_type": "syslog"}).Inc()
 	}
 	if !s.config.DisableRFCParser {
 		p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
@@ -194,12 +194,12 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 			}
 			line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				syslog_metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+				syslog_metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424", "datasource_type": "syslog"}).Inc()
 			}
 		} else {
 			line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				syslog_metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+				syslog_metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164", "datasource_type": "syslog"}).Inc()
 			}
 		}
 	} else {

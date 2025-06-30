@@ -317,10 +317,11 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 		evt := types.MakeEvent(h.Config.UseTimeMachine, types.LOG, true)
 		evt.Line = line
 
-		if h.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
-			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
-		} else if h.metricsLevel == metrics.AcquisitionMetricsLevelFull {
-			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
+		switch h.metricsLevel {
+		case metrics.AcquisitionMetricsLevelAggregated:
+			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http"}).Inc()
+		case metrics.AcquisitionMetricsLevelFull:
+			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http"}).Inc()
 		}
 
 		h.logger.Tracef("line to send: %+v", line)

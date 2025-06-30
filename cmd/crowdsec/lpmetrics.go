@@ -4,7 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -17,10 +22,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-const lpMetricsDefaultInterval = 30 * time.Minute
+const lpMetricsDefaultInterval = 30 * time.Second
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
@@ -28,6 +34,9 @@ type MetricsProvider struct {
 	interval time.Duration
 	static   staticMetrics
 	logger   *logrus.Entry
+	// used to store the last collected value of a metric to compute the delta before sending it
+	// Key is a concatenation of all labels
+	metricsLastValues map[string]float64
 }
 
 type staticMetrics struct {
@@ -39,6 +48,10 @@ type staticMetrics struct {
 	datasourceMap  map[string]int64
 	hubState       models.HubItems
 }
+
+// Key is the prom label
+// Value is the name that will be used in the metrics payload
+type labelsMapping map[string]string
 
 func getHubState(hub *cwhub.Hub) models.HubItems {
 	ret := models.HubItems{}
@@ -90,11 +103,94 @@ func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logge
 	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
 ) *MetricsProvider {
 	return &MetricsProvider{
-		apic:     apic,
-		interval: interval,
-		logger:   logger,
-		static:   newStaticMetrics(consoleOptions, datasources, hub),
+		apic:              apic,
+		interval:          interval,
+		logger:            logger,
+		static:            newStaticMetrics(consoleOptions, datasources, hub),
+		metricsLastValues: make(map[string]float64),
 	}
+}
+
+func getLabelValue(labels []*io_prometheus_client.LabelPair, key string) string {
+	for _, label := range labels {
+		if label.GetName() == key {
+			return label.GetValue()
+		}
+	}
+	return ""
+}
+
+func getDeltaKey(labels []*io_prometheus_client.LabelPair) string {
+	// Create a key from the labels to use as a map key
+	// This is used to store the last value of the metric to compute the delta
+	parts := make([]string, 0, len(labels))
+	for _, label := range labels {
+		parts = append(parts, label.GetName()+label.GetValue())
+	}
+	return strings.Join(parts, "")
+}
+
+func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labelsMapping, metricName string, unitType string) []*models.MetricsDetailItem {
+	items := make([]*models.MetricsDetailItem, 0)
+
+	promMetrics, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		m.logger.Errorf("failed to gather prometheus metrics: %s", err)
+		return nil
+	}
+
+	for _, metricFamily := range promMetrics {
+		if !slices.Contains(metricsName, metricFamily.GetName()) {
+			continue
+		}
+		for _, metric := range metricFamily.GetMetric() {
+			promLabels := metric.GetLabel()
+			deltaKey := getDeltaKey(promLabels)
+			metricsLabels := make(map[string]string)
+
+			for labelKey, labelValue := range labelsMap {
+				metricsLabels[labelKey] = getLabelValue(promLabels, labelValue)
+			}
+
+			currentValue := metric.GetCounter().GetValue()
+			value := currentValue
+
+			if lastValue, ok := m.metricsLastValues[deltaKey]; ok {
+				value -= lastValue
+				if value < 0 {
+					m.logger.Warnf("negative delta for metric %s (labels: %+v), resetting to 0. This is probably a bug.", metricName, metricsLabels)
+					value = 0
+				}
+				m.metricsLastValues[deltaKey] = currentValue
+			} else {
+				m.metricsLastValues[deltaKey] = currentValue
+			}
+
+			item := &models.MetricsDetailItem{
+				Name:   ptr.Of(metricName),
+				Unit:   ptr.Of(unitType),
+				Labels: metricsLabels,
+				Value:  ptr.Of(value),
+			}
+			m.logger.Infof("Gathered metric: %s, item: %+v", metricFamily.GetName(), item)
+			items = append(items, item)
+		}
+	}
+
+	return items
+}
+
+func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics(acquisitionMetrics.AcquisitionMetricsNames, labelsMapping{
+		"datasource_type": "datasource_type",
+		"source":          "source",
+	}, "read", "line")
+}
+
+func (m *MetricsProvider) getParserMetrics() []*models.MetricsDetailItem {
+	items := make([]*models.MetricsDetailItem, 0)
+
+	return items
 }
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
@@ -124,6 +220,21 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
+
+	/* Acquisition metrics */
+	/*{"name": "lines_read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/* Parser metrics */
+	/*{"name": "lines_parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+
+	acquisitionMetrics := m.getAcquisitionMetrics()
+	if len(acquisitionMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, acquisitionMetrics...)
+	}
+
+	parserMetrics := m.getParserMetrics()
+	if len(parserMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserMetrics...)
+	}
 
 	return &models.AllMetrics{
 		LogProcessors: []*models.LogProcessorsMetrics{met},

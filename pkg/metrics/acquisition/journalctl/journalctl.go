@@ -1,6 +1,11 @@
+//go:build !no_datasource_journalctl
+
 package journalctl_metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const JournalCtlDataSourceLinesReadMetricName = "cs_journalctlsource_hits_total"
 
@@ -9,4 +14,9 @@ var JournalCtlDataSourceLinesRead = prometheus.NewCounterVec(
 		Name: JournalCtlDataSourceLinesReadMetricName,
 		Help: "Total lines that were read.",
 	},
-	[]string{"source"})
+	[]string{"source", "datasource_type"})
+
+//nolint:gochecknoinits
+func init() {
+	acquisition.RegisterAcquisitionMetric(JournalCtlDataSourceLinesReadMetricName)
+}

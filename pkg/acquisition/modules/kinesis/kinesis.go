@@ -302,12 +302,12 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 		if k.Config.StreamARN != "" {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				kinesis_metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
-				kinesis_metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
+				kinesis_metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "datasource_type": "kinesis"}).Inc()
 			}
 		} else {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				kinesis_metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
-				kinesis_metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
+				kinesis_metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "datasource_type": "kinesis"}).Inc()
 			}
 		}
 

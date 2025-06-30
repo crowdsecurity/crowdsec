@@ -408,7 +408,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				s3_metrics.S3DataSourceLinesRead.WithLabelValues(bucket).Inc()
+				s3_metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3"}).Inc()
 			}
 			l := types.Line{}
 			l.Raw = text
@@ -416,9 +416,10 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = s.GetName()
-			if s.metricsLevel == metrics.AcquisitionMetricsLevelFull {
+			switch s.metricsLevel {
+			case metrics.AcquisitionMetricsLevelFull:
 				l.Src = bucket + "/" + key
-			} else if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
+			case metrics.AcquisitionMetricsLevelAggregated:
 				l.Src = bucket
 			}
 			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)

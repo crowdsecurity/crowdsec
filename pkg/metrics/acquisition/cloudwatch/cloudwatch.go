@@ -1,6 +1,11 @@
+//go:build !no_datasource_cloudwatch
+
 package cloudwatch_metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const CloudWatchDatasourceOpenedStreamsMetricName = "cs_cloudwatch_openstreams_total"
 
@@ -19,5 +24,10 @@ var CloudWatchDatasourceLinesRead = prometheus.NewCounterVec(
 		Name: CloudWatchDatasourceLinesReadMetricName,
 		Help: "Number of event read from stream.",
 	},
-	[]string{"group", "stream"},
+	[]string{"group", "stream", "datasource_type"},
 )
+
+//nolint:gochecknoinits
+func init() {
+	acquisition.RegisterAcquisitionMetric(CloudWatchDatasourceLinesReadMetricName)
+}

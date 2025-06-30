@@ -1,6 +1,11 @@
+//go:build !no_datasource_k8saudit
+
 package kubernetesaudit_metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const K8SAuditDataSourceEventCountMetricName = "cs_k8sauditsource_hits_total"
 
@@ -9,7 +14,7 @@ var K8SAuditDataSourceEventCount = prometheus.NewCounterVec(
 		Name: K8SAuditDataSourceEventCountMetricName,
 		Help: "Total number of events received by k8s-audit source",
 	},
-	[]string{"source"})
+	[]string{"source", "datasource_type"})
 
 const K8SAuditDataSourceRequestCountMetricName = "cs_k8sauditsource_requests_total"
 
@@ -19,3 +24,8 @@ var K8SAuditDataSourceRequestCount = prometheus.NewCounterVec(
 		Help: "Total number of requests received",
 	},
 	[]string{"source"})
+
+//nolint:gochecknoinits
+func init() {
+	acquisition.RegisterAcquisitionMetric(K8SAuditDataSourceEventCountMetricName)
+}

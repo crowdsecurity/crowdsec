@@ -202,7 +202,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 
 	for idx := range auditEvents.Items {
 		if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			kubernetesaudit_metrics.K8SAuditDataSourceEventCount.WithLabelValues(ka.addr).Inc()
+			kubernetesaudit_metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": ka.addr, "datasource_type": "k8s-audit"}).Inc()
 		}
 
 		bytesEvent, err := json.Marshal(auditEvents.Items[idx])

@@ -1,6 +1,11 @@
+//go:build !no_datasource_docker
+
 package docker_metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const DockerDatasourceLinesReadMetricName = "cs_dockersource_hits_total"
 
@@ -9,4 +14,9 @@ var DockerDatasourceLinesRead = prometheus.NewCounterVec(
 		Name: DockerDatasourceLinesReadMetricName,
 		Help: "Total lines that were read.",
 	},
-	[]string{"source"})
+	[]string{"source", "datasource_type"})
+
+//nolint:gochecknoinits
+func init() {
+	acquisition.RegisterAcquisitionMetric(DockerDatasourceLinesReadMetricName)
+}
