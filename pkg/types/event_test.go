@@ -1,7 +1,7 @@
 package types
 
 import (
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,7 +91,7 @@ func TestParseIPSources(t *testing.T) {
 	tests := []struct {
 		name     string
 		evt      Event
-		expected []net.IP
+		expected []netip.Addr
 	}{
 		{
 			name: "ParseIPSources: Valid Log Sources",
@@ -101,8 +101,8 @@ func TestParseIPSources(t *testing.T) {
 					"source_ip": "127.0.0.1",
 				},
 			},
-			expected: []net.IP{
-				net.ParseIP("127.0.0.1"),
+			expected: []netip.Addr{
+				netip.MustParseAddr("127.0.0.1"),
 			},
 		},
 		{
@@ -115,8 +115,8 @@ func TestParseIPSources(t *testing.T) {
 					},
 				},
 			},
-			expected: []net.IP{
-				net.ParseIP("127.0.0.1"),
+			expected: []netip.Addr{
+				netip.MustParseAddr("127.0.0.1"),
 			},
 		},
 		{
@@ -127,9 +127,7 @@ func TestParseIPSources(t *testing.T) {
 					"source_ip": "IAMNOTANIP",
 				},
 			},
-			expected: []net.IP{
-				nil,
-			},
+			expected: nil,
 		},
 		{
 			name: "ParseIPSources: Invalid Overflow Sources",
@@ -141,9 +139,7 @@ func TestParseIPSources(t *testing.T) {
 					},
 				},
 			},
-			expected: []net.IP{
-				nil,
-			},
+			expected: nil,
 		},
 	}
 
