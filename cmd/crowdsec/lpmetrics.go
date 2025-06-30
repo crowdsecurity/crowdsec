@@ -120,11 +120,16 @@ func getLabelValue(labels []*io_prometheus_client.LabelPair, key string) string 
 	return ""
 }
 
-func getDeltaKey(labels []*io_prometheus_client.LabelPair) string {
+func getDeltaKey(metricName string, labels []*io_prometheus_client.LabelPair) string {
 	// Create a key from the labels to use as a map key
 	// This is used to store the last value of the metric to compute the delta
-	parts := make([]string, 0, len(labels))
-	for _, label := range labels {
+	parts := make([]string, 0, len(labels)+1)
+	parts = append(parts, metricName)
+	sortedLabels := slices.Clone(labels)
+	slices.SortFunc(sortedLabels, func(a, b *io_prometheus_client.LabelPair) int {
+		return strings.Compare(a.GetName(), b.GetName())
+	})
+	for _, label := range sortedLabels {
 		parts = append(parts, label.GetName()+label.GetValue())
 	}
 	return strings.Join(parts, "")
@@ -145,7 +150,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 		}
 		for _, metric := range metricFamily.GetMetric() {
 			promLabels := metric.GetLabel()
-			deltaKey := getDeltaKey(promLabels)
+			deltaKey := getDeltaKey(metricFamily.GetName(), promLabels)
 			metricsLabels := make(map[string]string)
 
 			for labelKey, labelValue := range labelsMap {
