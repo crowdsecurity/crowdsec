@@ -338,17 +338,22 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.Config.Path, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			h.logger.Errorf("method not allowed: %s", r.Method)
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-
-			return
-		}
-
 		if err := authorizeRequest(r, &h.Config); err != nil {
 			h.logger.Errorf("failed to authorize request from '%s': %s", r.RemoteAddr, err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet, http.MethodHead: // Return a 200 if the auth was successful
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		case http.MethodPost: // POST is handled below
+		default:
+			h.logger.Errorf("method not allowed: %s", r.Method)
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
