@@ -166,10 +166,8 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 					m.logger.Warnf("negative delta for metric %s (labels: %+v), resetting to 0. This is probably a bug.", metricName, metricsLabels)
 					value = 0
 				}
-				m.metricsLastValues[deltaKey] = currentValue
-			} else {
-				m.metricsLastValues[deltaKey] = currentValue
 			}
+			m.metricsLastValues[deltaKey] = currentValue
 
 			item := &models.MetricsDetailItem{
 				Name:   ptr.Of(metricName),
