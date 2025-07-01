@@ -24,7 +24,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	wineventlog_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -191,7 +190,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 				}
 				for _, event := range renderedEvents {
 					if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						wineventlog_metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "label_type": w.config.Labels["type"]}).Inc()
+						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "label_type": w.config.Labels["type"]}).Inc()
 					}
 					l := types.Line{}
 					l.Raw = event
@@ -416,7 +415,7 @@ OUTER_LOOP:
 			for _, evt := range evts {
 				w.logger.Tracef("Event: %s", evt)
 				if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					wineventlog_metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "label_type": w.config.Labels["type"]}).Inc()
+					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "label_type": w.config.Labels["type"]}).Inc()
 				}
 				l := types.Line{}
 				l.Raw = evt
@@ -436,11 +435,11 @@ OUTER_LOOP:
 }
 
 func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{wineventlog_metrics.WineventlogDataSourceLinesRead}
+	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
 func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{wineventlog_metrics.WineventlogDataSourceLinesRead}
+	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
 func (w *WinEventLogSource) GetName() string {
