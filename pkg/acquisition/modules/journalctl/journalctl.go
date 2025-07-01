@@ -19,7 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	journalctl_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/journalctl"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -139,7 +139,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			l.Module = j.GetName()
 
 			if j.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				journalctl_metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "label_type": l.Labels["type"]}).Inc()
+				acquisitionMetrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "label_type": l.Labels["type"]}).Inc()
 			}
 
 			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
@@ -167,11 +167,11 @@ func (j *JournalCtlSource) GetUuid() string {
 }
 
 func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{journalctl_metrics.JournalCtlDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.JournalCtlDataSourceLinesRead}
 }
 
 func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{journalctl_metrics.JournalCtlDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.JournalCtlDataSourceLinesRead}
 }
 
 func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {

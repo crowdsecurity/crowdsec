@@ -1,9 +1,8 @@
 //go:build !no_datasource_syslog
 
-package syslog_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,5 +26,5 @@ var SyslogDataSourceLinesParsed = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(SyslogDataSourceLinesParsedMetricName)
+	RegisterAcquisitionMetric(SyslogDataSourceLinesParsedMetricName)
 }

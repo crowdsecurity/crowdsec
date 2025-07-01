@@ -19,7 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	kubernetesaudit_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/kubernetesaudit"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -45,11 +45,11 @@ func (ka *KubernetesAuditSource) GetUuid() string {
 }
 
 func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{kubernetesaudit_metrics.K8SAuditDataSourceEventCount, kubernetesaudit_metrics.K8SAuditDataSourceRequestCount}
+	return []prometheus.Collector{acquisitionMetrics.K8SAuditDataSourceEventCount, acquisitionMetrics.K8SAuditDataSourceRequestCount}
 }
 
 func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{kubernetesaudit_metrics.K8SAuditDataSourceEventCount, kubernetesaudit_metrics.K8SAuditDataSourceRequestCount}
+	return []prometheus.Collector{acquisitionMetrics.K8SAuditDataSourceEventCount, acquisitionMetrics.K8SAuditDataSourceRequestCount}
 }
 
 func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -168,7 +168,7 @@ func (ka *KubernetesAuditSource) Dump() interface{} {
 
 func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		kubernetesaudit_metrics.K8SAuditDataSourceRequestCount.WithLabelValues(ka.addr).Inc()
+		acquisitionMetrics.K8SAuditDataSourceRequestCount.WithLabelValues(ka.addr).Inc()
 	}
 
 	if r.Method != http.MethodPost {
@@ -202,7 +202,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 
 	for idx := range auditEvents.Items {
 		if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			kubernetesaudit_metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": ka.addr, "datasource_type": "k8s-audit", "label_type": ka.config.Labels["type"]}).Inc()
+			acquisitionMetrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": ka.addr, "datasource_type": "k8s-audit", "label_type": ka.config.Labels["type"]}).Inc()
 		}
 
 		bytesEvent, err := json.Marshal(auditEvents.Items[idx])

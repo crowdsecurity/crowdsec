@@ -1,9 +1,8 @@
 //go:build !no_datasource_s3
 
-package s3_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -39,5 +38,5 @@ var S3DataSourceSQSMessagesReceived = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(S3DataSourceLinesReadMetricName)
+	RegisterAcquisitionMetric(S3DataSourceLinesReadMetricName)
 }

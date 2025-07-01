@@ -1,9 +1,8 @@
 //go:build !no_datasource_victorialogs
 
-package victorialogs_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,5 +17,5 @@ var VictorialogsDataSourceLinesRead = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(VictorialogsDataSourceLinesReadMetricName)
+	RegisterAcquisitionMetric(VictorialogsDataSourceLinesReadMetricName)
 }

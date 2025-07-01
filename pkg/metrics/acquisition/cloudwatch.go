@@ -1,9 +1,8 @@
 //go:build !no_datasource_cloudwatch
 
-package cloudwatch_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,5 +28,5 @@ var CloudWatchDatasourceLinesRead = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(CloudWatchDatasourceLinesReadMetricName)
+	RegisterAcquisitionMetric(CloudWatchDatasourceLinesReadMetricName)
 }

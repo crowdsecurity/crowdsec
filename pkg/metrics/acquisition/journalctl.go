@@ -1,9 +1,8 @@
 //go:build !no_datasource_journalctl
 
-package journalctl_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,5 +17,5 @@ var JournalCtlDataSourceLinesRead = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(JournalCtlDataSourceLinesReadMetricName)
+	RegisterAcquisitionMetric(JournalCtlDataSourceLinesReadMetricName)
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
 	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	syslog_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/syslog"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -63,11 +63,11 @@ func (s *SyslogSource) CanRun() error {
 }
 
 func (s *SyslogSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{syslog_metrics.SyslogDataSourceLinesReceived, syslog_metrics.SyslogDataSourceLinesParsed}
+	return []prometheus.Collector{acquisitionMetrics.SyslogDataSourceLinesReceived, acquisitionMetrics.SyslogDataSourceLinesParsed}
 }
 
 func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{syslog_metrics.SyslogDataSourceLinesReceived, syslog_metrics.SyslogDataSourceLinesParsed}
+	return []prometheus.Collector{acquisitionMetrics.SyslogDataSourceLinesReceived, acquisitionMetrics.SyslogDataSourceLinesParsed}
 }
 
 func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
@@ -178,7 +178,7 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 	logger := s.logger.WithField("client", syslogLine.Client)
 	logger.Tracef("raw: %s", syslogLine)
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		syslog_metrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client, "datasource_type": "syslog"}).Inc()
+		acquisitionMetrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client, "datasource_type": "syslog"}).Inc()
 	}
 	if !s.config.DisableRFCParser {
 		p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
@@ -194,12 +194,12 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 			}
 			line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				syslog_metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424", "datasource_type": "syslog", "label_type": s.config.Labels["type"]}).Inc()
+				acquisitionMetrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424", "datasource_type": "syslog", "label_type": s.config.Labels["type"]}).Inc()
 			}
 		} else {
 			line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				syslog_metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164", "datasource_type": "syslog", "label_type": s.config.Labels["type"]}).Inc()
+				acquisitionMetrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164", "datasource_type": "syslog", "label_type": s.config.Labels["type"]}).Inc()
 			}
 		}
 	} else {

@@ -29,7 +29,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	s3_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/s3"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -326,7 +326,7 @@ func (s *S3Source) sqsPoll() error {
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
 				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					s3_metrics.S3DataSourceSQSMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
+					acquisitionMetrics.S3DataSourceSQSMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
 				}
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
@@ -408,7 +408,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				s3_metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "label_type": s.Config.Labels["type"]}).Inc()
+				acquisitionMetrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "label_type": s.Config.Labels["type"]}).Inc()
 			}
 			l := types.Line{}
 			l.Raw = text
@@ -431,7 +431,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
 	}
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		s3_metrics.S3DataSourceObjectsRead.WithLabelValues(bucket).Inc()
+		acquisitionMetrics.S3DataSourceObjectsRead.WithLabelValues(bucket).Inc()
 	}
 	return nil
 }
@@ -441,11 +441,11 @@ func (s *S3Source) GetUuid() string {
 }
 
 func (s *S3Source) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{s3_metrics.S3DataSourceLinesRead, s3_metrics.S3DataSourceObjectsRead, s3_metrics.S3DataSourceSQSMessagesReceived}
+	return []prometheus.Collector{acquisitionMetrics.S3DataSourceLinesRead, acquisitionMetrics.S3DataSourceObjectsRead, acquisitionMetrics.S3DataSourceSQSMessagesReceived}
 }
 
 func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{s3_metrics.S3DataSourceLinesRead, s3_metrics.S3DataSourceObjectsRead, s3_metrics.S3DataSourceSQSMessagesReceived}
+	return []prometheus.Collector{acquisitionMetrics.S3DataSourceLinesRead, acquisitionMetrics.S3DataSourceObjectsRead, acquisitionMetrics.S3DataSourceSQSMessagesReceived}
 }
 
 func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {

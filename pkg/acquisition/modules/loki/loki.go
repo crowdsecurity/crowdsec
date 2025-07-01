@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	loki_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/loki"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -63,11 +63,11 @@ type LokiSource struct {
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{loki_metrics.LokiDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.LokiDataSourceLinesRead}
 }
 
 func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{loki_metrics.LokiDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.LokiDataSourceLinesRead}
 }
 
 func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -311,7 +311,7 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	ll.Module = l.GetName()
 
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		loki_metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "loki", "label_type": ll.Labels["type"]}).Inc()
+		acquisitionMetrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "loki", "label_type": ll.Labels["type"]}).Inc()
 	}
 	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
 	evt.Line = ll

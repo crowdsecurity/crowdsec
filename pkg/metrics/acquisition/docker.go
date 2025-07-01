@@ -1,9 +1,8 @@
 //go:build !no_datasource_docker
 
-package docker_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,5 +17,5 @@ var DockerDatasourceLinesRead = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(DockerDatasourceLinesReadMetricName)
+	RegisterAcquisitionMetric(DockerDatasourceLinesReadMetricName)
 }

@@ -1,9 +1,8 @@
 //go:build !no_datasource_loki
 
-package loki_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,5 +17,5 @@ var LokiDataSourceLinesRead = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(LokiDataSourceLinesReadMetricName)
+	RegisterAcquisitionMetric(LokiDataSourceLinesReadMetricName)
 }

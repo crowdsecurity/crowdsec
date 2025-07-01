@@ -23,7 +23,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	cloudwatch_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/cloudwatch"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -254,11 +254,11 @@ func (cw *CloudwatchSource) StreamingAcquisition(ctx context.Context, out chan t
 }
 
 func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{cloudwatch_metrics.CloudWatchDatasourceLinesRead, cloudwatch_metrics.CloudWatchDatasourceOpenedStreams}
+	return []prometheus.Collector{acquisitionMetrics.CloudWatchDatasourceLinesRead, acquisitionMetrics.CloudWatchDatasourceOpenedStreams}
 }
 
 func (cw *CloudwatchSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{cloudwatch_metrics.CloudWatchDatasourceLinesRead, cloudwatch_metrics.CloudWatchDatasourceOpenedStreams}
+	return []prometheus.Collector{acquisitionMetrics.CloudWatchDatasourceLinesRead, acquisitionMetrics.CloudWatchDatasourceOpenedStreams}
 }
 
 func (cw *CloudwatchSource) GetMode() string {
@@ -402,7 +402,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 						cw.monitoredStreams = slices.Delete(cw.monitoredStreams, idx, idx+1)
 
 						if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-							cloudwatch_metrics.CloudWatchDatasourceOpenedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
+							acquisitionMetrics.CloudWatchDatasourceOpenedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
 						}
 
 						break
@@ -417,7 +417,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 			// let's start watching this stream
 			if shouldCreate {
 				if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					cloudwatch_metrics.CloudWatchDatasourceOpenedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
+					acquisitionMetrics.CloudWatchDatasourceOpenedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
 				}
 
 				newStream.t = tomb.Tomb{}
@@ -437,7 +437,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
 
 					if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						cloudwatch_metrics.CloudWatchDatasourceOpenedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
+						acquisitionMetrics.CloudWatchDatasourceOpenedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
 					}
 				} else {
 					newMonitoredStreams = append(newMonitoredStreams, stream)
@@ -529,7 +529,7 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
 
 								if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-									cloudwatch_metrics.CloudWatchDatasourceLinesRead.With(
+									acquisitionMetrics.CloudWatchDatasourceLinesRead.With(
 										prometheus.Labels{"group": cfg.GroupName,
 											"stream":          cfg.StreamName,
 											"datasource_type": "cloudwatch",

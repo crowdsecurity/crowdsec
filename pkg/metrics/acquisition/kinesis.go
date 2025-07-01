@@ -1,9 +1,8 @@
 //go:build !no_datasource_kinesis
 
-package kinesis_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,5 +28,5 @@ var KinesisDataSourceLinesReadShards = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(KinesisDataSourceLinesReadMetricName)
+	RegisterAcquisitionMetric(KinesisDataSourceLinesReadMetricName)
 }

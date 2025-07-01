@@ -21,7 +21,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	kafka_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/kafka"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -140,11 +140,11 @@ func (*KafkaSource) CanRun() error {
 }
 
 func (*KafkaSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{kafka_metrics.KafkaDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.KafkaDataSourceLinesRead}
 }
 
 func (*KafkaSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{kafka_metrics.KafkaDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.KafkaDataSourceLinesRead}
 }
 
 func (k *KafkaSource) Dump() any {
@@ -185,7 +185,7 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
 
 		if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			kafka_metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": k.Config.Topic, "datasource_type": "kafka", "label_type": l.Labels["type"]}).Inc()
+			acquisitionMetrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": k.Config.Topic, "datasource_type": "kafka", "label_type": l.Labels["type"]}).Inc()
 		}
 
 		evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)

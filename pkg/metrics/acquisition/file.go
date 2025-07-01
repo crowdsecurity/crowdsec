@@ -1,9 +1,8 @@
 //go:build !no_datasource_file
 
-package file_metrics
+package acquisition
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -19,5 +18,5 @@ var FileDatasourceLinesRead = prometheus.NewCounterVec(
 
 //nolint:gochecknoinits
 func init() {
-	acquisition.RegisterAcquisitionMetric(FileDatasourceLinesReadMetricName)
+	RegisterAcquisitionMetric(FileDatasourceLinesReadMetricName)
 }

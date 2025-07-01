@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	http_metrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition/http"
+	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -192,11 +192,11 @@ func (h *HTTPSource) CanRun() error {
 }
 
 func (h *HTTPSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{http_metrics.HTTPDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.HTTPDataSourceLinesRead}
 }
 
 func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{http_metrics.HTTPDataSourceLinesRead}
+	return []prometheus.Collector{acquisitionMetrics.HTTPDataSourceLinesRead}
 }
 
 func (h *HTTPSource) Dump() interface{} {
@@ -330,9 +330,9 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 
 		switch h.metricsLevel {
 		case metrics.AcquisitionMetricsLevelAggregated:
-			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "label_type": hc.Labels["type"]}).Inc()
+			acquisitionMetrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "label_type": hc.Labels["type"]}).Inc()
 		case metrics.AcquisitionMetricsLevelFull:
-			http_metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "label_type": hc.Labels["type"]}).Inc()
+			acquisitionMetrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "label_type": hc.Labels["type"]}).Inc()
 		}
 
 		h.logger.Tracef("line to send: %+v", line)

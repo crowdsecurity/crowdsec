@@ -1,6 +1,8 @@
-package appsec_metrics
+package acquisition
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const AppsecGlobalParsingHistogramMetricName = "cs_appsec_parsing_time_seconds"
 
