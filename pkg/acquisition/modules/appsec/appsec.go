@@ -30,7 +30,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -172,13 +171,13 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (w *AppsecSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.AppsecReqCounter, acquisitionMetrics.AppsecBlockCounter, acquisitionMetrics.AppsecRuleHits,
-		acquisitionMetrics.AppsecOutbandParsingHistogram, acquisitionMetrics.AppsecInbandParsingHistogram, acquisitionMetrics.AppsecGlobalParsingHistogram}
+	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
+		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
 
 func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.AppsecReqCounter, acquisitionMetrics.AppsecBlockCounter, acquisitionMetrics.AppsecRuleHits,
-		acquisitionMetrics.AppsecOutbandParsingHistogram, acquisitionMetrics.AppsecInbandParsingHistogram, acquisitionMetrics.AppsecGlobalParsingHistogram}
+	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
+		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
 
 func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, error) {
@@ -576,7 +575,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		"client_ip":    parsedRequest.ClientIP,
 	})
 
-	acquisitionMetrics.AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
+	metrics.AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 
 	w.InChan <- parsedRequest
 
@@ -587,7 +586,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	response := <-parsedRequest.ResponseChannel
 
 	if response.InBandInterrupt {
-		acquisitionMetrics.AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
+		metrics.AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
 	statusCode, appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)

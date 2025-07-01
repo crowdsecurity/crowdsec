@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -184,7 +184,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 }
 
 func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
-	return m.gatherPromMetrics(acquisitionMetrics.AcquisitionMetricsNames, labelsMapping{
+	return m.gatherPromMetrics(metrics.AcquisitionMetricsNames, labelsMapping{
 		"datasource_type": "datasource_type",
 		"source":          "source",
 		"label_type":      "type",

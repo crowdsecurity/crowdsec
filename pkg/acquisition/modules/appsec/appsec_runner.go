@@ -18,7 +18,7 @@ import (
 	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -365,7 +365,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	// time spent to process in band rules
 	inBandParsingElapsed := time.Since(startInBandParsing)
-	acquisitionMetrics.AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
+	metrics.AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
 
 	if request.Tx.IsInterrupted() {
 		r.handleInBandInterrupt(request)
@@ -404,7 +404,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 		// time spent to process out of band rules
 		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-		acquisitionMetrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
+		metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
 		if request.Tx.IsInterrupted() {
 			r.handleOutBandInterrupt(request)
 		}
@@ -415,7 +415,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	}
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
-	acquisitionMetrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
+	metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 }
 
 func (r *AppsecRunner) Run(t *tomb.Tomb) error {

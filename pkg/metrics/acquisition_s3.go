@@ -1,6 +1,6 @@
 //go:build !no_datasource_s3
 
-package acquisition
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"

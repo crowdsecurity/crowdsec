@@ -1,6 +1,6 @@
 //go:build !no_datasource_kafka
 
-package acquisition
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"

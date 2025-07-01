@@ -24,7 +24,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -105,11 +104,11 @@ func (k *KinesisSource) newClient() error {
 }
 
 func (k *KinesisSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.KinesisDataSourceLinesRead, acquisitionMetrics.KinesisDataSourceLinesReadShards}
+	return []prometheus.Collector{metrics.KinesisDataSourceLinesRead, metrics.KinesisDataSourceLinesReadShards}
 }
 
 func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.KinesisDataSourceLinesRead, acquisitionMetrics.KinesisDataSourceLinesReadShards}
+	return []prometheus.Collector{metrics.KinesisDataSourceLinesRead, metrics.KinesisDataSourceLinesReadShards}
 }
 
 func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -301,13 +300,13 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				acquisitionMetrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
-				acquisitionMetrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "datasource_type": "kinesis", "label_type": k.Config.Labels["type"]}).Inc()
+				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "datasource_type": "kinesis", "label_type": k.Config.Labels["type"]}).Inc()
 			}
 		} else {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				acquisitionMetrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
-				acquisitionMetrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "datasource_type": "kinesis", "label_type": k.Config.Labels["type"]}).Inc()
+				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "datasource_type": "kinesis", "label_type": k.Config.Labels["type"]}).Inc()
 			}
 		}
 

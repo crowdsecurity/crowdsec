@@ -27,7 +27,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -339,7 +338,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					l.Module = d.GetName()
 
 					if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						acquisitionMetrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "label_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
+						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "label_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
 					}
 
 					evt := types.MakeEvent(true, types.LOG, true)
@@ -370,11 +369,11 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 }
 
 func (d *DockerSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.DockerDatasourceLinesRead}
+	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
 }
 
 func (d *DockerSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.DockerDatasourceLinesRead}
+	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
 }
 
 func (d *DockerSource) GetName() string {
@@ -719,7 +718,7 @@ func (d *DockerSource) TailDocker(ctx context.Context, container *ContainerConfi
 			l.Module = d.GetName()
 			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			acquisitionMetrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "label_type": evt.Line.Labels["type"]}).Inc()
+			metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "label_type": evt.Line.Labels["type"]}).Inc()
 			outChan <- evt
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():

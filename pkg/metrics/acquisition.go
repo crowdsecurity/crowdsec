@@ -1,4 +1,4 @@
-package acquisition
+package metrics
 
 var AcquisitionMetricsNames = []string{}
 

@@ -28,7 +28,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -293,11 +292,11 @@ func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Even
 }
 
 func (f *FileSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.FileDatasourceLinesRead}
+	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
 func (f *FileSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.FileDatasourceLinesRead}
+	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
 func (f *FileSource) GetName() string {
@@ -574,7 +573,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			}
 
 			if f.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				acquisitionMetrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": "file", "label_type": f.config.Labels["type"]}).Inc()
+				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": "file", "label_type": f.config.Labels["type"]}).Inc()
 			}
 
 			src := tail.Filename
@@ -651,7 +650,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 				Module:  f.GetName(),
 			}
 			logger.Debugf("line %s", l.Raw)
-			acquisitionMetrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "label_type": l.Labels["type"]}).Inc()
+			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "label_type": l.Labels["type"]}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]any)}

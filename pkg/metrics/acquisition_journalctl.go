@@ -1,6 +1,6 @@
 //go:build !no_datasource_journalctl
 
-package acquisition
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"

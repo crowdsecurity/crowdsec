@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	acquisitionMetrics "github.com/crowdsecurity/crowdsec/pkg/metrics/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -53,11 +52,11 @@ type VLSource struct {
 }
 
 func (l *VLSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.VictorialogsDataSourceLinesRead}
+	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
 func (l *VLSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{acquisitionMetrics.VictorialogsDataSourceLinesRead}
+	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
 func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -271,7 +270,7 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	ll.Module = l.GetName()
 
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		acquisitionMetrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "label_type": l.Config.Labels["type"]}).Inc()
+		metrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "label_type": l.Config.Labels["type"]}).Inc()
 	}
 	expectMode := types.LIVE
 	if l.Config.UseTimeMachine {
