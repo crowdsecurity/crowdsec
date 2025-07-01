@@ -2,7 +2,7 @@ package setup
 
 import (
 	"bytes"
-	"github.com/mohae/deepcopy"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/blackfireio/osinfo"
 	"github.com/expr-lang/expr"
+	"github.com/mohae/deepcopy"
 	"github.com/sirupsen/logrus"
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
@@ -24,7 +25,7 @@ import (
 )
 
 // ExecCommand can be replaced with a mock during tests.
-var ExecCommand = exec.Command
+var ExecCommand = exec.CommandContext
 
 // HubSpec contains the items (mostly collections) that are recommended to support a service.
 type HubSpec map[string][]string
@@ -320,7 +321,7 @@ func (d *Detector) ListSupportedServices() []string {
 	return keys
 }
 
-func NewSetup(detector *Detector, opts DetectOptions, logger *logrus.Logger) (*Setup, error) {
+func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, logger *logrus.Logger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
@@ -333,7 +334,7 @@ func NewSetup(detector *Detector, opts DetectOptions, logger *logrus.Logger) (*S
 			return nil, fmt.Errorf("detecting OS: %w", err)
 		}
 
-		logger.Tracef("Detected OS - %+v", *osfull)
+		logger.Debugf("Detected OS - %+v", *osfull)
 
 		os = ExprOS{
 			Family:     osfull.Family,
@@ -341,20 +342,20 @@ func NewSetup(detector *Detector, opts DetectOptions, logger *logrus.Logger) (*S
 			RawVersion: osfull.Version,
 		}
 	} else {
-		logger.Tracef("Forced OS - %+v", os)
+		logger.Debugf("Forced OS - %+v", os)
 	}
 
 	if len(opts.ForcedUnits) > 0 {
-		logger.Tracef("Forced units - %v", opts.ForcedUnits)
+		logger.Debugf("Forced units - %v", opts.ForcedUnits)
 	}
 
 	if len(opts.ForcedProcesses) > 0 {
-		logger.Tracef("Forced processes - %v", opts.ForcedProcesses)
+		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
 	}
 
-	env := NewExprEnvironment(opts, os)
+	env := NewExprEnvironment(ctx, opts, os)
 
-	detected, err := buildPlans(detector, env, logger)
+	detected, err := buildPlans(ctx, detector, env, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -395,49 +396,54 @@ type ServiceRules struct {
 // augmented with default values and anything that might be useful later on
 //
 // All expressions are evaluated (no short-circuit) because we want to know if there are errors.
-func applyRules(svc ServiceRules, env ExprEnvironment, logger *logrus.Logger) (ServiceRules, bool, error) {
+func applyRules(ctx context.Context, svc ServiceRules, env *ExprEnvironment, logger *logrus.Logger) (*ServiceRules, error) {
 	// make a copy because we need the original to detect more stuff
 	newsvc := deepcopy.Copy(svc).(ServiceRules)
 	svcok := true
-	env._serviceState = &ExprServiceState{}
+	env._serviceState = ExprServiceState{}
 
 	for _, rule := range svc.When {
-		out, err := expr.Eval(rule, env)
-		logger.Tracef("  Rule '%s' -> %t, %v", rule, out, err)
+		// pass an empty environment struct so the compiler can know the types
+		program, err := expr.Compile(rule, expr.WithContext("Ctx"), expr.Env(&ExprEnvironment{}))
+		if err != nil {
+			return nil, fmt.Errorf("rule '%s': %w", rule, err)
+		}
+
+		out, err := expr.Run(program, env)
+		logger.Debugf("  Rule '%s' -> %t, %v", rule, out, err)
 
 		if err != nil {
-			return ServiceRules{}, false, fmt.Errorf("rule '%s': %w", rule, err)
+			return nil, fmt.Errorf("rule '%s': %w", rule, err)
 		}
 
 		outbool, ok := out.(bool)
 		if !ok {
-			return ServiceRules{}, false, fmt.Errorf("rule '%s': type must be a boolean", rule)
+			return nil, fmt.Errorf("rule '%s': type must be a boolean", rule)
 		}
 
 		svcok = svcok && outbool
+		// keep evaluating, to detect possible expression errors
 	}
 
-	return newsvc, svcok, nil
+	if !svcok {
+		return nil, nil // no need to return an error, just means the service is not detected
+	}
+
+	return &newsvc, nil
 }
 
-func buildPlans(detector *Detector, env ExprEnvironment, logger *logrus.Logger) (map[string]ServicePlan, error) {
+func buildPlans(ctx context.Context, detector *Detector, env *ExprEnvironment, logger *logrus.Logger) (map[string]ServicePlan, error) {
 	ret := make(map[string]ServicePlan)
 
 	for name := range detector.Detect {
-		logger.Trace("Evaluating rules for: ", name)
-
-		svc, ok, err := applyRules(detector.Detect[name], env, logger)
+		svc, err := applyRules(ctx, detector.Detect[name], env, logger)
 		if err != nil {
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
 		}
 
-		if !ok {
-			logger.Tracef("  Skipping %s", name)
-
+		if svc == nil {
 			continue
 		}
-
-		logger.Tracef("  Detected %s", name)
 
 		ret[name] = ServicePlan{
 			Name:                  name,

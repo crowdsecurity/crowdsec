@@ -102,6 +102,8 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
 			detector, rulesFrom, err := f.detector()
 			if err != nil {
 				return err
@@ -117,7 +119,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 			logger := logrus.StandardLogger()
 
-			stup, err := setup.NewSetup(detector, f.toDetectOptions(logger), logger)
+			stup, err := setup.NewSetup(ctx, detector, f.toDetectOptions(logger), logger)
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}

@@ -1,6 +1,7 @@
 package setup_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -37,20 +38,20 @@ fwupd.service                             enabled  enabled
 
 9 unit files listed.`
 
-func fakeExecCommandNotFound(command string, args ...string) *exec.Cmd {
+func fakeExecCommandNotFound(ctx context.Context, command string, args ...string) *exec.Cmd {
 	cs := []string{"-test.run=TestSetupHelperProcess", "--", command}
 	cs = append(cs, args...)
-	cmd := exec.Command("this-command-does-not-exist", cs...)
+	cmd := exec.CommandContext(ctx, "this-command-does-not-exist", cs...)
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 
 	return cmd
 }
 
-func fakeExecCommand(command string, args ...string) *exec.Cmd {
+func fakeExecCommand(ctx context.Context, command string, args ...string) *exec.Cmd {
 	cs := []string{"-test.run=TestSetupHelperProcess", "--", command}
 	cs = append(cs, args...)
 	//nolint:gosec
-	cmd := exec.Command(os.Args[0], cs...)
+	cmd := exec.CommandContext(ctx, os.Args[0], cs...)
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 
 	return cmd
@@ -89,6 +90,7 @@ func tempYAML(t *testing.T, content string) os.File {
 
 func TestPathExists(t *testing.T) {
 	t.Parallel()
+	ctx := t.Context()
 
 	type test struct {
 		path string
@@ -106,12 +108,12 @@ func TestPathExists(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		env := setup.NewExprEnvironment(setup.DetectOptions{}, setup.ExprOS{})
+		env := setup.NewExprEnvironment(ctx, setup.DetectOptions{}, setup.ExprOS{})
 
 		t.Run(tc.path, func(t *testing.T) {
 			t.Parallel()
 
-			actual := env.PathExists(tc.path)
+			actual := env.PathExists(ctx, tc.path)
 			require.Equal(t, tc.want, actual)
 		})
 	}
@@ -277,46 +279,47 @@ func TestListSupported(t *testing.T) {
 
 func TestApplyRules(t *testing.T) {
 	t.Parallel()
+	ctx := t.Context()
 	tests := []struct {
 		name    string
 		rules   []string
-		want    bool
+		wantNil bool
 		wantErr string
 	}{
 		{
 			"empty list is always true",
 			[]string{},
-			true,
+			false,
 			"",
 		},
 		{
 			"simple true expression",
 			[]string{"1+1==2"},
-			true,
+			false,
 			"",
 		},
 		{
 			"simple false expression",
 			[]string{"2+2==5"},
-			false,
+			true,
 			"",
 		},
 		{
 			"all expressions are true",
 			[]string{"1+2==3", "1!=2"},
-			true,
+			false,
 			"",
 		},
 		{
 			"all expressions must be true",
 			[]string{"true", "1==3", "1!=2"},
-			false,
+			true,
 			"",
 		},
 		{
 			"each expression must be a boolan",
 			[]string{"true", "\"notabool\""},
-			false,
+			true,
 			"rule '\"notabool\"': type must be a boolean",
 		},
 		{
@@ -324,33 +327,42 @@ func TestApplyRules(t *testing.T) {
 			// file is formally correct, even if it can some time.
 			"each expression must be a boolan (no short circuit)",
 			[]string{"false", "3"},
-			false,
+			true,
 			"rule '3': type must be a boolean",
 		},
 		{
 			"unknown variable",
 			[]string{"false", "doesnotexist"},
-			false,
-			"rule 'doesnotexist': cannot fetch doesnotexist from",
+			true,
+			"rule 'doesnotexist': unknown name doesnotexist",
 		},
 		{
 			"unknown expression",
 			[]string{"false", "doesnotexist()"},
-			false,
-			"rule 'doesnotexist()': cannot fetch doesnotexist from",
+			true,
+			"rule 'doesnotexist()': unknown name doesnotexist",
 		},
 	}
 
-	env := setup.ExprEnvironment{}
+	env := &setup.ExprEnvironment{}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			svc := setup.ServiceRules{When: tc.rules}
-			_, got, err := setup.ApplyRules(svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
+			got, err := setup.ApplyRules(ctx, svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(t, tc.want, got)
+
+			if tc.wantErr != "" {
+				return
+			}
+
+			if tc.wantNil {
+				require.Nil(t, got)
+			} else {
+				require.NotNil(t, got)
+			}
 		})
 	}
 }
@@ -358,18 +370,20 @@ func TestApplyRules(t *testing.T) {
 // XXX TODO: TestApplyRules with journalctl default
 
 func TestUnitFound(t *testing.T) {
+	ctx := t.Context()
 	setup.ExecCommand = fakeExecCommand
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
-	env := setup.NewExprEnvironment(setup.DetectOptions{}, setup.ExprOS{})
+	env := setup.NewExprEnvironment(ctx, setup.DetectOptions{}, setup.ExprOS{})
 
-	installed, err := env.UnitFound("crowdsec-setup-detect.service")
+	installed, err := env.UnitFound(ctx, "crowdsec-setup-detect.service")
 	require.NoError(t, err)
 
 	require.True(t, installed)
 }
 
 func TestDetectSimpleRule(t *testing.T) {
+	ctx := t.Context()
 	setup.ExecCommand = fakeExecCommand
 
 	f := tempYAML(t, `
@@ -386,7 +400,7 @@ func TestDetectSimpleRule(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
+	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
 	require.NoError(t, err)
 
 	want := []setup.ServicePlan{
@@ -398,10 +412,11 @@ func TestDetectSimpleRule(t *testing.T) {
 }
 
 func TestDetectUnitError(t *testing.T) {
+	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
 	setup.ExecCommand = fakeExecCommandNotFound
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	tests := []struct {
 		name        string
@@ -429,7 +444,7 @@ detect:
 
 			detector, err := setup.NewDetector(&f)
 			require.NoError(t, err)
-			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
+			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -437,8 +452,9 @@ detect:
 }
 
 func TestDetectUnit(t *testing.T) {
+	ctx := t.Context()
 	setup.ExecCommand = fakeExecCommand
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	tests := []struct {
 		name        string
@@ -527,7 +543,7 @@ detect:
 
 			detector, err := setup.NewDetector(&f)
 			require.NoError(t, err)
-			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
+			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -535,8 +551,9 @@ detect:
 }
 
 func TestDetectForcedUnit(t *testing.T) {
+	ctx := t.Context()
 	setup.ExecCommand = fakeExecCommand
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	f := tempYAML(t, `
 	version: 1.0
@@ -556,7 +573,7 @@ func TestDetectForcedUnit(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}}, nullLogger())
+	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}}, nullLogger())
 	require.NoError(t, err)
 
 	want := &setup.Setup{
@@ -580,11 +597,12 @@ func TestDetectForcedUnit(t *testing.T) {
 }
 
 func TestDetectForcedProcess(t *testing.T) {
+	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
 	setup.ExecCommand = fakeExecCommand
 
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	f := tempYAML(t, `
 	version: 1.0
@@ -596,7 +614,7 @@ func TestDetectForcedProcess(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}}, nullLogger())
+	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}}, nullLogger())
 	require.NoError(t, err)
 
 	want := &setup.Setup{
@@ -608,11 +626,12 @@ func TestDetectForcedProcess(t *testing.T) {
 }
 
 func TestDetectSkipService(t *testing.T) {
+	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
 	setup.ExecCommand = fakeExecCommand
 
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	f := tempYAML(t, `
 	version: 1.0
@@ -624,7 +643,7 @@ func TestDetectSkipService(t *testing.T) {
 
 	detector, err := setup.NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}}, nullLogger())
+	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}}, nullLogger())
 	require.NoError(t, err)
 
 	want := &setup.Setup{[]setup.ServicePlan{}}
@@ -632,9 +651,10 @@ func TestDetectSkipService(t *testing.T) {
 }
 
 func TestDetectForcedOS(t *testing.T) {
+	ctx := t.Context()
 	setup.ExecCommand = fakeExecCommand
 
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	type test struct {
 		name        string
@@ -839,7 +859,7 @@ func TestDetectForcedOS(t *testing.T) {
 
 			detector, err := setup.NewDetector(&f)
 			require.NoError(t, err)
-			got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedOS: tc.forced}, nullLogger())
+			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedOS: tc.forced}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -850,8 +870,9 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	// It could be a good idea to test UnmarshalConfig() separately in addition
 	// to Configure(), in each datasource. For now, we test these here.
 	setup.ExecCommand = fakeExecCommand
+	ctx := t.Context()
 
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	type test struct {
 		name        string
@@ -1094,7 +1115,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 			if tc.wantErr != "" {
 				return
 			}
-			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
+			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})

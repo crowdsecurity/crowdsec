@@ -148,7 +148,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 		return nil
 	}
 
-	stup, err := setup.NewSetup(detector, opts, logger)
+	stup, err := setup.NewSetup(ctx, detector, opts, logger)
 	if err != nil {
 		return err
 	}
