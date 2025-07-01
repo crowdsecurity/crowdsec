@@ -198,10 +198,10 @@ func (s *Setup) DetectedServices() []string {
 	return ret
 }
 
-func NewSetupFromYAML(input io.Reader, showSource bool, wantColor bool) (Setup, error) {
+func NewSetupFromYAML(input io.Reader, showSource bool, wantColor bool) (*Setup, error) {
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
-		return Setup{}, fmt.Errorf("while reading setup file: %w", err)
+		return nil, fmt.Errorf("while reading setup file: %w", err)
 	}
 
 	// parse with goccy to have better error messages in many cases
@@ -210,7 +210,7 @@ func NewSetupFromYAML(input io.Reader, showSource bool, wantColor bool) (Setup, 
 	s := Setup{}
 
 	if err := dec.Decode(&s); err != nil {
-		return Setup{}, fmt.Errorf("%v", goccyyaml.FormatError(err, wantColor, showSource))
+		return nil, fmt.Errorf("%v", goccyyaml.FormatError(err, wantColor, showSource))
 	}
 
 	// parse again because goccy is not strict enough anyway
@@ -218,10 +218,10 @@ func NewSetupFromYAML(input io.Reader, showSource bool, wantColor bool) (Setup, 
 	dec2.KnownFields(true)
 
 	if err := dec2.Decode(&s); err != nil {
-		return Setup{}, fmt.Errorf("while parsing setup file: %w", err)
+		return nil, fmt.Errorf("while parsing setup file: %w", err)
 	}
 
-	return s, nil
+	return &s, nil
 }
 
 func (s *Setup) ToYAML(outYaml bool) ([]byte, error) {
