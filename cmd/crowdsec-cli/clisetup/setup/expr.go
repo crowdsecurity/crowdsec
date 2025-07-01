@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -70,14 +71,15 @@ func (os ExprOS) VersionIsLower(version string) (bool, error) {
 type ExprEnvironment struct {
 	OS ExprOS
 
-	_serviceState *ExprServiceState
-	_state        *ExprState
+	Ctx context.Context //nolint:containedctx
+	_serviceState ExprServiceState
+	_state        ExprState
 }
 
 // NewExprEnvironment creates an environment object for the rule engine.
-func NewExprEnvironment(opts DetectOptions, os ExprOS) ExprEnvironment {
-	return ExprEnvironment{
-		_state: &ExprState{
+func NewExprEnvironment(ctx context.Context, opts DetectOptions, os ExprOS) *ExprEnvironment {
+	return &ExprEnvironment{
+		_state: ExprState{
 			detectOptions: opts,
 
 			unitsSearched:  make(map[string]bool),
@@ -86,43 +88,56 @@ func NewExprEnvironment(opts DetectOptions, os ExprOS) ExprEnvironment {
 			processesSearched: make(map[string]bool),
 			runningProcesses:  make(map[string]bool),
 		},
-		_serviceState: &ExprServiceState{},
+		_serviceState: ExprServiceState{},
 		OS:            os,
+		Ctx: ctx,
 	}
 }
 
 // PathExists returns true if the given path exists.
-func (e ExprEnvironment) PathExists(path string) bool {
+func (e *ExprEnvironment) PathExists(ctx context.Context, path string) bool {
 	_, err := os.Stat(path)
 
 	return err == nil
 }
 
+func (e *ExprEnvironment) loadUnits(ctx context.Context) error {
+	if len(e._state.unitsSearched) != 0 {
+		return nil
+	}
+
+	for _, name := range e._state.detectOptions.ForcedUnits {
+		e._state.installedUnits[name] = true
+	}
+
+	if e._state.detectOptions.SkipSystemd {
+		return nil
+	}
+
+	log.Debugf("Running systemctl...")
+
+	units, err := systemdUnitList(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, name := range units {
+		e._state.installedUnits[name] = true
+	}
+
+	return nil
+}
+
 // UnitFound returns true if the unit is listed in the systemctl output.
 // Whether a disabled or failed unit is considered found or not, depends on the
 // systemctl parameters used.
-func (e ExprEnvironment) UnitFound(unitName string) (bool, error) {
-	// fill initial caches
-	if len(e._state.unitsSearched) == 0 {
-		if !e._state.detectOptions.SkipSystemd {
-			log.Debugf("Running systemctl...")
-
-			units, err := systemdUnitList()
-			if err != nil {
-				return false, err
-			}
-
-			for _, name := range units {
-				e._state.installedUnits[name] = true
-			}
-		}
-
-		for _, name := range e._state.detectOptions.ForcedUnits {
-			e._state.installedUnits[name] = true
-		}
+func (e *ExprEnvironment) UnitFound(ctx context.Context, unitName string) (bool, error) {
+	if err := e.loadUnits(ctx); err != nil {
+		return false, err
 	}
 
 	e._state.unitsSearched[unitName] = true
+
 	if e._state.installedUnits[unitName] {
 		e._serviceState.detectedUnits = append(e._serviceState.detectedUnits, unitName)
 
@@ -132,26 +147,36 @@ func (e ExprEnvironment) UnitFound(unitName string) (bool, error) {
 	return false, nil
 }
 
-// ProcessRunning returns true if there is a running process with the given name.
-func (e ExprEnvironment) ProcessRunning(processName string) (bool, error) {
-	if len(e._state.processesSearched) == 0 {
-		procs, err := process.Processes()
+func (e *ExprEnvironment) loadProcesses(ctx context.Context) error {
+	if len(e._state.processesSearched) != 0 {
+		return nil
+	}
+
+	for _, name := range e._state.detectOptions.ForcedProcesses {
+		e._state.runningProcesses[name] = true
+	}
+
+	procs, err := process.ProcessesWithContext(ctx)
+	if err != nil {
+		return fmt.Errorf("while looking up running processes: %w", err)
+	}
+
+	for _, p := range procs {
+		name, err := p.Name()
 		if err != nil {
-			return false, fmt.Errorf("while looking up running processes: %w", err)
+			return fmt.Errorf("while looking up running processes: %w", err)
 		}
 
-		for _, p := range procs {
-			name, err := p.Name()
-			if err != nil {
-				return false, fmt.Errorf("while looking up running processes: %w", err)
-			}
+		e._state.runningProcesses[name] = true
+	}
 
-			e._state.runningProcesses[name] = true
-		}
+	return nil
+}
 
-		for _, name := range e._state.detectOptions.ForcedProcesses {
-			e._state.runningProcesses[name] = true
-		}
+// ProcessRunning returns true if there is a running process with the given name.
+func (e *ExprEnvironment) ProcessRunning(ctx context.Context, processName string) (bool, error) {
+	if err := e.loadProcesses(ctx); err != nil {
+		return false, err
 	}
 
 	e._state.processesSearched[processName] = true
@@ -160,7 +185,7 @@ func (e ExprEnvironment) ProcessRunning(processName string) (bool, error) {
 }
 
 // return units that have been forced but not searched yet.
-func (e ExprEnvironment) unsearchedUnits() []string {
+func (e *ExprEnvironment) unsearchedUnits() []string {
 	ret := []string{}
 
 	for _, unit := range e._state.detectOptions.ForcedUnits {
@@ -173,7 +198,7 @@ func (e ExprEnvironment) unsearchedUnits() []string {
 }
 
 // return processes that have been forced but not searched yet.
-func (e ExprEnvironment) unsearchedProcesses() []string {
+func (e *ExprEnvironment) unsearchedProcesses() []string {
 	ret := []string{}
 
 	for _, proc := range e._state.detectOptions.ForcedProcesses {
@@ -186,7 +211,7 @@ func (e ExprEnvironment) unsearchedProcesses() []string {
 }
 
 // checkConsumedForcedItems checks if all the "forced" options (units or processes) have been evaluated during the service detection.
-func checkConsumedForcedItems(e ExprEnvironment) error {
+func checkConsumedForcedItems(e *ExprEnvironment) error {
 	unconsumed := e.unsearchedUnits()
 
 	unitMsg := ""

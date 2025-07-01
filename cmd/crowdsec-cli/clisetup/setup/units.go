@@ -2,6 +2,7 @@ package setup
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,13 +10,13 @@ import (
 
 // systemdUnitList returns all enabled systemd units.
 // It needs to parse the table because -o json does not work everywhere.
-func systemdUnitList() ([]string, error) {
+func systemdUnitList(ctx context.Context) ([]string, error) {
 	wrap := func(err error) error {
 		return fmt.Errorf("running systemctl: %w", err)
 	}
 
 	ret := make([]string, 0)
-	cmd := ExecCommand("systemctl", "list-unit-files", "--state=enabled,generated,static")
+	cmd := ExecCommand(ctx, "systemctl", "list-unit-files", "--state=enabled,generated,static")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
