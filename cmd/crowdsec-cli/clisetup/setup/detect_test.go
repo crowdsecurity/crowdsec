@@ -358,20 +358,18 @@ func TestApplyRules(t *testing.T) {
 // XXX TODO: TestApplyRules with journalctl default
 
 func TestUnitFound(t *testing.T) {
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 	defer func() { setup.ExecCommand = exec.Command }()
 
 	env := setup.NewExprEnvironment(setup.DetectOptions{}, setup.ExprOS{})
 
 	installed, err := env.UnitFound("crowdsec-setup-detect.service")
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.True(installed)
+	require.True(t, installed)
 }
 
 func TestDetectSimpleRule(t *testing.T) {
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
 	f := tempYAML(t, `
@@ -387,22 +385,21 @@ func TestDetectSimpleRule(t *testing.T) {
 	`)
 
 	detector, err := setup.NewDetector(&f)
-	require.NoError(err)
+	require.NoError(t, err)
 	got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
-	require.NoError(err)
+	require.NoError(t, err)
 
 	want := []setup.ServicePlan{
 		{Name: "good"},
 		{Name: "ugly"},
 	}
 
-	require.ElementsMatch(want, got.Plans)
+	require.ElementsMatch(t, want, got.Plans)
 }
 
 func TestDetectUnitError(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommandNotFound
 	defer func() { setup.ExecCommand = exec.Command }()
 
@@ -431,16 +428,15 @@ detect:
 			f := tempYAML(t, tc.config)
 
 			detector, err := setup.NewDetector(&f)
-			require.NoError(err)
+			require.NoError(t, err)
 			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(tc.want, got)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestDetectUnit(t *testing.T) {
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 	defer func() { setup.ExecCommand = exec.Command }()
 
@@ -530,16 +526,15 @@ detect:
 			f := tempYAML(t, tc.config)
 
 			detector, err := setup.NewDetector(&f)
-			require.NoError(err)
+			require.NoError(t, err)
 			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(tc.want, got)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }
 
 func TestDetectForcedUnit(t *testing.T) {
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 	defer func() { setup.ExecCommand = exec.Command }()
 
@@ -560,9 +555,9 @@ func TestDetectForcedUnit(t *testing.T) {
 	`)
 
 	detector, err := setup.NewDetector(&f)
-	require.NoError(err)
+	require.NoError(t, err)
 	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}}, nullLogger())
-	require.NoError(err)
+	require.NoError(t, err)
 
 	want := &setup.Setup{
 		Plans: []setup.ServicePlan{
@@ -581,13 +576,12 @@ func TestDetectForcedUnit(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(want, got)
+	require.Equal(t, want, got)
 }
 
 func TestDetectForcedProcess(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
 	defer func() { setup.ExecCommand = exec.Command }()
@@ -601,22 +595,21 @@ func TestDetectForcedProcess(t *testing.T) {
 	`)
 
 	detector, err := setup.NewDetector(&f)
-	require.NoError(err)
+	require.NoError(t, err)
 	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}}, nullLogger())
-	require.NoError(err)
+	require.NoError(t, err)
 
 	want := &setup.Setup{
 		Plans: []setup.ServicePlan{
 			{Name: "wizard"},
 		},
 	}
-	require.Equal(want, got)
+	require.Equal(t, want, got)
 }
 
 func TestDetectSkipService(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
 	defer func() { setup.ExecCommand = exec.Command }()
@@ -630,16 +623,15 @@ func TestDetectSkipService(t *testing.T) {
 	`)
 
 	detector, err := setup.NewDetector(&f)
-	require.NoError(err)
+	require.NoError(t, err)
 	got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}}, nullLogger())
-	require.NoError(err)
+	require.NoError(t, err)
 
 	want := &setup.Setup{[]setup.ServicePlan{}}
-	require.Equal(want, got)
+	require.Equal(t, want, got)
 }
 
 func TestDetectForcedOS(t *testing.T) {
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
 	defer func() { setup.ExecCommand = exec.Command }()
@@ -846,10 +838,10 @@ func TestDetectForcedOS(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
 			detector, err := setup.NewDetector(&f)
-			require.NoError(err)
+			require.NoError(t, err)
 			got, err := setup.NewSetup(detector, setup.DetectOptions{ForcedOS: tc.forced}, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(tc.want, got)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -857,7 +849,6 @@ func TestDetectForcedOS(t *testing.T) {
 func TestDetectDatasourceValidation(t *testing.T) {
 	// It could be a good idea to test UnmarshalConfig() separately in addition
 	// to Configure(), in each datasource. For now, we test these here.
-	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
 	defer func() { setup.ExecCommand = exec.Command }()
@@ -1104,8 +1095,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				return
 			}
 			got, err := setup.NewSetup(detector, setup.DetectOptions{}, nullLogger())
-			require.NoError(err)
-			require.Equal(tc.want, got)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }
