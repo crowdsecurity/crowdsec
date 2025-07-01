@@ -10,11 +10,12 @@ import (
 )
 
 func TestSystemdUnitList(t *testing.T) {
+	ctx := t.Context()
 	setup.ExecCommand = fakeExecCommand
 
-	defer func() { setup.ExecCommand = exec.Command }()
+	defer func() { setup.ExecCommand = exec.CommandContext }()
 
-	units, err := setup.SystemdUnitList() //nolint:typecheck,nolintlint  // exported only for tests
+	units, err := setup.SystemdUnitList(ctx) //nolint:typecheck,nolintlint  // exported only for tests
 	require.NoError(t, err)
 
 	require.Equal(t, []string{
