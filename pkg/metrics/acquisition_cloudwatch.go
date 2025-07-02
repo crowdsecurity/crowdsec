@@ -23,7 +23,7 @@ var CloudWatchDatasourceLinesRead = prometheus.NewCounterVec(
 		Name: CloudWatchDatasourceLinesReadMetricName,
 		Help: "Number of event read from stream.",
 	},
-	[]string{"group", "stream", "datasource_type", "label_type"},
+	[]string{"group", "stream", "datasource_type", "acquis_type"},
 )
 
 //nolint:gochecknoinits

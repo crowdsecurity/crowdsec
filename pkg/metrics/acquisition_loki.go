@@ -13,7 +13,7 @@ var LokiDataSourceLinesRead = prometheus.NewCounterVec(
 		Name: LokiDataSourceLinesReadMetricName,
 		Help: "Total lines that were read.",
 	},
-	[]string{"source", "datasource_type", "label_type"})
+	[]string{"source", "datasource_type", "acquis_type"})
 
 //nolint:gochecknoinits
 func init() {

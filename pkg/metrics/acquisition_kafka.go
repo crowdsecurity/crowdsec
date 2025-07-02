@@ -13,7 +13,7 @@ var KafkaDataSourceLinesRead = prometheus.NewCounterVec(
 		Name: KafkaDataSourceLinesReadMetricName,
 		Help: "Total lines that were read from topic",
 	},
-	[]string{"topic", "datasource_type", "label_type"})
+	[]string{"topic", "datasource_type", "acquis_type"})
 
 //nolint:gochecknoinits
 func init() {

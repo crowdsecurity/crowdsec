@@ -298,7 +298,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	if n.Name != "" {
-		metrics.NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
+		metrics.NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
 	}
 
 	isWhitelisted, err := n.processWhitelist(cachedExprEnv, p)
@@ -397,7 +397,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	// grok or leafs failed, don't process statics
 	if !NodeState {
 		if n.Name != "" {
-			metrics.NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
+			metrics.NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
 		}
 
 		clog.Debugf("Event leaving node : ko")
@@ -406,7 +406,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	if n.Name != "" {
-		metrics.NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
+		metrics.NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
 	}
 
 	/*

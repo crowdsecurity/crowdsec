@@ -13,7 +13,7 @@ var HTTPDataSourceLinesRead = prometheus.NewCounterVec(
 		Name: HTTPDataSourceLinesReadMetricName,
 		Help: "Total lines that were read from http source",
 	},
-	[]string{"path", "src", "datasource_type", "label_type"})
+	[]string{"path", "src", "datasource_type", "acquis_type"})
 
 //nolint:gochecknoinits
 func init() {

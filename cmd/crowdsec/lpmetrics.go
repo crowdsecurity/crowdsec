@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -27,6 +28,8 @@ import (
 )
 
 const lpMetricsDefaultInterval = 30 * time.Minute
+
+var childNodeExcludeRegexp = regexp.MustCompile("^child-")
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
@@ -135,7 +138,20 @@ func getDeltaKey(metricName string, labels []*io_prometheus_client.LabelPair) st
 	return strings.Join(parts, "")
 }
 
-func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labelsMapping, metricName string, unitType string) []*models.MetricsDetailItem {
+func shouldIgnoreMetric(exclude map[string]*regexp.Regexp, promLabels []*io_prometheus_client.LabelPair) bool {
+	for labelKey, regex := range exclude {
+		labelValue := getLabelValue(promLabels, labelKey)
+		if labelValue == "" {
+			continue
+		}
+		if regex.MatchString(labelValue) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labelsMapping, exclude map[string]*regexp.Regexp, metricName string, unitType string) []*models.MetricsDetailItem {
 	items := make([]*models.MetricsDetailItem, 0)
 
 	promMetrics, err := prometheus.DefaultGatherer.Gather()
@@ -150,6 +166,11 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 		}
 		for _, metric := range metricFamily.GetMetric() {
 			promLabels := metric.GetLabel()
+
+			if shouldIgnoreMetric(exclude, promLabels) {
+				continue
+			}
+
 			deltaKey := getDeltaKey(metricFamily.GetName(), promLabels)
 			metricsLabels := make(map[string]string)
 
@@ -185,16 +206,45 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 
 func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
 	return m.gatherPromMetrics(metrics.AcquisitionMetricsNames, labelsMapping{
-		"datasource_type": "datasource_type",
-		"source":          "source",
-		"label_type":      "type",
-	}, "read", "line")
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+	}, nil, "read", "line")
 }
 
-func (m *MetricsProvider) getParserMetrics() []*models.MetricsDetailItem {
-	items := make([]*models.MetricsDetailItem, 0)
+func (m *MetricsProvider) getParserSuccessMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.NodesHitsOkMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+		"name":        "parser_name",
+		"stage":       "parser_stage",
+	}, nil, "parsed", "line",
+	)
+}
 
-	return items
+func (m *MetricsProvider) getParserFailureMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.NodesHitsKoMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+		"name":        "parser_name",
+		"stage":       "parser_stage",
+	}, map[string]*regexp.Regexp{
+		"name": childNodeExcludeRegexp,
+	}, "unparsed", "line",
+	)
+}
+
+func (m *MetricsProvider) getParserWhitelistMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.NodesWlHitsOkMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+		"name":        "whitelist_name",
+		"stage":       "whitelist_stage",
+	}, nil, "whitelisted", "event",
+	)
 }
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
@@ -226,18 +276,30 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	})
 
 	/* Acquisition metrics */
-	/*{"name": "lines_read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/*{"name": "read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
 	/* Parser metrics */
-	/*{"name": "lines_parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/*{"name": "parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/*{"name": "unparsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/*{"name": "whitelisted", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
 
 	acquisitionMetrics := m.getAcquisitionMetrics()
 	if len(acquisitionMetrics) > 0 {
 		met.Metrics[0].Items = append(met.Metrics[0].Items, acquisitionMetrics...)
 	}
 
-	parserMetrics := m.getParserMetrics()
-	if len(parserMetrics) > 0 {
-		met.Metrics[0].Items = append(met.Metrics[0].Items, parserMetrics...)
+	parserSuccessMetrics := m.getParserSuccessMetrics()
+	if len(parserSuccessMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserSuccessMetrics...)
+	}
+
+	parserFailureMetrics := m.getParserFailureMetrics()
+	if len(parserFailureMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserFailureMetrics...)
+	}
+
+	parserWhitelistMetrics := m.getParserWhitelistMetrics()
+	if len(parserWhitelistMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserWhitelistMetrics...)
 	}
 
 	return &models.AllMetrics{

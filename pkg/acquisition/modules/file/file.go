@@ -573,7 +573,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			}
 
 			if f.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": "file", "label_type": f.config.Labels["type"]}).Inc()
+				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": "file", "acquis_type": f.config.Labels["type"]}).Inc()
 			}
 
 			src := tail.Filename
@@ -650,7 +650,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 				Module:  f.GetName(),
 			}
 			logger.Debugf("line %s", l.Raw)
-			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "label_type": l.Labels["type"]}).Inc()
+			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "acquis_type": l.Labels["type"]}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]any)}

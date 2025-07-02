@@ -270,7 +270,7 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	ll.Module = l.GetName()
 
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		metrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "label_type": l.Config.Labels["type"]}).Inc()
+		metrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "acquis_type": l.Config.Labels["type"]}).Inc()
 	}
 	expectMode := types.LIVE
 	if l.Config.UseTimeMachine {

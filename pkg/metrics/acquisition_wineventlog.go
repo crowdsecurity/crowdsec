@@ -13,7 +13,7 @@ var WineventlogDataSourceLinesRead = prometheus.NewCounterVec(
 		Name: WineventlogDataSourceLinesReadMetricName,
 		Help: "Total event that were read.",
 	},
-	[]string{"source", "datasource_type", "label_type"})
+	[]string{"source", "datasource_type", "acquis_type"})
 
 //nolint:gochecknoinits
 func init() {

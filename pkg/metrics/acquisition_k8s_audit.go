@@ -13,7 +13,7 @@ var K8SAuditDataSourceEventCount = prometheus.NewCounterVec(
 		Name: K8SAuditDataSourceEventCountMetricName,
 		Help: "Total number of events received by k8s-audit source",
 	},
-	[]string{"source", "datasource_type", "label_type"})
+	[]string{"source", "datasource_type", "acquis_type"})
 
 const K8SAuditDataSourceRequestCountMetricName = "cs_k8sauditsource_requests_total"
 

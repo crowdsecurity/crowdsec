@@ -338,7 +338,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					l.Module = d.GetName()
 
 					if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "label_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
+						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "acquis_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
 					}
 
 					evt := types.MakeEvent(true, types.LOG, true)
@@ -718,7 +718,7 @@ func (d *DockerSource) TailDocker(ctx context.Context, container *ContainerConfi
 			l.Module = d.GetName()
 			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "label_type": evt.Line.Labels["type"]}).Inc()
+			metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "acquis_type": evt.Line.Labels["type"]}).Inc()
 			outChan <- evt
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():

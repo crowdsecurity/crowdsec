@@ -329,9 +329,9 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 
 		switch h.metricsLevel {
 		case metrics.AcquisitionMetricsLevelAggregated:
-			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "label_type": hc.Labels["type"]}).Inc()
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
 		case metrics.AcquisitionMetricsLevelFull:
-			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "label_type": hc.Labels["type"]}).Inc()
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
 		}
 
 		h.logger.Tracef("line to send: %+v", line)

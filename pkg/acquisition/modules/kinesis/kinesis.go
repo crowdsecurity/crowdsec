@@ -301,12 +301,12 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 		if k.Config.StreamARN != "" {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
-				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "datasource_type": "kinesis", "label_type": k.Config.Labels["type"]}).Inc()
+				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "datasource_type": "kinesis", "acquis_type": k.Config.Labels["type"]}).Inc()
 			}
 		} else {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
-				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "datasource_type": "kinesis", "label_type": k.Config.Labels["type"]}).Inc()
+				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "datasource_type": "kinesis", "acquis_type": k.Config.Labels["type"]}).Inc()
 			}
 		}
 

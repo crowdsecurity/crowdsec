@@ -532,7 +532,7 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 										prometheus.Labels{"group": cfg.GroupName,
 											"stream":          cfg.StreamName,
 											"datasource_type": "cloudwatch",
-											"label_type":      evt.Line.Labels["type"],
+											"acquis_type":     evt.Line.Labels["type"],
 										}).Inc()
 								}
 								outChan <- evt

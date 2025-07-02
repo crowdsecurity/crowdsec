@@ -13,7 +13,7 @@ var SyslogDataSourceLinesReceived = prometheus.NewCounterVec(
 		Name: SyslogDataSourceLinesReceivedMetricName,
 		Help: "Total lines that were received.",
 	},
-	[]string{"source", "datasource_type", "label_type"})
+	[]string{"source", "datasource_type", "acquis_type"})
 
 const SyslogDataSourceLinesParsedMetricName = "cs_syslogsource_parsed_total"
 
