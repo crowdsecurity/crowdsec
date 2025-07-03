@@ -22,7 +22,7 @@ var SyslogDataSourceLinesParsed = prometheus.NewCounterVec(
 		Name: SyslogDataSourceLinesParsedMetricName,
 		Help: "Total lines that were successfully parsed",
 	},
-	[]string{"source", "type", "datasource_type"})
+	[]string{"source", "type", "datasource_type", "acquis_type"})
 
 //nolint:gochecknoinits
 func init() {

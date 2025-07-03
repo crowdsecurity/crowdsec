@@ -177,7 +177,7 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 	logger := s.logger.WithField("client", syslogLine.Client)
 	logger.Tracef("raw: %s", syslogLine)
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		metrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client, "datasource_type": "syslog"}).Inc()
+		metrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client, "datasource_type": "syslog", "acquis_type": s.config.Labels["type"]}).Inc()
 	}
 	if !s.config.DisableRFCParser {
 		p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
