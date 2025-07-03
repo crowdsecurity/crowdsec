@@ -686,7 +686,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     # XXX: the error should inclide the name of the directory, not the file
-    assert_stderr --partial "Error: creating acquisition file: open $BATS_TEST_TMPDIR/notadir/setup.apache.yaml: not a directory"
+    assert_stderr --partial "Error: creating acquisition directory: mkdir $BATS_TEST_TMPDIR/notadir: not a directory"
 }
 
 @test "cscli setup install-acquisition (single service)" {
@@ -1002,7 +1002,7 @@ update-notifier-motd.timer              enabled enabled
 	          - /path/to/something.log
 	EOT
 
-    assert_stderr --partial "Error: creating acquisition file: open ${ACQUIS_DIR}2/setup.always.yaml: not a directory"
+    assert_stderr --partial "Error: creating acquisition directory: mkdir ${ACQUIS_DIR}2: not a directory"
 }
 
 
