@@ -54,7 +54,6 @@ require (
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jszwec/csvutil v1.5.1
-	github.com/lithammer/dedent v1.1.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826

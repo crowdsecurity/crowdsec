@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
+	"strings"
 	"testing"
 
-	"github.com/lithammer/dedent"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -31,29 +31,6 @@ type nullProcessLister struct {}
 
 func (nulll nullProcessLister) ListProcesses(ctx context.Context) ([]string, error) {
 	return nil, nil
-}
-
-
-func tempYAML(t *testing.T, content string) os.File {
-	t.Helper()
-	file, err := os.CreateTemp(t.TempDir(), "")
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		require.NoError(t, file.Close())
-		require.NoError(t, os.Remove(file.Name()))
-	})
-
-	_, err = file.WriteString(dedent.Dedent(content))
-	require.NoError(t, err)
-
-	err = file.Close()
-	require.NoError(t, err)
-
-	file, err = os.Open(file.Name())
-	require.NoError(t, err)
-
-	return *file
 }
 
 func TestPathExists(t *testing.T) {
@@ -154,12 +131,12 @@ func TestListSupported(t *testing.T) {
 		{
 			"list configured services",
 			`
-			version: 1.0
-			detect:
-			  foo:
-			  bar:
-			  baz:
-			`,
+version: 1.0
+detect:
+	foo:
+	bar:
+	baz:
+`,
 			[]string{"foo", "bar", "baz"},
 			"",
 		},
@@ -172,10 +149,10 @@ func TestListSupported(t *testing.T) {
 		{
 			"invalid yaml: tabs are not allowed",
 			`
-			version: 1.0
-			detect:
-				foos:
-			`,
+version: 1.0
+detect:
+	foos:
+`,
 			nil,
 			"yaml: line 4: found character that cannot start any token",
 		},
@@ -197,9 +174,7 @@ func TestListSupported(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			f := tempYAML(t, tc.yml)
-
-			detector, err := NewDetector(&f)
+			detector, err := NewDetector(strings.NewReader(tc.yml))
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 
 			if tc.wantErr != "" {
@@ -212,70 +187,79 @@ func TestListSupported(t *testing.T) {
 	}
 }
 
-func TestApplyRules(t *testing.T) {
+func TestEvaluateRules(t *testing.T) {
 	t.Parallel()
-	ctx := t.Context()
 	tests := []struct {
-		name    string
-		rules   []string
-		wantNil bool
-		wantErr string
+		name           string
+		rules          []string
+		want           bool
+		wantCompileErr string
+		wantEvalErr    string
 	}{
 		{
 			"empty list is always true",
 			[]string{},
-			false,
+			 true,
+			"",
 			"",
 		},
 		{
 			"simple true expression",
 			[]string{"1+1==2"},
-			false,
+			true,
+			"",
 			"",
 		},
 		{
 			"simple false expression",
 			[]string{"2+2==5"},
-			true,
+			false,
+			"",
 			"",
 		},
 		{
 			"all expressions are true",
 			[]string{"1+2==3", "1!=2"},
-			false,
+			true,
+			"",
 			"",
 		},
 		{
 			"all expressions must be true",
 			[]string{"true", "1==3", "1!=2"},
-			true,
+			false,
+			"",
 			"",
 		},
 		{
 			"each expression must be a boolan",
-			[]string{"true", "\"notabool\""},
-			true,
-			"rule '\"notabool\"': type must be a boolean",
+			[]string{"true", `"notabool"`},
+			false,
+			"",
+			`rule "\"notabool\"": type must be a boolean`,
 		},
 		{
 			// we keep evaluating expressions to ensure that the
 			// file is formally correct, even if it can some time.
 			"each expression must be a boolan (no short circuit)",
 			[]string{"false", "3"},
-			true,
-			"rule '3': type must be a boolean",
+			false,
+			"",
+			`rule "3": type must be a boolean`,
 		},
 		{
 			"unknown variable",
 			[]string{"false", "doesnotexist"},
-			true,
-			"rule 'doesnotexist': unknown name doesnotexist",
+			false,
+			`compiling rule "doesnotexist": unknown name doesnotexist (1:1)`,
+			"",
 		},
 		{
 			"unknown expression",
 			[]string{"false", "doesnotexist()"},
-			true,
-			"rule 'doesnotexist()': unknown name doesnotexist",
+			false,
+			`compiling rule "doesnotexist()": unknown name doesnotexist (1:1)`,
+			"",
 		},
 	}
 
@@ -286,23 +270,27 @@ func TestApplyRules(t *testing.T) {
 			t.Parallel()
 
 			svc := ServiceRules{When: tc.rules}
-			got, err := ApplyRules(ctx, svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
-			cstest.RequireErrorContains(t, err, tc.wantErr)
 
-			if tc.wantErr != "" {
+			err := svc.Compile()
+			cstest.RequireErrorContains(t, err, tc.wantCompileErr)
+
+			if tc.wantCompileErr != "" {
 				return
 			}
 
-			if tc.wantNil {
-				require.Nil(t, got)
-			} else {
-				require.NotNil(t, got)
+			got, err := svc.Evaluate(env, nullLogger())
+			cstest.RequireErrorContains(t, err, tc.wantEvalErr)
+
+			if tc.wantEvalErr != "" {
+				return
 			}
+
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
 
-// XXX TODO: TestApplyRules with journalctl default
+// XXX TODO: TestEvaluateRules with journalctl default
 
 func TestUnitFound(t *testing.T) {
 	ctx := t.Context()
@@ -321,19 +309,19 @@ func TestUnitFound(t *testing.T) {
 func TestDetectSimpleRule(t *testing.T) {
 	ctx := t.Context()
 
-	f := tempYAML(t, `
-	version: 1.0
-	detect:
-	  good:
-	    when:
-	      - true
-	  bad:
-	    when:
-	      - false
-	  ugly:
-	`)
+	f := strings.NewReader(`
+version: 1.0
+detect:
+  good:
+    when:
+      - true
+  bad:
+    when:
+      - false
+  ugly:
+`)
 
-	detector, err := NewDetector(&f)
+	detector, err := NewDetector(f)
 	require.NoError(t, err)
 	got, err := NewSetup(ctx, detector, DetectOptions{},
 		OSPathChecker{},
@@ -400,9 +388,7 @@ detect:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := tempYAML(t, tc.config)
-
-			detector, err := NewDetector(&f)
+			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
 			got, err := NewSetup(ctx, detector, DetectOptions{},
 				OSPathChecker{},
@@ -418,23 +404,23 @@ detect:
 func TestDetectForcedUnit(t *testing.T) {
 	ctx := t.Context()
 
-	f := tempYAML(t, `
-	version: 1.0
-	detect:
-	  wizard:
-	    when:
-	      - UnitFound("crowdsec-setup-forced.service")
-	    acquisition:
-	      filename: wizard.yaml
-	      datasource:
-	        source: journalctl
-	        labels:
-	          type: syslog
-	        journalctl_filter:
-	          - _SYSTEMD_UNIT=crowdsec-setup-forced.service
-	`)
+	f := strings.NewReader(`
+version: 1.0
+detect:
+  wizard:
+    when:
+      - UnitFound("crowdsec-setup-forced.service")
+    acquisition:
+      filename: wizard.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - _SYSTEMD_UNIT=crowdsec-setup-forced.service
+`)
 
-	detector, err := NewDetector(&f)
+	detector, err := NewDetector(f)
 	require.NoError(t, err)
 	got, err := NewSetup(ctx, detector, DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}},
 				OSPathChecker{},
@@ -467,15 +453,15 @@ func TestDetectForcedProcess(t *testing.T) {
 	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
-	f := tempYAML(t, `
-	version: 1.0
-	detect:
-	  wizard:
-	    when:
-	      - ProcessRunning("foobar")
-	`)
+	f := strings.NewReader(`
+version: 1.0
+detect:
+  wizard:
+    when:
+      - ProcessRunning("foobar")
+`)
 
-	detector, err := NewDetector(&f)
+	detector, err := NewDetector(f)
 	require.NoError(t, err)
 	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}},
 		OSPathChecker{},
@@ -496,15 +482,15 @@ func TestDetectSkipService(t *testing.T) {
 	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
-	f := tempYAML(t, `
-	version: 1.0
-	detect:
-	  wizard:
-	    when:
-	      - ProcessRunning("foobar")
-	`)
+	f := strings.NewReader(`
+version: 1.0
+detect:
+  wizard:
+    when:
+      - ProcessRunning("foobar")
+`)
 
-	detector, err := NewDetector(&f)
+	detector, err := NewDetector(f)
 	require.NoError(t, err)
 	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
 		OSPathChecker{},
@@ -532,11 +518,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - force linux",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.Family == "linux"`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.Family == "linux"`,
 			ExprOS{Family: "linux"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -548,11 +534,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - force windows",
 			`
-	version: 1.0
-	detect:
-	  windows:
-	    when:
-	      - OS.Family == "windows"`,
+version: 1.0
+detect:
+  windows:
+    when:
+      - OS.Family == "windows"`,
 			ExprOS{Family: "windows"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -564,11 +550,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu (no match)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.Family == "linux" && OS.ID == "ubuntu"`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.Family == "linux" && OS.ID == "ubuntu"`,
 			ExprOS{Family: "linux"},
 			&Setup{[]ServicePlan{}},
 			"",
@@ -576,11 +562,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu (match)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.Family == "linux" && OS.ID == "ubuntu"`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.Family == "linux" && OS.ID == "ubuntu"`,
 			ExprOS{Family: "linux", ID: "ubuntu"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -592,11 +578,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu (match with version)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.Family == "linux" && OS.ID == "ubuntu" && OS.VersionCheck("19.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.Family == "linux" && OS.ID == "ubuntu" && OS.VersionCheck("19.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.04"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -608,11 +594,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu >= 20.04 (no match: no version detected)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
 			ExprOS{Family: "linux"},
 			&Setup{[]ServicePlan{}},
 			"",
@@ -620,11 +606,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu >= 20.04 (no match: version is lower)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
 			&Setup{[]ServicePlan{}},
 			"",
@@ -632,11 +618,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu >= 20.04 (match: same version)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -648,11 +634,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu >= 20.04 (match: version is higher)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "22.04"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -665,11 +651,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu < 20.04 (no match: no version detected)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
 			ExprOS{Family: "linux"},
 			&Setup{[]ServicePlan{}},
 			"",
@@ -677,11 +663,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu < 20.04 (no match: version is higher)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.10"},
 			&Setup{[]ServicePlan{}},
 			"",
@@ -689,11 +675,11 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu < 20.04 (no match: same version)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
 			&Setup{[]ServicePlan{}},
 			"",
@@ -701,12 +687,12 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - ubuntu < 20.04 (match: version is lower)",
 			`
-	version: 1.0
-	detect:
-	  linux:
-	    when:
-	      - OS.ID == "ubuntu"
-	      - OS.VersionCheck("<20.04")`,
+version: 1.0
+detect:
+  linux:
+    when:
+      - OS.ID == "ubuntu"
+      - OS.VersionCheck("<20.04")`,
 			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
 			&Setup{
 				Plans: []ServicePlan{
@@ -719,9 +705,7 @@ func TestDetectForcedOS(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := tempYAML(t, tc.config)
-
-			detector, err := NewDetector(&f)
+			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
 			got, err := NewSetup(ctx, detector, DetectOptions{ForcedOS: tc.forced},
 				OSPathChecker{},
@@ -750,132 +734,132 @@ func TestDetectDatasourceValidation(t *testing.T) {
 		{
 			name: "datasource config is missing",
 			config: `
-				version: 1.0
-				detect:
-				  wizard:
-				    acquisition:
-				      filename: wizard.yaml`,
+version: 1.0
+detect:
+  wizard:
+    acquisition:
+      filename: wizard.yaml`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
 		}, {
 			name: "datasource config is empty",
 			config: `
-				version: 1.0
-				detect:
-				  wizard:
-				    acquisition:
-				      filename: wizard.yaml
-				      datasource: {}`,
+version: 1.0
+detect:
+  wizard:
+    acquisition:
+      filename: wizard.yaml
+      datasource: {}`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
 		}, {
 			name: "missing acquisition file name",
 			config: `
-				version: 1.0
-				detect:
-				  wizard:
-				    acquisition:
-				      datasource:
-				        labels:
-				          type: something`,
+version: 1.0
+detect:
+  wizard:
+    acquisition:
+      datasource:
+        labels:
+          type: something`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: a filename for the datasource configuration is mandatory",
 		}, {
 			name: "source is empty",
 			config: `
-				version: 1.0
-				detect:
-				  wizard:
-				    acquisition:
-				      filename: something.yaml
-				      datasource:
-				        labels:
-				          type: something`,
+version: 1.0
+detect:
+  wizard:
+    acquisition:
+      filename: something.yaml
+      datasource:
+        labels:
+          type: something`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: source is empty",
 		}, {
 			name: "source is unknown",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: wombat.yaml
-				      datasource:
-				        source: wombat`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: wombat.yaml
+      datasource:
+        source: wombat`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: unknown data source wombat",
 		}, {
 			name: "source is misplaced",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: file.yaml
-				      datasource:
-				      source: file`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: file.yaml
+      datasource:
+      source: file`,
 			want:    nil,
 			wantErr: "yaml: unmarshal errors:\n  line 8: field source not found in type setup.AcquisitionSpec",
 		}, {
 			name: "source is mismatched",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: journalctl.yaml
-				      datasource:
-				        source: journalctl
-				        filename: /path/to/file.log`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: journalctl.yaml
+      datasource:
+        source: journalctl
+        filename: /path/to/file.log`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
 		}, {
 			name: "source file: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: file.yaml
-				      datasource:
-				        source: file`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: file.yaml
+      datasource:
+        source: file`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: no filename or filenames configuration provided",
 		}, {
 			name: "source journalctl: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: foobar.yaml
-				      datasource:
-				        source: journalctl`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: foobar.yaml
+      datasource:
+        source: journalctl`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: journalctl_filter is required",
 		}, {
 			name: "source cloudwatch: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: cloudwatch.yaml
-				      datasource:
-				        source: cloudwatch`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: cloudwatch.yaml
+      datasource:
+        source: cloudwatch`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: group_name is mandatory for CloudwatchSource",
 		}, {
 			name: "source syslog: all fields are optional",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: syslog.yaml
-				      datasource:
-				        source: syslog`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: syslog.yaml
+      datasource:
+        source: syslog`,
 			want: &Setup{
 				Plans: []ServicePlan{
 					{
@@ -894,62 +878,62 @@ func TestDetectDatasourceValidation(t *testing.T) {
 		}, {
 			name: "source docker: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: docker.yaml
-				      datasource:
-				        source: docker`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: docker.yaml
+      datasource:
+        source: docker`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: no containers names or containers ID configuration provided",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: kinesis.yaml
-				      datasource:
-				        source: kinesis`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: kinesis.yaml
+      datasource:
+        source: kinesis`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: stream_name is mandatory when use_enhanced_fanout is false",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=true)",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: kinesis.yaml
-				      datasource:
-				        source: kinesis
-				        use_enhanced_fanout: true`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: kinesis.yaml
+      datasource:
+        source: kinesis
+        use_enhanced_fanout: true`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
 		}, {
 			name: "source kafka: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: kafka.yaml
-				      datasource:
-				        source: kafka`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: kafka.yaml
+      datasource:
+        source: kafka`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: cannot create a kafka reader with an empty list of broker addresses",
 		}, {
 			name: "source loki: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-				    acquisition:
-				      filename: loki.yaml
-				      datasource:
-				        source: loki`,
+version: 1.0
+detect:
+  foobar:
+    acquisition:
+      filename: loki.yaml
+      datasource:
+        source: loki`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: loki query is mandatory",
 		},
@@ -959,13 +943,13 @@ func TestDetectDatasourceValidation(t *testing.T) {
 		tests = append(tests, test{
 			name: "source wineventlog: required fields",
 			config: `
-				version: 1.0
-				detect:
-				  foobar:
-			            acquisition:
-			              filename: wineventlog.yaml
-				      datasource:
-				        source: wineventlog`,
+version: 1.0
+detect:
+  foobar:
+           acquisition:
+             filename: wineventlog.yaml
+      datasource:
+        source: wineventlog`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for foobar: event_channel or xpath_query must be set",
 		})
@@ -973,13 +957,13 @@ func TestDetectDatasourceValidation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := tempYAML(t, tc.config)
-
-			detector, err := NewDetector(&f)
+			detector, err := NewDetector(strings.NewReader(tc.config))
 			cstest.RequireErrorContains(t, err, tc.wantErr)
+
 			if tc.wantErr != "" {
 				return
 			}
+
 			got, err := NewSetup(ctx, detector, DetectOptions{},
 				OSPathChecker{},
 				SystemdUnitLister{},

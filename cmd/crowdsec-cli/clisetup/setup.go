@@ -1,8 +1,6 @@
 package clisetup
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
@@ -22,6 +20,8 @@ func New(cfg configGetter) *cliSetup {
 }
 
 func (cli *cliSetup) NewCommand() *cobra.Command {
+	cmdInteractive := cli.newInteractiveCmd()
+
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Tools to configure crowdsec",
@@ -34,21 +34,14 @@ cscli setup
 `,
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			subCmd, _, err := cmd.Root().Find([]string{"setup", "interactive"})
-			if err != nil {
-				return err
-			}
-			subCmd.SetArgs(os.Args[2:])
-			return subCmd.RunE(cmd, args)
-		},
+		RunE: cmdInteractive.RunE,
 	}
 
 	cmd.AddCommand(cli.newDetectCmd())
 	cmd.AddCommand(cli.newInstallHubCmd())
 	cmd.AddCommand(cli.newInstallAcquisitionCmd())
 	cmd.AddCommand(cli.newValidateCmd())
-	cmd.AddCommand(cli.newInteractiveCmd())
+	cmd.AddCommand(cmdInteractive)
 	cmd.AddCommand(cli.newUnattendedCmd())
 
 	return cmd
