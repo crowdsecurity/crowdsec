@@ -151,10 +151,22 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 		return nil
 	}
 
+	units := setup.UnitMap{}
+
+	if !opts.SkipSystemd {
+		if units, err = setup.DetectSystemdUnits(ctx, opts.ForcedUnits); err != nil {
+			return err
+		}
+	}
+
+	procs, err := setup.DetectProcesses(ctx, opts.ForcedProcesses)
+	if err != nil {
+		return err
+	}
+
 	stup, err := setup.NewSetup(ctx, detector, opts,
 		setup.OSPathChecker{},
-		setup.SystemdUnitLister{},
-		setup.GopsutilProcessLister{},
+		units, procs,
 		logger)
 	if err != nil {
 		return err

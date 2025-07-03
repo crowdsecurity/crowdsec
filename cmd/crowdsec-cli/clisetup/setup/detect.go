@@ -324,10 +324,10 @@ func (d *Detector) ListSupportedServices() []string {
 	return keys
 }
 
-func determineOS(opts DetectOptions, logger *logrus.Logger) (ExprOS, error) {
-	if opts.ForcedOS != (ExprOS{}) {
-		logger.Debugf("Forced OS - %+v", opts.ForcedOS)
-		return opts.ForcedOS, nil
+func DetectOS(forcedOS ExprOS, logger *logrus.Logger) (ExprOS, error) {
+	if forcedOS != (ExprOS{}) {
+		logger.Debugf("Forced OS - %+v", forcedOS)
+		return forcedOS, nil
 	}
 
 	osfull, err := osinfo.GetOSInfo()
@@ -344,13 +344,13 @@ func determineOS(opts DetectOptions, logger *logrus.Logger) (ExprOS, error) {
 	}, nil
 }
 
-func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, unitLister UnitLister, processLister ProcessLister, logger *logrus.Logger) (*Setup, error) {
+func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap, logger *logrus.Logger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
 	s.Plans = make([]ServicePlan, 0)
 
-	os, err := determineOS(opts, logger)
+	os, err := DetectOS(opts.ForcedOS, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -363,10 +363,8 @@ func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathC
 		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
 	}
 
-	env := NewExprEnvironment(ctx, opts, os,
-		pathChecker,
-		unitLister,
-		processLister)
+	state := NewExprState(opts, installedUnits, runningProcesses)
+	env := NewExprEnvironment(ctx, os, state, pathChecker)
 
 	detected := make(map[string]ServicePlan)
 

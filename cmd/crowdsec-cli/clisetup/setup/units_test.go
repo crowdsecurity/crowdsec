@@ -34,20 +34,18 @@ apparmor.service                          enabled  enabled
 	os.Exit(0) //nolint:revive
 }
 
-func TestSystemdUnitLister_ListUnits(t *testing.T) {
+func TestDetectSystemdUnits(t *testing.T) {
 	ctx := t.Context()
 	ExecCommand = fakeExecCommand
 	defer func() { ExecCommand = exec.CommandContext }()
 
-	lister := SystemdUnitLister{}
-
-	units, err := lister.ListUnits(ctx)
+	units, err := DetectSystemdUnits(ctx, nil)
 	require.NoError(t, err)
 
-	require.Equal(t, []string{
-		"crowdsec-setup-detect.service",
-		"apache2.service",
-		"apparmor.service",
+	require.Equal(t, UnitMap{
+		"crowdsec-setup-detect.service": struct{}{},
+		"apache2.service": struct{}{},
+		"apparmor.service": struct{}{},
 	}, units)
 }
 
@@ -60,13 +58,11 @@ func fakeExecCommandNotFound(ctx context.Context, command string, args ...string
 	return cmd
 }
 
-func TestSystemdUnitLister_ListUnits_NotFound(t *testing.T) {
+func TestDetectSystemdUnits_NotFound(t *testing.T) {
 	ctx := t.Context()
 	ExecCommand = fakeExecCommandNotFound
 	defer func() { ExecCommand = exec.CommandContext }()
 
-	lister := SystemdUnitLister{}
-
-	_, err := lister.ListUnits(ctx)
+	_, err := DetectSystemdUnits(ctx, nil)
 	cstest.RequireErrorContains(t, err, `running systemctl: exec: "this-command-does-not-exist": executable file not found in $PATH`)
 }
