@@ -368,9 +368,22 @@ func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathC
 		unitLister,
 		processLister)
 
-	detected, err := buildPlans(ctx, detector, env, logger)
-	if err != nil {
-		return nil, err
+	detected := make(map[string]ServicePlan)
+
+	for name, svc := range detector.Detect {
+		match, err := svc.Evaluate(env, logger)
+		if err != nil {
+			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
+		}
+
+		if !match {
+			continue
+		}
+
+		detected[name] = ServicePlan{
+			Name:                  name,
+			InstallRecommendation: svc.InstallRecommendation,
+		}
 	}
 
 	if err = checkConsumedForcedItems(env); err != nil {
@@ -446,29 +459,6 @@ func (s *ServiceRules) Evaluate(env *ExprEnvironment, logger *logrus.Logger) (bo
 	}
 
 	return match, nil
-}
-
-func buildPlans(ctx context.Context, detector *Detector, env *ExprEnvironment, logger *logrus.Logger) (map[string]ServicePlan, error) {
-	ret := make(map[string]ServicePlan)
-	env._serviceState = ExprServiceState{}
-
-	for name, svc := range detector.Detect {
-		match, err := svc.Evaluate(env, logger)
-		if err != nil {
-			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
-		}
-
-		if !match {
-			continue
-		}
-
-		ret[name] = ServicePlan{
-			Name:                  name,
-			InstallRecommendation: svc.InstallRecommendation,
-		}
-	}
-
-	return ret, nil
 }
 
 // DetectOptions contains parameters for the Detect function.
