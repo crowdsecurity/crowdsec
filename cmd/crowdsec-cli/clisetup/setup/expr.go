@@ -22,11 +22,6 @@ type ExprState struct {
 	runningProcesses map[string]bool
 }
 
-// ExprServiceState keeps a local state during the detection of a single service. It is reset before each service rules' evaluation.
-type ExprServiceState struct {
-	detectedUnits []string
-}
-
 // ExprOS contains the detected (or forced) OS fields available to the rule engine.
 type ExprOS struct {
 	Family     string
@@ -81,7 +76,6 @@ type ProcessLister interface {
 type ExprEnvironment struct {
 	OS ExprOS
 	Ctx context.Context //nolint:containedctx
-	_serviceState ExprServiceState
 	_state        ExprState
 
 	PathChecker   PathChecker
@@ -101,7 +95,6 @@ func NewExprEnvironment(ctx context.Context, opts DetectOptions, os ExprOS, path
 			processesSearched: make(map[string]bool),
 			runningProcesses:  make(map[string]bool),
 		},
-		_serviceState: ExprServiceState{},
 		OS:            os,
 		Ctx: ctx,
 
@@ -154,8 +147,6 @@ func (e *ExprEnvironment) UnitFound(ctx context.Context, unitName string) (bool,
 	e._state.unitsSearched[unitName] = true
 
 	if e._state.installedUnits[unitName] {
-		e._serviceState.detectedUnits = append(e._serviceState.detectedUnits, unitName)
-
 		return true, nil
 	}
 
