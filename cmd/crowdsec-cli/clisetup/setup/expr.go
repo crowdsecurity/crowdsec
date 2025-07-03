@@ -5,21 +5,29 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
-	log "github.com/sirupsen/logrus"
 )
 
 // ExprState keeps a global state for the duration of the service detection (cache etc.)
 type ExprState struct {
-	unitsSearched map[string]bool
 	detectOptions DetectOptions
 
-	// cache
-	installedUnits map[string]bool
-	// true if the list of running processes has already been retrieved, we can
-	// avoid getting it a second time.
-	processesSearched map[string]bool
-	// cache
-	runningProcesses map[string]bool
+	installedUnits UnitMap
+	unitsSearched UnitMap
+
+	runningProcesses ProcessMap
+	processesSearched ProcessMap
+}
+
+func NewExprState(opts DetectOptions, installedunits UnitMap, runningProcesses ProcessMap) *ExprState {
+	return &ExprState{
+		detectOptions: opts,
+
+		installedUnits:  installedunits,
+		unitsSearched:   make(UnitMap),
+
+		runningProcesses:  runningProcesses,
+		processesSearched: make(ProcessMap),
+	}
 }
 
 // ExprOS contains the detected (or forced) OS fields available to the rule engine.
@@ -63,44 +71,23 @@ type PathChecker interface {
     Exists(path string) bool
 }
 
-type UnitLister interface {
-    ListUnits(ctx context.Context) ([]string, error)
-}
-
-type ProcessLister interface {
-    ListProcesses(ctx context.Context) ([]string, error)
-}
-
 // ExprEnvironment is used to expose functions and values to the rule engine.
 // It can cache the results of service detection commands, like systemctl etc.
 type ExprEnvironment struct {
 	OS ExprOS
 	Ctx context.Context //nolint:containedctx
-	_state        ExprState
+	_state        *ExprState
 
 	PathChecker   PathChecker
-	UnitLister    UnitLister
-	ProcessLister ProcessLister
 }
 
 // NewExprEnvironment creates an environment object for the rule engine.
-func NewExprEnvironment(ctx context.Context, opts DetectOptions, os ExprOS, pathChecker PathChecker, unitLister UnitLister, processLister ProcessLister) *ExprEnvironment {
+func NewExprEnvironment(ctx context.Context, os ExprOS, state *ExprState, pathChecker PathChecker) *ExprEnvironment {
 	return &ExprEnvironment{
-		_state: ExprState{
-			detectOptions: opts,
-
-			unitsSearched:  make(map[string]bool),
-			installedUnits: make(map[string]bool),
-
-			processesSearched: make(map[string]bool),
-			runningProcesses:  make(map[string]bool),
-		},
-		OS:            os,
 		Ctx: ctx,
-
+		OS:            os,
+		_state: state,
 		PathChecker: pathChecker,
-		UnitLister: unitLister,
-		ProcessLister: processLister,
 	}
 }
 
@@ -109,80 +96,20 @@ func (e *ExprEnvironment) PathExists(ctx context.Context, path string) bool {
 	return e.PathChecker.Exists(path)
 }
 
-func (e *ExprEnvironment) loadUnits(ctx context.Context) error {
-	if len(e._state.unitsSearched) != 0 {
-		return nil
-	}
-
-	for _, name := range e._state.detectOptions.ForcedUnits {
-		e._state.installedUnits[name] = true
-	}
-
-	if e._state.detectOptions.SkipSystemd {
-		return nil
-	}
-
-	log.Debugf("Running systemctl...")
-
-	units, err := e.UnitLister.ListUnits(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, name := range units {
-		e._state.installedUnits[name] = true
-	}
-
-	return nil
-}
-
 // UnitFound returns true if the unit is listed in the systemctl output.
 // Whether a disabled or failed unit is considered found or not, depends on the
 // systemctl parameters used.
 func (e *ExprEnvironment) UnitFound(ctx context.Context, unitName string) (bool, error) {
-	if err := e.loadUnits(ctx); err != nil {
-		return false, err
-	}
-
-	e._state.unitsSearched[unitName] = true
-
-	if e._state.installedUnits[unitName] {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (e *ExprEnvironment) loadProcesses(ctx context.Context) error {
-	if len(e._state.processesSearched) != 0 {
-		return nil
-	}
-
-	for _, name := range e._state.detectOptions.ForcedProcesses {
-		e._state.runningProcesses[name] = true
-	}
-
-	procNames, err := e.ProcessLister.ListProcesses(ctx)
-	if err != nil {
-		return fmt.Errorf("while listing running processes: %w", err)
-	}
-
-	for _, name := range procNames {
-		e._state.runningProcesses[name] = true
-	}
-
-	return nil
+	e._state.unitsSearched[unitName] = struct{}{}
+	_, ok := e._state.installedUnits[unitName]
+	return ok, nil
 }
 
 // ProcessRunning returns true if there is a running process with the given name.
 func (e *ExprEnvironment) ProcessRunning(ctx context.Context, processName string) (bool, error) {
-	if err := e.loadProcesses(ctx); err != nil {
-		return false, err
-	}
-
-	e._state.processesSearched[processName] = true
-
-	return e._state.runningProcesses[processName], nil
+	e._state.processesSearched[processName] = struct{}{}
+	_, ok := e._state.runningProcesses[processName]
+	return ok, nil
 }
 
 // return units that have been forced but not searched yet.
@@ -190,7 +117,7 @@ func (e *ExprEnvironment) unsearchedUnits() []string {
 	ret := []string{}
 
 	for _, unit := range e._state.detectOptions.ForcedUnits {
-		if !e._state.unitsSearched[unit] {
+		if _, ok := e._state.unitsSearched[unit]; !ok {
 			ret = append(ret, unit)
 		}
 	}
@@ -203,7 +130,7 @@ func (e *ExprEnvironment) unsearchedProcesses() []string {
 	ret := []string{}
 
 	for _, proc := range e._state.detectOptions.ForcedProcesses {
-		if !e._state.processesSearched[proc] {
+		if _, ok := e._state.processesSearched[proc]; !ok {
 			ret = append(ret, proc)
 		}
 	}

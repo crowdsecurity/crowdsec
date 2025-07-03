@@ -120,10 +120,23 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 			logger := logrus.StandardLogger()
 
+			units := setup.UnitMap{}
+
+			if !f.skipSystemd {
+				if units, err = setup.DetectSystemdUnits(ctx, f.forcedUnits); err != nil {
+					return err
+				}
+			}
+
+			procs, err := setup.DetectProcesses(ctx, f.forcedProcesses)
+			if err != nil {
+				return err
+			}
+
 			stup, err := setup.NewSetup(ctx, detector, f.toDetectOptions(logger),
 				setup.OSPathChecker{},
-				setup.SystemdUnitLister{},
-				setup.GopsutilProcessLister{},
+				units,
+				procs,
 				logger)
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
