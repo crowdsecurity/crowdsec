@@ -8,9 +8,11 @@ import (
 	"strings"
 )
 
-// systemdUnitList returns all enabled systemd units.
+type SystemdUnitLister struct{}
+
+// ListUnits returns all enabled systemd units.
 // It needs to parse the table because -o json does not work everywhere.
-func systemdUnitList(ctx context.Context) ([]string, error) {
+func (SystemdUnitLister) ListUnits(ctx context.Context) ([]string, error) {
 	wrap := func(err error) error {
 		return fmt.Errorf("running systemctl: %w", err)
 	}

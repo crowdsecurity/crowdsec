@@ -15,17 +15,17 @@ import (
 
 // detectFlags are reused for "unattended" and "interactive"
 type detectFlags struct {
-	detectConfigFile      string
-	forcedUnits           []string
-	forcedProcesses       []string
-	forcedOSFamily        string
-	forcedOSID            string
-	forcedOSVersion       string
-	skipServices          []string
-	skipSystemd           bool
+	detectConfigFile string
+	forcedUnits      []string
+	forcedProcesses  []string
+	forcedOSFamily   string
+	forcedOSID       string
+	forcedOSVersion  string
+	skipServices     []string
+	skipSystemd      bool
 }
 
-func (f *detectFlags) detector() (*setup.Detector, string, error){
+func (f *detectFlags) detector() (*setup.Detector, string, error) {
 	detectReader, err := maybeStdinFile(f.detectConfigFile)
 	if err != nil {
 		return nil, "", err
@@ -91,8 +91,9 @@ func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions
 
 func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	f := detectFlags{}
+
 	var (
-		outYaml bool
+		outYaml               bool
 		listSupportedServices bool
 	)
 
@@ -111,7 +112,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 			if listSupportedServices {
 				for _, svc := range detector.ListSupportedServices() {
-					fmt.Println(svc)
+					fmt.Fprintln(os.Stdout, svc)
 				}
 
 				return nil
@@ -119,7 +120,11 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 			logger := logrus.StandardLogger()
 
-			stup, err := setup.NewSetup(ctx, detector, f.toDetectOptions(logger), logger)
+			stup, err := setup.NewSetup(ctx, detector, f.toDetectOptions(logger),
+				setup.OSPathChecker{},
+				setup.SystemdUnitLister{},
+				setup.GopsutilProcessLister{},
+				logger)
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
@@ -127,7 +132,6 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 			yamlBytes, err := stup.ToYAML(outYaml)
 			if err != nil {
 				return fmt.Errorf("while serializing setup: %w", err)
-				
 			}
 
 			fmt.Fprintln(os.Stdout, string(yamlBytes))
