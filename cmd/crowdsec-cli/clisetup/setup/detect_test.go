@@ -308,10 +308,9 @@ detect:
 
 	detector, err := NewDetector(f)
 	require.NoError(t, err)
-	got, err := NewSetup(ctx, detector, DetectOptions{},
+	got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{},
 		OSPathChecker{},
-		nil, nil,
-		nullLogger())
+		nil, nil)
 	require.NoError(t, err)
 
 	want := []ServicePlan{
@@ -372,11 +371,10 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := NewSetup(ctx, detector, DetectOptions{},
+			got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{},
 				OSPathChecker{},
 				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
-				nil,
-				nullLogger())
+				nil)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -397,10 +395,9 @@ detect:
 
 	detector, err := NewDetector(f)
 	require.NoError(t, err)
-	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+	got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
 		OSPathChecker{},
-		nil, nil,
-		nullLogger())
+		nil, nil)
 	require.NoError(t, err)
 
 	want := &Setup{[]ServicePlan{}}
@@ -611,10 +608,9 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := NewSetup(ctx, detector, DetectOptions{ForcedOS: tc.forced},
+			got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{ForcedOS: tc.forced},
 				OSPathChecker{},
-				nil, nil,
-				nullLogger())
+				nil, nil)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -867,10 +863,9 @@ detect:
 				return
 			}
 
-			got, err := NewSetup(ctx, detector, DetectOptions{},
+			got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{},
 				OSPathChecker{},
-				nil, nil,
-				nullLogger())
+				nil, nil)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
