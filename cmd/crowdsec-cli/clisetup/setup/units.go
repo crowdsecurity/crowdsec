@@ -8,25 +8,22 @@ import (
 	"strings"
 )
 
-type SystemdUnitLister struct{}
+type UnitMap map[string]struct{}
 
-// ListUnits returns all enabled systemd units.
+// DetectSystemdUnits returns all enabled systemd units.
 // It needs to parse the table because -o json does not work everywhere.
-func (SystemdUnitLister) ListUnits(ctx context.Context) ([]string, error) {
-	wrap := func(err error) error {
-		return fmt.Errorf("running systemctl: %w", err)
-	}
-
-	ret := make([]string, 0)
+// The additionalUnits parameter will force the function to return these as well, even if they are not detected.
+func DetectSystemdUnits(ctx context.Context, additionalUnits []string) (UnitMap, error) {
+	ret := UnitMap{}
 	cmd := ExecCommand(ctx, "systemctl", "list-unit-files", "--state=enabled,generated,static")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return ret, wrap(err)
+		return nil, fmt.Errorf("running systemctl: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return ret, wrap(err)
+		return nil, fmt.Errorf("running systemctl: %w", err)
 	}
 
 	scanner := bufio.NewScanner(stdout)
@@ -45,14 +42,18 @@ func (SystemdUnitLister) ListUnits(ctx context.Context) ([]string, error) {
 			}
 
 			line = line[:spaceIdx]
-			ret = append(ret, line)
+			ret[line] = struct{}{}
 		}
 
 		header = false
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return ret, wrap(err)
+		return nil, fmt.Errorf("running systemctl: %w", err)
+	}
+
+	for _, name := range additionalUnits {
+		ret[name] = struct{}{}
 	}
 
 	return ret, nil
