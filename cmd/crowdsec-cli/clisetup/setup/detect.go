@@ -3,6 +3,8 @@ package setup
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -132,6 +134,14 @@ func (a *AcquisitionSpec) WriteTo(toDir string) error {
 		return err
 	}
 
+	hash := sha256.Sum256(content)
+	checksum := hex.EncodeToString(hash[:])
+
+	_, err = f.WriteString("# cscli-checksum: "+checksum+"\n\n")
+	if err != nil {
+		return fmt.Errorf("while writing to %s: %w", path, err)
+	}
+
 	_, err = f.Write(content)
 	if err != nil {
 		return fmt.Errorf("while writing to %s: %w", path, err)
@@ -225,10 +235,9 @@ func (s *Setup) ToYAML(outYaml bool) ([]byte, error) {
 		err error
 	)
 
-	indentLevel := 2
 	buf := &bytes.Buffer{}
 	enc := yaml.NewEncoder(buf)
-	enc.SetIndent(indentLevel)
+	enc.SetIndent(2)
 
 	if err = enc.Encode(s); err != nil {
 		return nil, err
@@ -344,23 +353,33 @@ func DetectOS(forcedOS ExprOS, logger *logrus.Logger) (ExprOS, error) {
 	}, nil
 }
 
-func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap, logger *logrus.Logger) (*Setup, error) {
+type SetupBuilder struct {
+	logger *logrus.Logger
+}
+
+func NewSetupBuilder(logger *logrus.Logger) *SetupBuilder {
+	return &SetupBuilder{
+		logger: logger,
+	}
+}
+
+func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
 	s.Plans = make([]ServicePlan, 0)
 
-	os, err := DetectOS(opts.ForcedOS, logger)
+	os, err := DetectOS(opts.ForcedOS, b.logger)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(opts.ForcedUnits) > 0 {
-		logger.Debugf("Forced units - %v", opts.ForcedUnits)
+		b.logger.Debugf("Forced units - %v", opts.ForcedUnits)
 	}
 
 	if len(opts.ForcedProcesses) > 0 {
-		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
+		b.logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
 	}
 
 	state := NewExprState(opts, installedUnits, runningProcesses)
@@ -369,7 +388,7 @@ func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathC
 	detected := make(map[string]ServicePlan)
 
 	for name, svc := range detector.Detect {
-		match, err := svc.Evaluate(env, logger)
+		match, err := svc.Evaluate(env, b.logger)
 		if err != nil {
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
 		}
