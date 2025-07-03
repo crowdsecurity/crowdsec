@@ -133,11 +133,12 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return err
 			}
 
-			stup, err := setup.NewSetup(ctx, detector, f.toDetectOptions(logger),
+			builder := setup.NewSetupBuilder(logger)
+
+			stup, err := builder.Build(ctx, detector, f.toDetectOptions(logger),
 				setup.OSPathChecker{},
 				units,
-				procs,
-				logger)
+				procs)
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}
