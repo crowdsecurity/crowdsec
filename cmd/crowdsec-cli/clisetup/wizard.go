@@ -164,10 +164,11 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 		return err
 	}
 
-	stup, err := setup.NewSetup(ctx, detector, opts,
+	builder := setup.NewSetupBuilder(logger)
+
+	stup, err := builder.Build(ctx, detector, opts,
 		setup.OSPathChecker{},
-		units, procs,
-		logger)
+		units, procs)
 	if err != nil {
 		return err
 	}
