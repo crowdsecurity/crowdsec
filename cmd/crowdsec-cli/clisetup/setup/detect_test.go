@@ -133,9 +133,9 @@ func TestListSupported(t *testing.T) {
 			`
 version: 1.0
 detect:
-	foo:
-	bar:
-	baz:
+  foo:
+  bar:
+  baz:
 `,
 			[]string{"foo", "bar", "baz"},
 			"",
