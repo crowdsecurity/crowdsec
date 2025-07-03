@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"runtime"
@@ -19,18 +18,6 @@ func nullLogger() *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(io.Discard)
 	return logger
-}
-
-type testUnitLister struct {Output []string}
-
-func (l testUnitLister) ListUnits(ctx context.Context) ([]string, error) {
-	return l.Output, nil
-}
-
-type nullProcessLister struct {}
-
-func (nulll nullProcessLister) ListProcesses(ctx context.Context) ([]string, error) {
-	return nil, nil
 }
 
 func TestPathExists(t *testing.T) {
@@ -53,8 +40,7 @@ func TestPathExists(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		env := NewExprEnvironment(ctx, DetectOptions{}, ExprOS{},
-			OSPathChecker{}, testUnitLister{}, nullProcessLister{})
+		env := NewExprEnvironment(ctx, ExprOS{}, &ExprState{}, OSPathChecker{})
 
 		t.Run(tc.path, func(t *testing.T) {
 			t.Parallel()
@@ -290,12 +276,11 @@ func TestEvaluateRules(t *testing.T) {
 	}
 }
 
-// XXX TODO: TestEvaluateRules with journalctl default
-
 func TestUnitFound(t *testing.T) {
 	ctx := t.Context()
 
-	env := NewExprEnvironment(ctx, DetectOptions{}, ExprOS{}, OSPathChecker{}, testUnitLister{Output: []string{"crowdsec-setup-installed.service"}}, nullProcessLister{})
+	state := NewExprState(DetectOptions{}, UnitMap{"crowdsec-setup-installed.service": struct{}{}}, nil)
+	env := NewExprEnvironment(ctx, ExprOS{}, state, nil)
 
 	installed, err := env.UnitFound(ctx, "crowdsec-setup-installed.service")
 	require.NoError(t, err)
@@ -325,8 +310,7 @@ detect:
 	require.NoError(t, err)
 	got, err := NewSetup(ctx, detector, DetectOptions{},
 		OSPathChecker{},
-		SystemdUnitLister{},
-		GopsutilProcessLister{},
+		nil, nil,
 		nullLogger())
 	require.NoError(t, err)
 
@@ -384,98 +368,19 @@ detect:
 		},
 	}
 
-	unitLister := testUnitLister{Output: []string{"crowdsec-setup-detect.service"}}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
 			got, err := NewSetup(ctx, detector, DetectOptions{},
 				OSPathChecker{},
-				unitLister,
-				GopsutilProcessLister{},
+				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
+				nil,
 				nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
 	}
-}
-
-func TestDetectForcedUnit(t *testing.T) {
-	ctx := t.Context()
-
-	f := strings.NewReader(`
-version: 1.0
-detect:
-  wizard:
-    when:
-      - UnitFound("crowdsec-setup-forced.service")
-    acquisition:
-      filename: wizard.yaml
-      datasource:
-        source: journalctl
-        labels:
-          type: syslog
-        journalctl_filter:
-          - _SYSTEMD_UNIT=crowdsec-setup-forced.service
-`)
-
-	detector, err := NewDetector(f)
-	require.NoError(t, err)
-	got, err := NewSetup(ctx, detector, DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}},
-				OSPathChecker{},
-				SystemdUnitLister{},
-				GopsutilProcessLister{},
-				nullLogger())
-	require.NoError(t, err)
-
-	want := &Setup{
-		Plans: []ServicePlan{
-			{
-				Name: "wizard",
-				InstallRecommendation: InstallRecommendation{
-					AcquisitionSpec: AcquisitionSpec{
-						Filename: "wizard.yaml",
-						Datasource: DatasourceConfig{
-							"source":            "journalctl",
-							"labels":            DatasourceConfig{"type": "syslog"},
-							"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
-						},
-					},
-				},
-			},
-		},
-	}
-	require.Equal(t, want, got)
-}
-
-func TestDetectForcedProcess(t *testing.T) {
-	ctx := t.Context()
-	cstest.SkipOnWindows(t)
-
-	f := strings.NewReader(`
-version: 1.0
-detect:
-  wizard:
-    when:
-      - ProcessRunning("foobar")
-`)
-
-	detector, err := NewDetector(f)
-	require.NoError(t, err)
-	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}},
-		OSPathChecker{},
-		SystemdUnitLister{},
-		GopsutilProcessLister{},
-		nullLogger())
-	require.NoError(t, err)
-
-	want := &Setup{
-		Plans: []ServicePlan{
-			{Name: "wizard"},
-		},
-	}
-	require.Equal(t, want, got)
 }
 
 func TestDetectSkipService(t *testing.T) {
@@ -494,8 +399,7 @@ detect:
 	require.NoError(t, err)
 	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
 		OSPathChecker{},
-		SystemdUnitLister{},
-		GopsutilProcessLister{},
+		nil, nil,
 		nullLogger())
 	require.NoError(t, err)
 
@@ -709,8 +613,7 @@ detect:
 			require.NoError(t, err)
 			got, err := NewSetup(ctx, detector, DetectOptions{ForcedOS: tc.forced},
 				OSPathChecker{},
-				SystemdUnitLister{},
-				GopsutilProcessLister{},
+				nil, nil,
 				nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
@@ -966,8 +869,7 @@ detect:
 
 			got, err := NewSetup(ctx, detector, DetectOptions{},
 				OSPathChecker{},
-				SystemdUnitLister{},
-				GopsutilProcessLister{},
+				nil, nil,
 				nullLogger())
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
