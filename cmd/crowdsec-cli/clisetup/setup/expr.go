@@ -3,10 +3,8 @@ package setup
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/shirou/gopsutil/v3/process"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -66,18 +64,33 @@ func (os ExprOS) VersionIsLower(version string) (bool, error) {
 	return !result, nil
 }
 
+type PathChecker interface {
+    Exists(path string) bool
+}
+
+type UnitLister interface {
+    ListUnits(ctx context.Context) ([]string, error)
+}
+
+type ProcessLister interface {
+    ListProcesses(ctx context.Context) ([]string, error)
+}
+
 // ExprEnvironment is used to expose functions and values to the rule engine.
 // It can cache the results of service detection commands, like systemctl etc.
 type ExprEnvironment struct {
 	OS ExprOS
-
 	Ctx context.Context //nolint:containedctx
 	_serviceState ExprServiceState
 	_state        ExprState
+
+	PathChecker   PathChecker
+	UnitLister    UnitLister
+	ProcessLister ProcessLister
 }
 
 // NewExprEnvironment creates an environment object for the rule engine.
-func NewExprEnvironment(ctx context.Context, opts DetectOptions, os ExprOS) *ExprEnvironment {
+func NewExprEnvironment(ctx context.Context, opts DetectOptions, os ExprOS, pathChecker PathChecker, unitLister UnitLister, processLister ProcessLister) *ExprEnvironment {
 	return &ExprEnvironment{
 		_state: ExprState{
 			detectOptions: opts,
@@ -91,14 +104,16 @@ func NewExprEnvironment(ctx context.Context, opts DetectOptions, os ExprOS) *Exp
 		_serviceState: ExprServiceState{},
 		OS:            os,
 		Ctx: ctx,
+
+		PathChecker: pathChecker,
+		UnitLister: unitLister,
+		ProcessLister: processLister,
 	}
 }
 
 // PathExists returns true if the given path exists.
 func (e *ExprEnvironment) PathExists(ctx context.Context, path string) bool {
-	_, err := os.Stat(path)
-
-	return err == nil
+	return e.PathChecker.Exists(path)
 }
 
 func (e *ExprEnvironment) loadUnits(ctx context.Context) error {
@@ -116,7 +131,7 @@ func (e *ExprEnvironment) loadUnits(ctx context.Context) error {
 
 	log.Debugf("Running systemctl...")
 
-	units, err := systemdUnitList(ctx)
+	units, err := e.UnitLister.ListUnits(ctx)
 	if err != nil {
 		return err
 	}
@@ -156,17 +171,12 @@ func (e *ExprEnvironment) loadProcesses(ctx context.Context) error {
 		e._state.runningProcesses[name] = true
 	}
 
-	procs, err := process.ProcessesWithContext(ctx)
+	procNames, err := e.ProcessLister.ListProcesses(ctx)
 	if err != nil {
-		return fmt.Errorf("while looking up running processes: %w", err)
+		return fmt.Errorf("while listing running processes: %w", err)
 	}
 
-	for _, p := range procs {
-		name, err := p.Name()
-		if err != nil {
-			return fmt.Errorf("while looking up running processes: %w", err)
-		}
-
+	for _, name := range procNames {
 		e._state.runningProcesses[name] = true
 	}
 

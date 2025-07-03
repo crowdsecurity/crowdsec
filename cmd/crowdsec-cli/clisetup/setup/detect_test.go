@@ -1,11 +1,10 @@
-package setup_test
+package setup
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"runtime"
 	"testing"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 )
 
 func nullLogger() *logrus.Logger {
@@ -24,47 +21,18 @@ func nullLogger() *logrus.Logger {
 	return logger
 }
 
-//nolint:dupword
-const fakeSystemctlOutput = `UNIT FILE                                 STATE    VENDOR PRESET
-crowdsec-setup-detect.service            enabled  enabled
-apache2.service                           enabled  enabled
-apparmor.service                          enabled  enabled
-apport.service                            enabled  enabled
-atop.service                              enabled  enabled
-atopacct.service                          enabled  enabled
-finalrd.service                           enabled  enabled
-fwupd-refresh.service                     enabled  enabled
-fwupd.service                             enabled  enabled
+type testUnitLister struct {Output []string}
 
-9 unit files listed.`
-
-func fakeExecCommandNotFound(ctx context.Context, command string, args ...string) *exec.Cmd {
-	cs := []string{"-test.run=TestSetupHelperProcess", "--", command}
-	cs = append(cs, args...)
-	cmd := exec.CommandContext(ctx, "this-command-does-not-exist", cs...)
-	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
-
-	return cmd
+func (l testUnitLister) ListUnits(ctx context.Context) ([]string, error) {
+	return l.Output, nil
 }
 
-func fakeExecCommand(ctx context.Context, command string, args ...string) *exec.Cmd {
-	cs := []string{"-test.run=TestSetupHelperProcess", "--", command}
-	cs = append(cs, args...)
-	//nolint:gosec
-	cmd := exec.CommandContext(ctx, os.Args[0], cs...)
-	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
+type nullProcessLister struct {}
 
-	return cmd
+func (nulll nullProcessLister) ListProcesses(ctx context.Context) ([]string, error) {
+	return nil, nil
 }
 
-func TestSetupHelperProcess(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	fmt.Fprint(os.Stdout, fakeSystemctlOutput)
-	os.Exit(0) //nolint:revive
-}
 
 func tempYAML(t *testing.T, content string) os.File {
 	t.Helper()
@@ -108,7 +76,8 @@ func TestPathExists(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		env := setup.NewExprEnvironment(ctx, setup.DetectOptions{}, setup.ExprOS{})
+		env := NewExprEnvironment(ctx, DetectOptions{}, ExprOS{},
+			OSPathChecker{}, testUnitLister{}, nullProcessLister{})
 
 		t.Run(tc.path, func(t *testing.T) {
 			t.Parallel()
@@ -161,7 +130,7 @@ func TestVersionCheck(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		e := setup.ExprOS{RawVersion: tc.version}
+		e := ExprOS{RawVersion: tc.version}
 
 		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
 			t.Parallel()
@@ -172,40 +141,6 @@ func TestVersionCheck(t *testing.T) {
 		})
 	}
 }
-
-// This is not required for Masterminds/semver
-/*
-func TestNormalizeVersion(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		version  string
-		want string
-	}{
-		{"0", "0"},
-		{"2", "2"},
-		{"3.14", "3.14"},
-		{"1.0", "1.0"},
-		{"18.04", "18.4"},
-		{"0.0.0", "0.0.0"},
-		{"18.04.0", "18.4.0"},
-		{"18.0004.0", "18.4.0"},
-		{"21.04.2", "21.4.2"},
-		{"050", "50"},
-		{"trololo", "trololo"},
-		{"0001.002.03", "1.2.3"},
-		{"0001.002.03-trololo", "0001.002.03-trololo"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.version, func(t *testing.T) {
-			t.Parallel()
-			actual := setup.NormalizeVersion(tc.version)
-			require.Equal(t, tc.want, actual)
-		})
-	}
-}
-*/
 
 func TestListSupported(t *testing.T) {
 	t.Parallel()
@@ -264,7 +199,7 @@ func TestListSupported(t *testing.T) {
 
 			f := tempYAML(t, tc.yml)
 
-			detector, err := setup.NewDetector(&f)
+			detector, err := NewDetector(&f)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 
 			if tc.wantErr != "" {
@@ -344,14 +279,14 @@ func TestApplyRules(t *testing.T) {
 		},
 	}
 
-	env := &setup.ExprEnvironment{}
+	env := &ExprEnvironment{}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			svc := setup.ServiceRules{When: tc.rules}
-			got, err := setup.ApplyRules(ctx, svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
+			svc := ServiceRules{When: tc.rules}
+			got, err := ApplyRules(ctx, svc, env, nullLogger()) //nolint:typecheck,nolintlint  // exported only for tests
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 
 			if tc.wantErr != "" {
@@ -371,20 +306,20 @@ func TestApplyRules(t *testing.T) {
 
 func TestUnitFound(t *testing.T) {
 	ctx := t.Context()
-	setup.ExecCommand = fakeExecCommand
-	defer func() { setup.ExecCommand = exec.CommandContext }()
 
-	env := setup.NewExprEnvironment(ctx, setup.DetectOptions{}, setup.ExprOS{})
+	env := NewExprEnvironment(ctx, DetectOptions{}, ExprOS{}, OSPathChecker{}, testUnitLister{Output: []string{"crowdsec-setup-installed.service"}}, nullProcessLister{})
 
-	installed, err := env.UnitFound(ctx, "crowdsec-setup-detect.service")
+	installed, err := env.UnitFound(ctx, "crowdsec-setup-installed.service")
 	require.NoError(t, err)
-
 	require.True(t, installed)
+
+	installed, err = env.UnitFound(ctx, "crowdsec-setup-missing.service")
+	require.NoError(t, err)
+	require.False(t, installed)
 }
 
 func TestDetectSimpleRule(t *testing.T) {
 	ctx := t.Context()
-	setup.ExecCommand = fakeExecCommand
 
 	f := tempYAML(t, `
 	version: 1.0
@@ -398,12 +333,16 @@ func TestDetectSimpleRule(t *testing.T) {
 	  ugly:
 	`)
 
-	detector, err := setup.NewDetector(&f)
+	detector, err := NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
+	got, err := NewSetup(ctx, detector, DetectOptions{},
+		OSPathChecker{},
+		SystemdUnitLister{},
+		GopsutilProcessLister{},
+		nullLogger())
 	require.NoError(t, err)
 
-	want := []setup.ServicePlan{
+	want := []ServicePlan{
 		{Name: "good"},
 		{Name: "ugly"},
 	}
@@ -411,95 +350,15 @@ func TestDetectSimpleRule(t *testing.T) {
 	require.ElementsMatch(t, want, got.Plans)
 }
 
-func TestDetectUnitError(t *testing.T) {
-	ctx := t.Context()
-	cstest.SkipOnWindows(t)
-
-	setup.ExecCommand = fakeExecCommandNotFound
-	defer func() { setup.ExecCommand = exec.CommandContext }()
-
-	tests := []struct {
-		name        string
-		config      string
-		want    *setup.Setup
-		wantErr string
-	}{
-		{
-			"error is reported if systemctl does not exist",
-			`
-version: 1.0
-detect:
-  wizard:
-    when:
-      - UnitFound("crowdsec-setup-detect.service")`,
-			nil,
-			`while looking for service wizard: rule 'UnitFound("crowdsec-setup-detect.service")': ` +
-				`running systemctl: exec: "this-command-does-not-exist": executable file not found in $PATH`,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := tempYAML(t, tc.config)
-
-			detector, err := setup.NewDetector(&f)
-			require.NoError(t, err)
-			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(t, tc.want, got)
-		})
-	}
-}
-
 func TestDetectUnit(t *testing.T) {
 	ctx := t.Context()
-	setup.ExecCommand = fakeExecCommand
-	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	tests := []struct {
 		name        string
 		config      string
-		want    *setup.Setup
+		want    *Setup
 		wantErr string
 	}{
-		//		{
-		//			"detect a single unit, with default log filter",
-		//			`
-		// version: 1.0
-		// detect:
-		//  wizard:
-		//    when:
-		//      - UnitFound("crowdsec-setup-detect.service")
-		//    datasource:
-		//      labels:
-		//        type: syslog
-		//  sorcerer:
-		//    when:
-		//      - UnitFound("sorcerer.service")`,
-		//			setup.Setup{
-		//				Setup: []setup.ServiceSetup{
-		//					{
-		//						DetectedService: "wizard",
-		//						DataSource: setup.DataSourceItem{
-		//							"Labels":           map[string]string{"type": "syslog"},
-		//							"JournalCTLFilter": []string{"_SYSTEMD_UNIT=crowdsec-setup-detect.service"},
-		//						},
-		//					},
-		//				},
-		//			},
-		//			"",
-		//		},
-		//		{
-		//			"detect a single unit, but type label is missing",
-		//			`
-		// version: 1.0
-		// detect:
-		//  wizard:
-		//    when:
-		//      - UnitFound("crowdsec-setup-detect.service")`,
-		//			setup.Setup{},
-		//			"missing type label for service wizard",
-		//		},
 		{
 			"detect unit and pick up acquisistion filter",
 			`
@@ -516,16 +375,16 @@ detect:
           type: syslog
         journalctl_filter:
           - _MY_CUSTOM_FILTER=something`,
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			&Setup{
+				Plans: []ServicePlan{
 					{
 						Name: "wizard",
-						InstallRecommendation: setup.InstallRecommendation{
-							AcquisitionSpec: setup.AcquisitionSpec{
+						InstallRecommendation: InstallRecommendation{
+							AcquisitionSpec: AcquisitionSpec{
 								Filename: "wizard.yaml",
-								Datasource: setup.DatasourceConfig{
+								Datasource: DatasourceConfig{
 									"source":            "journalctl",
-									"labels":            setup.DatasourceConfig{"type": "syslog"},
+									"labels":            DatasourceConfig{"type": "syslog"},
 									"journalctl_filter": []any{"_MY_CUSTOM_FILTER=something"},
 								},
 							},
@@ -537,13 +396,19 @@ detect:
 		},
 	}
 
+	unitLister := testUnitLister{Output: []string{"crowdsec-setup-detect.service"}}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
-			detector, err := setup.NewDetector(&f)
+			detector, err := NewDetector(&f)
 			require.NoError(t, err)
-			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
+			got, err := NewSetup(ctx, detector, DetectOptions{},
+				OSPathChecker{},
+				unitLister,
+				GopsutilProcessLister{},
+				nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -552,8 +417,6 @@ detect:
 
 func TestDetectForcedUnit(t *testing.T) {
 	ctx := t.Context()
-	setup.ExecCommand = fakeExecCommand
-	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	f := tempYAML(t, `
 	version: 1.0
@@ -571,21 +434,25 @@ func TestDetectForcedUnit(t *testing.T) {
 	          - _SYSTEMD_UNIT=crowdsec-setup-forced.service
 	`)
 
-	detector, err := setup.NewDetector(&f)
+	detector, err := NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}}, nullLogger())
+	got, err := NewSetup(ctx, detector, DetectOptions{ForcedUnits: []string{"crowdsec-setup-forced.service"}},
+				OSPathChecker{},
+				SystemdUnitLister{},
+				GopsutilProcessLister{},
+				nullLogger())
 	require.NoError(t, err)
 
-	want := &setup.Setup{
-		Plans: []setup.ServicePlan{
+	want := &Setup{
+		Plans: []ServicePlan{
 			{
 				Name: "wizard",
-				InstallRecommendation: setup.InstallRecommendation{
-					AcquisitionSpec: setup.AcquisitionSpec{
+				InstallRecommendation: InstallRecommendation{
+					AcquisitionSpec: AcquisitionSpec{
 						Filename: "wizard.yaml",
-						Datasource: setup.DatasourceConfig{
+						Datasource: DatasourceConfig{
 							"source":            "journalctl",
-							"labels":            setup.DatasourceConfig{"type": "syslog"},
+							"labels":            DatasourceConfig{"type": "syslog"},
 							"journalctl_filter": []any{"_SYSTEMD_UNIT=crowdsec-setup-forced.service"},
 						},
 					},
@@ -600,10 +467,6 @@ func TestDetectForcedProcess(t *testing.T) {
 	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
-	setup.ExecCommand = fakeExecCommand
-
-	defer func() { setup.ExecCommand = exec.CommandContext }()
-
 	f := tempYAML(t, `
 	version: 1.0
 	detect:
@@ -612,13 +475,17 @@ func TestDetectForcedProcess(t *testing.T) {
 	      - ProcessRunning("foobar")
 	`)
 
-	detector, err := setup.NewDetector(&f)
+	detector, err := NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}}, nullLogger())
+	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}},
+		OSPathChecker{},
+		SystemdUnitLister{},
+		GopsutilProcessLister{},
+		nullLogger())
 	require.NoError(t, err)
 
-	want := &setup.Setup{
-		Plans: []setup.ServicePlan{
+	want := &Setup{
+		Plans: []ServicePlan{
 			{Name: "wizard"},
 		},
 	}
@@ -629,10 +496,6 @@ func TestDetectSkipService(t *testing.T) {
 	ctx := t.Context()
 	cstest.SkipOnWindows(t)
 
-	setup.ExecCommand = fakeExecCommand
-
-	defer func() { setup.ExecCommand = exec.CommandContext }()
-
 	f := tempYAML(t, `
 	version: 1.0
 	detect:
@@ -641,26 +504,27 @@ func TestDetectSkipService(t *testing.T) {
 	      - ProcessRunning("foobar")
 	`)
 
-	detector, err := setup.NewDetector(&f)
+	detector, err := NewDetector(&f)
 	require.NoError(t, err)
-	got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}}, nullLogger())
+	got, err := NewSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+		OSPathChecker{},
+		SystemdUnitLister{},
+		GopsutilProcessLister{},
+		nullLogger())
 	require.NoError(t, err)
 
-	want := &setup.Setup{[]setup.ServicePlan{}}
+	want := &Setup{[]ServicePlan{}}
 	require.Equal(t, want, got)
 }
 
 func TestDetectForcedOS(t *testing.T) {
 	ctx := t.Context()
-	setup.ExecCommand = fakeExecCommand
-
-	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	type test struct {
 		name        string
 		config      string
-		forced      setup.ExprOS
-		want    *setup.Setup
+		forced      ExprOS
+		want    *Setup
 		wantErr string
 	}
 
@@ -673,9 +537,9 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.Family == "linux"`,
-			setup.ExprOS{Family: "linux"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "linux"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -689,9 +553,9 @@ func TestDetectForcedOS(t *testing.T) {
 	  windows:
 	    when:
 	      - OS.Family == "windows"`,
-			setup.ExprOS{Family: "windows"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "windows"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "windows"},
 				},
 			},
@@ -705,8 +569,8 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.Family == "linux" && OS.ID == "ubuntu"`,
-			setup.ExprOS{Family: "linux"},
-			&setup.Setup{[]setup.ServicePlan{}},
+			ExprOS{Family: "linux"},
+			&Setup{[]ServicePlan{}},
 			"",
 		},
 		{
@@ -717,9 +581,9 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.Family == "linux" && OS.ID == "ubuntu"`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "linux", ID: "ubuntu"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -733,9 +597,9 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.Family == "linux" && OS.ID == "ubuntu" && OS.VersionCheck("19.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.04"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.04"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -749,8 +613,8 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			setup.ExprOS{Family: "linux"},
-			&setup.Setup{[]setup.ServicePlan{}},
+			ExprOS{Family: "linux"},
+			&Setup{[]ServicePlan{}},
 			"",
 		},
 		{
@@ -761,8 +625,8 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
-			&setup.Setup{[]setup.ServicePlan{}},
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
+			&Setup{[]ServicePlan{}},
 			"",
 		},
 		{
@@ -773,9 +637,9 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -789,9 +653,9 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "22.04"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "22.04"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -806,8 +670,8 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			setup.ExprOS{Family: "linux"},
-			&setup.Setup{[]setup.ServicePlan{}},
+			ExprOS{Family: "linux"},
+			&Setup{[]ServicePlan{}},
 			"",
 		},
 		{
@@ -818,8 +682,8 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.10"},
-			&setup.Setup{[]setup.ServicePlan{}},
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.10"},
+			&Setup{[]ServicePlan{}},
 			"",
 		},
 		{
@@ -830,8 +694,8 @@ func TestDetectForcedOS(t *testing.T) {
 	  linux:
 	    when:
 	      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
-			&setup.Setup{[]setup.ServicePlan{}},
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
+			&Setup{[]ServicePlan{}},
 			"",
 		},
 		{
@@ -843,9 +707,9 @@ func TestDetectForcedOS(t *testing.T) {
 	    when:
 	      - OS.ID == "ubuntu"
 	      - OS.VersionCheck("<20.04")`,
-			setup.ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
-			&setup.Setup{
-				Plans: []setup.ServicePlan{
+			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
+			&Setup{
+				Plans: []ServicePlan{
 					{Name: "linux"},
 				},
 			},
@@ -857,9 +721,13 @@ func TestDetectForcedOS(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
-			detector, err := setup.NewDetector(&f)
+			detector, err := NewDetector(&f)
 			require.NoError(t, err)
-			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{ForcedOS: tc.forced}, nullLogger())
+			got, err := NewSetup(ctx, detector, DetectOptions{ForcedOS: tc.forced},
+				OSPathChecker{},
+				SystemdUnitLister{},
+				GopsutilProcessLister{},
+				nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -869,15 +737,12 @@ func TestDetectForcedOS(t *testing.T) {
 func TestDetectDatasourceValidation(t *testing.T) {
 	// It could be a good idea to test UnmarshalConfig() separately in addition
 	// to Configure(), in each datasource. For now, we test these here.
-	setup.ExecCommand = fakeExecCommand
 	ctx := t.Context()
-
-	defer func() { setup.ExecCommand = exec.CommandContext }()
 
 	type test struct {
 		name        string
 		config      string
-		want    *setup.Setup
+		want    *Setup
 		wantErr string
 	}
 
@@ -1011,14 +876,14 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				      filename: syslog.yaml
 				      datasource:
 				        source: syslog`,
-			want: &setup.Setup{
-				Plans: []setup.ServicePlan{
+			want: &Setup{
+				Plans: []ServicePlan{
 					{
 						Name:       "foobar",
-						InstallRecommendation: setup.InstallRecommendation{
-							AcquisitionSpec: setup.AcquisitionSpec{
+						InstallRecommendation: InstallRecommendation{
+							AcquisitionSpec: AcquisitionSpec{
 								Filename: "syslog.yaml",
-								Datasource: setup.DatasourceConfig{
+								Datasource: DatasourceConfig{
 									"source": "syslog",
 								},
 							},
@@ -1110,12 +975,16 @@ func TestDetectDatasourceValidation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempYAML(t, tc.config)
 
-			detector, err := setup.NewDetector(&f)
+			detector, err := NewDetector(&f)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			if tc.wantErr != "" {
 				return
 			}
-			got, err := setup.NewSetup(ctx, detector, setup.DetectOptions{}, nullLogger())
+			got, err := NewSetup(ctx, detector, DetectOptions{},
+				OSPathChecker{},
+				SystemdUnitLister{},
+				GopsutilProcessLister{},
+				nullLogger())
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
