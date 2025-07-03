@@ -321,28 +321,35 @@ func (d *Detector) ListSupportedServices() []string {
 	return keys
 }
 
-func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, logger *logrus.Logger) (*Setup, error) {
+func determineOS(opts DetectOptions, logger *logrus.Logger) (ExprOS, error) {
+	if opts.ForcedOS != (ExprOS{}) {
+		logger.Debugf("Forced OS - %+v", opts.ForcedOS)
+		return opts.ForcedOS, nil
+	}
+
+	osfull, err := osinfo.GetOSInfo()
+	if err != nil {
+		return ExprOS{}, fmt.Errorf("detecting OS: %w", err)
+	}
+
+	logger.Debugf("Detected OS - %+v", *osfull)
+
+	return ExprOS{
+		Family:     osfull.Family,
+		ID:         osfull.ID,
+		RawVersion: osfull.Version,
+	}, nil
+}
+
+func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, unitLister UnitLister, processLister ProcessLister, logger *logrus.Logger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
 	s.Plans = make([]ServicePlan, 0)
 
-	os := opts.ForcedOS
-	if os == (ExprOS{}) {
-		osfull, err := osinfo.GetOSInfo()
-		if err != nil {
-			return nil, fmt.Errorf("detecting OS: %w", err)
-		}
-
-		logger.Debugf("Detected OS - %+v", *osfull)
-
-		os = ExprOS{
-			Family:     osfull.Family,
-			ID:         osfull.ID,
-			RawVersion: osfull.Version,
-		}
-	} else {
-		logger.Debugf("Forced OS - %+v", os)
+	os, err := determineOS(opts, logger)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(opts.ForcedUnits) > 0 {
@@ -353,7 +360,13 @@ func NewSetup(ctx context.Context, detector *Detector, opts DetectOptions, logge
 		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
 	}
 
-	env := NewExprEnvironment(ctx, opts, os)
+	env := NewExprEnvironment(ctx, opts, os,
+		pathChecker,
+		unitLister,
+		processLister)
+//		OSPathChecker{},
+//		SystemdUnitLister{},
+//		GopsutilProcessLister{})
 
 	detected, err := buildPlans(ctx, detector, env, logger)
 	if err != nil {

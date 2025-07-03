@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 type configGetter func() *csconfig.Config
@@ -23,9 +23,9 @@ func New(cfg configGetter) *cliSetup {
 
 func (cli *cliSetup) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "setup",
-		Short:             "Tools to configure crowdsec",
-		Long:              "Manage service detection and hub/acquisition configuration",
+		Use:   "setup",
+		Short: "Tools to configure crowdsec",
+		Long:  "Manage service detection and hub/acquisition configuration",
 		Example: `# Call one of detect, install-hub, etc.
 cscli setup [command]
 # With no explicit command, will run as "cscli setup interactive".
@@ -33,7 +33,7 @@ cscli setup [command]
 cscli setup
 `,
 		DisableAutoGenTag: true,
-		Args:		   args.NoArgs,
+		Args:              args.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subCmd, _, err := cmd.Root().Find([]string{"setup", "interactive"})
 			if err != nil {
