@@ -223,7 +223,9 @@ func (m *MetricsProvider) getParserSuccessMetrics() []*models.MetricsDetailItem 
 		"acquis_type": "acquis_type",
 		"name":        "parser_name",
 		"stage":       "parser_stage",
-	}, nil, "parsed", "line",
+	}, map[string]*regexp.Regexp{
+		"name": childNodeExcludeRegexp,
+	}, "parsed", "line",
 	)
 }
 
