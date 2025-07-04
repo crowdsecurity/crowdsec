@@ -9,6 +9,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
 func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
@@ -28,7 +29,9 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 				return err
 			}
 
-			stup, err := setup.NewSetupFromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
+			builder := setup.NewSetupBuilder(logrus.StandardLogger())
+
+			stup, err := builder.FromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {
 				return err
 			}
@@ -59,5 +62,28 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 	// in dry-run, it can be useful to see the _order_ in which files are installed.
 	verbosePlan := dryRun
 
-	return setup.InstallHubItems(ctx, hub, contentProvider, hubSpecs, interactive, dryRun, showPlan, verbosePlan)
+	plan := hubops.NewActionPlan(hub)
+
+	for _, itemMap := range hubSpecs {
+		for itemType, itemNames := range itemMap {
+			for _, itemName := range itemNames {
+				fqName := itemType + ":" + itemName
+
+				item, err := hub.GetItemFQ(fqName)
+				if err != nil {
+					return err
+				}
+
+				if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, false)); err != nil {
+					return err
+				}
+
+				if err := plan.AddCommand(hubops.NewEnableCommand(item, false)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
 }
