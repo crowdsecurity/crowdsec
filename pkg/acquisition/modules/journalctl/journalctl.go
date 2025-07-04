@@ -303,6 +303,6 @@ func (j *JournalCtlSource) CanRun() error {
 	return err
 }
 
-func (j *JournalCtlSource) Dump() interface{} {
+func (j *JournalCtlSource) Dump() any {
 	return j
 }

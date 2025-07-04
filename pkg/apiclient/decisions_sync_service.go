@@ -13,7 +13,7 @@ import (
 type DecisionDeleteService service
 
 // DecisionDeleteService purposely reuses AddSignalsRequestItemDecisions model
-func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *models.DecisionsDeleteRequest) (interface{}, *Response, error) {
+func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *models.DecisionsDeleteRequest) (any, *Response, error) {
 	u := fmt.Sprintf("%s/decisions/delete", d.client.URLPrefix)
 
 	req, err := d.client.PrepareRequest(ctx, http.MethodPost, u, &deletedDecisions)
@@ -21,7 +21,7 @@ func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *model
 		return nil, nil, fmt.Errorf("while building request: %w", err)
 	}
 
-	var response interface{}
+	var response any
 
 	resp, err := d.client.Do(ctx, req, &response)
 	if err != nil {

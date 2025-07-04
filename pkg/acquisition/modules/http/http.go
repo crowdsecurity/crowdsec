@@ -204,7 +204,7 @@ func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
-func (h *HTTPSource) Dump() interface{} {
+func (h *HTTPSource) Dump() any {
 	return h
 }
 
