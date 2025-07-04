@@ -1,6 +1,6 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.24.3
+go 1.24.4
 
 require (
 	entgo.io/ent v0.14.2
@@ -47,13 +47,13 @@ require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-plugin v1.4.10
+	github.com/hashicorp/go-plugin v1.6.3
 	github.com/hashicorp/go-version v1.2.1
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/jarcoal/httpmock v1.1.0
-	github.com/jedib0t/go-pretty/v6 v6.5.9
+	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jszwec/csvutil v1.5.1
 	github.com/lithammer/dedent v1.1.0
 	github.com/mattn/go-isatty v0.0.20
@@ -68,7 +68,7 @@ require (
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.14.1
 	github.com/sanity-io/litter v1.5.5
-	github.com/segmentio/kafka-go v0.4.45
+	github.com/segmentio/kafka-go v0.4.48
 	github.com/shirou/gopsutil/v3 v3.23.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/slack-go/slack v0.16.0
@@ -77,12 +77,12 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.7.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	golang.org/x/crypto v0.38.0
-	golang.org/x/mod v0.23.0
-	golang.org/x/net v0.40.0
-	golang.org/x/sync v0.14.0
+	golang.org/x/crypto v0.39.0
+	golang.org/x/mod v0.25.0
+	golang.org/x/net v0.41.0
+	golang.org/x/sync v0.15.0
 	golang.org/x/sys v0.33.0
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.26.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -134,7 +134,7 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
-	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
+	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -156,11 +156,10 @@ require (
 	github.com/magefile/mage v1.15.1-0.20241126214340-bdc92f694516 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
-	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -179,7 +178,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -231,4 +230,4 @@ require (
 
 replace golang.org/x/time/rate => github.com/crowdsecurity/crowdsec/pkg/time/rate v0.0.0
 
-replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.0.0-20250601201637-67ae05361dc0
+replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.3.3-crowdsec.20250609

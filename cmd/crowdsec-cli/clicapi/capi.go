@@ -2,7 +2,6 @@ package clicapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -43,14 +42,6 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			cfg := cli.cfg()
-			if err := require.LAPI(cfg); err != nil {
-				return err
-			}
-
-			return require.CAPI(cfg)
-		},
 	}
 
 	cmd.AddCommand(cli.newRegisterCmd())
@@ -143,6 +134,15 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+			if err := require.LAPINoOnlineCreds(cfg); err != nil {
+				return err
+			}
+
+			if err := require.CAPI(cfg); err != nil {
+				return err
+			}
+
 			return cli.register(cmd.Context(), capiUserPrefix, outputFile)
 		},
 	}
@@ -155,18 +155,20 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	return cmd
 }
 
+type capiStatus struct {
+	authenticated    bool
+	enrolled         bool
+	subscriptionType string
+}
+
 // queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolled in the console.
-func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, credURL string, login string, password string) (bool, bool, error) {
+func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, credURL string, login string, password string) (capiStatus, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
-		return false, false, err
+		return capiStatus{}, err
 	}
 
 	itemsForAPI := hub.GetInstalledListForAPI()
-
-	if len(itemsForAPI) == 0 {
-		return false, false, errors.New("no scenarios or appsec-rules installed, abort")
-	}
 
 	passwd := strfmt.Password(password)
 
@@ -174,7 +176,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 		MachineID: login,
 		Password:  passwd,
 		URL:       apiURL,
-		// I don't believe papi is neede to check enrollement
+		// I don't believe papi is needed to check enrollement
 		// PapiURL:       papiURL,
 		VersionPrefix: "v3",
 		UpdateScenario: func(_ context.Context) ([]string, error) {
@@ -182,7 +184,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 		},
 	})
 	if err != nil {
-		return false, false, err
+		return capiStatus{}, err
 	}
 
 	pw := strfmt.Password(password)
@@ -195,20 +197,20 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 
 	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, t)
 	if err != nil {
-		return false, false, err
+		return capiStatus{}, err
 	}
 
 	if err := db.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token); err != nil {
-		return false, false, err
+		return capiStatus{}, err
 	}
 
 	client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
 	if client.IsEnrolled() {
-		return true, true, nil
+		return capiStatus{true, true, client.GetSubscriptionType()}, nil
 	}
 
-	return true, false, nil
+	return capiStatus{true, false, ""}, nil
 }
 
 func (cli *cliCapi) Status(ctx context.Context, db *database.Client, out io.Writer, hub *cwhub.Hub) error {
@@ -223,17 +225,18 @@ func (cli *cliCapi) Status(ctx context.Context, db *database.Client, out io.Writ
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
-	auth, enrolled, err := queryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
+	status, err := queryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 
-	if auth {
+	if status.authenticated {
 		fmt.Fprint(out, "You can successfully interact with Central API (CAPI)\n")
 	}
 
-	if enrolled {
+	if status.enrolled {
 		fmt.Fprint(out, "Your instance is enrolled in the console\n")
+		fmt.Fprintf(out, "Subscription type: %s\n", status.subscriptionType)
 	}
 
 	switch *cfg.API.Server.OnlineClient.Sharing {
@@ -269,6 +272,14 @@ func (cli *cliCapi) newStatusCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			ctx := cmd.Context()
+
+			if err := require.LAPI(cfg); err != nil {
+				return err
+			}
+
+			if err := require.CAPI(cfg); err != nil {
+				return err
+			}
 
 			hub, err := require.Hub(cfg, nil)
 			if err != nil {
