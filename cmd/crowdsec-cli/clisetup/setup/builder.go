@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 
 	goccyyaml "github.com/goccy/go-yaml"
@@ -52,6 +53,11 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 			continue
 		}
 
+		// User asked to ignore this service
+		if slices.Contains(opts.SkipServices, name) {
+			continue
+		}
+
 		detected[name] = ServicePlan{
 			Name:                  name,
 			InstallRecommendation: svc.InstallRecommendation,
@@ -60,11 +66,6 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 
 	if err = checkConsumedForcedItems(env); err != nil {
 		return nil, err
-	}
-
-	// remove services the user asked to ignore
-	for _, name := range opts.SkipServices {
-		delete(detected, name)
 	}
 
 	// sort the keys (service names) to have them in a predictable
@@ -84,6 +85,7 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 	return &s, nil
 }
 
+// FromYAML parses a Setup from setup.yaml, which can be user-provided or the result of a service detection.
 func (b *SetupBuilder) FromYAML(input io.Reader, showSource bool, wantColor bool) (*Setup, error) {
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
