@@ -1,16 +1,11 @@
 ---
 version: 1.0
 
-# TODO: This file must be reviewed before the `cscli setup` command becomes GA
-
 detect:
 
   #
   # crowdsecurity/apache2
   #
-
-  # XXX some distro is using this path?
-  #      - /var/log/*http*/*.log
 
   apache2-systemd-deb:
     when:
@@ -41,7 +36,6 @@ detect:
         source: file
         filenames:
           - /var/log/httpd/*.log
-          # XXX /var/log/*http*/*.log
         labels:
           type: apache2
 
@@ -98,7 +92,7 @@ detect:
       datasource:
         source: file
         labels:
-          type: syslog
+          type: dovecot
         filenames:
           - /var/log/mail.log
 
@@ -136,7 +130,7 @@ detect:
       datasource:
         source: journalctl
         labels:
-          type: syslog
+          type: endlessh
         # XXX this? or /var/log/syslog?
         journalctl_filter:
           - "_SYSTEMD_UNIT=endlessh.service"
@@ -180,23 +174,6 @@ detect:
           type: haproxy
         filenames:
           - /var/log/haproxy/*.log
-
-  #
-  # firewallservices/lemonldap-ng
-  #
-
-  lemonldap-ng-systemd:
-    when:
-      - UnitFound("lemonldap-ng-fastcgi-server.service")
-    hub_spec:
-      collections:
-        - firewallservices/lemonldap-ng
-    #acquisition_spec:
-    #  filename: lemondap-ng.yaml
-    #  datasource:
-    #    # XXX todo where are the logs?
-    #    labels:
-    #      type: syslog
 
   #
   # crowdsecurity/mariadb
@@ -397,13 +374,12 @@ detect:
     hub_spec:
       collections:
         - fulljackz/pureftpd
-    # XXX ?
     acquisition_spec:
       filename: pureftpd.yaml
       datasource:
         source: file
         labels:
-          type: syslog
+          type: pure-ftpd
         filenames:
           - /var/log/pure-ftpd/*.log
 
