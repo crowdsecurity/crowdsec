@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
@@ -35,7 +36,9 @@ func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
 				return err
 			}
 
-			stup, err := setup.NewSetupFromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
+			builder := setup.NewSetupBuilder(logrus.StandardLogger())
+
+			stup, err := builder.FromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {
 				return err
 			}
