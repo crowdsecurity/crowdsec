@@ -1,7 +1,7 @@
 package csconfig
 
 import (
-	"net"
+	"net/netip"
 	"os"
 	"strings"
 	"testing"
@@ -271,13 +271,6 @@ func TestLoadAPIServer(t *testing.T) {
 	}
 }
 
-func mustParseCIDRNet(t *testing.T, s string) *net.IPNet {
-	_, ipNet, err := net.ParseCIDR(s)
-	require.NoError(t, err)
-
-	return ipNet
-}
-
 func TestParseCapiWhitelists(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -289,8 +282,8 @@ func TestParseCapiWhitelists(t *testing.T) {
 			name:  "empty file",
 			input: "",
 			expected: &CapiWhitelist{
-				Ips:   []net.IP{},
-				Cidrs: []*net.IPNet{},
+				Ips:   []netip.Addr{},
+				Cidrs: []netip.Prefix{},
 			},
 			expectedErr: "empty file",
 		},
@@ -298,24 +291,24 @@ func TestParseCapiWhitelists(t *testing.T) {
 			name:  "empty ip and cidr",
 			input: `{"ips": [], "cidrs": []}`,
 			expected: &CapiWhitelist{
-				Ips:   []net.IP{},
-				Cidrs: []*net.IPNet{},
+				Ips:   []netip.Addr{},
+				Cidrs: []netip.Prefix{},
 			},
 		},
 		{
 			name:  "some ip",
 			input: `{"ips": ["1.2.3.4"]}`,
 			expected: &CapiWhitelist{
-				Ips:   []net.IP{net.IPv4(1, 2, 3, 4)},
-				Cidrs: []*net.IPNet{},
+				Ips:   []netip.Addr{netip.MustParseAddr("1.2.3.4")},
+				Cidrs: []netip.Prefix{},
 			},
 		},
 		{
 			name:  "some cidr",
 			input: `{"cidrs": ["1.2.3.0/24"]}`,
 			expected: &CapiWhitelist{
-				Ips:   []net.IP{},
-				Cidrs: []*net.IPNet{mustParseCIDRNet(t, "1.2.3.0/24")},
+				Ips:   []netip.Addr{},
+				Cidrs: []netip.Prefix{netip.MustParsePrefix("1.2.3.0/24")},
 			},
 		},
 	}
