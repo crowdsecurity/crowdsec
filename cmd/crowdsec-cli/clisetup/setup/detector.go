@@ -66,7 +66,7 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 	return &d, nil
 }
 
-// ListSupportedServices returns a list of the services recognized by the detector.
+// ListSupportedServices returns a sorted list of the services recognized by the detector.
 func (d *Detector) ListSupportedServices() []string {
 	keys := make([]string, 0)
 	for k := range d.Detect {
