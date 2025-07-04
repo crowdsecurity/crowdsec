@@ -186,17 +186,17 @@ func UpdateRegexpCacheMetrics() {
 	}
 }
 
-func FileInit(fileFolder string, filename string, fileType string) error {
-	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+func FileInit(directory string, filename string, fileType string) error {
+	log.Debugf("init (folder:%s) (file:%s) (type:%s)", directory, filename, fileType)
 
 	if fileType == "" {
-		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
+		log.Debugf("ignored file %s%s because no type specified", directory, filename)
 		return nil
 	}
 
 	ok, err := existsInFileMaps(filename, fileType)
 	if ok {
-		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
+		log.Debugf("ignored file %s%s because already loaded", directory, filename)
 		return nil
 	}
 
@@ -204,9 +204,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		return err
 	}
 
-	filepath := filepath.Join(fileFolder, filename)
-
-	file, err := os.Open(filepath)
+	file, err := os.Open(filepath.Join(directory, filename))
 	if err != nil {
 		return err
 	}
