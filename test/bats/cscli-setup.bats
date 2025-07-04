@@ -71,7 +71,7 @@ teardown() {
 	  linux:
 	    when:
 	      - OS.Family == "linux"
-	    install:
+	    hub_spec:
 	      collections:
 	        - crowdsecurity/linux
 	  notalinux:
@@ -79,7 +79,7 @@ teardown() {
 	      - OS.Family != "linux"
 	EOT
 
-    assert_json '{setup:[{detected_service:"linux",install:{collections:["crowdsecurity/linux"]}}]}'
+    assert_json '{setup:[{detected_service:"linux",hub_spec:{collections:["crowdsecurity/linux"]}}]}'
 }
 
 @test "cscli setup detect --skip-service" {
@@ -106,15 +106,15 @@ teardown() {
 
     rune -0 cscli setup detect --force-os-family linux --detect-config "$TESTDATA/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="linux")' <(output)
-    assert_json '{detected_service:"linux",install:{collections:["crowdsecurity/linux"]},acquisition:{filename:"linux.yaml", datasource:{source:"file",labels:{type:"syslog"},filenames:["/var/log/syslog","/var/log/kern.log","/var/log/messages"]}}}'
+    assert_json '{detected_service:"linux",hub_spec:{collections:["crowdsecurity/linux"]},acquisition_spec:{filename:"linux.yaml", datasource:{source:"file",labels:{type:"syslog"},filenames:["/var/log/syslog","/var/log/kern.log","/var/log/messages"]}}}'
 
     rune -0 cscli setup detect --force-os-family freebsd --detect-config "$TESTDATA/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="freebsd")' <(output)
-    assert_json '{detected_service:"freebsd",install:{collections:["crowdsecurity/freebsd"]}}'
+    assert_json '{detected_service:"freebsd",hub_spec:{collections:["crowdsecurity/freebsd"]}}'
 
     rune -0 cscli setup detect --force-os-family windows --detect-config "${TESTDATA}/detect.yaml"
     rune -0 jq -cS '.setup[] | select(.detected_service=="windows")' <(output)
-    assert_json '{detected_service:"windows",install:{collections:["crowdsecurity/windows"]}}'
+    assert_json '{detected_service:"windows",hub_spec:{collections:["crowdsecurity/windows"]}}'
 
     # unknown family is not forbidden
     rune -0 cscli setup detect --force-os-family magillagorilla --detect-config "${TESTDATA}/detect.yaml"
@@ -235,7 +235,7 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("mock-apache2.service")
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        source: file
@@ -248,7 +248,7 @@ update-notifier-motd.timer              enabled enabled
 
     # If a call to UnitFoundwas part of the expression and it returned true,
     # there is a default journalctl_filter derived from the unit's name.
-    assert_json '[{acquisition:{filename:"apache.yaml",datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}}},detected_service:"apache2"}]'
+    assert_json '[{acquisition_spec:{filename:"apache.yaml",datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}}},detected_service:"apache2"}]'
 
     # the command was called exactly once
     [[ $(mock_get_call_num "$mock") -eq 1 ]]
@@ -291,7 +291,7 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("mock-apache2.service")
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        source: file
@@ -322,7 +322,7 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("force-apache2")
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache2.yaml
 	      datasource:
 	        source: file
@@ -332,7 +332,7 @@ update-notifier-motd.timer              enabled enabled
 	  apache3:
 	    when:
 	      - UnitFound("force-apache3")
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache3.yaml
 	      datasource:
 	        source: file
@@ -343,16 +343,16 @@ update-notifier-motd.timer              enabled enabled
 
     rune -0 cscli setup detect --force-unit force-apache2
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{acquisition:{filename:"apache2.yaml",datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache2"}}},detected_service:"apache2"}]'
+    assert_json '[{acquisition_spec:{filename:"apache2.yaml",datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache2"}}},detected_service:"apache2"}]'
 
     rune -0 cscli setup detect --force-unit force-apache2,force-apache3
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{acquisition:{filename:"apache2.yaml",datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}}},detected_service:"apache2"},{acquisition:{filename:"apache3.yaml",datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache3"}}},detected_service:"apache3"}]'
+    assert_json '[{acquisition_spec:{filename:"apache2.yaml",datasource:{source:"file",filename:"dummy.log",labels:{type:"apache2"}}},detected_service:"apache2"},{acquisition_spec:{filename:"apache3.yaml",datasource:{source:"file",filename:"dummy.log",labels:{"type":"apache3"}}},detected_service:"apache3"}]'
 
     # force-unit can be specified multiple times, the order does not matter
     rune -0 cscli setup detect --force-unit force-apache3 --force-unit force-apache2
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache2.yaml"},"detected_service":"apache2"},{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache3"},"source":"file"},"filename":"apache3.yaml"},"detected_service":"apache3"}]'
+    assert_json '[{"acquisition_spec":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache2.yaml"},"detected_service":"apache2"},{"acquisition_spec":{"datasource":{"filename":"dummy.log","labels":{"type":"apache3"},"source":"file"},"filename":"apache3.yaml"},"detected_service":"apache3"}]'
 
     rune -1 cscli setup detect --force-unit mock-doesnotexist
     assert_stderr --partial "Error: parsing $DETECT_YAML: unit(s) required but not supported: [mock-doesnotexist]"
@@ -407,7 +407,7 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("force-apache2")
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        source: file
@@ -417,7 +417,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     rune -0 jq -cS '.setup' <(output)
-    assert_json '[{"acquisition":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache.yaml"},"detected_service":"apache2"}]'
+    assert_json '[{"acquisition_spec":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache.yaml"},"detected_service":"apache2"}]'
 }
 
 @test "cscli setup detect (yaml output)" {
@@ -429,7 +429,7 @@ update-notifier-motd.timer              enabled enabled
 	  apache2:
 	    when:
 	      - UnitFound("force-apache2")
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        source: file
@@ -441,7 +441,7 @@ update-notifier-motd.timer              enabled enabled
     assert_output - <<-EOT
 	setup:
 	  - detected_service: apache2
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        filename: dummy.log
@@ -458,7 +458,7 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  foobar:
-	    acquisition:
+	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
 	        filenames:
@@ -475,7 +475,7 @@ update-notifier-motd.timer              enabled enabled
     assert_output - <<-EOT
 	setup:
 	  - detected_service: foobar
-	    acquisition:
+	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
 	        exclude_regexps:
@@ -536,25 +536,25 @@ update-notifier-motd.timer              enabled enabled
 	  foobar:
 	    when:
 	      - ProcessRunning("force-foobar")
-	    install:
+	    hub_spec:
 	      collections:
 	        - crowdsecurity/foobar
 	  qox:
 	    when:
 	      - ProcessRunning("test-qox")
-	    install:
+	    hub_spec:
 	      collections:
 	        - crowdsecurity/foobar
 	  apache2:
 	    when:
 	      - ProcessRunning("force-apache2")
-	    install:
+	    hub_spec:
 	      collections:
 	        - crowdsecurity/apache2
 	EOT
 
     rune -0 jq -Sc '.setup | sort' <(output)
-    assert_json '[{install:{collections:["crowdsecurity/apache2"]},detected_service:"apache2"},{install:{collections:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
+    assert_json '[{hub_spec:{collections:["crowdsecurity/apache2"]},detected_service:"apache2"},{hub_spec:{collections:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
 }
 
 @test "cscli setup detect (unknown item type)" {
@@ -564,13 +564,13 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  foobar:
-	    install:
+	    hub_spec:
 	      barbapapa:
 	        - crowdsecurity/foobar
 	EOT
 
     rune -0 jq -Sc '.setup | sort' <(output)
-    assert_json '[{install:{barbapapa:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
+    assert_json '[{hub_spec:{barbapapa:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
 }
 
 @test "cscli setup detect (with acquisition)" {
@@ -580,7 +580,7 @@ update-notifier-motd.timer              enabled enabled
 	  foobar:
 	    when:
 	      - ProcessRunning("force-foobar")
-	    acquisition:
+	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
 	        source: file
@@ -593,11 +593,11 @@ update-notifier-motd.timer              enabled enabled
 
     rune -0 yq -op '.setup | sort_keys(..)' <(output)
     assert_output - <<-EOT
-	0.acquisition.datasource.filenames.0 = /var/log/apache2/*.log
-	0.acquisition.datasource.filenames.1 = /var/log/*http*/*.log
-	0.acquisition.datasource.labels.type = foobar
-	0.acquisition.datasource.source = file
-	0.acquisition.filename = foo.yaml
+	0.acquisition_spec.datasource.filenames.0 = /var/log/apache2/*.log
+	0.acquisition_spec.datasource.filenames.1 = /var/log/*http*/*.log
+	0.acquisition_spec.datasource.labels.type = foobar
+	0.acquisition_spec.datasource.source = file
+	0.acquisition_spec.filename = foo.yaml
 	0.detected_service = foobar
 	EOT
 
@@ -612,7 +612,7 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  foobar:
-	    acquisition:
+	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
 	        labels:
@@ -632,7 +632,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 jq -e '.installed == false' <(output)
 
     # we "install" it
-    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_line --regexp 'download collections:crowdsecurity/apache2'
     assert_line --regexp 'enable collections:crowdsecurity/apache2'
 
@@ -642,14 +642,14 @@ update-notifier-motd.timer              enabled enabled
 
     # same with dependencies
     rune -0 cscli collections remove --all
-    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["crowdsecurity/linux"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/linux'
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
     # Dry run mode of "cscli setup install-hub", with more stuff.
 
-    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-bf"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
     assert_line --regexp 'enable collections:crowdsecurity/aws-console'
     assert_line --regexp 'enable collections:crowdsecurity/caddy'
     assert_line --regexp 'enable parsers:crowdsecurity/asterisk-logs'
@@ -657,7 +657,7 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable postoverflows:crowdsecurity/cdn-whitelist'
     assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
 
-    rune -1 cscli setup install-hub - --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
+    rune -1 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["crowdsecurity/foo"]}}]}'
     assert_stderr --partial 'Error: item collections:crowdsecurity/foo not found'
 }
 
@@ -678,7 +678,7 @@ update-notifier-motd.timer              enabled enabled
     rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR/notadir" - <<-EOT
 	setup:
 	  - detected_service: apache2
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        filenames:
@@ -692,7 +692,7 @@ update-notifier-motd.timer              enabled enabled
 @test "cscli setup install-acquisition (single service)" {
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
-	  - acquisition:
+	  - acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        source: file
@@ -771,7 +771,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
 	  - detected_service: apache2
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        labels:
@@ -781,7 +781,7 @@ update-notifier-motd.timer              enabled enabled
 	          - /var/log/*http*/*.log
 	          - /var/log/httpd/*.log
 	  - detected_service: foobar
-	    acquisition:
+	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
 	        labels:
@@ -789,7 +789,7 @@ update-notifier-motd.timer              enabled enabled
 	        filenames:
 	          - /var/log/foobar/*.log
 	  - detected_service: barbaz
-	    acquisition:
+	    acquisition_spec:
 	      filename: bar.yaml
 	      datasource:
 	        labels:
@@ -831,10 +831,10 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
 	  - detected_service: apache2
-	    install:
+	    hub_spec:
 	      collections:
 	        - crowdsecurity/apache2
-	    acquisition:
+	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
 	        labels:
@@ -868,7 +868,7 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_FILE_TMPDIR" - <<-EOT
 	setup:
 	  - detected_service: something
-	    acquisition:
+	    acquisition_spec:
 	      filename: something.yaml
 	      datasource:
 	        labels:
@@ -889,7 +889,7 @@ update-notifier-motd.timer              enabled enabled
 	  thewiz:
 	    when:
 	      - UnitFound("thewiz.service")
-	    acquisition:
+	    acquisition_spec:
 	      filename: thewiz.yaml
 	      datasource:
 	        source: journalctl
@@ -900,7 +900,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     rune -0 jq -cS '.' <(output)
-    assert_json '{"setup":[{"acquisition":{"datasource":{"journalctl_filter":["SYSLOG_IDENTIFIER=TheWiz"],"labels":{"type":"thewiz"},"source":"journalctl"},"filename":"thewiz.yaml"},"detected_service":"thewiz"}]}'
+    assert_json '{"setup":[{"acquisition_spec":{"datasource":{"journalctl_filter":["SYSLOG_IDENTIFIER=TheWiz"],"labels":{"type":"thewiz"},"source":"journalctl"},"filename":"thewiz.yaml"},"detected_service":"thewiz"}]}'
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" <(output)
 
     rune -0 cat "$BATS_TEST_TMPDIR/setup.thewiz.yaml"
@@ -926,10 +926,10 @@ update-notifier-motd.timer              enabled enabled
 	  smb:
 	    when:
 	      - UnitFound("smb.service")
-	    install:
+	    hub_spec:
 	      collections:
 	        - crowdsecurity/smb
-	    acquisition:
+	    acquisition_spec:
 	      filename: smb.yaml
 	      datasource:
 	        source: file
@@ -958,7 +958,7 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  always:
-	    acquisition:
+	    acquisition_spec:
 	      filename: always.yaml
 	      datasource:
 	        source: file
@@ -979,7 +979,7 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  always:
-	    acquisition:
+	    acquisition_spec:
 	      filename: always.yaml
 	      datasource:
 	        source: file
@@ -994,7 +994,7 @@ update-notifier-motd.timer              enabled enabled
 	version: 1.0
 	detect:
 	  always:
-	    acquisition:
+	    acquisition_spec:
 	      filename: always.yaml
 	      datasource:
 	        source: file
