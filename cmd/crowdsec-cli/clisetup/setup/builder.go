@@ -7,38 +7,34 @@ import (
 	"io"
 	"sort"
 
-	"github.com/sirupsen/logrus"
 	goccyyaml "github.com/goccy/go-yaml"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
-type SetupBuilder struct {
-	logger *logrus.Logger
+type SetupBuilder struct{}
+
+func NewSetupBuilder() *SetupBuilder {
+	return &SetupBuilder{}
 }
 
-func NewSetupBuilder(logger *logrus.Logger) *SetupBuilder {
-	return &SetupBuilder{
-		logger: logger,
-	}
-}
-
-func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap) (*Setup, error) {
+func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap, logger *logrus.Logger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
 	s.Plans = make([]ServicePlan, 0)
 
-	os, err := DetectOS(opts.ForcedOS, b.logger)
+	os, err := DetectOS(opts.ForcedOS, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(opts.ForcedUnits) > 0 {
-		b.logger.Debugf("Forced units - %v", opts.ForcedUnits)
+		logger.Debugf("Forced units - %v", opts.ForcedUnits)
 	}
 
 	if len(opts.ForcedProcesses) > 0 {
-		b.logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
+		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
 	}
 
 	state := NewExprState(opts, installedUnits, runningProcesses)
@@ -47,7 +43,7 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 	detected := make(map[string]ServicePlan)
 
 	for name, svc := range detector.Detect {
-		match, err := svc.Evaluate(env, b.logger)
+		match, err := svc.Evaluate(env, logger)
 		if err != nil {
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
 		}

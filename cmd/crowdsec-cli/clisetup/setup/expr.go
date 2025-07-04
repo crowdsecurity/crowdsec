@@ -12,9 +12,9 @@ type ExprState struct {
 	detectOptions DetectOptions
 
 	installedUnits UnitMap
-	unitsSearched UnitMap
+	unitsSearched  UnitMap
 
-	runningProcesses ProcessMap
+	runningProcesses  ProcessMap
 	processesSearched ProcessMap
 }
 
@@ -22,8 +22,8 @@ func NewExprState(opts DetectOptions, installedunits UnitMap, runningProcesses P
 	return &ExprState{
 		detectOptions: opts,
 
-		installedUnits:  installedunits,
-		unitsSearched:   make(UnitMap),
+		installedUnits: installedunits,
+		unitsSearched:  make(UnitMap),
 
 		runningProcesses:  runningProcesses,
 		processesSearched: make(ProcessMap),
@@ -68,25 +68,25 @@ func (os ExprOS) VersionIsLower(version string) (bool, error) {
 }
 
 type PathChecker interface {
-    Exists(path string) bool
+	Exists(path string) bool
 }
 
 // ExprEnvironment is used to expose functions and values to the rule engine.
 // It can cache the results of service detection commands, like systemctl etc.
 type ExprEnvironment struct {
-	OS ExprOS
-	Ctx context.Context //nolint:containedctx
-	_state        *ExprState
+	OS     ExprOS
+	Ctx    context.Context //nolint:containedctx
+	_state *ExprState
 
-	PathChecker   PathChecker
+	PathChecker PathChecker
 }
 
 // NewExprEnvironment creates an environment object for the rule engine.
 func NewExprEnvironment(ctx context.Context, os ExprOS, state *ExprState, pathChecker PathChecker) *ExprEnvironment {
 	return &ExprEnvironment{
-		Ctx: ctx,
-		OS:            os,
-		_state: state,
+		Ctx:         ctx,
+		OS:          os,
+		_state:      state,
 		PathChecker: pathChecker,
 	}
 }

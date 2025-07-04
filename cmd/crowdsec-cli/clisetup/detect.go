@@ -5,12 +5,11 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 // detectFlags are reused for "unattended" and "interactive"
@@ -123,7 +122,7 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 			units := setup.UnitMap{}
 
 			if !f.skipSystemd {
-				if units, err = setup.DetectSystemdUnits(ctx, f.forcedUnits); err != nil {
+				if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext, f.forcedUnits); err != nil {
 					return err
 				}
 			}
@@ -133,12 +132,12 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 				return err
 			}
 
-			builder := setup.NewSetupBuilder(logger)
+			builder := setup.NewSetupBuilder()
 
 			stup, err := builder.Build(ctx, detector, f.toDetectOptions(logger),
 				setup.OSPathChecker{},
 				units,
-				procs)
+				procs, logger)
 			if err != nil {
 				return fmt.Errorf("parsing %s: %w", rulesFrom, err)
 			}

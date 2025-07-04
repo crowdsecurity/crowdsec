@@ -3,8 +3,8 @@ package setup
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,6 +17,7 @@ func fakeExecCommand(ctx context.Context, command string, args ...string) *exec.
 	cs = append(cs, args...)
 	cmd := exec.CommandContext(ctx, os.Args[0], cs...)
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
+
 	return cmd
 }
 
@@ -36,16 +37,14 @@ apparmor.service                          enabled  enabled
 
 func TestDetectSystemdUnits(t *testing.T) {
 	ctx := t.Context()
-	ExecCommand = fakeExecCommand
-	defer func() { ExecCommand = exec.CommandContext }()
 
-	units, err := DetectSystemdUnits(ctx, nil)
+	units, err := DetectSystemdUnits(ctx, fakeExecCommand, nil)
 	require.NoError(t, err)
 
 	require.Equal(t, UnitMap{
 		"crowdsec-setup-detect.service": struct{}{},
-		"apache2.service": struct{}{},
-		"apparmor.service": struct{}{},
+		"apache2.service":               struct{}{},
+		"apparmor.service":              struct{}{},
 	}, units)
 }
 
@@ -60,9 +59,6 @@ func fakeExecCommandNotFound(ctx context.Context, command string, args ...string
 
 func TestDetectSystemdUnits_NotFound(t *testing.T) {
 	ctx := t.Context()
-	ExecCommand = fakeExecCommandNotFound
-	defer func() { ExecCommand = exec.CommandContext }()
-
-	_, err := DetectSystemdUnits(ctx, nil)
+	_, err := DetectSystemdUnits(ctx, fakeExecCommandNotFound, nil)
 	cstest.RequireErrorContains(t, err, `running systemctl: exec: "this-command-does-not-exist": executable file not found in $PATH`)
 }

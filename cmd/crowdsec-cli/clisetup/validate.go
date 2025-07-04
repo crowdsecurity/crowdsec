@@ -6,11 +6,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/spf13/cobra"
-	"github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/spf13/cobra"
 )
 
 func (cli *cliSetup) newValidateCmd() *cobra.Command {
@@ -33,7 +31,7 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) validate(input io.Reader) error {
-	builder := setup.NewSetupBuilder(logrus.StandardLogger())
+	builder := setup.NewSetupBuilder()
 
 	if _, err := builder.FromYAML(input, true, cli.cfg().Cscli.Color != "no"); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

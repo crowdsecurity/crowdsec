@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-	"github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/spf13/cobra"
 )
 
 type acquisitionFlags struct {
@@ -36,7 +34,7 @@ func (cli *cliSetup) newInstallAcquisitionCmd() *cobra.Command {
 				return err
 			}
 
-			builder := setup.NewSetupBuilder(logrus.StandardLogger())
+			builder := setup.NewSetupBuilder()
 
 			stup, err := builder.FromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {
