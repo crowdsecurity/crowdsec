@@ -39,7 +39,7 @@ func TestConfigure(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd`,
-			expectedErr: "line 1: field foobar not found in type dockeracquisition.DockerConfiguration",
+			expectedErr: `while parsing DockerAcquisition configuration: [1:1] unknown field "foobar"`,
 		},
 		{
 			config: `
@@ -68,10 +68,12 @@ container_name:
 
 	subLogger := log.WithField("type", "docker")
 
-	for _, test := range tests {
-		f := DockerSource{}
-		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+	for _, tc := range tests {
+		t.Run(tc.config, func(t *testing.T) {
+			f := DockerSource{}
+			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+		})
 	}
 }
 
