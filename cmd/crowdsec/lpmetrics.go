@@ -210,9 +210,9 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 
 func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
 	return m.gatherPromMetrics(metrics.AcquisitionMetricsNames, labelsMapping{
-		"type":        "datasource_type",
-		"source":      "source",
-		"acquis_type": "acquis_type",
+		"datasource_type": "datasource_type",
+		"source":          "source",
+		"acquis_type":     "acquis_type",
 	}, nil, "read", "line")
 }
 
