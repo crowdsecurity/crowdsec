@@ -93,13 +93,17 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 
 		name := filepath.Join(cfg.ConfigPaths.NotificationDir, info.Name()) // Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
-			ts, err := csplugin.ParsePluginConfigFile(name)
+			fin, err := os.Open(name)
 			if err != nil {
-				return fmt.Errorf("loading notifification plugin configuration with %s: %w", name, err)
+				return fmt.Errorf("opening %s: %w", name, err)
+			}
+
+			ts, err := csplugin.NewPluginConfigList(fin)
+			if err != nil {
+				return fmt.Errorf("loading notification plugin configuration with %s: %w", name, err)
 			}
 
 			for _, t := range ts {
-				csplugin.SetRequiredFields(&t)
 				pcfgs[t.Name] = t
 			}
 		}
