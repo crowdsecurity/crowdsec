@@ -19,6 +19,7 @@ func NewSetupBuilder() *SetupBuilder {
 	return &SetupBuilder{}
 }
 
+// Build creates a Setup. The actual detection of services is done here.
 func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap, logger *logrus.Logger) (*Setup, error) {
 	s := Setup{}
 
