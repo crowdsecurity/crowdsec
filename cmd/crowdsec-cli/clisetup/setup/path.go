@@ -4,7 +4,12 @@ import (
 	"os"
 )
 
-// here we can add more helpers like DirExists, FileContains, etc.
+// here we can add more helpers as needed, for example:
+// FileExists(glob)
+// DirExists(glob)
+// FileContains(regexp)
+// ModifiedSince('1 month')
+// PathExistGlob(...)
 
 type OSPathChecker struct{}
 
