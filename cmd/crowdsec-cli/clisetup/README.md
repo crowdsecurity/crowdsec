@@ -1,7 +1,8 @@
 
 # cscli setup
 
-The "cscli setup" command can configure a crowdsec instance based on the services that are installed or running on the server.
+The "cscli setup" command can detect running services on a machine, and
+automatically install the related collections and acquisition files.
 
 There are three main subcommands:
 
