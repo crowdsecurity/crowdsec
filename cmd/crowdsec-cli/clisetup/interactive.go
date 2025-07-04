@@ -22,16 +22,16 @@ func (cli *cliSetup) newInteractiveCmd() *cobra.Command {
 		Short: "Interactive setup",
 		Long:  "Detect services and generate configuration, with user prompts",
 		Example: `# Detect running services, install the appropriate collections and acquisition configuration.
-# Prompt the user for confirmation at each step.
+# prompt the user for confirmation at each step
 cscli setup interactive
 
-# Write the acquisition configuration to a specific directory.
+# write acquisition files to a specific directory
 cscli setup interactive --acquis-dir /path/to/acquis.d
 
-# Use a different detection configuration file.
+# use a different set of detection rules
 cscli setup interactive --detect-config /path/to/detact.yaml
 
-# Force the OS to be detected as 'ubuntu 25.04'
+# force the OS to be detected as 'ubuntu 25.04'
 cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-version 25.04
 `,
 		DisableAutoGenTag: true,
@@ -59,7 +59,7 @@ cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-
 	af.bind(cmd)
 
 	flags := cmd.Flags()
-	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
+	flags.BoolVar(&dryRun, "dry-run", false, "simulate the installation without making any changes")
 
 	return cmd
 }
