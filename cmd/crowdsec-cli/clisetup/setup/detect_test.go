@@ -7,11 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func nullLogger() *logrus.Logger {
@@ -185,7 +184,7 @@ func TestEvaluateRules(t *testing.T) {
 		{
 			"empty list is always true",
 			[]string{},
-			 true,
+			true,
 			"",
 			"",
 		},
@@ -308,9 +307,9 @@ detect:
 
 	detector, err := NewDetector(f)
 	require.NoError(t, err)
-	got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{},
+	got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{},
 		OSPathChecker{},
-		nil, nil)
+		nil, nil, nullLogger())
 	require.NoError(t, err)
 
 	want := []ServicePlan{
@@ -325,8 +324,8 @@ func TestDetectUnit(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
-		name        string
-		config      string
+		name    string
+		config  string
 		want    *Setup
 		wantErr string
 	}{
@@ -371,10 +370,10 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{},
+			got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{},
 				OSPathChecker{},
 				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
-				nil)
+				nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -395,9 +394,9 @@ detect:
 
 	detector, err := NewDetector(f)
 	require.NoError(t, err)
-	got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+	got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
 		OSPathChecker{},
-		nil, nil)
+		nil, nil, nullLogger())
 	require.NoError(t, err)
 
 	want := &Setup{[]ServicePlan{}}
@@ -408,9 +407,9 @@ func TestDetectForcedOS(t *testing.T) {
 	ctx := t.Context()
 
 	type test struct {
-		name        string
-		config      string
-		forced      ExprOS
+		name    string
+		config  string
+		forced  ExprOS
 		want    *Setup
 		wantErr string
 	}
@@ -608,9 +607,9 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{ForcedOS: tc.forced},
+			got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{ForcedOS: tc.forced},
 				OSPathChecker{},
-				nil, nil)
+				nil, nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
 		})
@@ -623,8 +622,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 	ctx := t.Context()
 
 	type test struct {
-		name        string
-		config      string
+		name    string
+		config  string
 		want    *Setup
 		wantErr string
 	}
@@ -762,7 +761,7 @@ detect:
 			want: &Setup{
 				Plans: []ServicePlan{
 					{
-						Name:       "foobar",
+						Name: "foobar",
 						InstallRecommendation: InstallRecommendation{
 							AcquisitionSpec: AcquisitionSpec{
 								Filename: "syslog.yaml",
@@ -863,9 +862,9 @@ detect:
 				return
 			}
 
-			got, err := NewSetupBuilder(nullLogger()).Build(ctx, detector, DetectOptions{},
+			got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{},
 				OSPathChecker{},
-				nil, nil)
+				nil, nil, nullLogger())
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
