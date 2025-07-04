@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
@@ -32,7 +33,9 @@ func (cli *cliSetup) newValidateCmd() *cobra.Command {
 }
 
 func (cli *cliSetup) validate(input io.Reader) error {
-	if _, err := setup.NewSetupFromYAML(input, true, cli.cfg().Cscli.Color != "no"); err != nil {
+	builder := setup.NewSetupBuilder(logrus.StandardLogger())
+
+	if _, err := builder.FromYAML(input, true, cli.cfg().Cscli.Color != "no"); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return errors.New("invalid setup file")
 	}
