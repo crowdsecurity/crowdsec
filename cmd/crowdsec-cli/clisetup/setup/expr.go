@@ -7,7 +7,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
-// ExprState keeps a global state for the duration of the service detection (cache etc.)
+// ExprState keeps a global state for the duration of the service detection (cache etc.).
 type ExprState struct {
 	detectOptions DetectOptions
 
@@ -37,7 +37,7 @@ type ExprOS struct {
 	RawVersion string
 }
 
-// VersionCheck returns true if the version of the OS matches the given constraint
+// VersionCheck returns true if the version of the OS matches the given constraint.
 func (os ExprOS) VersionCheck(constraint string) (bool, error) {
 	v, err := semver.NewVersion(os.RawVersion)
 	if err != nil {
@@ -112,7 +112,7 @@ func (e *ExprEnvironment) ProcessRunning(ctx context.Context, processName string
 	return ok, nil
 }
 
-// return units that have been forced but not searched yet.
+// unsearchedUnits() returns units that have been forced but not searched yet.
 func (e *ExprEnvironment) unsearchedUnits() []string {
 	ret := []string{}
 
@@ -125,7 +125,7 @@ func (e *ExprEnvironment) unsearchedUnits() []string {
 	return ret
 }
 
-// return processes that have been forced but not searched yet.
+// unsearchedProcesses() returns processes that have been forced but not searched yet.
 func (e *ExprEnvironment) unsearchedProcesses() []string {
 	ret := []string{}
 
