@@ -22,16 +22,16 @@ func (cli *cliSetup) newUnattendedCmd() *cobra.Command {
 		Short: "Unattended setup",
 		Long:  "Automatically detect services and generate configuration",
 		Example: `# Detect running services, install the appropriate collections and acquisition configuration.
-# Never prompt the user. Return early if the user has added to (or modified) the acquisition configuration.
+# never prompt for confirmation. stop running if there are manually created acquisition files
 cscli setup unattended
 
-# Write the acquisition configuration to a specific directory.
+# write acquisition files to a specific directory
 cscli setup unattended --acquis-dir /path/to/acquis.d
 
-# Use a different detection configuration file.
+# use a different detection configuration file.
 cscli setup unattended --detect-config /path/to/detact.yaml
 
-# Force the OS to be detected as 'ubuntu 25.04'
+# force the OS to be detected as 'ubuntu 25.04'
 cscli setup unattended --force-os-family linux --force-os-id ubuntu --force-os-version 25.04
 `,
 		DisableAutoGenTag: true,
@@ -59,7 +59,7 @@ cscli setup unattended --force-os-family linux --force-os-id ubuntu --force-os-v
 	af.bind(cmd)
 
 	flags := cmd.Flags()
-	flags.BoolVar(&dryRun, "dry-run", false, "don't install anything; print out what would have been")
+	flags.BoolVar(&dryRun, "dry-run", false, "simulate the installation without making any changes")
 
 	return cmd
 }

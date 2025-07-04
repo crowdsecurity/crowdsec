@@ -98,7 +98,30 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "detect",
-		Short:             "detect running services, generate a setup file",
+		Short:             "Detect installed services and generate a setup file",
+		Long: `Detects the services installed on the machine and builds a specification
+to be used with the "setup install-*" commands.
+
+You can force the detection of specific processes or units, or override OS information
+using command-line flags.`,
+		Example: `# detect services and print the setup plan
+cscli setup detect
+
+# force yaml instead of json (easier to edit)
+cscli setup detect --yaml
+
+# pretend that a process named "nginx" is running
+cscli setup detect --force-process nginx
+
+# pretend that a systemd unit named "some.service" is running
+cscli setup detect --force-unit some.service
+
+# detect and skip certain services
+cscli setup detect --skip-service whitelists
+
+# override the OS family
+cscli setup detect --force-os-family freebsd
+`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
