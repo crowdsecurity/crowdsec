@@ -8,30 +8,25 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"slices"
 	"sort"
 
 	"github.com/blackfireio/osinfo"
-	"github.com/expr-lang/expr"
-	"github.com/expr-lang/expr/vm"
-	"github.com/sirupsen/logrus"
-	goccyyaml "github.com/goccy/go-yaml"
-	"gopkg.in/yaml.v3"
-
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+	goccyyaml "github.com/goccy/go-yaml"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+	"slices"
 )
-
-// ExecCommand can be replaced with a mock during tests.
-var ExecCommand = exec.CommandContext
 
 // HubSpec contains the items (mostly collections) that are recommended to support a service.
 type HubSpec map[string][]string
 
 var (
-	ErrEmptyDatasourceConfig = errors.New("datasource configuration is empty")
+	ErrEmptyDatasourceConfig      = errors.New("datasource configuration is empty")
 	ErrMissingAcquisitionFilename = errors.New("a filename for the datasource configuration is mandatory")
 )
 
@@ -80,7 +75,7 @@ func (d DatasourceConfig) Validate() error {
 
 // Acquisition contains the datasource configuration to support a detected service.
 type AcquisitionSpec struct {
-	Filename string
+	Filename   string
 	Datasource DatasourceConfig
 }
 
@@ -136,7 +131,7 @@ func (a *AcquisitionSpec) WriteTo(toDir string) error {
 	hash := sha256.Sum256(content)
 	checksum := hex.EncodeToString(hash[:])
 
-	_, err = f.WriteString("# cscli-checksum: "+checksum+"\n\n")
+	_, err = f.WriteString("# cscli-checksum: " + checksum + "\n\n")
 	if err != nil {
 		return fmt.Errorf("while writing to %s: %w", path, err)
 	}
@@ -160,7 +155,7 @@ type InstallRecommendation struct {
 
 // ServicePlan describes the actions to perform for a detected service.
 type ServicePlan struct {
-	Name       string     `yaml:"detected_service"`
+	Name                  string `yaml:"detected_service"`
 	InstallRecommendation `yaml:",inline"`
 }
 
@@ -265,7 +260,7 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 		return nil, fmt.Errorf("invalid version tag '%s' (must be 1.0)", d.Version)
 	}
 
-	for name:= range d.Detect {
+	for name := range d.Detect {
 		svc := d.Detect[name]
 		if err := svc.Compile(); err != nil {
 			return nil, fmt.Errorf("%q: %w", name, err)
@@ -328,8 +323,8 @@ func DetectOS(forcedOS ExprOS, logger *logrus.Logger) (ExprOS, error) {
 
 // ServiceRules describes the rules for detecting a service and its recommended items.
 type ServiceRules struct {
-	When         []string `yaml:"when"`
-	compiledWhen []*vm.Program
+	When                  []string `yaml:"when"`
+	compiledWhen          []*vm.Program
 	InstallRecommendation `yaml:",inline"`
 }
 

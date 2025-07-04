@@ -3,13 +3,12 @@ package clisetup
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
@@ -29,7 +28,7 @@ func (cli *cliSetup) newInstallHubCmd() *cobra.Command {
 				return err
 			}
 
-			builder := setup.NewSetupBuilder(logrus.StandardLogger())
+			builder := setup.NewSetupBuilder()
 
 			stup, err := builder.FromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {

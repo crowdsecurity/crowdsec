@@ -5,17 +5,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 )
 
 type UnitMap map[string]struct{}
 
+type Executor func(ctx context.Context, name string, args ...string) *exec.Cmd
+
 // DetectSystemdUnits returns all enabled systemd units.
 // It needs to parse the table because -o json does not work everywhere.
 // The additionalUnits parameter will force the function to return these as well, even if they are not detected.
-func DetectSystemdUnits(ctx context.Context, additionalUnits []string) (UnitMap, error) {
+func DetectSystemdUnits(ctx context.Context, executor Executor, additionalUnits []string) (UnitMap, error) {
 	ret := UnitMap{}
-	cmd := ExecCommand(ctx, "systemctl", "list-unit-files", "--state=enabled,generated,static")
+	cmd := executor(ctx, "systemctl", "list-unit-files", "--state=enabled,generated,static")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
