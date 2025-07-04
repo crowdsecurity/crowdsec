@@ -14,8 +14,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -59,7 +59,7 @@ xpath_query: test`,
 	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
 		f := WinEventLogSource{}
-		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		assert.Contains(t, err.Error(), test.expectedErr)
 	}
 }
@@ -118,7 +118,7 @@ event_level: bla`,
 		t.Run(test.config, func(t *testing.T) {
 			f := WinEventLogSource{}
 
-			err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 			if test.expectedErr != "" {
 				return
@@ -193,7 +193,7 @@ event_ids:
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
 
-		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		err = f.StreamingAcquisition(ctx, c, to)

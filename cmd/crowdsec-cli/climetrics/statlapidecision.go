@@ -8,6 +8,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 type statLapiDecision map[string]struct {
@@ -31,9 +32,9 @@ func (s statLapiDecision) Process(bouncer, fam string, val int) {
 	x := s[bouncer]
 
 	switch fam {
-	case "cs_lapi_decisions_ko_total":
+	case metrics.LapiNilDecisionsMetricName:
 		x.Empty += val
-	case "cs_lapi_decisions_ok_total":
+	case metrics.LapiNonNilDecisionsMetricName:
 		x.NonEmpty += val
 	}
 

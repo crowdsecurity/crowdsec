@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -31,7 +32,7 @@ func runParse(input chan types.Event, output chan types.Event, parserCTX parser.
 				log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
 				continue
 			}
-			globalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+			metrics.GlobalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 
 			startParsing := time.Now()
 			/* parse the log using magic */
@@ -40,13 +41,13 @@ func runParse(input chan types.Event, output chan types.Event, parserCTX parser.
 				log.Errorf("failed parsing: %v", err)
 			}
 			elapsed := time.Since(startParsing)
-			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
+			metrics.GlobalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
 			if !parsed.Process {
-				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+				metrics.GlobalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 				log.Debugf("Discarding line %+v", parsed)
 				continue
 			}
-			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+			metrics.GlobalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 			if parsed.Whitelisted {
 				log.Debugf("event whitelisted, discard")
 				continue

@@ -4,7 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"regexp"
+	"slices"
+	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -17,10 +23,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 const lpMetricsDefaultInterval = 30 * time.Minute
+
+var childNodeExcludeRegexp = regexp.MustCompile("^child-")
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
@@ -28,6 +37,9 @@ type MetricsProvider struct {
 	interval time.Duration
 	static   staticMetrics
 	logger   *logrus.Entry
+	// used to store the last collected value of a metric to compute the delta before sending it
+	// Key is a concatenation of all labels
+	metricsLastValues map[string]float64
 }
 
 type staticMetrics struct {
@@ -39,6 +51,10 @@ type staticMetrics struct {
 	datasourceMap  map[string]int64
 	hubState       models.HubItems
 }
+
+// Key is the prom label
+// Value is the name that will be used in the metrics payload
+type labelsMapping map[string]string
 
 func getHubState(hub *cwhub.Hub) models.HubItems {
 	ret := models.HubItems{}
@@ -90,11 +106,151 @@ func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logge
 	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
 ) *MetricsProvider {
 	return &MetricsProvider{
-		apic:     apic,
-		interval: interval,
-		logger:   logger,
-		static:   newStaticMetrics(consoleOptions, datasources, hub),
+		apic:              apic,
+		interval:          interval,
+		logger:            logger,
+		static:            newStaticMetrics(consoleOptions, datasources, hub),
+		metricsLastValues: make(map[string]float64),
 	}
+}
+
+func getLabelValue(labels []*io_prometheus_client.LabelPair, key string) string {
+	for _, label := range labels {
+		if label.GetName() == key {
+			return label.GetValue()
+		}
+	}
+	return ""
+}
+
+func getDeltaKey(metricName string, labels []*io_prometheus_client.LabelPair) string {
+	// Create a key from the labels to use as a map key
+	// This is used to store the last value of the metric to compute the delta
+	parts := make([]string, 0, len(labels)+1)
+	parts = append(parts, metricName)
+	sortedLabels := slices.Clone(labels)
+	slices.SortFunc(sortedLabels, func(a, b *io_prometheus_client.LabelPair) int {
+		return strings.Compare(a.GetName(), b.GetName())
+	})
+	for _, label := range sortedLabels {
+		parts = append(parts, label.GetName()+label.GetValue())
+	}
+	return strings.Join(parts, "")
+}
+
+func shouldIgnoreMetric(exclude map[string]*regexp.Regexp, promLabels []*io_prometheus_client.LabelPair) bool {
+	for labelKey, regex := range exclude {
+		labelValue := getLabelValue(promLabels, labelKey)
+		if labelValue == "" {
+			continue
+		}
+		if regex.MatchString(labelValue) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labelsMapping, exclude map[string]*regexp.Regexp, metricName string, unitType string) []*models.MetricsDetailItem {
+	items := make([]*models.MetricsDetailItem, 0)
+
+	promMetrics, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		m.logger.Errorf("failed to gather prometheus metrics: %s", err)
+		return nil
+	}
+
+	for _, metricFamily := range promMetrics {
+		if !slices.Contains(metricsName, metricFamily.GetName()) {
+			continue
+		}
+		for _, metric := range metricFamily.GetMetric() {
+			promLabels := metric.GetLabel()
+
+			if shouldIgnoreMetric(exclude, promLabels) {
+				continue
+			}
+
+			deltaKey := getDeltaKey(metricFamily.GetName(), promLabels)
+			metricsLabels := make(map[string]string)
+
+			for labelKey, labelValue := range labelsMap {
+				metricsLabels[labelValue] = getLabelValue(promLabels, labelKey)
+			}
+
+			currentValue := metric.GetCounter().GetValue()
+			value := currentValue
+
+			if lastValue, ok := m.metricsLastValues[deltaKey]; ok {
+				value -= lastValue
+				if value < 0 {
+					m.logger.Warnf("negative delta for metric %s (labels: %+v), resetting to 0. This is probably a bug.", metricName, metricsLabels)
+					value = 0
+				}
+			}
+			m.metricsLastValues[deltaKey] = currentValue
+
+			if value == 0 {
+				continue
+			}
+
+			item := &models.MetricsDetailItem{
+				Name:   ptr.Of(metricName),
+				Unit:   ptr.Of(unitType),
+				Labels: metricsLabels,
+				Value:  ptr.Of(value),
+			}
+			m.logger.Debugf("Gathered metric: %s, item: %+v", metricFamily.GetName(), item)
+			items = append(items, item)
+		}
+	}
+
+	return items
+}
+
+func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics(metrics.AcquisitionMetricsNames, labelsMapping{
+		"datasource_type": "datasource_type",
+		"source":          "source",
+		"acquis_type":     "acquis_type",
+	}, nil, "read", "line")
+}
+
+func (m *MetricsProvider) getParserSuccessMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.NodesHitsOkMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+		"name":        "parser_name",
+		"stage":       "parser_stage",
+	}, map[string]*regexp.Regexp{
+		"name": childNodeExcludeRegexp,
+	}, "parsed", "line",
+	)
+}
+
+func (m *MetricsProvider) getParserFailureMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.NodesHitsKoMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+		"name":        "parser_name",
+		"stage":       "parser_stage",
+	}, map[string]*regexp.Regexp{
+		"name": childNodeExcludeRegexp,
+	}, "unparsed", "line",
+	)
+}
+
+func (m *MetricsProvider) getParserWhitelistMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.NodesWlHitsOkMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+		"name":        "whitelist_name",
+		"stage":       "whitelist_stage",
+	}, nil, "whitelisted", "event",
+	)
 }
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
@@ -124,6 +280,33 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
+
+	/* Acquisition metrics */
+	/*{"name": "read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/* Parser metrics */
+	/*{"name": "parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/*{"name": "unparsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	/*{"name": "whitelisted", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+
+	acquisitionMetrics := m.getAcquisitionMetrics()
+	if len(acquisitionMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, acquisitionMetrics...)
+	}
+
+	parserSuccessMetrics := m.getParserSuccessMetrics()
+	if len(parserSuccessMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserSuccessMetrics...)
+	}
+
+	parserFailureMetrics := m.getParserFailureMetrics()
+	if len(parserFailureMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserFailureMetrics...)
+	}
+
+	parserWhitelistMetrics := m.getParserWhitelistMetrics()
+	if len(parserWhitelistMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, parserWhitelistMetrics...)
+	}
 
 	return &models.AllMetrics{
 		LogProcessors: []*models.LogProcessorsMetrics{met},
@@ -158,13 +341,12 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 		return nil
 	}
 
-	met := m.metricsPayload()
-
 	ticker := time.NewTicker(1) // Send on start
 
 	for {
 		select {
 		case <-ticker.C:
+			met := m.metricsPayload()
 			m.sendMetrics(ctx, met)
 			ticker.Reset(m.interval)
 		case <-myTomb.Dying():
