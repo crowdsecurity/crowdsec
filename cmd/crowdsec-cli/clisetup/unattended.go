@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 func (cli *cliSetup) newUnattendedCmd() *cobra.Command {

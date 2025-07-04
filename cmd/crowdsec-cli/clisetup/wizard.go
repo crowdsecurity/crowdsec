@@ -1,22 +1,22 @@
 package clisetup
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"slices"
+	"os/exec"
 	"strings"
 
+	"cmp"
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"slices"
 )
 
 func isGeneratedYAML(input io.Reader) (bool, error) {
@@ -154,7 +154,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 	units := setup.UnitMap{}
 
 	if !opts.SkipSystemd {
-		if units, err = setup.DetectSystemdUnits(ctx, opts.ForcedUnits); err != nil {
+		if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext, opts.ForcedUnits); err != nil {
 			return err
 		}
 	}
@@ -164,11 +164,11 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 		return err
 	}
 
-	builder := setup.NewSetupBuilder(logger)
+	builder := setup.NewSetupBuilder()
 
 	stup, err := builder.Build(ctx, detector, opts,
 		setup.OSPathChecker{},
-		units, procs)
+		units, procs, logger)
 	if err != nil {
 		return err
 	}
