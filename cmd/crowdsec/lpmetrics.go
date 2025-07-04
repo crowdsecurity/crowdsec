@@ -190,6 +190,10 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 			}
 			m.metricsLastValues[deltaKey] = currentValue
 
+			if value == 0 {
+				continue
+			}
+
 			item := &models.MetricsDetailItem{
 				Name:   ptr.Of(metricName),
 				Unit:   ptr.Of(unitType),
