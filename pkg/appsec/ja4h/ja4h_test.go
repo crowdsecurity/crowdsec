@@ -147,6 +147,8 @@ func TestJA4H_B(t *testing.T) {
 }
 
 func TestJA4H_C(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		name           string
 		cookies        func() []*http.Cookie
@@ -155,7 +157,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "no cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				return req.Cookies()
 			},
 			expectedResult: "000000000000",
@@ -163,7 +165,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "one cookie",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				return req.Cookies()
 			},
@@ -172,7 +174,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "duplicate cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar2"})
 				return req.Cookies()
@@ -182,7 +184,7 @@ func TestJA4H_C(t *testing.T) {
 		{
 			name: "multiple cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "bar", Value: "foo"})
 				cookies := req.Cookies()
@@ -206,6 +208,8 @@ func TestJA4H_C(t *testing.T) {
 }
 
 func TestJA4H_D(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		name           string
 		cookies        func() []*http.Cookie
@@ -214,7 +218,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "no cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				return req.Cookies()
 			},
 			expectedResult: "000000000000",
@@ -222,7 +226,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "one cookie",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				return req.Cookies()
 			},
@@ -231,7 +235,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "duplicate cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar2"})
 				return req.Cookies()
@@ -241,7 +245,7 @@ func TestJA4H_D(t *testing.T) {
 		{
 			name: "multiple cookies",
 			cookies: func() []*http.Cookie {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", http.NoBody)
 				req.AddCookie(&http.Cookie{Name: "foo", Value: "bar"})
 				req.AddCookie(&http.Cookie{Name: "bar", Value: "foo"})
 				cookies := req.Cookies()

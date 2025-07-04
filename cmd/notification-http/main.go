@@ -126,7 +126,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 
 	logger.Info(fmt.Sprintf("received signal for %s config", notification.Name))
 
-	request, err := http.NewRequest(cfg.Method, cfg.URL, bytes.NewReader([]byte(notification.Text)))
+	request, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, bytes.NewReader([]byte(notification.Text)))
 	if err != nil {
 		return nil, err
 	}

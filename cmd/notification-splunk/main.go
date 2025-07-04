@@ -62,7 +62,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return &protobufs.Empty{}, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, cfg.URL, strings.NewReader(string(data)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.URL, strings.NewReader(string(data)))
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
