@@ -81,8 +81,14 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 
 		fmt.Fprintln(os.Stdout, "creating "+path)
 
-		if err := spec.WriteTo(toDir); err != nil {
+		writer, err := spec.Open(toDir)
+		if err != nil {
 			return err
+		}
+		defer writer.Close()
+
+		if err := spec.Write(writer); err != nil {
+			return fmt.Errorf("writing acquisition to %q: %w", path, err)
 		}
 	}
 

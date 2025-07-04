@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"fmt"
 	"io"
 	"runtime"
 	"strings"
@@ -17,91 +16,6 @@ func nullLogger() *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(io.Discard)
 	return logger
-}
-
-func TestPathExists(t *testing.T) {
-	t.Parallel()
-	ctx := t.Context()
-
-	type test struct {
-		path string
-		want bool
-	}
-
-	tests := []test{
-		{"/this-should-not-exist", false},
-	}
-
-	if runtime.GOOS == "windows" {
-		tests = append(tests, test{`C:\`, true})
-	} else {
-		tests = append(tests, test{"/tmp", true})
-	}
-
-	for _, tc := range tests {
-		env := NewExprEnvironment(ctx, ExprOS{}, &ExprState{}, OSPathChecker{})
-
-		t.Run(tc.path, func(t *testing.T) {
-			t.Parallel()
-
-			actual := env.PathExists(ctx, tc.path)
-			require.Equal(t, tc.want, actual)
-		})
-	}
-}
-
-func TestVersionCheck(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		version    string
-		constraint string
-		want       bool
-		wantErr    string
-	}{
-		{"1", "=1", true, ""},
-		{"1", "!=1", false, ""},
-		{"1", "<=1", true, ""},
-		{"1", ">1", false, ""},
-		{"1", ">=1", true, ""},
-		{"1.0", "<1.0", false, ""},
-		{"1", "<1", false, ""},
-		{"1.3.5", "1.3", true, ""},
-		{"1.0", "<1.0", false, ""},
-		{"1.0", "<=1.0", true, ""},
-		{"2", ">1, <3", true, ""},
-		{"2", "<=2, >=2.2", false, ""},
-		{"2.3", "~2", true, ""},
-		{"2.3", "=2", true, ""},
-		{"1.1.1", "=1.1", true, ""},
-		{"1.1.1", "1.1", true, ""},
-		{"1.1", "!=1.1.1", true, ""},
-		{"1.1", "~1.1.1", false, ""},
-		{"1.1.1", "~1.1", true, ""},
-		{"1.1.3", "~1.1", true, ""},
-		{"19.04", "<19.10", true, ""},
-		{"19.04", ">=19.10", false, ""},
-		{"19.04", "=19.4", true, ""},
-		{"19.04", "~19.4", true, ""},
-		{"1.2.3", "~1.2", true, ""},
-		{"1.2.3", "!=1.2", false, ""},
-		{"1.2.3", "1.1.1 - 1.3.4", true, ""},
-		{"1.3.5", "1.1.1 - 1.3.4", false, ""},
-		{"1.3.5", "=1", true, ""},
-		{"1.3.5", "1", true, ""},
-	}
-
-	for _, tc := range tests {
-		e := ExprOS{RawVersion: tc.version}
-
-		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
-			t.Parallel()
-
-			actual, err := e.VersionCheck(tc.constraint)
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(t, tc.want, actual)
-		})
-	}
 }
 
 func TestListSupported(t *testing.T) {
@@ -254,7 +168,7 @@ func TestEvaluateRules(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			svc := ServiceRules{When: tc.rules}
+			svc := ServiceProfile{When: tc.rules}
 
 			err := svc.Compile()
 			cstest.RequireErrorContains(t, err, tc.wantCompileErr)
@@ -273,21 +187,6 @@ func TestEvaluateRules(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
-}
-
-func TestUnitFound(t *testing.T) {
-	ctx := t.Context()
-
-	state := NewExprState(DetectOptions{}, UnitMap{"crowdsec-setup-installed.service": struct{}{}}, nil)
-	env := NewExprEnvironment(ctx, ExprOS{}, state, nil)
-
-	installed, err := env.UnitFound(ctx, "crowdsec-setup-installed.service")
-	require.NoError(t, err)
-	require.True(t, installed)
-
-	installed, err = env.UnitFound(ctx, "crowdsec-setup-missing.service")
-	require.NoError(t, err)
-	require.False(t, installed)
 }
 
 func TestDetectSimpleRule(t *testing.T) {
@@ -337,7 +236,7 @@ detect:
   wizard:
     when:
       - UnitFound("crowdsec-setup-detect.service")
-    acquisition:
+    acquisition_spec:
       filename: wizard.yaml
       datasource:
         source: journalctl
@@ -635,7 +534,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 version: 1.0
 detect:
   wizard:
-    acquisition:
+    acquisition_spec:
       filename: wizard.yaml`,
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
@@ -645,7 +544,7 @@ detect:
 version: 1.0
 detect:
   wizard:
-    acquisition:
+    acquisition_spec:
       filename: wizard.yaml
       datasource: {}`,
 			want:    nil,
@@ -656,7 +555,7 @@ detect:
 version: 1.0
 detect:
   wizard:
-    acquisition:
+    acquisition_spec:
       datasource:
         labels:
           type: something`,
@@ -668,7 +567,7 @@ detect:
 version: 1.0
 detect:
   wizard:
-    acquisition:
+    acquisition_spec:
       filename: something.yaml
       datasource:
         labels:
@@ -681,7 +580,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: wombat.yaml
       datasource:
         source: wombat`,
@@ -693,7 +592,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: file.yaml
       datasource:
       source: file`,
@@ -705,7 +604,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: journalctl.yaml
       datasource:
         source: journalctl
@@ -718,7 +617,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: file.yaml
       datasource:
         source: file`,
@@ -730,7 +629,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: foobar.yaml
       datasource:
         source: journalctl`,
@@ -742,7 +641,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: cloudwatch.yaml
       datasource:
         source: cloudwatch`,
@@ -754,7 +653,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: syslog.yaml
       datasource:
         source: syslog`,
@@ -779,7 +678,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: docker.yaml
       datasource:
         source: docker`,
@@ -791,7 +690,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: kinesis.yaml
       datasource:
         source: kinesis`,
@@ -803,7 +702,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: kinesis.yaml
       datasource:
         source: kinesis
@@ -816,7 +715,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: kafka.yaml
       datasource:
         source: kafka`,
@@ -828,7 +727,7 @@ detect:
 version: 1.0
 detect:
   foobar:
-    acquisition:
+    acquisition_spec:
       filename: loki.yaml
       datasource:
         source: loki`,
@@ -844,8 +743,8 @@ detect:
 version: 1.0
 detect:
   foobar:
-           acquisition:
-             filename: wineventlog.yaml
+    acquisition_spec:
+      filename: wineventlog.yaml
       datasource:
         source: wineventlog`,
 			want:    nil,
