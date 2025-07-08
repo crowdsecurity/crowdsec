@@ -9,12 +9,11 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -394,7 +393,6 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 
 func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, error) {
 	// Soft delete (set expiration to now) all decisions that matches any allowlist
-
 	totalCount := 0
 
 	// Get all non-expired allowlist items
@@ -414,6 +412,7 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 
 	for _, item := range allowlistItems {
 		updateQuery := c.Ent.Decision.Update().SetUntil(now).Where(decision.UntilGTE(now))
+
 		switch item.IPSize {
 		case 4:
 			updateQuery = updateQuery.Where(
@@ -479,6 +478,7 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 			c.Log.Errorf("unable to expire existing decisions: %s", err)
 			continue
 		}
+
 		totalCount += count
 	}
 

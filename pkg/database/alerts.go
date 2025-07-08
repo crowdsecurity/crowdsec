@@ -49,7 +49,6 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 	}
 
 	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(ctx)
-
 	if err != nil && !ent.IsNotFound(err) {
 		return "", fmt.Errorf("unable to query alerts for uuid %s: %w", alertItem.UUID, err)
 	}
@@ -263,10 +262,10 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
 	}
 
-	DecOrigin := CapiMachineID
+	decOrigin := CapiMachineID
 
 	if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
-		DecOrigin = *alertItem.Decisions[0].Origin
+		decOrigin = *alertItem.Decisions[0].Origin
 	} else {
 		log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
 	}
@@ -336,7 +335,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		// Deleting older decisions from capi
 		deletedDecisions, err := txClient.Decision.Delete().
 			Where(decision.And(
-				decision.OriginEQ(DecOrigin),
+				decision.OriginEQ(decOrigin),
 				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 				decision.ValueIn(deleteChunk...),
 			)).Exec(ctx)
@@ -358,7 +357,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		inserted += len(insertedDecisions)
 	}
 
-	log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
+	log.Debugf("deleted %d decisions for %s vs %s", deleted, decOrigin, *alertItem.Decisions[0].Origin)
 
 	err = txClient.Commit()
 	if err != nil {
@@ -570,6 +569,7 @@ func retryOnBusy(fn func() error) error {
 		if err == nil {
 			return nil
 		}
+
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrBusy {
 			// sqlite3.Error{
@@ -695,6 +695,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 	if err != nil {
 		return nil, err
 	}
+
 	return ids, nil
 }
 
@@ -840,6 +841,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 			c.Log.Debugf("Pagination done because no results found at offset %d | len(ret) %d", offset, len(ret))
 			break
 		}
+
 		log.Debugf("QueryAlertWithFilter: pagination size %d, offset %d, got %d results", paginationSize, offset, len(result))
 		log.Debugf("diff is %d, limit is %d", limit-len(ret), limit)
 

@@ -688,11 +688,11 @@ func TestUpper(t *testing.T) {
 
 	v, ok := out.(string)
 	if !ok {
-		t.Fatalf("Upper() should return a string")
+		t.Fatal("Upper() should return a string")
 	}
 
 	if v != wantStr {
-		t.Fatalf("Upper() should return test in upper case")
+		t.Fatal("Upper() should return test in upper case")
 	}
 }
 
@@ -705,10 +705,10 @@ func TestTimeNow(t *testing.T) {
 	}
 
 	if -1*time.Until(ti) > time.Second {
-		t.Fatalf("TimeNow func should return time.Now().UTC()")
+		t.Fatal("TimeNow func should return time.Now().UTC()")
 	}
 
-	log.Printf("test 'TimeNow()' : OK")
+	log.Print("test 'TimeNow()' : OK")
 }
 
 func TestParseUri(t *testing.T) {

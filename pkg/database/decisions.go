@@ -31,9 +31,8 @@ type DecisionsByScenario struct {
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var (
 		rng csnet.Range
-		err                                  error
+		err error
 	)
-
 
 	contains := true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
@@ -372,18 +371,18 @@ func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[strin
 		return 0, nil, err
 	}
 
-	DecisionsToDelete, err := decisions.All(ctx)
+	decisionsToDelete, err := decisions.All(ctx)
 	if err != nil {
 		c.Log.Warningf("ExpireDecisionsWithFilter : %s", err)
 		return 0, nil, errors.Wrap(DeleteFail, "expire decisions with provided filter")
 	}
 
-	count, err := c.ExpireDecisions(ctx, DecisionsToDelete)
+	count, err := c.ExpireDecisions(ctx, decisionsToDelete)
 	if err != nil {
 		return 0, nil, errors.Wrapf(DeleteFail, "expire decisions with provided filter : %s", err)
 	}
 
-	return count, DecisionsToDelete, err
+	return count, decisionsToDelete, err
 }
 
 func decisionIDs(decisions []*ent.Decision) []int {

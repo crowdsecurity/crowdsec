@@ -182,9 +182,9 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	predicates := make([]predicate.Alert, 0)
 
 	var (
-		err                                  error
-		hasActiveDecision                    bool
-		rng csnet.Range
+		err               error
+		hasActiveDecision bool
+		rng               csnet.Range
 	)
 
 	contains := true
