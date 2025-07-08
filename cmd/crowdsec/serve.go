@@ -96,6 +96,9 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, err
 		}
 
+		// Reset data files to avoid any potential conflicts with the new configuration
+		exprhelpers.ResetDataFiles()
+
 		csParsers, datasources, err := initCrowdsec(cConfig, hub, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
