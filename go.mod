@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.52.0
 	github.com/beevik/etree v1.4.1
-	github.com/blackfireio/osinfo v1.0.5
+	github.com/blackfireio/osinfo v1.1.0
 	github.com/bluele/gcache v0.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/cenkalti/backoff/v5 v5.0.2
