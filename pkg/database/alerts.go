@@ -658,7 +658,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 		if discardCount > 0 && len(decisions) == 0 {
 			c.Log.Warningf("dropping alert %s: all decisions invalid", alertItem.UUID)
 			continue
-	        }
+		}
 
 		alertBuilder := c.Ent.Alert.
 			Create().
@@ -845,6 +845,13 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 			return nil, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
 		}
 
+		if len(result) == 0 { // no results, no need to try to paginate further
+			c.Log.Debugf("Pagination done because no results found at offset %d | len(ret) %d", offset, len(ret))
+			break
+		}
+		log.Debugf("QueryAlertWithFilter: pagination size %d, offset %d, got %d results", paginationSize, offset, len(result))
+		log.Debugf("diff is %d, limit is %d", limit-len(ret), limit)
+
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
@@ -858,7 +865,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 			ret = append(ret, result...)
 		}
 
-		if len(ret) == limit || len(ret) == 0 || len(ret) < paginationSize {
+		if len(ret) == limit || len(result) < paginationSize {
 			c.Log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}
