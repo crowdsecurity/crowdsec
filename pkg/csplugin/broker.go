@@ -19,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+	"github.com/cenkalti/backoff/v5"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -406,7 +407,9 @@ func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message strin
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginName string, alerts []*models.Alert) error {
-	log.WithField("plugin", pluginName).Debugf("pushing %d alerts to plugin", len(alerts))
+	logger := log.WithField("plugin", pluginName)
+
+	logger.Debugf("pushing %d alerts to plugin", len(alerts))
 
 	if len(alerts) == 0 {
 		return nil
@@ -417,16 +420,29 @@ func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginNam
 		return err
 	}
 
-	backoffDuration := time.Second
+	maxRetries := max(uint(pb.pluginConfigByName[pluginName].MaxRetry), 1)
 
-	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
-		if err = pb.tryNotify(ctx, pluginName, message); err == nil {
-			return nil
+	bo := backoff.NewExponentialBackOff()
+	bo.InitialInterval = 1 * time.Second
+	bo.Multiplier = 2
+
+	attemptLeft := maxRetries
+
+	operation := func() (struct{}, error) {
+		attemptLeft--
+		if err = pb.tryNotify(ctx, pluginName, message); err != nil {
+			if attemptLeft > 0 {
+				logger.Errorf("notification error: %s, %d retries left", err, attemptLeft)
+			}
+
+			return struct{}{}, fmt.Errorf("retryable error: %w", err)
 		}
 
-		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
-		time.Sleep(backoffDuration)
-		backoffDuration *= 2
+		return struct{}{}, nil
+	}
+
+	if _, err := backoff.Retry(ctx, operation, backoff.WithBackOff(bo), backoff.WithMaxTries(maxRetries)); err != nil {
+		return err
 	}
 
 	return err
