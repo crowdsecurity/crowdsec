@@ -15,6 +15,7 @@ linters:
     - gocognit  # revive
     - gocyclo   # revive
     - lll       # revive
+    - wsl       # wsl_v5
 
     # Disabled atm
 
@@ -36,6 +37,7 @@ linters:
     - tagalign              # check that struct tags are well aligned
     - thelper               # thelper detects tests helpers which is not start with t.Helper() method.
     - wrapcheck             # Checks that errors returned from external packages are wrapped
+    - embeddedstructfieldcheck
 
     #
     # Recommended? (requires some work)
@@ -53,7 +55,7 @@ linters:
 
     - nlreturn              # nlreturn checks for a new line before return and branch statements to increase code clarity
     - whitespace            # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
-    - wsl                   # add or remove empty lines
+    - wsl_v5                # add or remove empty lines
 
     #
     # Well intended, but not ready for this
@@ -75,6 +77,7 @@ linters:
     - tagliatelle           # Checks the struct tags.
     - varnamelen            # checks that the length of a variable's name matches its scope
     - prealloc
+    - noinlineerr
 
   settings:
 
@@ -260,6 +263,8 @@ linters:
           disabled: true
         - name: redundant-import-alias
           disabled: true
+        - name: redundant-test-main-exit
+          disabled: true
         - name: var-naming
           disabled: true
         - name: unchecked-type-assertion
@@ -275,6 +280,8 @@ linters:
             - fmt.Print
             - fmt.Printf
             - fmt.Println
+          disabled: true
+        - name: unnecessary-format
           disabled: true
         - name: unnecessary-stmt
           disabled: true
