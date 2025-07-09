@@ -443,9 +443,6 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 }
 
 func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
-
-	var silent bool
-
 	cmd := &cobra.Command{
 		Use:     "check [value]",
 		Short:   "Check if a value is in an allowlist",
@@ -484,25 +481,14 @@ func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
 			}
 
 			if !resp.Allowlisted {
-				if !silent {
-					log.Infof("%s is not allowlisted", args[0])
-				}
-				//nolint:revive //To allow the user to use exit code to check if the value is allowlisted
-				os.Exit(2)
-			}
-
-			if !silent {
-				log.Infof("%s is allowlisted by item %s", args[0], resp.Reason)
+				fmt.Fprintf(os.Stdout, "%s is not allowlisted\n", args[0])
+			} else {
+				fmt.Fprintf(os.Stdout, "%s is allowlisted by item %s\n", args[0], resp.Reason)
 			}
 
 			return nil
 		},
 	}
-
-	flags := cmd.Flags()
-
-	flags.BoolVarP(&silent, "silent", "s", false, "silent mode")
-
 	return cmd
 }
 
