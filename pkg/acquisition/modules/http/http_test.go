@@ -244,7 +244,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	return out, testRegistry, &tomb
 }
 
-func TestStreamingAcquisitionWrongHTTPMethod(t *testing.T) {
+func TestStreamingAcquisitionHTTPMethod(t *testing.T) {
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -259,12 +259,31 @@ basic_auth:
 
 	ctx := t.Context()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr+"/test", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, testHTTPServerAddr+"/test", http.NoBody)
 	require.NoError(t, err)
+
+	// Method validity is checked after auth
+	req.SetBasicAuth("test", "test")
 
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusMethodNotAllowed, res.StatusCode)
+
+	// Check that GET/HEAD requests return a 200
+
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr+"/test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("test", "test")
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	req, err = http.NewRequestWithContext(ctx, http.MethodHead, testHTTPServerAddr+"/test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("test", "test")
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -544,7 +563,7 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 	readLines := []types.Event{}
 
-	for i := 0; i < len(expected); i++ {
+	for range expected {
 		select {
 		case event := <-out:
 			readLines = append(readLines, event)

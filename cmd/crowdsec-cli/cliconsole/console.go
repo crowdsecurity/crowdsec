@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -85,9 +85,11 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 	c, _ := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
-		Scenarios:     hub.GetInstalledListForAPI(),
 		URL:           apiURL,
 		VersionPrefix: "v3",
+		UpdateScenario: func(_ context.Context) ([]string, error) {
+			return hub.GetInstalledListForAPI(), nil
+		},
 	})
 
 	resp, err := c.Auth.EnrollWatcher(ctx, key, name, tags, overwrite)
@@ -157,12 +159,14 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 		// discard all elements == opt
 
 		j := 0
+
 		for _, o := range opts {
 			if o != opt {
 				opts[j] = o
 				j++
 			}
 		}
+
 		opts = opts[:j]
 	}
 
@@ -185,12 +189,12 @@ Enroll this instance to https://app.crowdsec.net
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
 		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
-		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
-		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-		cscli console enroll --enable console_management YOUR-ENROLL-KEY
-		cscli console enroll --disable context YOUR-ENROLL-KEY
+cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
+cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
+cscli console enroll --enable console_management YOUR-ENROLL-KEY
+cscli console enroll --disable context YOUR-ENROLL-KEY
 
-		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
+valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -323,7 +327,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to serialize configuration: %w", err)
 				}
-				fmt.Println(string(data))
+				fmt.Fprintln(os.Stdout, string(data))
 			case "raw":
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"option", "enabled"})

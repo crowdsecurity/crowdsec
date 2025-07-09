@@ -15,7 +15,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -93,6 +95,9 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		if err = hub.Load(); err != nil {
 			return nil, err
 		}
+
+		// Reset data files to avoid any potential conflicts with the new configuration
+		exprhelpers.ResetDataFiles()
 
 		csParsers, datasources, err := initCrowdsec(cConfig, hub, false)
 		if err != nil {
@@ -323,6 +328,22 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		log.Warning("Crowdsec service shutting down")
 	}
 
+	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
+		log.Warning("Unregistering watcher")
+
+		lapiClient, err := apiclient.GetLAPIClient()
+		if err != nil {
+			return err
+		}
+
+		_, err = lapiClient.Auth.UnregisterWatcher(context.TODO())
+		if err != nil {
+			return fmt.Errorf("failed to unregister watcher: %w", err)
+		}
+
+		log.Warning("Watcher unregistered")
+	}
+
 	return err
 }
 
@@ -360,7 +381,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 
-		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
+		if err := ctiexpr.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
 			return fmt.Errorf("failed to init crowdsec cti: %w", err)
 		}
 	}
@@ -418,7 +439,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		return nil
 	}
 
-	if cConfig.Common != nil && cConfig.Common.Daemonize {
+	if cConfig.Common != nil && !flags.haveTimeMachine() {
 		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)

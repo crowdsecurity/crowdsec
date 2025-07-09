@@ -447,9 +447,31 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     fi
 done
 
-if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+## Enable console features
+if [ "$ENABLE_CONSOLE_ALL" != "" ]; then
     # shellcheck disable=SC2086
-    cscli console enable console_management
+    cscli console enable -a
+else
+    CONSOLE_FLAGS=""
+    if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+        CONSOLE_FLAGS="$CONSOLE_FLAGS console_management"
+    fi
+    if [ "$ENABLE_CONSOLE_CONTEXT" != "" ]; then
+        CONSOLE_FLAGS="$CONSOLE_FLAGS context"
+    fi
+    if [ "$ENABLE_CONSOLE_TAINTED" != "" ]; then
+        CONSOLE_FLAGS="$CONSOLE_FLAGS tainted"
+    fi
+    if [ "$ENABLE_CONSOLE_MANUAL" != "" ]; then
+        CONSOLE_FLAGS="$CONSOLE_FLAGS manual"
+    fi
+    if [ "$ENABLE_CONSOLE_CUSTOM" != "" ]; then
+        CONSOLE_FLAGS="$CONSOLE_FLAGS custom"
+    fi
+    if [ "$CONSOLE_FLAGS" != "" ]; then
+       # shellcheck disable=SC2086
+       cscli console enable$CONSOLE_FLAGS
+    fi
 fi
 
 ## Register bouncers via secrets (Swarm only)
@@ -473,6 +495,8 @@ if istrue "$DISABLE_LOCAL_API"; then
 else
     conf_set '.api.server.enable=true'
 fi
+
+conf_set_if "$UNREGISTER_ON_EXIT" '.api.client.unregister_on_exit=env(UNREGISTER_ON_EXIT)'
 
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then

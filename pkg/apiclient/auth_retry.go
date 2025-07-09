@@ -1,10 +1,12 @@
 package apiclient
 
 import (
-	"math/rand"
+	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
+	"github.com/cenkalti/backoff/v5"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -12,70 +14,71 @@ import (
 
 type retryRoundTripper struct {
 	next             http.RoundTripper
-	maxAttempts      int
+	maxAttempts      uint
 	retryStatusCodes []int
 	withBackOff      bool
-	onBeforeRequest  func(attempt int)
 }
 
-func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
-	for _, code := range r.retryStatusCodes {
-		if code == statusCode {
-			return true
-		}
-	}
-
-	return false
+func (r retryRoundTripper) shouldRetry(statusCode int) bool {
+	return slices.Contains(r.retryStatusCodes, statusCode)
 }
 
 func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	var (
-		resp *http.Response
-		err  error
-	)
-
-	backoff := 0
-	maxAttempts := r.maxAttempts
-
+	maxAttempts := max(r.maxAttempts, 1)
 	if fflag.DisableHttpRetryBackoff.IsEnabled() {
 		maxAttempts = 1
 	}
 
-	for i := range maxAttempts {
-		if i > 0 {
-			if r.withBackOff {
-				//nolint:gosec
-				backoff += 10 + rand.Intn(20)
-			}
+	var bo backoff.BackOff
 
-			log.Infof("retrying in %d seconds (attempt %d of %d)", backoff, i+1, r.maxAttempts)
-
-			select {
-			case <-req.Context().Done():
-				return nil, req.Context().Err()
-			case <-time.After(time.Duration(backoff) * time.Second):
-			}
-		}
-
-		if r.onBeforeRequest != nil {
-			r.onBeforeRequest(i)
-		}
-
-		clonedReq := cloneRequest(req)
-
-		resp, err = r.next.RoundTrip(clonedReq)
-		if err != nil {
-			if left := maxAttempts - i - 1; left > 0 {
-				log.Errorf("error while performing request: %s; %d retries left", err, left)
-			}
-
-			continue
-		}
-
-		if !r.ShouldRetry(resp.StatusCode) {
-			return resp, nil
-		}
+	if r.withBackOff {
+		// Use exponential + jitter; the default values are:
+		//
+		// DefaultInitialInterval     = 500 * time.Millisecond
+		// DefaultRandomizationFactor = 0.5
+		// DefaultMultiplier          = 1.5
+		// DefaultMaxInterval         = 60 * time.Second
+		// MaxElapsedTime             = 15 * time.Minute
+		exp := backoff.NewExponentialBackOff()
+		exp.InitialInterval = 20 * time.Second
+		exp.Multiplier = 2
+		bo = exp
+	} else {
+		// backoff is disabled, policy of "no wait"
+		bo = backoff.NewConstantBackOff(0)
 	}
 
-	return resp, err
+	attemptLeft := maxAttempts
+
+	operation := func() (*http.Response, error) {
+		clonedReq := cloneRequest(req)
+
+		attemptLeft--
+
+		resp, err := r.next.RoundTrip(clonedReq)
+		if err != nil {
+			if attemptLeft > 0 {
+				log.Errorf("while performing request: %s; %d retries left", err, attemptLeft)
+			}
+
+			return nil, fmt.Errorf("retryable error: %w", err)
+		}
+
+		if r.shouldRetry(resp.StatusCode) {
+			log.Errorf("request returned status %d: %s; %d retries left", resp.StatusCode, resp.Status, attemptLeft)
+			return nil, fmt.Errorf("retryable status: %d", resp.StatusCode)
+		}
+
+		return resp, nil
+	}
+
+	resp, err := backoff.Retry(req.Context(), operation,
+		backoff.WithBackOff(bo),
+		backoff.WithMaxTries(maxAttempts),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }

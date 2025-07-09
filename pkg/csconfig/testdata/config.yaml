@@ -1,5 +1,4 @@
 common:
-  daemonize: false
   log_media: stdout
   log_level: info
 prometheus:

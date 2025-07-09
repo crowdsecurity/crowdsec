@@ -33,12 +33,13 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"topic"})
 
 type KafkaConfiguration struct {
-	Brokers                           []string   `yaml:"brokers"`
-	Topic                             string     `yaml:"topic"`
-	GroupID                           string     `yaml:"group_id"`
-	Partition                         int        `yaml:"partition"`
-	Timeout                           string     `yaml:"timeout"`
-	TLS                               *TLSConfig `yaml:"tls"`
+	Brokers                           []string                `yaml:"brokers"`
+	Topic                             string                  `yaml:"topic"`
+	GroupID                           string                  `yaml:"group_id"`
+	Partition                         int                     `yaml:"partition"`
+	Timeout                           string                  `yaml:"timeout"`
+	TLS                               *TLSConfig              `yaml:"tls"`
+	BatchConfiguration                KafkaBatchConfiguration `yaml:"batch"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -47,6 +48,14 @@ type TLSConfig struct {
 	ClientCert         string `yaml:"client_cert"`
 	ClientKey          string `yaml:"client_key"`
 	CaCert             string `yaml:"ca_cert"`
+}
+
+type KafkaBatchConfiguration struct {
+	BatchMinBytes  int           `yaml:"min_bytes"`
+	BatchMaxBytes  int           `yaml:"max_bytes"`
+	BatchMaxWait   time.Duration `yaml:"max_wait"`
+	BatchQueueSize int           `yaml:"queue_size"`
+	CommitInterval time.Duration `yaml:"commit_interval"`
 }
 
 type KafkaSource struct {
@@ -148,8 +157,12 @@ func (k *KafkaSource) Dump() any {
 }
 
 func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) error {
-	// Start processing from latest Offset
-	k.Reader.SetOffsetAt(ctx, time.Now())
+	if k.Config.GroupID == "" {
+		err := k.Reader.SetOffset(kafka.LastOffset)
+		if err != nil {
+			return fmt.Errorf("while setting offset for reader on topic '%s': %w", k.Config.Topic, err)
+		}
+	}
 
 	for {
 		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
@@ -270,6 +283,7 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 		}
 		dialer.TLS = tlsConfig
 	}
+
 	return dialer, nil
 }
 
@@ -288,10 +302,28 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry)
 
 	if kc.GroupID != "" {
 		rConf.GroupID = kc.GroupID
+		// kafka-go does not support calling SetOffset while using a consumer group
+		rConf.StartOffset = kafka.LastOffset
 	} else if kc.Partition != 0 {
 		rConf.Partition = kc.Partition
 	} else {
 		logger.Warnf("no group_id specified, crowdsec will only read from the 1st partition of the topic")
+	}
+
+	if kc.BatchConfiguration.BatchMinBytes != 0 {
+		rConf.MinBytes = kc.BatchConfiguration.BatchMinBytes
+	}
+	if kc.BatchConfiguration.BatchMaxBytes != 0 {
+		rConf.MaxBytes = kc.BatchConfiguration.BatchMaxBytes
+	}
+	if kc.BatchConfiguration.BatchMaxWait != 0 {
+		rConf.MaxWait = kc.BatchConfiguration.BatchMaxWait
+	}
+	if kc.BatchConfiguration.BatchQueueSize != 0 {
+		rConf.QueueCapacity = kc.BatchConfiguration.BatchQueueSize
+	}
+	if kc.BatchConfiguration.CommitInterval != 0 {
+		rConf.CommitInterval = kc.BatchConfiguration.CommitInterval
 	}
 
 	if err := rConf.Validate(); err != nil {

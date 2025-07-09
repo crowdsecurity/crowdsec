@@ -11,7 +11,6 @@ import (
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -22,7 +21,7 @@ type Controller struct {
 	Profiles                      []*csconfig.ProfileCfg
 	AlertsAddChan                 chan []*models.Alert
 	DecisionDeleteChan            chan []*models.Decision
-	PluginChannel                 chan csplugin.ProfileAlert
+	PluginChannel                 chan models.ProfileAlert
 	Log                           *log.Logger
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
@@ -130,6 +129,7 @@ func (c *Controller) NewV1() error {
 		jwtAuth.GET("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.HEAD("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.POST("/allowlists/check", c.HandlerV1.CheckInAllowlistBulk)
+		jwtAuth.DELETE("/watchers/self", c.HandlerV1.DeleteMachine)
 	}
 
 	apiKeyAuth := groupV1.Group("")

@@ -93,7 +93,7 @@ func BenchmarkParse(b *testing.B) {
 	var err error
 	for _, test := range tests {
 		b.Run(test.label, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				r := NewRFC5424Parser()
 				err = r.Parse(test.input)
 			}

@@ -38,7 +38,7 @@ func TestBucket(t *testing.T) {
 		tomb       = &tomb.Tomb{}
 	)
 
-	testdata := "./tests"
+	testdata := "./testdata"
 
 	hubCfg := &csconfig.LocalHubCfg{
 		HubDir:         filepath.Join(testdata, "hub"),

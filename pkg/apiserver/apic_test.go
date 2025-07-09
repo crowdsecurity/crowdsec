@@ -63,7 +63,6 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 		pullTomb:     tomb.Tomb{},
 		pushTomb:     tomb.Tomb{},
 		metricsTomb:  tomb.Tomb{},
-		scenarioList: make([]string, 0),
 		consoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  ptr.Of(false),
 			ShareTaintedScenarios: ptr.Of(false),

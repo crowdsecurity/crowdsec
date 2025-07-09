@@ -67,7 +67,6 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	credentials   *csconfig.ApiCredentialsCfg
-	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
@@ -75,6 +74,8 @@ type apic struct {
 	pullBlocklists bool
 	pullCommunity  bool
 	shareSignals   bool
+
+	TokenSave apiclient.TokenSave
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -196,7 +197,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
 		metricsTomb:               tomb.Tomb{},
-		scenarioList:              make([]string, 0),
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
@@ -223,19 +223,16 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.scenarioList, err = ret.FetchScenariosListFromDB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("while fetching scenarios from db: %w", err)
-	}
-
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
-		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
+		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
+			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("while creating api client: %w", err)
@@ -285,7 +282,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return a.dbClient.SaveAPICToken(ctx, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.

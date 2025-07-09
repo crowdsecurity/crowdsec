@@ -479,7 +479,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		log.Warn(err)
 	}
 
-	if err = cfg.LoadAPIServer(true); err != nil {
+	if err = cfg.LoadAPIServer(true, false); err != nil {
 		log.Warnf("could not load LAPI, skipping CAPI check")
 
 		skipCAPI = true

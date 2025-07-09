@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"slices"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -171,6 +174,7 @@ func (cli *cliRoot) initialize() error {
 	if csConfig.DbConfig != nil {
 		csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
 	}
+
 	return nil
 }
 
@@ -295,7 +299,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		cobra.OnInitialize(
 			func() {
 				if err := cli.initialize(); err != nil {
-					log.Fatal(err)
+					fatal(err)
 				}
 			},
 		)
@@ -304,15 +308,27 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	return cmd, nil
 }
 
-func main() {
+func fatal(err error) {
+	red := color.New(color.FgRed).SprintFunc()
+	fmt.Fprintln(os.Stderr, red("Error:"), err)
+	os.Exit(1)
+}
+
+func mainWrap() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	cmd, err := newCliRoot().NewCommand()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	if err := cmd.Execute(); err != nil {
-		red := color.New(color.FgRed).SprintFunc()
-		fmt.Fprintln(os.Stderr, red("Error:"), err)
-		os.Exit(1)
+	return cmd.ExecuteContext(ctx)
+}
+
+func main() {
+	err := mainWrap()
+	if err != nil {
+		fatal(err)
 	}
 }
