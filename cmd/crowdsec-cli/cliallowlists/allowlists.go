@@ -447,7 +447,7 @@ func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
 		Use:     "check [value]",
 		Short:   "Check if a value is in an allowlist",
 		Example: `cscli allowlists check 1.2.3.4`,
-		Args:    args.MinimumNArgs(1),
+		Args:    args.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := cli.cfg()
 
