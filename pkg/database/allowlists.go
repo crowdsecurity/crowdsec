@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"time"
 
-	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
@@ -319,14 +319,15 @@ func (c *Client) IsAllowlistedBy(ctx context.Context, value string) (reasons []s
 		)
 	}
 
-	query = query.WithAllowlist().Order(
-		allowlistitem.ByAllowlist(sql.OrderByField(allowlist.FieldName, sql.OrderAsc())),
-	)
-
-	items, err := query.All(ctx)
+	items, err := query.WithAllowlist().All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to check if value is allowlisted: %w", err)
 	}
+
+	// doing this in ent is not worth the complexity
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].Edges.Allowlist[0].Name < items[j].Edges.Allowlist[0].Name
+	})
 
 	for _, item := range items {
 		if len(item.Edges.Allowlist) == 0 {
