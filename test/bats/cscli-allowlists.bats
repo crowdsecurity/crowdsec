@@ -178,8 +178,9 @@ teardown() {
     rune -0 cscli allowlist add bar 192.168.0.0/24
     rune -0 cscli allowlist create Uppercase -d 'a uppercase'
     rune -0 cscli allowlist add Uppercase 192.168.0.0/28
-    rune -0 cscli allowlist check 192.168.0.1
-    assert_output "192.168.0.1 is allowlisted by item 192.168.0.0/28 from Uppercase, 192.168.0.0/24 from bar, 192.168.0.0/16 from foo"
+    rune -0 cscli allowlist check 192.168.0.1 1.1.1.1
+    assert_line "192.168.0.1 is allowlisted by item 192.168.0.0/28 from Uppercase, 192.168.0.0/24 from bar, 192.168.0.0/16 from foo"
+    assert_line "1.1.1.1 is not allowlisted"
     refute_stderr
 }
 @test "cscli allowlists delete" {

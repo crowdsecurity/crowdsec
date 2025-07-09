@@ -444,25 +444,12 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 
 func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "check [value]",
+		Use:     "check [value...]",
 		Short:   "Check if a value is in an allowlist",
 		Example: `cscli allowlists check 1.2.3.4`,
-		Args:    args.ExactArgs(1),
+		Args:    args.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ip := args[0]
-
-			reason, err := cli.check(cmd.Context(), ip)
-			if err != nil {
-				return fmt.Errorf("cannot check if %s is in allowlist: %w", ip, err)
-			}
-
-			if reason == "" {
-				fmt.Fprintf(os.Stdout, "%s is not allowlisted\n", ip)
-				return nil
-			}
-
-			fmt.Fprintf(os.Stdout, "%s is allowlisted by item %s\n", ip, reason)
-			return nil
+			return cli.check(cmd.Context(), args)
 		},
 	}
 
@@ -668,20 +655,20 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 	return nil
 }
 
-func (cli *cliAllowLists) check(ctx context.Context, value string) (string, error) {
+func (cli *cliAllowLists) check(ctx context.Context, ips []string) error {
 	cfg := cli.cfg()
 
 	if err := require.LAPI(cfg); err != nil {
-		return "", err
+		return err
 	}
 
 	if err := cfg.LoadAPIClient(); err != nil {
-		return "", fmt.Errorf("loading api client: %w", err)
+		return fmt.Errorf("loading api client: %w", err)
 	}
 
 	apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 	if err != nil {
-		return "", fmt.Errorf("parsing api url: %w", err)
+		return fmt.Errorf("parsing api url: %w", err)
 	}
 
 	client, err := apiclient.NewClient(&apiclient.Config{
@@ -691,15 +678,26 @@ func (cli *cliAllowLists) check(ctx context.Context, value string) (string, erro
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		return "", fmt.Errorf("creating api client: %w", err)
+		return fmt.Errorf("creating api client: %w", err)
 	}
 
-	resp, _, err := client.Allowlists.CheckIfAllowlistedWithReason(ctx, value)
+	for _, ip := range ips {
+		resp, _, err := client.Allowlists.CheckIfAllowlistedWithReason(ctx, ip)
+		if err != nil {
+			return fmt.Errorf("cannot check if %s is in allowlist: %w", ip, err)
+		}
 
-	reason := ""
-	if resp.Allowlisted {
-		reason = resp.Reason
+		reason := ""
+		if resp.Allowlisted {
+			reason = resp.Reason
+		}
+		if reason == "" {
+			fmt.Fprintf(os.Stdout, "%s is not allowlisted\n", ip)
+			return nil
+		}
+
+		fmt.Fprintf(os.Stdout, "%s is allowlisted by item %s\n", ip, reason)
 	}
 
-	return reason, err
+	return nil
 }
