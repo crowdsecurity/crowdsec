@@ -167,6 +167,21 @@ teardown() {
     assert_stderr --partial 'Decision successfully added'
 }
 
+@test "cscli allowlists check" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -0 cscli allowlist check 192.168.0.1
+    assert_output "192.168.0.1 is allowlisted by item 192.168.0.0/16 from foo"
+    rune -0 cscli allowlist check 192.169.0.1
+    assert_output "192.169.0.1 is not allowlisted"
+    rune -0 cscli allowlist create bar -d 'a bar'
+    rune -0 cscli allowlist add bar 192.168.0.0/24
+    rune -0 cscli allowlist create Uppercase -d 'a uppercase'
+    rune -0 cscli allowlist add Uppercase 192.168.0.0/28
+    rune -0 cscli allowlist check 192.168.0.1
+    assert_output "192.168.0.1 is allowlisted by item 192.168.0.0/28 from Uppercase, 192.168.0.0/24 from bar, 192.168.0.0/16 from foo"
+    refute_stderr
+}
 @test "cscli allowlists delete" {
     rune -1 cscli allowlist delete
     assert_stderr 'Error: accepts 1 arg(s), received 0'

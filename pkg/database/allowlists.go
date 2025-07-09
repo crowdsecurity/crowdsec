@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
@@ -237,13 +238,16 @@ func (c *Client) ReplaceAllowlist(ctx context.Context, list *ent.AllowList, item
 	return added, nil
 }
 
-func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, error) {
-	/*
-		Few cases:
-		- value is an IP/range directly is in allowlist
-		- value is an IP/range in a range in allowlist
-		- value is a range and an IP/range belonging to it is in allowlist
-	*/
+// IsAllowlistedBy returns a list of human-readable reasons explaining which allowlists
+// the given value (IP or CIDR) matches.
+//
+// Few cases:
+// - value is an IP/range directly is in allowlist
+// - value is an IP/range in a range in allowlist
+// - value is a range and an IP/range belonging to it is in allowlist
+//
+// The result is sorted by the name of the associated allowlist for consistent presentation.
+func (c *Client) IsAllowlistedBy(ctx context.Context, value string) (reasons []string, err error) {
 	rng, err := csnet.NewRange(value)
 	if err != nil {
 		return nil, err
@@ -315,12 +319,14 @@ func (c *Client) IsAllowlistedBy(ctx context.Context, value string) ([]string, e
 		)
 	}
 
-	items, err := query.WithAllowlist().All(ctx)
+	query = query.WithAllowlist().Order(
+		allowlistitem.ByAllowlist(sql.OrderByField(allowlist.FieldName, sql.OrderAsc())),
+	)
+
+	items, err := query.All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to check if value is allowlisted: %w", err)
 	}
-
-	reasons := make([]string, 0)
 
 	for _, item := range items {
 		if len(item.Edges.Allowlist) == 0 {
