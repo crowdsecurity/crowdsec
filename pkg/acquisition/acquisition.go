@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strings"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"maps"
 )
 
 type DataSourceUnavailableError struct {
@@ -42,18 +42,18 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                                       // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig(yamlConfig []byte) error                                             // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error                                  // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error       // Configure the datasource
-	GetMode() string                                                          // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                                          // Get the name of the module
-	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error // Start live acquisition (eg, tail a file)
-	CanRun() error                                                            // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
-	GetUuid() string                                                          // Get the unique identifier of the datasource
-	Dump() interface{}
+	GetMetrics() []prometheus.Collector                                                            // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                                                      // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	UnmarshalConfig(yamlConfig []byte) error                                                       // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error                        // Complete the YAML datasource configuration and perform runtime checks.
+	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error // Configure the datasource
+	GetMode() string                                                                               // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                                                               // Get the name of the module
+	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error     // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error   // Start live acquisition (eg, tail a file)
+	CanRun() error                                                                                 // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetUuid() string                                                                               // Get the unique identifier of the datasource
+	Dump() any
 }
 
 var (
@@ -180,7 +180,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	uniqueId := uuid.NewString()
 
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -215,7 +215,6 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 
 	return configuration.METRICS_FULL
 }
-
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
 func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error) {
@@ -306,7 +305,7 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 		}
 
 		if sub.TransformExpr != "" {
-			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 			if err != nil {
 				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 			}
@@ -319,7 +318,6 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 
 	return sources, nil
 }
-
 
 // LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
 func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
@@ -378,6 +376,7 @@ func copyEvent(evt types.Event, line string) types.Event {
 
 func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
+
 	logger.Infof("transformer started")
 
 	for {
@@ -388,7 +387,7 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 		case evt := <-transformChan:
 			logger.Tracef("Received event %s", evt.Line.Raw)
 
-			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
+			out, err := expr.Run(transformRuntime, map[string]any{"evt": &evt})
 			if err != nil {
 				logger.Errorf("while running transform expression: %s, sending event as-is", err)
 				output <- evt
