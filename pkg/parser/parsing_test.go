@@ -44,7 +44,7 @@ func TestParser(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := os.ReadDir("./tests/")
+		fds, err := os.ReadDir("./testdata/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -54,7 +54,7 @@ func TestParser(t *testing.T) {
 				continue
 			}
 
-			fname := "./tests/" + fd.Name()
+			fname := "./testdata/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 
 			if err := testOneParser(t, pctx, ectx, fname, nil); err != nil {
@@ -79,7 +79,7 @@ func BenchmarkParser(t *testing.B) {
 		err := testOneParser(t, pctx, ectx, envSetting, t)
 		require.NoError(t, err, "Test '%s' failed", envSetting)
 	} else {
-		fds, err := os.ReadDir("./tests/")
+		fds, err := os.ReadDir("./testdata/")
 		require.NoError(t, err, "Unable to read test directory")
 
 		for _, fd := range fds {
@@ -87,7 +87,7 @@ func BenchmarkParser(t *testing.B) {
 				continue
 			}
 
-			fname := "./tests/" + fd.Name()
+			fname := "./testdata/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 
 			err := testOneParser(t, pctx, ectx, fname, t)
@@ -165,7 +165,7 @@ func prepTests(t require.TestingT) (*UnixParserCtx, EnricherCtx) {
 	require.NoError(t, err, "exprhelpers init failed")
 
 	// Load enrichment
-	datadir := "./test_data/"
+	datadir := "./testdata/"
 
 	err = exprhelpers.GeoIPInit(datadir)
 	require.NoError(t, err, "geoip init failed")
@@ -180,7 +180,7 @@ func prepTests(t require.TestingT) (*UnixParserCtx, EnricherCtx) {
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
-	pctx, err = NewUnixParserCtx(filepath.Join(cfgdir, "patterns"), "./tests/")
+	pctx, err = NewUnixParserCtx(filepath.Join(cfgdir, "patterns"), "./testdata/")
 	require.NoError(t, err, "parser init failed")
 
 	return pctx, ectx
@@ -404,7 +404,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 		return
 	}
 
-	pctx, err := NewUnixParserCtx("../../config/patterns/", "./tests/")
+	pctx, err := NewUnixParserCtx("../../config/patterns/", "./testdata/")
 	require.NoError(t, err, "unable to load patterns")
 
 	log.Infof("-> %s", spew.Sdump(pctx))
