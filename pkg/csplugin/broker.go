@@ -68,6 +68,34 @@ type PluginConfig struct {
 	Config map[string]any `yaml:",inline"` // to keep the plugin-specific config
 }
 
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
+	type raw PluginConfig
+	aux := raw{}
+
+	if err := unmarshal(&aux); err != nil {
+		return err
+	}
+
+	if aux.Type == "" {
+		return errors.New("missing required field 'type'")
+	}
+
+	if aux.MaxRetry == 0 {
+		aux.MaxRetry = 1
+	}
+
+	if aux.TimeOut == 0 {
+		aux.TimeOut = time.Second * 5
+	}
+
+	*pc = PluginConfig(aux)
+	return nil
+}
+
+type PluginConfigList []PluginConfig
+
+
 func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan models.ProfileAlert)
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
@@ -195,14 +223,17 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			continue
 		}
 
-		pluginConfigs, err := ParsePluginConfigFile(configFilePath)
+		fin, err := os.Open(configFilePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("while opening %s: %w", configFilePath, err)
+		}
+
+		pluginConfigs, err := NewPluginConfigList(fin)
+		if err != nil {
+			return fmt.Errorf("error in %s: %w", configFilePath, err)
 		}
 
 		for _, pluginConfig := range pluginConfigs {
-			SetRequiredFields(&pluginConfig)
-
 			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
 				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
 			}
@@ -392,15 +423,10 @@ func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginNam
 	return err
 }
 
-func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
-	parsedConfigs := make([]PluginConfig, 0)
+func NewPluginConfigList(fin io.Reader) (PluginConfigList, error) {
+	parsedConfigs := make(PluginConfigList, 0)
 
-	yamlFile, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("while opening %s: %w", path, err)
-	}
-
-	dec := yaml.NewDecoder(yamlFile)
+	dec := yaml.NewDecoder(fin)
 	dec.SetStrict(true)
 
 	idx := -1
@@ -410,13 +436,13 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 
 		idx += 1
 
-		err = dec.Decode(&pc)
+		err := dec.Decode(&pc)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 
-			return nil, fmt.Errorf("while decoding %s got error %s", path, err)
+			return nil, fmt.Errorf("document %d: %w", idx, err)
 		}
 
 		// if the yaml document is empty, skip
@@ -424,24 +450,10 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			continue
 		}
 
-		if pc.Type == "" {
-			return nil, fmt.Errorf("field 'type' missing in %s (position %d)", path, idx)
-		}
-
 		parsedConfigs = append(parsedConfigs, pc)
 	}
 
 	return parsedConfigs, nil
-}
-
-func SetRequiredFields(pluginCfg *PluginConfig) {
-	if pluginCfg.MaxRetry == 0 {
-		pluginCfg.MaxRetry++
-	}
-
-	if pluginCfg.TimeOut == time.Second*0 {
-		pluginCfg.TimeOut = time.Second * 5
-	}
 }
 
 func getUUID() (string, error) {
