@@ -95,7 +95,11 @@ func (cli *cliHub) newBranchCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			branch := require.HubBranch(cmd.Context(), cli.cfg())
+			branch, err := require.HubBranch(cmd.Context(), cli.cfg())
+			if err != nil {
+				return err
+			}
+
 			fmt.Println(branch)
 			return nil
 		},
@@ -139,7 +143,10 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 		return err
 	}
 
-	indexProvider := require.HubDownloader(ctx, cli.cfg())
+	indexProvider, err := require.HubDownloader(ctx, cli.cfg())
+	if err != nil {
+		return err
+	}
 
 	updated, err := hub.Update(ctx, indexProvider, withContent)
 	if err != nil {
@@ -201,7 +208,10 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 
 	plan := hubops.NewActionPlan(hub)
 
-	contentProvider := require.HubDownloader(ctx, cfg)
+	contentProvider, err := require.HubDownloader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	for _, itemType := range cwhub.ItemTypes {
 		for _, item := range hub.GetInstalledByType(itemType, true) {

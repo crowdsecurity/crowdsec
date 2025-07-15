@@ -83,16 +83,20 @@ func DB(c *csconfig.Config) error {
 	return nil
 }
 
-func HubDownloader(ctx context.Context, c *csconfig.Config) *cwhub.Downloader {
+func HubDownloader(ctx context.Context, c *csconfig.Config) (*cwhub.Downloader, error) {
 	// set branch in config, and log if necessary
-	branch := HubBranch(ctx, c)
+	branch, err := HubBranch(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
 	urlTemplate := HubURLTemplate(c)
 	remote := &cwhub.Downloader{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
 	}
 
-	return remote
+	return remote, nil
 }
 
 // Hub initializes the hub. If a remote configuration is provided, it can be used to download the index and items.

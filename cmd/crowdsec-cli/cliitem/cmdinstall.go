@@ -54,7 +54,10 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 
 	plan := hubops.NewActionPlan(hub)
 
-	contentProvider := require.HubDownloader(ctx, cfg)
+	contentProvider, err := require.HubDownloader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	for _, name := range args {
 		item := hub.GetItem(cli.name, name)

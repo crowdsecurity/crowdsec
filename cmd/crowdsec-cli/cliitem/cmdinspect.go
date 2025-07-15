@@ -33,10 +33,16 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 		cfg.Cscli.PrometheusUrl = url
 	}
 
-	var contentProvider cwhub.ContentProvider
+	var (
+		contentProvider cwhub.ContentProvider
+		err             error
+	)
 
 	if diff {
-		contentProvider = require.HubDownloader(ctx, cfg)
+		contentProvider, err = require.HubDownloader(ctx, cfg)
+		if err != nil {
+			return err
+		}
 	}
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
