@@ -117,7 +117,7 @@ teardown() {
     assert_json '{detected_service:"windows",hub_spec:{collections:["crowdsecurity/windows"]}}'
 
     # unknown family is not forbidden
-    rune -0 cscli setup detect --force-os-family magillagorilla --detect-config "${TESTDATA}/detect.yaml"
+    rune -0 cscli setup detect --force-os-family magillagorilla --skip-systemd --detect-config "${TESTDATA}/detect.yaml"
     assert_json '{setup:[]}'
 
     rune -0 cscli setup detect --force-os-family linux --force-os-id redhat --detect-config - <<-EOT
