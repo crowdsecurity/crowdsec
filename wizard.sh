@@ -17,8 +17,7 @@ DOCKER_MODE="false"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
 CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
-CROWDSEC_PATH="/etc/crowdsec"
-CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
+CROWDSEC_CONFIG_DIR="/etc/crowdsec"
 CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
@@ -39,7 +38,7 @@ fi
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
 PATTERNS_FOLDER="config/patterns"
-PATTERNS_PATH="${CROWDSEC_CONFIG_PATH}/patterns/"
+PATTERNS_PATH="$CROWDSEC_CONFIG_DIR"/patterns/
 
 ACTION=""
 
@@ -176,25 +175,26 @@ check_cs_version () {
 # install crowdsec and cscli
 install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
-    (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
-    mkdir -p "${CROWDSEC_CONFIG_PATH}/acquis.d" || exit
+    (cd config && find patterns -type f -exec install -Dm 644 "{}" "$CROWDSEC_CONFIG_DIR/{}" \; && cd ../) || exit
+    mkdir -p "$CROWDSEC_CONFIG_DIR"/acquis.d || exit
 
     mkdir -p /etc/crowdsec/hub/
 
     # Don't overwrite existing files
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" ]] && install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" >/dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/${LAPI_SECRETS}" ]] && install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/config.yaml" ]]     && install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/dev.yaml" ]]        && install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/user.yaml" ]]       && install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/acquis.yaml" ]]     && install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/profiles.yaml" ]]   && install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/simulation.yaml" ]] && install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
-    [[ ! -f "${CROWDSEC_CONFIG_PATH}/console.yaml" ]]    && install -v -m 644 -D ./config/console.yaml "${CROWDSEC_CONFIG_PATH}" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" ]] && install -v -m 600 -D "./config/$CLIENT_SECRETS" "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR/$LAPI_SECRETS" ]]   && install -v -m 600 -D "./config/$LAPI_SECRETS" "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/config.yaml ]]     && install -v -m 600 -D ./config/config.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/detect.yaml ]]     && install -v -m 600 -D ./config/detect.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/dev.yaml ]]        && install -v -m 644 -D ./config/dev.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/user.yaml ]]       && install -v -m 644 -D ./config/user.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/acquis.yaml ]]     && install -v -m 644 -D ./config/acquis.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/profiles.yaml ]]   && install -v -m 644 -D ./config/profiles.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/simulation.yaml ]] && install -v -m 644 -D ./config/simulation.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [[ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]]    && install -v -m 644 -D ./config/console.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
 
-    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
+    DATA="$CROWDSEC_DATA_DIR" CFG="$CROWDSEC_CONFIG_DIR" envsubst '$CFG $DATA' < ./config/user.yaml > "$CROWDSEC_CONFIG_DIR"/user.yaml || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
+        CFG="$CROWDSEC_CONFIG_DIR" BIN="$CROWDSEC_BIN_INSTALLED" envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
@@ -258,7 +258,7 @@ delete_bins() {
 }
 
 delete_plugins() {
-    rm -rf ${CROWDSEC_PLUGIN_DIR}
+    rm -rf "$CROWDSEC_PLUGIN_DIR"
 }
 
 install_plugins() {
@@ -421,7 +421,7 @@ main() {
         cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
 
         # api register
-        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" || log_fatal "unable to add machine to the local API"
         log_dbg "Crowdsec LAPI registered"
 
         ${CSCLI_BIN_INSTALLED} capi register --error || log_fatal "unable to register to the Central API"
