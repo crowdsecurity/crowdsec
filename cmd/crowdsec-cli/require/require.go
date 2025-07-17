@@ -13,8 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
-func LAPI(c *csconfig.Config) error {
-	if err := c.LoadAPIServer(true); err != nil {
+func _lapi(c *csconfig.Config, skipOnlineCreds bool) error {
+	if err := c.LoadAPIServer(true, skipOnlineCreds); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
 
@@ -23,6 +23,15 @@ func LAPI(c *csconfig.Config) error {
 	}
 
 	return nil
+}
+
+func LAPI(c *csconfig.Config) error {
+	return _lapi(c, false)
+}
+
+// LAPINoOnlineCreds is a variant of LAPI that does not attempt to load and use capi credentials.
+func LAPINoOnlineCreds(c *csconfig.Config) error {
+	return _lapi(c, true)
 }
 
 func CAPI(c *csconfig.Config) error {

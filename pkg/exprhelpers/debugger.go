@@ -65,10 +65,7 @@ func (o *OpOutput) String() string {
 		ret = fmt.Sprintf("%*cBLOCK_START [%s]", o.CodeDepth-IndentStep, ' ', o.Code)
 		return ret
 	case o.BlockEnd:
-		indent := o.CodeDepth - (IndentStep * 2)
-		if indent < 0 {
-			indent = 0
-		}
+		indent := max(o.CodeDepth-(IndentStep*2), 0)
 
 		ret = fmt.Sprintf("%*cBLOCK_END [%s]", indent, ' ', o.Code)
 
@@ -157,28 +154,27 @@ func autoQuote(v any) string {
 	}
 }
 
-
 type opHandler func(out OpOutput, prevOut *OpOutput, ip int, parts []string, vm *vm.VM, program *vm.Program) *OpOutput
 
 var opHandlers = map[string]opHandler{
-  "OpBegin":         opBegin,
-  "OpEnd":           opEnd,
-  "OpNot":           opNot,
-  "OpTrue":          opTrue,
-  "OpFalse":         opFalse,
-  "OpJumpIfTrue":    opJumpIfTrue,
-  "OpJumpIfFalse":   opJumpIfFalse,
-  "OpCall1":         opCall1,
-  "OpCall2":         opCall2,
-  "OpCall3":         opCall3,
-  "OpCallFast":      opCallFast,
-  "OpCallTyped":     opCallTyped,
-  "OpCallN":         opCallN,
-  "OpEqualString":   opEqual,
-  "OpEqual":         opEqual,
-  "OpEqualInt":      opEqual,
-  "OpIn":            opIn,
-  "OpContains":      opContains,
+	"OpBegin":       opBegin,
+	"OpEnd":         opEnd,
+	"OpNot":         opNot,
+	"OpTrue":        opTrue,
+	"OpFalse":       opFalse,
+	"OpJumpIfTrue":  opJumpIfTrue,
+	"OpJumpIfFalse": opJumpIfFalse,
+	"OpCall1":       opCall1,
+	"OpCall2":       opCall2,
+	"OpCall3":       opCall3,
+	"OpCallFast":    opCallFast,
+	"OpCallTyped":   opCallTyped,
+	"OpCallN":       opCallN,
+	"OpEqualString": opEqual,
+	"OpEqual":       opEqual,
+	"OpEqualInt":    opEqual,
+	"OpIn":          opIn,
+	"OpContains":    opContains,
 }
 
 func opBegin(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
@@ -190,10 +186,12 @@ func opBegin(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Progr
 func opEnd(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
 	out.CodeDepth -= IndentStep
 	out.BlockEnd = true
+
 	// OpEnd can carry value, if it's any/all/count etc.
 	if len(vm.Stack) > 0 {
 		out.StrConditionResult = fmt.Sprintf("%v", vm.Stack)
 	}
+
 	return &out
 }
 
@@ -209,6 +207,7 @@ func opTrue(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Progra
 	out.ConditionResult = new(bool)
 	*out.ConditionResult = true
 	out.StrConditionResult = "true"
+
 	return &out
 }
 
@@ -218,6 +217,7 @@ func opFalse(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Progr
 	out.ConditionResult = new(bool)
 	*out.ConditionResult = false
 	out.StrConditionResult = "false"
+
 	return &out
 }
 
@@ -331,6 +331,7 @@ func opEqual(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Prog
 	out.Comparison = true
 	out.Left = autoQuote(stack[0])
 	out.Right = autoQuote(stack[1])
+
 	return &out
 }
 
@@ -344,6 +345,7 @@ func opIn(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program
 	//(because of the random order of the map)
 	out.Args = append(out.Args, autoQuote(stack[0]))
 	out.Args = append(out.Args, autoQuote(stack[1]))
+
 	return &out
 }
 
@@ -357,9 +359,9 @@ func opContains(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.P
 	//(because of the random order of the map)
 	out.Args = append(out.Args, autoQuote(stack[0]))
 	out.Args = append(out.Args, autoQuote(stack[1]))
+
 	return &out
 }
-
 
 func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
 	IdxOut := len(outputs)
@@ -402,13 +404,15 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		if len(outputs) > 0 {
 			prevOut = &outputs[prevIdxOut]
 		}
+
 		out := handler(
 			OpOutput{
 				CodeDepth: currentDepth,
-				Code: erp.extractCode(ip, program),
+				Code:      erp.extractCode(ip, program),
 			},
 			prevOut,
 			ip, parts, vm, program)
+
 		if out != nil {
 			outputs = append(outputs, *out)
 		}

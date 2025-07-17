@@ -18,6 +18,7 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
+	"maps"
 )
 
 type VLClient struct {
@@ -401,9 +402,7 @@ func (lc *VLClient) Get(ctx context.Context, url string) (*http.Response, error)
 
 func NewVLClient(config Config) *VLClient {
 	headers := make(map[string]string)
-	for k, v := range config.Headers {
-		headers[k] = v
-	}
+	maps.Copy(headers, config.Headers)
 
 	if config.Username != "" || config.Password != "" {
 		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(config.Username+":"+config.Password))

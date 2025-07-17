@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type APICfg struct {
@@ -93,6 +94,7 @@ func (a *CTICfg) Load() error {
 	return nil
 }
 
+// Load loads the online credentials from the specified file, returning fs.ErrNotExist if the file does not exist.
 func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
 
@@ -121,6 +123,10 @@ func (o *OnlineApiClientCfg) Load() error {
 	case o.Credentials.URL == "":
 		log.Warningf("can't load CAPI credentials from '%s' (missing url field)", o.CredentialsFilePath)
 		o.Credentials = nil
+	}
+
+	if o.Credentials != nil && o.Credentials.PapiURL == "" {
+		o.Credentials.PapiURL = types.PAPIBaseURL
 	}
 
 	return nil
@@ -297,7 +303,7 @@ func (c *LocalApiServerCfg) ClientURL() string {
 	return ""
 }
 
-func (c *Config) LoadAPIServer(inCli bool) error {
+func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
@@ -343,7 +349,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		c.API.Server.PapiLogLevel = &logLevel
 	}
 
-	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
 			return fmt.Errorf("loading online client credentials: %w", err)
 		}

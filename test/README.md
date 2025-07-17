@@ -1,87 +1,86 @@
 
 # What is this?
 
-This directory contains scripts for functional testing. The tests are run with
-the [bats-core](https://github.com/bats-core/bats-core) framework, which is an
-active fork of the older BATS (Bash Automated Testing System).
+This directory contains scripts for functional testing. They complement
+the unit tests and provide an environment that can be used during development
+as well.
+
+The tests are run with the [bats-core](https://github.com/bats-core/bats-core)
+framework, which is provided as git submodules in the crowdsec repository.
 
 With the addition of [the ansible playbooks](ansible/README.md) it is possible
 to use VMs to test the binary packages, service management and other CPU
 architectures.
 
-### cscli
-
-| Feature               | Covered            | Notes                      |
-| :-------------------- | :----------------- | :------------------------- |
-| `cscli alerts`        | -                  |                            |
-| `cscli bouncers`      | `10_bouncers`      |                            |
-| `cscli capi`          | `01_base`          | `status` only              |
-| `cscli collections`   | `20_collections`   |                            |
-| `cscli config`        | `01_base`          | minimal testing (no crash) |
-| `cscli dashboard`     | -                  | docker inside docker 😞    |
-| `cscli decisions`     | `9[78]_ipv[46]*`   |                            |
-| `cscli hub`           | `dyn_bats/99_hub`  |                            |
-| `cscli lapi`          | `01_base`          |                            |
-| `cscli machines`      | `30_machines`      |                            |
-| `cscli metrics`       | -                  |                            |
-| `cscli parsers`       | -                  |                            |
-| `cscli postoverflows` | -                  |                            |
-| `cscli scenarios`     | -                  |                            |
-| `cscli simulation`    | `50_simulation`    |                            |
-| `cscli version`       | `01_base`          |                            |
-
-### crowdsec
-
-| Feature                        | Covered        | Notes                                      |
-| :----------------------------- | :------------- | :----------------------------------------- |
-| `systemctl` start/stop/restart | -              |                                            |
-| agent behavior                 | `40_live-ban`  | minimal testing  (simple ssh-bf detection) |
-| forensic mode                  | `40_cold-logs` | minimal testing (simple ssh-bf detection)  |
-| starting without LAPI          | `02_nolapi`    |                                            |
-| starting without agent         | `03_noagent`   |                                            |
-| starting without CAPI          | `04_nocapi`    |                                            |
-| prometheus testing             | -              |                                            |
-
-### API
-
-| Feature            | Covered          | Notes        |
-| :----------------- | :--------------- | :----------- |
-| alerts GET/POST    | `9[78]_ipv[46]*` |              |
-| decisions GET/POST | `9[78]_ipv[46]*` |              |
-| stream mode        | `99_lapi-stream-mode |          |
-
-
 # How to use it
 
 ## pre-requisites
 
- - `git submodule init; git submodule update`
- - `base64`
- - `bash>=4.4`
- - `curl`
- - `daemonize`
- - `jq`
- - `python3`
+(for building crowdsec)
 
-## Running all tests
+- `go`
+- `pkg-config`
+- `re2`
+
+On Ubuntu/Debian, you can install the above with:
+
+```console
+$ sudo apt install pkgconf golang-go libre2-dev
+...
+```
+
+(for the test suite)
+
+- `git submodule init; git submodule update`
+- `bash>=4.4`
+- `curl`
+- `daemonize`
+- `jq`
+- `python3`
+
+These can be installed with
+
+```console
+$ sudo apt install bash curl daemonize jq python3
+...
+```
+
+Additional dependencies are required if you need to test with mysql or postgres
+(see below).
+
+## Running the tests
 
 Run `make clean bats-all` to perform a test build + run.
-To repeat test runs without rebuilding crowdsec, use `make bats-test`.
 
+If a test is failing, you can run only the script that contains it with
 
-## Debugging tests
+```console
+$ ./test/run-tests test/bats/<script>.bats
+...
+```
 
-See `./test/run-tests --help` to run/debug specific tests.
+After changing the code, rebuild the binaries with `make bats-build` and re-run
+the test to verify.
 
-Example: `./test/run-tests test/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp).
-You need to provide a path for a test file or directory (even if it's the full 'test/bats') to use the `-f` option.
+Most tests are isolated, you don't need to run all the script:
+see `./test/run-tests --help` for all the options.
 
+Example: `./test/run-tests test/bats/02_nolapi.bats -f "cscli config backup"`
+(the string is a regexp).
+You need to provide a path for a test file or directory (even if it's the full 'test/bats')
+to use the `-f` option.
 
-# How does it work?
+Keep in mind that some of the files in test/bats are meant as a "test suite" so
+the individual tests will fail when run in isolation, or out of order.
+
+Do not attempt to run the functional tests in parallel since they reuse
+the same file locations.
+
+# Writing tests
 
 In BATS, you write tests in the form of Bash functions that have unique
 descriptions (the name of the test). You can do most things that you can
-normally do in a shell function. If there is any error condition, the test
+normally do in a shell function. When an error is encountered, the test
 fails. A set of functions is provided to implement assertions, and a mechanism
 of `setup`/`teardown` is provided at the level of individual tests (functions)
 or group of tests (files).
@@ -104,24 +103,15 @@ If you do that, please remove it once the test development is finished, because
 this practice breaks the TAP protocol (unless each line has a '#' as first
 character, but really, it's better to avoid unnecessary output when tests succeed).
 
-You can find here the documentation for the main framework and the plugins we use in this test suite:
+You can find here the documentation for the main framework and the plugins
+we use in this test suite:
 
- - [bats-core tutorial](https://bats-core.readthedocs.io/en/stable/tutorial.html)
- - [Writing tests](https://bats-core.readthedocs.io/en/stable/writing-tests.html)
- - [bats-assert](https://github.com/bats-core/bats-assert)
- - [bats-support](https://github.com/bats-core/bats-support)
- - [bats-file](https://github.com/bats-core/bats-file)
- - [bats-mock](https://github.com/grayhemp/bats-mock)
-
-> As it often happens with open source, the first results from search engines refer to the old, unmaintained forks.
-> Be sure to use the links above to find the good versions.
-
-Since bats-core is [TAP (Test Anything Protocol)](https://testanything.org/)
-compliant, its output is in a standardized format. It can be integrated with a
-separate [tap reporter](https://www.npmjs.com/package/tape#pretty-reporters) or
-included in a larger test suite. The TAP specification is pretty minimalist and
-some glue may be needed.
-
+- [bats-core tutorial](https://bats-core.readthedocs.io/en/stable/tutorial.html)
+- [Writing tests](https://bats-core.readthedocs.io/en/stable/writing-tests.html)
+- [bats-assert](https://github.com/bats-core/bats-assert)
+- [bats-support](https://github.com/bats-core/bats-support)
+- [bats-file](https://github.com/bats-core/bats-file)
+- [bats-mock](https://github.com/grayhemp/bats-mock)
 
 # setup and teardown
 
@@ -200,7 +190,6 @@ But.. there is a but. Quoting from [the FAQ](https://bats-core.readthedocs.io/en
 
 This doesn't mean you can't do that, just that you're on your own if the is an error.
 
-
 # Testing crowdsec
 
 ## Fixtures
@@ -224,7 +213,7 @@ To set up the installation described above we provide a couple of scripts,
 processes; they are meant to be used in setup/teardown in several ways,
 according to the specific needs of the group of tests in the file.
 
- - `instance-data make`
+- `instance-data make`
 
    Creates a tar file in `./local-init/init-config-data.tar`.
    The file contains all the configuration, hub and database files needed
@@ -233,33 +222,32 @@ according to the specific needs of the group of tests in the file.
    install crowdsecurity/linux` are executed here so they don't need to be
    repeated for each test or group of tests.
 
- - `instance-data load`
+- `instance-data load`
 
    Extracts the files created by `instance-data make` for use by the local
    crowdsec instance. Crowdsec must not be running while this operation is
    performed.
 
- - instance-data lock/unlock
+- instance-data lock/unlock
 
 When playing around with a local crowdsec installation, you can run "instance-data lock"
 to prevent the bats suite from running, so it won't overwrite your configuration or data.
 
- - `instance-crowdsec [ start | stop ]`
+- `instance-crowdsec [ start | stop ]`
 
    Runs (or stops) crowdsec as a background process. PID and lockfiles are
    written in `./local/var/run/`.
 
-
 Here are some ways to use these two scripts.
 
- - case 1: load a fresh crowsec instance + data for each test (01_base, 10_bouncers, 20_collections...)
+- case 1: load a fresh crowdsec instance + data for each test (01_base, 10_bouncers, 20_collections...)
 
     This offers the best isolation, but the tests run slower. More importantly,
     since there is no concept of "grouping" tests in bats-core with the exception
     of files, if you need to perform some setup that is common to two or more
     tests, you will have to repeat the code.
 
- - case 2: load a fresh set of data for each test, but run crowdsec only for
+- case 2: load a fresh set of data for each test, but run crowdsec only for
    the tests that need it, possibly after altering the configuration
    (02_nolapi, 03_noagent, 04_nocapi, 40_live-ban)
 
@@ -268,13 +256,12 @@ Here are some ways to use these two scripts.
     configuration inside the test function before running the lapi/agent. See
     how we use `yq` to change the YAML files to that effect.
 
- - case 3: start crowdsec with the initial set of configuration+data once, and keep it
+- case 3: start crowdsec with the initial set of configuration+data once, and keep it
    running for all the tests (50_simulation, 98_ipv4, 98_ipv6)
 
      This offers no isolation across tests, which over time could break more
      often as result, but you can rely on the test order to test more complex
      scenarios with a reasonable performance and the least amount of code.
-
 
 ## status, stdout and stderr
 
@@ -326,10 +313,10 @@ to record and assert which parameters are passed to it.
 
 ## gotchas
 
- - pay attention to tests that are not run - for example "bats warning: Executed 143
+- pay attention to tests that are not run - for example "bats warning: Executed 143
    instead of expected 144 tests". They are especially tricky to debug.
 
- - using the `load` command in `teardown()` causes tests to be silently skipped or break in "funny"
+- using the `load` command in `teardown()` causes tests to be silently skipped or break in "funny"
    ways. The other functions seem safe.
 
 # Testing with MySQL and Postgres
@@ -346,7 +333,7 @@ Run Postgres somewhere, version 10 or above - easy to do in a docker container.
 You also need to install a postgresql-client package or equivalent, to provide
 recent pg_dump and pg_restore executables (not older than the PG version in the docker container).
 
-```
+```console
 $ sudo docker run --detach --name=postgres -p 5432:5432 --env="POSTGRES_PASSWORD=postgres" postgres:latest
 ```
 
@@ -386,24 +373,23 @@ A mysql-client package is required as well.
 
 ## troubleshooting
 
- - CAPI is disabled, why?
+- CAPI is disabled, why?
 Most tests don't need it. Helper scripts are provided in `test/enable-capi`
 and `test/disable-capi` for interactive use, and two library functions
 `config_enable_capi` and `config_disable_capi` to call inside the tests.
 You still need to call `cscli capi register` after enabling it.
 
- - My tests are hanging forever, why?
+- My tests are hanging forever, why?
 See if you have a jq/yq or similar process waiting for standard input. Hint:
 you can pass a file from the result of the previous `run` command with
 `<(output)`. This substitutes the expression with a file name, but if you
 really want it in standard input, you have to use `< <(output)`. Bash is
 awesome but the syntax is often weird.
 
- - I can't do X with jq.
+- I can't do X with jq.
 If you prefer you can use yq. It can parse and generate json, and it has a
 different syntax.
 
- - I get "while parsing /tmp/....: yaml: line 5: mapping values are not allowed in this context"
+- I get "while parsing /tmp/....: yaml: line 5: mapping values are not allowed in this context"
 Check the heredocs (the <<EOT blocks). Each line must start with a hard TAB
 followed by spaces. You are probably missing some tabs.
-

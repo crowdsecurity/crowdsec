@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -112,7 +111,7 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	RETRY:
 		for try := range 3 {
 			select {
-			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
+			case c.PluginChannel <- models.ProfileAlert{ProfileID: profileID, Alert: alert}:
 				log.Debugf("alert sent to Plugin channel")
 
 				break RETRY

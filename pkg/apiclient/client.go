@@ -69,6 +69,29 @@ func (c *ApiClient) IsEnrolled() bool {
 	return ok
 }
 
+func (c *ApiClient) GetSubscriptionType() string {
+	jwtTransport := c.client.Transport.(*JWTTransport)
+	tokenStr := jwtTransport.Token
+
+	token, _ := jwt.Parse(tokenStr, nil)
+	if token == nil {
+		return ""
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	subscriptionType, ok := claims["subscription_type"].(string)
+	if ok {
+		return subscriptionType
+	}
+
+	return ""
+}
+
+func (c *ApiClient) GetTokenRefreshChan() chan struct{} {
+	jwtTransport := c.client.Transport.(*JWTTransport)
+	return jwtTransport.TokenRefreshChan
+}
+
 type service struct {
 	client *ApiClient
 }
@@ -149,7 +172,8 @@ func NewClient(config *Config) (*ApiClient, error) {
 			WithStatusCodeConfig(http.StatusServiceUnavailable, 5, true, false),
 			WithStatusCodeConfig(http.StatusGatewayTimeout, 5, true, false),
 		),
-		TokenSave: config.TokenSave,
+		TokenSave:        config.TokenSave,
+		TokenRefreshChan: make(chan struct{}),
 	}
 
 	transport, baseURL := createTransport(config.URL)
