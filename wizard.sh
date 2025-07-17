@@ -438,12 +438,12 @@ usage() {
       echo "Usage:"
       echo "    ./wizard.sh -h                               Display this help message."
       echo "    ./wizard.sh -i|--install                     Assisted installation of crowdsec/cscli and collections"
+      echo "    ./wizard.sh -c|--configure                   Reconfigure collections and acquisition"
       echo "    ./wizard.sh --bininstall                     Install binaries and empty config, no wizard."
       echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
-      echo "    ./wizard.sh -n|--noop                        Do nothing"
 }
 
 if [[ $# -eq 0 ]]; then
@@ -482,14 +482,6 @@ do
         ;;
     -c|--configure)
         ACTION="configure"
-        shift # past argument
-        ;;
-    -d|--detect)
-        ACTION="detect"
-        shift # past argument
-        ;;
-    -n|--noop)
-        ACTION="noop"
         shift # past argument
         ;;
     -f|--force)
