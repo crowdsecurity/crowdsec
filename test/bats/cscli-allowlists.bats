@@ -167,6 +167,18 @@ teardown() {
     assert_stderr --partial 'Decision successfully added'
 }
 
+@test "cscli allowlist: check lowercase range decisions import" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -0 cscli decisions import -i - <<<'192.168.0.0/24' --format values --scope range 
+    assert_output - <<-EOT
+	Parsing values
+	Value 192.168.0.0/24 is allowlisted by [192.168.0.0/16 from foo]
+	Imported 0 decisions
+	EOT
+    refute_stderr
+}
+
 @test "cscli allowlists check" {
     rune -0 cscli allowlist create foo -d 'a foo'
     rune -0 cscli allowlist add foo 192.168.0.0/16
