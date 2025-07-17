@@ -1,8 +1,4 @@
-#!/usr/bin/env bash
-
-set -o pipefail
-#set -x
-
+#!/usr/bin/env sh
 
 RED='\033[0;31m'
 BLUE='\033[0;34m'
@@ -11,7 +7,6 @@ YELLOW='\033[1;33m'
 ORANGE='\033[0;33m'
 NC='\033[0m'
 
-SILENT="false"
 DOCKER_MODE="false"
 
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
@@ -29,7 +24,7 @@ LAPI_SECRETS="online_api_credentials.yaml"
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
 
-if [[ -f "/usr/bin/cscli" ]] ; then
+if [ -f "/usr/bin/cscli" ]; then
     CSCLI_BIN_INSTALLED="/usr/bin/cscli"
 else
     CSCLI_BIN_INSTALLED="${BIN_INSTALL_PATH}/cscli"
@@ -86,34 +81,22 @@ log_err() {
 }
 
 log_dbg() {
-    if [[ ${DEBUG_MODE} == "true" ]]; then
+    if [ "$DEBUG_MODE" = "true" ]; then
         msg=$1
         date=$(date "+%Y-%m-%d %H:%M:%S")
         echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" 1>&2
     fi
 }
 
-in_array() {
-    str=$1
-    shift
-    array=("$@")
-    for element in "${array[@]}"; do
-        if [[ ${str} == crowdsecurity/${element} ]]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
 detect_cs_install () {
-    if [[ -f "$CROWDSEC_BIN_INSTALLED" ]]; then
+    if [ -f "$CROWDSEC_BIN_INSTALLED" ]; then
         log_warn "Crowdsec is already installed !"
         echo ""
         echo "We recommend to upgrade : sudo ./wizard.sh --upgrade "
         echo "If you want to install it anyway, please use '--force'."
         echo ""
         echo "Run : sudo ./wizard.sh -i --force"
-        if [[ ${FORCE_MODE} == "false" ]]; then
+        if [ "$FORCE_MODE" = "false" ]; then
             exit 1
         fi
     fi
@@ -129,16 +112,16 @@ check_cs_version () {
     NEW_MINOR_VERSION=$(echo "$NEW_CS_VERSION" | cut -d'.' -f2)
     NEW_PATCH_VERSION=$(echo "$NEW_CS_VERSION" | cut -d'.' -f3)
 
-    if [[ $NEW_MAJOR_VERSION -gt $CURRENT_MAJOR_VERSION ]]; then
-        if [[ ${FORCE_MODE} == "false" ]]; then
+    if [ "$NEW_MAJOR_VERSION" -gt "$CURRENT_MAJOR_VERSION" ]; then
+        if [ "$FORCE_MODE" = "false" ]; then
             log_warn "new version ($NEW_CS_VERSION) is a major, you should follow documentation to upgrade !"
             echo ""
             exit 1
         fi
-    elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
+    elif [ "$NEW_MINOR_VERSION" -gt "$CURRENT_MINOR_VERSION" ]; then
         log_warn "new version ($NEW_CS_VERSION) is a minor upgrade !"
-        if [[ $ACTION != "upgrade" ]] ; then
-            if [[ ${FORCE_MODE} == "false" ]]; then
+        if [ "$ACTION" != "upgrade" ]; then
+            if [ "$FORCE_MODE" = "false" ]; then
                 echo ""
                 echo "We recommend to upgrade with : sudo ./wizard.sh --upgrade "
                 echo "If you want to $ACTION anyway, please use '--force'."
@@ -147,10 +130,10 @@ check_cs_version () {
                 exit 1
             fi
         fi
-    elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]] ; then
+    elif [ "$NEW_PATCH_VERSION" -gt "$CURRENT_PATCH_VERSION" ] ; then
         log_warn "new version ($NEW_CS_VERSION) is a patch !"
-        if [[ $ACTION != "binupgrade" ]] ; then
-            if [[ ${FORCE_MODE} == "false" ]]; then
+        if [ "$ACTION" != "binupgrade" ] ; then
+            if [ "$FORCE_MODE" = "false" ]; then
                 echo ""
                 echo "We recommend to upgrade binaries only : sudo ./wizard.sh --binupgrade "
                 echo "If you want to $ACTION anyway, please use '--force'."
@@ -159,9 +142,9 @@ check_cs_version () {
                 exit 1
             fi
         fi
-    elif [[ $NEW_MINOR_VERSION -eq $CURRENT_MINOR_VERSION ]]; then
+    elif [ "$NEW_MINOR_VERSION" -eq "$CURRENT_MINOR_VERSION" ]; then
         log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
-        if [[ ${FORCE_MODE} == "false" ]]; then
+        if [ "$FORCE_MODE" = "false" ]; then
             echo ""
             echo "We recommend to $ACTION only if it's an higher version. "
             echo "If it's an RC version (vX.X.X-rc) you can upgrade it using '--force'."
@@ -181,24 +164,24 @@ install_crowdsec() {
     mkdir -p /etc/crowdsec/hub/
 
     # Don't overwrite existing files
-    [[ ! -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" ]] && install -v -m 600 -D "./config/$CLIENT_SECRETS" "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR/$LAPI_SECRETS" ]]   && install -v -m 600 -D "./config/$LAPI_SECRETS" "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/config.yaml ]]     && install -v -m 600 -D ./config/config.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/detect.yaml ]]     && install -v -m 600 -D ./config/detect.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/dev.yaml ]]        && install -v -m 644 -D ./config/dev.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/user.yaml ]]       && install -v -m 644 -D ./config/user.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/acquis.yaml ]]     && install -v -m 644 -D ./config/acquis.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/profiles.yaml ]]   && install -v -m 644 -D ./config/profiles.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/simulation.yaml ]] && install -v -m 644 -D ./config/simulation.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
-    [[ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]]    && install -v -m 644 -D ./config/console.yaml "$CROWDSEC_CONFIG_DIR" > /dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" ] && install -v -m 600 -D "./config/$CLIENT_SECRETS" "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR/$LAPI_SECRETS" ]   && install -v -m 600 -D "./config/$LAPI_SECRETS"   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/config.yaml ]     && install -v -m 600 -D ./config/config.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/detect.yaml ]     && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/dev.yaml ]        && install -v -m 644 -D ./config/dev.yaml          "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/user.yaml ]       && install -v -m 644 -D ./config/user.yaml         "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/acquis.yaml ]     && install -v -m 644 -D ./config/acquis.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/profiles.yaml ]   && install -v -m 644 -D ./config/profiles.yaml     "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/simulation.yaml ] && install -v -m 644 -D ./config/simulation.yaml   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]    && install -v -m 644 -D ./config/console.yaml      "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
 
     DATA="$CROWDSEC_DATA_DIR" CFG="$CROWDSEC_CONFIG_DIR" envsubst '$CFG $DATA' < ./config/user.yaml > "$CROWDSEC_CONFIG_DIR"/user.yaml || log_fatal "unable to generate user configuration file"
-    if [[ ${DOCKER_MODE} == "false" ]]; then
+    if [ "$DOCKER_MODE" = "false" ]; then
         CFG="$CROWDSEC_CONFIG_DIR" BIN="$CROWDSEC_BIN_INSTALLED" envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
-    if [[ ${DOCKER_MODE} == "false" ]]; then
+    if [ "$DOCKER_MODE" = "false" ]; then
 	    systemctl daemon-reload
     fi
 }
@@ -213,10 +196,10 @@ update_bins() {
 
 update_full() {
 
-    if [[ ! -f "$CROWDSEC_BIN" ]]; then
+    if [ ! -f "$CROWDSEC_BIN" ]; then
         log_err "Crowdsec binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
     fi
-    if [[ ! -f "$CSCLI_BIN" ]]; then
+    if [ ! -f "$CSCLI_BIN" ]; then
         log_err "Cscli binary '$CSCLI_BIN' not found. Please build it with 'make build'" && exit
     fi
 
@@ -234,8 +217,7 @@ install_bins() {
     log_dbg "Installing crowdsec binaries"
     install -v -m 755 -D "$CROWDSEC_BIN" "$CROWDSEC_BIN_INSTALLED" 1> /dev/null || exit
     install -v -m 755 -D "$CSCLI_BIN" "$CSCLI_BIN_INSTALLED" 1> /dev/null || exit
-    which systemctl && systemctl is-active --quiet crowdsec
-    if [ $? -eq 0 ]; then
+    if command -v systemctl >/dev/null && systemctl is-active --quiet crowdsec; then
         systemctl stop crowdsec
     fi
     install_plugins
@@ -273,7 +255,7 @@ install_plugins() {
     cp "$FILE_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
 
     for yaml_conf in ${SLACK_PLUGIN_CONFIG} ${SPLUNK_PLUGIN_CONFIG} ${HTTP_PLUGIN_CONFIG} ${EMAIL_PLUGIN_CONFIG} ${SENTINEL_PLUGIN_CONFIG} ${FILE_PLUGIN_CONFIG}; do
-        if [[ ! -e /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]]; then
+        if [ ! -e /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]; then
             cp "$yaml_conf" /etc/crowdsec/notifications/
         fi
     done
@@ -282,8 +264,8 @@ install_plugins() {
 check_running_bouncers() {
     # when uninstalling, check if user still has bouncers
     BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=raw | tail -n +2 | wc -l)
-    if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
-        if [[ ${FORCE_MODE} == "false" ]]; then
+    if [ "$BOUNCERS_COUNT" -gt 0 ] ; then
+        if [ "$FORCE_MODE" = "false" ]; then
             echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."
             echo "WARNING : Uninstalling crowdsec with a running bouncer will let it in an unpredictable state."
             echo "WARNING : If you want to uninstall crowdsec, you should first uninstall the bouncers."
@@ -306,7 +288,7 @@ uninstall_crowdsec() {
 }
 
 
-function show_link {
+show_link() {
     echo ""
     echo "Useful links to start with Crowdsec:"
     echo ""
@@ -325,17 +307,15 @@ function show_link {
 }
 
 main() {
-
-    if [ "$1" == "install" ] || [ "$1" == "configure" ]; then
-        which envsubst > /dev/null
-        if [ $? -ne 0 ]; then
+    if [ "$1" = "install" ] || [ "$1" = "configure" ]; then
+        if ! command -v envsubst >/dev/null; then
             log_fatal "envsubst binary is needed to use do a full install with the wizard, exiting ..."
         fi
     fi
 
-    if [[ "$1" == "binupgrade" ]];
+    if [ "$1" = "binupgrade" ];
     then
-        if ! [ $(id -u) = 0 ]; then
+        if ! [ "$(id -u)" = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
@@ -344,9 +324,9 @@ main() {
         return
     fi
 
-    if [[ "$1" == "upgrade" ]];
+    if [ "$1" = "upgrade" ];
     then
-        if ! [ $(id -u) = 0 ]; then
+        if ! [ "$(id -u)" = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
@@ -355,9 +335,9 @@ main() {
         return
     fi
 
-    if [[ "$1" == "configure" ]];
+    if [ "$1" = "configure" ];
     then
-        if ! [ $(id -u) = 0 ]; then
+        if ! [ "$(id -u)" = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
@@ -368,14 +348,9 @@ main() {
         return
     fi
 
-    if [[ "$1" == "noop" ]];
+    if [ "$1" = "uninstall" ];
     then
-        return
-    fi
-
-    if [[ "$1" == "uninstall" ]];
-    then
-        if ! [ $(id -u) = 0 ]; then
+        if ! [ "$(id -u)" = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
@@ -384,9 +359,9 @@ main() {
         return
     fi
 
-    if [[ "$1" == "bininstall" ]];
+    if [ "$1" = "bininstall" ];
     then
-        if ! [ $(id -u) = 0 ]; then
+        if ! [ "$(id -u)" = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
@@ -399,9 +374,9 @@ main() {
         return
     fi
 
-    if [[ "$1" == "install" ]];
+    if [ "$1" = "install" ];
     then
-        if ! [ $(id -u) = 0 ]; then
+        if ! [ "$(id -u)" = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
@@ -446,12 +421,12 @@ usage() {
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
 }
 
-if [[ $# -eq 0 ]]; then
+if [ $# -eq 0 ]; then
     usage
     exit 0
 fi
 
-while [[ $# -gt 0 ]]
+while [ $# -gt 0 ]
 do
     key="${1}"
     case ${key} in
@@ -504,4 +479,4 @@ do
     esac
 done
 
-main ${ACTION}
+main "$ACTION"
