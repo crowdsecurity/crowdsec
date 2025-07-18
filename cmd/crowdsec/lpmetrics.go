@@ -216,6 +216,22 @@ func (m *MetricsProvider) getAcquisitionMetrics() []*models.MetricsDetailItem {
 	}, nil, "read", "line")
 }
 
+func (m *MetricsProvider) getParserGlobalOkMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.GlobalParserHitsOkMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+	}, nil, "global_parsed", "line")
+}
+
+func (m *MetricsProvider) getParserGlobalKoMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.GlobalParserHitsKoMetricName}, labelsMapping{
+		"type":        "datasource_type",
+		"source":      "source",
+		"acquis_type": "acquis_type",
+	}, nil, "global_unparsed", "line")
+}
+
 func (m *MetricsProvider) getParserSuccessMetrics() []*models.MetricsDetailItem {
 	return m.gatherPromMetrics([]string{metrics.NodesHitsOkMetricName}, labelsMapping{
 		"type":        "datasource_type",
@@ -306,6 +322,16 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	parserWhitelistMetrics := m.getParserWhitelistMetrics()
 	if len(parserWhitelistMetrics) > 0 {
 		met.Metrics[0].Items = append(met.Metrics[0].Items, parserWhitelistMetrics...)
+	}
+
+	globalParsedMetrics := m.getParserGlobalOkMetrics()
+	if len(globalParsedMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, globalParsedMetrics...)
+	}
+
+	globalUnparsedMetrics := m.getParserGlobalKoMetrics()
+	if len(globalUnparsedMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, globalUnparsedMetrics...)
 	}
 
 	return &models.AllMetrics{

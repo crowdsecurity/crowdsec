@@ -22,7 +22,7 @@ var GlobalParserHitsOk = prometheus.NewCounterVec(
 		Name: GlobalParserHitsOkMetricName,
 		Help: "Total events were successfully parsed.",
 	},
-	[]string{"source", "type"},
+	[]string{"source", "type", "acquis_type"},
 )
 
 const GlobalParserHitsKoMetricName = "cs_parser_hits_ko_total"
@@ -32,7 +32,7 @@ var GlobalParserHitsKo = prometheus.NewCounterVec(
 		Name: GlobalParserHitsKoMetricName,
 		Help: "Total events were unsuccessfully parsed.",
 	},
-	[]string{"source", "type"},
+	[]string{"source", "type", "acquis_type"},
 )
 
 const GlobalBucketPourKoMetricName = "cs_bucket_pour_ko_total"

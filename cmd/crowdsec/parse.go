@@ -43,11 +43,11 @@ func runParse(input chan types.Event, output chan types.Event, parserCTX parser.
 			elapsed := time.Since(startParsing)
 			metrics.GlobalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
 			if !parsed.Process {
-				metrics.GlobalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+				metrics.GlobalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module, "acquis_type": event.Line.Labels["type"]}).Inc()
 				log.Debugf("Discarding line %+v", parsed)
 				continue
 			}
-			metrics.GlobalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+			metrics.GlobalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module, "acquis_type": event.Line.Labels["type"]}).Inc()
 			if parsed.Whitelisted {
 				log.Debugf("event whitelisted, discard")
 				continue
