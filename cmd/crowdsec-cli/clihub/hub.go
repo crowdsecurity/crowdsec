@@ -100,7 +100,7 @@ func (cli *cliHub) newBranchCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Println(branch)
+			fmt.Fprintln(os.Stdout, branch)
 			return nil
 		},
 	}
@@ -154,7 +154,7 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	}
 
 	if !updated && (log.StandardLogger().Level >= log.InfoLevel) {
-		fmt.Println("Nothing to do, the hub index is up to date.")
+		fmt.Fprintln(os.Stdout, "Nothing to do, the hub index is up to date.")
 	}
 
 	if err := hub.Load(); err != nil {
@@ -233,7 +233,7 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
-		fmt.Println("\n" + msg)
+		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
 	return nil
@@ -285,17 +285,17 @@ func (cli *cliHub) types() error {
 			return err
 		}
 
-		fmt.Print(string(s))
+		fmt.Fprint(os.Stdout, string(s))
 	case "json":
 		jsonStr, err := json.Marshal(cwhub.ItemTypes)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(string(jsonStr))
+		fmt.Fprintln(os.Stdout, string(jsonStr))
 	case "raw":
 		for _, itemType := range cwhub.ItemTypes {
-			fmt.Println(itemType)
+			fmt.Fprintln(os.Stdout, itemType)
 		}
 	}
 

@@ -232,7 +232,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 	}
 
 	if wantMetrics {
-		fmt.Fprintf(os.Stdout, "\nCurrent metrics: \n")
+		fmt.Fprint(os.Stdout, "\nCurrent metrics: \n")
 
 		if err := showMetrics(prometheusURL, hub, item, wantColor); err != nil {
 			return err

@@ -51,7 +51,7 @@ func lookupLatest(ctx context.Context) (string, error) {
 
 	resp, err := backoff.Retry(ctx, operation,
 		backoff.WithBackOff(bo),
-		backoff.WithMaxElapsedTime(5 * time.Second),
+		backoff.WithMaxElapsedTime(5*time.Second),
 	)
 	if err != nil {
 		return "", err
