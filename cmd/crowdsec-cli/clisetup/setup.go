@@ -295,10 +295,7 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 		return err
 	}
 
-	contentProvider, err := require.HubDownloader(ctx, cfg)
-	if err != nil {
-		return err
-	}
+	contentProvider := require.HubDownloader(ctx, cfg)
 
 	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
 	verbosePlan := (cfg.Cscli.Output == "raw")
