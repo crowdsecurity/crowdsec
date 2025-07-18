@@ -508,14 +508,12 @@ update-notifier-motd.timer              enabled enabled
 @test "cscli setup detect unattended (no datasource or hub items)" {
     # No-op edge case, to make sure we don't crash.
 
-    cat <<-EOT >"${DETECT_YAML}"
+    rune -0 cscli setup unattended --detect-config - <<-EOT
 	version: 1.0
 	detect:
 	  always:
 	EOT
 
-    # XXX: cscli setup should support --detect-config -
-    rune -0 cscli setup unattended
 
     assert_output <<-EOT
 	
