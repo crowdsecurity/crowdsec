@@ -175,6 +175,37 @@ teardown() {
     assert_output "debug"
 }
 
+@test "crowdsec - config paths should be absolute" {
+    config_set '.common.log_dir="./log"'
+    config_set '.config_paths.config_dir="./local/etc/crowdsec"'
+    config_set '.config_paths.data_dir="./data"'
+    config_set '.config_paths.simulation_path="./simulation"'
+    config_set '.config_paths.index_path="./index"'
+    config_set '.config_paths.hub_dir="./hub"'
+    config_set '.config_paths.plugin_dir="./plugins"'
+    config_set '.config_paths.notification_dir="./notifications"'
+    config_set '.config_paths.pattern_dir="./patterns"'
+    config_set '.crowdsec_service.acquisition_path="./acquis.yaml"'
+    config_set '.crowdsec_service.acquisition_dir="./acquis.d"'
+    config_set '.crowdsec_service.console_context_path="./console"'
+
+    # run a command that loads agent config. It will fail because some paths are missing, but we only want the warnings
+    rune -1 cscli setup unattended --skip-systemd --dry-run
+
+    assert_stderr --regexp '.*Using a relative path for .*\./log.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./local/etc/crowdsec.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./data.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./simulation.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./index.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./hub.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./plugins.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./notifications.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./patterns.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./acquis.yaml.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./acquis.d.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./console.* is deprecated and will be disallowed in a future release'
+}
+
 @test "cscli config backup / restore" {
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
 
