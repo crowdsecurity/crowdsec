@@ -1027,7 +1027,6 @@ update-notifier-motd.timer              enabled enabled
 	
 	Error: invalid setup file
 	EOT
-    assert_stderr --partial "invalid setup file"
 
     rune -1 cscli setup validate --color=no - <<-EOT
 	setup:
@@ -1042,5 +1041,4 @@ update-notifier-motd.timer              enabled enabled
 	
 	Error: invalid setup file
 	EOT
-    assert_stderr --partial "invalid setup file"
 }

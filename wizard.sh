@@ -225,7 +225,7 @@ install_bins() {
 }
 
 symlink_bins() {
-    if grep -q "$BIN_INSTALL_PATH" <<< "$PATH"; then
+    if (echo "$PATH" | grep -q "$BIN_INSTALL_PATH"); then
         log_dbg "$BIN_INSTALL_PATH found in PATH"
     else
         ln -s "$CSCLI_BIN_INSTALLED" /usr/bin/cscli
