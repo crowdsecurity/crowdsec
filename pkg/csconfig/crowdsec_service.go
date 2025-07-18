@@ -130,10 +130,6 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.AcquisitionFiles = acquisitionFiles
 	}
 
-	if len(c.Crowdsec.AcquisitionFiles) == 0 {
-		log.Warning("no acquisition file found")
-	}
-
 	if err = c.LoadSimulation(); err != nil {
 		return fmt.Errorf("load error (simulation): %w", err)
 	}
