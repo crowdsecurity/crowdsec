@@ -60,19 +60,8 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 	}
 
 	// XXX: TODO: set default AcquisitionDirPath
-	// XXX: do not distribute an example config.yaml? remove it from the configuration?
 
 	if c.AcquisitionDirPath != "" {
-		// XXX: shouldn't we assume this is absolute, and reject relative paths?
-		// this is having a side effect of resolving relative paths according to the cwd at the time of first call,
-		// so this function can't be idempotent -- *and* cscli has different cwd than the agent
-		dirPath, err := filepath.Abs(c.AcquisitionDirPath)
-		if err != nil {
-			return nil, fmt.Errorf("can't get absolute path of '%s': %w", c.AcquisitionDirPath, err)
-		}
-
-		c.AcquisitionDirPath = dirPath
-
 		dirFiles, err := filepath.Glob(c.AcquisitionDirPath + "/*.yaml")
 		if err != nil {
 			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
@@ -92,16 +81,7 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 		return nil, ErrNoAcquisitionDefined
 	}
 
-	// Convert relative paths to absolute paths
-	// XXX: see above
-	for i, file := range ret {
-		f, err := filepath.Abs(file)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get absolute path of '%s': %w", file, err)
-		}
-
-		ret[i] = f
-	}
+	// files in 'ret' are already absolute
 
 	return ret, nil
 }
@@ -126,7 +106,20 @@ func (c *Config) LoadCrowdsec() error {
 		return nil
 	}
 
+	cleanup := []*string{
+		&c.Crowdsec.AcquisitionDirPath,
+		&c.Crowdsec.AcquisitionFilePath,
+		&c.Crowdsec.ConsoleContextPath,
+	}
+
+	for _, p := range cleanup {
+		if err := ensureAbsolutePath(p); err != nil {
+			return err
+		}
+	}
+
 	acquisitionFiles, err := c.Crowdsec.CollectAcquisitionFiles()
+
 	switch {
 	case errors.Is(err, ErrNoAcquisitionDefined):
 		log.Warning(err)
@@ -155,21 +148,6 @@ func (c *Config) LoadCrowdsec() error {
 
 	if c.Crowdsec.OutputRoutinesCount <= 0 {
 		c.Crowdsec.OutputRoutinesCount = 1
-	}
-
-	crowdsecCleanup := []*string{
-		&c.Crowdsec.AcquisitionFilePath,
-		&c.Crowdsec.ConsoleContextPath,
-	}
-
-	for _, k := range crowdsecCleanup {
-		if *k == "" {
-			continue
-		}
-		*k, err = filepath.Abs(*k)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
-		}
 	}
 
 	if err = c.LoadAPIClient(); err != nil {

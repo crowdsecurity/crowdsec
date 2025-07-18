@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 )
 
@@ -18,8 +17,6 @@ type ConfigurationPaths struct {
 }
 
 func (c *Config) loadConfigurationPaths() error {
-	var err error
-
 	if c.ConfigPaths == nil {
 		return errors.New("no configuration paths provided")
 	}
@@ -48,7 +45,7 @@ func (c *Config) loadConfigurationPaths() error {
 		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns")
 	}
 
-	configPathsCleanup := []*string{
+	cleanup := []*string{
 		&c.ConfigPaths.HubDir,
 		&c.ConfigPaths.HubIndexFile,
 		&c.ConfigPaths.ConfigDir,
@@ -58,14 +55,10 @@ func (c *Config) loadConfigurationPaths() error {
 		&c.ConfigPaths.NotificationDir,
 		&c.ConfigPaths.PatternDir,
 	}
-	for _, k := range configPathsCleanup {
-		if *k == "" {
-			continue
-		}
 
-		*k, err = filepath.Abs(*k)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
+	for _, k := range cleanup {
+		if err := ensureAbsolutePath(k); err != nil {
+			return err
 		}
 	}
 
