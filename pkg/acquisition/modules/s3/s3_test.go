@@ -210,6 +210,31 @@ func (msqs mockSQSClientNotif) DeleteMessage(input *sqs.DeleteMessageInput) (*sq
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
+type mockSQSClientSNS struct {
+	sqsiface.SQSAPI
+	counter *int32
+}
+
+func (msqs mockSQSClientSNS) ReceiveMessageWithContext(ctx context.Context, input *sqs.ReceiveMessageInput, options ...request.Option) (*sqs.ReceiveMessageOutput, error) {
+	if atomic.LoadInt32(msqs.counter) == 1 {
+		return &sqs.ReceiveMessageOutput{}, nil
+	}
+	atomic.AddInt32(msqs.counter, 1)
+	return &sqs.ReceiveMessageOutput{
+		Messages: []*sqs.Message{
+			{
+				Body: aws.String(`
+				{"Type":"Notification","MessageId":"95f3b5d2-c347-577e-b07d-d535ff80d9c4","TopicArn":"arn:aws:sns:eu-west-1:309081560286:s3-notif","Subject":"Amazon S3 Notification","Message":"{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"eu-west-1\",\"eventTime\":\"2025-07-08T15:34:31.272Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:xxx:xxx@crowdsec.net\"},\"requestParameters\":{\"sourceIPAddress\":\"1.1.1.1\"},\"responseElements\":{\"x-amz-request-id\":\"F8PK5SP9MC5R76F5\",\"x-amz-id-2\":\"dEZVAhJ9ufBn3ufcJH8wzRw2bfiwGzqaq4iQ9rYKkScQ3o4fGjbqe4dWCAPNwc1khCVKRSbfRwD9HXgDElOHcZazOIBxVY1l\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"test\",\"bucket\":{\"name\":\"my_bucket\",\"ownerIdentity\":{\"principalId\":\"A2BHZN7P6G2N16\"},\"arn\":\"arn:aws:s3:::my_bucket\"},\"object\":{\"key\":\"foo.log\",\"size\":3,\"eTag\":\"50a2fabfdd276f573ff97ace8b11c5f4\",\"sequencer\":\"00686D3A8738EE3CA0\"}}}]}","Timestamp":"2025-07-08T15:34:31.803Z","SignatureVersion":"1","Signature":"lkkFr7lYAUEBl6CPPDUDg1D1/zRToR2a9M1MnAmzC8pN33VQf1m+lUQJAgAOKUNxHfIUx1grFyxFQa+84/+edpE4tdhwr0bJ3QELlmJd0xot2pdoc2syrBC1Yq/3IsGc3ZIIIyyG9FXW0Q60aQeZAkx9XQC0tUQDwc8d3kef8CzN5i+ys3QXtX+7KUzj1tNoWQSCcjzqid3JSSyJzRZRD1/0Zkvnd3XVBXaM/QTtin1/Ja8uEObHw9AOy+oi/CygjREBaRzYUBdQHY7/kiA1sdDiSqkyEZ0uSu36aA8A4LO1O6ltP/h4avN8LARmgkdcVbGoPKZIu6Xe5tYvOdJKeA==","SigningCertURL":"https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-9c6465fa7f48f5cacd23014631ec1136.pem","UnsubscribeURL":"https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:309081560286:s3-notif:acfdadc0-43d0-48ba-81c9-052bd253febe"}
+				`),
+			},
+		},
+	}, nil
+}
+
+func (msqs mockSQSClientSNS) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+	return &sqs.DeleteMessageOutput{}, nil
+}
+
 func TestDSNAcquis(t *testing.T) {
 	ctx := t.Context()
 	tests := []struct {
@@ -368,7 +393,7 @@ polling_method: sqs
 sqs_name: test
 `,
 			expectedCount: 2,
-			notifType:     "eventbridge",
+			notifType:     SQSFormatEventBridge,
 		},
 		{
 			name: "notification",
@@ -378,7 +403,17 @@ polling_method: sqs
 sqs_name: test
 `,
 			expectedCount: 2,
-			notifType:     "notification",
+			notifType:     SQSFormatS3Notification,
+		},
+		{
+			name: "sns",
+			config: `
+source: s3
+polling_method: sqs
+sqs_name: test
+`,
+			expectedCount: 2,
+			notifType:     SQSFormatSNS,
 		},
 	}
 	for _, test := range tests {
@@ -396,10 +431,15 @@ sqs_name: test
 
 			counter := int32(0)
 			f.s3Client = mockS3Client{}
-			if test.notifType == "eventbridge" {
+			switch test.notifType {
+			case SQSFormatEventBridge:
 				f.sqsClient = mockSQSClient{counter: &counter}
-			} else {
+			case SQSFormatS3Notification:
 				f.sqsClient = mockSQSClientNotif{counter: &counter}
+			case SQSFormatSNS:
+				f.sqsClient = mockSQSClientSNS{counter: &counter}
+			default:
+				t.Fatalf("unknown notification type %s", test.notifType)
 			}
 
 			out := make(chan types.Event)

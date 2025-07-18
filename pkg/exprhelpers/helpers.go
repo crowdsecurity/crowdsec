@@ -9,6 +9,7 @@ import (
 	"maps"
 	"math"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/c-robinson/iplib"
 	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
@@ -125,6 +125,15 @@ func Init(databaseClient *database.Client) error {
 	return nil
 }
 
+// ResetDataFiles clears all datafile-related global variables.
+// This should be called during HUP reload to ensure clean state.
+func ResetDataFiles() {
+	dataFile = make(map[string][]string)
+	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dataFileRe2 = make(map[string][]*re2.Regexp)
+	dataFileRegexCache = make(map[string]gcache.Cache)
+}
+
 func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 	// cache is explicitly disabled
 	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
@@ -178,17 +187,17 @@ func UpdateRegexpCacheMetrics() {
 	}
 }
 
-func FileInit(fileFolder string, filename string, fileType string) error {
-	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+func FileInit(directory string, filename string, fileType string) error {
+	log.Debugf("init (folder:%s) (file:%s) (type:%s)", directory, filename, fileType)
 
 	if fileType == "" {
-		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
+		log.Debugf("ignored file %s%s because no type specified", directory, filename)
 		return nil
 	}
 
 	ok, err := existsInFileMaps(filename, fileType)
 	if ok {
-		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
+		log.Debugf("ignored file %s%s because already loaded", directory, filename)
 		return nil
 	}
 
@@ -196,9 +205,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		return err
 	}
 
-	filepath := filepath.Join(fileFolder, filename)
-
-	file, err := os.Open(filepath)
+	file, err := os.Open(filepath.Join(directory, filename))
 	if err != nil {
 		return err
 	}
@@ -573,19 +580,19 @@ func IpToRange(params ...any) (any, error) {
 		return "", nil
 	}
 
-	ipAddr := net.ParseIP(ip)
-	if ipAddr == nil {
-		log.Errorf("can't parse IP address '%s'", ip)
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		log.Errorf("can't parse IP address '%s': %v", ip, err)
 		return "", nil
 	}
 
-	ipRange := iplib.NewNet(ipAddr, mask)
-	if ipRange.IP() == nil {
-		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
+	prefix, err := addr.Prefix(mask)
+	if err != nil {
+		log.Errorf("can't create prefix from IP address '%s' and mask '%d': %v", ip, mask, err)
 		return "", nil
 	}
 
-	return ipRange.String(), nil
+	return prefix.String(), nil
 }
 
 // func TimeNow() string {

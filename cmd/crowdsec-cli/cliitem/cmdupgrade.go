@@ -54,7 +54,10 @@ func (cli *cliItem) upgrade(ctx context.Context, args []string, interactive bool
 		return err
 	}
 
-	contentProvider := require.HubDownloader(ctx, cfg)
+	contentProvider, err := require.HubDownloader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	plan, err := cli.upgradePlan(hub, contentProvider, args, force, all)
 	if err != nil {

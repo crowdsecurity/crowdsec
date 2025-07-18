@@ -79,7 +79,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 		return &protobufs.Empty{}, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		logger.Error("failed to create request", "error", err)
 		return &protobufs.Empty{}, err

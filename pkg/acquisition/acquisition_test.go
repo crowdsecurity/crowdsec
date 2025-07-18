@@ -25,8 +25,9 @@ import (
 
 type MockSource struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Toto                              string `yaml:"toto"`
-	logger                            *log.Entry
+
+	Toto   string `yaml:"toto"`
+	logger *log.Entry
 }
 
 func (f *MockSource) UnmarshalConfig(cfg []byte) error {
@@ -216,7 +217,7 @@ wowo: ajsajasjas
 	}
 }
 
-func TestLoadAcquisitionFromFile(t *testing.T) {
+func TestLoadAcquisitionFromFiles(t *testing.T) {
 	appendMockSource()
 	t.Setenv("TEST_ENV", "test_value2")
 
@@ -294,7 +295,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
+			dss, err := LoadAcquisitionFromFiles(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -322,7 +323,8 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 
 type MockCat struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	logger                            *log.Entry
+
+	logger *log.Entry
 }
 
 func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
@@ -367,7 +369,8 @@ func (f *MockCat) GetUuid() string { return "" }
 
 type MockTail struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	logger                            *log.Entry
+
+	logger *log.Entry
 }
 
 func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
@@ -422,11 +425,12 @@ func TestStartAcquisitionCat(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Errorf("unexpected error")
+			t.Error("unexpected error")
 		}
 	}()
 
 	count := 0
+
 READLOOP:
 	for {
 		select {
@@ -450,11 +454,12 @@ func TestStartAcquisitionTail(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Errorf("unexpected error")
+			t.Error("unexpected error")
 		}
 	}()
 
 	count := 0
+
 READLOOP:
 	for {
 		select {
@@ -503,6 +508,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	}()
 
 	count := 0
+
 READLOOP:
 	for {
 		select {
@@ -512,6 +518,7 @@ READLOOP:
 			break READLOOP
 		}
 	}
+
 	assert.Equal(t, 10, count)
 	// acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
@@ -520,8 +527,9 @@ READLOOP:
 
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Toto                              string     `yaml:"toto"`
-	logger                            *log.Entry //nolint: unused
+
+	Toto   string     `yaml:"toto"`
+	logger *log.Entry //nolint: unused
 }
 
 func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }

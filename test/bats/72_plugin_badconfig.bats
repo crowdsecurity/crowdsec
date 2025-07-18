@@ -139,7 +139,7 @@ teardown() {
     # the slack plugin may fail or not, but we just need the logs
     config_set '.common.log_media="stdout"'
     rune wait-for \
-        --err "api server init: plugin broker: loading plugin config" \
+        --err "api server init: plugin broker: loading config" \
         "$CROWDSEC"
-    assert_stderr --partial "field 'type' missing in $CONFIG_DIR/notifications/http.yaml (position 0)"
+    assert_stderr --partial "error in $CONFIG_DIR/notifications/http.yaml: document 0: missing required field 'type'"
 }
