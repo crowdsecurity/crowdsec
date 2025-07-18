@@ -380,19 +380,19 @@ linters:
       # tolerate long functions in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'function-length: .*'
 
       # tolerate long lines in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'line-length-limit: .*'
 
       # we use t,ctx instead of ctx,t in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'context-as-argument: context.Context should be the first parameter of a function'
 
       # tolerate deep exit in cobra's OnInitialize, for now
@@ -473,8 +473,6 @@ linters:
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
     paths:
-      - pkg/yamlpatch/merge.go
-      - pkg/yamlpatch/merge_test.go
       - pkg/time/rate
       - pkg/metabase
       - third_party$

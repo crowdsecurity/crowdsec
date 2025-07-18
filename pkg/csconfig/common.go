@@ -1,9 +1,6 @@
 package csconfig
 
 import (
-	"fmt"
-	"path/filepath"
-
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,8 +21,6 @@ type CommonCfg struct {
 }
 
 func (c *Config) loadCommon() error {
-	var err error
-
 	if c.Common == nil {
 		c.Common = &CommonCfg{}
 	}
@@ -38,20 +33,5 @@ func (c *Config) loadCommon() error {
 		c.Common.LogMedia = "stdout"
 	}
 
-	CommonCleanup := []*string{
-		&c.Common.LogDir,
-	}
-
-	for _, k := range CommonCleanup {
-		if *k == "" {
-			continue
-		}
-
-		*k, err = filepath.Abs(*k)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
-		}
-	}
-
-	return nil
+	return ensureAbsolutePath(&c.Common.LogDir)
 }

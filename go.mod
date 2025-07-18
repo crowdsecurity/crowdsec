@@ -38,7 +38,7 @@ require (
 	github.com/go-openapi/swag v0.22.3
 	github.com/go-openapi/validate v0.20.0
 	github.com/go-sql-driver/mysql v1.6.0
-	github.com/goccy/go-yaml v1.11.0
+	github.com/goccy/go-yaml v1.18.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.6.0
@@ -54,7 +54,6 @@ require (
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jszwec/csvutil v1.5.1
-	github.com/lithammer/dedent v1.1.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -215,7 +214,6 @@ require (
 	golang.org/x/arch v0.12.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

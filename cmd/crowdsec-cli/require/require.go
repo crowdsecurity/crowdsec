@@ -13,6 +13,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
+func Agent(c *csconfig.Config) error {
+	// XXX: what to do if c.DisableAgent == true?
+	// we may want to proceed because f.e. we need the list of acquisition file
+	// or we can stop assuming the caller needs the agent?
+	return c.LoadCrowdsec()
+}
+
 func _lapi(c *csconfig.Config, skipOnlineCreds bool) error {
 	if err := c.LoadAPIServer(true, skipOnlineCreds); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
