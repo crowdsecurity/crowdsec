@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 func showMetrics(prometheusURL string, hub *cwhub.Hub, hubItem *cwhub.Item, wantColor string) error {
@@ -102,7 +103,7 @@ func getParserMetric(url string, itemName string) (map[string]map[string]int, er
 			ival := int(fval)
 
 			switch fam.Name {
-			case "cs_reader_hits_total":
+			case "cs_reader_hits_total": // What is this ?
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
 					stats[source]["parsed"] = 0
@@ -111,27 +112,27 @@ func getParserMetric(url string, itemName string) (map[string]map[string]int, er
 					stats[source]["hits"] = 0
 				}
 				stats[source]["reads"] += ival
-			case "cs_parser_hits_ok_total":
+			case metrics.GlobalParserHitsOkMetricName:
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
 				}
 				stats[source]["parsed"] += ival
-			case "cs_parser_hits_ko_total":
+			case metrics.GlobalParserHitsKoMetricName:
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
 				}
 				stats[source]["unparsed"] += ival
-			case "cs_node_hits_total":
+			case metrics.NodesHitsMetricName:
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
 				}
 				stats[source]["hits"] += ival
-			case "cs_node_hits_ok_total":
+			case metrics.NodesHitsOkMetricName:
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
 				}
 				stats[source]["parsed"] += ival
-			case "cs_node_hits_ko_total":
+			case metrics.NodesHitsKoMetricName:
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
 				}
@@ -194,15 +195,15 @@ func getScenarioMetric(url string, itemName string) (map[string]int, error) {
 			ival := int(fval)
 
 			switch fam.Name {
-			case "cs_bucket_created_total":
+			case metrics.BucketsInstantiationMetricName:
 				stats["instantiation"] += ival
-			case "cs_buckets":
+			case metrics.BucketsCurrentCountMetricName:
 				stats["curr_count"] += ival
-			case "cs_bucket_overflowed_total":
+			case metrics.BucketsOverflowMetricName:
 				stats["overflow"] += ival
-			case "cs_bucket_poured_total":
+			case metrics.BucketPouredMetricName:
 				stats["pour"] += ival
-			case "cs_bucket_underflowed_total":
+			case metrics.BucketsUnderflowMetricName:
 				stats["underflow"] += ival
 			default:
 				continue

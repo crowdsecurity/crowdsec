@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc3164"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
 	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -33,26 +34,12 @@ type SyslogConfiguration struct {
 }
 
 type SyslogSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       SyslogConfiguration
 	logger       *log.Entry
 	server       *syslogserver.SyslogServer
 	serverTomb   *tomb.Tomb
 }
-
-var linesReceived = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_syslogsource_hits_total",
-		Help: "Total lines that were received.",
-	},
-	[]string{"source"})
-
-var linesParsed = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_syslogsource_parsed_total",
-		Help: "Total lines that were successfully parsed",
-	},
-	[]string{"source", "type"})
 
 func (s *SyslogSource) GetUuid() string {
 	return s.config.UniqueId
@@ -75,11 +62,11 @@ func (s *SyslogSource) CanRun() error {
 }
 
 func (s *SyslogSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesReceived, linesParsed}
+	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 
 func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesReceived, linesParsed}
+	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 
 func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
@@ -126,7 +113,7 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
 	s.metricsLevel = metricsLevel
@@ -189,8 +176,8 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 
 	logger := s.logger.WithField("client", syslogLine.Client)
 	logger.Tracef("raw: %s", syslogLine)
-	if s.metricsLevel != configuration.METRICS_NONE {
-		linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.SyslogDataSourceLinesReceived.With(prometheus.Labels{"source": syslogLine.Client, "datasource_type": "syslog", "acquis_type": s.config.Labels["type"]}).Inc()
 	}
 	if !s.config.DisableRFCParser {
 		p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
@@ -205,13 +192,13 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 				return ""
 			}
 			line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
-			if s.metricsLevel != configuration.METRICS_NONE {
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424"}).Inc()
+			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc5424", "datasource_type": "syslog", "acquis_type": s.config.Labels["type"]}).Inc()
 			}
 		} else {
 			line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
-			if s.metricsLevel != configuration.METRICS_NONE {
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164"}).Inc()
+			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.SyslogDataSourceLinesParsed.With(prometheus.Labels{"source": syslogLine.Client, "type": "rfc3164", "datasource_type": "syslog", "acquis_type": s.config.Labels["type"]}).Inc()
 			}
 		}
 	} else {
