@@ -69,7 +69,10 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 		return err
 	}
 
-	contentProvider := require.HubDownloader(ctx, cfg)
+	contentProvider, err := require.HubDownloader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	showPlan := interactive
 	// in dry-run, it can be useful to see the _order_ in which files are installed.
