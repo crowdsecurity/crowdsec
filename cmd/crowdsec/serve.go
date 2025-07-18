@@ -96,6 +96,9 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, err
 		}
 
+		// Reset data files to avoid any potential conflicts with the new configuration
+		exprhelpers.ResetDataFiles()
+
 		csParsers, datasources, err := initCrowdsec(cConfig, hub, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
@@ -436,7 +439,12 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		return nil
 	}
 
-	if cConfig.Common != nil && !flags.haveTimeMachine() {
+	isWindowsSvc, err := isWindowsService()
+	if err != nil {
+		return fmt.Errorf("failed to determine if we are running in windows service mode: %w", err)
+	}
+
+	if cConfig.Common != nil && !flags.haveTimeMachine() && !isWindowsSvc {
 		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)

@@ -135,6 +135,15 @@ func Init(databaseClient *database.Client) error {
 	return nil
 }
 
+// ResetDataFiles clears all datafile-related global variables.
+// This should be called during HUP reload to ensure clean state.
+func ResetDataFiles() {
+	dataFile = make(map[string][]string)
+	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dataFileRe2 = make(map[string][]*re2.Regexp)
+	dataFileRegexCache = make(map[string]gcache.Cache)
+}
+
 func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 	// cache is explicitly disabled
 	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
