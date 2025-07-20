@@ -75,7 +75,7 @@ func testHubOld(t *testing.T, update bool) *Hub {
 
 // envSetup initializes the temporary hub and mocks the http client.
 func envSetup(t *testing.T) *Hub {
-	setResponseByPath()
+	setResponseByPath(t)
 	log.SetLevel(log.DebugLevel)
 
 	defaultTransport := HubClient.Transport
@@ -121,27 +121,23 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return response, nil
 }
 
-func fileToStringX(path string) string {
+func fileToStringX(t *testing.T, path string) string {
 	f, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
 
-func setResponseByPath() {
+func setResponseByPath(t *testing.T) {
 	responseByPath = map[string]string{
-		"/crowdsecurity/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./testdata/foobar_parser.yaml"),
-		"/crowdsecurity/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./testdata/foobar_parser.yaml"),
-		"/crowdsecurity/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./testdata/collection_v1.yaml"),
-		"/crowdsecurity/master/.index.json":                                           fileToStringX("./testdata/index1.json"),
+		"/crowdsecurity/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX(t, "./testdata/foobar_parser.yaml"),
+		"/crowdsecurity/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX(t, "./testdata/foobar_parser.yaml"),
+		"/crowdsecurity/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX(t, "./testdata/collection_v1.yaml"),
+		"/crowdsecurity/master/.index.json":                                           fileToStringX(t, "./testdata/index1.json"),
 		"/crowdsecurity/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
 name: crowdsecurity/foobar_scenario`,
 		"/crowdsecurity/master/scenarios/crowdsecurity/barfoo_scenario.yaml": `filter: true

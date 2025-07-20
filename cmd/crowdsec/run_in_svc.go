@@ -16,6 +16,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
+func isWindowsService() (bool, error) {
+	return false, nil
+}
+
 func StartRunSvc() error {
 	var (
 		cConfig *csconfig.Config

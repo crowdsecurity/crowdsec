@@ -33,10 +33,16 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 		cfg.Cscli.PrometheusUrl = url
 	}
 
-	var contentProvider cwhub.ContentProvider
+	var (
+		contentProvider cwhub.ContentProvider
+		err             error
+	)
 
 	if diff {
-		contentProvider = require.HubDownloader(ctx, cfg)
+		contentProvider, err = require.HubDownloader(ctx, cfg)
+		if err != nil {
+			return err
+		}
 	}
 
 	hub, err := require.Hub(cfg, log.StandardLogger())
@@ -226,7 +232,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 	}
 
 	if wantMetrics {
-		fmt.Fprintf(os.Stdout, "\nCurrent metrics: \n")
+		fmt.Fprint(os.Stdout, "\nCurrent metrics: \n")
 
 		if err := showMetrics(prometheusURL, hub, item, wantColor); err != nil {
 			return err

@@ -16,13 +16,13 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -49,7 +49,6 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 	}
 
 	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(ctx)
-
 	if err != nil && !ent.IsNotFound(err) {
 		return "", fmt.Errorf("unable to query alerts for uuid %s: %w", alertItem.UUID, err)
 	}
@@ -119,15 +118,12 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 
 	decisionBuilders := []*ent.DecisionCreate{}
 
-	for _, decisionItem := range missingDecisions {
-		var (
-			start_ip, start_sfx, end_ip, end_sfx int64
-			sz                                   int
-		)
+	var rng csnet.Range
 
+	for _, decisionItem := range missingDecisions {
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
 				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
 				continue
@@ -154,11 +150,11 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			SetUntil(decisionUntil).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetIPSize(int64(sz)).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
@@ -266,10 +262,10 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
 	}
 
-	DecOrigin := CapiMachineID
+	decOrigin := CapiMachineID
 
 	if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
-		DecOrigin = *alertItem.Decisions[0].Origin
+		decOrigin = *alertItem.Decisions[0].Origin
 	} else {
 		log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
 	}
@@ -281,11 +277,6 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	valueList := make([]string, 0, len(alertItem.Decisions))
 
 	for _, decisionItem := range alertItem.Decisions {
-		var (
-			start_ip, start_sfx, end_ip, end_sfx int64
-			sz                                   int
-		)
-
 		if decisionItem.Duration == nil {
 			log.Warning("nil duration in community decision")
 			continue
@@ -301,9 +292,11 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			continue
 		}
 
+		var rng csnet.Range
+
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
 				return 0, 0, 0, rollbackOnError(txClient, err, "invalid ip addr/range")
 			}
@@ -314,11 +307,11 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			SetUntil(ts.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetIPSize(int64(sz)).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
@@ -342,7 +335,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		// Deleting older decisions from capi
 		deletedDecisions, err := txClient.Decision.Delete().
 			Where(decision.And(
-				decision.OriginEQ(DecOrigin),
+				decision.OriginEQ(decOrigin),
 				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 				decision.ValueIn(deleteChunk...),
 			)).Exec(ctx)
@@ -364,7 +357,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		inserted += len(insertedDecisions)
 	}
 
-	log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
+	log.Debugf("deleted %d decisions for %s vs %s", deleted, decOrigin, *alertItem.Decisions[0].Origin)
 
 	err = txClient.Commit()
 	if err != nil {
@@ -378,10 +371,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
-		var (
-			start_ip, start_sfx, end_ip, end_sfx int64
-			sz                                   int
-		)
+		var rng csnet.Range
 
 		duration, err := cstime.ParseDurationWithDays(*decisionItem.Duration)
 		if err != nil {
@@ -390,7 +380,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
 				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
 				continue
@@ -401,11 +391,11 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			SetUntil(stopAtTime.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetIPSize(int64(sz)).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
@@ -579,6 +569,7 @@ func retryOnBusy(fn func() error) error {
 		if err == nil {
 			return nil
 		}
+
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrBusy {
 			// sqlite3.Error{
@@ -658,7 +649,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 		if discardCount > 0 && len(decisions) == 0 {
 			c.Log.Warningf("dropping alert %s: all decisions invalid", alertItem.UUID)
 			continue
-	        }
+		}
 
 		alertBuilder := c.Ent.Alert.
 			Create().
@@ -704,6 +695,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 	if err != nil {
 		return nil, err
 	}
+
 	return ids, nil
 }
 
@@ -845,6 +837,14 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 			return nil, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
 		}
 
+		if len(result) == 0 { // no results, no need to try to paginate further
+			c.Log.Debugf("Pagination done because no results found at offset %d | len(ret) %d", offset, len(ret))
+			break
+		}
+
+		log.Debugf("QueryAlertWithFilter: pagination size %d, offset %d, got %d results", paginationSize, offset, len(result))
+		log.Debugf("diff is %d, limit is %d", limit-len(ret), limit)
+
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
@@ -858,7 +858,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 			ret = append(ret, result...)
 		}
 
-		if len(ret) == limit || len(ret) == 0 || len(ret) < paginationSize {
+		if len(ret) == limit || len(result) < paginationSize {
 			c.Log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}

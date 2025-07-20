@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -260,19 +261,17 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 
-		if config.ConsoleConfig.IsPAPIEnabled() && config.OnlineClient.Credentials.PapiURL != "" {
-			if apiClient.apiClient.IsEnrolled() {
-				log.Info("Machine is enrolled in the console, Loading PAPI Client")
+		if apiClient.apiClient.IsEnrolled() {
+			log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
-				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-				if err != nil {
-					return nil, err
-				}
-
-				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
-			} else {
-				log.Error("Machine is not enrolled in the console, can't synchronize with the console")
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+			if err != nil {
+				return nil, err
 			}
+
+			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+		} else {
+			log.Error("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	}
 
@@ -343,9 +342,8 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
 	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
 
-	// csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 	if s.apic.apiClient.IsEnrolled() {
-		if s.consoleConfig.IsPAPIEnabled() && s.papi != nil {
+		if s.papi != nil {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
 				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
@@ -548,6 +546,40 @@ func (s *APIServer) Shutdown() error {
 
 func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 	s.controller.PluginChannel = broker.PluginChannel
+}
+
+func hasPlugins(profiles []*csconfig.ProfileCfg) bool {
+	for _, profile := range profiles {
+		if len(profile.Notifications) != 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *APIServer) InitPlugins(ctx context.Context, cConfig *csconfig.Config, pluginBroker *csplugin.PluginBroker) error {
+	if hasPlugins(cConfig.API.Server.Profiles) {
+		log.Info("initiating plugin broker")
+		// On windows, the plugins are always run as medium-integrity processes, so we don't care about plugin_config
+		if cConfig.PluginConfig == nil && runtime.GOOS != "windows" {
+			return errors.New("plugins are enabled, but the plugin_config section is missing in the configuration")
+		}
+
+		if cConfig.ConfigPaths.PluginDir == "" {
+			return errors.New("plugins are enabled, but config_paths.plugin_dir is not defined")
+		}
+
+		err := pluginBroker.Init(ctx, cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		if err != nil {
+			return fmt.Errorf("plugin broker: %w", err)
+		}
+
+		log.Info("initiated plugin broker")
+		s.AttachPluginBroker(pluginBroker)
+	}
+
+	return nil
 }
 
 func (s *APIServer) InitController() error {
