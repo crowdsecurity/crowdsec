@@ -36,7 +36,7 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	} else {
 		conditionalExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue.Queue": []types.Event{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
@@ -71,7 +71,7 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 			if condition {
 				l.logger.Debugf("Conditional bucket overflow")
 				l.Ovflw_ts = l.Last_ts
-				l.Out <- l.Queue
+				l.Out <- &l.Queue
 				return nil
 			}
 		}

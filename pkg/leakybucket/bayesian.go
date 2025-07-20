@@ -82,7 +82,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 		if c.posterior > c.threshold {
 			l.logger.Debugf("Bayesian bucket overflow")
 			l.Ovflw_ts = l.Last_ts
-			l.Out <- l.Queue
+			l.Out <- &l.Queue
 			return nil
 		}
 
@@ -152,7 +152,7 @@ func (b *BayesianEvent) compileCondition() error {
 
 	conditionalExprCacheLock.Unlock()
 	//release the lock during compile same as coditional bucket
-	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue.Queue": []types.Event{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("bayesian condition compile error: %w", err)
 	}
