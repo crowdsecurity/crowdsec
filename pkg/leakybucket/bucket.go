@@ -32,7 +32,7 @@ type Leaky struct {
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
 	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
-	Queue *types.Queue
+	Queue types.Queue
 	//Leaky buckets are receiving message through a chan
 	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
@@ -308,7 +308,7 @@ func LeakRoutine(leaky *Leaky) error {
 			)
 			leaky.Ovflw_ts = time.Now().UTC()
 			close(leaky.Signal)
-			ofw := leaky.Queue
+			ofw := &leaky.Queue
 			alert = types.RuntimeAlert{Mapkey: leaky.Mapkey}
 
 			if leaky.timedOverflow {
@@ -370,7 +370,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.Ovflw_ts = time.Now().UTC()
 		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
 		leaky.Queue.Add(msg)
-		leaky.Out <- leaky.Queue
+		leaky.Out <- &leaky.Queue
 	}
 }
 

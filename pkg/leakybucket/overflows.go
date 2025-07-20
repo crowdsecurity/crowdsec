@@ -196,7 +196,7 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 }
 
 // EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
-func EventsFromQueue(queue *types.Queue) []*models.Event {
+func EventsFromQueue(queue types.Queue) []*models.Event {
 	events := []*models.Event{}
 
 	qEvents := queue.GetQueue()
@@ -249,7 +249,7 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 }
 
 // alertFormatSource iterates over the queue to collect sources
-func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Source, string, error) {
+func alertFormatSource(leaky *Leaky, queue types.Queue) (map[string]models.Source, string, error) {
 	var source_type string
 
 	sources := make(map[string]models.Source)
@@ -324,7 +324,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 	runtimeAlert.Mapkey = leaky.Mapkey
 
 	// Get the sources from Leaky/Queue
-	sources, source_scope, err := alertFormatSource(leaky, queue)
+	sources, source_scope, err := alertFormatSource(leaky, *queue)
 	if err != nil {
 		return runtimeAlert, fmt.Errorf("unable to collect sources from bucket: %w", err)
 	}
@@ -343,7 +343,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	// Get the events from Leaky/Queue
-	apiAlert.Events = EventsFromQueue(queue)
+	apiAlert.Events = EventsFromQueue(*queue)
 
 	var warnings []error
 
