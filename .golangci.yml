@@ -377,19 +377,19 @@ linters:
       # tolerate long functions in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'function-length: .*'
 
       # tolerate long lines in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'line-length-limit: .*'
 
       # we use t,ctx instead of ctx,t in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'context-as-argument: context.Context should be the first parameter of a function'
 
       # tolerate deep exit in cobra's OnInitialize, for now

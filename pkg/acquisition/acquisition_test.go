@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tomb "gopkg.in/tomb.v2"
-	 "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -222,7 +222,7 @@ filename: foo.log
 	}
 }
 
-func TestLoadAcquisitionFromFile(t *testing.T) {
+func TestLoadAcquisitionFromFiles(t *testing.T) {
 	appendMockSource()
 	t.Setenv("TEST_ENV", "test_value2")
 
@@ -300,7 +300,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFile(&tc.Config, nil)
+			dss, err := LoadAcquisitionFromFiles(&tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
