@@ -269,6 +269,18 @@ func (m *MetricsProvider) getParserWhitelistMetrics() []*models.MetricsDetailIte
 	)
 }
 
+func (m *MetricsProvider) getAppsecProcessedMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.AppsecReqCounterMetricName}, labelsMapping{
+		"appsec_engine": "appsec_engine",
+	}, nil, "appsec_processed", "request")
+}
+
+func (m *MetricsProvider) getAppsecBlockedMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.AppsecBlockCounterMetricName}, labelsMapping{
+		"appsec_engine": "appsec_engine",
+	}, nil, "appsec_blocked", "request")
+}
+
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	os := &models.OSversion{
 		Name:    ptr.Of(m.static.osName),
@@ -332,6 +344,16 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	globalUnparsedMetrics := m.getParserGlobalKoMetrics()
 	if len(globalUnparsedMetrics) > 0 {
 		met.Metrics[0].Items = append(met.Metrics[0].Items, globalUnparsedMetrics...)
+	}
+
+	appsecProcessedMetrics := m.getAppsecProcessedMetrics()
+	if len(appsecProcessedMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, appsecProcessedMetrics...)
+	}
+
+	appsecBlockedMetrics := m.getAppsecBlockedMetrics()
+	if len(appsecBlockedMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, appsecBlockedMetrics...)
 	}
 
 	return &models.AllMetrics{
