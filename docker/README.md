@@ -269,81 +269,87 @@ variable is set, its value may be written to the appropriate file (usually
 config.yaml) each time the container is run.
 
 
-| Variable                | Default                   | Description |
-| ----------------------- | ------------------------- | ----------- |
-| `CONFIG_FILE`           | `/etc/crowdsec/config.yaml` | Configuration file location |
-| `DISABLE_AGENT`         | false | Disable the agent, run a LAPI-only container |
-| `DISABLE_LOCAL_API`     | false | Disable LAPI, run an agent-only container |
-| `DISABLE_ONLINE_API`    | false | Disable online API registration for signal sharing |
-| `TEST_MODE`             | false | Don't run the service, only test the configuration: `-e TEST_MODE=true` |
-| `TZ`                    | | Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure the logs have a local timestamp. |
-| `LOCAL_API_URL`         | `http://0.0.0.0:8080` | The LAPI URL, you need to change this when `DISABLE_LOCAL_API` is true: `-e LOCAL_API_URL="http://lapi-address:8080"` |
-| `PLUGIN_DIR`            | `/usr/local/lib/crowdsec/plugins/` | Directory for plugins: `-e PLUGIN_DIR="<path>"` |
-| `METRICS_PORT`          | 6060 | Port to expose Prometheus metrics |
-|                         | | |
-| __LAPI__                | | (useless with DISABLE_LOCAL_API) |
-| `USE_WAL`               | false | Enable Write-Ahead Logging with SQLite |
-| `CUSTOM_HOSTNAME`       | localhost | Name for the local agent (running in the container with LAPI) |
-| `CAPI_WHITELISTS_PATH`  | | Path for capi_whitelists.yaml |
-|                         | | |
-| __Agent__               | | (these don't work with DISABLE_AGENT) |
-| `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |
-| `DSN`                   | | Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"` |
-| `UNREGISTER_ON_EXIT`    | | Remove the agent from the LAPI when its container is stopped. |
-|                         | | |
-| __Bouncers__            | | |
-| `BOUNCER_KEY_<name>`    | | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable. |
-|                         | | |
-| __Console__             | | |
-| `ENROLL_KEY`            | | Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance. |
-| `ENROLL_INSTANCE_NAME`  | | To set an instance name and see it on [the console](https://app.crowdsec.net/) |
-| `ENROLL_TAGS`           | | Tags of the enrolled instance, for search and filter |
-|                         | | |
-| __Password Auth__       | | |
-| `AGENT_USERNAME`        | | Agent username (to register if is LAPI or to use if it's an agent): `-e AGENT_USERNAME="machine_id"` |
-| `AGENT_PASSWORD`        | | Agent password (to register if is LAPI or to use if it's an agent): `-e AGENT_PASSWORD="machine_password"` |
-|                         | | |
-| __TLS Encryption__      | | |
-| `USE_TLS`               | false | Enable TLS encryption (either as a LAPI or agent) |
-| `CACERT_FILE`           | | CA certificate bundle (for self-signed certificates) |
-| `INSECURE_SKIP_VERIFY`  | | Skip LAPI certificate validation |
-| `LAPI_CERT_FILE`        | | LAPI TLS Certificate path |
-| `LAPI_KEY_FILE`         | | LAPI TLS Key path |
-|                         | | |
-| __TLS Authentication__  | | (these require USE_TLS=true) |
-| `CLIENT_CERT_FILE`      | | Client TLS Certificate path (enable TLS authentication) |
-| `CLIENT_KEY_FILE`       | | Client TLS Key path |
-| `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
-| `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
-|                         | | |
-| __Hub management__      | | |
-| `NO_HUB_UPGRADE`        | false | Skip hub update / upgrade when the container starts |
-| `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
-| `PARSERS`               | | Parsers to install, separated by space |
-| `SCENARIOS`             | | Scenarios to install, separated by space |
-| `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
-| `CONTEXTS`              | | Context files to install, separated by space |
-| `APPSEC_CONFIGS`        | | Appsec configs files to install, separated by space |
-| `APPSEC_RULES`          | | Appsec rules files to install, separated by space |
-| `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
-| `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
-| `DISABLE_SCENARIOS`     | | Scenarios to remove, separated by space |
-| `DISABLE_POSTOVERFLOWS` | | Postoverflows to remove, separated by space |
-| `DISABLE_CONTEXTS`      | | Context files to remove, separated by space |
-| `DISABLE_APPSEC_CONFIGS`| | Appsec configs files to remove, separated by space |
-| `DISABLE_APPSEC_RULES`  | | Appsec rules files to remove, separated by space |
-|                         | | |
-| __Log verbosity__       | | |
-| `LEVEL_FATAL`           | false | Force FATAL level for the container log |
-| `LEVEL_ERROR`           | false | Force ERROR level for the container log |
-| `LEVEL_WARN`            | false | Force WARN level for the container log |
-| `LEVEL_INFO`            | false | Force INFO level for the container log |
-| `LEVEL_DEBUG`           | false | Force DEBUG level for the container log |
-| `LEVEL_TRACE`           | false | Force TRACE level (VERY verbose) for the container log |
-|                         | | |
-| __Developer options__   | | |
-| `CI_TESTING`            | false | Used during functional tests |
-| `DEBUG`                 | false | Trace the entrypoint |
+| Variable                    | Default                            | Description                                                                                                                                                                                                               |
+| --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CONFIG_FILE`               | `/etc/crowdsec/config.yaml`        | Configuration file location                                                                                                                                                                                               |
+| `DISABLE_AGENT`             | false                              | Disable the agent, run a LAPI-only container                                                                                                                                                                              |
+| `DISABLE_LOCAL_API`         | false                              | Disable LAPI, run an agent-only container                                                                                                                                                                                 |
+| `DISABLE_ONLINE_API`        | false                              | Disable online API registration for signal sharing                                                                                                                                                                        |
+| `TEST_MODE`                 | false                              | Don't run the service, only test the configuration: `-e TEST_MODE=true`                                                                                                                                                   |
+| `TZ`                        |                                    | Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure the logs have a local timestamp.                                                                                               |
+| `LOCAL_API_URL`             | `http://0.0.0.0:8080`              | The LAPI URL, you need to change this when `DISABLE_LOCAL_API` is true: `-e LOCAL_API_URL="http://lapi-address:8080"`                                                                                                     |
+| `PLUGIN_DIR`                | `/usr/local/lib/crowdsec/plugins/` | Directory for plugins: `-e PLUGIN_DIR="<path>"`                                                                                                                                                                           |
+| `METRICS_PORT`              | 6060                               | Port to expose Prometheus metrics                                                                                                                                                                                         |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __LAPI__                    |                                    | (useless with DISABLE_LOCAL_API)                                                                                                                                                                                          |
+| `USE_WAL`                   | false                              | Enable Write-Ahead Logging with SQLite                                                                                                                                                                                    |
+| `CUSTOM_HOSTNAME`           | localhost                          | Name for the local agent (running in the container with LAPI)                                                                                                                                                             |
+| `CAPI_WHITELISTS_PATH`      |                                    | Path for capi_whitelists.yaml                                                                                                                                                                                             |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Agent__                   |                                    | (these don't work with DISABLE_AGENT)                                                                                                                                                                                     |
+| `TYPE`                      |                                    | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"`                                                                                               |
+| `DSN`                       |                                    | Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"` |
+| `UNREGISTER_ON_EXIT`        |                                    | Remove the agent from the LAPI when its container is stopped.                                                                                                                                                             |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Bouncers__                |                                    |                                                                                                                                                                                                                           |
+| `BOUNCER_KEY_<name>`        |                                    | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable.                                                                                                                       |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Console__                 |                                    |                                                                                                                                                                                                                           |
+| `ENROLL_KEY`                |                                    | Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance.                                                                                                                                |
+| `ENROLL_INSTANCE_NAME`      |                                    | To set an instance name and see it on [the console](https://app.crowdsec.net/)                                                                                                                                            |
+| `ENROLL_TAGS`               |                                    | Tags of the enrolled instance, for search and filter                                                                                                                                                                      |
+| `ENABLE_CONSOLE_ALL`        |                                    | Enable all console options                                                                                                                                                                                                |
+| `ENABLE_CONSOLE_MANAGEMENT` |                                    | Enable console management (this option is ignored since 1.6.9)                                                                                                                                                            |
+| `ENABLE_CONSOLE_CONTEXT`    |                                    | Send alert context to the console (automatically enabled for enrolled instances)                                                                                                                                          |
+| `ENABLE_CONSOLE_TAINTED`    |                                    | Send tainted alerts (from modified scenarios) to the console (automatically enabled for enrolled instances)                                                                                                               |
+| `ENABLE_CONSOLE_MANUAL`     |                                    | Send manual alerts (`cscli decisions add`) to the console (automatically enabled for enrolled instances)                                                                                                                  |
+| `ENABLE_CONSOLE_CUSTOM`     |                                    | Send custom alerts (from custom scenarios) to the console (automatically enabled for enrolled instances)                                                                                                                  |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Password Auth__           |                                    |                                                                                                                                                                                                                           |
+| `AGENT_USERNAME`            |                                    | Agent username (to register if is LAPI or to use if it's an agent): `-e AGENT_USERNAME="machine_id"`                                                                                                                      |
+| `AGENT_PASSWORD`            |                                    | Agent password (to register if is LAPI or to use if it's an agent): `-e AGENT_PASSWORD="machine_password"`                                                                                                                |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __TLS Encryption__          |                                    |                                                                                                                                                                                                                           |
+| `USE_TLS`                   | false                              | Enable TLS encryption (either as a LAPI or agent)                                                                                                                                                                         |
+| `CACERT_FILE`               |                                    | CA certificate bundle (for self-signed certificates)                                                                                                                                                                      |
+| `INSECURE_SKIP_VERIFY`      |                                    | Skip LAPI certificate validation                                                                                                                                                                                          |
+| `LAPI_CERT_FILE`            |                                    | LAPI TLS Certificate path                                                                                                                                                                                                 |
+| `LAPI_KEY_FILE`             |                                    | LAPI TLS Key path                                                                                                                                                                                                         |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __TLS Authentication__      |                                    | (these require USE_TLS=true)                                                                                                                                                                                              |
+| `CLIENT_CERT_FILE`          |                                    | Client TLS Certificate path (enable TLS authentication)                                                                                                                                                                   |
+| `CLIENT_KEY_FILE`           |                                    | Client TLS Key path                                                                                                                                                                                                       |
+| `AGENTS_ALLOWED_OU`         | agent-ou                           | OU values allowed for agents, separated by comma                                                                                                                                                                          |
+| `BOUNCERS_ALLOWED_OU`       | bouncer-ou                         | OU values allowed for bouncers, separated by comma                                                                                                                                                                        |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Hub management__          |                                    |                                                                                                                                                                                                                           |
+| `NO_HUB_UPGRADE`            | false                              | Skip hub update / upgrade when the container starts                                                                                                                                                                       |
+| `COLLECTIONS`               |                                    | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"`                                                                                                                  |
+| `PARSERS`                   |                                    | Parsers to install, separated by space                                                                                                                                                                                    |
+| `SCENARIOS`                 |                                    | Scenarios to install, separated by space                                                                                                                                                                                  |
+| `POSTOVERFLOWS`             |                                    | Postoverflows to install, separated by space                                                                                                                                                                              |
+| `CONTEXTS`                  |                                    | Context files to install, separated by space                                                                                                                                                                              |
+| `APPSEC_CONFIGS`            |                                    | Appsec configs files to install, separated by space                                                                                                                                                                       |
+| `APPSEC_RULES`              |                                    | Appsec rules files to install, separated by space                                                                                                                                                                         |
+| `DISABLE_COLLECTIONS`       |                                    | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"`                                                                                                             |
+| `DISABLE_PARSERS`           |                                    | Parsers to remove, separated by space                                                                                                                                                                                     |
+| `DISABLE_SCENARIOS`         |                                    | Scenarios to remove, separated by space                                                                                                                                                                                   |
+| `DISABLE_POSTOVERFLOWS`     |                                    | Postoverflows to remove, separated by space                                                                                                                                                                               |
+| `DISABLE_CONTEXTS`          |                                    | Context files to remove, separated by space                                                                                                                                                                               |
+| `DISABLE_APPSEC_CONFIGS`    |                                    | Appsec configs files to remove, separated by space                                                                                                                                                                        |
+| `DISABLE_APPSEC_RULES`      |                                    | Appsec rules files to remove, separated by space                                                                                                                                                                          |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Log verbosity__           |                                    |                                                                                                                                                                                                                           |
+| `LEVEL_FATAL`               | false                              | Force FATAL level for the container log                                                                                                                                                                                   |
+| `LEVEL_ERROR`               | false                              | Force ERROR level for the container log                                                                                                                                                                                   |
+| `LEVEL_WARN`                | false                              | Force WARN level for the container log                                                                                                                                                                                    |
+| `LEVEL_INFO`                | false                              | Force INFO level for the container log                                                                                                                                                                                    |
+| `LEVEL_DEBUG`               | false                              | Force DEBUG level for the container log                                                                                                                                                                                   |
+| `LEVEL_TRACE`               | false                              | Force TRACE level (VERY verbose) for the container log                                                                                                                                                                    |
+|                             |                                    |                                                                                                                                                                                                                           |
+| __Developer options__       |                                    |                                                                                                                                                                                                                           |
+| `CI_TESTING`                | false                              | Used during functional tests                                                                                                                                                                                              |
+| `DEBUG`                     | false                              | Trace the entrypoint                                                                                                                                                                                                      |
 
 ## File Locations
 

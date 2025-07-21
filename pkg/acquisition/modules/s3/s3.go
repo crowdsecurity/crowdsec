@@ -93,11 +93,18 @@ type S3Event struct {
 	} `json:"detail"`
 }
 
+// For events that are published to SQS by SNS
+// We only care about the message itself, the other SNS metadata are not needed
+type SNSEvent struct {
+	Message string `json:"Message"`
+}
+
 const (
 	PollMethodList          = "list"
 	PollMethodSQS           = "sqs"
 	SQSFormatEventBridge    = "eventbridge"
 	SQSFormatS3Notification = "s3notification"
+	SQSFormatSNS            = "sns"
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -296,6 +303,16 @@ func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) 
 	return s3notifBody.Records[0].S3.Bucket.Name, s3notifBody.Records[0].S3.Object.Key, nil
 }
 
+func extractBucketAndPrefixFromSNSNotif(message *string) (string, string, error) {
+	snsBody := SNSEvent{}
+	err := json.Unmarshal([]byte(*message), &snsBody)
+	if err != nil {
+		return "", "", err
+	}
+	//It's just a SQS message wrapped in SNS
+	return extractBucketAndPrefixFromS3Notif(&snsBody.Message)
+}
+
 func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
 	switch s.Config.SQSFormat {
 	case SQSFormatEventBridge:
@@ -310,6 +327,12 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 			return "", "", err
 		}
 		return bucket, key, nil
+	case SQSFormatSNS:
+		bucket, key, err := extractBucketAndPrefixFromSNSNotif(message)
+		if err != nil {
+			return "", "", err
+		}
+		return bucket, key, nil
 	default:
 		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
 		if err == nil {
@@ -319,6 +342,11 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 		bucket, key, err = extractBucketAndPrefixFromS3Notif(message)
 		if err == nil {
 			s.Config.SQSFormat = SQSFormatS3Notification
+			return bucket, key, nil
+		}
+		bucket, key, err = extractBucketAndPrefixFromSNSNotif(message)
+		if err == nil {
+			s.Config.SQSFormat = SQSFormatSNS
 			return bucket, key, nil
 		}
 		return "", "", errors.New("SQS message format not supported")
@@ -506,8 +534,8 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("bucket_name is required")
 	}
 
-	if s.Config.SQSFormat != "" && s.Config.SQSFormat != SQSFormatEventBridge && s.Config.SQSFormat != SQSFormatS3Notification {
-		return fmt.Errorf("invalid sqs_format %s, must be empty, %s or %s", s.Config.SQSFormat, SQSFormatEventBridge, SQSFormatS3Notification)
+	if s.Config.SQSFormat != "" && s.Config.SQSFormat != SQSFormatEventBridge && s.Config.SQSFormat != SQSFormatS3Notification && s.Config.SQSFormat != SQSFormatSNS {
+		return fmt.Errorf("invalid sqs_format %s, must be empty, %s, %s or %s", s.Config.SQSFormat, SQSFormatEventBridge, SQSFormatS3Notification, SQSFormatSNS)
 	}
 
 	return nil

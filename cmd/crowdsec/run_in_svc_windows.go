@@ -15,6 +15,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
+func isWindowsService() (bool, error) {
+	return svc.IsWindowsService()
+}
+
 func StartRunSvc() error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
@@ -25,7 +29,7 @@ func StartRunSvc() error {
 	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
 
-	isRunninginService, err := svc.IsWindowsService()
+	isRunninginService, err := isWindowsService()
 	if err != nil {
 		return fmt.Errorf("failed to determine if we are running in windows service mode: %w", err)
 	}
