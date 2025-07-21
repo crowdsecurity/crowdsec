@@ -1,14 +1,23 @@
 version: 2
 updates:
-- package-ecosystem: "github-actions"
-  directory: "/"
-  schedule:
-    interval: "daily"
-- package-ecosystem: "gomod"
-  directory: "/"
-  schedule:
-    interval: "daily"
-- package-ecosystem: "uv"
-  directory: "/"
-  schedule:
-    interval: "daily"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "kind/dependencies"
+      - "github-actions"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "kind/dependencies"
+      - "go"
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "kind/dependencies"
+      - "python"
