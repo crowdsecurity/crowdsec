@@ -25,8 +25,6 @@ import (
 
 	"github.com/crowdsecurity/dlog"
 
-	"slices"
-
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
