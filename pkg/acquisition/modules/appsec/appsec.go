@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -118,9 +118,9 @@ type BodyResponse struct {
 }
 
 func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
-	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &w.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse appsec configuration: %w", err)
+		return fmt.Errorf("cannot parse appsec configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if w.config.ListenAddr == "" && w.config.ListenSocket == "" {
