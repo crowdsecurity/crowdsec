@@ -818,18 +818,14 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 
 		case event := <-eventsChan:
 			d.logger.Tracef("Received event: %+v", event)
-			switch event.Type {
-			case dockerTypesEvents.ServiceEventType:
-				if event.Action == dockerTypesEvents.ActionCreate || event.Action == dockerTypesEvents.ActionRemove {
-					if err := d.checkServices(ctx, serviceChan, serviceDeleteChan); err != nil {
-						d.logger.Warnf("Failed to check services: %v", err)
-					}
+			if event.Type == dockerTypesEvents.ServiceEventType && (event.Action == dockerTypesEvents.ActionCreate || event.Action == dockerTypesEvents.ActionRemove) {
+				if err := d.checkServices(ctx, serviceChan, serviceDeleteChan); err != nil {
+					d.logger.Warnf("Failed to check services: %v", err)
 				}
-			case dockerTypesEvents.ContainerEventType:
-				if event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie {
-					if err := d.checkContainers(ctx, containerChan, containerDeleteChan); err != nil {
-						d.logger.Warnf("Failed to check containers: %v", err)
-					}
+			}
+			if event.Type == dockerTypesEvents.ContainerEventType && (event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie) {
+				if err := d.checkContainers(ctx, containerChan, containerDeleteChan); err != nil {
+					d.logger.Warnf("Failed to check containers: %v", err)
 				}
 			}
 		case err := <-errChan:

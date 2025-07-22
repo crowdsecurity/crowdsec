@@ -313,6 +313,7 @@ service_name_regexp:
 			out := make(chan types.Event)
 			dockerSource := DockerSource{}
 
+			//nolint:contextcheck
 			err := dockerSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
 			require.NoError(t, err)
 
