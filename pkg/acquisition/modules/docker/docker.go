@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,23 +39,24 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type DockerConfiguration struct {
-	CheckInterval                     string   `yaml:"check_interval"`
-	FollowStdout                      bool     `yaml:"follow_stdout"`
-	FollowStdErr                      bool     `yaml:"follow_stderr"`
-	Until                             string   `yaml:"until"`
-	Since                             string   `yaml:"since"`
-	DockerHost                        string   `yaml:"docker_host"`
-	ContainerName                     []string `yaml:"container_name"`
-	ContainerID                       []string `yaml:"container_id"`
-	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
-	ContainerIDRegexp                 []string `yaml:"container_id_regexp"`
-	ServiceName                       []string `yaml:"service_name"`
+	configuration.DataSourceCommonCfg `yaml:",inline"`
+
+	CheckInterval       string   `yaml:"check_interval"`
+	FollowStdout        bool     `yaml:"follow_stdout"`
+	FollowStdErr        bool     `yaml:"follow_stderr"`
+	Until               string   `yaml:"until"`
+	Since               string   `yaml:"since"`
+	DockerHost          string   `yaml:"docker_host"`
+	ContainerName       []string `yaml:"container_name"`
+	ContainerID         []string `yaml:"container_id"`
+	ContainerNameRegexp []string `yaml:"container_name_regexp"`
+	ContainerIDRegexp   []string `yaml:"container_id_regexp"`
+  ServiceName                       []string `yaml:"service_name"`
 	ServiceID                         []string `yaml:"service_id"`
 	ServiceNameRegexp                 []string `yaml:"service_name_regexp"`
 	ServiceIDRegexp                   []string `yaml:"service_id_regexp"`
 	UseServiceLabels                  bool     `yaml:"use_service_labels"`
-	UseContainerLabels                bool     `yaml:"use_container_labels"`
-	configuration.DataSourceCommonCfg `yaml:",inline"`
+	UseContainerLabels  bool     `yaml:"use_container_labels"`
 }
 
 type DockerSource struct {
@@ -397,7 +399,9 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					evt.Line = l
 					evt.Process = true
 					evt.Type = types.LOG
+
 					out <- evt
+
 					d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 				}
 			}
@@ -436,8 +440,8 @@ func (d *DockerSource) CanRun() error {
 	return nil
 }
 
-func (d *DockerSource) getContainerTTY(ctx context.Context, containerId string) bool {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerId)
+func (d *DockerSource) getContainerTTY(ctx context.Context, containerID string) bool {
+	containerDetails, err := d.Client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return false
 	}
@@ -445,10 +449,10 @@ func (d *DockerSource) getContainerTTY(ctx context.Context, containerId string) 
 	return containerDetails.Config.Tty
 }
 
-func (d *DockerSource) getContainerLabels(ctx context.Context, containerId string) map[string]interface{} {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerId)
+func (d *DockerSource) getContainerLabels(ctx context.Context, containerID string) map[string]any {
+	containerDetails, err := d.Client.ContainerInspect(ctx, containerID)
 	if err != nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	return parseLabels(containerDetails.Config.Labels)
@@ -513,7 +517,7 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 			return nil
 		}
 
-		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
+		labelsTypeCast, ok := parsedLabels["labels"].(map[string]any)
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
 			return nil
@@ -718,6 +722,7 @@ func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *Cont
 	}
 
 	d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
+
 	return nil
 }
 
@@ -882,7 +887,7 @@ func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan types.
 	return d.Watch(ctx, containerChan, containerDeleteChan, serviceChan, serviceDeleteChan)
 }
 
-func (d *DockerSource) Dump() interface{} {
+func (d *DockerSource) Dump() any {
 	return d
 }
 
@@ -890,6 +895,7 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 	for scanner.Scan() {
 		out <- scanner.Text()
 	}
+
 	return scanner.Err()
 }
 
@@ -927,6 +933,7 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 			if line == "" {
 				continue
 			}
+
 			l := types.Line{}
 			l.Raw = line
 			l.Labels = container.Labels

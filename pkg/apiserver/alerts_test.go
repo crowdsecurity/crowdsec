@@ -148,7 +148,7 @@ func TestCreateAlert(t *testing.T) {
 }
 
 func TestCreateAllowlistedAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
