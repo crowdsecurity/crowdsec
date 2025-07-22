@@ -17,7 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -108,8 +108,8 @@ func (cw *CloudwatchSource) GetUuid() string {
 
 func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	cw.Config = CloudwatchSourceConfiguration{}
-	if err := yaml.UnmarshalStrict(yamlConfig, &cw.Config); err != nil {
-		return fmt.Errorf("cannot parse CloudwatchSource configuration: %w", err)
+	if err := yaml.UnmarshalWithOptions(yamlConfig, &cw.Config, yaml.Strict()); err != nil {
+		return fmt.Errorf("cannot parse CloudwatchSource configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if cw.Config.GroupName == "" {
