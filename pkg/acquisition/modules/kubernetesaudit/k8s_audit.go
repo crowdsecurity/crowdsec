@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 	"k8s.io/apiserver/pkg/apis/audit"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -67,9 +67,9 @@ func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	k8sConfig := KubernetesAuditConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &k8sConfig)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &k8sConfig, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse k8s-audit configuration: %w", err)
+		return fmt.Errorf("cannot parse k8s-audit configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	ka.config = k8sConfig
