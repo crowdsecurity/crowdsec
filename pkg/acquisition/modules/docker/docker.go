@@ -51,11 +51,11 @@ type DockerConfiguration struct {
 	ContainerID         []string `yaml:"container_id"`
 	ContainerNameRegexp []string `yaml:"container_name_regexp"`
 	ContainerIDRegexp   []string `yaml:"container_id_regexp"`
-  ServiceName                       []string `yaml:"service_name"`
-	ServiceID                         []string `yaml:"service_id"`
-	ServiceNameRegexp                 []string `yaml:"service_name_regexp"`
-	ServiceIDRegexp                   []string `yaml:"service_id_regexp"`
-	UseServiceLabels                  bool     `yaml:"use_service_labels"`
+	ServiceName         []string `yaml:"service_name"`
+	ServiceID           []string `yaml:"service_id"`
+	ServiceNameRegexp   []string `yaml:"service_name_regexp"`
+	ServiceIDRegexp     []string `yaml:"service_id_regexp"`
+	UseServiceLabels    bool     `yaml:"use_service_labels"`
 	UseContainerLabels  bool     `yaml:"use_container_labels"`
 }
 
