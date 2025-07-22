@@ -25,7 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -499,9 +499,9 @@ func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
 
 func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	s.Config = S3Configuration{}
-	err := yaml.UnmarshalStrict(yamlConfig, &s.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse S3Acquisition configuration: %w", err)
+		return fmt.Errorf("cannot parse S3Acquisition configuration: %s", yaml.FormatError(err, false, false))
 	}
 	if s.Config.Mode == "" {
 		s.Config.Mode = configuration.TAIL_MODE
