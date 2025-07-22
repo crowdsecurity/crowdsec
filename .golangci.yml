@@ -233,6 +233,8 @@ linters:
           disabled: true
         - name: empty-lines
           disabled: true
+        - name: enforce-switch-style
+          disabled: true
         - name: error-naming
           disabled: true
         - name: flag-parameter
@@ -472,6 +474,28 @@ linters:
           - containedctx
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
+
+      # migrate over time
+
+      - linters:
+          - noctx
+        text: "net.Listen must not be called"
+
+      - linters:
+          - noctx
+        text: "exec.Command must not be called"
+
+      - linters:
+          - noctx
+        text: "net.LookupAddr must not be called"
+
+      - linters:
+          - noctx
+        text: "net.Dial must not be called"
+
+      - linters:
+          - noctx
+        text: "net.LookupHost must not be called"
     paths:
       - pkg/yamlpatch/merge.go
       - pkg/yamlpatch/merge_test.go
