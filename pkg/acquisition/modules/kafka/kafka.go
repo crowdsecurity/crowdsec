@@ -15,7 +15,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -72,9 +72,9 @@ func (k *KafkaSource) GetUuid() string {
 func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KafkaConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &k.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse %s datasource configuration: %w", dataSourceName, err)
+		return fmt.Errorf("cannot parse %s datasource configuration: %s", dataSourceName, yaml.FormatError(err, false, false))
 	}
 
 	if len(k.Config.Brokers) == 0 {
