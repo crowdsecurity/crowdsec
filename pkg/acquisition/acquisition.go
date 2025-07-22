@@ -1,6 +1,7 @@
 package acquisition
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -283,12 +284,18 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 		}
 
 		// it's an empty item, skip it
-		if len(sub.Labels) == 0 {
-			if sub.Source == "" {
-				log.Debugf("skipping empty item in %s", acquisFile)
-				continue
-			}
 
+		empty, err := IsEmptyYAML(bytes.NewReader(yamlDoc))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s (position %d): %w", acquisFile, idx, err)
+		}
+
+		if empty {
+			// there are no keys or only comments, skip the document
+			continue
+		}
+
+		if len(sub.Labels) == 0 {
 			if sub.Source != "docker" {
 				// docker is the only source that can be empty
 				return nil, fmt.Errorf("missing labels in %s (position %d)", acquisFile, idx)
@@ -296,7 +303,7 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 		}
 
 		if sub.Source == "" {
-			return nil, fmt.Errorf("data source type is empty ('source') in %s (position %d)", acquisFile, idx)
+			return nil, fmt.Errorf("missing 'source' field in %s (position %d)", acquisFile, idx)
 		}
 
 		// pre-check that the source is valid

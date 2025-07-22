@@ -50,7 +50,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: data source type is empty ('source') in $ACQUIS_DIR/file.yaml (position 0)"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: missing 'source' field in $ACQUIS_DIR/file.yaml (position 0)"
 }
 
 @test "malformed acqusition file (duplicate key)" {
@@ -114,7 +114,6 @@ teardown() {
     rune -1 "$CROWDSEC" -t
 
     assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [1:1] unknown field \\\"journalctl_filter\\\""
-#    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [1:1] unknown field \"journalctl_filter\""
 }
 
 @test "test mode does not fail because of appsec and allowlists" {
