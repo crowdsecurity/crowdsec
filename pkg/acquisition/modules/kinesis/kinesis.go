@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -129,9 +129,9 @@ func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
 func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KinesisConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &k.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse kinesis datasource configuration: %w", err)
+		return fmt.Errorf("cannot parse kinesis datasource configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if k.Config.Mode == "" {
