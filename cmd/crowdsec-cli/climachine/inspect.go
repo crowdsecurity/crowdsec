@@ -87,11 +87,23 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 }
 
 func (cli *cliMachines) inspectMetrics(out io.Writer, metrics []*ent.Metric) {
+	// Create first table for global acquisition metrics (read, global_parsed, global_unparsed)
+	cli.inspectAcquisitionMetrics(out, metrics)
+
+	// Create second table for parser-specific metrics (parsed, unparsed)
+	cli.inspectParserMetrics(out, metrics)
+}
+
+func (cli *cliMachines) inspectAcquisitionMetrics(out io.Writer, metrics []*ent.Metric) {
 	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
 
 	t.SetTitle("Acquisition Metrics")
-
 	t.AppendHeader(table.Row{"Source", "Read", "Parsed", "Unparsed"})
+
+	// Enable auto-merge for the Source column to create visual grouping
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
 
 	// Key format: "datasource_type:source (acquis_type)"
 	// Keys of 2nd map are "read", "parsed", "unparsed"
@@ -169,7 +181,131 @@ func (cli *cliMachines) inspectMetrics(out io.Writer, metrics []*ent.Metric) {
 		})
 	}
 
-	fmt.Fprintln(out, t.Render())
+	if len(sources) > 0 {
+		fmt.Fprintln(out, t.Render())
+	}
+}
+
+func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metric) {
+	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
+
+	t.SetTitle("Parser Metrics")
+	t.AppendHeader(table.Row{"Source", "Parser", "Parsed", "Unparsed"})
+
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+
+	// Map to aggregate metrics by source and parser
+	// Key format: "datasource_type:source (acquis_type)"
+	// Value: map[parser_name]map[metric_type]int + stage info
+	type parserInfo struct {
+		stage   string
+		name    string
+		metrics map[string]int
+	}
+	aggregatedMetrics := make(map[string][]parserInfo)
+
+	for _, metric := range metrics {
+		var payload models.LogProcessorsMetrics
+
+		if err := json.Unmarshal([]byte(metric.Payload), &payload); err != nil {
+			fmt.Fprintf(out, "Failed to unmarshal metric payload: %s\n", err)
+			continue
+		}
+
+		for _, detailedMetric := range payload.Metrics {
+			for _, item := range detailedMetric.Items {
+				if item.Name == nil || item.Labels == nil || item.Value == nil {
+					continue
+				}
+
+				metricName := *item.Name
+
+				if metricName != "parsed" && metricName != "unparsed" {
+					continue
+				}
+
+				datasourceType := item.Labels["datasource_type"]
+				source := item.Labels["source"]
+				acquisType := item.Labels["acquis_type"]
+				parserName := item.Labels["parser_name"]
+				parserStage := item.Labels["parser_stage"]
+
+				var sourceID string
+				if datasourceType == "" && source == "" && acquisType == "" {
+					// Postoverflows have lost the acquisition information, treat as a special case
+					sourceID = "Postoverflows"
+				} else {
+					sourceID = fmt.Sprintf("%s:%s (%s)", datasourceType, source, acquisType)
+				}
+
+				var foundParser *parserInfo
+				for i := range aggregatedMetrics[sourceID] {
+					if aggregatedMetrics[sourceID][i].name == parserName {
+						foundParser = &aggregatedMetrics[sourceID][i]
+						break
+					}
+				}
+
+				if foundParser == nil {
+					newParser := parserInfo{
+						stage:   parserStage,
+						name:    parserName,
+						metrics: make(map[string]int),
+					}
+					aggregatedMetrics[sourceID] = append(aggregatedMetrics[sourceID], newParser)
+					foundParser = &aggregatedMetrics[sourceID][len(aggregatedMetrics[sourceID])-1]
+				}
+
+				foundParser.metrics[metricName] += int(*item.Value)
+			}
+		}
+	}
+
+	// Sort alphabetically by source, postoverflows last
+	var sources []string
+	for source := range aggregatedMetrics {
+		sources = append(sources, source)
+	}
+
+	sort.Slice(sources, func(i, j int) bool {
+		// Always put "Postoverflows" last
+		if sources[i] == "Postoverflows" {
+			return false
+		}
+		if sources[j] == "Postoverflows" {
+			return true
+		}
+		// Normal alphabetical sorting for other sources
+		return sources[i] < sources[j]
+	})
+
+	// Add rows to the table
+	for _, source := range sources {
+		parsers := aggregatedMetrics[source]
+
+		// Sort parsers first by stage, then alphabetically by name
+		sort.Slice(parsers, func(i, j int) bool {
+			if parsers[i].stage != parsers[j].stage {
+				return parsers[i].stage < parsers[j].stage
+			}
+			return parsers[i].name < parsers[j].name
+		})
+
+		for _, parser := range parsers {
+			t.AppendRow(table.Row{
+				source,
+				fmt.Sprintf("%s/%s", parser.stage, parser.name),
+				parser.metrics["parsed"],
+				parser.metrics["unparsed"],
+			})
+		}
+	}
+
+	if len(sources) > 0 {
+		fmt.Fprintln(out, t.Render())
+	}
 }
 
 func (cli *cliMachines) inspect(machine *ent.Machine, metrics []*ent.Metric) error {
