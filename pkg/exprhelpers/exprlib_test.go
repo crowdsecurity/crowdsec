@@ -719,10 +719,10 @@ func TestAverageDuration(t *testing.T) {
 	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name   string
-		env    map[string]any
-		code   string
-		result time.Duration
+		name string
+		env  map[string]any
+		code string
+		want time.Duration
 	}{
 		{
 			name: "AverageDuration() test: two times with 1 second difference",
@@ -730,8 +730,8 @@ func TestAverageDuration(t *testing.T) {
 				"time1": baseTime,
 				"time2": baseTime.Add(time.Second),
 			},
-			code:   "AverageDuration(time1, time2)",
-			result: time.Second,
+			code: "AverageDuration(time1, time2)",
+			want: time.Second,
 		},
 		{
 			name: "AverageDuration() test: two times with 1 second difference (reverse order)",
@@ -739,8 +739,8 @@ func TestAverageDuration(t *testing.T) {
 				"time1": baseTime.Add(time.Second),
 				"time2": baseTime,
 			},
-			code:   "AverageDuration(time1, time2)",
-			result: time.Second,
+			code: "AverageDuration(time1, time2)",
+			want: time.Second,
 		},
 		{
 			name: "AverageDuration() test: three times with varying intervals",
@@ -749,8 +749,8 @@ func TestAverageDuration(t *testing.T) {
 				"time2": baseTime.Add(2 * time.Second), // 2s gap
 				"time3": baseTime.Add(6 * time.Second), // 4s gap
 			},
-			code:   "AverageDuration(time1, time2, time3)",
-			result: 3 * time.Second, // (2s + 4s) / 2 = 3s average
+			code: "AverageDuration(time1, time2, time3)",
+			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
 		},
 		{
 			name: "AverageDuration() test: four times with equal intervals",
@@ -760,8 +760,8 @@ func TestAverageDuration(t *testing.T) {
 				"time3": baseTime.Add(2 * time.Hour),
 				"time4": baseTime.Add(3 * time.Hour),
 			},
-			code:   "AverageDuration(time1, time2, time3, time4)",
-			result: time.Hour, // all intervals are 1 hour
+			code: "AverageDuration(time1, time2, time3, time4)",
+			want: time.Hour, // all intervals are 1 hour
 		},
 	}
 
@@ -769,10 +769,9 @@ func TestAverageDuration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 			require.NoError(t, err)
-			output, err := expr.Run(program, test.env)
+			got, err := expr.Run(program, test.env)
 			require.NoError(t, err)
-			require.Equal(t, test.result, output)
-			log.Printf("test '%s' : OK", test.name)
+			require.Equal(t, test.want, got)
 		})
 	}
 }
@@ -788,7 +787,7 @@ func TestMedianDuration(t *testing.T) {
 		name        string
 		env         map[string]any
 		code        string
-		result      time.Duration
+		want        time.Duration
 		wantErr     bool
 		errContains string
 	}{
@@ -798,8 +797,8 @@ func TestMedianDuration(t *testing.T) {
 				"time1": baseTime,
 				"time2": baseTime.Add(time.Second),
 			},
-			code:   "MedianDuration(time1, time2)",
-			result: time.Second,
+			code: "MedianDuration(time1, time2)",
+			want: time.Second,
 		},
 		{
 			name: "MedianDuration() test: three times - odd number of intervals",
@@ -809,8 +808,8 @@ func TestMedianDuration(t *testing.T) {
 				"time3": baseTime.Add(5 * time.Second),  // 3s gap
 				"time4": baseTime.Add(11 * time.Second), // 6s gap
 			},
-			code:   "MedianDuration(time1, time2, time3, time4)",
-			result: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+			code: "MedianDuration(time1, time2, time3, time4)",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
 		},
 		{
 			name: "MedianDuration() test: four times - even number of intervals",
@@ -821,8 +820,8 @@ func TestMedianDuration(t *testing.T) {
 				"time4": baseTime.Add(7 * time.Second),  // 4s gap
 				"time5": baseTime.Add(15 * time.Second), // 8s gap
 			},
-			code:   "MedianDuration(time1, time2, time3, time4, time5)",
-			result: 3 * time.Second, // median of [1s, 2s, 4s, 8s] = (2s + 4s) / 2 = 3s
+			code: "MedianDuration(time1, time2, time3, time4, time5)",
+			want: 3 * time.Second, // median of [1s, 2s, 4s, 8s] = (2s + 4s) / 2 = 3s
 		},
 		{
 			name: "MedianDuration() test: reverse order times",
@@ -832,8 +831,8 @@ func TestMedianDuration(t *testing.T) {
 				"time3": baseTime.Add(2 * time.Second),
 				"time4": baseTime,
 			},
-			code:   "MedianDuration(time1, time2, time3, time4)",
-			result: 3 * time.Second, // should sort first, then calculate median
+			code: "MedianDuration(time1, time2, time3, time4)",
+			want: 3 * time.Second, // should sort first, then calculate median
 		},
 		{
 			name: "MedianDuration() test: equal intervals",
@@ -844,8 +843,8 @@ func TestMedianDuration(t *testing.T) {
 				"time4": baseTime.Add(3 * time.Hour),
 				"time5": baseTime.Add(4 * time.Hour),
 			},
-			code:   "MedianDuration(time1, time2, time3, time4, time5)",
-			result: time.Hour, // all intervals are 1 hour, median = 1 hour
+			code: "MedianDuration(time1, time2, time3, time4, time5)",
+			want: time.Hour, // all intervals are 1 hour, median = 1 hour
 		},
 		{
 			name: "MedianDuration() test: mixed small and large intervals",
@@ -855,8 +854,8 @@ func TestMedianDuration(t *testing.T) {
 				"time3": baseTime.Add(1001 * time.Millisecond), // 1000ms = 1s gap
 				"time4": baseTime.Add(2001 * time.Millisecond), // 1000ms = 1s gap
 			},
-			code:   "MedianDuration(time1, time2, time3, time4)",
-			result: time.Second, // median of [1ms, 1s, 1s] = 1s
+			code: "MedianDuration(time1, time2, time3, time4)",
+			want: time.Second, // median of [1ms, 1s, 1s] = 1s
 		},
 		{
 			name: "MedianDuration() test: only one time (error case)",
@@ -874,7 +873,7 @@ func TestMedianDuration(t *testing.T) {
 			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 			require.NoError(t, err)
 
-			output, err := expr.Run(program, test.env)
+			got, err := expr.Run(program, test.env)
 
 			if test.wantErr {
 				require.Error(t, err)
@@ -885,8 +884,7 @@ func TestMedianDuration(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, test.result, output)
-			log.Printf("test '%s' : OK", test.name)
+			require.Equal(t, test.want, got)
 		})
 	}
 }
