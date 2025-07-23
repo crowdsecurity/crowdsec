@@ -446,7 +446,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			switch s.metricsLevel {
 			case metrics.AcquisitionMetricsLevelFull:
 				l.Src = bucket + "/" + key
-			case metrics.AcquisitionMetricsLevelAggregated:
+			case metrics.AcquisitionMetricsLevelAggregated, metrics.AcquisitionMetricsLevelNone: // Even if metrics are disabled, we want to source in the event
 				l.Src = bucket
 			}
 			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)

@@ -36,7 +36,7 @@ var childNodeExcludeRegexp = regexp.MustCompile("^child-")
 // There's only a single instance of MetricsProvider, so no need to mutex or anything
 // This used to store the last collected value of a metric to compute the delta before sending it
 // Key is a concatenation of all labels
-var metricsLastValues map[string]float64 = make(map[string]float64)
+var metricsLastValues = make(map[string]float64)
 
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
