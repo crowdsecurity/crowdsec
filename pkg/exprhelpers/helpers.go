@@ -634,7 +634,7 @@ func ParseUri(params ...any) (any, error) {
 // func AverageTime(params ...time.Time) time.Duration
 func AverageTime(params ...any) (any, error) {
 	if len(params) < 2 {
-		return 0, fmt.Errorf("need at least two times to calculate an average interval")
+		return 0, errors.New("need at least two times to calculate an average interval")
 	}
 
 	// Sort times in ascending order
