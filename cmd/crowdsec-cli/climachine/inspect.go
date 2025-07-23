@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -16,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
@@ -84,13 +86,100 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (cli *cliMachines) inspect(machine *ent.Machine) error {
+func (cli *cliMachines) inspectMetrics(out io.Writer, metrics []*ent.Metric) {
+	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
+
+	t.SetTitle("Acquisition Metrics")
+
+	t.AppendHeader(table.Row{"Source", "Read", "Parsed", "Unparsed"})
+
+	// Key format: "datasource_type:source (acquis_type)"
+	// Keys of 2nd map are "read", "parsed", "unparsed"
+	aggregatedMetrics := make(map[string]map[string]int)
+
+	for _, metric := range metrics {
+		var payload models.LogProcessorsMetrics
+
+		if err := json.Unmarshal([]byte(metric.Payload), &payload); err != nil {
+			//FIXME
+			fmt.Fprintf(out, "Failed to unmarshal metric payload: %s\n", err)
+			continue
+		}
+
+		for _, detailedMetric := range payload.Metrics {
+			if detailedMetric.Items == nil {
+				continue
+			}
+
+			for _, item := range detailedMetric.Items {
+				if item.Name == nil || item.Labels == nil || item.Value == nil {
+					continue
+				}
+
+				metricName := *item.Name
+
+				if metricName != "read" && metricName != "global_parsed" && metricName != "global_unparsed" {
+					continue
+				}
+
+				datasourceType, hasDataSourceType := item.Labels["datasource_type"]
+				source, hasSource := item.Labels["source"]
+				acquisType, hasAcquisType := item.Labels["acquis_type"]
+
+				if !hasDataSourceType || !hasSource || !hasAcquisType {
+					continue
+				}
+
+				sourceID := fmt.Sprintf("%s:%s (%s)", datasourceType, source, acquisType)
+
+				if aggregatedMetrics[sourceID] == nil {
+					aggregatedMetrics[sourceID] = make(map[string]int)
+				}
+
+				var columnName string
+				switch metricName {
+				case "read":
+					columnName = "read"
+				case "global_parsed":
+					columnName = "parsed"
+				case "global_unparsed":
+					columnName = "unparsed"
+				}
+
+				aggregatedMetrics[sourceID][columnName] += int(*item.Value)
+			}
+		}
+	}
+
+	// Sort alphabetically by source
+	var sources []string
+	for source := range aggregatedMetrics {
+		sources = append(sources, source)
+	}
+
+	sort.Strings(sources)
+
+	for _, source := range sources {
+		metrics := aggregatedMetrics[source]
+		t.AppendRow(table.Row{
+			source,
+			metrics["read"],
+			metrics["parsed"],
+			metrics["unparsed"],
+		})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+func (cli *cliMachines) inspect(machine *ent.Machine, metrics []*ent.Metric) error {
 	out := color.Output
 	outputFormat := cli.cfg().Cscli.Output
 
 	switch outputFormat {
 	case "human":
 		cli.inspectHuman(out, machine)
+		cli.inspectMetrics(out, metrics)
 	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
@@ -173,7 +262,11 @@ func (cli *cliMachines) newInspectCmd() *cobra.Command {
 				return cli.inspectHub(machine)
 			}
 
-			return cli.inspect(machine)
+			machineMetrics, err := cli.db.GetLPUsageMetricsByMachineID(ctx, machineID, false)
+			if err != nil {
+				return fmt.Errorf("unable to read machine metrics '%s': %w", machineID, err)
+			}
+			return cli.inspect(machine, machineMetrics)
 		},
 	}
 

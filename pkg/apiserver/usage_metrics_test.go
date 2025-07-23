@@ -199,7 +199,7 @@ func TestLPMetrics(t *testing.T) {
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
 			machine, _ := dbClient.QueryMachineByID(ctx, "test")
-			metrics, _ := dbClient.GetLPUsageMetricsByMachineID(ctx, "test")
+			metrics, _ := dbClient.GetLPUsageMetricsByMachineID(ctx, "test", true)
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, machine.Osname)
