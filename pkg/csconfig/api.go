@@ -16,8 +16,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -133,7 +133,7 @@ func (o *OnlineApiClientCfg) Load() error {
 }
 
 func (l *LocalApiClientCfg) Load() error {
-	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath, ".local")
+	patcher := csyaml.NewPatcher(l.CredentialsFilePath, ".local")
 
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
