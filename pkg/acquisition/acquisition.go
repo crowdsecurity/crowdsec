@@ -285,7 +285,7 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 
 		// it's an empty item, skip it
 
-		empty, err := IsEmptyYAML(bytes.NewReader(yamlDoc))
+		empty, err := csyaml.IsEmptyYAML(bytes.NewReader(yamlDoc))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %s (position %d): %w", acquisFile, idx, err)
 		}
