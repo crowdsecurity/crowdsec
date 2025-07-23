@@ -28,7 +28,7 @@ type DecisionsByScenario struct {
 	Type     string
 }
 
-func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
+func applyDecisionFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var (
 		rng csnet.Range
 		err error
@@ -136,7 +136,7 @@ func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filters map[s
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, err := applyDecisionFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
@@ -162,7 +162,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filters m
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, err := applyDecisionFilter(query, filters)
 
 	query = query.Order(ent.Asc(decision.FieldID))
 
@@ -185,7 +185,7 @@ func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*Decisions
 		decision.UntilGT(time.Now().UTC()),
 	)
 
-	query, err := BuildDecisionRequestWithFilter(query, make(map[string][]string))
+	query, err := applyDecisionFilter(query, make(map[string][]string))
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
 		return nil, errors.Wrap(QueryFail, "count all decisions with filters")
@@ -208,15 +208,15 @@ func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string]
 		data []*ent.Decision
 	)
 
-	decisions := c.Ent.Decision.Query().
+	query := c.Ent.Decision.Query().
 		Where(decision.UntilGTE(time.Now().UTC()))
 
-	decisions, err = BuildDecisionRequestWithFilter(decisions, filter)
+	query, err = applyDecisionFilter(query, filter)
 	if err != nil {
 		return []*ent.Decision{}, err
 	}
 
-	err = decisions.Select(
+	err = query.Select(
 		decision.FieldID,
 		decision.FieldUntil,
 		decision.FieldScenario,
@@ -277,7 +277,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, sinc
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, err := applyDecisionFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
@@ -308,7 +308,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, err := applyDecisionFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
