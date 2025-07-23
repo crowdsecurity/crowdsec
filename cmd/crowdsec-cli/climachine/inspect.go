@@ -20,6 +20,27 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
+// metricsInfo contains processed metrics data for JSON output
+type metricsInfo struct {
+	Acquisition []acquisitionMetric `json:"acquisition,omitempty"`
+	Parsers     []parserMetric      `json:"parsers,omitempty"`
+}
+
+type acquisitionMetric struct {
+	Source   string `json:"source"`
+	Read     int    `json:"read"`
+	Parsed   int    `json:"parsed"`
+	Unparsed int    `json:"unparsed"`
+}
+
+type parserMetric struct {
+	Source   string `json:"source"`
+	Parser   string `json:"parser"`
+	Stage    string `json:"stage"`
+	Parsed   int    `json:"parsed"`
+	Unparsed int    `json:"unparsed"`
+}
+
 func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	state := machine.Hubstate
 
@@ -94,27 +115,14 @@ func (cli *cliMachines) inspectMetrics(out io.Writer, metrics []*ent.Metric) {
 	cli.inspectParserMetrics(out, metrics)
 }
 
-func (cli *cliMachines) inspectAcquisitionMetrics(out io.Writer, metrics []*ent.Metric) {
-	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
-
-	t.SetTitle("Acquisition Metrics")
-	t.AppendHeader(table.Row{"Source", "Read", "Parsed", "Unparsed"})
-
-	// Enable auto-merge for the Source column to create visual grouping
-	t.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 1, AutoMerge: true},
-	})
-
-	// Key format: "datasource_type:source (acquis_type)"
-	// Keys of 2nd map are "read", "parsed", "unparsed"
+// processAcquisitionMetrics aggregates acquisition metrics data from raw metrics
+func (cli *cliMachines) processAcquisitionMetrics(metrics []*ent.Metric) []acquisitionMetric {
 	aggregatedMetrics := make(map[string]map[string]int)
 
 	for _, metric := range metrics {
 		var payload models.LogProcessorsMetrics
 
 		if err := json.Unmarshal([]byte(metric.Payload), &payload); err != nil {
-			//FIXME
-			fmt.Fprintf(out, "Failed to unmarshal metric payload: %s\n", err)
 			continue
 		}
 
@@ -163,42 +171,57 @@ func (cli *cliMachines) inspectAcquisitionMetrics(out io.Writer, metrics []*ent.
 		}
 	}
 
-	// Sort alphabetically by source
+	// Convert to slice and sort
+	var result []acquisitionMetric
 	var sources []string
 	for source := range aggregatedMetrics {
 		sources = append(sources, source)
 	}
-
 	sort.Strings(sources)
 
 	for _, source := range sources {
 		metrics := aggregatedMetrics[source]
-		t.AppendRow(table.Row{
-			source,
-			metrics["read"],
-			metrics["parsed"],
-			metrics["unparsed"],
+		result = append(result, acquisitionMetric{
+			Source:   source,
+			Read:     metrics["read"],
+			Parsed:   metrics["parsed"],
+			Unparsed: metrics["unparsed"],
 		})
 	}
 
-	if len(sources) > 0 {
-		fmt.Fprintln(out, t.Render())
-	}
+	return result
 }
 
-func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metric) {
+func (cli *cliMachines) inspectAcquisitionMetrics(out io.Writer, metrics []*ent.Metric) {
+	acquisitionMetrics := cli.processAcquisitionMetrics(metrics)
+
+	if len(acquisitionMetrics) == 0 {
+		return
+	}
+
 	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
 
-	t.SetTitle("Parser Metrics")
-	t.AppendHeader(table.Row{"Source", "Parser", "Parsed", "Unparsed"})
+	t.SetTitle("Acquisition Metrics")
+	t.AppendHeader(table.Row{"Source", "Read", "Parsed", "Unparsed"})
 
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
 
-	// Map to aggregate metrics by source and parser
-	// Key format: "datasource_type:source (acquis_type)"
-	// Value: map[parser_name]map[metric_type]int + stage info
+	for _, metric := range acquisitionMetrics {
+		t.AppendRow(table.Row{
+			metric.Source,
+			metric.Read,
+			metric.Parsed,
+			metric.Unparsed,
+		})
+	}
+
+	fmt.Fprintln(out, t.Render())
+}
+
+// processParserMetrics aggregates parser metrics data from raw metrics
+func (cli *cliMachines) processParserMetrics(metrics []*ent.Metric) []parserMetric {
 	type parserInfo struct {
 		stage   string
 		name    string
@@ -210,7 +233,6 @@ func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metri
 		var payload models.LogProcessorsMetrics
 
 		if err := json.Unmarshal([]byte(metric.Payload), &payload); err != nil {
-			fmt.Fprintf(out, "Failed to unmarshal metric payload: %s\n", err)
 			continue
 		}
 
@@ -263,7 +285,7 @@ func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metri
 		}
 	}
 
-	// Sort alphabetically by source, postoverflows last
+	var result []parserMetric
 	var sources []string
 	for source := range aggregatedMetrics {
 		sources = append(sources, source)
@@ -277,11 +299,9 @@ func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metri
 		if sources[j] == "Postoverflows" {
 			return true
 		}
-		// Normal alphabetical sorting for other sources
 		return sources[i] < sources[j]
 	})
 
-	// Add rows to the table
 	for _, source := range sources {
 		parsers := aggregatedMetrics[source]
 
@@ -294,18 +314,45 @@ func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metri
 		})
 
 		for _, parser := range parsers {
-			t.AppendRow(table.Row{
-				source,
-				fmt.Sprintf("%s/%s", parser.stage, parser.name),
-				parser.metrics["parsed"],
-				parser.metrics["unparsed"],
+			result = append(result, parserMetric{
+				Source:   source,
+				Parser:   parser.name,
+				Stage:    parser.stage,
+				Parsed:   parser.metrics["parsed"],
+				Unparsed: parser.metrics["unparsed"],
 			})
 		}
 	}
 
-	if len(sources) > 0 {
-		fmt.Fprintln(out, t.Render())
+	return result
+}
+
+func (cli *cliMachines) inspectParserMetrics(out io.Writer, metrics []*ent.Metric) {
+	parserMetrics := cli.processParserMetrics(metrics)
+
+	if len(parserMetrics) == 0 {
+		return
 	}
+
+	t := cstable.New(out, cli.cfg().Cscli.Color).Writer
+
+	t.SetTitle("Parser Metrics")
+	t.AppendHeader(table.Row{"Source", "Parser", "Parsed", "Unparsed"})
+
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+
+	for _, metric := range parserMetrics {
+		t.AppendRow(table.Row{
+			metric.Source,
+			fmt.Sprintf("%s/%s", metric.Stage, metric.Parser),
+			metric.Parsed,
+			metric.Unparsed,
+		})
+	}
+
+	fmt.Fprintln(out, t.Render())
 }
 
 func (cli *cliMachines) inspect(machine *ent.Machine, metrics []*ent.Metric) error {
@@ -320,7 +367,18 @@ func (cli *cliMachines) inspect(machine *ent.Machine, metrics []*ent.Metric) err
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 
-		if err := enc.Encode(newMachineInfo(machine)); err != nil {
+		machineData := newMachineInfo(machine)
+		metricsData := cli.processMetricsForJSON(metrics)
+
+		result := struct {
+			machineInfo
+			Metrics metricsInfo `json:"metrics,omitempty"`
+		}{
+			machineInfo: machineData,
+			Metrics:     metricsData,
+		}
+
+		if err := enc.Encode(result); err != nil {
 			return errors.New("failed to serialize")
 		}
 
@@ -330,6 +388,14 @@ func (cli *cliMachines) inspect(machine *ent.Machine, metrics []*ent.Metric) err
 	}
 
 	return nil
+}
+
+func (cli *cliMachines) processMetricsForJSON(metrics []*ent.Metric) metricsInfo {
+	result := metricsInfo{
+		Acquisition: cli.processAcquisitionMetrics(metrics),
+		Parsers:     cli.processParserMetrics(metrics),
+	}
+	return result
 }
 
 func (cli *cliMachines) inspectHub(machine *ent.Machine) error {
