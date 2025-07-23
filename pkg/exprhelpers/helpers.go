@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -628,6 +629,26 @@ func ParseUri(params ...any) (any, error) {
 	maps.Copy(ret, parsed)
 
 	return ret, nil
+}
+
+// func AverageTime(params ...time.Time) time.Duration
+func AverageTime(params ...any) (any, error) {
+	if len(params) < 2 {
+		return 0, fmt.Errorf("need at least two times to calculate an average interval")
+	}
+
+	// Sort times in ascending order
+	sort.Slice(params, func(i, j int) bool {
+		return params[i].(time.Time).Before(params[j].(time.Time))
+	})
+
+	var total time.Duration
+	for i := 1; i < len(params); i++ {
+		total += params[i].(time.Time).Sub(params[i-1].(time.Time))
+	}
+
+	average := total / time.Duration(len(params)-1)
+	return average, nil
 }
 
 // func KeyExists(key string, dict map[string]interface{}) bool {

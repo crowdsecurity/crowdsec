@@ -517,6 +517,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(*http.Request) string),
 		},
 	},
+	{
+		name:     "AverageTime",
+		function: AverageTime,
+		signature: []any{
+			new(func(...time.Time) time.Duration),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

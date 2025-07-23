@@ -711,6 +711,71 @@ func TestTimeNow(t *testing.T) {
 	log.Print("test 'TimeNow()' : OK")
 }
 
+func TestAverageTime(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use a fixed base time to eliminate execution time variance
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name   string
+		env    map[string]any
+		code   string
+		result time.Duration
+	}{
+		{
+			name: "AverageTime() test: two times with 1 second difference",
+			env: map[string]any{
+				"time1": baseTime,
+				"time2": baseTime.Add(time.Second),
+			},
+			code:   "AverageTime(time1, time2)",
+			result: time.Second,
+		},
+		{
+			name: "AverageTime() test: two times with 1 second difference (reverse order)",
+			env: map[string]any{
+				"time1": baseTime.Add(time.Second),
+				"time2": baseTime,
+			},
+			code:   "AverageTime(time1, time2)",
+			result: time.Second,
+		},
+		{
+			name: "AverageTime() test: three times with varying intervals",
+			env: map[string]any{
+				"time1": baseTime,
+				"time2": baseTime.Add(2 * time.Second), // 2s gap
+				"time3": baseTime.Add(6 * time.Second), // 4s gap
+			},
+			code:   "AverageTime(time1, time2, time3)",
+			result: 3 * time.Second, // (2s + 4s) / 2 = 3s average
+		},
+		{
+			name: "AverageTime() test: four times with equal intervals",
+			env: map[string]any{
+				"time1": baseTime,
+				"time2": baseTime.Add(time.Hour),
+				"time3": baseTime.Add(2 * time.Hour),
+				"time4": baseTime.Add(3 * time.Hour),
+			},
+			code:   "AverageTime(time1, time2, time3, time4)",
+			result: time.Hour, // all intervals are 1 hour
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, test.env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+			log.Printf("test '%s' : OK", test.name)
+		})
+	}
+}
 func TestParseUri(t *testing.T) {
 	tests := []struct {
 		name   string
