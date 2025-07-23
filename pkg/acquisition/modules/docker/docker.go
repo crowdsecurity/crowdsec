@@ -86,6 +86,16 @@ func (d *DockerSource) GetUuid() string {
 	return d.Config.UniqueId
 }
 
+func (dc *DockerConfiguration) hasServiceConfig() bool {
+	return len(dc.ServiceName) > 0 || len(dc.ServiceID) > 0 ||
+		len(dc.ServiceIDRegexp) > 0 || len(dc.ServiceNameRegexp) > 0 || dc.UseServiceLabels
+}
+
+func (dc *DockerConfiguration) hasContainerConfig() bool {
+	return len(dc.ContainerName) > 0 || len(dc.ContainerID) > 0 ||
+		len(dc.ContainerIDRegexp) > 0 || len(dc.ContainerNameRegexp) > 0 || dc.UseContainerLabels
+}
+
 func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
 		FollowStdout: true, // default
@@ -102,13 +112,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	// Check if we have any container or service configuration
-	hasContainerConfig := len(d.Config.ContainerName) > 0 || len(d.Config.ContainerID) > 0 ||
-		len(d.Config.ContainerIDRegexp) > 0 || len(d.Config.ContainerNameRegexp) > 0 || d.Config.UseContainerLabels
-
-	hasServiceConfig := len(d.Config.ServiceName) > 0 || len(d.Config.ServiceID) > 0 ||
-		len(d.Config.ServiceIDRegexp) > 0 || len(d.Config.ServiceNameRegexp) > 0 || d.Config.UseServiceLabels
-
-	if !hasContainerConfig && !hasServiceConfig {
+	if !d.Config.hasContainerConfig() && !d.Config.hasServiceConfig() {
 		return errors.New("no containers or services configuration provided")
 	}
 
@@ -199,10 +203,8 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 		return fmt.Errorf("failed to get docker info: %w", err)
 	}
 
-	hasServiceConfig := len(d.Config.ServiceName) > 0 || len(d.Config.ServiceID) > 0 ||
-		len(d.Config.ServiceIDRegexp) > 0 || len(d.Config.ServiceNameRegexp) > 0 || d.Config.UseServiceLabels
-
 	if info.Swarm.LocalNodeState == dockerTypesSwarm.LocalNodeStateActive && info.Swarm.ControlAvailable {
+		hasServiceConfig := d.Config.hasServiceConfig()
 		if hasServiceConfig {
 			d.isSwarmManager = true
 			d.logger.Info("node is swarm manager, enabling swarm detection mode")
@@ -456,6 +458,56 @@ func (d *DockerSource) getContainerLabels(ctx context.Context, containerID strin
 	return parseLabels(containerDetails.Config.Labels)
 }
 
+func (d *DockerSource) processCrowdsecLabels(parsedLabels map[string]any, entityID string, entityType string) (map[string]string, error) {
+	if len(parsedLabels) == 0 {
+		d.logger.Tracef("%s has no 'crowdsec' labels set, ignoring %s: %s", entityType, entityType, entityID)
+		return nil, errors.New("no crowdsec labels")
+	}
+
+	if _, ok := parsedLabels["enable"]; !ok {
+		d.logger.Errorf("%s has 'crowdsec' labels set but no 'crowdsec.enable' key found", entityType)
+		return nil, errors.New("no crowdsec.enable key")
+	}
+
+	enable, ok := parsedLabels["enable"].(string)
+	if !ok {
+		d.logger.Errorf("%s has 'crowdsec.enable' label set but it's not a string", entityType)
+		return nil, errors.New("crowdsec.enable not a string")
+	}
+
+	if strings.ToLower(enable) != "true" {
+		d.logger.Debugf("%s has 'crowdsec.enable' label not set to true ignoring %s: %s", entityType, entityType, entityID)
+		return nil, errors.New("crowdsec.enable not true")
+	}
+
+	if _, ok = parsedLabels["labels"]; !ok {
+		d.logger.Errorf("%s has 'crowdsec.enable' label set to true but no 'labels' keys found", entityType)
+		return nil, errors.New("no labels key")
+	}
+
+	labelsTypeCast, ok := parsedLabels["labels"].(map[string]any)
+	if !ok {
+		d.logger.Errorf("%s has 'crowdsec.enable' label set to true but 'labels' is not a map", entityType)
+		return nil, errors.New("labels not a map")
+	}
+
+	d.logger.Debugf("%s labels %+v", entityType, labelsTypeCast)
+
+	labels := make(map[string]string)
+
+	for k, v := range labelsTypeCast {
+		if v, ok := v.(string); ok {
+			log.Debugf("label %s is a string with value %s", k, v)
+			labels[k] = v
+			continue
+		}
+
+		d.logger.Errorf("label %s is not a string", k)
+	}
+
+	return labels, nil
+}
+
 func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.Container) *ContainerConfig {
 	if slices.Contains(d.Config.ContainerID, container.ID) {
 		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(ctx, container.ID)}
@@ -489,51 +541,9 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 
 	if d.Config.UseContainerLabels {
 		parsedLabels := d.getContainerLabels(ctx, container.ID)
-		if len(parsedLabels) == 0 {
-			d.logger.Tracef("container has no 'crowdsec' labels set, ignoring container: %s", container.ID)
+		labels, err := d.processCrowdsecLabels(parsedLabels, container.ID, "container")
+		if err != nil {
 			return nil
-		}
-
-		if _, ok := parsedLabels["enable"]; !ok {
-			d.logger.Errorf("container has 'crowdsec' labels set but no 'crowdsec.enable' key found")
-			return nil
-		}
-
-		enable, ok := parsedLabels["enable"].(string)
-		if !ok {
-			d.logger.Error("container has 'crowdsec.enable' label set but it's not a string")
-			return nil
-		}
-
-		if strings.ToLower(enable) != "true" {
-			d.logger.Debugf("container has 'crowdsec.enable' label not set to true ignoring container: %s", container.ID)
-			return nil
-		}
-
-		if _, ok = parsedLabels["labels"]; !ok {
-			d.logger.Error("container has 'crowdsec.enable' label set to true but no 'labels' keys found")
-			return nil
-		}
-
-		labelsTypeCast, ok := parsedLabels["labels"].(map[string]any)
-		if !ok {
-			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
-			return nil
-		}
-
-		d.logger.Debugf("container labels %+v", labelsTypeCast)
-
-		labels := make(map[string]string)
-
-		for k, v := range labelsTypeCast {
-			if v, ok := v.(string); ok {
-				log.Debugf("label %s is a string with value %s", k, v)
-				labels[k] = v
-
-				continue
-			}
-
-			d.logger.Errorf("label %s is not a string", k)
 		}
 
 		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: labels, Tty: d.getContainerTTY(ctx, container.ID)}
@@ -570,50 +580,9 @@ func (d *DockerSource) EvalService(ctx context.Context, service dockerTypesSwarm
 	// Check service labels if enabled
 	if d.Config.UseServiceLabels {
 		parsedLabels := parseLabels(service.Spec.Labels)
-		if len(parsedLabels) == 0 {
-			d.logger.Tracef("service has no 'crowdsec' labels set, ignoring service: %s", service.ID)
+		labels, err := d.processCrowdsecLabels(parsedLabels, service.ID, "service")
+		if err != nil {
 			return nil
-		}
-
-		if _, ok := parsedLabels["enable"]; !ok {
-			d.logger.Errorf("service has 'crowdsec' labels set but no 'crowdsec.enable' key found")
-			return nil
-		}
-
-		enable, ok := parsedLabels["enable"].(string)
-		if !ok {
-			d.logger.Error("service has 'crowdsec.enable' label set but it's not a string")
-			return nil
-		}
-
-		if strings.ToLower(enable) != "true" {
-			d.logger.Debugf("service has 'crowdsec.enable' label not set to true ignoring service: %s", service.ID)
-			return nil
-		}
-
-		if _, ok = parsedLabels["labels"]; !ok {
-			d.logger.Error("service has 'crowdsec.enable' label set to true but no 'labels' keys found")
-			return nil
-		}
-
-		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
-		if !ok {
-			d.logger.Error("service has 'crowdsec.enable' label set to true but 'labels' is not a map")
-			return nil
-		}
-
-		d.logger.Debugf("service labels %+v", labelsTypeCast)
-
-		labels := make(map[string]string)
-
-		for k, v := range labelsTypeCast {
-			if v, ok := v.(string); ok {
-				log.Debugf("label %s is a string with value %s", k, v)
-				labels[k] = v
-				continue
-			}
-
-			d.logger.Errorf("label %s is not a string", k)
 		}
 
 		return &ContainerConfig{ID: service.ID, Name: service.Spec.Name, Labels: labels, Tty: false}
@@ -894,7 +863,7 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 }
 
 func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
-	container.logger.Infof("start tail for container %s", container.Name)
+	container.logger.Info("start tail")
 
 	dockerReader, err := d.Client.ContainerLogs(ctx, container.ID, *d.containerLogsOptions)
 	if err != nil {
@@ -955,7 +924,7 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 }
 
 func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
-	service.logger.Infof("start monitoring service %s", service.Name)
+	service.logger.Info("start tail")
 
 	// For services, we need to get the service logs using the service logs API
 	// Docker service logs aggregates logs from all running tasks of the service
