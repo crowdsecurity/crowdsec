@@ -31,15 +31,19 @@ const lpMetricsDefaultInterval = 30 * time.Minute
 
 var childNodeExcludeRegexp = regexp.MustCompile("^child-")
 
+// This is not stored in the metrics provider because it gets recreated during a reload
+// Which would make us lose the last values of the metrics, and mess up the delta for the next run because the prometheus metrics themselves are not reset
+// There's only a single instance of MetricsProvider, so no need to mutex or anything
+// This used to store the last collected value of a metric to compute the delta before sending it
+// Key is a concatenation of all labels
+var metricsLastValues map[string]float64 = make(map[string]float64)
+
 // MetricsProvider collects metrics from the LP and sends them to the LAPI
 type MetricsProvider struct {
 	apic     *apiclient.ApiClient
 	interval time.Duration
 	static   staticMetrics
 	logger   *logrus.Entry
-	// used to store the last collected value of a metric to compute the delta before sending it
-	// Key is a concatenation of all labels
-	metricsLastValues map[string]float64
 }
 
 type staticMetrics struct {
@@ -106,11 +110,10 @@ func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logge
 	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
 ) *MetricsProvider {
 	return &MetricsProvider{
-		apic:              apic,
-		interval:          interval,
-		logger:            logger,
-		static:            newStaticMetrics(consoleOptions, datasources, hub),
-		metricsLastValues: make(map[string]float64),
+		apic:     apic,
+		interval: interval,
+		logger:   logger,
+		static:   newStaticMetrics(consoleOptions, datasources, hub),
 	}
 }
 
@@ -181,14 +184,14 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 			currentValue := metric.GetCounter().GetValue()
 			value := currentValue
 
-			if lastValue, ok := m.metricsLastValues[deltaKey]; ok {
+			if lastValue, ok := metricsLastValues[deltaKey]; ok {
 				value -= lastValue
 				if value < 0 {
 					m.logger.Warnf("negative delta for metric %s (labels: %+v), resetting to 0. This is probably a bug.", metricName, metricsLabels)
 					value = 0
 				}
 			}
-			m.metricsLastValues[deltaKey] = currentValue
+			metricsLastValues[deltaKey] = currentValue
 
 			if value == 0 {
 				continue
