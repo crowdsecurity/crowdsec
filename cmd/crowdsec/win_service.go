@@ -36,7 +36,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 			case <-tick:
 
 			case c := <-r:
-				switch c.Cmd {
+				switch c.Cmd { //nolint:exhaustive
 				case svc.Interrogate:
 					changes <- c.CurrentStatus
 				case svc.Stop, svc.Shutdown:

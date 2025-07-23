@@ -27,7 +27,7 @@ func getDBClient(t *testing.T, ctx context.Context) *Client {
 }
 
 func TestCheckAllowlist(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	dbClient := getDBClient(t, ctx)
 
 	allowlist, err := dbClient.CreateAllowList(ctx, "test", "test", "", false)
@@ -106,7 +106,7 @@ func TestCheckAllowlist(t *testing.T) {
 }
 
 func TestIsAllowListedBy_SingleAndMultiple(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	dbClient := getDBClient(t, ctx)
 
 	list1, err := dbClient.CreateAllowList(ctx, "list1", "first list", "", false)
@@ -149,7 +149,7 @@ func TestIsAllowListedBy_SingleAndMultiple(t *testing.T) {
 }
 
 func TestIsAllowListedBy_NoMatch(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	dbClient := getDBClient(t, ctx)
 
 	list, err := dbClient.CreateAllowList(ctx, "solo", "single", "", false)

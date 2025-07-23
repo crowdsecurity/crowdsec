@@ -1,7 +1,6 @@
 package fileacquisition_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -545,6 +544,7 @@ mode: tail
 }
 
 func TestDiscoveryPolling(t *testing.T) {
+	ctx := t.Context()
 	dir := t.TempDir()
 
 	pattern := filepath.Join(dir, "*.log")
@@ -569,7 +569,7 @@ mode: tail
 	tomb := tomb.Tomb{}
 
 	// Start acquisition
-	err = f.StreamingAcquisition(context.Background(), eventChan, &tomb)
+	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
 	require.NoError(t, err)
 
 	// Create a test file
