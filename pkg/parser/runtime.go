@@ -50,7 +50,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		/*
 		** According to current Event layout we only have to handle struct and map
 		 */
-		switch iter.Kind() {
+		switch iter.Kind() { //nolint:exhaustive
 		case reflect.Map:
 			tmp := iter.MapIndex(reflect.ValueOf(f))
 			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
@@ -81,7 +81,8 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			return false
 		}
 	}
-	//now we should have the final member :)
+
+	// now we should have the final member :)
 	if !iter.CanSet() {
 		log.Errorf("'%s' can't be set", target)
 		return false
@@ -118,6 +119,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
+
 	clog := n.Logger
 
 	for _, static := range statics {
@@ -130,6 +132,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
 			}
+
 			switch out := output.(type) {
 			case string:
 				value = out
@@ -150,7 +153,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		}
 
 		if value == "" {
-			//allow ParseDate to have empty input
+			// allow ParseDate to have empty input
 			if static.Method != "ParseDate" {
 				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
 				continue
@@ -179,6 +182,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			} else {
 				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
 			}
+
 			if !processed {
 				clog.Debugf("method '%s' doesn't exist", static.Method)
 			}
@@ -201,6 +205,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			clog.Fatal("unable to process static : unknown target")
 		}
 	}
+
 	return nil
 }
 
@@ -210,6 +215,7 @@ func stageidx(stage string, stages []string) int {
 			return i
 		}
 	}
+
 	return -1
 }
 
