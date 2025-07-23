@@ -198,6 +198,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *t
 	)
 
 	errorMsg := "new decisions"
+
 	if since != nil {
 		query = query.Where(decision.CreatedAtGT(*since))
 
@@ -361,7 +362,7 @@ func (c *Client) DeleteDecisions(ctx context.Context, decisions []*ent.Decision)
 	return tot, nil
 }
 
-// ExpireDecision set the expiration of a decision to now()
+// ExpireDecisionByID set the expiration of a decision to now()
 func (c *Client) ExpireDecisionByID(ctx context.Context, decisionID int) (int, []*ent.Decision, error) {
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(ctx)
 
