@@ -631,8 +631,8 @@ func ParseUri(params ...any) (any, error) {
 	return ret, nil
 }
 
-// func AverageTime(params ...time.Time) time.Duration
-func AverageTime(params ...any) (any, error) {
+// func AverageDuration(params ...time.Time) time.Duration
+func AverageDuration(params ...any) (any, error) {
 	if len(params) < 2 {
 		return 0, errors.New("need at least two times to calculate an average interval")
 	}
@@ -647,8 +647,37 @@ func AverageTime(params ...any) (any, error) {
 		total += params[i].(time.Time).Sub(params[i-1].(time.Time))
 	}
 
-	average := total / time.Duration(len(params)-1)
+	average := time.Duration(int64(total) / int64(len(params)-1))
 	return average, nil
+}
+
+// func MedianDuration(times ...time.Time) (time.Duration, error)
+func MedianDuration(params ...any) (any, error) {
+	if len(params) < 2 {
+		return 0, errors.New("need at least two times to calculate a median")
+	}
+
+	// Sort times
+	sort.Slice(params, func(i, j int) bool {
+		return params[i].(time.Time).Before(params[j].(time.Time))
+	})
+
+	// Compute intervals
+	intervals := make([]time.Duration, len(params)-1)
+	for i := 1; i < len(params); i++ {
+		intervals[i-1] = params[i].(time.Time).Sub(params[i-1].(time.Time))
+	}
+
+	// Sort intervals for median calculation
+	sort.Slice(intervals, func(i, j int) bool {
+		return intervals[i] < intervals[j]
+	})
+
+	n := len(intervals)
+	if n%2 == 1 {
+		return intervals[n/2], nil
+	}
+	return (intervals[n/2-1] + intervals[n/2]) / 2, nil
 }
 
 // func KeyExists(key string, dict map[string]interface{}) bool {
