@@ -77,6 +77,19 @@ teardown() {
     assert_stderr --partial "datasource type mismatch in $ACQUIS_DIR/bad.yaml (position 0): found 'docker' but should probably be 'journalctl'"
 }
 
+@test "datasource docker (regexp)" {
+    cat >"$ACQUIS_DIR"/bad.yaml <<-EOT
+	source: docker
+	container_name_regexp:
+	  - "[abc"
+	labels:
+	  type: syslog
+	EOT
+
+    rune -0 "$CROWDSEC" -t
+    assert_stderr --partial "I expect to see a fatal error with message here, instead of a panic"
+}
+
 @test "test mode does not fail because of appsec and allowlists" {
     rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
     cat >"$ACQUIS_DIR/appsec.yaml" <<-EOT
