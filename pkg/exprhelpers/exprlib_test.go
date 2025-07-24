@@ -882,11 +882,17 @@ func TestMedianDuration(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
-			require.NoError(t, err)
-
-			got, err := expr.Run(program, test.env)
 
 			if test.wantErr {
+				if err != nil {
+					// Compile-time error (type checking)
+					if test.errContains != "" {
+						assert.Contains(t, err.Error(), test.errContains)
+					}
+					return
+				}
+				// Runtime error
+				_, err := expr.Run(program, test.env)
 				require.Error(t, err)
 				if test.errContains != "" {
 					assert.Contains(t, err.Error(), test.errContains)
@@ -894,6 +900,8 @@ func TestMedianDuration(t *testing.T) {
 				return
 			}
 
+			require.NoError(t, err)
+			got, err := expr.Run(program, test.env)
 			require.NoError(t, err)
 			require.Equal(t, test.want, got)
 		})
@@ -908,7 +916,8 @@ func TestAverageMedianWithQueues(t *testing.T) {
 	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	type mockQueue struct {
-		Time time.Time
+		Time    time.Time
+		StrTime string
 	}
 
 	tests := []struct {
@@ -1027,16 +1036,94 @@ func TestAverageMedianWithQueues(t *testing.T) {
 			wantErr:     true,
 			errContains: "need at least two times",
 		},
+		{
+			name: "AverageDuration() test error: slice of strings instead of times",
+			env: map[string]any{
+				"stringQueue": []string{"hello", "world", "test"},
+			},
+			code:        "AverageDuration(stringQueue)",
+			wantErr:     true,
+			errContains: "cannot use []string as argument",
+		},
+		{
+			name: "MedianDuration() test error: mixed types in slice",
+			env: map[string]any{
+				"mixedQueue": []mockQueue{
+					{Time: baseTime},
+				},
+				"stringValue": "not a time",
+			},
+			code:        "MedianDuration([mixedQueue[0].Time, stringValue])",
+			wantErr:     true,
+			errContains: "element at index 1 is not a time.Time",
+		},
+		{
+			name: "AverageDuration() test error: mapping string time field instead of Time field",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(time.Second), StrTime: "2023-01-01T12:00:01Z"},
+					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
+				},
+			},
+			code:        "AverageDuration(map(queue, { #.StrTime }))",
+			wantErr:     true,
+			errContains: "element at index 0 is not a time.Time",
+		},
+		{
+			name: "MedianDuration() test error: accidentally mapping wrong field type",
+			env: map[string]any{
+				"queueWithStrings": []mockQueue{
+					{Time: baseTime, StrTime: "not-a-time-format"},
+					{Time: baseTime.Add(2 * time.Second), StrTime: "also-not-time"},
+					{Time: baseTime.Add(5 * time.Second), StrTime: "still-not-time"},
+				},
+			},
+			code:        "MedianDuration(map(queueWithStrings, { #.StrTime }))",
+			wantErr:     true,
+			errContains: "element at index 0 is not a time.Time",
+		},
+		{
+			name: "AverageDuration() test success: converting string timestamps with date() function",
+			env: map[string]any{
+				"queueWithValidStrings": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(time.Second), StrTime: "2023-01-01T12:00:01Z"},
+					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
+				},
+			},
+			code: "AverageDuration(map(queueWithValidStrings, { date(#.StrTime) }))",
+			want: time.Second + 500*time.Millisecond, // (1s + 2s) / 2 = 1.5s
+		},
+		{
+			name: "MedianDuration() test success: converting RFC3339 string timestamps",
+			env: map[string]any{
+				"queueWithRFC3339": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(2 * time.Second), StrTime: "2023-01-01T12:00:02Z"},
+					{Time: baseTime.Add(5 * time.Second), StrTime: "2023-01-01T12:00:05Z"},
+					{Time: baseTime.Add(11 * time.Second), StrTime: "2023-01-01T12:00:11Z"},
+				},
+			},
+			code: "MedianDuration(map(queueWithRFC3339, { date(#.StrTime) }))",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
-			require.NoError(t, err)
-
-			got, err := expr.Run(program, test.env)
 
 			if test.wantErr {
+				if err != nil {
+					// Compile-time error (type checking)
+					if test.errContains != "" {
+						assert.Contains(t, err.Error(), test.errContains)
+					}
+					return
+				}
+				// Runtime error
+				_, err := expr.Run(program, test.env)
 				require.Error(t, err)
 				if test.errContains != "" {
 					assert.Contains(t, err.Error(), test.errContains)
@@ -1044,6 +1131,8 @@ func TestAverageMedianWithQueues(t *testing.T) {
 				return
 			}
 
+			require.NoError(t, err)
+			got, err := expr.Run(program, test.env)
 			require.NoError(t, err)
 			require.Equal(t, test.want, got)
 		})
