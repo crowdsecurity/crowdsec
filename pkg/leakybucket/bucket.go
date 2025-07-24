@@ -32,11 +32,11 @@ type Leaky struct {
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
 	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
-	Queue types.Queue
+	Queue types.QueueInterface
 	//Leaky buckets are receiving message through a chan
 	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
-	Out chan *types.Queue `json:"-"`
+	Out chan *types.QueueInterface `json:"-"`
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan types.Event `json:"-"`
 	//max capacity (for burst)
@@ -162,7 +162,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Uuid:            seed.Generate(),
 		Queue:           types.NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
-		Out:             make(chan *types.Queue, 1),
+		Out:             make(chan *types.QueueInterface, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          bucketFactory.ret,
 		Capacity:        bucketFactory.Capacity,
@@ -313,7 +313,6 @@ func LeakRoutine(leaky *Leaky) error {
 
 			if leaky.timedOverflow {
 				BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-
 				alert, err = NewAlert(leaky, ofw)
 				if err != nil {
 					log.Error(err)
@@ -374,7 +373,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 	}
 }
 
-func (leaky *Leaky) overflow(ofw *types.Queue) {
+func (leaky *Leaky) overflow(ofw *types.QueueInterface) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
