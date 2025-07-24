@@ -195,7 +195,7 @@ func (h *Hub) GetItemFQ(itemFQName string) (*Item, error) {
 
 	i := m[parts[1]]
 	if i == nil {
-		return nil, fmt.Errorf("item %s not found", parts[1])
+		return nil, fmt.Errorf("item %s:%s not found", parts[0], parts[1])
 	}
 
 	return i, nil

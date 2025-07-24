@@ -213,12 +213,13 @@ teardown() {
 
 # TODO: move acquisition tests to test/bats/crowdsec-acquisition.bats
 
-@test "crowdsec (error if the acquisition_path file is defined but missing)" {
+@test "crowdsec (no error if acquis.yaml is missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     rm -f "$ACQUIS_YAML"
 
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "acquis.yaml: no such file or directory"
+    refute_stderr --partial "no such file or directory"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (error if acquisition_path is not defined and acquisition_dir is empty)" {
@@ -231,8 +232,32 @@ teardown() {
 
     config_set '.common.log_media="stdout"'
     rune -1 wait-for "$CROWDSEC"
-    # check warning
-    assert_stderr --partial "no acquisition file found"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
+}
+
+@test "crowdsec (error if the acquisition files are empty or contain only comments)" {
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    echo "# comment" >"$ACQUIS_YAML"
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    echo "# another comment" >"$ACQUIS_DIR"/foo.yaml
+    touch "$ACQUIS_DIR"/empty.yaml
+
+    config_set '.common.log_media="stdout"'
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
+}
+
+@test "crowdsec (invalid acquisition file)" {
+    skip "XXX: TODO"
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    # XXX: it's only validated if "labels" are present, otherwise ignored
+    echo "foo:bar" >"$ACQUIS_DIR"/foo.yaml
+
+    config_set '.common.log_media="stdout"'
+    rune -1 wait-for "$CROWDSEC"
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 

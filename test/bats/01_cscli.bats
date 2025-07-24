@@ -175,6 +175,37 @@ teardown() {
     assert_output "debug"
 }
 
+@test "crowdsec - config paths should be absolute" {
+    config_set '.common.log_dir="./log"'
+    config_set '.config_paths.config_dir="./local/etc/crowdsec"'
+    config_set '.config_paths.data_dir="./data"'
+    config_set '.config_paths.simulation_path="./simulation"'
+    config_set '.config_paths.index_path="./index"'
+    config_set '.config_paths.hub_dir="./hub"'
+    config_set '.config_paths.plugin_dir="./plugins"'
+    config_set '.config_paths.notification_dir="./notifications"'
+    config_set '.config_paths.pattern_dir="./patterns"'
+    config_set '.crowdsec_service.acquisition_path="./acquis.yaml"'
+    config_set '.crowdsec_service.acquisition_dir="./acquis.d"'
+    config_set '.crowdsec_service.console_context_path="./console"'
+
+    # run a command that loads agent config. It will fail because some paths are missing, but we only want the warnings
+    rune -1 cscli setup unattended --skip-systemd --dry-run
+
+    assert_stderr --regexp '.*Using a relative path for .*\./log.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./local/etc/crowdsec.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./data.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./simulation.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./index.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./hub.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./plugins.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./notifications.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./patterns.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./acquis.yaml.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./acquis.d.* is deprecated and will be disallowed in a future release'
+    assert_stderr --regexp '.*Using a relative path for .*\./console.* is deprecated and will be disallowed in a future release'
+}
+
 @test "cscli config backup / restore" {
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
 
@@ -240,6 +271,7 @@ teardown() {
 
 @test "cscli doc" {
     cd "$BATS_TEST_TMPDIR"
+    export CROWDSEC_FEATURE_CSCLI_SETUP="false"
     rune -1 cscli doc
     refute_output
     assert_stderr --regexp 'failed to generate cscli documentation: open doc/.*: no such file or directory'
@@ -266,33 +298,38 @@ teardown() {
 
 }
 
-@test "feature.yaml for subcommands" {
-    # it is possible to enable subcommands with feature flags defined in feature.yaml
+@test "feature flags for subcommands" {
+    # it is possible to enable subcommands with feature flags
+    # defined in feature.yaml or envvars
 
-    rune -1 cscli setup
+    export CROWDSEC_FEATURE_CSCLI_SETUP="false"
+    rune -1 cscli setup detect
     assert_stderr --partial 'unknown command "setup" for "cscli"'
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
-    echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
-    rune -0 cscli setup
+    # currently, we have no subcommands guarded by feature flags
+    # echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
+    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
+    rune -0 cscli setup --help
     assert_output --partial 'cscli setup [command]'
 }
 
 @test "cscli config feature-flags" {
     # disabled
     rune -0 cscli config feature-flags
-    assert_line '✗ cscli_setup: Enable cscli setup command (service detection)'
+    assert_line '✗ re2_grok_support: Enable RE2 support for GROK patterns'
 
     # enabled in feature.yaml
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
-    echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
+    echo ' - re2_grok_support' >> "$CONFIG_DIR"/feature.yaml
     rune -0 cscli config feature-flags
-    assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
+    assert_line '✓ re2_grok_support: Enable RE2 support for GROK patterns'
+    rune rm "$CONFIG_DIR"/feature.yaml
 
     # enabled in environment
     # shellcheck disable=SC2031
-    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
+    export CROWDSEC_FEATURE_RE2_GROK_SUPPORT="true"
     rune -0 cscli config feature-flags
-    assert_line '✓ cscli_setup: Enable cscli setup command (service detection)'
+    assert_line '✓ re2_grok_support: Enable RE2 support for GROK patterns'
 
     # there are no retired features
     rune -0 cscli config feature-flags --retired

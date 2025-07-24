@@ -1,11 +1,8 @@
 
-> **_NOTE_**: The following document describes an experimental, work-in-progress feature. To enable the `cscli setup` command, set the environment variable `CROWDSEC_FEATURE_CSCLI_SETUP=true` or add the line " - cscli_setup" to `/etc/crowdsec/feature.yaml`. Any feedback is welcome.
-
----
-
 # cscli setup
 
-The "cscli setup" command can configure a crowdsec instance based on the services that are installed or running on the server.
+The "cscli setup" command can detect running services on a machine, and
+automatically install the related collections and acquisition files.
 
 There are three main subcommands:
 
@@ -30,11 +27,10 @@ Detection and installation are performed as separate steps, as you can see in th
         |
         v
  +--------------+
- |              +---> setup install-hub     +-----------------------+
- |  setup.yaml  |                           |                       |
- |              +---> setup datasources --->| etc/crowdsec/acquis.d |
- +--------------+                           |                       |
-                                            +-----------------------+
+ |              +---> setup install-hub ---> /etc/crowdsec/hub
+ |  setup.yaml  |
+ |              +---> setup install-acquisition ---> /etc/crowdsec/acquis.d
+ +--------------+
 ```
 
 You can inspect and customize the intermediary file (`setup.yaml`), which is useful
@@ -195,11 +191,11 @@ Here we see two more detection methods:
 If you want to ignore one or more services (i.e. not install anything and not
 generate acquisition rules) you can specify it with `cscli setup detect...
 --skip-service <servicename>`. For example, `--skip-service apache2-systemd`.
-If you want to disable systemd unit detection, use `cscli setup detect... --snub-systemd`.
+If you want to disable systemd unit detection, use `cscli setup detect... --skip-systemd`.
 
 If you used the `--force-process` or `--force-unit` flags, but none of the
 defined services is looking for them, you'll have an error like "detecting
-services: process(es) forced but not supported".
+services: process(es) required but not supported".
 
 > **_NOTE_**: XXX XXX - having an error for this is maybe too much, but can tell that a configuration is outdated. Could this be a warning with optional flag to make it an error?
 
