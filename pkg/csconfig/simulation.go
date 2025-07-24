@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 )
 
 type SimulationConfig struct {
@@ -39,7 +39,7 @@ func (c *Config) LoadSimulation() error {
 		c.ConfigPaths.SimulationFilePath = filepath.Join(c.ConfigPaths.ConfigDir, "simulation.yaml")
 	}
 
-	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
+	patcher := csyaml.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
 
 	rcfg, err := patcher.MergedPatchContent()
 	if err != nil {

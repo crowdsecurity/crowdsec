@@ -1,23 +1,26 @@
 package acquisition
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/goccy/go-yaml"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -70,6 +73,10 @@ func GetDataSourceIface(dataSourceType string) (DataSource, error) {
 
 	built, known := component.Built["datasource_"+dataSourceType]
 
+	if dataSourceType == "" {
+		return nil, errors.New("data source type is empty")
+	}
+
 	if !known {
 		return nil, fmt.Errorf("unknown data source %s", dataSourceType)
 	}
@@ -114,14 +121,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (DataSource, error) {
-	// we dump it back to []byte, because we want to decode the yaml blob twice:
-	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
-	yamlConfig, err := yaml.Marshal(commonConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unable to serialize back interface: %w", err)
-	}
-
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel int) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -142,23 +142,6 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 	}
 
 	return dataSrc, nil
-}
-
-// detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
-func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
-	if _, ok := sub.Config["filename"]; ok {
-		return "file"
-	}
-
-	if _, ok := sub.Config["filenames"]; ok {
-		return "file"
-	}
-
-	if _, ok := sub.Config["journalctl_filter"]; ok {
-		return "journalctl"
-	}
-
-	return ""
 }
 
 func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
@@ -216,6 +199,36 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
 	return configuration.METRICS_FULL
 }
 
+func detectTypes(r io.Reader) ([]string, error) {
+	collectedKeys, err := csyaml.GetDocumentKeys(r)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]string, len(collectedKeys))
+
+	for idx, keys := range collectedKeys {
+		var detected string
+
+		switch {
+		case slices.Contains(keys, "source"):
+			detected = ""
+		case slices.Contains(keys, "filename"):
+			detected = "file"
+		case slices.Contains(keys, "filenames"):
+			detected = "file"
+		case slices.Contains(keys, "journalctl_filter"):
+			detected = "journalctl"
+		default:
+			detected = ""
+		}
+
+		ret[idx] = detected
+	}
+
+	return ret, nil
+}
+
 // sourcesFromFile reads and parses one acquisition file into DataSources.
 func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error) {
 	var sources []DataSource
@@ -236,29 +249,31 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 
 	expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
 
-	dec := yaml.NewDecoder(strings.NewReader(expandedAcquis))
-	dec.SetStrict(true)
+	detectedTypes, err := detectTypes(strings.NewReader(expandedAcquis))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
+	}
+
+	documents, err := csyaml.SplitDocuments(strings.NewReader(expandedAcquis))
+	if err != nil {
+		return nil, err
+	}
 
 	idx := -1
 
-	for {
-		var sub configuration.DataSourceCommonCfg
-
+	for _, yamlDoc := range documents {
 		idx += 1
 
-		err = dec.Decode(&sub)
+		var sub configuration.DataSourceCommonCfg
+
+		// can't be strict here, the doc contains specific datasource config too but we won't collect them now.
+		err := yaml.UnmarshalWithOptions(yamlDoc, &sub)
 		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return nil, fmt.Errorf("failed to parse %s: %w", acquisFile, err)
-			}
-
-			log.Tracef("End of yaml file")
-
-			break
+			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), errors.New(yaml.FormatError(err, false, false)))
 		}
 
 		// for backward compat ('type' was not mandatory, detect it)
-		if guessType := detectBackwardCompatAcquis(sub); guessType != "" {
+		if guessType := detectedTypes[idx]; guessType != "" {
 			log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
 
 			if sub.Source != "" && sub.Source != guessType {
@@ -267,13 +282,20 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 
 			sub.Source = guessType
 		}
-		// it's an empty item, skip it
-		if len(sub.Labels) == 0 {
-			if sub.Source == "" {
-				log.Debugf("skipping empty item in %s", acquisFile)
-				continue
-			}
 
+		// it's an empty item, skip it
+
+		empty, err := csyaml.IsEmptyYAML(bytes.NewReader(yamlDoc))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s (position %d): %w", acquisFile, idx, err)
+		}
+
+		if empty {
+			// there are no keys or only comments, skip the document
+			continue
+		}
+
+		if len(sub.Labels) == 0 {
 			if sub.Source != "docker" {
 				// docker is the only source that can be empty
 				return nil, fmt.Errorf("missing labels in %s (position %d)", acquisFile, idx)
@@ -281,11 +303,11 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 		}
 
 		if sub.Source == "" {
-			return nil, fmt.Errorf("data source type is empty ('source') in %s (position %d)", acquisFile, idx)
+			return nil, fmt.Errorf("missing 'source' field in %s (position %d)", acquisFile, idx)
 		}
 
 		// pre-check that the source is valid
-		_, err := GetDataSourceIface(sub.Source)
+		_, err = GetDataSourceIface(sub.Source)
 		if err != nil {
 			return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
 		}
@@ -293,7 +315,7 @@ func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error)
 		uniqueId := uuid.NewString()
 		sub.UniqueId = uniqueId
 
-		src, err := DataSourceConfigure(sub, metrics_level)
+		src, err := DataSourceConfigure(sub, yamlDoc, metrics_level)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -376,7 +398,6 @@ func copyEvent(evt types.Event, line string) types.Event {
 
 func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
-
 	logger.Infof("transformer started")
 
 	for {

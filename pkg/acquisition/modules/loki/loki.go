@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
-	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
@@ -76,9 +76,9 @@ func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
 }
 
 func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
-	err := yaml.UnmarshalStrict(yamlConfig, &l.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &l.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse loki acquisition configuration: %w", err)
+		return fmt.Errorf("cannot parse loki acquisition configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if l.Config.Query == "" {
