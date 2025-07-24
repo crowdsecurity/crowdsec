@@ -28,15 +28,6 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 		return nil, err
 	}
 
-	switch d.Version {
-	case "":
-		return nil, errors.New("missing version tag (must be 1.0)")
-	case "1.0":
-		// all is well
-	default:
-		return nil, fmt.Errorf("invalid version tag '%s' (must be 1.0)", d.Version)
-	}
-
 	for name := range d.Detect {
 		svc := d.Detect[name]
 		if err := svc.Compile(); err != nil {

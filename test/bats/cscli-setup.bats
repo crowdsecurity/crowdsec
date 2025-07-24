@@ -57,8 +57,9 @@ teardown() {
     assert_stderr --partial "open /path/does/not/exist: no such file or directory"
 
     # - is stdin
-    rune -1 cscli setup detect --detect-config - <<< "{}"
-    assert_stderr --partial "Error: parsing <stdin>: missing version tag (must be 1.0)"
+    rune -0 cscli setup detect --detect-config - <<< "{}"
+    assert_json '{setup:[]}'
+    refute_stderr
 }
 
 @test "cscli setup detect (linux)" {

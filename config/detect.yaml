@@ -1,7 +1,4 @@
 ---
-# Version of this file format
-version: 1.0
-
 
 # Main block defining all service detection rules
 detect:

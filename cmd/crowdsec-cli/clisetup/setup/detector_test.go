@@ -30,7 +30,6 @@ func TestListSupported(t *testing.T) {
 		{
 			"list configured services",
 			`
-version: 1.0
 detect:
   foo:
   bar:
@@ -48,24 +47,11 @@ detect:
 		{
 			"invalid yaml: tabs are not allowed",
 			`
-version: 1.0
 detect:
 	foos:
 `,
 			nil,
-			"yaml: line 4: found character that cannot start any token",
-		},
-		{
-			"invalid yaml: no version",
-			"{}",
-			nil,
-			"missing version tag (must be 1.0)",
-		},
-		{
-			"invalid yaml: bad version",
-			"version: 2.0",
-			nil,
-			"invalid version tag '2.0' (must be 1.0)",
+			"yaml: line 3: found character that cannot start any token",
 		},
 	}
 
