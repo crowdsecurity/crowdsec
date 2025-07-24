@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -37,7 +37,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 		return errors.New("empty profiles path")
 	}
 
-	patcher := yamlpatch.NewPatcher(c.ProfilesPath, ".local")
+	patcher := csyaml.NewPatcher(c.ProfilesPath, ".local")
 
 	fcontent, err := patcher.PrependedPatchContent()
 	if err != nil {

@@ -27,7 +27,7 @@ func TestConfigure(t *testing.T) {
 			config: `
 foobar: bla
 source: kafka`,
-			expectedErr: "line 2: field foobar not found in type kafkaacquisition.KafkaConfiguration",
+			expectedErr: `[2:1] unknown field "foobar"`,
 		},
 		{
 			config:      `source: kafka`,

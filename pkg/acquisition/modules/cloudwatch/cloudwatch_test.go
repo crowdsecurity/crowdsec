@@ -422,7 +422,7 @@ labels:
   type: test_source
 group_name: test_group
 stream_name: test_stream`,
-			expectedCfgErr: "field xxx not found in type",
+			expectedCfgErr: `[2:1] unknown field "xxx"`,
 		},
 		{
 			name: "missing_group_name",

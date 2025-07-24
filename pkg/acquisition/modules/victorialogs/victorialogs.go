@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
@@ -60,9 +60,13 @@ func (l *VLSource) GetAggregMetrics() []prometheus.Collector {
 }
 
 func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
-	err := yaml.UnmarshalStrict(yamlConfig, &l.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &l.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse VictoriaLogs acquisition configuration: %w", err)
+		return fmt.Errorf("cannot parse VictoriaLogs acquisition configuration: %s", yaml.FormatError(err, false, false))
+	}
+
+	if l.Config.URL == "" {
+		return errors.New("VictoriaLogs url is mandatory")
 	}
 
 	if l.Config.Query == "" {

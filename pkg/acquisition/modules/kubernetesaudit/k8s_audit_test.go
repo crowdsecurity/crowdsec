@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -25,7 +27,7 @@ func TestBadConfiguration(t *testing.T) {
 			name: "unknown field",
 			config: `source: k8s-audit
 foobar: asd.log`,
-			expectedErr: "line 2: field foobar not found in type kubernetesauditacquisition.KubernetesAuditConfiguration",
+			expectedErr: `[2:1] unknown field "foobar"`,
 		},
 		{
 			name:        "missing listen_addr",
@@ -38,6 +40,15 @@ foobar: asd.log`,
 listen_addr: 0.0.0.0`,
 			expectedErr: "listen_port cannot be empty",
 		},
+		{
+			name: "mismatched types",
+			config: `
+source: k8s-audit
+listen_addr: 0.0.0.0
+listen_port: true
+`,
+			expectedErr: `[4:14] cannot unmarshal bool into Go struct field KubernetesAuditConfiguration.ListenPort of type int`,
+		},
 	}
 
 	for _, test := range tests {
@@ -45,8 +56,7 @@ listen_addr: 0.0.0.0`,
 			f := KubernetesAuditSource{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
-
-			assert.Contains(t, err.Error(), test.expectedErr)
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }
@@ -90,13 +100,7 @@ webhook_path: /k8s-audit`,
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
 			err = tb.Wait()
-
-			if test.expectedErr != "" {
-				require.ErrorContains(t, err, test.expectedErr)
-				return
-			}
-
-			require.NoError(t, err)
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }

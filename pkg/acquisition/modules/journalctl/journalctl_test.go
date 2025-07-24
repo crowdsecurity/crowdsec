@@ -28,7 +28,7 @@ func TestBadConfiguration(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd.log`,
-			expectedErr: "line 1: field foobar not found in type journalctlacquisition.JournalCtlConfiguration",
+			expectedErr: `cannot parse JournalCtlSource configuration: [1:1] unknown field "foobar"`,
 		},
 		{
 			config: `
@@ -48,10 +48,12 @@ journalctl_filter:
 
 	subLogger := log.WithField("type", "journalctl")
 
-	for _, test := range tests {
-		f := JournalCtlSource{}
-		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+	for _, tc := range tests {
+		t.Run(tc.config, func(t *testing.T) {
+			f := JournalCtlSource{}
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+		})
 	}
 }
 

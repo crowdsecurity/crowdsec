@@ -97,22 +97,7 @@ linters:
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
         yaml:
           files:
-            - '!**/pkg/acquisition/acquisition.go'
-            - '!**/pkg/acquisition/acquisition_test.go'
-            - '!**/pkg/acquisition/modules/appsec/appsec.go'
-            - '!**/pkg/acquisition/modules/cloudwatch/cloudwatch.go'
-            - '!**/pkg/acquisition/modules/docker/docker.go'
-            - '!**/pkg/acquisition/modules/file/file.go'
-            - '!**/pkg/acquisition/modules/journalctl/journalctl.go'
-            - '!**/pkg/acquisition/modules/kafka/kafka.go'
-            - '!**/pkg/acquisition/modules/kinesis/kinesis.go'
-            - '!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go'
-            - '!**/pkg/acquisition/modules/loki/loki.go'
             - '!**/pkg/acquisition/modules/loki/timestamp_test.go'
-            - '!**/pkg/acquisition/modules/victorialogs/victorialogs.go'
-            - '!**/pkg/acquisition/modules/s3/s3.go'
-            - '!**/pkg/acquisition/modules/syslog/syslog.go'
-            - '!**/pkg/acquisition/modules/wineventlog/wineventlog_windows.go'
             - '!**/pkg/appsec/appsec.go'
             - '!**/pkg/appsec/loader.go'
             - '!**/pkg/csplugin/broker.go'
@@ -382,19 +367,19 @@ linters:
       # tolerate long functions in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'function-length: .*'
 
       # tolerate long lines in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'line-length-limit: .*'
 
       # we use t,ctx instead of ctx,t in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'context-as-argument: context.Context should be the first parameter of a function'
 
       # tolerate deep exit in cobra's OnInitialize, for now
@@ -496,9 +481,12 @@ linters:
       - linters:
           - noctx
         text: "net.LookupHost must not be called"
+
+      - linters:
+          - staticcheck
+        text: "SA1019: yamlpatch.NewPatcher is deprecated: use csyaml.NewPatcher instead"
+
     paths:
-      - pkg/yamlpatch/merge.go
-      - pkg/yamlpatch/merge_test.go
       - pkg/time/rate
       - pkg/metabase
       - third_party$

@@ -27,7 +27,7 @@ func TestConfigure(t *testing.T) {
 			config: `
 foobar: bla
 source: syslog`,
-			expectedErr: "line 2: field foobar not found in type syslogacquisition.SyslogConfiguration",
+			expectedErr: `[2:1] unknown field "foobar"`,
 		},
 		{
 			config:      `source: syslog`,
@@ -37,7 +37,7 @@ source: syslog`,
 			config: `
 source: syslog
 listen_port: asd`,
-			expectedErr: "cannot unmarshal !!str `asd` into int",
+			expectedErr: "[3:14] cannot unmarshal string into Go struct field SyslogConfiguration.Port of type int",
 		},
 		{
 			config: `
@@ -55,9 +55,11 @@ listen_addr: 10.0.0`,
 
 	subLogger := log.WithField("type", "syslog")
 	for _, test := range tests {
-		s := SyslogSource{}
-		err := s.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+		t.Run(test.config, func(t *testing.T) {
+			s := SyslogSource{}
+			err := s.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+		})
 	}
 }
 

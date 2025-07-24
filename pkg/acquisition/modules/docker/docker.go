@@ -17,10 +17,10 @@ import (
 	dockerTypesEvents "github.com/docker/docker/api/types/events"
 	dockerFilter "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/dlog"
 
@@ -77,9 +77,9 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		FollowStdErr: true, // default
 	}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &d.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &d.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("while parsing DockerAcquisition configuration: %w", err)
+		return fmt.Errorf("while parsing DockerAcquisition configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if d.logger != nil {

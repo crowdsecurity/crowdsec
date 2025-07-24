@@ -12,13 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/google/winops/winlog"
 	"github.com/google/winops/winlog/wevtapi"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -248,9 +248,9 @@ func (w *WinEventLogSource) GetUuid() string {
 func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	w.config = WinEventLogConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &w.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("unable to parse configuration: %v", err)
+		return fmt.Errorf("cannot parse wineventlog configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if w.config.EventChannel != "" && w.config.XPathQuery != "" {

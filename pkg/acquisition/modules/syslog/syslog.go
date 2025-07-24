@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -89,9 +89,9 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	s.config = SyslogConfiguration{}
 	s.config.Mode = configuration.TAIL_MODE
 
-	err := yaml.UnmarshalStrict(yamlConfig, &s.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &s.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse syslog configuration: %w", err)
+		return fmt.Errorf("cannot parse syslog configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if s.config.Addr == "" {
