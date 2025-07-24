@@ -55,8 +55,8 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 	}
 }
 
-func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
+func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.QueueInterface) (types.RuntimeAlert, *types.QueueInterface) {
+	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.QueueInterface) (types.RuntimeAlert, *types.QueueInterface) {
 		return alert, queue
 	}
 }

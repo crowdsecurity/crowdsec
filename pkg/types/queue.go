@@ -6,49 +6,59 @@ import (
 
 // Queue holds a limited size queue
 type LocalQueue struct {
-	Queue []Event
-	L     int //capacity
+	Queue *Queue //capacity
 }
 
 // NewQueue create a new queue with a size of l
 func NewLocalQueue(l int) *LocalQueue {
 	if l == -1 {
 		return &LocalQueue{
-			Queue: make([]Event, 0),
-			L:     int(^uint(0) >> 1), // max integer value, architecture independent
+			Queue: &Queue{
+				Queue: make([]Event, 0), // default capacity
+				// L:     100, // default capacity
+				L: int(^uint(0) >> 1), // max integer value, architecture independent
+			},
 		}
 	}
 	q := &LocalQueue{
-		Queue: make([]Event, 0, l),
-		L:     l,
+		Queue: &Queue{
+			Queue: make([]Event, l),
+			L:     l,
+		},
 	}
-	log.WithField("Capacity", q.L).Debugf("Creating queue")
+	log.WithField("Capacity", q.Queue.L).Debugf("Creating queue")
 	return q
 }
 
 // Add an event in the queue. If it has already l elements, the first
 // element is dropped before adding the new m element
 func (q *LocalQueue) Add(m Event) {
-	for len(q.Queue) > q.L { //we allow to add one element more than the true capacity
-		q.Queue = q.Queue[1:]
+	for len(q.Queue.Queue) > q.Queue.L { //we allow to add one element more than the true capacity
+		q.Queue.Queue = q.Queue.Queue[1:]
 	}
-	q.Queue = append(q.Queue, m)
+	q.Queue.Queue = append(q.Queue.Queue, m)
 }
 func (q *LocalQueue) GetSize() int {
-	return len(q.Queue)
+	return len(q.Queue.Queue)
 }
 
 // GetQueue returns the entire queue
-func (q *LocalQueue) GetQueue() []Event {
-	return q.Queue
+func (q *LocalQueue) GetQueue() Queue {
+	return *q.Queue
 }
 
-type Queue interface {
-	GetQueue() []Event
+type QueueInterface interface {
+	GetQueue() Queue
 	GetSize() int
 	Add(Event)
 }
 
-func NewQueue(l int) Queue {
+func NewQueue(l int) QueueInterface {
 	return NewLocalQueue(l)
+}
+
+// for compatibility with
+type Queue struct {
+	Queue []Event
+	L     int //capacity
 }
