@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,7 +17,7 @@ const (
 	MetricsLevelDefault MetricsLevelConfig = MetricsLevelFull
 )
 
-var ErrInvalidMetricsLevel = "invalid metrics level: %s"
+var ErrInvalidMetricsLevel = errors.New("invalid metrics level")
 
 type AcquisitionMetricsLevel int
 
@@ -47,7 +48,7 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 			GlobalActiveDecisions, GlobalAlerts, NodesWlHitsOk, NodesWlHits,
 			CacheMetrics, RegexpCacheMetrics)
 	default:
-		return fmt.Errorf(ErrInvalidMetricsLevel, metricsLevel)
+		return fmt.Errorf("%w: %s", ErrInvalidMetricsLevel, metricsLevel)
 	}
 	return nil
 }
