@@ -631,41 +631,87 @@ func ParseUri(params ...any) (any, error) {
 	return ret, nil
 }
 
-// func AverageDuration(params ...time.Time) time.Duration
+// func AverageDuration(times []time.Time) time.Duration
 func AverageDuration(params ...any) (any, error) {
-	if len(params) < 2 {
+	if len(params) != 1 {
+		return 0, errors.New("AverageDuration expects exactly one parameter: a slice of times")
+	}
+
+	var times []time.Time
+
+	// Handle both []time.Time and []interface{} (from expr map function)
+	switch v := params[0].(type) {
+	case []time.Time:
+		times = v
+	case []interface{}:
+		times = make([]time.Time, len(v))
+		for i, item := range v {
+			t, ok := item.(time.Time)
+			if !ok {
+				return 0, fmt.Errorf("element at index %d is not a time.Time", i)
+			}
+			times[i] = t
+		}
+	default:
+		return 0, errors.New("AverageDuration expects a slice of times")
+	}
+
+	if len(times) < 2 {
 		return 0, errors.New("need at least two times to calculate an average interval")
 	}
 
 	// Sort times in ascending order
-	sort.Slice(params, func(i, j int) bool {
-		return params[i].(time.Time).Before(params[j].(time.Time))
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
 	})
 
 	var total time.Duration
-	for i := 1; i < len(params); i++ {
-		total += params[i].(time.Time).Sub(params[i-1].(time.Time))
+	for i := 1; i < len(times); i++ {
+		total += times[i].Sub(times[i-1])
 	}
 
-	average := time.Duration(int64(total) / int64(len(params)-1))
+	average := time.Duration(int64(total) / int64(len(times)-1))
 	return average, nil
 }
 
-// func MedianDuration(times ...time.Time) (time.Duration, error)
+// func MedianDuration(times []time.Time) (time.Duration, error)
 func MedianDuration(params ...any) (any, error) {
-	if len(params) < 2 {
+	if len(params) != 1 {
+		return 0, errors.New("MedianDuration expects exactly one parameter: a slice of times")
+	}
+
+	var times []time.Time
+
+	// Handle both []time.Time and []interface{} (from expr map function)
+	switch v := params[0].(type) {
+	case []time.Time:
+		times = v
+	case []interface{}:
+		times = make([]time.Time, len(v))
+		for i, item := range v {
+			t, ok := item.(time.Time)
+			if !ok {
+				return 0, fmt.Errorf("element at index %d is not a time.Time", i)
+			}
+			times[i] = t
+		}
+	default:
+		return 0, errors.New("MedianDuration expects a slice of times")
+	}
+
+	if len(times) < 2 {
 		return 0, errors.New("need at least two times to calculate a median")
 	}
 
 	// Sort times
-	sort.Slice(params, func(i, j int) bool {
-		return params[i].(time.Time).Before(params[j].(time.Time))
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
 	})
 
 	// Compute intervals
-	intervals := make([]time.Duration, len(params)-1)
-	for i := 1; i < len(params); i++ {
-		intervals[i-1] = params[i].(time.Time).Sub(params[i-1].(time.Time))
+	intervals := make([]time.Duration, len(times)-1)
+	for i := 1; i < len(times); i++ {
+		intervals[i-1] = times[i].Sub(times[i-1])
 	}
 
 	// Sort intervals for median calculation

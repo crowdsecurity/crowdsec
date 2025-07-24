@@ -521,14 +521,16 @@ var exprFuncs = []exprCustomFunc{
 		name:     "AverageDuration",
 		function: AverageDuration,
 		signature: []any{
-			new(func(...time.Time) (time.Duration, error)),
+			new(func([]time.Time) time.Duration),
+			new(func([]interface{}) time.Duration),
 		},
 	},
 	{
 		name:     "MedianDuration",
 		function: MedianDuration,
 		signature: []any{
-			new(func(...time.Time) (time.Duration, error)),
+			new(func([]time.Time) time.Duration),
+			new(func([]interface{}) time.Duration),
 		},
 	},
 }
