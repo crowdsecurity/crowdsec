@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tomb "gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -23,16 +23,15 @@ import (
 )
 
 type MockSource struct {
+	Toto                              string `yaml:"toto"`
+	logger                            *log.Entry
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-
-	Toto   string `yaml:"toto"`
-	logger *log.Entry
 }
 
 func (f *MockSource) UnmarshalConfig(cfg []byte) error {
-	err := yaml.UnmarshalStrict(cfg, &f)
+	err := yaml.UnmarshalWithOptions(cfg, f, yaml.Strict())
 	if err != nil {
-		return err
+		return errors.New(yaml.FormatError(err, false, false))
 	}
 
 	return nil
@@ -84,7 +83,7 @@ type MockSourceCantRun struct {
 func (f *MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") }
 func (f *MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
-// appendMockSource is only used to add mock source for tests
+// appendMockSource is only used to add mock source for tests.
 func appendMockSource() {
 	AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
 	AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
@@ -164,7 +163,7 @@ log_level: debug
 source: mock
 wowo: ajsajasjas
 `,
-			ExpectedError: "field wowo not found in type acquisition.MockSource",
+			ExpectedError: `[7:1] unknown field "wowo"`,
 		},
 		{
 			TestName: "cant_run_error",
@@ -178,6 +177,13 @@ wowo: ajsajasjas
 `,
 			ExpectedError: "datasource 'mock_cant_run' is not available: can't run bro",
 		},
+		{
+			TestName: "empty common section -- bypassing source autodetect",
+			String: `
+filename: foo.log
+`,
+			ExpectedError: "data source type is empty",
+		},
 	}
 
 	for _, tc := range tests {
@@ -185,7 +191,7 @@ wowo: ajsajasjas
 			common := configuration.DataSourceCommonCfg{}
 			err := yaml.Unmarshal([]byte(tc.String), &common)
 			require.NoError(t, err)
-			ds, err := DataSourceConfigure(common, configuration.METRICS_NONE)
+			ds, err := DataSourceConfigure(common, []byte(tc.String), configuration.METRICS_NONE)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -239,7 +245,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/badyaml.yaml"},
 			},
-			ExpectedError: "failed to parse testdata/badyaml.yaml: yaml: unmarshal errors",
+			ExpectedError: "[1:1] string was used where mapping is expected",
 			ExpectedLen:   0,
 		},
 		{
@@ -322,8 +328,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 
 type MockCat struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-
-	logger *log.Entry
+	logger                            *log.Entry
 }
 
 func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
@@ -368,8 +373,7 @@ func (f *MockCat) GetUuid() string { return "" }
 
 type MockTail struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-
-	logger *log.Entry
+	logger                            *log.Entry
 }
 
 func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
@@ -424,12 +428,11 @@ func TestStartAcquisitionCat(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Error("unexpected error")
+			t.Errorf("unexpected error")
 		}
 	}()
 
 	count := 0
-
 READLOOP:
 	for {
 		select {
@@ -453,12 +456,11 @@ func TestStartAcquisitionTail(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Error("unexpected error")
+			t.Errorf("unexpected error")
 		}
 	}()
 
 	count := 0
-
 READLOOP:
 	for {
 		select {
@@ -507,7 +509,6 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	}()
 
 	count := 0
-
 READLOOP:
 	for {
 		select {
@@ -517,7 +518,6 @@ READLOOP:
 			break READLOOP
 		}
 	}
-
 	assert.Equal(t, 10, count)
 	// acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
@@ -526,9 +526,8 @@ READLOOP:
 
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-
-	Toto   string     `yaml:"toto"`
-	logger *log.Entry //nolint: unused
+	Toto                              string     `yaml:"toto"`
+	logger                            *log.Entry //nolint: unused
 }
 
 func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }

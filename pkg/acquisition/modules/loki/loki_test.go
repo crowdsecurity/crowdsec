@@ -38,7 +38,7 @@ func TestConfiguration(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd`,
-			expectedErr: "line 1: field foobar not found in type loki.LokiConfiguration",
+			expectedErr: `[1:1] unknown field "foobar"`,
 			testName:    "Unknown field",
 		},
 		{
@@ -133,6 +133,14 @@ query: >
 `,
 			expectedErr: "delay_for should be a value between 1s and 5s",
 			testName:    "Invalid DelayFor",
+		},
+		{
+			config: `
+source: loki
+no_ready_check: 37
+`,
+			expectedErr: "[3:17] cannot unmarshal uint64 into Go struct field LokiConfiguration.NoReadyCheck of type bool",
+			testName:    "type mismatch",
 		},
 	}
 	subLogger := log.WithField("type", "loki")
@@ -232,49 +240,51 @@ func TestConfigureDSN(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		subLogger := log.WithFields(log.Fields{
-			"type": "loki",
-			"name": test.name,
+		t.Run(test.name, func(t *testing.T) {
+			subLogger := log.WithFields(log.Fields{
+				"type": "loki",
+				"name": test.name,
+			})
+
+			t.Logf("Test : %s", test.name)
+
+			lokiSource := &loki.LokiSource{}
+			err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+
+			noDuration, _ := time.ParseDuration("0s")
+			if lokiSource.Config.Since != noDuration && lokiSource.Config.Since.Round(time.Second) != time.Since(test.since).Round(time.Second) {
+				t.Fatalf("Invalid since %v", lokiSource.Config.Since)
+			}
+
+			if test.password != "" {
+				p := lokiSource.Config.Auth.Password
+				if test.password != p {
+					t.Fatalf("Password mismatch : %s != %s", test.password, p)
+				}
+			}
+
+			if test.scheme != "" {
+				url, _ := url.Parse(lokiSource.Config.URL)
+				if test.scheme != url.Scheme {
+					t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
+				}
+			}
+
+			if test.waitForReady != 0 {
+				if lokiSource.Config.WaitForReady != test.waitForReady {
+					t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
+				}
+			}
+
+			if test.delayFor != 0 {
+				if lokiSource.Config.DelayFor != test.delayFor {
+					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
+				}
+			}
+
+			assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
 		})
-
-		t.Logf("Test : %s", test.name)
-
-		lokiSource := &loki.LokiSource{}
-		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
-		cstest.AssertErrorContains(t, err, test.expectedErr)
-
-		noDuration, _ := time.ParseDuration("0s")
-		if lokiSource.Config.Since != noDuration && lokiSource.Config.Since.Round(time.Second) != time.Since(test.since).Round(time.Second) {
-			t.Fatalf("Invalid since %v", lokiSource.Config.Since)
-		}
-
-		if test.password != "" {
-			p := lokiSource.Config.Auth.Password
-			if test.password != p {
-				t.Fatalf("Password mismatch : %s != %s", test.password, p)
-			}
-		}
-
-		if test.scheme != "" {
-			url, _ := url.Parse(lokiSource.Config.URL)
-			if test.scheme != url.Scheme {
-				t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
-			}
-		}
-
-		if test.waitForReady != 0 {
-			if lokiSource.Config.WaitForReady != test.waitForReady {
-				t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
-			}
-		}
-
-		if test.delayFor != 0 {
-			if lokiSource.Config.DelayFor != test.delayFor {
-				t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
-			}
-		}
-
-		assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
 	}
 }
 
@@ -357,36 +367,38 @@ since: 1h
 	}
 
 	for _, ts := range tests {
-		logger := log.New()
-		subLogger := logger.WithField("type", "loki")
-		lokiSource := loki.LokiSource{}
+		t.Run(ts.config, func(t *testing.T) {
+			logger := log.New()
+			subLogger := logger.WithField("type", "loki")
+			lokiSource := loki.LokiSource{}
 
-		if err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE); err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
-
-		if err := feedLoki(ctx, subLogger, 20, title); err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
-
-		out := make(chan types.Event)
-		read := 0
-
-		go func() {
-			for {
-				<-out
-
-				read++
+			if err := lokiSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE); err != nil {
+				t.Fatalf("Unexpected error : %s", err)
 			}
-		}()
 
-		lokiTomb := tomb.Tomb{}
+			if err := feedLoki(ctx, subLogger, 20, title); err != nil {
+				t.Fatalf("Unexpected error : %s", err)
+			}
 
-		if err := lokiSource.OneShotAcquisition(ctx, out, &lokiTomb); err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
+			out := make(chan types.Event)
+			read := 0
 
-		assert.Equal(t, 20, read)
+			go func() {
+				for {
+					<-out
+
+					read++
+				}
+			}()
+
+			lokiTomb := tomb.Tomb{}
+
+			if err := lokiSource.OneShotAcquisition(ctx, out, &lokiTomb); err != nil {
+				t.Fatalf("Unexpected error : %s", err)
+			}
+
+			assert.Equal(t, 20, read)
+		})
 	}
 }
 

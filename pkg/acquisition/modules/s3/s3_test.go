@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -34,6 +36,14 @@ func TestBadConfiguration(t *testing.T) {
 source: s3
 `,
 			expectedErr: "bucket_name is required",
+		},
+		{
+			name: "type mismatch",
+			config: `
+source: s3
+max_buffer_size: true
+`,
+			expectedErr: "[3:18] cannot unmarshal bool into Go struct field S3Configuration.MaxBufferSize of type int",
 		},
 		{
 			name: "invalid polling method",
@@ -70,13 +80,7 @@ sqs_name: foobar
 			f := S3Source{}
 
 			err := f.Configure([]byte(test.config), nil, configuration.METRICS_NONE)
-			if err == nil {
-				t.Fatalf("expected error, got none")
-			}
-
-			if err.Error() != test.expectedErr {
-				t.Fatalf("expected error %s, got %s", test.expectedErr, err.Error())
-			}
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }
