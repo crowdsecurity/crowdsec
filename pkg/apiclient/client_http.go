@@ -51,7 +51,6 @@ func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body
 			if err = gzipWriter.Close(); err != nil {
 				return nil, fmt.Errorf("closing gzip writer: %w", err)
 			}
-			compressedBody = true
 		} else {
 			buf = jsonBuf
 		}
