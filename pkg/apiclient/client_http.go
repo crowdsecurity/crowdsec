@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const compressionMinSize = 5 * 1024 // 5KB
+
 func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body any) (*http.Request, error) {
 	if !strings.HasSuffix(c.BaseURL.Path, "/") {
 		return nil, fmt.Errorf("BaseURL must have a trailing slash, but %q does not", c.BaseURL)
@@ -26,14 +29,33 @@ func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body
 	}
 
 	var buf io.ReadWriter
+	compressedBody := false
+
 	if body != nil {
-		buf = &bytes.Buffer{}
-		enc := json.NewEncoder(buf)
+		jsonBuf := &bytes.Buffer{}
+		enc := json.NewEncoder(jsonBuf)
 		enc.SetEscapeHTML(false)
 
 		if err = enc.Encode(body); err != nil {
 			return nil, err
 		}
+
+		jsonBytes := jsonBuf.Bytes()
+		if len(jsonBytes) > compressionMinSize {
+			compressedBody = true
+			buf = &bytes.Buffer{}
+			gzipWriter := gzip.NewWriter(buf)
+			if _, err = gzipWriter.Write(jsonBytes); err != nil {
+				return nil, fmt.Errorf("writing to gzip writer: %w", err)
+			}
+			if err = gzipWriter.Close(); err != nil {
+				return nil, fmt.Errorf("closing gzip writer: %w", err)
+			}
+			compressedBody = true
+		} else {
+			buf = jsonBuf
+		}
+
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
@@ -43,6 +65,9 @@ func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body
 
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+		if compressedBody {
+			req.Header.Set("Content-Encoding", "gzip")
+		}
 	}
 
 	return req, nil
