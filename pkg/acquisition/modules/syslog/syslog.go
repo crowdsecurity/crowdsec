@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 

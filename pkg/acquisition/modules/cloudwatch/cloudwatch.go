@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -14,15 +15,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"slices"
 )
 
 var openedStreams = prometheus.NewGaugeVec(
@@ -286,7 +286,7 @@ func (cw *CloudwatchSource) CanRun() error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Dump() interface{} {
+func (cw *CloudwatchSource) Dump() any {
 	return cw
 }
 

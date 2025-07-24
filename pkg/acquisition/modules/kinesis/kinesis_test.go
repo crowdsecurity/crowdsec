@@ -102,7 +102,7 @@ func TestBadConfiguration(t *testing.T) {
 			expectedErr: "stream_name is mandatory when use_enhanced_fanout is false",
 		},
 		{
-			config:      `
+			config: `
 source: kinesis
 max_retries: whatev`,
 			expectedErr: "[3:14] cannot unmarshal string into Go struct field KinesisConfiguration.MaxRetries of type int",

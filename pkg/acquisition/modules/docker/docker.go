@@ -17,10 +17,10 @@ import (
 	dockerTypesEvents "github.com/docker/docker/api/types/events"
 	dockerFilter "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	yaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/dlog"
 

@@ -41,8 +41,8 @@ listen_addr: 0.0.0.0`,
 			expectedErr: "listen_port cannot be empty",
 		},
 		{
-			name:        "mismatched types",
-			config:      `
+			name: "mismatched types",
+			config: `
 source: k8s-audit
 listen_addr: 0.0.0.0
 listen_port: true
