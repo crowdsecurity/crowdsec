@@ -120,7 +120,7 @@ func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error)
 			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec, cConfig.Prometheus)
+		dataSources, err = acquisition.LoadAcquisitionFromFiles(cConfig.Crowdsec, cConfig.Prometheus)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +274,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	if !cConfig.DisableAPI {
-		if err := cConfig.LoadAPIServer(false); err != nil {
+		if err := cConfig.LoadAPIServer(false, false); err != nil {
 			return nil, err
 		}
 	}

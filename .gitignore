@@ -32,8 +32,11 @@ test/bats/.bats/run-logs
 pkg/csplugin/tests/cs_plugin_test*
 
 # Output of test coverage
-*.out
+coverage.out
 test/coverage/*
+
+# Environment files
+.env
 
 # Development artifacts, backups, etc
 *.swp
