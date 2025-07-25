@@ -937,7 +937,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: docker`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
-			expectedErr: "invalid datasource for foobar: no containers names or containers ID configuration provided",
+			expectedErr: "invalid datasource for foobar: no containers or services configuration provided",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
 			config: `
