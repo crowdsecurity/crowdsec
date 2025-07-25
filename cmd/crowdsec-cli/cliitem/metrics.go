@@ -103,15 +103,6 @@ func getParserMetric(url string, itemName string) (map[string]map[string]int, er
 			ival := int(fval)
 
 			switch fam.Name {
-			case "cs_reader_hits_total": // What is this ?
-				if _, ok := stats[source]; !ok {
-					stats[source] = make(map[string]int)
-					stats[source]["parsed"] = 0
-					stats[source]["reads"] = 0
-					stats[source]["unparsed"] = 0
-					stats[source]["hits"] = 0
-				}
-				stats[source]["reads"] += ival
 			case metrics.GlobalParserHitsOkMetricName:
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
