@@ -45,6 +45,7 @@ type VLConfiguration struct {
 	WaitForReady                      time.Duration       `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
 	Auth                              VLAuthConfiguration `yaml:"auth"`
 	MaxFailureDuration                time.Duration       `yaml:"max_failure_duration"` // Max duration of failure before stopping the source
+	ProgramKey                        string              `yaml:"program_key"` // VictorlaLogs JSON key to set label type
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -130,6 +131,7 @@ func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel int)
 		Username:        l.Config.Auth.Username,
 		Password:        l.Config.Auth.Password,
 		FailMaxDuration: l.Config.MaxFailureDuration,
+		ProgramKey:      l.Config.ProgramKey,
 	}
 
 	l.Client = vlclient.NewVLClient(clientConfig)
@@ -278,6 +280,16 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	ll.Labels = labels
 	ll.Process = true
 	ll.Module = l.GetName()
+
+	if entry.Program != "" {
+		// make a copy of the provided map
+		// this prevents concurrent read/write access to the map
+		ll.Labels = make(map[string]string)
+		for k, v := range labels {
+			ll.Labels[k] = v
+		}
+		ll.Labels["type"] = entry.Program
+	}
 
 	if l.metricsLevel != configuration.METRICS_NONE {
 		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
