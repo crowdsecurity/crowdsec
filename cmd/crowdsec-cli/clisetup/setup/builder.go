@@ -14,7 +14,7 @@ import (
 )
 
 // BuildSetup creates a Setup. The actual detection of services is done here.
-func BuildSetup(ctx context.Context, detector *Detector, opts DetectOptions, exprPath ExprPath, installedUnits UnitMap, runningProcesses ProcessMap, logger logrus.FieldLogger) (*Setup, error) {
+func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOptions, exprPath ExprPath, installedUnits UnitMap, runningProcesses ProcessMap, logger logrus.FieldLogger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
@@ -45,7 +45,7 @@ func BuildSetup(ctx context.Context, detector *Detector, opts DetectOptions, exp
 
 	detected := make(map[string]ServicePlan)
 
-	for name, svc := range detector.Detect {
+	for name, svc := range detectConfig.Detect {
 		match, err := svc.Evaluate(env, logger)
 		if err != nil {
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)

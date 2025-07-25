@@ -24,7 +24,7 @@ type detectFlags struct {
 	skipSystemd      bool
 }
 
-func (f *detectFlags) detector() (*setup.Detector, string, error) {
+func (f *detectFlags) detectConfig() (*setup.DetectConfig, string, error) {
 	detectReader, err := maybeStdinFile(f.detectConfigFile)
 	if err != nil {
 		return nil, "", err
@@ -36,12 +36,12 @@ func (f *detectFlags) detector() (*setup.Detector, string, error) {
 		rulesFrom = "<stdin>"
 	}
 
-	detector, err := setup.NewDetector(detectReader)
+	detectConfig, err := setup.NewDetectConfig(detectReader)
 	if err != nil {
 		return nil, "", fmt.Errorf("parsing %s: %w", rulesFrom, err)
 	}
 
-	return detector, rulesFrom, nil
+	return detectConfig, rulesFrom, nil
 }
 
 func (f *detectFlags) bind(cmd *cobra.Command) {
@@ -127,13 +127,13 @@ cscli setup detect --force-os-family freebsd
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			detector, rulesFrom, err := f.detector()
+			detectConfig, rulesFrom, err := f.detectConfig()
 			if err != nil {
 				return err
 			}
 
 			if listSupportedServices {
-				for _, svc := range detector.ListSupportedServices() {
+				for _, svc := range detectConfig.ListSupportedServices() {
 					fmt.Fprintln(os.Stdout, svc)
 				}
 
@@ -155,7 +155,7 @@ cscli setup detect --force-os-family freebsd
 				return err
 			}
 
-			stup, err := setup.BuildSetup(ctx, detector, f.toDetectOptions(logger),
+			stup, err := setup.BuildSetup(ctx, detectConfig, f.toDetectOptions(logger),
 				setup.OSExprPath{},
 				units,
 				procs, logger)

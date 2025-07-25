@@ -4,8 +4,8 @@ import (
 	"github.com/expr-lang/expr/vm"
 )
 
-// Detector contains a set of supported service profiles, loaded from detect.yaml.
-type Detector struct {
+// DetectConfig contains a set of supported service profiles, loaded from detect.yaml.
+type DetectConfig struct {
 	Detect  map[string]ServiceProfile `yaml:"detect"`
 }
 

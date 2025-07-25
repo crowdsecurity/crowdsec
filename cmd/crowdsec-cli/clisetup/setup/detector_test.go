@@ -59,14 +59,14 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			detector, err := NewDetector(strings.NewReader(tc.yml))
+			detectConfig, err := NewDetectConfig(strings.NewReader(tc.yml))
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 
 			if tc.wantErr != "" {
 				return
 			}
 
-			supported := detector.ListSupportedServices()
+			supported := detectConfig.ListSupportedServices()
 			require.ElementsMatch(t, tc.want, supported)
 		})
 	}
@@ -189,9 +189,9 @@ detect:
   ugly:
 `)
 
-	detector, err := NewDetector(f)
+	detectConfig, err := NewDetectConfig(f)
 	require.NoError(t, err)
-	got, err := BuildSetup(ctx, detector, DetectOptions{},
+	got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 		OSExprPath{},
 		nil, nil, nullLogger())
 	require.NoError(t, err)
@@ -251,9 +251,9 @@ detect:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			detector, err := NewDetector(strings.NewReader(tc.config))
+			detectConfig, err := NewDetectConfig(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := BuildSetup(ctx, detector, DetectOptions{},
+			got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 				OSExprPath{},
 				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
 				nil, nullLogger())
@@ -274,9 +274,9 @@ detect:
       - System.ProcessRunning("foobar")
 `)
 
-	detector, err := NewDetector(f)
+	detectConfig, err := NewDetectConfig(f)
 	require.NoError(t, err)
-	got, err := BuildSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+	got, err := BuildSetup(ctx, detectConfig, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
 		OSExprPath{},
 		nil, nil, nullLogger())
 	require.NoError(t, err)
@@ -474,9 +474,9 @@ detect:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			detector, err := NewDetector(strings.NewReader(tc.config))
+			detectConfig, err := NewDetectConfig(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := BuildSetup(ctx, detector, DetectOptions{ForcedOS: tc.forced},
+			got, err := BuildSetup(ctx, detectConfig, DetectOptions{ForcedOS: tc.forced},
 				OSExprPath{},
 				nil, nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
@@ -501,7 +501,6 @@ func TestDetectDatasourceValidation(t *testing.T) {
 		{
 			name: "datasource config is missing",
 			config: `
-version: 1.0
 detect:
   wizard:
     acquisition_spec:
@@ -551,7 +550,7 @@ detect:
       datasource:
       source: file`,
 			want:    nil,
-			wantErr: "yaml: unmarshal errors:\n  line 8: field source not found in type setup.AcquisitionSpec",
+			wantErr: "yaml: unmarshal errors:\n  line 7: field source not found in type setup.AcquisitionSpec",
 		}, {
 			name: "source is mismatched",
 			config: `
@@ -697,14 +696,14 @@ detect:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			detector, err := NewDetector(strings.NewReader(tc.config))
+			detectConfig, err := NewDetectConfig(strings.NewReader(tc.config))
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 
 			if tc.wantErr != "" {
 				return
 			}
 
-			got, err := BuildSetup(ctx, detector, DetectOptions{},
+			got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 				OSExprPath{},
 				nil, nil, nullLogger())
 			require.NoError(t, err)

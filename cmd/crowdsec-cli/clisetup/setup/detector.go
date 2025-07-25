@@ -13,8 +13,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func NewDetector(detectReader io.Reader) (*Detector, error) {
-	d := Detector{}
+func NewDetectConfig(detectReader io.Reader) (*DetectConfig, error) {
+	d := DetectConfig{}
 
 	yamlBytes, err := io.ReadAll(detectReader)
 	if err != nil {
@@ -46,8 +46,8 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 	return &d, nil
 }
 
-// ListSupportedServices returns a sorted list of the services recognized by the detector.
-func (d *Detector) ListSupportedServices() []string {
+// ListSupportedServices returns a sorted list of the services recognized by the detectConfig.
+func (d *DetectConfig) ListSupportedServices() []string {
 	keys := make([]string, 0)
 	for k := range d.Detect {
 		keys = append(keys, k)

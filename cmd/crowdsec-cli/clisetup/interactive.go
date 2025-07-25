@@ -37,14 +37,14 @@ cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			detector, _, err := df.detector()
+			detectConfig, _, err := df.detectConfig()
 			if err != nil {
 				return err
 			}
 
 			logger := logrus.StandardLogger()
 
-			err = cli.wizard(cmd.Context(), detector, df.toDetectOptions(logger), af.acquisDir, true, dryRun, logger)
+			err = cli.wizard(cmd.Context(), detectConfig, df.toDetectOptions(logger), af.acquisDir, true, dryRun, logger)
 			if errors.Is(err, hubops.ErrUserCanceled) {
 				fmt.Fprintln(os.Stdout, err.Error())
 				fmt.Fprintln(os.Stdout, "You can always run 'crowdsec setup' later.")

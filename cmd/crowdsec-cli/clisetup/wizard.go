@@ -86,7 +86,7 @@ func filterGeneratedAcquis(acquisFiles []string) ([]string, error) {
 	return ret, nil
 }
 
-func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts setup.DetectOptions, acquisDir string, interactive bool, dryRun bool, logger *logrus.Logger) error {
+func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfig, opts setup.DetectOptions, acquisDir string, interactive bool, dryRun bool, logger *logrus.Logger) error {
 	cfg := cli.cfg()
 
 	if err := require.Agent(cfg); err != nil {
@@ -157,7 +157,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detector *setup.Detector, opts 
 		return err
 	}
 
-	stup, err := setup.BuildSetup(ctx, detector, opts,
+	stup, err := setup.BuildSetup(ctx, detectConfig, opts,
 		setup.OSExprPath{},
 		units, procs, logger)
 	if err != nil {
