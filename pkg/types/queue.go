@@ -50,7 +50,7 @@ func (q *LocalQueue) GetQueue() Queue {
 type QueueInterface interface {
 	GetQueue() Queue
 	GetSize() int
-	Add(Event)
+	Add(evt Event)
 }
 
 func NewQueue(l int) QueueInterface {

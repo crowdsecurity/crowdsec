@@ -281,7 +281,7 @@ func alertFormatSource(leaky *Leaky, queue types.QueueInterface) (map[string]mod
 }
 
 // NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
-func NewAlert(leaky *Leaky, queue *types.QueueInterface) (types.RuntimeAlert, error) {
+func NewAlert(leaky *Leaky, queue types.QueueInterface) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert
 
 	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
@@ -324,7 +324,7 @@ func NewAlert(leaky *Leaky, queue *types.QueueInterface) (types.RuntimeAlert, er
 	runtimeAlert.Mapkey = leaky.Mapkey
 
 	// Get the sources from Leaky/Queue
-	sources, source_scope, err := alertFormatSource(leaky, *queue)
+	sources, source_scope, err := alertFormatSource(leaky, queue)
 	if err != nil {
 		return runtimeAlert, fmt.Errorf("unable to collect sources from bucket: %w", err)
 	}
@@ -343,7 +343,7 @@ func NewAlert(leaky *Leaky, queue *types.QueueInterface) (types.RuntimeAlert, er
 
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	// Get the events from Leaky/Queue
-	apiAlert.Events = EventsFromQueue(*queue)
+	apiAlert.Events = EventsFromQueue(queue)
 
 	var warnings []error
 
