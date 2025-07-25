@@ -631,10 +631,10 @@ func ParseUri(params ...any) (any, error) {
 	return ret, nil
 }
 
-// func AverageDuration(times []time.Time) time.Duration
-func AverageDuration(params ...any) (any, error) {
+// func AverageInterval(times []time.Time) time.Duration
+func AverageInterval(params ...any) (any, error) {
 	if len(params) != 1 {
-		return 0, errors.New("AverageDuration expects exactly one parameter: a slice of times")
+		return 0, errors.New("AverageInterval expects exactly one parameter: a slice of times")
 	}
 
 	var times []time.Time
@@ -653,7 +653,7 @@ func AverageDuration(params ...any) (any, error) {
 			times[i] = t
 		}
 	default:
-		return 0, errors.New("AverageDuration expects a slice of times")
+		return 0, errors.New("AverageInterval expects a slice of times")
 	}
 
 	if len(times) < 2 {
@@ -674,10 +674,10 @@ func AverageDuration(params ...any) (any, error) {
 	return average, nil
 }
 
-// func MedianDuration(times []time.Time) (time.Duration, error)
-func MedianDuration(params ...any) (any, error) {
+// func MedianInterval(times []time.Time) (time.Duration, error)
+func MedianInterval(params ...any) (any, error) {
 	if len(params) != 1 {
-		return 0, errors.New("MedianDuration expects exactly one parameter: a slice of times")
+		return 0, errors.New("MedianInterval expects exactly one parameter: a slice of times")
 	}
 
 	var times []time.Time
@@ -696,7 +696,7 @@ func MedianDuration(params ...any) (any, error) {
 			times[i] = t
 		}
 	default:
-		return 0, errors.New("MedianDuration expects a slice of times")
+		return 0, errors.New("MedianInterval expects a slice of times")
 	}
 
 	if len(times) < 2 {

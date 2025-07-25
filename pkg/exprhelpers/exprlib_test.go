@@ -711,7 +711,7 @@ func TestTimeNow(t *testing.T) {
 	log.Print("test 'TimeNow()' : OK")
 }
 
-func TestAverageDuration(t *testing.T) {
+func TestAverageInterval(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
 
@@ -725,23 +725,23 @@ func TestAverageDuration(t *testing.T) {
 		want time.Duration
 	}{
 		{
-			name: "AverageDuration() test: two times with 1 second difference",
+			name: "AverageInterval() test: two times with 1 second difference",
 			env: map[string]any{
 				"times": []time.Time{baseTime, baseTime.Add(time.Second)},
 			},
-			code: "AverageDuration(times)",
+			code: "AverageInterval(times)",
 			want: time.Second,
 		},
 		{
-			name: "AverageDuration() test: two times with 1 second difference (reverse order)",
+			name: "AverageInterval() test: two times with 1 second difference (reverse order)",
 			env: map[string]any{
 				"times": []time.Time{baseTime.Add(time.Second), baseTime},
 			},
-			code: "AverageDuration(times)",
+			code: "AverageInterval(times)",
 			want: time.Second,
 		},
 		{
-			name: "AverageDuration() test: three times with varying intervals",
+			name: "AverageInterval() test: three times with varying intervals",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime,
@@ -749,11 +749,11 @@ func TestAverageDuration(t *testing.T) {
 					baseTime.Add(6 * time.Second), // 4s gap
 				},
 			},
-			code: "AverageDuration(times)",
+			code: "AverageInterval(times)",
 			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
 		},
 		{
-			name: "AverageDuration() test: four times with equal intervals",
+			name: "AverageInterval() test: four times with equal intervals",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime,
@@ -762,7 +762,7 @@ func TestAverageDuration(t *testing.T) {
 					baseTime.Add(3 * time.Hour),
 				},
 			},
-			code: "AverageDuration(times)",
+			code: "AverageInterval(times)",
 			want: time.Hour, // all intervals are 1 hour
 		},
 	}
@@ -778,7 +778,7 @@ func TestAverageDuration(t *testing.T) {
 	}
 }
 
-func TestMedianDuration(t *testing.T) {
+func TestMedianInterval(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
 
@@ -794,15 +794,15 @@ func TestMedianDuration(t *testing.T) {
 		errContains string
 	}{
 		{
-			name: "MedianDuration() test: two times with 1 second difference",
+			name: "MedianInterval() test: two times with 1 second difference",
 			env: map[string]any{
 				"times": []time.Time{baseTime, baseTime.Add(time.Second)},
 			},
-			code: "MedianDuration(times)",
+			code: "MedianInterval(times)",
 			want: time.Second,
 		},
 		{
-			name: "MedianDuration() test: three times - odd number of intervals",
+			name: "MedianInterval() test: three times - odd number of intervals",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime,
@@ -811,11 +811,11 @@ func TestMedianDuration(t *testing.T) {
 					baseTime.Add(11 * time.Second), // 6s gap
 				},
 			},
-			code: "MedianDuration(times)",
+			code: "MedianInterval(times)",
 			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
 		},
 		{
-			name: "MedianDuration() test: four times - even number of intervals",
+			name: "MedianInterval() test: four times - even number of intervals",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime,
@@ -825,11 +825,11 @@ func TestMedianDuration(t *testing.T) {
 					baseTime.Add(15 * time.Second), // 8s gap
 				},
 			},
-			code: "MedianDuration(times)",
+			code: "MedianInterval(times)",
 			want: 3 * time.Second, // median of [1s, 2s, 4s, 8s] = (2s + 4s) / 2 = 3s
 		},
 		{
-			name: "MedianDuration() test: reverse order times",
+			name: "MedianInterval() test: reverse order times",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime.Add(11 * time.Second),
@@ -838,11 +838,11 @@ func TestMedianDuration(t *testing.T) {
 					baseTime,
 				},
 			},
-			code: "MedianDuration(times)",
+			code: "MedianInterval(times)",
 			want: 3 * time.Second, // should sort first, then calculate median
 		},
 		{
-			name: "MedianDuration() test: equal intervals",
+			name: "MedianInterval() test: equal intervals",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime,
@@ -852,11 +852,11 @@ func TestMedianDuration(t *testing.T) {
 					baseTime.Add(4 * time.Hour),
 				},
 			},
-			code: "MedianDuration(times)",
+			code: "MedianInterval(times)",
 			want: time.Hour, // all intervals are 1 hour, median = 1 hour
 		},
 		{
-			name: "MedianDuration() test: mixed small and large intervals",
+			name: "MedianInterval() test: mixed small and large intervals",
 			env: map[string]any{
 				"times": []time.Time{
 					baseTime,
@@ -865,15 +865,15 @@ func TestMedianDuration(t *testing.T) {
 					baseTime.Add(2001 * time.Millisecond), // 1000ms = 1s gap
 				},
 			},
-			code: "MedianDuration(times)",
+			code: "MedianInterval(times)",
 			want: time.Second, // median of [1ms, 1s, 1s] = 1s
 		},
 		{
-			name: "MedianDuration() test: only one time (error case)",
+			name: "MedianInterval() test: only one time (error case)",
 			env: map[string]any{
 				"times": []time.Time{baseTime},
 			},
-			code:        "MedianDuration(times)",
+			code:        "MedianInterval(times)",
 			wantErr:     true,
 			errContains: "need at least two times",
 		},
@@ -882,17 +882,11 @@ func TestMedianDuration(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+
+			got, err := expr.Run(program, test.env)
 
 			if test.wantErr {
-				if err != nil {
-					// Compile-time error (type checking)
-					if test.errContains != "" {
-						assert.Contains(t, err.Error(), test.errContains)
-					}
-					return
-				}
-				// Runtime error
-				_, err := expr.Run(program, test.env)
 				require.Error(t, err)
 				if test.errContains != "" {
 					assert.Contains(t, err.Error(), test.errContains)
@@ -900,8 +894,6 @@ func TestMedianDuration(t *testing.T) {
 				return
 			}
 
-			require.NoError(t, err)
-			got, err := expr.Run(program, test.env)
 			require.NoError(t, err)
 			require.Equal(t, test.want, got)
 		})
@@ -929,18 +921,18 @@ func TestAverageMedianWithQueues(t *testing.T) {
 		errContains string
 	}{
 		{
-			name: "AverageDuration() test mockQueue: two times with 1 second difference",
+			name: "AverageInterval() test mockQueue: two times with 1 second difference",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},
 					{Time: baseTime.Add(time.Second)},
 				},
 			},
-			code: "AverageDuration(map(queue,{ #.Time }))",
+			code: "AverageInterval(map(queue,{ #.Time }))",
 			want: time.Second,
 		},
 		{
-			name: "MedianDuration() test mockQueue: three times with varying intervals",
+			name: "MedianInterval() test mockQueue: three times with varying intervals",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},
@@ -949,11 +941,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(11 * time.Second)}, // 6s gap
 				},
 			},
-			code: "MedianDuration(map(queue,{ #.Time }))",
+			code: "MedianInterval(map(queue,{ #.Time }))",
 			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
 		},
 		{
-			name: "AverageDuration() test slicing: last 3 items from 5-item queue",
+			name: "AverageInterval() test slicing: last 3 items from 5-item queue",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},                       // ignored
@@ -963,11 +955,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(16 * time.Second)}, // +4s gap
 				},
 			},
-			code: "AverageDuration(map(queue[-3:],{ #.Time }))",
+			code: "AverageInterval(map(queue[-3:],{ #.Time }))",
 			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
 		},
 		{
-			name: "MedianDuration() test slicing: last 3 items from 5-item queue",
+			name: "MedianInterval() test slicing: last 3 items from 5-item queue",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},                       // ignored
@@ -977,11 +969,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(16 * time.Second)}, // +4s gap
 				},
 			},
-			code: "MedianDuration(map(queue[-3:],{ #.Time }))",
+			code: "MedianInterval(map(queue[-3:],{ #.Time }))",
 			want: 3 * time.Second, // median of [2s, 4s] = (2s + 4s) / 2 = 3s
 		},
 		{
-			name: "AverageDuration() test slicing: first 3 items from 5-item queue",
+			name: "AverageInterval() test slicing: first 3 items from 5-item queue",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},                       // start
@@ -991,11 +983,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(30 * time.Second)}, // ignored
 				},
 			},
-			code: "AverageDuration(map(queue[:3],{ #.Time }))",
+			code: "AverageInterval(map(queue[:3],{ #.Time }))",
 			want: 4 * time.Second, // (3s + 5s) / 2 = 4s average
 		},
 		{
-			name: "MedianDuration() test slicing: middle 3 items from 5-item queue",
+			name: "MedianInterval() test slicing: middle 3 items from 5-item queue",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},                       // ignored
@@ -1005,11 +997,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(25 * time.Second)}, // ignored
 				},
 			},
-			code: "MedianDuration(map(queue[1:4],{ #.Time }))",
+			code: "MedianInterval(map(queue[1:4],{ #.Time }))",
 			want: 3*time.Second + 500*time.Millisecond, // median of [2s, 5s] = (2s + 5s) / 2 = 3.5s
 		},
 		{
-			name: "AverageDuration() test slicing: last 2 items from 6-item queue",
+			name: "AverageInterval() test slicing: last 2 items from 6-item queue",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},                       // ignored
@@ -1020,11 +1012,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(15 * time.Second)}, // +5s gap
 				},
 			},
-			code: "AverageDuration(map(queue[-2:],{ #.Time }))",
+			code: "AverageInterval(map(queue[-2:],{ #.Time }))",
 			want: 5 * time.Second, // only one interval: 5s
 		},
 		{
-			name: "MedianDuration() test slicing: single item slice (error case)",
+			name: "MedianInterval() test slicing: single item slice (error case)",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime},
@@ -1032,33 +1024,33 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(10 * time.Second)},
 				},
 			},
-			code:        "MedianDuration(map(queue[1:2],{ #.Time }))",
+			code:        "MedianInterval(map(queue[1:2],{ #.Time }))",
 			wantErr:     true,
 			errContains: "need at least two times",
 		},
 		{
-			name: "AverageDuration() test error: slice of strings instead of times",
+			name: "AverageInterval() test error: slice of strings instead of times",
 			env: map[string]any{
 				"stringQueue": []string{"hello", "world", "test"},
 			},
-			code:        "AverageDuration(stringQueue)",
+			code:        "AverageInterval(stringQueue)",
 			wantErr:     true,
 			errContains: "cannot use []string as argument",
 		},
 		{
-			name: "MedianDuration() test error: mixed types in slice",
+			name: "MedianInterval() test error: mixed types in slice",
 			env: map[string]any{
 				"mixedQueue": []mockQueue{
 					{Time: baseTime},
 				},
 				"stringValue": "not a time",
 			},
-			code:        "MedianDuration([mixedQueue[0].Time, stringValue])",
+			code:        "MedianInterval([mixedQueue[0].Time, stringValue])",
 			wantErr:     true,
 			errContains: "element at index 1 is not a time.Time",
 		},
 		{
-			name: "AverageDuration() test error: mapping string time field instead of Time field",
+			name: "AverageInterval() test error: mapping string time field instead of Time field",
 			env: map[string]any{
 				"queue": []mockQueue{
 					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
@@ -1066,12 +1058,12 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
 				},
 			},
-			code:        "AverageDuration(map(queue, { #.StrTime }))",
+			code:        "AverageInterval(map(queue, { #.StrTime }))",
 			wantErr:     true,
 			errContains: "element at index 0 is not a time.Time",
 		},
 		{
-			name: "MedianDuration() test error: accidentally mapping wrong field type",
+			name: "MedianInterval() test error: accidentally mapping wrong field type",
 			env: map[string]any{
 				"queueWithStrings": []mockQueue{
 					{Time: baseTime, StrTime: "not-a-time-format"},
@@ -1079,12 +1071,12 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(5 * time.Second), StrTime: "still-not-time"},
 				},
 			},
-			code:        "MedianDuration(map(queueWithStrings, { #.StrTime }))",
+			code:        "MedianInterval(map(queueWithStrings, { #.StrTime }))",
 			wantErr:     true,
 			errContains: "element at index 0 is not a time.Time",
 		},
 		{
-			name: "AverageDuration() test success: converting string timestamps with date() function",
+			name: "AverageInterval() test success: converting string timestamps with date() function",
 			env: map[string]any{
 				"queueWithValidStrings": []mockQueue{
 					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
@@ -1092,11 +1084,11 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
 				},
 			},
-			code: "AverageDuration(map(queueWithValidStrings, { date(#.StrTime) }))",
+			code: "AverageInterval(map(queueWithValidStrings, { date(#.StrTime) }))",
 			want: time.Second + 500*time.Millisecond, // (1s + 2s) / 2 = 1.5s
 		},
 		{
-			name: "MedianDuration() test success: converting RFC3339 string timestamps",
+			name: "MedianInterval() test success: converting RFC3339 string timestamps",
 			env: map[string]any{
 				"queueWithRFC3339": []mockQueue{
 					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
@@ -1105,7 +1097,7 @@ func TestAverageMedianWithQueues(t *testing.T) {
 					{Time: baseTime.Add(11 * time.Second), StrTime: "2023-01-01T12:00:11Z"},
 				},
 			},
-			code: "MedianDuration(map(queueWithRFC3339, { date(#.StrTime) }))",
+			code: "MedianInterval(map(queueWithRFC3339, { date(#.StrTime) }))",
 			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
 		},
 	}
