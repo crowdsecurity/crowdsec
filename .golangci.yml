@@ -22,13 +22,19 @@ linters:
     - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
     - funcorder
 
+    # we allow named returns (to improve readability, in the function signatures)
+    # but disallow implicit (or "naked") returns, to improve readability in the actual code.
+    #
+    # Implicit returns are still useful with deferred functions, in which case they can be //nolinted.
+    # https://go.dev/wiki/CodeReviewComments#named-result-parameters
+    - nonamedreturns
+
     #
     # Recommended? (easy)
     #
 
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
-    - exhaustive            # check exhaustiveness of enum switch statements
     - godot                 # Check if comments end in a period
     - gosec                 # (gas): Inspects source code for security problems
     - musttag               # enforce field tags in (un)marshaled structs
@@ -91,22 +97,7 @@ linters:
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
         yaml:
           files:
-            - '!**/pkg/acquisition/acquisition.go'
-            - '!**/pkg/acquisition/acquisition_test.go'
-            - '!**/pkg/acquisition/modules/appsec/appsec.go'
-            - '!**/pkg/acquisition/modules/cloudwatch/cloudwatch.go'
-            - '!**/pkg/acquisition/modules/docker/docker.go'
-            - '!**/pkg/acquisition/modules/file/file.go'
-            - '!**/pkg/acquisition/modules/journalctl/journalctl.go'
-            - '!**/pkg/acquisition/modules/kafka/kafka.go'
-            - '!**/pkg/acquisition/modules/kinesis/kinesis.go'
-            - '!**/pkg/acquisition/modules/kubernetesaudit/k8s_audit.go'
-            - '!**/pkg/acquisition/modules/loki/loki.go'
             - '!**/pkg/acquisition/modules/loki/timestamp_test.go'
-            - '!**/pkg/acquisition/modules/victorialogs/victorialogs.go'
-            - '!**/pkg/acquisition/modules/s3/s3.go'
-            - '!**/pkg/acquisition/modules/syslog/syslog.go'
-            - '!**/pkg/acquisition/modules/wineventlog/wineventlog_windows.go'
             - '!**/pkg/appsec/appsec.go'
             - '!**/pkg/appsec/loader.go'
             - '!**/pkg/csplugin/broker.go'
@@ -227,6 +218,8 @@ linters:
           disabled: true
         - name: empty-lines
           disabled: true
+        - name: enforce-switch-style
+          disabled: true
         - name: error-naming
           disabled: true
         - name: flag-parameter
@@ -341,12 +334,6 @@ linters:
           - bodyclose
         text: response body must be closed
 
-      # named/naked returns are evil, with a single exception
-      # https://go.dev/wiki/CodeReviewComments#named-result-parameters
-      - linters:
-          - nonamedreturns
-        text: named return .* with type .* found
-
       - linters:
           - revive
         path: pkg/leakybucket/manager_load.go
@@ -380,19 +367,19 @@ linters:
       # tolerate long functions in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'function-length: .*'
 
       # tolerate long lines in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'line-length-limit: .*'
 
       # we use t,ctx instead of ctx,t in tests
       - linters:
           - revive
-        path: pkg/(.+)_test.go
+        path: (.+)_test.go
         text: 'context-as-argument: context.Context should be the first parameter of a function'
 
       # tolerate deep exit in cobra's OnInitialize, for now
@@ -472,9 +459,34 @@ linters:
           - containedctx
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
+
+      # migrate over time
+
+      - linters:
+          - noctx
+        text: "net.Listen must not be called"
+
+      - linters:
+          - noctx
+        text: "exec.Command must not be called"
+
+      - linters:
+          - noctx
+        text: "net.LookupAddr must not be called"
+
+      - linters:
+          - noctx
+        text: "net.Dial must not be called"
+
+      - linters:
+          - noctx
+        text: "net.LookupHost must not be called"
+
+      - linters:
+          - staticcheck
+        text: "SA1019: yamlpatch.NewPatcher is deprecated: use csyaml.NewPatcher instead"
+
     paths:
-      - pkg/yamlpatch/merge.go
-      - pkg/yamlpatch/merge_test.go
       - pkg/time/rate
       - pkg/metabase
       - third_party$
