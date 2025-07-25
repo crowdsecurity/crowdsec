@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -56,7 +57,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		tokcapa = math.Round(tokcapa*100) / 100
 		//bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
-			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
+			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
@@ -116,7 +117,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 		tokcapa = math.Round(tokcapa*100) / 100
 
 		if tokat >= tokcapa {
-			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
+			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			discard += 1
 			return true

@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 type metricSection interface {
@@ -161,63 +162,63 @@ func (ms metricStore) processPrometheusMetrics(result []*prom2json.Family) {
 			//
 			// buckets
 			//
-			case "cs_bucket_created_total":
+			case metrics.BucketsInstantiationMetricName:
 				mBucket.Process(name, "instantiation", ival)
-			case "cs_buckets":
+			case metrics.BucketsCurrentCountMetricName:
 				mBucket.Process(name, "curr_count", ival)
-			case "cs_bucket_overflowed_total":
+			case metrics.BucketsOverflowMetricName:
 				mBucket.Process(name, "overflow", ival)
-			case "cs_bucket_poured_total":
+			case metrics.BucketPouredMetricName:
 				mBucket.Process(name, "pour", ival)
 				mAcquis.Process(source, "pour", ival)
-			case "cs_bucket_underflowed_total":
+			case metrics.BucketsUnderflowMetricName:
 				mBucket.Process(name, "underflow", ival)
 			//
 			// parsers
 			//
-			case "cs_parser_hits_total":
+			case metrics.GlobalParserHitsMetricName:
 				mAcquis.Process(source, "reads", ival)
-			case "cs_parser_hits_ok_total":
+			case metrics.GlobalParserHitsOkMetricName:
 				mAcquis.Process(source, "parsed", ival)
-			case "cs_parser_hits_ko_total":
+			case metrics.GlobalParserHitsKoMetricName:
 				mAcquis.Process(source, "unparsed", ival)
-			case "cs_node_hits_total":
+			case metrics.NodesHitsMetricName:
 				mParser.Process(name, "hits", ival)
-			case "cs_node_hits_ok_total":
+			case metrics.NodesHitsOkMetricName:
 				mParser.Process(name, "parsed", ival)
-			case "cs_node_hits_ko_total":
+			case metrics.NodesHitsKoMetricName:
 				mParser.Process(name, "unparsed", ival)
 			//
 			// whitelists
 			//
-			case "cs_node_wl_hits_total":
+			case metrics.NodesWlHitsMetricName:
 				mWhitelist.Process(name, reason, "hits", ival)
-			case "cs_node_wl_hits_ok_total":
+			case metrics.NodesWlHitsOkMetricName:
 				mWhitelist.Process(name, reason, "whitelisted", ival)
 				// track as well whitelisted lines at acquis level
 				mAcquis.Process(source, "whitelisted", ival)
 			//
 			// lapi
 			//
-			case "cs_lapi_route_requests_total":
+			case metrics.LapiRouteHitsMetricName:
 				mLapi.Process(route, method, ival)
-			case "cs_lapi_machine_requests_total":
+			case metrics.LapiMachineHitsMetricName:
 				mLapiMachine.Process(machine, route, method, ival)
-			case "cs_lapi_bouncer_requests_total":
+			case metrics.LapiBouncerHitsMetricName:
 				mLapiBouncer.Process(bouncer, route, method, ival)
-			case "cs_lapi_decisions_ko_total", "cs_lapi_decisions_ok_total":
+			case metrics.LapiNilDecisionsMetricName, metrics.LapiNonNilDecisionsMetricName:
 				mLapiDecision.Process(bouncer, fam.Name, ival)
 			//
 			// decisions
 			//
-			case "cs_active_decisions":
+			case metrics.GlobalActiveDecisionsMetricName:
 				mDecision.Process(reason, origin, action, ival)
-			case "cs_alerts":
+			case metrics.GlobalAlertsMetricName:
 				mAlert.Process(reason, ival)
 			//
 			// stash
 			//
-			case "cs_cache_size":
+			case metrics.CacheMetricName:
 				mStash.Process(name, mtype, ival)
 			//
 			// appsec

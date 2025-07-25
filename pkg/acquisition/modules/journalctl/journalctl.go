@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -27,7 +28,7 @@ type JournalCtlConfiguration struct {
 }
 
 type JournalCtlSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       JournalCtlConfiguration
 	logger       *log.Entry
 	src          string
@@ -40,13 +41,6 @@ var (
 	journalctlArgsOneShot  = []string{}
 	journalctlArgstreaming = []string{"--follow", "-n", "0"}
 )
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_journalctlsource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error {
 	for scanner.Scan() {
@@ -143,8 +137,8 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			l.Process = true
 			l.Module = j.GetName()
 
-			if j.metricsLevel != configuration.METRICS_NONE {
-				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			if j.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "acquis_type": l.Labels["type"]}).Inc()
 			}
 
 			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
@@ -172,11 +166,11 @@ func (j *JournalCtlSource) GetUuid() string {
 }
 
 func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
 func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
 func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -210,7 +204,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	j.logger = logger
 	j.metricsLevel = metricsLevel
 

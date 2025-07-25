@@ -81,7 +81,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	}
 
 	for _, lp := range lps {
-		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(ctx, lp.MachineId)
+		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(ctx, lp.MachineId, true)
 		if err != nil {
 			log.Errorf("unable to get LP usage metrics: %s", err)
 			continue

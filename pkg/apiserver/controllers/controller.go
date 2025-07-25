@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alexliesenfeld/health"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
@@ -96,6 +97,9 @@ func (c *Controller) NewV1() error {
 
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
+	// We don't want to compress the response body as it would likely break some existing bouncers
+	// But we do want to automatically uncompress incoming requests
+	c.Router.Use(gzip.Gzip(gzip.NoCompression, gzip.WithDecompressOnly(), gzip.WithDecompressFn(gzip.DefaultDecompressHandle)))
 	c.Router.HandleMethodNotAllowed = true
 	c.Router.UnescapePathValues = true
 	c.Router.UseRawPath = true

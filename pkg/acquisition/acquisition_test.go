@@ -19,6 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -37,7 +38,7 @@ func (f *MockSource) UnmarshalConfig(cfg []byte) error {
 	return nil
 }
 
-func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
+func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if err := f.UnmarshalConfig(cfg); err != nil {
 		return err
@@ -191,7 +192,7 @@ filename: foo.log
 			common := configuration.DataSourceCommonCfg{}
 			err := yaml.Unmarshal([]byte(tc.String), &common)
 			require.NoError(t, err)
-			ds, err := DataSourceConfigure(common, []byte(tc.String), configuration.METRICS_NONE)
+			ds, err := DataSourceConfigure(common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -331,7 +332,7 @@ type MockCat struct {
 	logger                            *log.Entry
 }
 
-func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
+func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
@@ -376,7 +377,7 @@ type MockTail struct {
 	logger                            *log.Entry
 }
 
-func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
+func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
@@ -531,7 +532,7 @@ type MockSourceByDSN struct {
 }
 
 func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }
-func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel int) error {
+func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
 func (f *MockSourceByDSN) GetMode() string { return f.Mode }

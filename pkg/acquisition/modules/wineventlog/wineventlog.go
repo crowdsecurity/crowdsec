@@ -11,6 +11,7 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -24,7 +25,7 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
 

@@ -22,7 +22,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -71,7 +71,7 @@ container_name:
 	for _, tc := range tests {
 		t.Run(tc.config, func(t *testing.T) {
 			f := DockerSource{}
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -197,7 +197,7 @@ container_name_regexp:
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
 
-		err := dockerSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+		err := dockerSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		dockerSource.Client = new(mockDockerCli)

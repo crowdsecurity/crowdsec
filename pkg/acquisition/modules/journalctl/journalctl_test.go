@@ -15,7 +15,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -51,7 +51,7 @@ journalctl_filter:
 	for _, tc := range tests {
 		t.Run(tc.config, func(t *testing.T) {
 			f := JournalCtlSource{}
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -157,7 +157,7 @@ journalctl_filter:
 		out := make(chan types.Event, 100)
 		j := JournalCtlSource{}
 
-		err := j.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+		err := j.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -227,7 +227,7 @@ journalctl_filter:
 		out := make(chan types.Event)
 		j := JournalCtlSource{}
 
-		err := j.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+		err := j.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}

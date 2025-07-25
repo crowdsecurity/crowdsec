@@ -24,17 +24,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var dataSourceName = "http"
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_httpsource_hits_total",
-		Help: "Total lines that were read from http source",
-	},
-	[]string{"path", "src"})
+const dataSourceName = "http"
 
 type HttpConfiguration struct {
 	// IPFilter                       []string           `yaml:"ip_filter"`
@@ -66,7 +60,7 @@ type TLSConfig struct {
 }
 
 type HTTPSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       HttpConfiguration
 	logger       *log.Entry
 	Server       *http.Server
@@ -160,7 +154,7 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	h.logger = logger
 	h.metricsLevel = metricsLevel
 
@@ -197,11 +191,11 @@ func (h *HTTPSource) CanRun() error {
 }
 
 func (h *HTTPSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
 func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
 func (h *HTTPSource) Dump() interface{} {
@@ -326,17 +320,20 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			Module:  h.GetName(),
 		}
 
-		if h.metricsLevel == configuration.METRICS_AGGREGATE {
+		if h.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 			line.Src = hc.Path
 		}
 
 		evt := types.MakeEvent(h.Config.UseTimeMachine, types.LOG, true)
 		evt.Line = line
 
-		if h.metricsLevel == configuration.METRICS_AGGREGATE {
-			linesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
-		} else if h.metricsLevel == configuration.METRICS_FULL {
-			linesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
+		switch h.metricsLevel {
+		case metrics.AcquisitionMetricsLevelAggregated:
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+		case metrics.AcquisitionMetricsLevelFull:
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+		case metrics.AcquisitionMetricsLevelNone:
+			// No metrics for this level
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
