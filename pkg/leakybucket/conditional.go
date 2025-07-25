@@ -53,9 +53,9 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 		var condition, ok bool
 		if c.ConditionalFilterRuntime != nil {
 			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
-
+			queue := l.Queue.GetQueue()
 			ret, err := exprhelpers.Run(c.ConditionalFilterRuntime,
-				map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l},
+				map[string]interface{}{"evt": &msg, "queue": &queue, "leaky": l},
 				l.logger, b.Debug)
 			if err != nil {
 				l.logger.Errorf("unable to run conditional filter : %s", err)
@@ -71,7 +71,7 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 			if condition {
 				l.logger.Debugf("Conditional bucket overflow")
 				l.Ovflw_ts = l.Last_ts
-				l.Out <- l.Queue
+				l.Out <- &l.Queue
 				return nil
 			}
 		}

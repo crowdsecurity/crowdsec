@@ -196,10 +196,10 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 }
 
 // EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
-func EventsFromQueue(queue *types.Queue) []*models.Event {
+func EventsFromQueue(queue types.QueueInterface) []*models.Event {
 	events := []*models.Event{}
 
-	qEvents := queue.GetQueue()
+	qEvents := queue.GetQueue().Queue
 
 	for idx := range qEvents {
 		if qEvents[idx].Meta == nil {
@@ -249,14 +249,14 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 }
 
 // alertFormatSource iterates over the queue to collect sources
-func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Source, string, error) {
+func alertFormatSource(leaky *Leaky, queue types.QueueInterface) (map[string]models.Source, string, error) {
 	var source_type string
 
 	sources := make(map[string]models.Source)
 
 	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
 
-	qEvents := queue.GetQueue()
+	qEvents := queue.GetQueue().Queue
 	for idx := range qEvents {
 		srcs, err := SourceFromEvent(qEvents[idx], leaky)
 		if err != nil {
@@ -281,7 +281,7 @@ func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Sour
 }
 
 // NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
-func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
+func NewAlert(leaky *Leaky, queue types.QueueInterface) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert
 
 	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
@@ -347,7 +347,7 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 
 	var warnings []error
 
-	apiAlert.Meta, warnings = alertcontext.EventToContext(leaky.Queue.GetQueue())
+	apiAlert.Meta, warnings = alertcontext.EventToContext(leaky.Queue.GetQueue().Queue)
 	for _, w := range warnings {
 		log.Warningf("while extracting context from bucket %s : %s", leaky.Name, w)
 	}
