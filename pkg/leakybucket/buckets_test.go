@@ -158,7 +158,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
 	holders, response, err := LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
-	_, _, err = LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
+
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
