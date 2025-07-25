@@ -107,7 +107,7 @@ func watchTomb(tomb *tomb.Tomb) {
 
 func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) error {
 	var (
-		holders []BucketFactory
+		//holders []BucketFactory
 
 		stagefiles []byte
 		stagecfg   string
@@ -157,7 +157,8 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
+	//holders, response, err := LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
+	_, _, err = LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
@@ -170,7 +171,6 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
-
 	return nil
 }
 

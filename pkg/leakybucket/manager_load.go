@@ -457,7 +457,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": []types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid condition '%s' in %s: %w", bucketFactory.ConditionalOverflow, bucketFactory.Filename, err)
 		}
