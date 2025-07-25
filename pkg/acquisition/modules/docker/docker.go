@@ -137,19 +137,35 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	for _, cont := range d.Config.ContainerNameRegexp {
-		d.compiledContainerName = append(d.compiledContainerName, regexp.MustCompile(cont))
+		compiled, err := regexp.Compile(cont)
+		if err != nil {
+			return fmt.Errorf("invalid container name regexp '%s': %w", cont, err)
+		}
+		d.compiledContainerName = append(d.compiledContainerName, compiled)
 	}
 
 	for _, cont := range d.Config.ContainerIDRegexp {
-		d.compiledContainerID = append(d.compiledContainerID, regexp.MustCompile(cont))
+		compiled, err := regexp.Compile(cont)
+		if err != nil {
+			return fmt.Errorf("invalid container id regexp '%s': %w", cont, err)
+		}
+		d.compiledContainerID = append(d.compiledContainerID, compiled)
 	}
 
 	for _, svc := range d.Config.ServiceNameRegexp {
-		d.compiledServiceName = append(d.compiledServiceName, regexp.MustCompile(svc))
+		compiled, err := regexp.Compile(svc)
+		if err != nil {
+			return fmt.Errorf("invalid service name regexp '%s': %w", svc, err)
+		}
+		d.compiledServiceName = append(d.compiledServiceName, compiled)
 	}
 
 	for _, svc := range d.Config.ServiceIDRegexp {
-		d.compiledServiceID = append(d.compiledServiceID, regexp.MustCompile(svc))
+		compiled, err := regexp.Compile(svc)
+		if err != nil {
+			return fmt.Errorf("invalid service id regexp '%s': %w", svc, err)
+		}
+		d.compiledServiceID = append(d.compiledServiceID, compiled)
 	}
 
 	if d.Config.Since == "" {

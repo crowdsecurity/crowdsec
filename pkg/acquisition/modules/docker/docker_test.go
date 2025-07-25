@@ -94,6 +94,38 @@ service_name:
  - web-service`,
 			expectedErr: "use_service_labels and service_name, service_id, service_id_regexp, service_name_regexp are mutually exclusive",
 		},
+		{
+			config: `
+mode: cat
+source: docker
+container_name_regexp:
+ - "[invalid"`,
+			expectedErr: "invalid container name regexp '[invalid': error parsing regexp: missing closing ]",
+		},
+		{
+			config: `
+mode: cat
+source: docker
+container_id_regexp:
+ - "*invalid"`,
+			expectedErr: "invalid container id regexp '*invalid': error parsing regexp: missing argument to repetition operator: `*`",
+		},
+		{
+			config: `
+mode: cat
+source: docker
+service_name_regexp:
+ - "(?P<invalid"`,
+			expectedErr: "invalid service name regexp '(?P<invalid': error parsing regexp: invalid named capture",
+		},
+		{
+			config: `
+mode: cat
+source: docker
+service_id_regexp:
+ - "+invalid"`,
+			expectedErr: "invalid service id regexp '+invalid': error parsing regexp: missing argument to repetition operator: `+`",
+		},
 	}
 
 	subLogger := log.WithField("type", "docker")
