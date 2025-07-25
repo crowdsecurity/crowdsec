@@ -517,6 +517,22 @@ var exprFuncs = []exprCustomFunc{
 			new(func(*http.Request) string),
 		},
 	},
+	{
+		name:     "AverageInterval",
+		function: AverageInterval,
+		signature: []any{
+			new(func([]time.Time) time.Duration),
+			new(func([]interface{}) time.Duration),
+		},
+	},
+	{
+		name:     "MedianInterval",
+		function: MedianInterval,
+		signature: []any{
+			new(func([]time.Time) time.Duration),
+			new(func([]interface{}) time.Duration),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
