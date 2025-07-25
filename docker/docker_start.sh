@@ -80,6 +80,7 @@ is_mounted() {
 }
 
 run_hub_update_if_from_volume() {
+    isfalse "$NO_HUB_UPGRADE" || return 0
     if is_mounted "/etc/crowdsec/hub/.index.json"; then
         echo "Running hub update"
         run_hub_update
@@ -358,6 +359,11 @@ else
 fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
+
+if istrue "$DISABLE_LOCAL_API" && istrue "$DISABLE_AGENT"; then
+    echo "Skipping crowdsec run, Local API and Agent are disabled"
+    exit 0
+fi
 
 ## Install hub items
 
