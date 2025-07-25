@@ -13,20 +13,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type SetupBuilder struct{}
-
-func NewSetupBuilder() *SetupBuilder {
-	return &SetupBuilder{}
-}
-
-// Build creates a Setup. The actual detection of services is done here.
-func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts DetectOptions, pathChecker PathChecker, installedUnits UnitMap, runningProcesses ProcessMap, logger *logrus.Logger) (*Setup, error) {
+// BuildSetup creates a Setup. The actual detection of services is done here.
+func BuildSetup(ctx context.Context, detector *Detector, opts DetectOptions, exprPath ExprPath, installedUnits UnitMap, runningProcesses ProcessMap, logger logrus.FieldLogger) (*Setup, error) {
 	s := Setup{}
 
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
 	s.Plans = make([]ServicePlan, 0)
 
-	os, err := DetectOS(opts.ForcedOS, logger)
+	exprOS, err := DetectOS(opts.ForcedOS, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +33,15 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
 	}
 
-	state := NewExprState(opts, installedUnits, runningProcesses)
-	env := NewExprEnvironment(ctx, os, state, pathChecker)
+	exprSystemd := NewExprSystemd(installedUnits, opts.ForcedUnits)
+	exprSystem := NewExprSystem(runningProcesses, opts.ForcedProcesses)
+	env := &ExprEnvironment{
+		OS: exprOS,
+		Path: exprPath,
+		System: exprSystem,
+		Systemd: exprSystemd,
+		Ctx: ctx,
+	}
 
 	detected := make(map[string]ServicePlan)
 
@@ -65,9 +66,7 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 		}
 	}
 
-	if err = checkConsumedForcedItems(env); err != nil {
-		return nil, err
-	}
+	env.checkConsumedForcedItems(logger)
 
 	// sort the keys (service names) to have them in a predictable
 	// order in the final output
@@ -86,8 +85,8 @@ func (b *SetupBuilder) Build(ctx context.Context, detector *Detector, opts Detec
 	return &s, nil
 }
 
-// FromYAML parses a Setup from setup.yaml, which can be user-provided or the result of a service detection.
-func (b *SetupBuilder) FromYAML(input io.Reader, showSource bool, wantColor bool) (*Setup, error) {
+// ParseSetupYAML creates a Setup from setup.yaml, which can be user-provided or the result of a service detection.
+func ParseSetupYAML(input io.Reader, showSource bool, wantColor bool) (*Setup, error) {
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
 		return nil, fmt.Errorf("while reading setup file: %w", err)

@@ -8,9 +8,9 @@ detect:
     # all conditions must be true
     when:
       # check if apache2 is in "systemctl list-unit-files --state=enabled,generated,static"
-      - UnitFound("apache2.service")
+      - Systemd.UnitEnabled("apache2.service")
       # broad distribution category (use OS.ID to disambiguate "ubuntu" from "debian")
-      - PathExists("/etc/debian_version")
+      - Path.Exists("/etc/debian_version")
     hub_spec:
       # If the rules match, install the following items
       collections:
@@ -28,8 +28,8 @@ detect:
   # Detect apache2 on rpm-based systems
   apache2-systemd-rpm:
     when:
-      - UnitFound("httpd.service")
-      - PathExists("/etc/redhat-release")
+      - Systemd.UnitEnabled("httpd.service")
+      - Path.Exists("/etc/redhat-release")
     hub_spec:
       collections:
         - crowdsecurity/apache2
@@ -45,7 +45,7 @@ detect:
   # Asterisk PBX
   asterisk-systemd:
     when:
-      - UnitFound("asterisk.service")
+      - Systemd.UnitEnabled("asterisk.service")
     hub_spec:
       collections:
         - crowdsecurity/asterisk
@@ -61,7 +61,7 @@ detect:
   # Caddy web server
   caddy-systemd:
     when:
-      - UnitFound("caddy.service")
+      - Systemd.UnitEnabled("caddy.service")
     hub_spec:
       collections:
         - crowdsecurity/caddy
@@ -77,7 +77,7 @@ detect:
   # Dovecot IMAP/POP3 server
   dovecot-systemd:
     when:
-      - UnitFound("dovecot.service")
+      - Systemd.UnitEnabled("dovecot.service")
     hub_spec:
       collections:
         - crowdsecurity/dovecot
@@ -93,7 +93,7 @@ detect:
   # Emby media server
   emby-systemd:
     when:
-      - UnitFound("emby-server.service")
+      - Systemd.UnitEnabled("emby-server.service")
     hub_spec:
       collections:
         - LePresidente/emby
@@ -109,7 +109,7 @@ detect:
   # Endlessh SSH tarpit
   endlessh-systemd:
     when:
-      - UnitFound("endlessh.service")
+      - Systemd.UnitEnabled("endlessh.service")
     hub_spec:
       collections:
         - crowdsecurity/endlessh
@@ -126,7 +126,7 @@ detect:
   # Gitea Git server (XXX untested)
   gitea-systemd:
     when:
-      - UnitFound("gitea.service")
+      - Systemd.UnitEnabled("gitea.service")
     hub_spec:
       collections:
         - crowdsecurity/gitea
@@ -142,7 +142,7 @@ detect:
   # HAProxy load balancer
   haproxy-systemd:
     when:
-      - UnitFound("haproxy.service")
+      - Systemd.UnitEnabled("haproxy.service")
     hub_spec:
       collections:
         - crowdsecurity/haproxy
@@ -158,7 +158,7 @@ detect:
   # MariaDB server
   mariadb-systemd:
     when:
-      - UnitFound("mariadb.service")
+      - Systemd.UnitEnabled("mariadb.service")
     hub_spec:
       collections:
         - crowdsecurity/mariadb
@@ -174,7 +174,7 @@ detect:
   # MySQL server
   mysql-systemd:
     when:
-      - UnitFound("mysql.service")
+      - Systemd.UnitEnabled("mysql.service")
     hub_spec:
       collections:
         - crowdsecurity/mysql
@@ -190,7 +190,7 @@ detect:
   # Nginx
   nginx-systemd:
     when:
-      - UnitFound("nginx.service")
+      - Systemd.UnitEnabled("nginx.service")
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -206,7 +206,7 @@ detect:
   # OpenResty (nginx distribution)
   openresty-systemd:
     when:
-      - UnitFound("openresty.service")
+      - Systemd.UnitEnabled("openresty.service")
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -222,7 +222,7 @@ detect:
   # Odoo ERP
   odoo-systemd:
     when:
-      - UnitFound("odoo.service")
+      - Systemd.UnitEnabled("odoo.service")
     hub_spec:
       collections:
         - crowdsecurity/odoo
@@ -242,8 +242,8 @@ detect:
   # Ombi media request system
   ombi-systemd:
     when:
-      - UnitFound("ombi.service")
-      - PathExists("/etc/debian_version")
+      - Systemd.UnitEnabled("ombi.service")
+      - Path.Exists("/etc/debian_version")
     hub_spec:
       collections:
         - LePresidente/ombi
@@ -259,8 +259,8 @@ detect:
   # PostgreSQL (deb)
   pgsql-systemd-deb:
     when:
-      - UnitFound("postgresql.service")
-      - PathExists("/etc/debian_version")
+      - Systemd.UnitEnabled("postgresql.service")
+      - Path.Exists("/etc/debian_version")
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -276,8 +276,8 @@ detect:
   # PostgreSQL (rpm)
   pgsql-systemd-rpm:
     when:
-      - UnitFound("postgresql.service")
-      - PathExists("/etc/redhat-release")
+      - Systemd.UnitEnabled("postgresql.service")
+      - Path.Exists("/etc/redhat-release")
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -293,7 +293,7 @@ detect:
   # Postfix mail server
   postfix-systemd:
     when:
-      - UnitFound("postfix.service")
+      - Systemd.UnitEnabled("postfix.service")
     hub_spec:
       collections:
         - crowdsecurity/postfix
@@ -309,7 +309,7 @@ detect:
   # ProFTPD FTP server
   proftpd-systemd:
     when:
-      - UnitFound("proftpd.service")
+      - Systemd.UnitEnabled("proftpd.service")
     hub_spec:
       collections:
         - crowdsecurity/proftpd
@@ -325,7 +325,7 @@ detect:
   # Pure-FTPd server
   pureftpd-systemd:
     when:
-      - UnitFound("pure-ftpd.service")
+      - Systemd.UnitEnabled("pure-ftpd.service")
     hub_spec:
       collections:
         - fulljackz/pureftpd
@@ -343,7 +343,7 @@ detect:
     when:
       # deb -> smbd.service
       # rpm -> smb.service
-      - UnitFound("smbd.service") or UnitFound("smb.service")
+      - Systemd.UnitEnabled("smbd.service") or Systemd.UnitEnabled("smb.service")
     hub_spec:
       collections:
         - crowdsecurity/smb
@@ -356,12 +356,14 @@ detect:
         filenames:
           - /var/log/samba*.log
 
+  ###
   # SSH daemon
-  sshd-systemd:
+  #
+
+  ssh-systemd-file:
     when:
-      # deb -> ssh.service
-      # rpm -> sshd.service
-      - UnitFound("ssh.service") or UnitFound("sshd.service") or UnitFound("ssh.socket") or UnitFound("sshd.socket")
+      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - Path.Exists("/var/log/auth.log")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -376,10 +378,64 @@ detect:
           - /var/log/sshd.log
           - /var/log/secure
 
+  sshd-systemd-file:
+    when:
+      - Systemd.UnitEnabled("sshd.service") or Systemd.UnitEnabled("sshd.socket")
+      - Path.Exists("/var/log/auth.log")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/sshd.log
+          - /var/log/secure
+
+  ssh-systemd-journalctl:
+    when:
+      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - not Path.Exists("/var/log/auth.log")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=ssh.service"
+
+  sshd-systemd-journalctl:
+    when:
+      - Systemd.UnitEnabled("sshd.service") or Systemd.UnitEnabled("sshd.socket")
+      - not Path.Exists("/var/log/auth.log")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=sshd.service"
+
+  #
+  #
+  ###
+
   # Suricata IDS/IPS
   suricata-systemd:
     when:
-      - UnitFound("suricata.service")
+      - Systemd.UnitEnabled("suricata.service")
     hub_spec:
       collections:
         - crowdsecurity/suricata
@@ -395,7 +451,7 @@ detect:
   # vsftpd FTP server
   vsftpd-systemd:
     when:
-      - UnitFound("vsftpd.service")
+      - Systemd.UnitEnabled("vsftpd.service")
     hub_spec:
       collections:
         - crowdsecurity/vsftpd
@@ -407,6 +463,22 @@ detect:
           type: vsftpd
         filenames:
           - /var/log/vsftpd/*.log
+
+  # if you do this, do it at home (not in production)
+  telnet:
+    when:
+      - len(Path.Glob("/var/log/telnetd*.log")) > 0
+    hub_spec:
+      scenarios:
+        - crowdsecurity/telnet-bf
+    acquisition_spec:
+      filename: telnet.yaml
+      datasource:
+        source: file
+        labels:
+          type: telnet
+        filenames:
+          - /var/log/telnetd*.log
 
   #
   # Operating System detection

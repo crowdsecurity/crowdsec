@@ -1,12 +1,11 @@
 # TODO: windows, use_time_machine, event support (see https://hub.crowdsec.net/author/crowdsecurity/collections/iis)
 
 ---
-version: 1.0
 
 detect:
   apache2:
     when:
-      - ProcessRunning("apache2")
+      - System.ProcessRunning("apache2")
     hub_spec:
       collections:
         - crowdsecurity/apache2
@@ -23,7 +22,7 @@ detect:
 
   apache2-systemd:
     when:
-      - UnitFound("apache2.service")
+      - Systemd.UnitEnabled("apache2.service")
       - OS.ID != "centos"
     hub_spec:
       collections:
@@ -39,7 +38,7 @@ detect:
 
   apache2-systemd-centos:
     when:
-      - UnitFound("httpd.service")
+      - Systemd.UnitEnabled("httpd.service")
       - OS.ID == "centos"
     hub_spec:
       collections:
@@ -53,7 +52,7 @@ detect:
 
   ssh-systemd:
     when:
-      - UnitFound("ssh.service") or UnitFound("ssh.socket")
+      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
     hub_spec:
       collections:
         - crowdsecurity/apache2

@@ -6,7 +6,6 @@ import (
 
 // Detector contains a set of supported service profiles, loaded from detect.yaml.
 type Detector struct {
-	Version string                    `yaml:"version"`
 	Detect  map[string]ServiceProfile `yaml:"detect"`
 }
 
@@ -36,6 +35,22 @@ type AcquisitionSpec struct {
 	Filename   string
 	Datasource DatasourceConfig
 }
+
+func (a *AcquisitionSpec) Validate() error {
+	if a.Filename == "" {
+		if len(a.Datasource) == 0 {
+			// missing acquisition is ok - only hub items
+			return nil
+		}
+
+		// if a datasource is specified, we must have a filename
+		return ErrMissingAcquisitionFilename
+	}
+
+	// check the rest of the spec
+	return a.Datasource.Validate()
+}
+
 
 type DatasourceConfig map[string]any
 

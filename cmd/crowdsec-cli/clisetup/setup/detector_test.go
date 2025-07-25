@@ -179,7 +179,6 @@ func TestDetectSimpleRule(t *testing.T) {
 	ctx := t.Context()
 
 	f := strings.NewReader(`
-version: 1.0
 detect:
   good:
     when:
@@ -192,8 +191,8 @@ detect:
 
 	detector, err := NewDetector(f)
 	require.NoError(t, err)
-	got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{},
-		OSPathChecker{},
+	got, err := BuildSetup(ctx, detector, DetectOptions{},
+		OSExprPath{},
 		nil, nil, nullLogger())
 	require.NoError(t, err)
 
@@ -217,11 +216,10 @@ func TestDetectUnit(t *testing.T) {
 		{
 			"detect unit and pick up acquisistion filter",
 			`
-version: 1.0
 detect:
   wizard:
     when:
-      - UnitFound("crowdsec-setup-detect.service")
+      - Systemd.UnitEnabled("crowdsec-setup-detect.service")
     acquisition_spec:
       filename: wizard.yaml
       datasource:
@@ -255,8 +253,8 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{},
-				OSPathChecker{},
+			got, err := BuildSetup(ctx, detector, DetectOptions{},
+				OSExprPath{},
 				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
 				nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
@@ -270,17 +268,16 @@ func TestDetectSkipService(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
 	f := strings.NewReader(`
-version: 1.0
 detect:
   wizard:
     when:
-      - ProcessRunning("foobar")
+      - System.ProcessRunning("foobar")
 `)
 
 	detector, err := NewDetector(f)
 	require.NoError(t, err)
-	got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
-		OSPathChecker{},
+	got, err := BuildSetup(ctx, detector, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+		OSExprPath{},
 		nil, nil, nullLogger())
 	require.NoError(t, err)
 
@@ -303,7 +300,6 @@ func TestDetectForcedOS(t *testing.T) {
 		{
 			"detect OS - force linux",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -319,7 +315,6 @@ detect:
 		{
 			"detect OS - force windows",
 			`
-version: 1.0
 detect:
   windows:
     when:
@@ -335,7 +330,6 @@ detect:
 		{
 			"detect OS - ubuntu (no match)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -347,7 +341,6 @@ detect:
 		{
 			"detect OS - ubuntu (match)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -363,7 +356,6 @@ detect:
 		{
 			"detect OS - ubuntu (match with version)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -379,7 +371,6 @@ detect:
 		{
 			"detect OS - ubuntu >= 20.04 (no match: no version detected)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -391,7 +382,6 @@ detect:
 		{
 			"detect OS - ubuntu >= 20.04 (no match: version is lower)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -403,7 +393,6 @@ detect:
 		{
 			"detect OS - ubuntu >= 20.04 (match: same version)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -419,7 +408,6 @@ detect:
 		{
 			"detect OS - ubuntu >= 20.04 (match: version is higher)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -436,7 +424,6 @@ detect:
 		{
 			"detect OS - ubuntu < 20.04 (no match: no version detected)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -448,7 +435,6 @@ detect:
 		{
 			"detect OS - ubuntu < 20.04 (no match: version is higher)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -460,7 +446,6 @@ detect:
 		{
 			"detect OS - ubuntu < 20.04 (no match: same version)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -472,7 +457,6 @@ detect:
 		{
 			"detect OS - ubuntu < 20.04 (match: version is lower)",
 			`
-version: 1.0
 detect:
   linux:
     when:
@@ -492,8 +476,8 @@ detect:
 		t.Run(tc.name, func(t *testing.T) {
 			detector, err := NewDetector(strings.NewReader(tc.config))
 			require.NoError(t, err)
-			got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{ForcedOS: tc.forced},
-				OSPathChecker{},
+			got, err := BuildSetup(ctx, detector, DetectOptions{ForcedOS: tc.forced},
+				OSExprPath{},
 				nil, nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
@@ -527,7 +511,6 @@ detect:
 		}, {
 			name: "datasource config is empty",
 			config: `
-version: 1.0
 detect:
   wizard:
     acquisition_spec:
@@ -538,19 +521,6 @@ detect:
 		}, {
 			name: "missing acquisition file name",
 			config: `
-version: 1.0
-detect:
-  wizard:
-    acquisition_spec:
-      datasource:
-        labels:
-          type: something`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for wizard: a filename for the datasource configuration is mandatory",
-		}, {
-			name: "source is empty",
-			config: `
-version: 1.0
 detect:
   wizard:
     acquisition_spec:
@@ -563,7 +533,6 @@ detect:
 		}, {
 			name: "source is unknown",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -575,7 +544,6 @@ detect:
 		}, {
 			name: "source is misplaced",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -587,7 +555,6 @@ detect:
 		}, {
 			name: "source is mismatched",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -596,11 +563,10 @@ detect:
         source: journalctl
         filename: /path/to/file.log`,
 			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
+			wantErr: `invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: [1:1] unknown field "filename"`,
 		}, {
 			name: "source file: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -612,7 +578,6 @@ detect:
 		}, {
 			name: "source journalctl: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -624,7 +589,6 @@ detect:
 		}, {
 			name: "source cloudwatch: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -636,7 +600,6 @@ detect:
 		}, {
 			name: "source syslog: all fields are optional",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -661,7 +624,6 @@ detect:
 		}, {
 			name: "source docker: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -673,7 +635,6 @@ detect:
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -685,7 +646,6 @@ detect:
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=true)",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -698,7 +658,6 @@ detect:
 		}, {
 			name: "source kafka: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -710,7 +669,6 @@ detect:
 		}, {
 			name: "source loki: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -726,7 +684,6 @@ detect:
 		tests = append(tests, test{
 			name: "source wineventlog: required fields",
 			config: `
-version: 1.0
 detect:
   foobar:
     acquisition_spec:
@@ -747,8 +704,8 @@ detect:
 				return
 			}
 
-			got, err := NewSetupBuilder().Build(ctx, detector, DetectOptions{},
-				OSPathChecker{},
+			got, err := BuildSetup(ctx, detector, DetectOptions{},
+				OSExprPath{},
 				nil, nil, nullLogger())
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)

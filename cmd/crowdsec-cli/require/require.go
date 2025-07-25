@@ -13,11 +13,18 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
+var ErrAgentDisabled = errors.New("log processor is disabled -- this command cannot run on a LAPI-only instance")
+
 func Agent(c *csconfig.Config) error {
-	// XXX: what to do if c.DisableAgent == true?
-	// we may want to proceed because f.e. we need the list of acquisition file
-	// or we can stop assuming the caller needs the agent?
-	return c.LoadCrowdsec()
+	if err := c.LoadCrowdsec(); err != nil {
+		return err
+	}
+
+	if c.DisableAgent {
+		return ErrAgentDisabled
+	}
+
+	return nil
 }
 
 func _lapi(c *csconfig.Config, skipOnlineCreds bool) error {

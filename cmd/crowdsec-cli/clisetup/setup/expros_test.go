@@ -2,43 +2,11 @@ package setup
 
 import (
 	"fmt"
-	"runtime"
 	"testing"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/stretchr/testify/require"
 )
-
-func TestPathExists(t *testing.T) {
-	t.Parallel()
-	ctx := t.Context()
-
-	type test struct {
-		path string
-		want bool
-	}
-
-	tests := []test{
-		{"/this-should-not-exist", false},
-	}
-
-	if runtime.GOOS == "windows" {
-		tests = append(tests, test{`C:\`, true})
-	} else {
-		tests = append(tests, test{"/tmp", true})
-	}
-
-	for _, tc := range tests {
-		env := NewExprEnvironment(ctx, ExprOS{}, &ExprState{}, OSPathChecker{})
-
-		t.Run(tc.path, func(t *testing.T) {
-			t.Parallel()
-
-			actual := env.PathExists(ctx, tc.path)
-			require.Equal(t, tc.want, actual)
-		})
-	}
-}
 
 func TestVersionCheck(t *testing.T) {
 	t.Parallel()
@@ -92,19 +60,4 @@ func TestVersionCheck(t *testing.T) {
 			require.Equal(t, tc.want, actual)
 		})
 	}
-}
-
-func TestUnitFound(t *testing.T) {
-	ctx := t.Context()
-
-	state := NewExprState(DetectOptions{}, UnitMap{"crowdsec-setup-installed.service": struct{}{}}, nil)
-	env := NewExprEnvironment(ctx, ExprOS{}, state, nil)
-
-	installed, err := env.UnitFound(ctx, "crowdsec-setup-installed.service")
-	require.NoError(t, err)
-	require.True(t, installed)
-
-	installed, err = env.UnitFound(ctx, "crowdsec-setup-missing.service")
-	require.NoError(t, err)
-	require.False(t, installed)
 }

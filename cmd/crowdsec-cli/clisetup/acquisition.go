@@ -52,9 +52,7 @@ cscli setup install-acquisition setup.yaml --dry-run
 				return err
 			}
 
-			builder := setup.NewSetupBuilder()
-
-			stup, err := builder.FromYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
+			stup, err := setup.ParseSetupYAML(inputReader, true, cli.cfg().Cscli.Color != "no")
 			if err != nil {
 				return err
 			}

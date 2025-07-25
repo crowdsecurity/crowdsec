@@ -1,10 +1,8 @@
 package clisetup
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
@@ -40,11 +38,8 @@ generated it through other means.`,
 }
 
 func (cli *cliSetup) validate(input io.Reader) error {
-	builder := setup.NewSetupBuilder()
-
-	if _, err := builder.FromYAML(input, true, cli.cfg().Cscli.Color != "no"); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		return errors.New("invalid setup file")
+	if _, err := setup.ParseSetupYAML(input, true, cli.cfg().Cscli.Color != "no"); err != nil {
+		return fmt.Errorf("invalid setup file: %w", err)
 	}
 
 	return nil

@@ -38,18 +38,7 @@ func NewDetector(detectReader io.Reader) (*Detector, error) {
 	}
 
 	for name, svc := range d.Detect {
-		if svc.AcquisitionSpec.Filename == "" {
-			if len(svc.AcquisitionSpec.Datasource) == 0 {
-				// missing acquisition is ok - only hub items
-				continue
-			}
-
-			// if a datasource is specified, we must have a filename
-			return nil, fmt.Errorf("invalid acquisition spec for %s: %w", name, ErrMissingAcquisitionFilename)
-		}
-
-		// but empty datasource config is not ok
-		if err := svc.AcquisitionSpec.Datasource.Validate(); err != nil {
+		if err := svc.AcquisitionSpec.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid acquisition spec for %s: %w", name, err)
 		}
 	}
@@ -84,7 +73,7 @@ func (s *ServiceProfile) Compile() error {
 	return nil
 }
 
-func (s *ServiceProfile) Evaluate(env *ExprEnvironment, logger *logrus.Logger) (bool, error) {
+func (s *ServiceProfile) Evaluate(env *ExprEnvironment, logger logrus.FieldLogger) (bool, error) {
 	match := true
 
 	if len(s.compiledWhen) != len(s.When) {

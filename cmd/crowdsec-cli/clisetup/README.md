@@ -106,7 +106,7 @@ services:
 
   apache2:
     when:
-      - ProcessRunning("apache2")
+      - System.ProcessRunning("apache2")
     install:
       collections:
         - crowdsecurity/apache2
@@ -120,7 +120,7 @@ services:
 ```
 
 
-- `ProcessRunning()` matches the process name of a running application. The
+- `System.ProcessRunning()` matches the process name of a running application. The
 `when:` clause can contain any number of expressions, they are all evaluated
 and must all return true for a service to be detected (implied *and* clause, no
 short-circuit). A missing or empty `when:` section is evaluated as true.
@@ -148,7 +148,7 @@ services:
 
   apache2-systemd:
     when:
-      - UnitFound("apache2.service")
+      - Systemd.UnitEnabled("apache2.service")
       - OS.ID != "centos"
     install:
       collections:
@@ -162,7 +162,7 @@ services:
 
   apache2-systemd-centos:
     when:
-      - UnitFound("httpd.service")
+      - Systemd.UnitEnabled("httpd.service")
       - OS.ID == "centos"
     install:
       collections:
@@ -177,7 +177,7 @@ services:
 
 Here we see two more detection methods:
 
-- `UnitFound()` matches the name of systemd units, if the are in state enabled,
+- `Systemd.UnitEnabled()` matches the name of systemd units, if the are in state enabled,
   generated or static. You can see here that CentOS is using a different unit
   name for Apache so it must have its own service section. You can force the
   detection of a unit by using the `cscli setup detect... --force-unit <unitname>` flag.
@@ -210,20 +210,20 @@ services:
 
   apache2-systemd-deb:
     when:
-      - UnitFound("apache2.service")
-      - PathExists("/etc/debian_version")
+      - Systemd.UnitEnabled("apache2.service")
+      - Path.Exists("/etc/debian_version")
     install:
     # [...]
 
   apache2-systemd-rpm:
     when:
-      - UnitFound("httpd.service")
-      - PathExists("/etc/redhat-release")
+      - Systemd.UnitEnabled("httpd.service")
+      - Path.Exists("/etc/redhat-release")
     install:
     # [...]
 ```
 
-- `PathExists()` evaluates to true if a file, directory or link exists at the
+- `Path.Exists()` evaluates to true if a file, directory or link exists at the
   given path. It does not check for broken links.
 
 

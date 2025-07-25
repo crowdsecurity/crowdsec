@@ -155,10 +155,8 @@ cscli setup detect --force-os-family freebsd
 				return err
 			}
 
-			builder := setup.NewSetupBuilder()
-
-			stup, err := builder.Build(ctx, detector, f.toDetectOptions(logger),
-				setup.OSPathChecker{},
+			stup, err := setup.BuildSetup(ctx, detector, f.toDetectOptions(logger),
+				setup.OSExprPath{},
 				units,
 				procs, logger)
 			if err != nil {
