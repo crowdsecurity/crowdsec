@@ -290,7 +290,7 @@ func LeakRoutine(leaky *Leaky) error {
 				orderEvent[leaky.Mapkey].Done()
 			}
 		case ofw := <-leaky.Out:
-			leaky.overflow(ofw)
+			leaky.overflow(*ofw)
 			return nil
 		/*suiciiiide*/
 		case <-leaky.Suicide:
@@ -313,7 +313,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 			if leaky.timedOverflow {
 				BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-				alert, err = NewAlert(leaky, ofw)
+				alert, err = NewAlert(leaky, *ofw)
 				if err != nil {
 					log.Error(err)
 				}
@@ -342,7 +342,7 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.logger.Debugf("Bucket externally killed, return")
 			for len(leaky.Out) > 0 {
 				ofw := <-leaky.Out
-				leaky.overflow(ofw)
+				leaky.overflow(*ofw)
 			}
 			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return nil
@@ -373,7 +373,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 	}
 }
 
-func (leaky *Leaky) overflow(ofw *types.QueueInterface) {
+func (leaky *Leaky) overflow(ofw types.QueueInterface) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
@@ -381,8 +381,9 @@ func (leaky *Leaky) overflow(ofw *types.QueueInterface) {
 	}
 	leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
 	for _, f := range leaky.BucketConfig.processors {
-		alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
-		if ofw == nil {
+		var tmp *types.QueueInterface
+		alert, tmp = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, &ofw)
+		if tmp == nil {
 			leaky.logger.Debugf("Overflow has been discarded (%T)", f)
 			break
 		}
