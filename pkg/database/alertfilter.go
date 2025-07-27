@@ -255,7 +255,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	return predicates, nil
 }
 
-func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
+func applyAlertFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	preds, err := alertPredicatesFromFilter(filter)
 	if err != nil {
 		return nil, err

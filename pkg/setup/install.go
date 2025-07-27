@@ -33,7 +33,7 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 			return ret, fmt.Errorf("%v", goccyyaml.FormatError(err, true, true))
 		}
 		// XXX errors here are multiline, should we just print them to stderr instead of logging?
-		return ret, fmt.Errorf("%v", err)
+		return ret, err
 	}
 
 	// parse again because goccy is not strict enough anyway
