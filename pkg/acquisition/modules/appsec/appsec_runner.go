@@ -237,9 +237,6 @@ func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	r.AppsecRuntime.InBandTx = tx
 	request.Tx = tx
-	/*if len(r.AppsecRuntime.InBandRules) == 0 {
-		return nil
-	}*/
 	err := r.processRequest(tx, request)
 	return err
 }
@@ -248,9 +245,6 @@ func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) erro
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	r.AppsecRuntime.OutOfBandTx = tx
 	request.Tx = tx
-	if len(r.AppsecRuntime.OutOfBandRules) == 0 {
-		return nil
-	}
 	err := r.processRequest(tx, request)
 	return err
 }
@@ -272,60 +266,52 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 	if err != nil {
 		r.logger.Errorf("unable to accumulate tx to event : %s", err)
 	}
+
+	var shouldTrigger bool
+	var in *corazatypes.Interruption
+
 	if r.AppsecRuntime.EarlyTermination {
 		r.logger.Debugf("request dropped by expr: %s", r.AppsecRuntime.EarlyTerminationReason)
-		r.logger.Infof("before setting values: BouncerHTTPResponseCode=%d, UserHTTPResponseCode=%d, Action=%s", r.AppsecRuntime.Response.BouncerHTTPResponseCode, r.AppsecRuntime.Response.UserHTTPResponseCode, r.AppsecRuntime.Response.Action)
-		r.AppsecRuntime.Response.InBandInterrupt = true
-		r.AppsecRuntime.Response.BouncerHTTPResponseCode = r.AppsecRuntime.Config.BouncerBlockedHTTPCode
-		r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.UserBlockedHTTPCode
-		if r.AppsecRuntime.Response.Action == "" {
-			r.AppsecRuntime.Response.Action = r.AppsecRuntime.DefaultRemediation
-		}
-
+		shouldTrigger = true
 		//FIXME: should we call OnMatch rules here ?
-
-		// Should the in band match trigger an overflow ?
-		if r.AppsecRuntime.Response.SendAlert {
-			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
-			if err != nil {
-				r.logger.Errorf("unable to generate appsec event : %s", err)
-				return
-			}
-			if appsecOvlfw != nil {
-				r.outChan <- *appsecOvlfw
-			}
-		}
-		// Should the in band match trigger an event ?
-		if r.AppsecRuntime.Response.SendEvent {
-			r.outChan <- evt
-		}
-
-	} else if in := request.Tx.Interruption(); in != nil {
+	} else if in = request.Tx.Interruption(); in != nil {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
+		shouldTrigger = true
+	}
+
+	if shouldTrigger {
+		// Set common response values
 		r.AppsecRuntime.Response.InBandInterrupt = true
-		r.AppsecRuntime.Response.BouncerHTTPResponseCode = r.AppsecRuntime.Config.BouncerBlockedHTTPCode
-		r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.UserBlockedHTTPCode
 		if r.AppsecRuntime.Response.Action == "" {
 			r.AppsecRuntime.Response.Action = r.AppsecRuntime.DefaultRemediation
 		}
-
-		if _, ok := r.AppsecRuntime.RemediationById[in.RuleID]; ok {
-			r.AppsecRuntime.Response.Action = r.AppsecRuntime.RemediationById[in.RuleID]
+		if r.AppsecRuntime.Response.BouncerHTTPResponseCode == 0 {
+			r.AppsecRuntime.Response.BouncerHTTPResponseCode = r.AppsecRuntime.Config.BouncerBlockedHTTPCode
+		}
+		if r.AppsecRuntime.Response.UserHTTPResponseCode == 0 {
+			r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.UserBlockedHTTPCode
 		}
 
-		for tag, remediation := range r.AppsecRuntime.RemediationByTag {
-			if slices.Contains[[]string, string](in.Tags, tag) {
-				r.AppsecRuntime.Response.Action = remediation
+		// Apply rule-specific remediations if we have an interruption
+		if in != nil {
+			if _, ok := r.AppsecRuntime.RemediationById[in.RuleID]; ok {
+				r.AppsecRuntime.Response.Action = r.AppsecRuntime.RemediationById[in.RuleID]
+			}
+
+			for tag, remediation := range r.AppsecRuntime.RemediationByTag {
+				if slices.Contains[[]string, string](in.Tags, tag) {
+					r.AppsecRuntime.Response.Action = remediation
+				}
+			}
+
+			err = r.AppsecRuntime.ProcessOnMatchRules(request, evt)
+			if err != nil {
+				r.logger.Errorf("unable to process OnMatch rules: %s", err)
+				return
 			}
 		}
 
-		err = r.AppsecRuntime.ProcessOnMatchRules(request, evt)
-		if err != nil {
-			r.logger.Errorf("unable to process OnMatch rules: %s", err)
-			return
-		}
-
-		// Should the in band match trigger an overflow ?
+		// Send events/alerts
 		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
 			if err != nil {
@@ -336,11 +322,9 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 				r.outChan <- *appsecOvlfw
 			}
 		}
-		// Should the in band match trigger an event ?
 		if r.AppsecRuntime.Response.SendEvent {
 			r.outChan <- evt
 		}
-
 	}
 }
 

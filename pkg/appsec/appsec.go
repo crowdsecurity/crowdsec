@@ -150,9 +150,9 @@ type AppsecConfig struct {
 
 func (w *AppsecRuntimeConfig) ClearResponse() {
 	w.Response = AppsecTempResponse{}
-	w.Response.Action = w.Config.DefaultPassAction
-	w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
-	w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
+	w.Response.Action = ""
+	w.Response.BouncerHTTPResponseCode = 0
+	w.Response.UserHTTPResponseCode = 0
 	w.Response.SendEvent = true
 	w.Response.SendAlert = true
 }

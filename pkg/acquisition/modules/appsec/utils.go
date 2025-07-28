@@ -181,7 +181,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	}
 
 	if !req.Tx.IsInterrupted() && !r.AppsecRuntime.EarlyTermination {
-		// if the phase didn't generate an interruption, we don't have anything to add to the event
+		// if the phase didn't generate an interruption or if DropRequest was not called, we don't have anything to add to the event
 		return nil
 	}
 	// if one interruption was generated, event is good for processing :)
@@ -220,6 +220,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Appsec.Vars = map[string]string{}
 	}
 
+	//Not supported for DropRequest for now
 	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
 			key := variable.Variable().Name()
@@ -247,6 +248,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 	if r.AppsecRuntime.EarlyTermination {
 		// Manual user drop
+		// Add a "fake" matched rule to the event
 		kind := "outofband"
 		if req.IsInBand {
 			kind = "inband"
