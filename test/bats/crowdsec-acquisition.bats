@@ -86,8 +86,8 @@ teardown() {
 	  type: syslog
 	EOT
 
-    rune -0 "$CROWDSEC" -t
-    assert_stderr --partial "I expect to see a fatal error with message here, instead of a panic"
+    rune -1 "$CROWDSEC" -t
+    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
 }
 
 @test "test mode does not fail because of appsec and allowlists" {

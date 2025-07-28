@@ -100,7 +100,7 @@ mode: cat
 source: docker
 container_name_regexp:
  - "[invalid"`,
-			expectedErr: "invalid container name regexp '[invalid': error parsing regexp: missing closing ]",
+			expectedErr: "container_name_regexp: error parsing regexp: missing closing ]: `[invalid`",
 		},
 		{
 			config: `
@@ -108,7 +108,7 @@ mode: cat
 source: docker
 container_id_regexp:
  - "*invalid"`,
-			expectedErr: "invalid container id regexp '*invalid': error parsing regexp: missing argument to repetition operator: `*`",
+			expectedErr: "container_id_regexp: error parsing regexp: missing argument to repetition operator: `*`",
 		},
 		{
 			config: `
@@ -116,7 +116,7 @@ mode: cat
 source: docker
 service_name_regexp:
  - "(?P<invalid"`,
-			expectedErr: "invalid service name regexp '(?P<invalid': error parsing regexp: invalid named capture",
+			expectedErr: "service_name_regexp: error parsing regexp: invalid named capture: `(?P<invalid`",
 		},
 		{
 			config: `
@@ -124,7 +124,7 @@ mode: cat
 source: docker
 service_id_regexp:
  - "+invalid"`,
-			expectedErr: "invalid service id regexp '+invalid': error parsing regexp: missing argument to repetition operator: `+`",
+			expectedErr: "service_id_regexp: error parsing regexp: missing argument to repetition operator: `+`",
 		},
 	}
 
