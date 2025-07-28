@@ -93,6 +93,8 @@ require (
 	k8s.io/apiserver v0.28.4
 )
 
+require github.com/valkey-io/valkey-go v1.0.63
+
 require (
 	ariga.io/atlas v0.31.1-0.20250212144724-069be8033e83 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -132,7 +134,7 @@ require (
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
