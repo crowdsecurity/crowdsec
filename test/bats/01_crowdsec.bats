@@ -250,15 +250,13 @@ teardown() {
 }
 
 @test "crowdsec (invalid acquisition file)" {
-    skip "XXX: TODO"
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
     mkdir -p "$ACQUIS_DIR"
-    # XXX: it's only validated if "labels" are present, otherwise ignored
-    echo "foo:bar" >"$ACQUIS_DIR"/foo.yaml
+    echo "foo: bar" >"$ACQUIS_DIR"/foo.yaml
 
     config_set '.common.log_media="stdout"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: missing labels in /home/marco/src/crowdsec/test/local/etc/crowdsec/acquis.d/foo.yaml (position 0)"
 }
 
 @test "crowdsec (error if acquisition_path and acquisition_dir are not defined)" {

@@ -661,7 +661,6 @@ update-notifier-motd.timer              enabled enabled
 	          - /var/log/apache2/*.log
 	EOT
 
-    # XXX: the error should inclide the name of the directory, not the file
     assert_stderr --partial "Error: creating acquisition directory: mkdir $BATS_TEST_TMPDIR/notadir: not a directory"
 }
 
@@ -694,56 +693,6 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup install-acquisition (multiple services)" {
-    # multiple items
-    # XXX: invalid because datasources have no Name (detected_service) for the acquisition file
-    # but we don't validate them yet
-    # TODO: validate ServicePlan etc.
-
-#    rune -0 cscli setup install-acquisition - <<-EOT
-#	setup:
-#	  - datasource:
-#	      labels:
-#	        type: syslog
-#	      filenames:
-#	        - /var/log/apache2/*.log
-#	        - /var/log/*http*/*.log
-#	        - /var/log/httpd/*.log
-#	  - datasource:
-#	      labels:
-#	        type: foobar
-#	      filenames:
-#	        - /var/log/foobar/*.log
-#	  - datasource:
-#	      labels:
-#	        type: barbaz
-#	      filenames:
-#	        - /path/to/barbaz.log
-#	EOT
-#
-#    rune -0 yq '. head_comment=""' <(output)
-#    assert_output - <<-EOT
-#	filenames:
-#	  - /var/log/apache2/*.log
-#	  - /var/log/*http*/*.log
-#	  - /var/log/httpd/*.log
-#	labels:
-#	  type: syslog
-#	---
-#	filenames:
-#	  - /var/log/foobar/*.log
-#	labels:
-#	  type: foobar
-#	---
-#	filenames:
-#	  - /path/to/barbaz.log
-#	labels:
-#	  type: barbaz
-#	EOT
-
-    # multiple items, to a directory
-
-    # avoid the BATS_TEST_TMPDIR variable, it can have a double //
-
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
 	  - detected_service: apache2
@@ -801,8 +750,8 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 }
 
-@test "cscli setup install-acquisition (multiple items, incorrect acquisition)" {
-    # Having both filenames and journalctl does not generate two files: the datasource is copied as-is, even if incorrect.
+@test "cscli setup install-acquisition (incorrect)" {
+    # the datasource is copied as-is, even if incorrect.
 
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
@@ -813,26 +762,53 @@ update-notifier-motd.timer              enabled enabled
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
+	        source: docker
 	        labels:
 	          type: apache2
-	        filenames:
-	          - /var/log/apache2/*.log
-	          - /var/log/*http*/*.log
-	          - /var/log/httpd/*.log
-	        journalctl_filter:
-	          - _SYSTEMD_UNIT=apache2.service
+	        somethingdifferent: xyz
 	EOT
+
+    # keys are sorted.
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.apache.yaml"
     assert_output - <<-EOT
-	filenames:
-	  - /var/log/apache2/*.log
-	  - /var/log/*http*/*.log
-	  - /var/log/httpd/*.log
-	journalctl_filter:
-	  - _SYSTEMD_UNIT=apache2.service
 	labels:
 	  type: apache2
+	somethingdifferent: xyz
+	source: docker
+	EOT
+}
+
+@test "cscli setup install-acquisition (key order)" {
+    # keys are sorted when creating the acquisition file.
+    # XXX we could preserve the order?
+
+    rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - detected_service: docker
+	    acquisition_spec:
+	      filename: docker.yaml
+	      datasource:
+	        source: docker
+	        labels:
+	          type: docker
+	        z: 1
+	        m: 2
+	        d: 3
+	        a: 4
+	EOT
+
+    # keys are sorted.
+
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.docker.yaml"
+    assert_output - <<-EOT
+	a: 4
+	d: 3
+	labels:
+	  type: docker
+	m: 2
+	source: docker
+	z: 1
 	EOT
 }
 
@@ -1010,6 +986,21 @@ update-notifier-motd.timer              enabled enabled
 	   1 | setup:
 	>  2 | alsdk al; sdf
 	       ^
+	
+	EOT
+
+    rune -1 cscli setup validate --color=no - <<-EOT
+	setup:
+	  key: value1
+	  key: value2
+	EOT
+
+    assert_stderr - <<-EOT
+	Error: invalid setup file: [3:3] mapping key "key" already defined at [2:3]
+	   1 | setup:
+	   2 |   key: value1
+	>  3 |   key: value2
+	         ^
 	
 	EOT
 }
