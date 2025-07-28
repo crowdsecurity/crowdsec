@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Semantic versioning, lock to different version: v2, v2.0 or a commit hash.
-      - uses: BirthdayResearch/oss-governance-bot@v4
+      - uses: BirthdayResearch/oss-governance-bot@3abd2d1fd2376ba9990fbc795e7a4c54254e9c61 # v4.0.0
         with:
           # You can use a PAT to post a comment/label/status so that it shows up as a user instead of github-actions
           github-token: ${{secrets.GITHUB_TOKEN}} # optional, default to '${{ github.token }}'

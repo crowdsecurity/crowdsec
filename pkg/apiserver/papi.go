@@ -70,6 +70,7 @@ type Papi struct {
 	consoleConfig *csconfig.ConsoleConfig
 	Logger        *log.Entry
 	apic          *apic
+	stopChan      chan struct{}
 }
 
 type PapiPermCheckError struct {
@@ -118,6 +119,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		apic:          apic,
 		consoleConfig: consoleConfig,
 		Logger:        logger.WithFields(log.Fields{"interval": SyncInterval.Seconds(), "source": "papi"}),
+		stopChan:      make(chan struct{}),
 	}
 
 	return papi, nil
@@ -258,32 +260,69 @@ func (p *Papi) Pull(ctx context.Context) error {
 		}
 	}
 
-	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+	tokenRefreshChan := p.apiClient.GetTokenRefreshChan()
+	var papiChan chan longpollclient.Event // Chan is nil by default to block until PAPI actually establishes the connection
+	papiCtx, cancel := context.WithCancel(ctx)
 
-	for event := range p.Client.Start(ctx, lastTimestamp) {
-		logger := p.Logger.WithField("request-id", event.RequestId)
-		// update last timestamp in database
-		newTime := time.Now().UTC()
+	currentSubscriptionType := p.apiClient.GetSubscriptionType()
 
-		binTime, err := newTime.MarshalText()
-		if err != nil {
-			return fmt.Errorf("failed to serialize last timestamp: %w", err)
-		}
+	p.Logger.Debugf("current subscription type is %s", currentSubscriptionType)
 
-		err = p.handleEvent(event, false)
-		if err != nil {
-			logger.Errorf("failed to handle event: %s", err)
-			continue
-		}
-
-		if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
-			return fmt.Errorf("failed to update last timestamp: %w", err)
-		}
-
-		logger.Debugf("set last timestamp to %s", newTime)
+	if currentSubscriptionType == apiclient.SubscriptionTypeEnterprise || currentSubscriptionType == apiclient.SubscriptionTypeSecOps {
+		// If allowed to use PAPI, start it
+		// Otherwise it will be started when the token is refreshed with an ent subscription
+		p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+		papiChan = p.Client.Start(papiCtx, lastTimestamp)
 	}
 
-	return nil
+	for {
+		select {
+		case <-tokenRefreshChan:
+			subType := p.apiClient.GetSubscriptionType()
+			if subType == currentSubscriptionType {
+				continue
+			}
+			currentSubscriptionType = subType
+			p.Logger.Infof("Subscription type changed to %s", subType)
+			switch subType {
+			case apiclient.SubscriptionTypeEnterprise, apiclient.SubscriptionTypeSecOps:
+				p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+				papiChan = p.Client.Start(papiCtx, lastTimestamp)
+			default:
+				// PAPI got started but the user downgraded (or removed the engine from the console)
+				p.Logger.Info("Stopping PAPI because of plan downgrade or engine removal")
+				cancel() // This will stop any ongoing PAPI pull
+				p.Client.Stop()
+				papiCtx, cancel = context.WithCancel(ctx) //nolint:fatcontext // Recreate the context if the pull is restarted
+				papiChan = nil
+				p.Logger.Debug("done stopping PAPI pull")
+			}
+		case event := <-papiChan:
+			logger := p.Logger.WithField("request-id", event.RequestId)
+			// update last timestamp in database
+			newTime := time.Now().UTC()
+
+			binTime, _ := newTime.MarshalText() // No need to check the error, time.Now().UTC() always returns a valid time
+
+			lastTimestamp = newTime
+
+			err = p.handleEvent(event, false)
+			if err != nil {
+				logger.Errorf("failed to handle event: %s", err)
+				continue
+			}
+
+			if err := p.DBClient.SetConfigItem(ctx, PapiPullKey, string(binTime)); err != nil {
+				// Killing PAPI is overkill if we cannot update the last timestamp
+				logger.Errorf("failed to update last timestamp in database: %s", err)
+			}
+
+			logger.Debugf("set last timestamp to %s", newTime)
+		case <-p.stopChan:
+			cancel()
+		}
+	}
+
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {
@@ -352,11 +391,7 @@ func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.Decis
 	batchSize := 50
 
 	for start := 0; start < len(cache); start += batchSize {
-		end := start + batchSize
-
-		if end > len(cache) {
-			end = len(cache)
-		}
+		end := min(start+batchSize, len(cache))
 
 		if err := p.sendDeletedDecisionsBatch(ctx, cache[start:end]); err != nil {
 			p.Logger.Errorf("sending deleted decisions to central API: %s", err)
@@ -368,5 +403,9 @@ func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.Decis
 func (p *Papi) Shutdown() {
 	p.Logger.Infof("Shutting down PAPI")
 	p.syncTomb.Kill(nil)
+	select {
+	case p.stopChan <- struct{}{}: // Cancel any HTTP request still in progress
+	default:
+	}
 	p.Client.Stop()
 }

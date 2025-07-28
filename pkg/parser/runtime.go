@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mohae/deepcopy"
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
@@ -51,7 +50,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		/*
 		** According to current Event layout we only have to handle struct and map
 		 */
-		switch iter.Kind() {
+		switch iter.Kind() { //nolint:exhaustive
 		case reflect.Map:
 			tmp := iter.MapIndex(reflect.ValueOf(f))
 			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
@@ -82,7 +81,8 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			return false
 		}
 	}
-	//now we should have the final member :)
+
+	// now we should have the final member :)
 	if !iter.CanSet() {
 		log.Errorf("'%s' can't be set", target)
 		return false
@@ -119,6 +119,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
+
 	clog := n.Logger
 
 	for _, static := range statics {
@@ -131,6 +132,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
 			}
+
 			switch out := output.(type) {
 			case string:
 				value = out
@@ -151,7 +153,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		}
 
 		if value == "" {
-			//allow ParseDate to have empty input
+			// allow ParseDate to have empty input
 			if static.Method != "ParseDate" {
 				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
 				continue
@@ -180,6 +182,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			} else {
 				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
 			}
+
 			if !processed {
 				clog.Debugf("method '%s' doesn't exist", static.Method)
 			}
@@ -202,50 +205,9 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			clog.Fatal("unable to process static : unknown target")
 		}
 	}
+
 	return nil
 }
-
-var NodesHits = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_node_hits_total",
-		Help: "Total events entered node.",
-	},
-	[]string{"source", "type", "name"},
-)
-
-var NodesHitsOk = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_node_hits_ok_total",
-		Help: "Total events successfully exited node.",
-	},
-	[]string{"source", "type", "name"},
-)
-
-var NodesHitsKo = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_node_hits_ko_total",
-		Help: "Total events unsuccessfully exited node.",
-	},
-	[]string{"source", "type", "name"},
-)
-
-//
-
-var NodesWlHitsOk = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_node_wl_hits_ok_total",
-		Help: "Total events successfully whitelisted by node.",
-	},
-	[]string{"source", "type", "name", "reason"},
-)
-
-var NodesWlHits = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_node_wl_hits_total",
-		Help: "Total events processed by whitelist node.",
-	},
-	[]string{"source", "type", "name", "reason"},
-)
 
 func stageidx(stage string, stages []string) int {
 	for i, v := range stages {
@@ -253,6 +215,7 @@ func stageidx(stage string, stages []string) int {
 			return i
 		}
 	}
+
 	return -1
 }
 

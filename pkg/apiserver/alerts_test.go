@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -149,7 +148,7 @@ func TestCreateAlert(t *testing.T) {
 }
 
 func TestCreateAllowlistedAlert(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
@@ -203,7 +202,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 func TestCreateAlertChannels(t *testing.T) {
 	ctx := t.Context()
 	apiServer, config := NewAPIServer(t, ctx)
-	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
+	apiServer.controller.PluginChannel = make(chan models.ProfileAlert)
 	err := apiServer.InitController()
 	require.NoError(t, err)
 
@@ -211,7 +210,7 @@ func TestCreateAlertChannels(t *testing.T) {
 	lapi := LAPI{router: apiServer.router, loginResp: loginResp}
 
 	var (
-		pd csplugin.ProfileAlert
+		pd models.ProfileAlert
 		wg sync.WaitGroup
 	)
 

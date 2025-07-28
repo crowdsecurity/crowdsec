@@ -13,8 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
-func LAPI(c *csconfig.Config) error {
-	if err := c.LoadAPIServer(true); err != nil {
+func _lapi(c *csconfig.Config, skipOnlineCreds bool) error {
+	if err := c.LoadAPIServer(true, skipOnlineCreds); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
 
@@ -23,6 +23,15 @@ func LAPI(c *csconfig.Config) error {
 	}
 
 	return nil
+}
+
+func LAPI(c *csconfig.Config) error {
+	return _lapi(c, false)
+}
+
+// LAPINoOnlineCreds is a variant of LAPI that does not attempt to load and use capi credentials.
+func LAPINoOnlineCreds(c *csconfig.Config) error {
+	return _lapi(c, true)
 }
 
 func CAPI(c *csconfig.Config) error {
@@ -74,16 +83,20 @@ func DB(c *csconfig.Config) error {
 	return nil
 }
 
-func HubDownloader(ctx context.Context, c *csconfig.Config) *cwhub.Downloader {
+func HubDownloader(ctx context.Context, c *csconfig.Config) (*cwhub.Downloader, error) {
 	// set branch in config, and log if necessary
-	branch := HubBranch(ctx, c)
+	branch, err := HubBranch(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
 	urlTemplate := HubURLTemplate(c)
 	remote := &cwhub.Downloader{
 		Branch:      branch,
 		URLTemplate: urlTemplate,
 	}
 
-	return remote
+	return remote, nil
 }
 
 // Hub initializes the hub. If a remote configuration is provided, it can be used to download the index and items.

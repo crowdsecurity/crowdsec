@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 )
 
 type SimulationConfig struct {
@@ -24,10 +25,8 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 		simulated = true
 	}
 
-	for _, excluded := range s.Exclusions {
-		if excluded == scenario {
-			return !simulated
-		}
+	if slices.Contains(s.Exclusions, scenario) {
+		return !simulated
 	}
 
 	return simulated
@@ -40,7 +39,7 @@ func (c *Config) LoadSimulation() error {
 		c.ConfigPaths.SimulationFilePath = filepath.Join(c.ConfigPaths.ConfigDir, "simulation.yaml")
 	}
 
-	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
+	patcher := csyaml.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
 
 	rcfg, err := patcher.MergedPatchContent()
 	if err != nil {

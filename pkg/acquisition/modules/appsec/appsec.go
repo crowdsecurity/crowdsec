@@ -14,26 +14,33 @@ import (
 	"sync"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
 	InBand    = "inband"
 	OutOfBand = "outofband"
+)
+
+var (
+	errMissingAPIKey = errors.New("missing API key")
+	errInvalidAPIKey = errors.New("invalid API key")
 )
 
 var DefaultAuthCacheDuration = (1 * time.Minute)
@@ -55,7 +62,7 @@ type AppsecSourceConfig struct {
 
 // runtime structure of AppsecSourceConfig
 type AppsecSource struct {
-	metricsLevel          int
+	metricsLevel          metrics.AcquisitionMetricsLevel
 	config                AppsecSourceConfig
 	logger                *log.Entry
 	mux                   *http.ServeMux
@@ -69,6 +76,8 @@ type AppsecSource struct {
 	AppsecRunners         []AppsecRunner // one for each go-routine
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
+	authMutex             sync.Mutex
+	httpClient            *http.Client
 }
 
 // Struct to handle cache of authentication
@@ -98,15 +107,21 @@ func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
 	return expiration, exists
 }
 
+func (ac *AuthCache) Delete(apiKey string) {
+	ac.mu.Lock()
+	delete(ac.APIKeys, apiKey)
+	ac.mu.Unlock()
+}
+
 // @tko + @sbl : we might want to get rid of that or improve it
 type BodyResponse struct {
 	Action string `json:"action"`
 }
 
 func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
-	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &w.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse appsec configuration: %w", err)
+		return fmt.Errorf("cannot parse appsec configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if w.config.ListenAddr == "" && w.config.ListenSocket == "" {
@@ -156,11 +171,13 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (w *AppsecSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
+	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
+		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
 
 func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
+	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
+		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
 
 func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, error) {
@@ -185,7 +202,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 	return caCertPool, nil
 }
 
-func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
@@ -291,6 +308,17 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	w.lapiCACertPool, err = loadCertPool(caCertPath, w.logger)
 	if err != nil {
 		return fmt.Errorf("unable to load LAPI CA cert pool: %w", err)
+	}
+
+	w.httpClient = &http.Client{
+		Timeout: 200 * time.Millisecond,
+	}
+	if w.lapiCACertPool != nil {
+		w.httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: w.lapiCACertPool,
+			},
+		}
 	}
 
 	return nil
@@ -454,36 +482,66 @@ func (w *AppsecSource) Dump() interface{} {
 	return w
 }
 
-func (w *AppsecSource) IsAuth(ctx context.Context, apiKey string) bool {
+func (w *AppsecSource) isValidKey(ctx context.Context, apiKey string) (bool, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, w.lapiURL, http.NoBody)
 	if err != nil {
 		w.logger.Errorf("Error creating request: %s", err)
-		return false
+		return false, err
 	}
 
 	req.Header.Add("X-Api-Key", apiKey)
+	req.Header.Add("User-Agent", useragent.AppsecUserAgent())
 
-	client := &http.Client{
-		Timeout: 200 * time.Millisecond,
-	}
-
-	if w.lapiCACertPool != nil {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: w.lapiCACertPool,
-			},
-		}
-	}
-
-	resp, err := client.Do(req)
+	resp, err := w.httpClient.Do(req)
 	if err != nil {
 		w.logger.Errorf("Error performing request: %s", err)
-		return false
+		return false, err
 	}
 
 	defer resp.Body.Close()
 
-	return resp.StatusCode == http.StatusOK
+	return resp.StatusCode == http.StatusOK, nil
+}
+
+func (w *AppsecSource) checkAuth(ctx context.Context, apiKey string) error {
+
+	if apiKey == "" {
+		return errMissingAPIKey
+	}
+
+	w.authMutex.Lock()
+	defer w.authMutex.Unlock()
+
+	expiration, exists := w.AuthCache.Get(apiKey)
+	now := time.Now()
+
+	if !exists { // No key in cache, require a valid check
+		isAuth, err := w.isValidKey(ctx, apiKey)
+		if err != nil || !isAuth {
+			if err != nil {
+				w.logger.Errorf("Error checking auth for API key: %s", err)
+			}
+			return errInvalidAPIKey
+		}
+		// Cache the valid API key
+		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		return nil
+	}
+
+	if now.After(expiration) { // Key is expired, recheck the value OR keep it if we cannot contact LAPI
+		isAuth, err := w.isValidKey(ctx, apiKey)
+		if isAuth {
+			w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		} else if err != nil { // General error when querying LAPI, consider the key still valid
+			w.logger.Errorf("Error checking auth for API key: %s, extending cache duration", err)
+			w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		} else { // Key is not valid, remove it from cache
+			w.AuthCache.Delete(apiKey)
+			return errInvalidAPIKey
+		}
+	}
+
+	return nil
 }
 
 // should this be in the runner ?
@@ -495,25 +553,10 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	clientIP := r.Header.Get(appsec.IPHeaderName)
 	remoteIP := r.RemoteAddr
 
-	if apiKey == "" {
-		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
+	if err := w.checkAuth(ctx, apiKey); err != nil {
+		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s): %s", remoteIP, clientIP, err)
 		rw.WriteHeader(http.StatusUnauthorized)
-
 		return
-	}
-
-	expiration, exists := w.AuthCache.Get(apiKey)
-	// if the apiKey is not in cache or has expired, just recheck the auth
-	if !exists || time.Now().After(expiration) {
-		if !w.IsAuth(ctx, apiKey) {
-			rw.WriteHeader(http.StatusUnauthorized)
-			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
-
-			return
-		}
-
-		// apiKey is valid, store it in cache
-		w.AuthCache.Set(apiKey, time.Now().Add(*w.config.AuthCacheDuration))
 	}
 
 	// parse the request only once
@@ -532,7 +575,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		"client_ip":    parsedRequest.ClientIP,
 	})
 
-	AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
+	metrics.AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 
 	w.InChan <- parsedRequest
 
@@ -543,7 +586,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	response := <-parsedRequest.ResponseChannel
 
 	if response.InBandInterrupt {
-		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
+		metrics.AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
 	statusCode, appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)

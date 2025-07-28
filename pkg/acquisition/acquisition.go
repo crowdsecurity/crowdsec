@@ -1,28 +1,33 @@
 package acquisition
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/goccy/go-yaml"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -41,18 +46,18 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                                       // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig([]byte) error                                             // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure([]byte, *log.Entry, int) error                                  // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(string, map[string]string, *log.Entry, string) error       // Configure the datasource
-	GetMode() string                                                          // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                                          // Get the name of the module
-	OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
-	CanRun() error                                                            // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
-	GetUuid() string                                                          // Get the unique identifier of the datasource
-	Dump() interface{}
+	GetMetrics() []prometheus.Collector                                                                 // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                                                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
+	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error      // Configure the datasource
+	GetMode() string                                                                                    // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                                                                    // Get the name of the module
+	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error          // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error        // Start live acquisition (eg, tail a file)
+	CanRun() error                                                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetUuid() string                                                                                    // Get the unique identifier of the datasource
+	Dump() any
 }
 
 var (
@@ -68,6 +73,10 @@ func GetDataSourceIface(dataSourceType string) (DataSource, error) {
 	}
 
 	built, known := component.Built["datasource_"+dataSourceType]
+
+	if dataSourceType == "" {
+		return nil, errors.New("data source type is empty")
+	}
 
 	if !known {
 		return nil, fmt.Errorf("unknown data source %s", dataSourceType)
@@ -113,14 +122,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metricsLevel int) (DataSource, error) {
-	// we dump it back to []byte, because we want to decode the yaml blob twice:
-	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
-	yamlConfig, err := yaml.Marshal(commonConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unable to serialize back interface: %w", err)
-	}
-
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -143,23 +145,6 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, metrics
 	return dataSrc, nil
 }
 
-// detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
-func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
-	if _, ok := sub.Config["filename"]; ok {
-		return "file"
-	}
-
-	if _, ok := sub.Config["filenames"]; ok {
-		return "file"
-	}
-
-	if _, ok := sub.Config["journalctl_filter"]; ok {
-		return "journalctl"
-	}
-
-	return ""
-}
-
 func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
@@ -179,7 +164,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	uniqueId := uuid.NewString()
 
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -195,131 +180,188 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	return []DataSource{dataSrc}, nil
 }
 
-func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
+func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.AcquisitionMetricsLevel {
 	if prom == nil {
-		return configuration.METRICS_FULL
+		return metrics.AcquisitionMetricsLevelFull
 	}
 
 	if !prom.Enabled {
-		return configuration.METRICS_NONE
+		return metrics.AcquisitionMetricsLevelNone
 	}
 
-	if prom.Level == configuration.CFG_METRICS_AGGREGATE {
-		return configuration.METRICS_AGGREGATE
+	if prom.Level == metrics.MetricsLevelNone {
+		return metrics.AcquisitionMetricsLevelNone
 	}
 
-	if prom.Level == configuration.CFG_METRICS_FULL {
-		return configuration.METRICS_FULL
+	if prom.Level == metrics.MetricsLevelAggregated {
+		return metrics.AcquisitionMetricsLevelAggregated
 	}
 
-	return configuration.METRICS_FULL
+	if prom.Level == metrics.MetricsLevelFull {
+		return metrics.AcquisitionMetricsLevelFull
+	}
+
+	return metrics.AcquisitionMetricsLevelFull
 }
 
-// LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+func detectTypes(r io.Reader) ([]string, error) {
+	collectedKeys, err := csyaml.GetDocumentKeys(r)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]string, len(collectedKeys))
+
+	for idx, keys := range collectedKeys {
+		var detected string
+
+		switch {
+		case slices.Contains(keys, "source"):
+			detected = ""
+		case slices.Contains(keys, "filename"):
+			detected = "file"
+		case slices.Contains(keys, "filenames"):
+			detected = "file"
+		case slices.Contains(keys, "journalctl_filter"):
+			detected = "journalctl"
+		default:
+			detected = ""
+		}
+
+		ret[idx] = detected
+	}
+
+	return ret, nil
+}
+
+// sourcesFromFile reads and parses one acquisition file into DataSources.
+func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
+
+	log.Infof("loading acquisition file : %s", acquisFile)
+
+	yamlFile, err := os.Open(acquisFile)
+	if err != nil {
+		return nil, err
+	}
+
+	defer yamlFile.Close()
+
+	acquisContent, err := io.ReadAll(yamlFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", acquisFile, err)
+	}
+
+	expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
+
+	detectedTypes, err := detectTypes(strings.NewReader(expandedAcquis))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
+	}
+
+	documents, err := csyaml.SplitDocuments(strings.NewReader(expandedAcquis))
+	if err != nil {
+		return nil, err
+	}
+
+	idx := -1
+
+	for _, yamlDoc := range documents {
+		idx += 1
+
+		var sub configuration.DataSourceCommonCfg
+
+		// can't be strict here, the doc contains specific datasource config too but we won't collect them now.
+		err := yaml.UnmarshalWithOptions(yamlDoc, &sub)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), errors.New(yaml.FormatError(err, false, false)))
+		}
+
+		// for backward compat ('type' was not mandatory, detect it)
+		if guessType := detectedTypes[idx]; guessType != "" {
+			log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
+
+			if sub.Source != "" && sub.Source != guessType {
+				log.Warnf("datasource type mismatch in %s (position %d): found '%s' but should probably be '%s'", acquisFile, idx, sub.Source, guessType)
+			}
+
+			sub.Source = guessType
+		}
+
+		// it's an empty item, skip it
+
+		empty, err := csyaml.IsEmptyYAML(bytes.NewReader(yamlDoc))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s (position %d): %w", acquisFile, idx, err)
+		}
+
+		if empty {
+			// there are no keys or only comments, skip the document
+			continue
+		}
+
+		if len(sub.Labels) == 0 {
+			if sub.Source != "docker" {
+				// docker is the only source that can be empty
+				return nil, fmt.Errorf("missing labels in %s (position %d)", acquisFile, idx)
+			}
+		}
+
+		if sub.Source == "" {
+			return nil, fmt.Errorf("missing 'source' field in %s (position %d)", acquisFile, idx)
+		}
+
+		// pre-check that the source is valid
+		_, err = GetDataSourceIface(sub.Source)
+		if err != nil {
+			return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
+		}
+
+		uniqueId := uuid.NewString()
+		sub.UniqueId = uniqueId
+
+		src, err := DataSourceConfigure(sub, yamlDoc, metrics_level)
+		if err != nil {
+			var dserr *DataSourceUnavailableError
+			if errors.As(err, &dserr) {
+				log.Error(err)
+				continue
+			}
+
+			return nil, fmt.Errorf("while configuring datasource of type %s from %s (position %d): %w", sub.Source, acquisFile, idx, err)
+		}
+
+		if sub.TransformExpr != "" {
+			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+			if err != nil {
+				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
+			}
+
+			transformRuntimes[uniqueId] = vm
+		}
+
+		sources = append(sources, src)
+	}
+
+	return sources, nil
+}
+
+// LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
+func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+	var allSources []DataSource
 
 	metrics_level := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		log.Infof("loading acquisition file : %s", acquisFile)
-
-		yamlFile, err := os.Open(acquisFile)
+		sources, err := sourcesFromFile(acquisFile, metrics_level)
 		if err != nil {
 			return nil, err
 		}
 
-		defer yamlFile.Close()
-
-		acquisContent, err := io.ReadAll(yamlFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read %s: %w", acquisFile, err)
-		}
-
-		expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
-
-		dec := yaml.NewDecoder(strings.NewReader(expandedAcquis))
-		dec.SetStrict(true)
-
-		idx := -1
-
-		for {
-			var sub configuration.DataSourceCommonCfg
-
-			idx += 1
-
-			err = dec.Decode(&sub)
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					return nil, fmt.Errorf("failed to parse %s: %w", acquisFile, err)
-				}
-
-				log.Tracef("End of yaml file")
-
-				break
-			}
-
-			// for backward compat ('type' was not mandatory, detect it)
-			if guessType := detectBackwardCompatAcquis(sub); guessType != "" {
-				log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
-
-				if sub.Source != "" && sub.Source != guessType {
-					log.Warnf("datasource type mismatch in %s (position %d): found '%s' but should probably be '%s'", acquisFile, idx, sub.Source, guessType)
-				}
-
-				sub.Source = guessType
-			}
-			// it's an empty item, skip it
-			if len(sub.Labels) == 0 {
-				if sub.Source == "" {
-					log.Debugf("skipping empty item in %s", acquisFile)
-					continue
-				}
-
-				if sub.Source != "docker" {
-					// docker is the only source that can be empty
-					return nil, fmt.Errorf("missing labels in %s (position %d)", acquisFile, idx)
-				}
-			}
-
-			if sub.Source == "" {
-				return nil, fmt.Errorf("data source type is empty ('source') in %s (position %d)", acquisFile, idx)
-			}
-
-			// pre-check that the source is valid
-			_, err := GetDataSourceIface(sub.Source)
-			if err != nil {
-				return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
-			}
-
-			uniqueId := uuid.NewString()
-			sub.UniqueId = uniqueId
-
-			src, err := DataSourceConfigure(sub, metrics_level)
-			if err != nil {
-				var dserr *DataSourceUnavailableError
-				if errors.As(err, &dserr) {
-					log.Error(err)
-					continue
-				}
-
-				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position %d): %w", sub.Source, acquisFile, idx, err)
-			}
-
-			if sub.TransformExpr != "" {
-				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-				if err != nil {
-					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
-				}
-
-				transformRuntimes[uniqueId] = vm
-			}
-
-			sources = append(sources, src)
-		}
+		allSources = append(allSources, sources...)
 	}
 
-	return sources, nil
+	return allSources, nil
 }
 
 func GetMetrics(sources []DataSource, aggregated bool) error {
@@ -354,9 +396,7 @@ func copyEvent(evt types.Event, line string) types.Event {
 	evtCopy.Line.Raw = line
 	evtCopy.Line.Labels = make(map[string]string)
 
-	for k, v := range evt.Line.Labels {
-		evtCopy.Line.Labels[k] = v
-	}
+	maps.Copy(evtCopy.Line.Labels, evt.Line.Labels)
 
 	return evtCopy
 }
@@ -373,7 +413,7 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 		case evt := <-transformChan:
 			logger.Tracef("Received event %s", evt.Line.Raw)
 
-			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
+			out, err := expr.Run(transformRuntime, map[string]any{"evt": &evt})
 			if err != nil {
 				logger.Errorf("while running transform expression: %s, sending event as-is", err)
 				output <- evt
@@ -388,8 +428,8 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 			case string:
 				logger.Tracef("transform expression returned %s", v)
 				output <- copyEvent(evt, v)
-			case []interface{}:
-				logger.Tracef("transform expression returned %v", v) //nolint:asasalint // We actually want to log the slice content
+			case []any:
+				logger.Tracef("transform expression returned %v", v) // We actually want to log the slice content
 
 				for _, line := range v {
 					l, ok := line.(string)

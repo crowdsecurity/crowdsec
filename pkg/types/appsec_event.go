@@ -20,7 +20,7 @@ len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
 
 type MatchedRules []MatchedRule
 
-type MatchedRule map[string]interface{}
+type MatchedRule map[string]any
 
 type AppsecEvent struct {
 	HasInBandMatches, HasOutBandMatches bool
@@ -55,10 +55,13 @@ func (w AppsecEvent) GetVar(varName string) string {
 	if w.Vars == nil {
 		return ""
 	}
+
 	if val, ok := w.Vars[varName]; ok {
 		return val
 	}
+
 	log.Infof("var %s not found. Available variables: %+v", varName, w.Vars)
+
 	return ""
 }
 
@@ -195,11 +198,8 @@ func (w MatchedRules) ByTags(match []string) MatchedRules {
 	ret := MatchedRules{}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
-			for _, match_tag := range match {
-				if tag == match_tag {
-					ret = append(ret, rule)
-					break
-				}
+			if slices.Contains(match, tag) {
+				ret = append(ret, rule)
 			}
 		}
 	}
@@ -209,11 +209,8 @@ func (w MatchedRules) ByTags(match []string) MatchedRules {
 func (w MatchedRules) ByTag(match string) MatchedRules {
 	ret := MatchedRules{}
 	for _, rule := range w {
-		for _, tag := range rule["tags"].([]string) {
-			if tag == match {
-				ret = append(ret, rule)
-				break
-			}
+		if slices.Contains(rule["tags"].([]string), match) {
+			ret = append(ret, rule)
 		}
 	}
 	return ret

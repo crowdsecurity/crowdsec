@@ -209,12 +209,13 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	})
 
 	for _, content := range allowlist.Items {
+		createdAt := time.Time(content.CreatedAt).Format(time.RFC3339)
 		expiration := "never"
 		if !time.Time(content.Expiration).IsZero() {
 			expiration = content.Expiration.String()
 		}
 
-		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, allowlist.CreatedAt})
+		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, createdAt})
 	}
 
 	fmt.Fprintln(out, infoTable.Render())
@@ -238,6 +239,7 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 	cmd.AddCommand(cli.newAddCmd())
 	cmd.AddCommand(cli.newRemoveCmd())
 	cmd.AddCommand(cli.newInspectCmd())
+	cmd.AddCommand(cli.newCheckCmd())
 
 	return cmd
 }
@@ -440,6 +442,20 @@ func (cli *cliAllowLists) newAddCmd() *cobra.Command {
 	return cmd
 }
 
+func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "check [value...]",
+		Short:   "Check if a value is in an allowlist",
+		Example: `cscli allowlists check 1.2.3.4`,
+		Args:    args.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.check(cmd.Context(), args)
+		},
+	}
+
+	return cmd
+}
+
 func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
@@ -634,6 +650,53 @@ func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name 
 
 	if deleted > 0 {
 		fmt.Fprintf(os.Stdout, "removed %d values from allowlist %s", deleted, name)
+	}
+
+	return nil
+}
+
+func (cli *cliAllowLists) check(ctx context.Context, ips []string) error {
+	cfg := cli.cfg()
+
+	if err := require.LAPI(cfg); err != nil {
+		return err
+	}
+
+	if err := cfg.LoadAPIClient(); err != nil {
+		return fmt.Errorf("loading api client: %w", err)
+	}
+
+	apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
+	if err != nil {
+		return fmt.Errorf("parsing api url: %w", err)
+	}
+
+	client, err := apiclient.NewClient(&apiclient.Config{
+		MachineID:     cfg.API.Client.Credentials.Login,
+		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+	if err != nil {
+		return fmt.Errorf("creating api client: %w", err)
+	}
+
+	for _, ip := range ips {
+		resp, _, err := client.Allowlists.CheckIfAllowlistedWithReason(ctx, ip)
+		if err != nil {
+			return fmt.Errorf("cannot check if %s is in allowlist: %w", ip, err)
+		}
+
+		reason := ""
+		if resp.Allowlisted {
+			reason = resp.Reason
+		}
+		if reason == "" {
+			fmt.Fprintf(os.Stdout, "%s is not allowlisted\n", ip)
+			return nil
+		}
+
+		fmt.Fprintf(os.Stdout, "%s is allowlisted by item %s\n", ip, reason)
 	}
 
 	return nil

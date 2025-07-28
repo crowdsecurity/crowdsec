@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -222,7 +223,7 @@ func TestGetName(t *testing.T) {
 	assert.Equal(t, "http", h.GetName())
 }
 
-func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel int) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
+func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
@@ -244,7 +245,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	return out, testRegistry, &tomb
 }
 
-func TestStreamingAcquisitionWrongHTTPMethod(t *testing.T) {
+func TestStreamingAcquisitionHTTPMethod(t *testing.T) {
 	h := &HTTPSource{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
@@ -259,12 +260,31 @@ basic_auth:
 
 	ctx := t.Context()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr+"/test", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, testHTTPServerAddr+"/test", http.NoBody)
 	require.NoError(t, err)
+
+	// Method validity is checked after auth
+	req.SetBasicAuth("test", "test")
 
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusMethodNotAllowed, res.StatusCode)
+
+	// Check that GET/HEAD requests return a 200
+
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, testHTTPServerAddr+"/test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("test", "test")
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	req, err = http.NewRequestWithContext(ctx, http.MethodHead, testHTTPServerAddr+"/test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("test", "test")
+	res, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -544,7 +564,7 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 	readLines := []types.Event{}
 
-	for i := 0; i < len(expected); i++ {
+	for range expected {
 		select {
 		case event := <-out:
 			readLines = append(readLines, event)
@@ -875,11 +895,15 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 			for _, metric := range metricFamily.GetMetric() {
 				assert.InDelta(t, float64(expected), metric.GetCounter().GetValue(), 0.000001)
 				labels := metric.GetLabel()
-				assert.Len(t, labels, 2)
-				assert.Equal(t, "path", labels[0].GetName())
-				assert.Equal(t, "/test", labels[0].GetValue())
-				assert.Equal(t, "src", labels[1].GetName())
-				assert.Equal(t, "127.0.0.1", labels[1].GetValue())
+				assert.Len(t, labels, 4)
+				assert.Equal(t, "acquis_type", labels[0].GetName())
+				assert.Empty(t, labels[0].GetValue())
+				assert.Equal(t, "datasource_type", labels[1].GetName())
+				assert.Equal(t, "http", labels[1].GetValue())
+				assert.Equal(t, "path", labels[2].GetName())
+				assert.Equal(t, "/test", labels[2].GetValue())
+				assert.Equal(t, "src", labels[3].GetName())
+				assert.Equal(t, "127.0.0.1", labels[3].GetValue())
 			}
 		}
 	}

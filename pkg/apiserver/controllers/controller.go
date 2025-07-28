@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/alexliesenfeld/health"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -22,7 +22,7 @@ type Controller struct {
 	Profiles                      []*csconfig.ProfileCfg
 	AlertsAddChan                 chan []*models.Alert
 	DecisionDeleteChan            chan []*models.Decision
-	PluginChannel                 chan csplugin.ProfileAlert
+	PluginChannel                 chan models.ProfileAlert
 	Log                           *log.Logger
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
@@ -97,6 +97,9 @@ func (c *Controller) NewV1() error {
 
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
+	// We don't want to compress the response body as it would likely break some existing bouncers
+	// But we do want to automatically uncompress incoming requests
+	c.Router.Use(gzip.Gzip(gzip.NoCompression, gzip.WithDecompressOnly(), gzip.WithDecompressFn(gzip.DefaultDecompressHandle)))
 	c.Router.HandleMethodNotAllowed = true
 	c.Router.UnescapePathValues = true
 	c.Router.UseRawPath = true
