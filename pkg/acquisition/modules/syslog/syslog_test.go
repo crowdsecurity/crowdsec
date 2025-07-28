@@ -14,7 +14,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -57,7 +57,7 @@ listen_addr: 10.0.0`,
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
 			s := SyslogSource{}
-			err := s.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err := s.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
 	}
@@ -161,7 +161,7 @@ disable_rfc_parser: true`,
 		t.Run(ts.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}
-			err := s.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+			err := s.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure syslog source : %s", err)
 			}

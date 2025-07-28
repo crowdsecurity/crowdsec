@@ -16,19 +16,13 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
 	defaultLimit int = 100
 )
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_victorialogssource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 type VLAuthConfiguration struct {
 	Username string `yaml:"username"`
@@ -49,7 +43,7 @@ type VLConfiguration struct {
 }
 
 type VLSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       VLConfiguration
 
 	Client *vlclient.VLClient
@@ -58,11 +52,11 @@ type VLSource struct {
 }
 
 func (l *VLSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
 func (l *VLSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
 func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -110,7 +104,7 @@ func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
+func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = VLConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -279,8 +273,8 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	ll.Process = true
 	ll.Module = l.GetName()
 
-	if l.metricsLevel != configuration.METRICS_NONE {
-		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "acquis_type": l.Config.Labels["type"]}).Inc()
 	}
 	expectMode := types.LIVE
 	if l.Config.UseTimeMachine {

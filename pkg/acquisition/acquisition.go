@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -45,17 +46,17 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                                                            // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                                                      // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig(yamlConfig []byte) error                                                       // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error                        // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error // Configure the datasource
-	GetMode() string                                                                               // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                                                               // Get the name of the module
-	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error     // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error   // Start live acquisition (eg, tail a file)
-	CanRun() error                                                                                 // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
-	GetUuid() string                                                                               // Get the unique identifier of the datasource
+	GetMetrics() []prometheus.Collector                                                                 // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                                                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
+	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error      // Configure the datasource
+	GetMode() string                                                                                    // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                                                                    // Get the name of the module
+	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error          // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error        // Start live acquisition (eg, tail a file)
+	CanRun() error                                                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetUuid() string                                                                                    // Get the unique identifier of the datasource
 	Dump() any
 }
 
@@ -121,7 +122,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel int) (DataSource, error) {
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -179,24 +180,28 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	return []DataSource{dataSrc}, nil
 }
 
-func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) int {
+func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.AcquisitionMetricsLevel {
 	if prom == nil {
-		return configuration.METRICS_FULL
+		return metrics.AcquisitionMetricsLevelFull
 	}
 
 	if !prom.Enabled {
-		return configuration.METRICS_NONE
+		return metrics.AcquisitionMetricsLevelNone
 	}
 
-	if prom.Level == configuration.CFG_METRICS_AGGREGATE {
-		return configuration.METRICS_AGGREGATE
+	if prom.Level == metrics.MetricsLevelNone {
+		return metrics.AcquisitionMetricsLevelNone
 	}
 
-	if prom.Level == configuration.CFG_METRICS_FULL {
-		return configuration.METRICS_FULL
+	if prom.Level == metrics.MetricsLevelAggregated {
+		return metrics.AcquisitionMetricsLevelAggregated
 	}
 
-	return configuration.METRICS_FULL
+	if prom.Level == metrics.MetricsLevelFull {
+		return metrics.AcquisitionMetricsLevelFull
+	}
+
+	return metrics.AcquisitionMetricsLevelFull
 }
 
 func detectTypes(r io.Reader) ([]string, error) {
@@ -230,7 +235,7 @@ func detectTypes(r io.Reader) ([]string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(acquisFile string, metrics_level int) ([]DataSource, error) {
+func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)

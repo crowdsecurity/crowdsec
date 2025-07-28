@@ -16,8 +16,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -61,7 +61,7 @@ filenames: ["ase.log"]`,
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -225,7 +225,7 @@ filename: %s`, deletedFile),
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedConfigErr)
 
 			if tc.expectedConfigErr != "" {
@@ -393,7 +393,7 @@ force_inotify: true`, testPattern),
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			if tc.afterConfigure != nil {
@@ -491,7 +491,7 @@ exclude_regexps: ["\\.gz$"]`
 	subLogger := logger.WithField("type", "file")
 
 	f := fileacquisition.FileSource{}
-	err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
+	err := f.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	require.NotNil(t, hook.LastEntry())
@@ -543,7 +543,7 @@ mode: tail
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 		})
 	}
@@ -567,7 +567,7 @@ mode: tail
 	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
-	err := f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	err := f.Configure(config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	// Create channel for events
@@ -619,7 +619,7 @@ mode: tail
 	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
-	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	err = f.Configure(config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	eventChan := make(chan types.Event)

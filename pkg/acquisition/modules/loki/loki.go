@@ -20,6 +20,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -29,13 +30,6 @@ const (
 	readySleep   time.Duration = 10 * time.Second
 	lokiLimit    int           = 100
 )
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_lokisource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 type LokiAuthConfiguration struct {
 	Username string `yaml:"username"`
@@ -58,7 +52,7 @@ type LokiConfiguration struct {
 }
 
 type LokiSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       LokiConfiguration
 
 	Client *lokiclient.LokiClient
@@ -68,11 +62,11 @@ type LokiSource struct {
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.LokiDataSourceLinesRead}
 }
 
 func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.LokiDataSourceLinesRead}
 }
 
 func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -120,7 +114,7 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
+func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = LokiConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -315,8 +309,8 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	ll.Process = true
 	ll.Module = l.GetName()
 
-	if l.metricsLevel != configuration.METRICS_NONE {
-		linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "loki", "acquis_type": ll.Labels["type"]}).Inc()
 	}
 	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
 	evt.Line = ll

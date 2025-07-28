@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 // defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */
@@ -120,7 +120,7 @@ func NewDefaultConfig() *Config {
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
-		Level:   configuration.CFG_METRICS_FULL,
+		Level:   metrics.MetricsLevelFull,
 	}
 	configPaths := ConfigurationPaths{
 		ConfigDir:          DefaultConfigPath("."),

@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -18,21 +19,12 @@ var (
 	CacheConfig []CacheCfg
 )
 
-/*prometheus*/
-var CacheMetrics = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Name: "cs_cache_size",
-		Help: "Entries per cache.",
-	},
-	[]string{"name", "type"},
-)
-
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateCacheMetrics() {
-	CacheMetrics.Reset()
+	metrics.CacheMetrics.Reset()
 
 	for i, name := range CacheNames {
-		CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
+		metrics.CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
 	}
 }
 

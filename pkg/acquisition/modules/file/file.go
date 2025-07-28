@@ -27,17 +27,11 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const defaultPollInterval = 30 * time.Second
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_filesource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 type FileConfiguration struct {
 	Filenames                         []string
@@ -52,7 +46,7 @@ type FileConfiguration struct {
 }
 
 type FileSource struct {
-	metricsLevel       int
+	metricsLevel       metrics.AcquisitionMetricsLevel
 	config             FileConfiguration
 	watcher            *fsnotify.Watcher
 	watchedDirectories map[string]bool
@@ -107,7 +101,7 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	f.metricsLevel = metricsLevel
 
@@ -298,11 +292,11 @@ func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Even
 }
 
 func (f *FileSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
 func (f *FileSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
 func (f *FileSource) GetName() string {
@@ -578,12 +572,12 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				continue
 			}
 
-			if f.metricsLevel != configuration.METRICS_NONE {
-				linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
+			if f.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": "file", "acquis_type": f.config.Labels["type"]}).Inc()
 			}
 
 			src := tail.Filename
-			if f.metricsLevel == configuration.METRICS_AGGREGATE {
+			if f.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 				src = filepath.Base(tail.Filename)
 			}
 
@@ -656,7 +650,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 				Module:  f.GetName(),
 			}
 			logger.Debugf("line %s", l.Raw)
-			linesRead.With(prometheus.Labels{"source": filename}).Inc()
+			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "acquis_type": l.Labels["type"]}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]any)}
