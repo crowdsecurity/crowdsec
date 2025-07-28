@@ -28,6 +28,7 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -47,7 +48,7 @@ type S3Configuration struct {
 }
 
 type S3Source struct {
-	MetricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       S3Configuration
 	logger       *log.Entry
 	s3Client     s3iface.S3API
@@ -105,30 +106,6 @@ const (
 	SQSFormatEventBridge    = "eventbridge"
 	SQSFormatS3Notification = "s3notification"
 	SQSFormatSNS            = "sns"
-)
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_s3_hits_total",
-		Help: "Number of events read per bucket.",
-	},
-	[]string{"bucket"},
-)
-
-var objectsRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_s3_objects_total",
-		Help: "Number of objects read per bucket.",
-	},
-	[]string{"bucket"},
-)
-
-var sqsMessagesReceived = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_s3_sqs_messages_total",
-		Help: "Number of SQS messages received per queue.",
-	},
-	[]string{"queue"},
 )
 
 func (s *S3Source) newS3Client() error {
@@ -375,8 +352,8 @@ func (s *S3Source) sqsPoll() error {
 			logger.Tracef("SQS output: %v", out)
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
-				if s.MetricsLevel != configuration.METRICS_NONE {
-					sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
+				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+					metrics.S3DataSourceSQSMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
 				}
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
@@ -457,8 +434,8 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		default:
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
-			if s.MetricsLevel != configuration.METRICS_NONE {
-				linesRead.WithLabelValues(bucket).Inc()
+			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 			l := types.Line{}
 			l.Raw = text
@@ -466,9 +443,10 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = s.GetName()
-			if s.MetricsLevel == configuration.METRICS_FULL {
+			switch s.metricsLevel {
+			case metrics.AcquisitionMetricsLevelFull:
 				l.Src = bucket + "/" + key
-			} else if s.MetricsLevel == configuration.METRICS_AGGREGATE {
+			case metrics.AcquisitionMetricsLevelAggregated, metrics.AcquisitionMetricsLevelNone: // Even if metrics are disabled, we want to source in the event
 				l.Src = bucket
 			}
 			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
@@ -479,8 +457,8 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
 	}
-	if s.MetricsLevel != configuration.METRICS_NONE {
-		objectsRead.WithLabelValues(bucket).Inc()
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.S3DataSourceObjectsRead.WithLabelValues(bucket).Inc()
 	}
 	return nil
 }
@@ -490,11 +468,11 @@ func (s *S3Source) GetUuid() string {
 }
 
 func (s *S3Source) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
+	return []prometheus.Collector{metrics.S3DataSourceLinesRead, metrics.S3DataSourceObjectsRead, metrics.S3DataSourceSQSMessagesReceived}
 }
 
 func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
+	return []prometheus.Collector{metrics.S3DataSourceLinesRead, metrics.S3DataSourceObjectsRead, metrics.S3DataSourceSQSMessagesReceived}
 }
 
 func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
@@ -541,7 +519,7 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err

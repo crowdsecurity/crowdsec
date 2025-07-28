@@ -35,6 +35,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -46,15 +47,6 @@ var (
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
-
-/*prometheus*/
-var RegexpCacheMetrics = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Name: "cs_regexp_cache_size",
-		Help: "Entries per regexp cache.",
-	},
-	[]string{"name"},
-)
 
 var dbClient *database.Client
 
@@ -188,10 +180,10 @@ func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateRegexpCacheMetrics() {
-	RegexpCacheMetrics.Reset()
+	metrics.RegexpCacheMetrics.Reset()
 
 	for name := range dataFileRegexCache {
-		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
+		metrics.RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
 	}
 }
 
