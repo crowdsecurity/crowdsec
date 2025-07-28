@@ -741,7 +741,8 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	var bouncerStatusCode int
 
 	resp := BodyResponse{Action: response.Action}
-	if response.Action == AllowRemediation {
+	if response.Action == AllowRemediation || response.Action == "" {
+		resp.Action = w.Config.DefaultPassAction
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
 	} else { // ban, captcha and anything else
