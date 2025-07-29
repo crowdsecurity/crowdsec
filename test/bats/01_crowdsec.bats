@@ -381,5 +381,5 @@ teardown() {
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_YAML (position 0): cannot parse FileAcquisition configuration: [5:1] unknown field \"meh\""
+    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_YAML (position 0): cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
 }
