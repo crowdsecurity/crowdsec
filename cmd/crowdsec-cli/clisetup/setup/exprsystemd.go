@@ -6,8 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type ExprSystemd struct{
-	forcedUnits UnitMap		// slice of unit names that we want to force-detect.
+type ExprSystemd struct {
+	forcedUnits    UnitMap // slice of unit names that we want to force-detect.
 	installedUnits UnitMap
 	unitsSearched  UnitMap
 }
@@ -17,10 +17,13 @@ func NewExprSystemd(installedUnits UnitMap, forcedUnits []string) *ExprSystemd {
 		installedUnits: installedUnits,
 		unitsSearched:  make(UnitMap),
 	}
+
 	ret.forcedUnits = make(UnitMap, len(forcedUnits))
+
 	for _, unit := range forcedUnits {
 		ret.forcedUnits[unit] = struct{}{}
 	}
+
 	return ret
 }
 
@@ -28,6 +31,7 @@ func NewExprSystemd(installedUnits UnitMap, forcedUnits []string) *ExprSystemd {
 func (e *ExprSystemd) UnitEnabled(ctx context.Context, unitName string) (bool, error) {
 	e.unitsSearched[unitName] = struct{}{}
 	_, ok := e.installedUnits[unitName]
+
 	return ok, nil
 }
 

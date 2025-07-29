@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestVersionCheck(t *testing.T) {

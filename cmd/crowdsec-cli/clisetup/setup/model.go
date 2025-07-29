@@ -6,7 +6,7 @@ import (
 
 // DetectConfig contains a set of supported service profiles, loaded from detect.yaml.
 type DetectConfig struct {
-	Detect  map[string]ServiceProfile `yaml:"detect"`
+	Detect map[string]ServiceProfile `yaml:"detect"`
 }
 
 // ServiceProfile contains the rules to detect a running service and the suggested configuration to support it from CrowdSec.
@@ -51,7 +51,6 @@ func (a *AcquisitionSpec) Validate() error {
 	return a.Datasource.Validate()
 }
 
-
 type DatasourceConfig map[string]any
 
 // Setup corresponds to the setup.yaml file. It is used as an intermediary step between "detect" and "install hub/acquisition".
@@ -67,9 +66,9 @@ type ServicePlan struct {
 
 // DetectOptions contains additional options for the detection process.
 type DetectOptions struct {
-	ForcedUnits []string		// slice of unit names that we want to force-detect.
-	ForcedProcesses []string	// slice of process names that we want to force-detect.
-	ForcedOS        ExprOS		// override OS identification, useful for unsupported platforms or to generate setup.yaml for another machine.
-	SkipServices    []string	// slice of service specs that will be ignored. detection will happen anyway to spot possible errors.
-	SkipSystemd     bool		// ignore all systemd services. the others can still be detected by process name lookup or other mechanism.
+	ForcedUnits     []string // slice of unit names that we want to force-detect.
+	ForcedProcesses []string // slice of process names that we want to force-detect.
+	ForcedOS        ExprOS   // override OS identification, useful for unsupported platforms or to generate setup.yaml for another machine.
+	SkipServices    []string // slice of service specs that will be ignored. detection will happen anyway to spot possible errors.
+	SkipSystemd     bool     // ignore all systemd services. the others can still be detected by process name lookup or other mechanism.
 }

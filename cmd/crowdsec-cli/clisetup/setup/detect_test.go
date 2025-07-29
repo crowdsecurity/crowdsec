@@ -6,15 +6,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func nullLogger() *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(io.Discard)
+
 	return logger
 }
 
@@ -74,6 +76,7 @@ detect:
 
 func TestEvaluateRules(t *testing.T) {
 	t.Parallel()
+
 	tests := []struct {
 		name           string
 		rules          []string

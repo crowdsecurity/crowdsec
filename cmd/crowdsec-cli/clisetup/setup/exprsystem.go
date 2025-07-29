@@ -7,17 +7,19 @@ import (
 )
 
 type ExprSystem struct {
-	forcedProcesses ProcessMap
+	forcedProcesses   ProcessMap
 	runningProcesses  ProcessMap
 	processesSearched ProcessMap
 }
 
 func NewExprSystem(runningProcesses ProcessMap, forcedProcesses []string) *ExprSystem {
 	ret := &ExprSystem{
-		runningProcesses: runningProcesses,
-		processesSearched:  make(ProcessMap),
+		runningProcesses:  runningProcesses,
+		processesSearched: make(ProcessMap),
 	}
+
 	ret.forcedProcesses = make(ProcessMap)
+
 	for _, proc := range forcedProcesses {
 		ret.forcedProcesses[proc] = struct{}{}
 	}
@@ -29,6 +31,7 @@ func NewExprSystem(runningProcesses ProcessMap, forcedProcesses []string) *ExprS
 func (e *ExprSystem) ProcessRunning(ctx context.Context, processName string) (bool, error) {
 	e.processesSearched[processName] = struct{}{}
 	_, ok := e.runningProcesses[processName]
+
 	return ok, nil
 }
 

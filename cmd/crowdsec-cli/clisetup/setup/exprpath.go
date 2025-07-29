@@ -9,8 +9,8 @@ import (
 type OSExprPath struct{}
 
 func (OSExprPath) Exists(_ context.Context, path string) bool {
-    _, err := os.Stat(path)
-    return err == nil
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func (OSExprPath) Glob(_ context.Context, pattern string) []string {

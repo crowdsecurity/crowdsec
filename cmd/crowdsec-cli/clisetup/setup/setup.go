@@ -2,9 +2,10 @@ package setup
 
 import (
 	"bytes"
+	"slices"
+
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
-	"slices"
 )
 
 func (s *Setup) CollectHubSpecs() []HubSpec {
