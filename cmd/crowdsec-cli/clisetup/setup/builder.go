@@ -35,10 +35,12 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 
 	exprSystemd := NewExprSystemd(installedUnits, opts.ForcedUnits)
 	exprSystem := NewExprSystem(runningProcesses, opts.ForcedProcesses)
+
 	exprWindows, err := NewExprWindows()
 	if err != nil {
 		return nil, err
 	}
+
 	env := &ExprEnvironment{
 		OS:      exprOS,
 		Path:    exprPath,

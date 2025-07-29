@@ -19,12 +19,12 @@ var (
 	ErrChecksumTooShort = fmt.Errorf("checksum too short, must be at least %d characters", minChecksumLength)
 )
 
-
 // VerifyChecksum reads a YAML file with a head comment like `# cscli-checksum: abcdef123456`
 // and verifies that the hash of the remainder of the file matches the checksum.
 // It returns nil if the checksum is valid, or an error otherwise.
 func VerifyChecksum(r io.Reader) error {
 	scanner := bufio.NewScanner(r)
+
 	var (
 		foundChecksum string
 		content       bytes.Buffer
@@ -38,6 +38,7 @@ func VerifyChecksum(r io.Reader) error {
 			// write this line and the rest to the buffer
 			content.WriteString(line)
 			content.WriteByte('\n')
+
 			break
 		}
 

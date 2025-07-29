@@ -9,7 +9,6 @@ import (
 
 func ensureAbsolutePath(p *string) error {
 	// TODO: this will become a straight IsAbs check + return error
-
 	var err error
 
 	if *p == "" {
@@ -21,7 +20,7 @@ func ensureAbsolutePath(p *string) error {
 	}
 
 	*p, err = filepath.Abs(*p)
-		if err != nil {
+	if err != nil {
 		return fmt.Errorf("failed to get absolute path of %q: %w", *p, err)
 	}
 

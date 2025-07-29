@@ -18,9 +18,9 @@ baz: qux
 	fullChecksum := hex.EncodeToString(fullHash[:])
 
 	tests := []struct {
-		name     string
-		input    string
-		wantErr  error
+		name    string
+		input   string
+		wantErr error
 	}{
 		{
 			name:    "no checksum present",
@@ -28,30 +28,30 @@ baz: qux
 			wantErr: ErrChecksumNotFound,
 		},
 		{
-			name: "full checksum match",
+			name:  "full checksum match",
 			input: "# cscli-checksum: " + fullChecksum + "\n" + body,
 		},
 		{
-			name: "checksum with comment before and after",
+			name:  "checksum with comment before and after",
 			input: "# comment 1\n# cscli-checksum: " + fullChecksum + "\n# comment 2\n" + body,
 		},
 		{
-			name: "too short checksum (8 chars)",
-			input: "# cscli-checksum: " + fullChecksum[:8] + "\n" + body,
+			name:    "too short checksum (8 chars)",
+			input:   "# cscli-checksum: " + fullChecksum[:8] + "\n" + body,
 			wantErr: ErrChecksumTooShort,
 		},
 		{
-			name: "truncated checksum (16 chars, valid)",
+			name:  "truncated checksum (16 chars, valid)",
 			input: "# cscli-checksum: " + fullChecksum[:16] + "\n" + body,
 		},
 		{
-			name: "wrong checksum",
-			input: "# cscli-checksum: 1234567890123456\n" + body,
+			name:    "wrong checksum",
+			input:   "# cscli-checksum: 1234567890123456\n" + body,
 			wantErr: ErrChecksumMismatch,
 		},
 		{
-			name: "modified content",
-			input: "# cscli-checksum: " + fullChecksum[:16] + "\n" + body + "2",
+			name:    "modified content",
+			input:   "# cscli-checksum: " + fullChecksum[:16] + "\n" + body + "2",
 			wantErr: ErrChecksumMismatch,
 		},
 	}

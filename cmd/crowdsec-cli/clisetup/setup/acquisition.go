@@ -10,10 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 )
 
 var (

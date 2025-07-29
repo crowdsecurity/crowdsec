@@ -37,7 +37,7 @@ var ErrNoAcquisitionDefined = errors.New("no acquisition_path or acquisition_dir
 
 func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 	ret := []string{}
-	
+
 	// agent section missing in the configuration file.
 	// likely a lapi-only setup, not much we can do here
 	if c == nil {
@@ -91,7 +91,9 @@ func (c *Config) LoadCrowdsec() error {
 
 	if c.Crowdsec == nil {
 		log.Warning("crowdsec agent is disabled")
+
 		c.DisableAgent = true
+
 		return nil
 	}
 

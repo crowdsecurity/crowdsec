@@ -3,8 +3,8 @@ package setup
 import (
 	"fmt"
 
-	"github.com/blackfireio/osinfo"
 	"github.com/Masterminds/semver/v3"
+	"github.com/blackfireio/osinfo"
 	"github.com/sirupsen/logrus"
 )
 

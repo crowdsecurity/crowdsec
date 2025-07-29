@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestUnitEnabled(t *testing.T) {
 	ctx := t.Context()
 
