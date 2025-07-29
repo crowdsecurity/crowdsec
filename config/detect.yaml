@@ -1,8 +1,6 @@
 ---
-
 # Main block defining all service detection rules
 detect:
-
   # Detect apache2 on Debian-based systems
   apache2-systemd-deb:
     # all conditions must evaluate to true
@@ -479,7 +477,39 @@ detect:
           type: telnet
         filenames:
           - /var/log/telnetd*.log
-
+  
+  windows_iis:
+    when:
+      - Windows.ServiceEnabled("W3SVC")
+    hub_spec:
+      collections:
+        - crowdsecurity/iis
+    acquisition_spec:
+      filename: iis.yaml
+      datasource:
+        source: file
+        use_time_machine: true
+        filenames:
+          - C:\inetpub\logs\LogFiles\*\*.log
+        labels:
+          type: iis
+  
+  windows_sqlserver:
+    when:
+      - Windows.ServiceEnabled("MSSQLSERVER")
+    hub_spec:
+      collections:
+        - crowdsecurity/mssql
+    acquisition_spec:
+      filename: mssql.yaml
+      datasource:
+        source: wineventlog
+        event_channel: Application
+        event_ids:
+          - 18456
+        event_level: information
+        labels:
+          type: eventlog
   #
   # Operating System detection
   #
@@ -514,6 +544,17 @@ detect:
     hub_spec:
       collections:
         - crowdsecurity/windows
+    acquisition_spec:
+      filename: windows_auth.yaml
+      datasource:
+        source: wineventlog
+        event_channel: Security
+        event_ids:
+          - 4625
+          - 4623
+        event_level: information
+        labels:
+          type: eventlog
 
   # anti-lockout
   whitelists:
