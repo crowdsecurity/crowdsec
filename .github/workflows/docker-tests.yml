@@ -6,13 +6,15 @@ on:
       - master
       - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
   pull_request:
     branches:
       - master
       - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
+env:
+  CROWDSEC_BYPASS_DB_VOLUME_CHECK: "TRUE" # to avoid the db volume check in the docker_start.sh script
 
 jobs:
   test_flavor:
@@ -26,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-
       - name: Check out the repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
