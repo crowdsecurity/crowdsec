@@ -18,8 +18,9 @@ type ExprEnvironment struct {
 	Path    ExprPath
 	Systemd *ExprSystemd
 	System  *ExprSystem
+	Windows *ExprWindows
 
-	Ctx    context.Context //nolint:containedctx
+	Ctx context.Context //nolint:containedctx
 }
 
 func (e *ExprEnvironment) checkConsumedForcedItems(logger logrus.FieldLogger) {

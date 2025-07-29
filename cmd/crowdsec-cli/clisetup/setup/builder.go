@@ -35,12 +35,17 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 
 	exprSystemd := NewExprSystemd(installedUnits, opts.ForcedUnits)
 	exprSystem := NewExprSystem(runningProcesses, opts.ForcedProcesses)
+	exprWindows, err := NewExprWindows()
+	if err != nil {
+		return nil, err
+	}
 	env := &ExprEnvironment{
-		OS: exprOS,
-		Path: exprPath,
-		System: exprSystem,
+		OS:      exprOS,
+		Path:    exprPath,
+		System:  exprSystem,
 		Systemd: exprSystemd,
-		Ctx: ctx,
+		Windows: exprWindows,
+		Ctx:     ctx,
 	}
 
 	detected := make(map[string]ServicePlan)
