@@ -551,6 +551,14 @@ update-notifier-motd.timer              enabled enabled
     assert_json '[{hub_spec:{barbapapa:["crowdsecurity/foobar"]},detected_service:"foobar"}]'
 }
 
+@test "cscli setup detect (default detect.yaml)" {
+    rune -0 cscli setup detect
+    refute_stderr
+    rune -0 cscli setup detect --list-supported-services
+    refute_stderr
+    assert_line 'linux'
+}
+
 @test "cscli setup detect (with acquisition)" {
     rune -0 cscli setup detect --force-process force-foobar --detect-config - <<-EOT
 	detect:
@@ -578,7 +586,9 @@ update-notifier-motd.timer              enabled enabled
 	0.detected_service = foobar
 	EOT
 
-    rune -0 cscli setup detect --force-process mock-doesnotexist
+    rune -0 cscli setup detect --force-process mock-doesnotexist --detect-config - <<-EOT
+	detect:
+	EOT
     assert_stderr --partial "No service matched the following processes: [mock-doesnotexist]. They are likely unsupported by the detection configuration."
 }
 
