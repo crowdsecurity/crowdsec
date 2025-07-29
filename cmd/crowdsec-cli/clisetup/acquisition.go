@@ -99,7 +99,6 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 
 		if dryRun {
 			_, _ = fmt.Fprintln(os.Stdout, "(dry run) "+path+"\n"+color.BlueString(string(content)))
-			// XXX format me somehow
 			continue
 		}
 

@@ -110,7 +110,7 @@ func (a *AcquisitionSpec) AddHeader(writer io.Writer, content []byte) []byte {
 `)
 
 	hash := sha256.Sum256(content)
-	checksum := hex.EncodeToString(hash[:])
+	checksum := hex.EncodeToString(hash[:16])
 
 	ret.WriteString("# cscli-checksum: " + checksum + "\n\n")
 	ret.Write(content)
