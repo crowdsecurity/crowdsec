@@ -92,6 +92,8 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 
 		if dryRun {
 			fmt.Fprintln(os.Stdout, "(dry run) "+path)
+			// XXX format me somehow
+			_ = spec.Write(os.Stdout)
 			continue
 		}
 
@@ -102,6 +104,10 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 			return err
 		}
 		defer writer.Close()
+
+		if err := spec.WriteHeader(writer); err != nil {
+			return fmt.Errorf("writing acquisition to %q: %w", path, err)
+		}
 
 		if err := spec.Write(writer); err != nil {
 			return fmt.Errorf("writing acquisition to %q: %w", path, err)

@@ -47,7 +47,7 @@ cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-
 			err = cli.wizard(cmd.Context(), detectConfig, df.toDetectOptions(logger), af.acquisDir, true, dryRun, logger)
 			if errors.Is(err, hubops.ErrUserCanceled) {
 				fmt.Fprintln(os.Stdout, err.Error())
-				fmt.Fprintln(os.Stdout, "You can always run 'crowdsec setup' later.")
+				fmt.Fprintln(os.Stdout, "You can always run 'cscli setup' later.")
 				return nil
 			}
 

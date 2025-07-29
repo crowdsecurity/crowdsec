@@ -47,7 +47,7 @@ cscli setup unattended --force-os-family linux --force-os-id ubuntu --force-os-v
 			err = cli.wizard(cmd.Context(), detectConfig, df.toDetectOptions(logger), af.acquisDir, false, dryRun, logger)
 			if errors.Is(err, hubops.ErrUserCanceled) {
 				fmt.Fprintln(os.Stdout, err.Error())
-				fmt.Fprintln(os.Stdout, "You can always run 'crowdsec setup' later.")
+				fmt.Fprintln(os.Stdout, "You can always run 'cscli setup' later.")
 				return nil
 			}
 
