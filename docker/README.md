@@ -350,6 +350,7 @@ config.yaml) each time the container is run.
 | __Developer options__       |                                    |                                                                                                                                                                                                                           |
 | `CI_TESTING`                | false                              | Used during functional tests                                                                                                                                                                                              |
 | `DEBUG`                     | false                              | Trace the entrypoint                                                                                                                                                                                                      |
+| `CROWDSEC_BYPASS_DB_VOLUME_CHECK` | false | Bypass volume check for `/var/lib/crowdsec/data/` |
 
 ## File Locations
 
