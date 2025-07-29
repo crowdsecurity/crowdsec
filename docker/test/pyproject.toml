@@ -19,7 +19,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-pytest-cs = { git = "https://github.com/crowdsecurity/pytest-cs" }
+pytest-cs = { git = "https://github.com/crowdsecurity/pytest-cs", branch = "skip-volume-mount-check" }
 
 [tool.ruff]
 
