@@ -146,7 +146,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 		}
 	}
 
-	procs, err := setup.DetectProcesses(ctx, opts.ForcedProcesses)
+	procs, err := setup.DetectProcesses(ctx, opts.ForcedProcesses, logger)
 	if err != nil {
 		return err
 	}

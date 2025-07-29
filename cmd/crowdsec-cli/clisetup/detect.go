@@ -150,7 +150,7 @@ cscli setup detect --force-os-family freebsd
 				}
 			}
 
-			procs, err := setup.DetectProcesses(ctx, f.forcedProcesses)
+			procs, err := setup.DetectProcesses(ctx, f.forcedProcesses, logger)
 			if err != nil {
 				return err
 			}
