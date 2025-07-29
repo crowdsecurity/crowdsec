@@ -5,7 +5,7 @@ detect:
 
   # Detect apache2 on Debian-based systems
   apache2-systemd-deb:
-    # all conditions must be true
+    # all conditions must evaluate to true
     when:
       # check if apache2 is in "systemctl list-unit-files --state=enabled,generated,static"
       - Systemd.UnitEnabled("apache2.service")
@@ -16,7 +16,7 @@ detect:
       collections:
         - crowdsecurity/apache2
     acquisition_spec:
-      # If the rules match, generate the following acquisition file
+      # If the rules match, generate an acquisition file named "setup.apache2.yaml"
       filename: apache2.yaml
       datasource:
         source: file

@@ -82,7 +82,7 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 		}
 
 		if toDir == "" {
-			return fmt.Errorf("no acquisition directory specified, please use --acquis-dir or set crowdsec_services.acquisition_path in %q", cfg.FilePath)
+			return fmt.Errorf("no acquisition directory specified, please use --acquis-dir or set crowdsec_services.acquisition_dir in %q", cfg.FilePath)
 		}
 
 		path, err := spec.Path(toDir)

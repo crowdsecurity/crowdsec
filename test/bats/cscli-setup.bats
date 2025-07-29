@@ -834,7 +834,43 @@ update-notifier-motd.timer              enabled enabled
     assert_output --partial "$marker"
 }
 
-@test "cscli setup (custom journalctl filter)" {
+@test "cscli setup install-acquisition (detect twice and overwrite)" {
+    rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      filename: test.yaml
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - file1.yaml
+	EOT
+
+    rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      filename: test.yaml
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - file2.yaml
+	EOT
+
+    # remove marker
+    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.test.yaml"
+    assert_output - <<-EOT
+	filenames:
+	  - file2.yaml
+	labels:
+	  type: syslog
+	source: file
+	EOT
+}
+
+@test "cscli setup (journalctl filter)" {
     rune -0 cscli setup detect --force-unit thewiz.service --detect-config - <<-EOT
 	detect:
 	  thewiz:
@@ -951,7 +987,6 @@ update-notifier-motd.timer              enabled enabled
 
     assert_stderr --partial "Error: creating acquisition directory: mkdir ${ACQUIS_DIR}2: not a directory"
 }
-
 
 @test "cscli setup validate" {
     # an empty file is not enough
