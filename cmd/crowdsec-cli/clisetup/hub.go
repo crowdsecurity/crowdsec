@@ -2,12 +2,15 @@ package clisetup
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
@@ -48,7 +51,16 @@ cscli setup install-hub setup.yaml --dry-run
 				return err
 			}
 
-			return cli.install(cmd.Context(), interactive, dryRun, stup.CollectHubSpecs())
+			plan, err := cli.install(cmd.Context(), interactive, dryRun, stup.CollectHubSpecs())
+			if err != nil {
+				return err
+			}
+
+			if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
+				fmt.Fprintln(os.Stdout, "\n"+msg)
+			}
+
+			return nil
 		},
 	}
 
@@ -60,17 +72,17 @@ cscli setup install-hub setup.yaml --dry-run
 	return cmd
 }
 
-func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, hubSpecs []setup.HubSpec) error {
+func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, hubSpecs []setup.HubSpec) (*hubops.ActionPlan, error) {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, logrus.StandardLogger())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	contentProvider, err := require.HubDownloader(ctx, cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	showPlan := interactive
@@ -86,19 +98,24 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 
 				item, err := hub.GetItemFQ(fqName)
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, false)); err != nil {
-					return err
+					return nil, err
 				}
 
 				if err := plan.AddCommand(hubops.NewEnableCommand(item, false)); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 	}
 
-	return plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
+	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan, nil
 }
