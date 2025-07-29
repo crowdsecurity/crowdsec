@@ -62,6 +62,11 @@ $ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim .
 
 ## Required configuration
 
+### Volumes
+
+Since CrowdSec 1.7.0, `/var/lib/crowdsec/data/` is required to be mounted in a volume.
+If this directory is not mounted, the container will refuse to start.
+
 ### Journalctl (only for debian image)
 
 To use journalctl as a log stream, with or without the `DSN` environment variable, you need to mount the journal log from the host to the container itself.
