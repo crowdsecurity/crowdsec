@@ -147,10 +147,10 @@ rm -rf %{buildroot}
 #fi
 
 
-%post -p /bin/bash
+%post -p /bin/sh
 
 #install
-if [ $1 == 1 ]; then
+if [ "$1" = 1 ]; then
     if [ ! -f "/var/lib/crowdsec/data/crowdsec.db" ] ; then
         touch /var/lib/crowdsec/data/crowdsec.db
     fi
