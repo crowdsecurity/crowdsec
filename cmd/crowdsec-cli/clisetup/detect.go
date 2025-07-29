@@ -5,11 +5,12 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 // detectFlags are reused for "unattended" and "interactive"
@@ -97,8 +98,8 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               "detect",
-		Short:             "Detect installed services and generate a setup file",
+		Use:   "detect",
+		Short: "Detect installed services and generate a setup file",
 		Long: `Detects the services installed on the machine and builds a specification
 to be used with the "setup install-*" commands.
 

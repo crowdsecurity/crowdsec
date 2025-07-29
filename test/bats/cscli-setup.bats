@@ -257,7 +257,7 @@ update-notifier-motd.timer              enabled enabled
 # XXX this is the same boilerplate as the previous test, can be simplified
 @test "cscli setup detect (skip systemd)" {
     # Skip detection of services through systemd units.
- 
+
     # transparently mock systemctl. It's easier if you can tell the application
     # under test which executable to call (in which case just call $mock) but
     # here we do the symlink and $PATH dance as an example
