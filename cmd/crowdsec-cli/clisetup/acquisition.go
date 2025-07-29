@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
-	"github.com/spf13/cobra"
 )
 
 type acquisitionFlags struct {
@@ -90,10 +92,14 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 			return err
 		}
 
+		content, err := spec.ToYAML()
+		if err != nil {
+			return err
+		}
+
 		if dryRun {
-			fmt.Fprintln(os.Stdout, "(dry run) "+path)
+			_, _ = fmt.Fprintln(os.Stdout, "(dry run) "+path+"\n"+color.BlueString(string(content)))
 			// XXX format me somehow
-			_ = spec.Write(os.Stdout)
 			continue
 		}
 
@@ -105,11 +111,10 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 		}
 		defer writer.Close()
 
-		if err := spec.WriteHeader(writer); err != nil {
-			return fmt.Errorf("writing acquisition to %q: %w", path, err)
-		}
+		contentWithHeader := spec.AddHeader(writer, content)
 
-		if err := spec.Write(writer); err != nil {
+		_, err = writer.Write(contentWithHeader)
+		if err != nil {
 			return fmt.Errorf("writing acquisition to %q: %w", path, err)
 		}
 	}
