@@ -115,11 +115,13 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event)
 
 func (n *Node) CompileWLs() (bool, error) {
 	for _, v := range n.Whitelist.Ips {
-		if addr, err := netip.ParseAddr(v); err == nil {
-			n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, addr)
-			n.Logger.Debugf("adding ip %s to whitelists", addr)
+		addr, err := netip.ParseAddr(v)
+		if err != nil {
+			return false, fmt.Errorf("parsing whitelist: %w", err)
 		}
-		// XXX: handle error?
+
+		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, addr)
+		n.Logger.Debugf("adding ip %s to whitelists", addr)
 	}
 
 	for _, v := range n.Whitelist.Cidrs {

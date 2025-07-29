@@ -125,15 +125,17 @@ func (e *Event) ParseIPSources() []netip.Addr {
 		if val, ok := e.Meta["source_ip"]; ok {
 			if addr, err := netip.ParseAddr(val); err == nil {
 				srcs = append(srcs, addr)
+			} else {
+				log.Errorf("failed to parse source_ip %s: %v", val, err)
 			}
-			// XXX handle error?
 		}
 	case OVFLW:
 		for k := range e.Overflow.Sources {
 			if addr, err := netip.ParseAddr(k); err == nil {
 				srcs = append(srcs, addr)
+			} else {
+				log.Errorf("failed to parse source %s: %v", k, err)
 			}
-			// XXX handle error?
 		}
 	}
 
