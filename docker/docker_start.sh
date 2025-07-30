@@ -256,7 +256,6 @@ fi
 # This check is performed regardless of the database type and if we are a LAPI or not:
 # - This directory is also used to store datafiles used by the LP, and some of them are really big and costly to download (MMDB files)
 # Do *not* implement this check in the k8s docker_start.sh
-db_type=$(conf_get '.db_config.type')
 if ! is_mounted "/var/lib/crowdsec/data" && [ -z "$CROWDSEC_BYPASS_DB_VOLUME_CHECK" ]; then
         echo "No volume mounted for /var/lib/crowdsec/data"
         echo "This directory is used to store the crowdsec local database (if using sqlite) and datafiles used by the parsers and scenarios."
