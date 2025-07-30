@@ -243,7 +243,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 		// the collections when removing the associated software
 		if installAcquis {
 			acquisDir = cmp.Or(acquisDir, cli.cfg().Crowdsec.AcquisitionDirPath)
-			if err := cli.acquisition(acquisitionSpecs, acquisDir, dryRun); err != nil {
+			if err := cli.acquisition(acquisitionSpecs, acquisDir, interactive, dryRun); err != nil {
 				return err
 			}
 		} else {
