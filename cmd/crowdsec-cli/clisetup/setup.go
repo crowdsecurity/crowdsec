@@ -20,28 +20,22 @@ func New(cfg configGetter) *cliSetup {
 }
 
 func (cli *cliSetup) NewCommand() *cobra.Command {
-	cmdInteractive := cli.newInteractiveCmd()
-
-	cmd := &cobra.Command{
-		Use:   "setup",
-		Short: "Tools to configure crowdsec",
-		Long:  "Manage service detection and hub/acquisition configuration",
-		Example: `# Call one of detect, install-hub, etc.
+	cmd := cli.newInteractiveCmd()
+	cmd.Use = "setup"
+	cmd.Short = "Tools to configure crowdsec"
+	cmd.Long = "Manage service detection and hub/acquisition configuration"
+	cmd.Example = `# Call one of detect, install-hub, etc.
 cscli setup [command]
-# With no explicit command, will run as "cscli setup interactive".
-# It will not pass through any flag.
-cscli setup
-`,
-		DisableAutoGenTag: true,
-		Args:              args.NoArgs,
-		RunE:              cmdInteractive.RunE,
-	}
+# With no explicit command, will run as "cscli setup interactive"
+# and pass through any flags.
+`
+	cmd.Args = args.NoArgs
 
 	cmd.AddCommand(cli.newDetectCmd())
 	cmd.AddCommand(cli.newInstallHubCmd())
 	cmd.AddCommand(cli.newInstallAcquisitionCmd())
 	cmd.AddCommand(cli.newValidateCmd())
-	cmd.AddCommand(cmdInteractive)
+	cmd.AddCommand(cli.newInteractiveCmd())
 	cmd.AddCommand(cli.newUnattendedCmd())
 
 	return cmd
