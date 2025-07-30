@@ -46,10 +46,13 @@ func (f *detectFlags) detectConfig() (*setup.DetectConfig, string, error) {
 }
 
 func (f *detectFlags) bind(cmd *cobra.Command) {
-	defaultServiceDetect := csconfig.DefaultConfigPath("detect.yaml")
+	defaultServiceDetect := os.Getenv("CROWDSEC_SETUP_DETECT_CONFIG")
+	if defaultServiceDetect == "" {
+		defaultServiceDetect = csconfig.DefaultConfigPath("detect.yaml")
+	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&f.detectConfigFile, "detect-config", defaultServiceDetect, "path to service detection configuration")
+	flags.StringVar(&f.detectConfigFile, "detect-config", defaultServiceDetect, "path to service detection configuration, will use $CROWDSEC_SETUP_DETECT_CONFIG if defined")
 	flags.StringSliceVar(&f.forcedUnits, "force-unit", nil, "force detection of a systemd unit (can be repeated)")
 	flags.StringSliceVar(&f.forcedProcesses, "force-process", nil, "force detection of a running process (can be repeated)")
 	flags.StringSliceVar(&f.skipServices, "skip-service", nil, "ignore a service, don't recommend hub/datasources (can be repeated)")

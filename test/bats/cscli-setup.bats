@@ -62,6 +62,16 @@ teardown() {
     refute_stderr
 }
 
+@test "cscli setup detect (envvar CROWDSEC_SETUP_DETECT_CONFIG)" {
+    export CROWDSEC_SETUP_DETECT_CONFIG="$BATS_TEST_TMPDIR"/mydetect.yaml
+    rune -0 cscli setup detect --help
+    assert_output --partial "path to service detection configuration, will use \$CROWDSEC_SETUP_DETECT_CONFIG if defined (default \"$CROWDSEC_SETUP_DETECT_CONFIG\")"
+
+    rune -1 cscli setup detect
+    refute_output
+    assert_stderr --partial "open $CROWDSEC_SETUP_DETECT_CONFIG: no such file or directory"
+}
+
 @test "cscli setup detect (linux)" {
     # Basic OS detection.
 
