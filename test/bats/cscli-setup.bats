@@ -791,7 +791,7 @@ update-notifier-motd.timer              enabled enabled
 
 @test "cscli setup install-acquisition (key order)" {
     # keys are sorted when creating the acquisition file.
-    # XXX we could preserve the order?
+    # we should preserve the same order as in detect.yaml, but it's tricky with the current parsers
 
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
