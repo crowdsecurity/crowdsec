@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -47,15 +49,6 @@ var (
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
-
-/*prometheus*/
-var RegexpCacheMetrics = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Name: "cs_regexp_cache_size",
-		Help: "Entries per regexp cache.",
-	},
-	[]string{"name"},
-)
 
 var dbClient *database.Client
 
@@ -190,10 +183,10 @@ func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateRegexpCacheMetrics() {
-	RegexpCacheMetrics.Reset()
+	metrics.RegexpCacheMetrics.Reset()
 
 	for name := range dataFileRegexCache {
-		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
+		metrics.RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
 	}
 }
 
@@ -644,6 +637,101 @@ func ParseUri(params ...any) (any, error) {
 	maps.Copy(ret, parsed)
 
 	return ret, nil
+}
+
+// func AverageInterval(times []time.Time) time.Duration
+func AverageInterval(params ...any) (any, error) {
+	if len(params) != 1 {
+		return 0, errors.New("AverageInterval expects exactly one parameter: a slice of times")
+	}
+
+	var times []time.Time
+
+	// Handle both []time.Time and []interface{} (from expr map function)
+	switch v := params[0].(type) {
+	case []time.Time:
+		times = v
+	case []interface{}:
+		times = make([]time.Time, len(v))
+		for i, item := range v {
+			t, ok := item.(time.Time)
+			if !ok {
+				return 0, fmt.Errorf("element at index %d is not a time.Time", i)
+			}
+			times[i] = t
+		}
+	default:
+		return 0, errors.New("AverageInterval expects a slice of times")
+	}
+
+	if len(times) < 2 {
+		return 0, errors.New("need at least two times to calculate an average interval")
+	}
+
+	// Sort times in ascending order
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
+	})
+
+	var total time.Duration
+	for i := 1; i < len(times); i++ {
+		total += times[i].Sub(times[i-1])
+	}
+
+	average := time.Duration(int64(total) / int64(len(times)-1))
+	return average, nil
+}
+
+// func MedianInterval(times []time.Time) (time.Duration, error)
+func MedianInterval(params ...any) (any, error) {
+	if len(params) != 1 {
+		return 0, errors.New("MedianInterval expects exactly one parameter: a slice of times")
+	}
+
+	var times []time.Time
+
+	// Handle both []time.Time and []interface{} (from expr map function)
+	switch v := params[0].(type) {
+	case []time.Time:
+		times = v
+	case []interface{}:
+		times = make([]time.Time, len(v))
+		for i, item := range v {
+			t, ok := item.(time.Time)
+			if !ok {
+				return 0, fmt.Errorf("element at index %d is not a time.Time", i)
+			}
+			times[i] = t
+		}
+	default:
+		return 0, errors.New("MedianInterval expects a slice of times")
+	}
+
+	if len(times) < 2 {
+		return 0, errors.New("need at least two times to calculate a median")
+	}
+
+	// Sort times
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
+	})
+
+	// Compute intervals
+	intervals := make([]time.Duration, len(times)-1)
+	for i := 1; i < len(times); i++ {
+		intervals[i-1] = times[i].Sub(times[i-1])
+	}
+
+	// Sort intervals for median calculation
+	sort.Slice(intervals, func(i, j int) bool {
+		return intervals[i] < intervals[j]
+	})
+
+	n := len(intervals)
+	if n%2 == 1 {
+		return intervals[n/2], nil
+	}
+	return (intervals[n/2-1] + intervals[n/2]) / 2, nil
 }
 
 // func KeyExists(key string, dict map[string]interface{}) bool {

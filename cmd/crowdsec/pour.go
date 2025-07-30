@@ -9,6 +9,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -51,12 +52,12 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			}
 
 			elapsed := time.Since(startTime)
-			globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(elapsed.Seconds())
+			metrics.GlobalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(elapsed.Seconds())
 
 			if poured {
-				globalBucketPourOk.Inc()
+				metrics.GlobalBucketPourOk.Inc()
 			} else {
-				globalBucketPourKo.Inc()
+				metrics.GlobalBucketPourKo.Inc()
 			}
 
 			if parsed.MarshaledTime != "" {

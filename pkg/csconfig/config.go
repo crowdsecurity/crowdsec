@@ -13,10 +13,10 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/csyaml"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 // defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */
@@ -47,7 +47,7 @@ type Config struct {
 
 // NewConfig
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
-	patcher := yamlpatch.NewPatcher(configFile, ".local")
+	patcher := csyaml.NewPatcher(configFile, ".local")
 	patcher.SetQuiet(quiet)
 
 	fcontent, err := patcher.MergedPatchContent()
@@ -120,7 +120,7 @@ func NewDefaultConfig() *Config {
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
-		Level:   configuration.CFG_METRICS_FULL,
+		Level:   metrics.MetricsLevelFull,
 	}
 	configPaths := ConfigurationPaths{
 		ConfigDir:          DefaultConfigPath("."),

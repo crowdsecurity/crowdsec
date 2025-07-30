@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -16,42 +17,37 @@ import (
 	dockerTypesEvents "github.com/docker/docker/api/types/events"
 	dockerFilter "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/dlog"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"slices"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_dockersource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
-
 type DockerConfiguration struct {
-	CheckInterval                     string   `yaml:"check_interval"`
-	FollowStdout                      bool     `yaml:"follow_stdout"`
-	FollowStdErr                      bool     `yaml:"follow_stderr"`
-	Until                             string   `yaml:"until"`
-	Since                             string   `yaml:"since"`
-	DockerHost                        string   `yaml:"docker_host"`
-	ContainerName                     []string `yaml:"container_name"`
-	ContainerID                       []string `yaml:"container_id"`
-	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
-	ContainerIDRegexp                 []string `yaml:"container_id_regexp"`
-	UseContainerLabels                bool     `yaml:"use_container_labels"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
+
+	CheckInterval       string   `yaml:"check_interval"`
+	FollowStdout        bool     `yaml:"follow_stdout"`
+	FollowStdErr        bool     `yaml:"follow_stderr"`
+	Until               string   `yaml:"until"`
+	Since               string   `yaml:"since"`
+	DockerHost          string   `yaml:"docker_host"`
+	ContainerName       []string `yaml:"container_name"`
+	ContainerID         []string `yaml:"container_id"`
+	ContainerNameRegexp []string `yaml:"container_name_regexp"`
+	ContainerIDRegexp   []string `yaml:"container_id_regexp"`
+	UseContainerLabels  bool     `yaml:"use_container_labels"`
 }
 
 type DockerSource struct {
-	metricsLevel          int
+	metricsLevel          metrics.AcquisitionMetricsLevel
 	Config                DockerConfiguration
 	runningContainerState map[string]*ContainerConfig
 	compiledContainerName []*regexp.Regexp
@@ -81,9 +77,9 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		FollowStdErr: true, // default
 	}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &d.Config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &d.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("while parsing DockerAcquisition configuration: %w", err)
+		return fmt.Errorf("while parsing DockerAcquisition configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if d.logger != nil {
@@ -136,7 +132,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	d.logger = logger
 	d.metricsLevel = metricsLevel
 
@@ -342,15 +338,17 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 					l.Process = true
 					l.Module = d.GetName()
 
-					if d.metricsLevel != configuration.METRICS_NONE {
-						linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
+					if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "acquis_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
 					}
 
 					evt := types.MakeEvent(true, types.LOG, true)
 					evt.Line = l
 					evt.Process = true
 					evt.Type = types.LOG
+
 					out <- evt
+
 					d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 				}
 			}
@@ -374,11 +372,11 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 }
 
 func (d *DockerSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
 }
 
 func (d *DockerSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
 }
 
 func (d *DockerSource) GetName() string {
@@ -389,8 +387,8 @@ func (d *DockerSource) CanRun() error {
 	return nil
 }
 
-func (d *DockerSource) getContainerTTY(ctx context.Context, containerId string) bool {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerId)
+func (d *DockerSource) getContainerTTY(ctx context.Context, containerID string) bool {
+	containerDetails, err := d.Client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return false
 	}
@@ -398,10 +396,10 @@ func (d *DockerSource) getContainerTTY(ctx context.Context, containerId string) 
 	return containerDetails.Config.Tty
 }
 
-func (d *DockerSource) getContainerLabels(ctx context.Context, containerId string) map[string]interface{} {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerId)
+func (d *DockerSource) getContainerLabels(ctx context.Context, containerID string) map[string]any {
+	containerDetails, err := d.Client.ContainerInspect(ctx, containerID)
 	if err != nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	return parseLabels(containerDetails.Config.Labels)
@@ -466,7 +464,7 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 			return nil
 		}
 
-		labelsTypeCast, ok := parsedLabels["labels"].(map[string]interface{})
+		labelsTypeCast, ok := parsedLabels["labels"].(map[string]any)
 		if !ok {
 			d.logger.Error("container has 'crowdsec.enable' label set to true but 'labels' is not a map")
 			return nil
@@ -539,6 +537,7 @@ func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *Cont
 	}
 
 	d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
+
 	return nil
 }
 
@@ -669,7 +668,7 @@ func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan types.
 	return d.WatchContainer(ctx, monitChan, deleteChan)
 }
 
-func (d *DockerSource) Dump() interface{} {
+func (d *DockerSource) Dump() any {
 	return d
 }
 
@@ -677,6 +676,7 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 	for scanner.Scan() {
 		out <- scanner.Text()
 	}
+
 	return scanner.Err()
 }
 
@@ -714,6 +714,7 @@ func (d *DockerSource) TailDocker(ctx context.Context, container *ContainerConfi
 			if line == "" {
 				continue
 			}
+
 			l := types.Line{}
 			l.Raw = line
 			l.Labels = container.Labels
@@ -723,7 +724,7 @@ func (d *DockerSource) TailDocker(ctx context.Context, container *ContainerConfi
 			l.Module = d.GetName()
 			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
-			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
+			metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "acquis_type": evt.Line.Labels["type"]}).Inc()
 			outChan <- evt
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
