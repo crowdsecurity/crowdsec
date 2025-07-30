@@ -69,7 +69,7 @@ func filterGeneratedAcquis(acquisFiles []string, logger logrus.FieldLogger) ([]s
 		isGenerated, err := isGeneratedOrEmpty(file, logger)
 		if err != nil {
 			file.Close()
-			return nil, err
+			return nil, fmt.Errorf("parsing %q: %w", fileName, err)
 		}
 
 		file.Close()
