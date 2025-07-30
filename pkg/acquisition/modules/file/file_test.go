@@ -16,8 +16,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -30,7 +30,7 @@ func TestBadConfiguration(t *testing.T) {
 		{
 			name:        "extra configuration key",
 			config:      "foobar: asd.log",
-			expectedErr: "line 1: field foobar not found in type fileacquisition.FileConfiguration",
+			expectedErr: `cannot parse FileAcquisition configuration: [1:1] unknown field "foobar"`,
 		},
 		{
 			name:        "missing filenames",
@@ -48,6 +48,12 @@ func TestBadConfiguration(t *testing.T) {
 exclude_regexps: ["as[a-$d"]`,
 			expectedErr: "could not compile regexp as",
 		},
+		{
+			name: "duplicate keys",
+			config: `filenames: ["asd.log"]
+filenames: ["ase.log"]`,
+			expectedErr: `cannot parse FileAcquisition configuration: [2:1] mapping key "filenames" already defined at [1:1]`,
+		},
 	}
 
 	subLogger := log.WithField("type", "file")
@@ -55,7 +61,7 @@ exclude_regexps: ["as[a-$d"]`,
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -219,7 +225,7 @@ filename: %s`, deletedFile),
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedConfigErr)
 
 			if tc.expectedConfigErr != "" {
@@ -387,7 +393,7 @@ force_inotify: true`, testPattern),
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			if tc.afterConfigure != nil {
@@ -485,7 +491,7 @@ exclude_regexps: ["\\.gz$"]`
 	subLogger := logger.WithField("type", "file")
 
 	f := fileacquisition.FileSource{}
-	err := f.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
+	err := f.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	require.NotNil(t, hook.LastEntry())
@@ -520,7 +526,7 @@ discovery_poll_enable: true
 discovery_poll_interval: "invalid"
 mode: tail
 `,
-			wantErr: "cannot unmarshal !!str `invalid` into time.Duration",
+			wantErr: `cannot parse FileAcquisition configuration: time: invalid duration "invalid"`,
 		},
 		{
 			name: "polling disabled",
@@ -537,7 +543,7 @@ mode: tail
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), configuration.METRICS_NONE)
+			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 		})
 	}
@@ -561,7 +567,7 @@ mode: tail
 	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
-	err := f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	err := f.Configure(config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	// Create channel for events
@@ -613,7 +619,7 @@ mode: tail
 	config := []byte(yamlConfig)
 
 	f := &fileacquisition.FileSource{}
-	err = f.Configure(config, log.NewEntry(log.New()), configuration.METRICS_NONE)
+	err = f.Configure(config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	eventChan := make(chan types.Event)

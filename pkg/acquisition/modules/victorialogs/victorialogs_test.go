@@ -20,8 +20,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -37,14 +37,14 @@ func TestConfiguration(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd`,
-			expectedErr: "line 1: field foobar not found in type victorialogs.VLConfiguration",
+			expectedErr: `[1:1] unknown field "foobar"`,
 			testName:    "Unknown field",
 		},
 		{
 			config: `
 mode: tail
 source: victorialogs`,
-			expectedErr: "query is mandatory",
+			expectedErr: "url is mandatory",
 			testName:    "Missing url",
 		},
 		{
@@ -55,6 +55,18 @@ url: http://localhost:9428/
 `,
 			expectedErr: "query is mandatory",
 			testName:    "Missing query",
+		},
+		{
+			config: `
+mode: tail
+source: victorialogs
+url: http://localhost:9428/
+query: >
+        {server="demo"}
+limit: true
+`,
+			expectedErr: "[7:8] cannot unmarshal bool into Go struct field VLConfiguration.Limit of type int",
+			testName:    "mismatched type",
 		},
 		{
 			config: `
@@ -101,7 +113,7 @@ query: >
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			vlSource := victorialogs.VLSource{}
-			err := vlSource.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err := vlSource.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			if test.password != "" {
@@ -282,7 +294,7 @@ since: 1h
 		subLogger := logger.WithField("type", "victorialogs")
 		vlSource := victorialogs.VLSource{}
 
-		err := vlSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+		err := vlSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -368,7 +380,7 @@ query: >
 			vlTomb := tomb.Tomb{}
 			vlSource := victorialogs.VLSource{}
 
-			err := vlSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+			err := vlSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -442,7 +454,7 @@ query: >
 	title := time.Now().String()
 	vlSource := victorialogs.VLSource{}
 
-	err := vlSource.Configure([]byte(config), subLogger, configuration.METRICS_NONE)
+	err := vlSource.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}

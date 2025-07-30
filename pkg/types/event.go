@@ -1,7 +1,7 @@
 package types
 
 import (
-	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -34,7 +34,7 @@ type Event struct {
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
 	/* output of Unmarshal */
-	Unmarshaled map[string]interface{} `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
+	Unmarshaled map[string]any `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
 	/* Overflow */
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` // parsed time `json:"-"` ``
@@ -51,7 +51,7 @@ func MakeEvent(timeMachine bool, evtType int, process bool) Event {
 	evt := Event{
 		Parsed:      make(map[string]string),
 		Meta:        make(map[string]string),
-		Unmarshaled: make(map[string]interface{}),
+		Unmarshaled: make(map[string]any),
 		Enriched:    make(map[string]string),
 		ExpectMode:  LIVE,
 		Process:     process,
@@ -117,17 +117,25 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
-func (e *Event) ParseIPSources() []net.IP {
-	var srcs []net.IP
+func (e *Event) ParseIPSources() []netip.Addr {
+	var srcs []netip.Addr
 
 	switch e.Type {
 	case LOG:
-		if _, ok := e.Meta["source_ip"]; ok {
-			srcs = append(srcs, net.ParseIP(e.Meta["source_ip"]))
+		if val, ok := e.Meta["source_ip"]; ok {
+			if addr, err := netip.ParseAddr(val); err == nil {
+				srcs = append(srcs, addr)
+			} else {
+				log.Errorf("failed to parse source_ip %s: %v", val, err)
+			}
 		}
 	case OVFLW:
 		for k := range e.Overflow.Sources {
-			srcs = append(srcs, net.ParseIP(k))
+			if addr, err := netip.ParseAddr(k); err == nil {
+				srcs = append(srcs, addr)
+			} else {
+				log.Errorf("failed to parse source %s: %v", k, err)
+			}
 		}
 	}
 

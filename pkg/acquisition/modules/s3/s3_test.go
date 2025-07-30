@@ -18,7 +18,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -34,6 +36,14 @@ func TestBadConfiguration(t *testing.T) {
 source: s3
 `,
 			expectedErr: "bucket_name is required",
+		},
+		{
+			name: "type mismatch",
+			config: `
+source: s3
+max_buffer_size: true
+`,
+			expectedErr: "[3:18] cannot unmarshal bool into Go struct field S3Configuration.MaxBufferSize of type int",
 		},
 		{
 			name: "invalid polling method",
@@ -69,14 +79,8 @@ sqs_name: foobar
 		t.Run(test.name, func(t *testing.T) {
 			f := S3Source{}
 
-			err := f.Configure([]byte(test.config), nil, configuration.METRICS_NONE)
-			if err == nil {
-				t.Fatalf("expected error, got none")
-			}
-
-			if err.Error() != test.expectedErr {
-				t.Fatalf("expected error %s, got %s", test.expectedErr, err.Error())
-			}
+			err := f.Configure([]byte(test.config), nil, metrics.AcquisitionMetricsLevelNone)
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }
@@ -116,7 +120,7 @@ polling_method: list
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
 
-			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -336,7 +340,7 @@ prefix: foo/
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
 			logger.Logger.SetLevel(log.TraceLevel)
-			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
@@ -421,7 +425,7 @@ sqs_name: test
 			linesRead := 0
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
-			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
