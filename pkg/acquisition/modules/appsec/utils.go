@@ -180,8 +180,8 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		return nil
 	}
 
-	if !req.Tx.IsInterrupted() {
-		// if the phase didn't generate an interruption, we don't have anything to add to the event
+	if !req.Tx.IsInterrupted() && !r.AppsecRuntime.EarlyTermination {
+		// if the phase didn't generate an interruption or if DropRequest was not called, we don't have anything to add to the event
 		return nil
 	}
 	// if one interruption was generated, event is good for processing :)
@@ -195,20 +195,32 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Parsed = map[string]string{}
 	}
 
+	interruption := req.Tx.Interruption()
+
 	if req.IsInBand {
 		evt.Meta["appsec_interrupted"] = "true"
-		evt.Meta["appsec_action"] = req.Tx.Interruption().Action
+		if interruption != nil { // coraza match
+			evt.Meta["appsec_action"] = interruption.Action
+			evt.Parsed["inband_action"] = interruption.Action
+		} else { // If we are here, it means DropRequest was called
+			evt.Meta["appsec_action"] = "drop"
+			evt.Parsed["inband_action"] = "drop"
+		}
 		evt.Parsed["inband_interrupted"] = "true"
-		evt.Parsed["inband_action"] = req.Tx.Interruption().Action
 	} else {
 		evt.Parsed["outofband_interrupted"] = "true"
-		evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
+		if interruption != nil {
+			evt.Parsed["outofband_action"] = interruption.Action
+		} else {
+			evt.Parsed["outofband_action"] = "drop"
+		}
 	}
 
 	if evt.Appsec.Vars == nil {
 		evt.Appsec.Vars = map[string]string{}
 	}
 
+	//Not supported for DropRequest for now
 	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
 			key := variable.Variable().Name()
@@ -234,11 +246,9 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		return true
 	})
 
-	for _, rule := range req.Tx.MatchedRules() {
-		if rule.Message() == "" {
-			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
-			continue
-		}
+	if r.AppsecRuntime.EarlyTermination {
+		// Manual user drop
+		// Add a "fake" matched rule to the event
 		kind := "outofband"
 		if req.IsInBand {
 			kind = "inband"
@@ -246,60 +256,83 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		} else {
 			evt.Appsec.HasOutBandMatches = true
 		}
-
-		var name string
-		version := ""
-		hash := ""
-		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
-
-		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
-			// Only set them for custom rules, not for rules written in seclang
-			name = details.Name
-			version = details.Version
-			hash = details.Hash
-			ruleNameProm = details.Name
-
-			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
-		} else {
-			name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
+		metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": r.AppsecRuntime.EarlyTerminationReason, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
+		ruleMatch := map[string]any{
+			"uri":       evt.Parsed["target_uri"],
+			"rule_type": kind,
+			"method":    evt.Parsed["method"],
+			"name":      r.AppsecRuntime.EarlyTerminationReason,
 		}
-
-		metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
-
-		matchedZones := make([]string, 0)
-
-		for _, matchData := range rule.MatchedDatas() {
-			zone := matchData.Variable().Name()
-
-			varName := matchData.Key()
-			if varName != "" {
-				zone += "." + varName
+		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, ruleMatch)
+	} else {
+		//FIXME: move this to a dedicated function
+		for _, rule := range req.Tx.MatchedRules() {
+			if rule.Message() == "" {
+				r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
+				continue
+			}
+			kind := "outofband"
+			if req.IsInBand {
+				kind = "inband"
+				evt.Appsec.HasInBandMatches = true
+			} else {
+				evt.Appsec.HasOutBandMatches = true
 			}
 
-			matchedZones = append(matchedZones, zone)
-		}
+			var name string
+			version := ""
+			hash := ""
+			ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
-		corazaRule := map[string]any{
-			"id":            rule.Rule().ID(),
-			"uri":           evt.Parsed["target_uri"],
-			"rule_type":     kind,
-			"method":        evt.Parsed["method"],
-			"disruptive":    rule.Disruptive(),
-			"tags":          rule.Rule().Tags(),
-			"file":          rule.Rule().File(),
-			"file_line":     rule.Rule().Line(),
-			"revision":      rule.Rule().Revision(),
-			"secmark":       rule.Rule().SecMark(),
-			"accuracy":      rule.Rule().Accuracy(),
-			"msg":           rule.Message(),
-			"severity":      rule.Rule().Severity().String(),
-			"name":          name,
-			"hash":          hash,
-			"version":       version,
-			"matched_zones": matchedZones,
-			"logdata":       rule.Data(),
+			if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
+				// Only set them for custom rules, not for rules written in seclang
+				name = details.Name
+				version = details.Version
+				hash = details.Hash
+				ruleNameProm = details.Name
+
+				r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
+			} else {
+				name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
+			}
+
+			metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
+
+			matchedZones := make([]string, 0)
+
+			for _, matchData := range rule.MatchedDatas() {
+				zone := matchData.Variable().Name()
+
+				varName := matchData.Key()
+				if varName != "" {
+					zone += "." + varName
+				}
+
+				matchedZones = append(matchedZones, zone)
+			}
+
+			corazaRule := map[string]any{
+				"id":            rule.Rule().ID(),
+				"uri":           evt.Parsed["target_uri"],
+				"rule_type":     kind,
+				"method":        evt.Parsed["method"],
+				"disruptive":    rule.Disruptive(),
+				"tags":          rule.Rule().Tags(),
+				"file":          rule.Rule().File(),
+				"file_line":     rule.Rule().Line(),
+				"revision":      rule.Rule().Revision(),
+				"secmark":       rule.Rule().SecMark(),
+				"accuracy":      rule.Rule().Accuracy(),
+				"msg":           rule.Message(),
+				"severity":      rule.Rule().Severity().String(),
+				"name":          name,
+				"hash":          hash,
+				"version":       version,
+				"matched_zones": matchedZones,
+				"logdata":       rule.Data(),
+			}
+			evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 		}
-		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 	}
 
 	return nil
