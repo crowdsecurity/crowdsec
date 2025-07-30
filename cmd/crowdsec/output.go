@@ -70,7 +70,8 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	)
 
 	ticker := time.NewTicker(1 * time.Second)
-LOOP:
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
@@ -97,8 +98,7 @@ LOOP:
 					log.Errorf("while pushing leftovers to api : %s", err)
 				}
 			}
-
-			break LOOP
+			return nil
 		case event := <-overflow:
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
@@ -136,8 +136,4 @@ LOOP:
 			cacheMutex.Unlock()
 		}
 	}
-
-	ticker.Stop()
-
-	return nil
 }
