@@ -711,6 +711,426 @@ func TestTimeNow(t *testing.T) {
 	log.Print("test 'TimeNow()' : OK")
 }
 
+func TestAverageInterval(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use a fixed base time to eliminate execution time variance
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		env  map[string]any
+		code string
+		want time.Duration
+	}{
+		{
+			name: "AverageInterval() test: two times with 1 second difference",
+			env: map[string]any{
+				"times": []time.Time{baseTime, baseTime.Add(time.Second)},
+			},
+			code: "AverageInterval(times)",
+			want: time.Second,
+		},
+		{
+			name: "AverageInterval() test: two times with 1 second difference (reverse order)",
+			env: map[string]any{
+				"times": []time.Time{baseTime.Add(time.Second), baseTime},
+			},
+			code: "AverageInterval(times)",
+			want: time.Second,
+		},
+		{
+			name: "AverageInterval() test: three times with varying intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(2 * time.Second), // 2s gap
+					baseTime.Add(6 * time.Second), // 4s gap
+				},
+			},
+			code: "AverageInterval(times)",
+			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
+		},
+		{
+			name: "AverageInterval() test: four times with equal intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(time.Hour),
+					baseTime.Add(2 * time.Hour),
+					baseTime.Add(3 * time.Hour),
+				},
+			},
+			code: "AverageInterval(times)",
+			want: time.Hour, // all intervals are 1 hour
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+			got, err := expr.Run(program, test.env)
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
+
+func TestMedianInterval(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use a fixed base time to eliminate execution time variance
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		env         map[string]any
+		code        string
+		want        time.Duration
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "MedianInterval() test: two times with 1 second difference",
+			env: map[string]any{
+				"times": []time.Time{baseTime, baseTime.Add(time.Second)},
+			},
+			code: "MedianInterval(times)",
+			want: time.Second,
+		},
+		{
+			name: "MedianInterval() test: three times - odd number of intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(2 * time.Second),  // 2s gap
+					baseTime.Add(5 * time.Second),  // 3s gap
+					baseTime.Add(11 * time.Second), // 6s gap
+				},
+			},
+			code: "MedianInterval(times)",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
+		{
+			name: "MedianInterval() test: four times - even number of intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(1 * time.Second),  // 1s gap
+					baseTime.Add(3 * time.Second),  // 2s gap
+					baseTime.Add(7 * time.Second),  // 4s gap
+					baseTime.Add(15 * time.Second), // 8s gap
+				},
+			},
+			code: "MedianInterval(times)",
+			want: 3 * time.Second, // median of [1s, 2s, 4s, 8s] = (2s + 4s) / 2 = 3s
+		},
+		{
+			name: "MedianInterval() test: reverse order times",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime.Add(11 * time.Second),
+					baseTime.Add(5 * time.Second),
+					baseTime.Add(2 * time.Second),
+					baseTime,
+				},
+			},
+			code: "MedianInterval(times)",
+			want: 3 * time.Second, // should sort first, then calculate median
+		},
+		{
+			name: "MedianInterval() test: equal intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(time.Hour),
+					baseTime.Add(2 * time.Hour),
+					baseTime.Add(3 * time.Hour),
+					baseTime.Add(4 * time.Hour),
+				},
+			},
+			code: "MedianInterval(times)",
+			want: time.Hour, // all intervals are 1 hour, median = 1 hour
+		},
+		{
+			name: "MedianInterval() test: mixed small and large intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(1 * time.Millisecond),    // 1ms gap
+					baseTime.Add(1001 * time.Millisecond), // 1000ms = 1s gap
+					baseTime.Add(2001 * time.Millisecond), // 1000ms = 1s gap
+				},
+			},
+			code: "MedianInterval(times)",
+			want: time.Second, // median of [1ms, 1s, 1s] = 1s
+		},
+		{
+			name: "MedianInterval() test: only one time (error case)",
+			env: map[string]any{
+				"times": []time.Time{baseTime},
+			},
+			code:        "MedianInterval(times)",
+			wantErr:     true,
+			errContains: "need at least two times",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+
+			got, err := expr.Run(program, test.env)
+
+			if test.wantErr {
+				require.Error(t, err)
+				if test.errContains != "" {
+					assert.Contains(t, err.Error(), test.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
+
+func TestAverageMedianWithQueues(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use fixed base time for stability
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	type mockQueue struct {
+		Time    time.Time
+		StrTime string
+	}
+
+	tests := []struct {
+		name        string
+		env         map[string]any
+		code        string
+		want        time.Duration
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "AverageInterval() test mockQueue: two times with 1 second difference",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},
+					{Time: baseTime.Add(time.Second)},
+				},
+			},
+			code: "AverageInterval(map(queue,{ #.Time }))",
+			want: time.Second,
+		},
+		{
+			name: "MedianInterval() test mockQueue: three times with varying intervals",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},
+					{Time: baseTime.Add(2 * time.Second)},  // 2s gap
+					{Time: baseTime.Add(5 * time.Second)},  // 3s gap
+					{Time: baseTime.Add(11 * time.Second)}, // 6s gap
+				},
+			},
+			code: "MedianInterval(map(queue,{ #.Time }))",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
+		{
+			name: "AverageInterval() test slicing: last 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(1 * time.Second)},  // ignored
+					{Time: baseTime.Add(10 * time.Second)}, // start: index -3
+					{Time: baseTime.Add(12 * time.Second)}, // +2s gap
+					{Time: baseTime.Add(16 * time.Second)}, // +4s gap
+				},
+			},
+			code: "AverageInterval(map(queue[-3:],{ #.Time }))",
+			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
+		},
+		{
+			name: "MedianInterval() test slicing: last 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(1 * time.Second)},  // ignored
+					{Time: baseTime.Add(10 * time.Second)}, // start: index -3
+					{Time: baseTime.Add(12 * time.Second)}, // +2s gap
+					{Time: baseTime.Add(16 * time.Second)}, // +4s gap
+				},
+			},
+			code: "MedianInterval(map(queue[-3:],{ #.Time }))",
+			want: 3 * time.Second, // median of [2s, 4s] = (2s + 4s) / 2 = 3s
+		},
+		{
+			name: "AverageInterval() test slicing: first 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // start
+					{Time: baseTime.Add(3 * time.Second)},  // +3s gap
+					{Time: baseTime.Add(8 * time.Second)},  // +5s gap
+					{Time: baseTime.Add(20 * time.Second)}, // ignored
+					{Time: baseTime.Add(30 * time.Second)}, // ignored
+				},
+			},
+			code: "AverageInterval(map(queue[:3],{ #.Time }))",
+			want: 4 * time.Second, // (3s + 5s) / 2 = 4s average
+		},
+		{
+			name: "MedianInterval() test slicing: middle 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(5 * time.Second)},  // start: index 1
+					{Time: baseTime.Add(7 * time.Second)},  // +2s gap
+					{Time: baseTime.Add(12 * time.Second)}, // +5s gap
+					{Time: baseTime.Add(25 * time.Second)}, // ignored
+				},
+			},
+			code: "MedianInterval(map(queue[1:4],{ #.Time }))",
+			want: 3*time.Second + 500*time.Millisecond, // median of [2s, 5s] = (2s + 5s) / 2 = 3.5s
+		},
+		{
+			name: "AverageInterval() test slicing: last 2 items from 6-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(1 * time.Second)},  // ignored
+					{Time: baseTime.Add(2 * time.Second)},  // ignored
+					{Time: baseTime.Add(3 * time.Second)},  // ignored
+					{Time: baseTime.Add(10 * time.Second)}, // start: index -2
+					{Time: baseTime.Add(15 * time.Second)}, // +5s gap
+				},
+			},
+			code: "AverageInterval(map(queue[-2:],{ #.Time }))",
+			want: 5 * time.Second, // only one interval: 5s
+		},
+		{
+			name: "MedianInterval() test slicing: single item slice (error case)",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},
+					{Time: baseTime.Add(5 * time.Second)},
+					{Time: baseTime.Add(10 * time.Second)},
+				},
+			},
+			code:        "MedianInterval(map(queue[1:2],{ #.Time }))",
+			wantErr:     true,
+			errContains: "need at least two times",
+		},
+		{
+			name: "AverageInterval() test error: slice of strings instead of times",
+			env: map[string]any{
+				"stringQueue": []string{"hello", "world", "test"},
+			},
+			code:        "AverageInterval(stringQueue)",
+			wantErr:     true,
+			errContains: "cannot use []string as argument",
+		},
+		{
+			name: "MedianInterval() test error: mixed types in slice",
+			env: map[string]any{
+				"mixedQueue": []mockQueue{
+					{Time: baseTime},
+				},
+				"stringValue": "not a time",
+			},
+			code:        "MedianInterval([mixedQueue[0].Time, stringValue])",
+			wantErr:     true,
+			errContains: "element at index 1 is not a time.Time",
+		},
+		{
+			name: "AverageInterval() test error: mapping string time field instead of Time field",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(time.Second), StrTime: "2023-01-01T12:00:01Z"},
+					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
+				},
+			},
+			code:        "AverageInterval(map(queue, { #.StrTime }))",
+			wantErr:     true,
+			errContains: "element at index 0 is not a time.Time",
+		},
+		{
+			name: "MedianInterval() test error: accidentally mapping wrong field type",
+			env: map[string]any{
+				"queueWithStrings": []mockQueue{
+					{Time: baseTime, StrTime: "not-a-time-format"},
+					{Time: baseTime.Add(2 * time.Second), StrTime: "also-not-time"},
+					{Time: baseTime.Add(5 * time.Second), StrTime: "still-not-time"},
+				},
+			},
+			code:        "MedianInterval(map(queueWithStrings, { #.StrTime }))",
+			wantErr:     true,
+			errContains: "element at index 0 is not a time.Time",
+		},
+		{
+			name: "AverageInterval() test success: converting string timestamps with date() function",
+			env: map[string]any{
+				"queueWithValidStrings": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(time.Second), StrTime: "2023-01-01T12:00:01Z"},
+					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
+				},
+			},
+			code: "AverageInterval(map(queueWithValidStrings, { date(#.StrTime) }))",
+			want: time.Second + 500*time.Millisecond, // (1s + 2s) / 2 = 1.5s
+		},
+		{
+			name: "MedianInterval() test success: converting RFC3339 string timestamps",
+			env: map[string]any{
+				"queueWithRFC3339": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(2 * time.Second), StrTime: "2023-01-01T12:00:02Z"},
+					{Time: baseTime.Add(5 * time.Second), StrTime: "2023-01-01T12:00:05Z"},
+					{Time: baseTime.Add(11 * time.Second), StrTime: "2023-01-01T12:00:11Z"},
+				},
+			},
+			code: "MedianInterval(map(queueWithRFC3339, { date(#.StrTime) }))",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+
+			if test.wantErr {
+				if err != nil {
+					// Compile-time error (type checking)
+					if test.errContains != "" {
+						assert.Contains(t, err.Error(), test.errContains)
+					}
+					return
+				}
+				// Runtime error
+				_, err := expr.Run(program, test.env)
+				require.Error(t, err)
+				if test.errContains != "" {
+					assert.Contains(t, err.Error(), test.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			got, err := expr.Run(program, test.env)
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
+
 func TestParseUri(t *testing.T) {
 	tests := []struct {
 		name   string
