@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/netip"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"reflect"
@@ -57,12 +57,12 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
 		// DecisionDeleteChan: make(chan []*models.Decision),
-		dbClient:     dbClient,
-		mu:           sync.Mutex{},
-		startup:      true,
-		pullTomb:     tomb.Tomb{},
-		pushTomb:     tomb.Tomb{},
-		metricsTomb:  tomb.Tomb{},
+		dbClient:    dbClient,
+		mu:          sync.Mutex{},
+		startup:     true,
+		pullTomb:    tomb.Tomb{},
+		pushTomb:    tomb.Tomb{},
+		metricsTomb: tomb.Tomb{},
 		consoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  ptr.Of(false),
 			ShareTaintedScenarios: ptr.Of(false),

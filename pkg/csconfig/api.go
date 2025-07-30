@@ -357,7 +357,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	}
 
 	if (c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil) && !inCli {
-		log.Printf("push and pull to Central API disabled")
+		log.Info("push and pull to Central API disabled")
 	}
 
 	// Set default values for CAPI push/pull

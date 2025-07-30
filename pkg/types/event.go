@@ -34,7 +34,7 @@ type Event struct {
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
 	/* output of Unmarshal */
-	Unmarshaled map[string]interface{} `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
+	Unmarshaled map[string]any `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
 	/* Overflow */
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` // parsed time `json:"-"` ``
@@ -51,7 +51,7 @@ func MakeEvent(timeMachine bool, evtType int, process bool) Event {
 	evt := Event{
 		Parsed:      make(map[string]string),
 		Meta:        make(map[string]string),
-		Unmarshaled: make(map[string]interface{}),
+		Unmarshaled: make(map[string]any),
 		Enriched:    make(map[string]string),
 		ExpectMode:  LIVE,
 		Process:     process,

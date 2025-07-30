@@ -136,7 +136,7 @@ func (n *Node) CompileWLs() (bool, error) {
 	for _, filter := range n.Whitelist.Exprs {
 		var err error
 		expression := &ExprWhitelist{}
-		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 		if err != nil {
 			return false, fmt.Errorf("unable to compile whitelist expression '%s' : %v", filter, err)
 		}

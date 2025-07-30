@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net/netip"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strings"
@@ -113,7 +113,7 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	return scenarios, nil
 }
 
-func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
+func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
 	apiDecisions := models.AddSignalsRequestItemDecisions{}
 
 	for _, decision := range decisions {
@@ -163,7 +163,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 		CreatedAt:     alert.CreatedAt,
 		MachineID:     alert.MachineID,
 		ScenarioTrust: scenarioTrust,
-		Decisions:     decisionsToApiDecisions(alert.Decisions),
+		Decisions:     decisionsToAPIDecisions(alert.Decisions),
 		UUID:          alert.UUID,
 	}
 	if shareContext {
@@ -433,7 +433,7 @@ func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {
 	}
 
 	if count > 0 {
-		log.Printf("last CAPI pull is newer than 1h30, skip.")
+		log.Info("last CAPI pull is newer than 1h30, skip.")
 		return false, nil
 	}
 
