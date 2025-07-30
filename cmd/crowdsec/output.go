@@ -125,7 +125,12 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 			}
 			if event.Overflow.Reprocess {
 				log.Debugf("Overflow being reprocessed.")
-				input <- event
+				select {
+				case input <- event:
+					log.Debugf("reprocessing overflow event")
+				case <-parsersTomb.Dead():
+					log.Debugf("parsing is dead, skipping")
+				}
 			}
 			if dumpStates {
 				continue
