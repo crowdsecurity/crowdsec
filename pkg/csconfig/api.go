@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"strings"
 	"time"
@@ -276,8 +277,8 @@ func toValidCIDR(ip string) string {
 }
 
 type CapiWhitelist struct {
-	Ips   []net.IP     `yaml:"ips,omitempty"`
-	Cidrs []*net.IPNet `yaml:"cidrs,omitempty"`
+	Ips   []netip.Addr   `yaml:"ips,omitempty"`
+	Cidrs []netip.Prefix `yaml:"cidrs,omitempty"`
 }
 
 type LocalAPIAutoRegisterCfg struct {
@@ -356,7 +357,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	}
 
 	if (c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil) && !inCli {
-		log.Printf("push and pull to Central API disabled")
+		log.Info("push and pull to Central API disabled")
 	}
 
 	// Set default values for CAPI push/pull
@@ -450,21 +451,21 @@ func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
 	}
 
 	ret := &CapiWhitelist{
-		Ips:   make([]net.IP, len(fromCfg.Ips)),
-		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
+		Ips:   make([]netip.Addr, len(fromCfg.Ips)),
+		Cidrs: make([]netip.Prefix, len(fromCfg.Cidrs)),
 	}
 
 	for idx, v := range fromCfg.Ips {
-		ip := net.ParseIP(v)
-		if ip == nil {
-			return nil, fmt.Errorf("invalid IP address: %s", v)
+		ip, err := netip.ParseAddr(v)
+		if err != nil {
+			return nil, err
 		}
 
 		ret.Ips[idx] = ip
 	}
 
 	for idx, v := range fromCfg.Cidrs {
-		_, tnet, err := net.ParseCIDR(v)
+		tnet, err := netip.ParsePrefix(v)
 		if err != nil {
 			return nil, err
 		}

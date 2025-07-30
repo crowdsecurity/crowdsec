@@ -38,7 +38,7 @@ func TestWhitelistCompile(t *testing.T) {
 					"127.0.0.1/1000",
 				},
 			},
-			expectedErr: "invalid CIDR address",
+			expectedErr: `parsing whitelist: netip.ParsePrefix("127.0.0.1/1000"): prefix length out of range`,
 		},
 		{
 			name: "Valid EXPR whitelist",
