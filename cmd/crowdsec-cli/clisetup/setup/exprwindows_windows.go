@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/sys/windows"
@@ -31,8 +32,8 @@ func (e *ExprWindows) ServiceEnabled(serviceName string) (bool, error) {
 	}
 	svc, err := e.serviceManager.OpenService(serviceName)
 	if err != nil {
-		errno, ok := err.(windows.Errno)
-		if ok && errno == windows.ERROR_SERVICE_DOES_NOT_EXIST {
+		var errno windows.Errno
+		if errors.As(err, &errno) && errno == windows.ERROR_SERVICE_DOES_NOT_EXIST {
 			e.servicesCache[serviceName] = false // Cache the non-existence
 			return false, nil
 		}

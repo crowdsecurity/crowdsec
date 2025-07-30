@@ -24,7 +24,9 @@ func TestLoadCrowdsec(t *testing.T) {
 	require.NoError(t, err)
 
 	notExist := "./testdata/acquis_not_exist.yaml"
+
 	notExistFullPath, err := filepath.Abs(notExist)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name        string
