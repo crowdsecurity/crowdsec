@@ -260,7 +260,7 @@ if ! is_mounted "/var/lib/crowdsec/data" && [ -z "$CROWDSEC_BYPASS_DB_VOLUME_CHE
         echo "No volume mounted for /var/lib/crowdsec/data"
         echo "This directory is used to store the crowdsec local database (if using sqlite) and datafiles used by the parsers and scenarios."
         echo "It is mandatory to mount a volume to this directory to persist the database and any datafiles downloaded from the hub."
-        echo "If you are doing a log replay or using a remote database (mysql, postgresql), you can set the environment variable CROWDSEC_BYPASS_DB_VOLUME_CHECK to skip this check."
+        echo "If you are doing a log replay or using a remote database (mysql, postgresql) on a LAPI-only container, you can set the environment variable CROWDSEC_BYPASS_DB_VOLUME_CHECK to skip this check."
         echo "Exiting..."
         exit 0 # No error to avoid a restart loop
 fi
