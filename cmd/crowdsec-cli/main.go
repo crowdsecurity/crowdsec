@@ -169,6 +169,10 @@ func (cli *cliRoot) initialize() error {
 		if cli.outputColor != "yes" && cli.outputColor != "no" && cli.outputColor != "auto" {
 			return fmt.Errorf("output color '%s' not supported: must be one of yes, no, auto", cli.outputColor)
 		}
+
+		if cli.outputColor == "no" {
+			os.Setenv("NO_COLOR", "1")
+		}
 	}
 
 	if csConfig.DbConfig != nil {

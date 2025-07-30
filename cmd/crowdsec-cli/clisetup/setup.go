@@ -28,6 +28,10 @@ func (cli *cliSetup) NewCommand() *cobra.Command {
 cscli setup [command]
 # With no explicit command, will run as "cscli setup interactive"
 # and pass through any flags.
+
+# If the variable $CROWDSEC_SETUP_DETECT_CONFIG is defined, it is used
+# as default value for --detect-config. This way you can apply a custom
+# set of rules when installing crowdsec with a package manager.
 `
 	cmd.Args = args.NoArgs
 

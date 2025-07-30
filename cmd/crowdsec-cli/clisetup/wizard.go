@@ -238,6 +238,8 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 			}
 		}
 
+		fmt.Fprintln(os.Stdout)
+
 		// XXX TODO: warn user not to alter the generated files
 		// XXX TODO: and they are responsible to remove them and
 		// the collections when removing the associated software
@@ -252,6 +254,13 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 	}
 
 	if msg := reload.UserMessage(); msg != "" && (len(acquisitionSpecs) > 0 || len(hubSpecs) > 0)  {
+		yellow := color.YellowString
+		yellowBold := color.New(color.FgYellow, color.Bold).SprintFunc()
+
+		fmt.Fprintln(os.Stdout, yellow(`
+CrowdSec alone will not block any IP address. If you want to block them, you must use a remediation component.
+You can find them on`), yellowBold("https://app.crowdsec.net/hub/remediation-components"))
+
 		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
