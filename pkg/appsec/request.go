@@ -372,6 +372,8 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
+	originalHTTPRequest.URL = parsedURL
+
 	var remoteAddrNormalized string
 	if r.RemoteAddr == "@" {
 		r.RemoteAddr = "127.0.0.1:65535"
