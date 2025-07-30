@@ -130,7 +130,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pytest", specifier = ">=8.3.4" },
-    { name = "pytest-cs", git = "https://github.com/crowdsecurity/pytest-cs?branch=skip-volume-mount-check" },
+    { name = "pytest-cs", git = "https://github.com/crowdsecurity/pytest-cs" },
     { name = "pytest-dotenv", specifier = ">=0.5.2" },
     { name = "pytest-xdist", specifier = ">=3.6.1" },
 ]
@@ -441,8 +441,8 @@ wheels = [
 
 [[package]]
 name = "pytest-cs"
-version = "0.7.23"
-source = { git = "https://github.com/crowdsecurity/pytest-cs?branch=skip-volume-mount-check#e432efd8cf3bccaadb7d702b6292563bfd9e4f8f" }
+version = "0.7.24"
+source = { git = "https://github.com/crowdsecurity/pytest-cs#0c085d717f4f9df8dc4b0387f11c0c1f7fdbc6b4" }
 dependencies = [
     { name = "docker" },
     { name = "psutil" },
