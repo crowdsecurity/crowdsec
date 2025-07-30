@@ -204,34 +204,30 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.Acquisitio
 	return metrics.AcquisitionMetricsLevelFull
 }
 
-func detectTypes(r io.Reader) ([]string, error) {
+func detectType(r io.Reader) (string, error) {
 	collectedKeys, err := csyaml.GetDocumentKeys(r)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	ret := make([]string, len(collectedKeys))
-
-	for idx, keys := range collectedKeys {
-		var detected string
-
-		switch {
-		case slices.Contains(keys, "source"):
-			detected = ""
-		case slices.Contains(keys, "filename"):
-			detected = "file"
-		case slices.Contains(keys, "filenames"):
-			detected = "file"
-		case slices.Contains(keys, "journalctl_filter"):
-			detected = "journalctl"
-		default:
-			detected = ""
-		}
-
-		ret[idx] = detected
+	if len(collectedKeys) == 0 {
+		return "", nil
 	}
 
-	return ret, nil
+	keys := collectedKeys[0]
+
+	switch {
+	case slices.Contains(keys, "source"):
+		return "", nil
+	case slices.Contains(keys, "filename"):
+		return "file", nil
+	case slices.Contains(keys, "filenames"):
+		return "file", nil
+	case slices.Contains(keys, "journalctl_filter"):
+		return "journalctl", nil
+	default:
+		return "", nil
+	}
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
@@ -254,11 +250,6 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 
 	expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
 
-	detectedTypes, err := detectTypes(strings.NewReader(expandedAcquis))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
-	}
-
 	documents, err := csyaml.SplitDocuments(strings.NewReader(expandedAcquis))
 	if err != nil {
 		return nil, err
@@ -267,18 +258,22 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 	idx := -1
 
 	for _, yamlDoc := range documents {
+		detectedType, err := detectType(bytes.NewReader(yamlDoc))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
+		}
+
 		idx += 1
 
 		var sub configuration.DataSourceCommonCfg
 
 		// can't be strict here, the doc contains specific datasource config too but we won't collect them now.
-		err := yaml.UnmarshalWithOptions(yamlDoc, &sub)
-		if err != nil {
+		if err = yaml.UnmarshalWithOptions(yamlDoc, &sub); err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), errors.New(yaml.FormatError(err, false, false)))
 		}
 
 		// for backward compat ('type' was not mandatory, detect it)
-		if guessType := detectedTypes[idx]; guessType != "" {
+		if guessType := detectedType; guessType != "" {
 			log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
 
 			if sub.Source != "" && sub.Source != guessType {
