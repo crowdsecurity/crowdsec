@@ -309,8 +309,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 }
 
 func fatal(err error) {
-	red := color.New(color.FgRed).SprintFunc()
-	fmt.Fprintln(os.Stderr, red("Error:"), err)
+	fmt.Fprintln(os.Stderr, color.RedString("Error:"), err)
 	os.Exit(1)
 }
 
@@ -323,7 +322,19 @@ func mainWrap() error {
 		return err
 	}
 
-	return cmd.ExecuteContext(ctx)
+	err = cmd.ExecuteContext(ctx)
+	if err != nil {
+		cmdName := cmd.Name()
+
+		subCmd, _, subErr := cmd.Find(os.Args[1:])
+		if subErr == nil {
+			cmdName = subCmd.CommandPath()
+		}
+
+		return fmt.Errorf("%s: %w", cmdName, err)
+	}
+
+	return nil
 }
 
 func main() {

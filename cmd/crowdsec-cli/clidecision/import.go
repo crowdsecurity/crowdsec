@@ -212,7 +212,6 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 
 		allowlistResp, _, err := cli.client.Allowlists.CheckIfAllowlistedBulk(ctx, decisionsStr)
-
 		if err != nil {
 			return err
 		}

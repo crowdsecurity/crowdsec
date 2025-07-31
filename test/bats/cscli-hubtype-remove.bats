@@ -185,7 +185,7 @@ teardown() {
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/windows-auth
 
     rune -1 cscli parsers remove crowdsecurity/whitelists --all
-    assert_stderr "Error: can't specify items and '--all' at the same time"
+    assert_stderr "Error: cscli parsers remove: can't specify items and '--all' at the same time"
 
     rune -0 cscli parsers remove --all --dry-run
     assert_output - --regexp <<-EOT
