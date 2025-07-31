@@ -3,8 +3,9 @@ package reload
 import (
 	"os"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
 	isatty "github.com/mattn/go-isatty"
+
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 func UserMessage() string {
