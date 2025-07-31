@@ -363,7 +363,6 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 
 	// FIXME: handle custom xpath query
 	w.query, err = w.buildXpathQuery()
-
 	if err != nil {
 		return fmt.Errorf("buildXpathQuery failed: %w", err)
 	}
@@ -371,7 +370,6 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 	w.logger.Debugf("query: %s\n", w.query)
 
 	w.evtConfig, err = w.generateConfig(w.query, false)
-
 	if err != nil {
 		return fmt.Errorf("generateConfig failed: %w", err)
 	}

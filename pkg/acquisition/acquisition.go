@@ -161,7 +161,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, err
 	}
 
-	uniqueId := uuid.NewString()
+	uniqueID := uuid.NewString()
 
 	if transformExpr != "" {
 		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
@@ -169,10 +169,10 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
 
-		transformRuntimes[uniqueId] = vm
+		transformRuntimes[uniqueID] = vm
 	}
 
-	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
+	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueID)
 	if err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
@@ -231,7 +231,7 @@ func detectType(r io.Reader) (string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -312,10 +312,10 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 			return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
 		}
 
-		uniqueId := uuid.NewString()
-		sub.UniqueId = uniqueId
+		uniqueID := uuid.NewString()
+		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(sub, yamlDoc, metrics_level)
+		src, err := DataSourceConfigure(sub, yamlDoc, metricsLevel)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -332,7 +332,7 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 			}
 
-			transformRuntimes[uniqueId] = vm
+			transformRuntimes[uniqueID] = vm
 		}
 
 		sources = append(sources, src)
@@ -345,10 +345,10 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
 	var allSources []DataSource
 
-	metrics_level := GetMetricsLevelFromPromCfg(prom)
+	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(acquisFile, metrics_level)
+		sources, err := sourcesFromFile(acquisFile, metricsLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -398,7 +398,8 @@ func copyEvent(evt types.Event, line string) types.Event {
 
 func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
-	logger.Infof("transformer started")
+
+	logger.Info("transformer started")
 
 	for {
 		select {

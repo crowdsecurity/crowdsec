@@ -2,7 +2,8 @@
 
 package setup
 
-//noop for non-Windows builds
+// noop for non-Windows builds
+
 type ExprWindows struct{}
 
 func NewExprWindows() (*ExprWindows, error) {

@@ -170,8 +170,9 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 			if err != nil {
 				return err
 			}
+
 			if !ok {
-				fmt.Fprintln(os.Stdout, "skipped " + path)
+				fmt.Fprintln(os.Stdout, "skipped "+path)
 				continue
 			}
 		}

@@ -249,7 +249,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 		}
 	}
 
-	if msg := reload.UserMessage(); msg != "" && (len(acquisitionSpecs) > 0 || len(hubSpecs) > 0)  {
+	if msg := reload.UserMessage(); msg != "" && (len(acquisitionSpecs) > 0 || len(hubSpecs) > 0) {
 		yellow := color.YellowString
 		yellowBold := color.New(color.FgYellow, color.Bold).SprintFunc()
 
