@@ -346,7 +346,7 @@ service_name_regexp:
 			dockerTomb := tomb.Tomb{}
 			out := make(chan types.Event)
 			dockerSource := DockerSource{}
-
+			//nolint:contextcheck
 			err := dockerSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
