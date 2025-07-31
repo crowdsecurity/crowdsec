@@ -116,6 +116,19 @@ teardown() {
     assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [1:1] unknown field \\\"journalctl_filter\\\""
 }
 
+@test "datasource docker (regexp)" {
+    cat >"$ACQUIS_DIR"/bad.yaml <<-EOT
+	source: docker
+	container_name_regexp:
+	  - "[abc"
+	labels:
+	  type: syslog
+	EOT
+
+    rune -1 "$CROWDSEC" -t
+    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
+}
+
 @test "test mode does not fail because of appsec and allowlists" {
     rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
     cat >"$ACQUIS_DIR/appsec.yaml" <<-EOT
