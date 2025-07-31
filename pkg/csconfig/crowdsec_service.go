@@ -51,7 +51,7 @@ func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
 
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
-			log.Infof("acquisition_path: %s does not exist, skipping", c.AcquisitionFilePath)
+			log.Debugf("acquisition_path: %s does not exist, skipping", c.AcquisitionFilePath)
 		case err != nil:
 			return nil, fmt.Errorf("while checking acquisition_path: %w", err)
 		default:
