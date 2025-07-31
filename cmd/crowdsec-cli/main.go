@@ -169,6 +169,10 @@ func (cli *cliRoot) initialize() error {
 		if cli.outputColor != "yes" && cli.outputColor != "no" && cli.outputColor != "auto" {
 			return fmt.Errorf("output color '%s' not supported: must be one of yes, no, auto", cli.outputColor)
 		}
+
+		if cli.outputColor == "no" {
+			os.Setenv("NO_COLOR", "1")
+		}
 	}
 
 	if csConfig.DbConfig != nil {
@@ -221,7 +225,7 @@ func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 		Use:   "cscli",
 		Short: "cscli allows you to manage crowdsec",
 		Long: `cscli is the main command to interact with your crowdsec service, scenarios & db.
-It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
+It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage your crowdsec setup.`,
 		ValidArgs:         validArgs,
 		DisableAutoGenTag: true,
 		SilenceErrors:     true,

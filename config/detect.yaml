@@ -1,482 +1,563 @@
 ---
-version: 1.0
-
-# TODO: This file must be reviewed before the `cscli setup` command becomes GA
-
+# Main block defining all service detection rules
 detect:
-
-  #
-  # crowdsecurity/apache2
-  #
-
-  # XXX some distro is using this path?
-  #      - /var/log/*http*/*.log
-
+  # Detect apache2 on Debian-based systems
   apache2-systemd-deb:
+    # all conditions must evaluate to true
     when:
-      - UnitFound("apache2.service")
-      - PathExists("/etc/debian_version")
-    install:
+      # check if apache2 is in "systemctl list-unit-files --state=enabled,generated,static"
+      - Systemd.UnitEnabled("apache2.service")
+      # broad distribution category (use OS.ID to disambiguate "ubuntu" from "debian")
+      - Path.Exists("/etc/debian_version")
+    hub_spec:
+      # If the rules match, install the following items
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      filenames:
-        - /var/log/apache2/*.log
-      labels:
-        type: apache2
+    acquisition_spec:
+      # If the rules match, generate an acquisition file named "setup.apache2.yaml"
+      filename: apache2.yaml
+      datasource:
+        source: file
+        filenames:
+          - /var/log/apache2/*.log
+        labels:
+          type: apache2
 
+  # Detect apache2 on rpm-based systems
   apache2-systemd-rpm:
     when:
-      - UnitFound("httpd.service")
-      - PathExists("/etc/redhat-release")
-    install:
+      - Systemd.UnitEnabled("httpd.service")
+      - Path.Exists("/etc/redhat-release")
+    hub_spec:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      filenames:
-        - /var/log/httpd/*.log
-        # XXX /var/log/*http*/*.log
-      labels:
-        type: apache2
+    acquisition_spec:
+      filename: apache2.yaml
+      datasource:
+        source: file
+        filenames:
+          - /var/log/httpd/*.log
+        labels:
+          type: apache2
 
-  #
-  # crowdsecurity/asterisk
-  #
-
+  # Asterisk PBX
   asterisk-systemd:
     when:
-      - UnitFound("asterisk.service")
-    install:
+      - Systemd.UnitEnabled("asterisk.service")
+    hub_spec:
       collections:
         - crowdsecurity/asterisk
-    datasource:
-      source: file
-      labels:
-        type: asterisk
-      filenames:
-        - /var/log/asterisk/*.log
+    acquisition_spec:
+      filename: asterisk.yaml
+      datasource:
+        source: file
+        labels:
+          type: asterisk
+        filenames:
+          - /var/log/asterisk/*.log
 
-  #
-  # crowdsecurity/caddy
-  #
-
+  # Caddy web server
   caddy-systemd:
     when:
-      - UnitFound("caddy.service")
-    install:
+      - Systemd.UnitEnabled("caddy.service")
+    hub_spec:
       collections:
         - crowdsecurity/caddy
-    datasource:
-      source: file
-      labels:
-        type: caddy
-      filenames:
-        - /var/log/caddy/*.log
+    acquisition_spec:
+      filename: caddy.yaml
+      datasource:
+        source: file
+        labels:
+          type: caddy
+        filenames:
+          - /var/log/caddy/*.log
 
-  #
-  # crowdsecurity/dovecot
-  #
-
+  # Dovecot IMAP/POP3 server
   dovecot-systemd:
     when:
-      - UnitFound("dovecot.service")
-    install:
+      - Systemd.UnitEnabled("dovecot.service")
+    hub_spec:
       collections:
         - crowdsecurity/dovecot
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/mail.log
+    acquisition_spec:
+      filename: dovecot.yaml
+      datasource:
+        source: file
+        labels:
+          type: dovecot
+        filenames:
+          - /var/log/mail.log
 
-  #
-  # LePresidente/emby
-  #
-
+  # Emby media server
   emby-systemd:
     when:
-      - UnitFound("emby-server.service")
-    install:
+      - Systemd.UnitEnabled("emby-server.service")
+    hub_spec:
       collections:
         - LePresidente/emby
-    datasource:
-      source: file
-      labels:
-        type: emby
-      filenames:
-        - /var/log/embyserver.txt
+    acquisition_spec:
+      filename: emby.yaml
+      datasource:
+        source: file
+        labels:
+          type: emby
+        filenames:
+          - /var/log/embyserver.txt
 
-  #
-  # crowdsecurity/endlessh
-  #
-
+  # Endlessh SSH tarpit
   endlessh-systemd:
     when:
-      - UnitFound("endlessh.service")
-    install:
+      - Systemd.UnitEnabled("endlessh.service")
+    hub_spec:
       collections:
         - crowdsecurity/endlessh
-    datasource:
-      source: journalctl
-      labels:
-        type: syslog
-      # XXX this? or /var/log/syslog?
-      journalctl_filter:
-        - "_SYSTEMD_UNIT=endlessh.service"
+    acquisition_spec:
+      filename: endlessh.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: endlessh
+        # XXX this? or /var/log/syslog?
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=endlessh.service"
 
-  #
-  # crowdsecurity/gitea
-  #
-
-  # XXX untested
-
+  # Gitea Git server (XXX untested)
   gitea-systemd:
     when:
-      - UnitFound("gitea.service")
-    install:
+      - Systemd.UnitEnabled("gitea.service")
+    hub_spec:
       collections:
         - crowdsecurity/gitea
-    datasource:
-      source: file
-      labels:
-        type: gitea
-      filenames:
-        - /var/log/gitea.log
+    acquisition_spec:
+      filename: gitea.yaml
+      datasource:
+        source: file
+        labels:
+          type: gitea
+        filenames:
+          - /var/log/gitea.log
 
-  #
-  # crowdsecurity/haproxy
-  #
-
+  # HAProxy load balancer
   haproxy-systemd:
     when:
-      - UnitFound("haproxy.service")
-    install:
+      - Systemd.UnitEnabled("haproxy.service")
+    hub_spec:
       collections:
         - crowdsecurity/haproxy
-    datasource:
-      source: file
-      labels:
-        type: haproxy
-      filenames:
-        - /var/log/haproxy/*.log
+    acquisition_spec:
+      filename: haproxy.yaml
+      datasource:
+        source: file
+        labels:
+          type: haproxy
+        filenames:
+          - /var/log/haproxy/*.log
 
-  #
-  # firewallservices/lemonldap-ng
-  #
-
-  lemonldap-ng-systemd:
-    when:
-      - UnitFound("lemonldap-ng-fastcgi-server.service")
-    install:
-      collections:
-        - firewallservices/lemonldap-ng
-    #datasource:
-    #  # XXX todo where are the logs?
-    #  labels:
-    #    type: syslog
-
-  #
-  # crowdsecurity/mariadb
-  #
-
+  # MariaDB server
   mariadb-systemd:
     when:
-      - UnitFound("mariadb.service")
-    install:
+      - Systemd.UnitEnabled("mariadb.service")
+    hub_spec:
       collections:
         - crowdsecurity/mariadb
-    datasource:
-      source: file
-      labels:
-        type: mysql
-      filenames:
-        - /var/log/mysql/error.log
+    acquisition_spec:
+      filename: mariadb.yaml
+      datasource:
+        source: file
+        labels:
+          type: mysql
+        filenames:
+          - /var/log/mysql/error.log
 
-  #
-  # crowdsecurity/mysql
-  #
-
+  # MySQL server
   mysql-systemd:
     when:
-      - UnitFound("mysql.service")
-    install:
+      - Systemd.UnitEnabled("mysql.service")
+    hub_spec:
       collections:
         - crowdsecurity/mysql
-    datasource:
-      source: file
-      labels:
-        type: mysql
-      filenames:
-        - /var/log/mysql/error.log
+    acquisition_spec:
+      filename: mysql.yaml
+      datasource:
+        source: file
+        labels:
+          type: mysql
+        filenames:
+          - /var/log/mysql/error.log
 
-  #
-  # crowdsecurity/nginx
-  #
-
+  # Nginx
   nginx-systemd:
     when:
-      - UnitFound("nginx.service")
-    install:
+      - Systemd.UnitEnabled("nginx.service")
+    hub_spec:
       collections:
         - crowdsecurity/nginx
-    datasource:
-      source: file
-      labels:
-        type: nginx
-      filenames:
-        - /var/log/nginx/*.log
+    acquisition_spec:
+      filename: nginx.yaml
+      datasource:
+        source: file
+        labels:
+          type: nginx
+        filenames:
+          - /var/log/nginx/*.log
 
+  # OpenResty (nginx distribution)
   openresty-systemd:
     when:
-      - UnitFound("openresty.service")
-    install:
+      - Systemd.UnitEnabled("openresty.service")
+    hub_spec:
       collections:
         - crowdsecurity/nginx
-    datasource:
-      source: file
-      labels:
-        type: nginx
-      filenames:
-        - /usr/local/openresty/nginx/logs/*.log
+    acquisition_spec:
+      filename: openresty.yaml
+      datasource:
+        source: file
+        labels:
+          type: nginx
+        filenames:
+          - /usr/local/openresty/nginx/logs/*.log
 
-  #
-  # crowdsecurity/odoo
-  #
-
+  # Odoo ERP
   odoo-systemd:
     when:
-      - UnitFound("odoo.service")
-    install:
+      - Systemd.UnitEnabled("odoo.service")
+    hub_spec:
       collections:
         - crowdsecurity/odoo
-    datasource:
-      source: file
-      labels:
-        type: odoo
-      filenames:
-        - /var/log/odoo/*.log
-
-  #
-  # LePresidente/ombi
-  #
+    acquisition_spec:
+      filename: odoo.yaml
+      datasource:
+        source: file
+        labels:
+          type: odoo
+        filenames:
+          - /var/log/odoo/*.log
 
   # This only works on deb-based systems. On other distributions, the
   # application is run from the release tarball and the log location depends on
   # the location it's run from.
 
+  # Ombi media request system
   ombi-systemd:
     when:
-      - UnitFound("ombi.service")
-      - PathExists("/etc/debian_version")
-    install:
+      - Systemd.UnitEnabled("ombi.service")
+      - Path.Exists("/etc/debian_version")
+    hub_spec:
       collections:
         - LePresidente/ombi
-    datasource:
-      source: file
-      labels:
-        type: ombi
-      filenames:
-        - /var/log/ombi/log-*.txt
+    acquisition_spec:
+      filename: ombi.yaml
+      datasource:
+        source: file
+        labels:
+          type: ombi
+        filenames:
+          - /var/log/ombi/log-*.txt
 
-  #
-  # crowdsecurity/pgsql
-  #
-
+  # PostgreSQL (deb)
   pgsql-systemd-deb:
     when:
-      - UnitFound("postgresql.service")
-      - PathExists("/etc/debian_version")
-    install:
+      - Systemd.UnitEnabled("postgresql.service")
+      - Path.Exists("/etc/debian_version")
+    hub_spec:
       collections:
         - crowdsecurity/pgsql
-    datasource:
-      source: file
-      labels:
-        type: postgres
-      filenames:
-        - /var/log/postgresql/*.log
+    acquisition_spec:
+      filename: pgsql.yaml
+      datasource:
+        source: file
+        labels:
+          type: postgres
+        filenames:
+          - /var/log/postgresql/*.log
 
+  # PostgreSQL (rpm)
   pgsql-systemd-rpm:
     when:
-      - UnitFound("postgresql.service")
-      - PathExists("/etc/redhat-release")
-    install:
+      - Systemd.UnitEnabled("postgresql.service")
+      - Path.Exists("/etc/redhat-release")
+    hub_spec:
       collections:
         - crowdsecurity/pgsql
-    datasource:
-      source: file
-      labels:
-        type: postgres
-      filenames:
-        - /var/lib/pgsql/data/log/*.log
+    acquisition_spec:
+      filename: pgsql.yaml
+      datasource:
+        source: file
+        labels:
+          type: postgres
+        filenames:
+          - /var/lib/pgsql/data/log/*.log
 
-  #
-  # crowdsecurity/postfix
-  #
-
+  # Postfix mail server
   postfix-systemd:
     when:
-      - UnitFound("postfix.service")
-    install:
+      - Systemd.UnitEnabled("postfix.service")
+    hub_spec:
       collections:
         - crowdsecurity/postfix
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/mail.log
+    acquisition_spec:
+      filename: postfix.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/mail.log
 
-  #
-  # crowdsecurity/proftpd
-  #
-
+  # ProFTPD FTP server
   proftpd-systemd:
     when:
-      - UnitFound("proftpd.service")
-    install:
+      - Systemd.UnitEnabled("proftpd.service")
+    hub_spec:
       collections:
         - crowdsecurity/proftpd
-    datasource:
-      source: file
-      labels:
-        type: proftpd
-      filenames:
-        - /var/log/proftpd/*.log
+    acquisition_spec:
+      filename: proftpd.yaml
+      datasource:
+        source: file
+        labels:
+          type: proftpd
+        filenames:
+          - /var/log/proftpd/*.log
 
-  #
-  # fulljackz/pureftpd
-  #
-
+  # Pure-FTPd server
   pureftpd-systemd:
     when:
-      - UnitFound("pure-ftpd.service")
-    install:
+      - Systemd.UnitEnabled("pure-ftpd.service")
+    hub_spec:
       collections:
         - fulljackz/pureftpd
-    # XXX ?
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/pure-ftpd/*.log
+    acquisition_spec:
+      filename: pureftpd.yaml
+      datasource:
+        source: file
+        labels:
+          type: pure-ftpd
+        filenames:
+          - /var/log/pure-ftpd/*.log
 
-  #
-  # crowdsecurity/smb
-  #
-
+  # Samba server
   smb-systemd:
     when:
       # deb -> smbd.service
       # rpm -> smb.service
-      - UnitFound("smbd.service") or UnitFound("smb.service")
-    install:
+      - Systemd.UnitEnabled("smbd.service") or Systemd.UnitEnabled("smb.service")
+    hub_spec:
       collections:
         - crowdsecurity/smb
-    datasource:
-      source: file
-      labels:
-        type: smb
-      filenames:
-        - /var/log/samba*.log
+    acquisition_spec:
+      filename: smb.yaml
+      datasource:
+        source: file
+        labels:
+          type: smb
+        filenames:
+          - /var/log/samba*.log
 
-  #
-  # crowdsecurity/sshd
+  ###
+  # SSH daemon
   #
 
-  sshd-systemd:
+  ssh-systemd-file:
     when:
-      # deb -> ssh.service
-      # rpm -> sshd.service
-      - UnitFound("ssh.service") or UnitFound("sshd.service") or UnitFound("ssh.socket") or UnitFound("sshd.socket")
-    install:
+      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - Path.Exists("/var/log/auth.log")
+    hub_spec:
       collections:
         - crowdsecurity/sshd
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/auth.log
-        - /var/log/sshd.log
-        - /var/log/secure
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/sshd.log
+          - /var/log/secure
+
+  sshd-systemd-file:
+    when:
+      - Systemd.UnitEnabled("sshd.service") or Systemd.UnitEnabled("sshd.socket")
+      - Path.Exists("/var/log/auth.log")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/sshd.log
+          - /var/log/secure
+
+  ssh-systemd-journalctl:
+    when:
+      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - not Path.Exists("/var/log/auth.log")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=ssh.service"
+
+  sshd-systemd-journalctl:
+    when:
+      - Systemd.UnitEnabled("sshd.service") or Systemd.UnitEnabled("sshd.socket")
+      - not Path.Exists("/var/log/auth.log")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=sshd.service"
 
   #
-  # crowdsecurity/suricata
   #
+  ###
 
+  # Suricata IDS/IPS
   suricata-systemd:
     when:
-      - UnitFound("suricata.service")
-    install:
+      - Systemd.UnitEnabled("suricata.service")
+    hub_spec:
       collections:
         - crowdsecurity/suricata
-    datasource:
-      source: file
-      labels:
-        type: suricata-evelogs
-      filenames:
-        - /var/log/suricata/eve.json
+    acquisition_spec:
+      filename: suricata.yaml
+      datasource:
+        source: file
+        labels:
+          type: suricata-evelogs
+        filenames:
+          - /var/log/suricata/eve.json
 
-  #
-  # crowdsecurity/vsftpd
-  #
-
+  # vsftpd FTP server
   vsftpd-systemd:
     when:
-      - UnitFound("vsftpd.service")
-    install:
+      - Systemd.UnitEnabled("vsftpd.service")
+    hub_spec:
       collections:
         - crowdsecurity/vsftpd
-    datasource:
-      source: file
-      labels:
-        type: vsftpd
-      filenames:
-        - /var/log/vsftpd/*.log
+    acquisition_spec:
+      filename: vsftpd.yaml
+      datasource:
+        source: file
+        labels:
+          type: vsftpd
+        filenames:
+          - /var/log/vsftpd/*.log
 
+  # if you do this, do it at home (not in production)
+  telnet:
+    when:
+      - len(Path.Glob("/var/log/telnetd*.log")) > 0
+    hub_spec:
+      scenarios:
+        - crowdsecurity/telnet-bf
+    acquisition_spec:
+      filename: telnet.yaml
+      datasource:
+        source: file
+        labels:
+          type: telnet
+        filenames:
+          - /var/log/telnetd*.log
+  
+  windows_iis:
+    when:
+      - Windows.ServiceEnabled("W3SVC")
+    hub_spec:
+      collections:
+        - crowdsecurity/iis
+    acquisition_spec:
+      filename: iis.yaml
+      datasource:
+        source: file
+        use_time_machine: true
+        filenames:
+          - C:\inetpub\logs\LogFiles\*\*.log
+        labels:
+          type: iis
+  
+  windows_sqlserver:
+    when:
+      - Windows.ServiceEnabled("MSSQLSERVER")
+    hub_spec:
+      collections:
+        - crowdsecurity/mssql
+    acquisition_spec:
+      filename: mssql.yaml
+      datasource:
+        source: wineventlog
+        event_channel: Application
+        event_ids:
+          - 18456
+        event_level: information
+        labels:
+          type: eventlog
   #
-  # Operating Systems
+  # Operating System detection
   #
 
   linux:
     when:
       - OS.Family == "linux"
-    install:
+    hub_spec:
       collections:
         - crowdsecurity/linux
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/syslog
-        - /var/log/kern.log
-        - /var/log/messages
+    acquisition_spec:
+      filename: linux.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/syslog
+          - /var/log/kern.log
+          - /var/log/messages
 
   freebsd:
     when:
       - OS.Family == "freebsd"
-    install:
+    hub_spec:
       collections:
         - crowdsecurity/freebsd
 
   windows:
     when:
       - OS.Family == "windows"
-    install:
+    hub_spec:
       collections:
         - crowdsecurity/windows
+    acquisition_spec:
+      filename: windows_auth.yaml
+      datasource:
+        source: wineventlog
+        event_channel: Security
+        event_ids:
+          - 4625
+          - 4623
+        event_level: information
+        labels:
+          type: eventlog
 
-  #
   # anti-lockout
-  #
-
   whitelists:
-    install:
+    hub_spec:
       parsers:
         - crowdsecurity/whitelists

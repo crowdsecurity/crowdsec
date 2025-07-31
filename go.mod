@@ -21,7 +21,7 @@ require (
 	github.com/corazawaf/coraza/v3 v3.3.3
 	github.com/corazawaf/libinjection-go v0.2.2
 	github.com/crowdsecurity/dlog v0.0.2
-	github.com/crowdsecurity/go-cs-lib v0.0.21-0.20250723121452-e1c07273af36
+	github.com/crowdsecurity/go-cs-lib v0.0.21-0.20250729074727-2c8f01ff69ea
 	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -39,7 +39,6 @@ require (
 	github.com/go-openapi/validate v0.24.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/goccy/go-yaml v1.18.0
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.6.0
@@ -55,7 +54,6 @@ require (
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jszwec/csvutil v1.5.1
-	github.com/lithammer/dedent v1.1.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -130,6 +128,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect

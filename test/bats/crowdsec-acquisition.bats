@@ -113,7 +113,7 @@ teardown() {
 
     rune -1 "$CROWDSEC" -t
 
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [1:1] unknown field \\\"journalctl_filter\\\""
+    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [2:1] unknown field \\\"journalctl_filter\\\""
 }
 
 @test "datasource docker (regexp)" {
