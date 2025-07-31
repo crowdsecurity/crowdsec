@@ -14,7 +14,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -27,7 +27,7 @@ func TestConfigure(t *testing.T) {
 			config: `
 foobar: bla
 source: kafka`,
-			expectedErr: "line 2: field foobar not found in type kafkaacquisition.KafkaConfiguration",
+			expectedErr: `[2:1] unknown field "foobar"`,
 		},
 		{
 			config:      `source: kafka`,
@@ -74,7 +74,7 @@ group_id: crowdsec`,
 
 	for _, test := range tests {
 		k := KafkaSource{}
-		err := k.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+		err := k.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -168,7 +168,7 @@ func TestStreamingAcquisition(t *testing.T) {
 source: kafka
 brokers:
   - localhost:9092
-topic: crowdsecplaintext`), subLogger, configuration.METRICS_NONE)
+topic: crowdsecplaintext`), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure kafka source : %s", err)
 			}
@@ -245,7 +245,7 @@ tls:
   client_cert: ./testdata/kafkaClient.certificate.pem
   client_key: ./testdata/kafkaClient.key
   ca_cert: ./testdata/snakeoil-ca-1.crt
-  `), subLogger, configuration.METRICS_NONE)
+  `), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure kafka source : %s", err)
 			}

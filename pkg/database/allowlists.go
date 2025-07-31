@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"net"
+	"net/netip"
 	"sort"
 	"strings"
 	"time"
@@ -360,22 +360,22 @@ func (c *Client) IsAllowlisted(ctx context.Context, value string) (bool, string,
 	return true, reason, nil
 }
 
-func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*net.IPNet, error) {
+func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]netip.Addr, []netip.Prefix, error) {
 	allowlists, err := c.ListAllowLists(ctx, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get allowlists: %w", err)
 	}
 
 	var (
-		ips  []net.IP
-		nets []*net.IPNet
+		ips  []netip.Addr
+		nets []netip.Prefix
 	)
 
 	for _, allowlist := range allowlists {
 		for _, item := range allowlist.Edges.AllowlistItems {
 			if item.ExpiresAt.IsZero() || item.ExpiresAt.After(time.Now().UTC()) {
 				if strings.Contains(item.Value, "/") {
-					_, ipNet, err := net.ParseCIDR(item.Value)
+					ipNet, err := netip.ParsePrefix(item.Value)
 					if err != nil {
 						c.Log.Errorf("unable to parse CIDR %s: %s", item.Value, err)
 						continue
@@ -383,8 +383,8 @@ func (c *Client) GetAllowlistsContentForAPIC(ctx context.Context) ([]net.IP, []*
 
 					nets = append(nets, ipNet)
 				} else {
-					ip := net.ParseIP(item.Value)
-					if ip == nil {
+					ip, err := netip.ParseAddr(item.Value)
+					if err != nil {
 						c.Log.Errorf("unable to parse IP %s", item.Value)
 						continue
 					}

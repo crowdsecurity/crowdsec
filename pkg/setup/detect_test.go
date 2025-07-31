@@ -881,7 +881,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				      source: journalctl
 				      filename: /path/to/file.log`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
-			expectedErr: "invalid datasource for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
+			expectedErr: `invalid datasource for foobar: cannot parse JournalCtlSource configuration: [1:1] unknown field "filename"`,
 		}, {
 			name: "source file: required fields",
 			config: `

@@ -24,7 +24,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -43,7 +43,7 @@ func TestConfigure(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd`,
-			expectedErr: "line 1: field foobar not found in type dockeracquisition.DockerConfiguration",
+			expectedErr: `while parsing DockerAcquisition configuration: [1:1] unknown field "foobar"`,
 		},
 		{
 			config: `
@@ -130,10 +130,12 @@ service_id_regexp:
 
 	subLogger := log.WithField("type", "docker")
 
-	for _, test := range tests {
-		f := DockerSource{}
-		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+	for _, tc := range tests {
+		t.Run(tc.config, func(t *testing.T) {
+			f := DockerSource{}
+			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+		})
 	}
 }
 
@@ -345,8 +347,7 @@ service_name_regexp:
 			out := make(chan types.Event)
 			dockerSource := DockerSource{}
 
-			//nolint:contextcheck
-			err := dockerSource.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+			err := dockerSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			mockClient := &mockDockerCli{isSwarmManager: ts.isSwarmManager}
@@ -501,7 +502,7 @@ use_service_labels: true`,
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := DockerSource{}
-			err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			mockClient := &mockDockerCli{isSwarmManager: test.isSwarmManager}
@@ -577,7 +578,7 @@ service_name:
 			mockClient := &mockDockerCli{isSwarmManager: test.isSwarmManager}
 			f.Client = mockClient
 
-			err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			// For this test, we manually set the expected behavior since Info() is simplified
@@ -714,42 +715,42 @@ func TestParseLabels(t *testing.T) {
 	tests := []struct {
 		name     string
 		labels   map[string]string
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name:     "bad label",
 			labels:   map[string]string{"crowdsecfoo": "bar"},
-			expected: map[string]interface{}{},
+			expected: map[string]any{},
 		},
 		{
 			name:     "simple label",
 			labels:   map[string]string{"crowdsec.bar": "baz"},
-			expected: map[string]interface{}{"bar": "baz"},
+			expected: map[string]any{"bar": "baz"},
 		},
 		{
 			name:     "multiple simple labels",
 			labels:   map[string]string{"crowdsec.bar": "baz", "crowdsec.foo": "bar"},
-			expected: map[string]interface{}{"bar": "baz", "foo": "bar"},
+			expected: map[string]any{"bar": "baz", "foo": "bar"},
 		},
 		{
 			name:     "multiple simple labels 2",
 			labels:   map[string]string{"crowdsec.bar": "baz", "bla": "foo"},
-			expected: map[string]interface{}{"bar": "baz"},
+			expected: map[string]any{"bar": "baz"},
 		},
 		{
 			name:     "end with dot",
 			labels:   map[string]string{"crowdsec.bar.": "baz"},
-			expected: map[string]interface{}{},
+			expected: map[string]any{},
 		},
 		{
 			name:     "consecutive dots",
 			labels:   map[string]string{"crowdsec......bar": "baz"},
-			expected: map[string]interface{}{},
+			expected: map[string]any{},
 		},
 		{
 			name:     "crowdsec labels",
 			labels:   map[string]string{"crowdsec.labels.type": "nginx"},
-			expected: map[string]interface{}{"labels": map[string]interface{}{"type": "nginx"}},
+			expected: map[string]any{"labels": map[string]any{"type": "nginx"}},
 		},
 	}
 
