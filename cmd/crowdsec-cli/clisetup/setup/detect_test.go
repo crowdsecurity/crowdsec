@@ -633,7 +633,7 @@ detect:
       datasource:
         source: docker`,
 			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: no containers names or containers ID configuration provided",
+			wantErr: "invalid acquisition spec for foobar: no containers or services configuration provided",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
 			config: `
