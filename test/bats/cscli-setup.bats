@@ -615,7 +615,7 @@ update-notifier-motd.timer              enabled enabled
 	          type: something
 	EOT
 
-    assert_stderr --partial "Error: parsing <stdin>: invalid acquisition spec for foobar: source is empty"
+    assert_stderr --partial "Error: cscli setup detect: parsing <stdin>: invalid acquisition spec for foobar: source is empty"
 
     # more datasource-specific tests are in detect_test.go
 }
@@ -654,13 +654,13 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
 
     rune -1 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["crowdsecurity/foo"]}}]}'
-    assert_stderr --partial 'Error: item collections:crowdsecurity/foo not found'
+    assert_stderr --partial 'Error: cscli setup install-hub: item collections:crowdsecurity/foo not found'
 }
 
 @test "cscli setup install-hub (missing arguments or directory)" {
     rune -1 cscli setup install-acquisition
     assert_output --partial "Usage:"
-    assert_stderr --partial "Error: accepts 1 arg(s), received 0"
+    assert_stderr --partial "Error: cscli setup install-acquisition: accepts 1 arg(s), received 0"
 
     rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR/does/not/exist" - <<< '{setup:}'
 
@@ -681,7 +681,7 @@ update-notifier-motd.timer              enabled enabled
 	          - /var/log/apache2/*.log
 	EOT
 
-    assert_stderr --partial "Error: creating acquisition directory: mkdir $BATS_TEST_TMPDIR/notadir: not a directory"
+    assert_stderr --partial "Error: cscli setup install-acquisition: creating acquisition directory: mkdir $BATS_TEST_TMPDIR/notadir: not a directory"
 }
 
 @test "cscli setup install-acquisition (single service)" {
@@ -1005,7 +1005,7 @@ update-notifier-motd.timer              enabled enabled
 	          - /path/to/something.log
 	EOT
 
-    assert_stderr --partial "Error: creating acquisition directory: mkdir ${ACQUIS_DIR}2: not a directory"
+    assert_stderr --partial "Error: cscli setup unattended: creating acquisition directory: mkdir ${ACQUIS_DIR}2: not a directory"
 }
 
 @test "cscli setup validate" {
@@ -1025,7 +1025,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     assert_stderr - <<-EOT
-	Error: invalid setup file: [1:1] unknown field "se tup"
+	Error: cscli setup validate: invalid setup file: [1:1] unknown field "se tup"
 	>  1 | se tup: null
 	       ^
 	
@@ -1037,7 +1037,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     assert_stderr - <<-EOT
-	Error: invalid setup file: [2:1] string was used where sequence is expected
+	Error: cscli setup validate: invalid setup file: [2:1] string was used where sequence is expected
 	   1 | setup:
 	>  2 | alsdk al; sdf
 	       ^
@@ -1051,7 +1051,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     assert_stderr - <<-EOT
-	Error: invalid setup file: [3:3] mapping key "key" already defined at [2:3]
+	Error: cscli setup validate: invalid setup file: [3:3] mapping key "key" already defined at [2:3]
 	   1 | setup:
 	   2 |   key: value1
 	>  3 |   key: value2

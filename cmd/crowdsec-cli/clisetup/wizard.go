@@ -100,7 +100,6 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 	}
 
 	if dryRun {
-		// XXX: wantColor?
 		fmt.Fprintln(os.Stdout, color.YellowString("Dry run mode enabled. No changes will be made."))
 		fmt.Fprintln(os.Stdout)
 	}
@@ -240,9 +239,6 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 
 		fmt.Fprintln(os.Stdout)
 
-		// XXX TODO: warn user not to alter the generated files
-		// XXX TODO: and they are responsible to remove them and
-		// the collections when removing the associated software
 		if installAcquis {
 			acquisDir = cmp.Or(acquisDir, cli.cfg().Crowdsec.AcquisitionDirPath)
 			if err := cli.acquisition(acquisitionSpecs, acquisDir, interactive, dryRun); err != nil {
