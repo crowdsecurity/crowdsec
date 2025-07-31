@@ -132,62 +132,75 @@ func shouldOverwrite(path string, newContent []byte) (bool, error) {
 	return overwrite, nil
 }
 
+// processAcquisitionSpec handles the creation of a single acquisition file.
+//
+// It includes an header with the appropriate checksum.
+// In dry-run, prints the content to stdout instead of writing to disk.
+// In interactive mode, it prompts the user before overwriting an existing file unless it's pristine.
+func (cli *cliSetup) processAcquisitionSpec(spec setup.AcquisitionSpec, toDir string, interactive, dryRun bool) error {
+	if spec.Datasource == nil {
+		return nil
+	}
+
+	path, err := spec.Path(toDir)
+	if err != nil {
+		return err
+	}
+
+	content, err := spec.ToYAML()
+	if err != nil {
+		return err
+	}
+
+	if dryRun {
+		_, _ = fmt.Fprintln(os.Stdout, "(dry run) "+path+"\n"+color.BlueString(string(content)))
+		return nil
+	}
+
+	contentWithHeader := spec.AddHeader(content)
+
+	if interactive {
+		ok, err := shouldOverwrite(path, contentWithHeader)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			fmt.Fprintln(os.Stdout, "skipped "+path)
+			return nil
+		}
+	}
+
+	fmt.Fprintln(os.Stdout, "creating "+path)
+
+	writer, err := spec.Open(toDir)
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+
+	_, err = writer.Write(contentWithHeader)
+	if err != nil {
+		return fmt.Errorf("writing acquisition to %q: %w", path, err)
+	}
+
+	return nil
+}
+
 func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir string, interactive bool, dryRun bool) error {
+	cfg := cli.cfg()
+
+	if toDir == "" {
+		toDir = cfg.Crowdsec.AcquisitionDirPath
+	}
+
+	if toDir == "" {
+		return fmt.Errorf("no acquisition directory specified, please use --acquis-dir or set crowdsec_services.acquisition_dir in %q", cfg.FilePath)
+	}
+
 	for _, spec := range acquisitionSpecs {
-		if spec.Datasource == nil {
-			continue
-		}
-
-		cfg := cli.cfg()
-
-		if toDir == "" {
-			toDir = cfg.Crowdsec.AcquisitionDirPath
-		}
-
-		if toDir == "" {
-			return fmt.Errorf("no acquisition directory specified, please use --acquis-dir or set crowdsec_services.acquisition_dir in %q", cfg.FilePath)
-		}
-
-		path, err := spec.Path(toDir)
-		if err != nil {
+		if err := cli.processAcquisitionSpec(spec, toDir, interactive, dryRun); err != nil {
 			return err
-		}
-
-		content, err := spec.ToYAML()
-		if err != nil {
-			return err
-		}
-
-		if dryRun {
-			_, _ = fmt.Fprintln(os.Stdout, "(dry run) "+path+"\n"+color.BlueString(string(content)))
-			continue
-		}
-
-		contentWithHeader := spec.AddHeader(content)
-
-		if interactive {
-			ok, err := shouldOverwrite(path, contentWithHeader)
-			if err != nil {
-				return err
-			}
-
-			if !ok {
-				fmt.Fprintln(os.Stdout, "skipped "+path)
-				continue
-			}
-		}
-
-		fmt.Fprintln(os.Stdout, "creating "+path)
-
-		writer, err := spec.Open(toDir)
-		if err != nil {
-			return err
-		}
-		defer writer.Close()
-
-		_, err = writer.Write(contentWithHeader)
-		if err != nil {
-			return fmt.Errorf("writing acquisition to %q: %w", path, err)
 		}
 	}
 
