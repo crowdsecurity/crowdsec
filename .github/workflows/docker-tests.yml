@@ -24,7 +24,7 @@ jobs:
         flavor: ["slim", "debian"]
 
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
 
       - name: Check out the repo
