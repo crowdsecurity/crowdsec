@@ -176,7 +176,6 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 
 func testFile(t *testing.T, file string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
 	var results []types.Event
-	var dump bool
 
 	/* now we can load the test files */
 	// process the yaml
@@ -259,27 +258,13 @@ POLL_AGAIN:
 		check the results we got against the expected ones
 		only the keys of the expected part are checked against result
 	*/
-	var tmpFile string
-
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
 			log.Warning("Test is successful")
-			if dump {
-				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed to dump bucket state: %s", err)
-				}
-				log.Infof("dumped bucket to %s", tmpFile)
-			}
 			return true
 		}
 		log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
 		if len(tf.Results) != len(results) {
-			if dump {
-				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed to dump bucket state: %s", err)
-				}
-				log.Infof("dumped bucket to %s", tmpFile)
-			}
 			log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
 			return false
 		}
