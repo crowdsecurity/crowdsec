@@ -23,7 +23,7 @@ require (
 	github.com/crowdsecurity/dlog v0.0.2
 	github.com/crowdsecurity/go-cs-lib v0.0.21
 	github.com/crowdsecurity/grokky v0.2.2
-	github.com/crowdsecurity/machineid v1.0.2
+	github.com/crowdsecurity/machineid v1.0.3
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dghubble/sling v1.4.2
 	github.com/docker/docker v27.3.1+incompatible
