@@ -95,15 +95,15 @@ teardown() {
     rune -0 cscli allowlist add foo bar
     # XXX: here we should return an error?
     # and it's currently displayed as ERRO[0000] -- client logger has no formatter?
-    assert_stderr --partial "level=error msg=\"invalid ip address 'bar'\""
+    assert_stderr --partial 'level=error msg="ParseAddr(\"bar\"): unable to parse IP'
     refute_output
 
     rune -0 cscli allowlist add foo 1.1.1.256
-    assert_stderr --partial "level=error msg=\"invalid ip address '1.1.1.256'\""
+    assert_stderr --partial 'level=error msg="ParseAddr(\"1.1.1.256\"): IPv4 field has value >255"'
     refute_output
 
     rune -0 cscli allowlist add foo 1.1.1.1/2/3
-    assert_stderr --partial "level=error msg=\"invalid ip range '1.1.1.1/2/3': invalid CIDR address: 1.1.1.1/2/3\""
+    assert_stderr --partial 'level=error msg="netip.ParsePrefix(\"1.1.1.1/2/3\"): ParseAddr(\"1.1.1.1/2\"): unexpected character (at \"/2\")"'
     refute_output
 
     rune -0 cscli allowlist add foo 1.2.3.4
