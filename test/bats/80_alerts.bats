@@ -45,7 +45,7 @@ teardown() {
 
 @test "cscli alerts list, accept duration parameters with days" {
     rune -1 cscli alerts list --until toto
-    assert_stderr 'Error: invalid argument "toto" for "--until" flag: time: invalid duration "toto"'
+    assert_stderr 'Error: cscli alerts list: invalid argument "toto" for "--until" flag: time: invalid duration "toto"'
     rune -0 cscli alerts list --until 2d12h --debug
     assert_stderr --partial "until=60h0m0s"
     rune -0 cscli alerts list --since 2d12h --debug
@@ -75,7 +75,7 @@ teardown() {
 
 @test "cscli alerts inspect" {
     rune -1 cscli alerts inspect
-    assert_stderr 'Error: requires at least 1 arg(s), only received 0'
+    assert_stderr 'Error: cscli alerts inspect: requires at least 1 arg(s), only received 0'
 
     rune -0 cscli decisions add -i 10.20.30.40 -t ban
     rune -0 cscli alerts list -o raw

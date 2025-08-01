@@ -203,6 +203,10 @@ difference() {
 
 #-----------------------------------#
 
+# Tell crowdsec we are running in docker
+# The user agent will be updated so we can better detect broken installations running in docker
+export CROWDSEC_CONTAINER_ENV="docker"
+
 if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     printf '%b' '\033[0;33m'
     echo "Warning: the variables CERT_FILE and KEY_FILE have been deprecated." >&2
@@ -244,6 +248,21 @@ if istrue "$USE_WAL"; then
     conf_set '.db_config.use_wal = true'
 elif [ -n "$USE_WAL" ] && isfalse "$USE_WAL"; then
     conf_set '.db_config.use_wal = false'
+fi
+
+# Bail out if:
+# - `/var/lib/crowdsec/data` is not a volume
+# - CROWDSEC_BYPASS_DB_VOLUME_CHECK is not set
+# This check is performed regardless of the database type and if we are a LAPI or not:
+# - This directory is also used to store datafiles used by the LP, and some of them are really big and costly to download (MMDB files)
+# Do *not* implement this check in the k8s docker_start.sh
+if ! is_mounted "/var/lib/crowdsec/data" && [ -z "$CROWDSEC_BYPASS_DB_VOLUME_CHECK" ]; then
+        echo "No volume mounted for /var/lib/crowdsec/data"
+        echo "This directory is used to store the crowdsec local database (if using sqlite) and datafiles used by the parsers and scenarios."
+        echo "It is mandatory to mount a volume to this directory to persist the database and any datafiles downloaded from the hub."
+        echo "If you are doing a log replay or using a remote database (mysql, postgresql) on a LAPI-only container, you can set the environment variable CROWDSEC_BYPASS_DB_VOLUME_CHECK to skip this check."
+        echo "Exiting..."
+        exit 0 # No error to avoid a restart loop
 fi
 
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')

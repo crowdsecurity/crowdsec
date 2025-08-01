@@ -4,7 +4,6 @@
 #
 # Behavior that is specific to a hubtype should be tested in a separate file.
 
-
 set -u
 
 setup_file() {
@@ -66,16 +65,16 @@ teardown() {
     rune -0 jq -e '.downloaded==false' <(output)
 
     rune -0 cscli parsers remove crowdsecurity/whitelists --dry-run
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers remove crowdsecurity/whitelists
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers remove crowdsecurity/whitelists --force
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers remove crowdsecurity/whitelists --purge
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
 }
 
@@ -85,13 +84,13 @@ teardown() {
     rune -0 jq -e '.installed==false' <(output)
 
     rune -0 cscli parsers remove crowdsecurity/whitelists --dry-run
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers remove crowdsecurity/whitelists
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers remove crowdsecurity/whitelists --force
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers remove crowdsecurity/whitelists --purge
     assert_output --partial "purging parsers:crowdsecurity/whitelists"
@@ -185,7 +184,7 @@ teardown() {
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/windows-auth
 
     rune -1 cscli parsers remove crowdsecurity/whitelists --all
-    assert_stderr "Error: can't specify items and '--all' at the same time"
+    assert_stderr "Error: cscli parsers remove: can't specify items and '--all' at the same time"
 
     rune -0 cscli parsers remove --all --dry-run
     assert_output - --regexp <<-EOT
@@ -236,7 +235,7 @@ teardown() {
     rune -0 cscli collections install crowdsecurity/sshd
     # XXX: should exit with 1?
     rune -0 cscli parsers remove crowdsecurity/sshd-logs
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     assert_stderr --partial "crowdsecurity/sshd-logs belongs to collections: [crowdsecurity/sshd]"
     assert_stderr --partial "Run 'sudo cscli parsers remove crowdsecurity/sshd-logs --force' if you want to force remove this parser"
     assert_file_exists "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
