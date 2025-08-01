@@ -70,7 +70,9 @@ func setupUnixSocketWithPrefix(t *testing.T, socket string, urlPrefix string) (m
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))
 
 	server := httptest.NewUnstartedServer(apiHandler)
-	l, err := net.Listen("unix", socket)
+	lc := &net.ListenConfig{}
+	ctx := t.Context()
+	l, err := lc.Listen(ctx, "unix", socket)
 	require.NoError(t, err)
 	err = server.Listener.Close()
 	require.NoError(t, err)

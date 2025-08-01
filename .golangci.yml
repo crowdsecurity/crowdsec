@@ -466,10 +466,6 @@ linters:
 
       - linters:
           - noctx
-        text: "net.Listen must not be called"
-
-      - linters:
-          - noctx
         text: "net.LookupAddr must not be called"
 
       - linters:
