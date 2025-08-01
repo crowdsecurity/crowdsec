@@ -25,34 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-//nolint:unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
-func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
-	var (
-		tmpFile string
-		err     error
-	)
-
-	// stop goroutines
-	if err = ShutdownCrowdsecRoutines(); err != nil {
-		log.Warningf("Failed to shut down routines: %s", err)
-	}
-
-	// todo: properly stop acquis with the tail readers
-	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now().UTC(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
-		log.Warningf("Failed to dump bucket state : %s", err)
-	}
-
-	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-		log.Warningf("Failed to shut down routines : %s", err)
-	}
-
-	log.Printf("Shutdown is finished, buckets are in %s", tmpFile)
-
-	return nil
-}
-
 func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
-	var tmpFile string
 
 	ctx := context.TODO()
 
@@ -104,12 +77,6 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
 
-		// restore bucket state
-		if tmpFile != "" {
-			log.Warningf("we are now using %s as a state file", tmpFile)
-			cConfig.Crowdsec.BucketStateFile = tmpFile
-		}
-
 		// reload the simulation state
 		if err := cConfig.LoadSimulation(); err != nil {
 			log.Errorf("reload error (simulation) : %s", err)
@@ -120,12 +87,6 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	log.Printf("Reload is finished")
-	// delete the tmp file, it's safe now :)
-	if tmpFile != "" {
-		if err := os.Remove(tmpFile); err != nil {
-			log.Warningf("Failed to delete temp file (%s) : %s", tmpFile, err)
-		}
-	}
 
 	return cConfig, nil
 }

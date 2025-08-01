@@ -167,25 +167,16 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 		return nil
 	})
 
-	if !testFile(t, filepath.Join(dir, "test.json"), filepath.Join(dir, "in-buckets_state.json"), holders, response, buckets) {
+	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
 
 	return nil
 }
 
-func testFile(t *testing.T, file string, bs string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
+func testFile(t *testing.T, file string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
 	var results []types.Event
 	var dump bool
-
-	// should we restore
-	if _, err := os.Stat(bs); err == nil {
-		dump = true
-
-		if err := LoadBucketsState(bs, buckets, holders); err != nil {
-			t.Fatalf("Failed to load bucket state : %s", err)
-		}
-	}
 
 	/* now we can load the test files */
 	// process the yaml
