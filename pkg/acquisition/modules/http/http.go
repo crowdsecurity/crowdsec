@@ -343,7 +343,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 	return nil
 }
 
-func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.Config.Path, func(w http.ResponseWriter, r *http.Request) {
 		if err := authorizeRequest(r, &h.Config); err != nil {
@@ -416,6 +416,8 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		h.Server.TLSConfig = tlsConfig
 	}
 
+	listenConfig := &net.ListenConfig{}
+
 	t.Go(func() error {
 		if h.Config.ListenSocket == "" {
 			return nil
@@ -424,7 +426,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
 		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
 		_ = os.Remove(h.Config.ListenSocket)
-		listener, err := net.Listen("unix", h.Config.ListenSocket)
+		listener, err := listenConfig.Listen(ctx, "unix", h.Config.ListenSocket)
 		if err != nil {
 			return csnet.WrapSockErr(err, h.Config.ListenSocket)
 		}
@@ -487,7 +489,7 @@ func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/live")
-		return h.RunServer(out, t)
+		return h.RunServer(ctx, out, t)
 	})
 
 	return nil

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -376,7 +377,9 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	err := StartRunSvc()
+	ctx := context.Background()
+
+	err := StartRunSvc(ctx)
 	if err != nil {
 		pprof.StopCPUProfile()
 		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call

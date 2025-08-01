@@ -44,9 +44,7 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 	return dedupCache, nil
 }
 
-func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error {
-	ctx := context.Background()
-
+func PushAlerts(ctx context.Context, alerts []types.RuntimeAlert, client *apiclient.ApiClient) error {
 	alertsToPush, err := dedupAlerts(alerts)
 	if err != nil {
 		return fmt.Errorf("failed to transform alerts for api: %w", err)
@@ -62,7 +60,7 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 
 var bucketOverflows []types.Event
 
-func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets, postOverflowCTX parser.UnixParserCtx,
+func runOutput(ctx context.Context, input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets, postOverflowCTX parser.UnixParserCtx,
 	postOverflowNodes []parser.Node, client *apiclient.ApiClient) error {
 	var (
 		cache      []types.RuntimeAlert
@@ -81,7 +79,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 				newcache := make([]types.RuntimeAlert, 0)
 				cache = newcache
 				cacheMutex.Unlock()
-				if err := PushAlerts(cachecopy, client); err != nil {
+				if err := PushAlerts(ctx, cachecopy, client); err != nil {
 					log.Errorf("while pushing to api : %s", err)
 					// just push back the events to the queue
 					cacheMutex.Lock()
@@ -94,7 +92,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 				cacheMutex.Lock()
 				cachecopy := cache
 				cacheMutex.Unlock()
-				if err := PushAlerts(cachecopy, client); err != nil {
+				if err := PushAlerts(ctx, cachecopy, client); err != nil {
 					log.Errorf("while pushing leftovers to api : %s", err)
 				}
 			}
