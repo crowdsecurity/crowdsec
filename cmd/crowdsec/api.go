@@ -36,7 +36,7 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 	return apiServer, nil
 }
 
-func serveAPIServer(apiServer *apiserver.APIServer) {
+func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 	apiReady := make(chan bool, 1)
 
 	apiTomb.Go(func() error {
@@ -46,7 +46,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 			defer trace.CatchPanic("crowdsec/runAPIServer")
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 
-			if err := apiServer.Run(apiReady); err != nil {
+			if err := apiServer.Run(ctx, apiReady); err != nil {
 				log.Fatal(err)
 			}
 		}()
@@ -60,7 +60,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		pluginTomb.Kill(nil)
 		log.Infof("serve: shutting down api server")
 
-		return apiServer.Shutdown()
+		return apiServer.Shutdown(ctx)
 	})
 	<-apiReady
 }
