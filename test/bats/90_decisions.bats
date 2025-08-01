@@ -166,7 +166,7 @@ teardown() {
     rune -1 cscli decisions import -i - --format values <<-EOT
 	whatever
 	EOT
-    assert_stderr --partial "invalid ip address 'whatever'"
+    assert_stderr --partial 'API error: ParseAddr("whatever"): unable to parse IP'
 
     rune -0 cscli decisions list -a -o json
     assert_json '[]'
@@ -182,7 +182,7 @@ teardown() {
         1.2.3.5
 	EOT
     assert_output "Parsing values"
-    assert_stderr "Error: cscli decisions import: API error: invalid ip address 'bad-apple'"
+    assert_stderr 'Error: cscli decisions import: API error: ParseAddr("bad-apple"): unable to parse IP'
 
     rune -0 cscli decisions list -a -o json
     rune -0 jq -r '.[0].decisions | length' <(output)
