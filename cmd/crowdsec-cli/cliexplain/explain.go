@@ -2,6 +2,7 @@ package cliexplain
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -83,8 +84,8 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.run()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.run(cmd.Context())
 		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			fileInfo, _ := os.Stdin.Stat()
@@ -115,7 +116,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	return cmd
 }
 
-func (cli *cliExplain) run() error {
+func (cli *cliExplain) run(ctx context.Context) error {
 	logFile := cli.flags.logFile
 	logLine := cli.flags.logLine
 	logType := cli.flags.logType
@@ -227,7 +228,7 @@ func (cli *cliExplain) run() error {
 		cmdArgs = append(cmdArgs, "-label", labels)
 	}
 
-	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
+	crowdsecCmd := exec.CommandContext(ctx, crowdsec, cmdArgs...)
 
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {

@@ -2,6 +2,7 @@ package hubtest
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -19,7 +20,7 @@ type NucleiConfig struct {
 
 var ErrNucleiTemplateFail = errors.New("nuclei template failed")
 
-func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, target string) error {
+func (nc *NucleiConfig) RunNucleiTemplate(ctx context.Context, testName string, templatePath string, target string) error {
 	tstamp := time.Now().Unix()
 
 	outputPrefix := fmt.Sprintf("%s/%s-%d", nc.OutputDir, testName, tstamp)
@@ -30,7 +31,7 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		"-o", outputPrefix + ".json",
 	}
 	args = append(args, nc.CmdLineOptions...)
-	cmd := exec.Command(nc.Path, args...)
+	cmd := exec.CommandContext(ctx, nc.Path, args...)
 
 	log.Debugf("Running Nuclei command: '%s'", cmd.String())
 
