@@ -105,12 +105,6 @@ func TestGCandDump(t *testing.T) {
 	if err := expectBucketCount(buckets, 1); err != nil {
 		t.Fatal(err)
 	}
-
-	log.Printf("Dumping buckets state")
-	//dump remaining buckets
-	if _, err := DumpBucketsStateAt(time.Now().UTC(), ".", buckets); err != nil {
-		t.Fatalf("failed to dump buckets : %s", err)
-	}
 }
 
 func TestShutdownBuckets(t *testing.T) {

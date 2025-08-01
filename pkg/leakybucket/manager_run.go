@@ -1,11 +1,9 @@
 package leakybucket
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"sync"
 	"time"
 
@@ -78,72 +76,6 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		buckets.Bucket_map.Delete(flushkey)
 	}
 	return nil
-}
-
-func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
-
-	//synchronize with PourItemtoHolders
-	buckets.wgPour.Wait()
-	buckets.wgDumpState.Add(1)
-	defer buckets.wgDumpState.Done()
-
-	if outputdir == "" {
-		return "", errors.New("empty output dir for dump bucket state")
-	}
-	tmpFd, err := os.CreateTemp(os.TempDir(), "crowdsec-buckets-dump-")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file : %s", err)
-	}
-	defer tmpFd.Close()
-	tmpFileName := tmpFd.Name()
-	serialized = make(map[string]Leaky)
-	log.Printf("Dumping buckets state at %s", deadline)
-	total := 0
-	discard := 0
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
-		key := rkey.(string)
-		val := rvalue.(*Leaky)
-		total += 1
-		if !val.Ovflw_ts.IsZero() {
-			discard += 1
-			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
-			return true
-		}
-		/*FIXME : sometimes the gettokenscountat has some rounding issues when we try to
-		match it with bucket capacity, even if the bucket has long due underflow. Round to 2 decimals*/
-		tokat := val.Limiter.GetTokensCountAt(deadline)
-		tokcapa := float64(val.Capacity)
-		tokat = math.Round(tokat*100) / 100
-		tokcapa = math.Round(tokcapa*100) / 100
-
-		if tokat >= tokcapa {
-			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
-			discard += 1
-			return true
-		}
-		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
-
-		if _, ok := serialized[key]; ok {
-			log.Errorf("entry %s already exists", key)
-			return false
-		}
-		log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
-		val.SerializedState = val.Limiter.Dump()
-		serialized[key] = *val
-		return true
-	})
-	bbuckets, err := json.MarshalIndent(serialized, "", " ")
-	if err != nil {
-		return "", fmt.Errorf("failed to parse buckets: %s", err)
-	}
-	size, err := tmpFd.Write(bbuckets)
-	if err != nil {
-		return "", fmt.Errorf("failed to write temp file: %s", err)
-	}
-	log.Infof("Serialized %d live buckets (+%d expired) in %d bytes to %s", len(serialized), discard, size, tmpFd.Name())
-	serialized = nil
-	return tmpFileName, nil
 }
 
 func ShutdownAllBuckets(buckets *Buckets) error {

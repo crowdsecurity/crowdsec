@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -102,14 +101,6 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
-		// restore previous state as well if present
-		if cConfig.Crowdsec.BucketStateFile != "" {
-			log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
-
-			if err := leaky.LoadBucketsState(cConfig.Crowdsec.BucketStateFile, buckets, holders); err != nil {
-				return fmt.Errorf("unable to restore buckets: %w", err)
-			}
-		}
 
 		for range cConfig.Crowdsec.BucketsRoutinesCount {
 			bucketsTomb.Go(func() error {
