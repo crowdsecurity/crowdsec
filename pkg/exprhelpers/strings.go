@@ -1,6 +1,7 @@
 package exprhelpers
 
 import (
+	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -48,6 +49,28 @@ func ReplaceAll(params ...any) (any, error) {
 	return strings.ReplaceAll(params[0].(string), params[1].(string), params[2].(string)), nil
 }
 
+func ReplaceRegexp(params ...any) (any, error) {
+	re, err := regexp.Compile(params[0].(string))
+	if err != nil {
+		return nil, err
+	}
+	// Replace only the first occurrence
+	loc := re.FindStringIndex(params[1].(string))
+	if loc == nil {
+		return params[1].(string), nil // No match found, return original string
+	}
+	start, end := loc[0], loc[1]
+	return params[1].(string)[:start] + params[2].(string) + params[1].(string)[end:], nil
+}
+
+func ReplaceAllRegex(params ...any) (any, error) {
+	re, err := regexp.Compile(params[0].(string))
+	if err != nil {
+		return nil, err
+	}
+	return re.ReplaceAllString(params[1].(string), params[2].(string)), nil
+}
+
 func Trim(params ...any) (any, error) {
 	return strings.Trim(params[0].(string), params[1].(string)), nil
 }
@@ -75,4 +98,11 @@ func TrimSuffix(params ...any) (any, error) {
 func LogInfo(params ...any) (any, error) {
 	log.Infof(params[0].(string), params[1:]...)
 	return true, nil
+}
+
+func AnsiRegex(params ...any) (any, error) {
+	// Returns the regex pattern for ANSI escape sequences
+	// This can be used with ReplaceRegexp() or ReplaceAllRegex() functions
+	// Matches \x1b (hex) and \033 (octal) representations
+	return `\x1b\[[0-9;]*m|\033\[[0-9;]*m`, nil
 }
