@@ -3,9 +3,51 @@ package exprhelpers
 import (
 	"regexp"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 )
+
+// regexCache stores compiled regex patterns for reuse
+type regexCache struct {
+	mu    sync.RWMutex
+	cache map[string]*regexp.Regexp
+}
+
+var (
+	regexCacheInstance = &regexCache{
+		cache: make(map[string]*regexp.Regexp),
+	}
+)
+
+// getCompiledRegex returns a compiled regex pattern from cache or compiles and caches it
+func (rc *regexCache) getCompiledRegex(pattern string) (*regexp.Regexp, error) {
+	// Try to get from cache first (read lock)
+	rc.mu.RLock()
+	if re, exists := rc.cache[pattern]; exists {
+		rc.mu.RUnlock()
+		return re, nil
+	}
+	rc.mu.RUnlock()
+
+	// Compile the regex (write lock)
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if re, exists := rc.cache[pattern]; exists {
+		return re, nil
+	}
+
+	// Compile and cache
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	rc.cache[pattern] = re
+	return re, nil
+}
 
 //Wrappers for stdlib strings function exposed in expr
 
@@ -50,7 +92,7 @@ func ReplaceAll(params ...any) (any, error) {
 }
 
 func ReplaceRegexp(params ...any) (any, error) {
-	re, err := regexp.Compile(params[0].(string))
+	re, err := regexCacheInstance.getCompiledRegex(params[0].(string))
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +106,7 @@ func ReplaceRegexp(params ...any) (any, error) {
 }
 
 func ReplaceAllRegex(params ...any) (any, error) {
-	re, err := regexp.Compile(params[0].(string))
+	re, err := regexCacheInstance.getCompiledRegex(params[0].(string))
 	if err != nil {
 		return nil, err
 	}
