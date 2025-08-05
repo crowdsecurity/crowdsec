@@ -40,19 +40,7 @@ ACTION=""
 DEBUG_MODE="false"
 FORCE_MODE="false"
 
-HTTP_PLUGIN_BINARY="./cmd/notification-http/notification-http"
-SLACK_PLUGIN_BINARY="./cmd/notification-slack/notification-slack"
-SPLUNK_PLUGIN_BINARY="./cmd/notification-splunk/notification-splunk"
-EMAIL_PLUGIN_BINARY="./cmd/notification-email/notification-email"
-SENTINEL_PLUGIN_BINARY="./cmd/notification-sentinel/notification-sentinel"
-FILE_PLUGIN_BINARY="./cmd/notification-file/notification-file"
-
-HTTP_PLUGIN_CONFIG="./cmd/notification-http/http.yaml"
-SLACK_PLUGIN_CONFIG="./cmd/notification-slack/slack.yaml"
-SPLUNK_PLUGIN_CONFIG="./cmd/notification-splunk/splunk.yaml"
-EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
-SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
-FILE_PLUGIN_CONFIG="./cmd/notification-file/file.yaml"
+PLUGINS="http slack splunk email sentinel file"
 
 log_info() {
     msg=$1
@@ -246,17 +234,11 @@ install_plugins() {
     mkdir -p "$CROWDSEC_PLUGIN_DIR"
     mkdir -p /etc/crowdsec/notifications
 
-    cp "$SLACK_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$SPLUNK_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$HTTP_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$EMAIL_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$SENTINEL_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$FILE_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-
-    for yaml_conf in ${SLACK_PLUGIN_CONFIG} ${SPLUNK_PLUGIN_CONFIG} ${HTTP_PLUGIN_CONFIG} ${EMAIL_PLUGIN_CONFIG} ${SENTINEL_PLUGIN_CONFIG} ${FILE_PLUGIN_CONFIG}; do
-        if [ ! -e /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]; then
-            cp "$yaml_conf" /etc/crowdsec/notifications/
-        fi
+    for name in $PLUGINS; do
+        bin="./cmd/notification-${name}/notification-${name}"
+        conf="./cmd/notification-${name}/${name}.yaml"
+        install -m 755 -D "$bin" "$CROWDSEC_PLUGIN_DIR"
+        [ ! -e "/etc/crowdsec/notifications/${name}.yaml" ] && install -m 600 "$conf" "/etc/crowdsec/notifications/"
     done
 }
 
