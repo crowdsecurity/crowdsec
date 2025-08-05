@@ -54,7 +54,6 @@ EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
 SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
 FILE_PLUGIN_CONFIG="./cmd/notification-file/file.yaml"
 
-
 log_info() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
@@ -313,12 +312,13 @@ main() {
         fi
     fi
 
+    if [ "$(id -u)" != "0" ]; then
+        log_err "Please run the wizard as root or with sudo"
+        exit 1
+    fi
+
     if [ "$1" = "binupgrade" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         check_cs_version
         update_bins
         return
@@ -326,10 +326,6 @@ main() {
 
     if [ "$1" = "upgrade" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         check_cs_version
         update_full
         return
@@ -337,11 +333,6 @@ main() {
 
     if [ "$1" = "configure" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
-
         ${CSCLI_BIN_INSTALLED} hub update --error || (log_err "fail to update crowdsec hub. exiting" && exit 1)
         ${CSCLI_BIN_INSTALLED} setup interactive
 
@@ -350,10 +341,6 @@ main() {
 
     if [ "$1" = "uninstall" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         check_running_bouncers
         uninstall_crowdsec
         return
@@ -361,10 +348,6 @@ main() {
 
     if [ "$1" = "bininstall" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         log_info "checking existing crowdsec install"
         detect_cs_install
         log_info "installing crowdsec"
@@ -376,10 +359,6 @@ main() {
 
     if [ "$1" = "install" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         log_info "checking if crowdsec is installed"
         detect_cs_install
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
