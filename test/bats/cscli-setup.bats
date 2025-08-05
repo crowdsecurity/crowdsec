@@ -15,8 +15,6 @@ setup_file() {
     # shellcheck disable=SC2154
     TESTDATA="$BATS_TEST_DIRNAME/testdata/cscli-setup"
     export TESTDATA
-
-    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
 }
 
 teardown_file() {
