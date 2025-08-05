@@ -27,7 +27,6 @@ detect:
   apache2-systemd-rpm:
     when:
       - Systemd.UnitEnabled("httpd.service")
-      - Path.Exists("/etc/redhat-release")
     hub_spec:
       collections:
         - crowdsecurity/apache2
