@@ -45,33 +45,33 @@ PLUGINS="http slack splunk email sentinel file"
 log_info() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}"
+    echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_fatal() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2
+    echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" >&2
     exit 1
 }
 
 log_warn() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}"
+    echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_err() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2
+    echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_dbg() {
     if [ "$DEBUG_MODE" = "true" ]; then
         msg=$1
         date=$(date "+%Y-%m-%d %H:%M:%S")
-        echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" 1>&2
+        echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" >&2
     fi
 }
 
@@ -202,8 +202,8 @@ update_full() {
 
 install_bins() {
     log_dbg "Installing crowdsec binaries"
-    install -v -m 755 -D "$CROWDSEC_BIN" "$CROWDSEC_BIN_INSTALLED" 1> /dev/null || exit
-    install -v -m 755 -D "$CSCLI_BIN" "$CSCLI_BIN_INSTALLED" 1> /dev/null || exit
+    install -v -m 755 -D "$CROWDSEC_BIN" "$CROWDSEC_BIN_INSTALLED" >/dev/null || exit
+    install -v -m 755 -D "$CSCLI_BIN" "$CSCLI_BIN_INSTALLED" >/dev/null || exit
     if command -v systemctl >/dev/null && systemctl is-active --quiet crowdsec; then
         systemctl stop crowdsec
     fi
@@ -258,8 +258,8 @@ check_running_bouncers() {
 
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
-    systemctl stop crowdsec.service 1>/dev/null
-    systemctl disable -q crowdsec.service 1>/dev/null
+    systemctl stop crowdsec.service >/dev/null
+    systemctl disable -q crowdsec.service >/dev/null
     ${CSCLI_BIN} dashboard remove -f -y >/dev/null
     delete_bins
 
