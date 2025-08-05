@@ -273,219 +273,44 @@ func TestDetectSkipService(t *testing.T) {
 	f := strings.NewReader(`
 detect:
   wizard:
+`)
+
+	detectConfig, err := NewDetectConfig(f)
+	require.NoError(t, err)
+
+	got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
+		OSExprPath{},
+		nil, nil, nullLogger())
+	require.NoError(t, err)
+	require.Len(t, got.Plans, 1)
+	require.Equal(t, "wizard", got.Plans[0].Name)
+
+	got, err = BuildSetup(ctx, detectConfig, DetectOptions{SkipServices: []string{"wizard"}},
+		OSExprPath{},
+		nil, nil, nullLogger())
+	require.NoError(t, err)
+	require.Empty(t, got.Plans)
+}
+
+func TestDetectForceService(t *testing.T) {
+	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+
+	f := strings.NewReader(`
+detect:
+  wizard:
     when:
       - System.ProcessRunning("foobar")
 `)
 
 	detectConfig, err := NewDetectConfig(f)
 	require.NoError(t, err)
-	got, err := BuildSetup(ctx, detectConfig, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+	got, err := BuildSetup(ctx, detectConfig, DetectOptions{WantServices: []string{"wizard"}},
 		OSExprPath{},
 		nil, nil, nullLogger())
 	require.NoError(t, err)
-
-	want := &Setup{[]ServicePlan{}}
-	require.Equal(t, want, got)
-}
-
-func TestDetectForcedOS(t *testing.T) {
-	ctx := t.Context()
-
-	type test struct {
-		name    string
-		config  string
-		forced  ExprOS
-		want    *Setup
-		wantErr string
-	}
-
-	tests := []test{
-		{
-			"detect OS - force linux",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux"`,
-			ExprOS{Family: "linux"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - force windows",
-			`
-detect:
-  windows:
-    when:
-      - OS.Family == "windows"`,
-			ExprOS{Family: "windows"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "windows"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu (no match)",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux" && OS.ID == "ubuntu"`,
-			ExprOS{Family: "linux"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu (match)",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux" && OS.ID == "ubuntu"`,
-			ExprOS{Family: "linux", ID: "ubuntu"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu (match with version)",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux" && OS.ID == "ubuntu" && OS.VersionCheck("19.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.04"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (no match: no version detected)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (no match: version is lower)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (match: same version)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (match: version is higher)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "22.04"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-
-		{
-			"detect OS - ubuntu < 20.04 (no match: no version detected)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu < 20.04 (no match: version is higher)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.10"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu < 20.04 (no match: same version)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu < 20.04 (match: version is lower)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu"
-      - OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			detectConfig, err := NewDetectConfig(strings.NewReader(tc.config))
-			require.NoError(t, err)
-			got, err := BuildSetup(ctx, detectConfig, DetectOptions{ForcedOS: tc.forced},
-				OSExprPath{},
-				nil, nil, nullLogger())
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(t, tc.want, got)
-		})
-	}
+	require.Len(t, got.Plans, 1)
+	require.Equal(t, "wizard", got.Plans[0].Name)
 }
 
 func TestDetectDatasourceValidation(t *testing.T) {

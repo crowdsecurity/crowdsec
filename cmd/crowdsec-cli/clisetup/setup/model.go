@@ -66,9 +66,7 @@ type ServicePlan struct {
 
 // DetectOptions contains additional options for the detection process.
 type DetectOptions struct {
-	ForcedUnits     []string // slice of unit names that we want to force-detect.
-	ForcedProcesses []string // slice of process names that we want to force-detect.
-	ForcedOS        ExprOS   // override OS identification, useful for unsupported platforms or to generate setup.yaml for another machine.
 	SkipServices    []string // slice of service specs that will be ignored. detection will happen anyway to spot possible errors.
+	WantServices    []string // slice of service specs that will be forced.
 	SkipSystemd     bool     // ignore all systemd services. the others can still be detected by process name lookup or other mechanism.
 }

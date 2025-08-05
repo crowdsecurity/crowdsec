@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	goccyyaml "github.com/goccy/go-yaml"
+	"github.com/shirou/gopsutil/v4/host"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
@@ -20,21 +21,15 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 	// explicitly initialize to avoid json marshaling an empty slice as "null"
 	s.Plans = make([]ServicePlan, 0)
 
-	exprOS, err := DetectOS(opts.ForcedOS, logger)
+	hostInfo, err := host.InfoWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(opts.ForcedUnits) > 0 {
-		logger.Debugf("Forced units - %v", opts.ForcedUnits)
-	}
+	logger.Debugf("Detected host info: %s", hostInfo)
 
-	if len(opts.ForcedProcesses) > 0 {
-		logger.Debugf("Forced processes - %v", opts.ForcedProcesses)
-	}
-
-	exprSystemd := NewExprSystemd(installedUnits, opts.ForcedUnits)
-	exprSystem := NewExprSystem(runningProcesses, opts.ForcedProcesses)
+	exprSystemd := NewExprSystemd(installedUnits)
+	exprSystem := NewExprSystem(runningProcesses)
 
 	exprWindows, err := NewExprWindows()
 	if err != nil {
@@ -42,15 +37,21 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 	}
 
 	env := &ExprEnvironment{
-		OS:      exprOS,
+		Host:    *hostInfo,
 		Path:    exprPath,
 		System:  exprSystem,
 		Systemd: exprSystemd,
+		Version: ExprVersion{},
 		Windows: exprWindows,
 		Ctx:     ctx,
 	}
 
 	detected := make(map[string]ServicePlan)
+
+	want := make(map[string]struct{})
+	for _, name := range opts.WantServices {
+		want[name] = struct{}{}
+	}
 
 	for name, svc := range detectConfig.Detect {
 		match, err := svc.Evaluate(env, logger)
@@ -58,7 +59,12 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 			return nil, fmt.Errorf("while looking for service %s: %w", name, err)
 		}
 
-		if !match {
+		_, forced := want[name]
+		if forced {
+			delete(want, name)
+		}
+
+		if !match && !forced {
 			continue
 		}
 
@@ -73,8 +79,6 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 		}
 	}
 
-	env.checkConsumedForcedItems(logger)
-
 	// sort the keys (service names) to have them in a predictable
 	// order in the final output
 
@@ -87,6 +91,16 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 
 	for _, name := range keys {
 		s.Plans = append(s.Plans, detected[name])
+	}
+
+	if len(want) > 0 {
+		missing := make([]string, 0, len(want))
+		for name := range want {
+			missing = append(missing, name)
+		}
+		sort.Strings(missing)
+
+		return nil, fmt.Errorf("could not found the following services: %v, please check the service detection rules", missing)
 	}
 
 	return &s, nil

@@ -5,7 +5,7 @@ detect:
   apache2-systemd-deb:
     # all conditions must evaluate to true
     when:
-      # check if apache2 is in "systemctl list-unit-files --state=enabled,generated,static"
+      # check if apache2 is in "systemctl list-unit-files --type=service"
       - Systemd.UnitEnabled("apache2.service")
       # broad distribution category (use OS.ID to disambiguate "ubuntu" from "debian")
       - Path.Exists("/etc/debian_version")
@@ -303,6 +303,7 @@ detect:
           type: syslog
         filenames:
           - /var/log/mail.log
+          - /var/log/maillog
 
   # ProFTPD FTP server
   proftpd-systemd:
@@ -516,7 +517,7 @@ detect:
 
   linux:
     when:
-      - OS.Family == "linux"
+      - Host.OS == "linux"
     hub_spec:
       collections:
         - crowdsecurity/linux
@@ -533,14 +534,14 @@ detect:
 
   freebsd:
     when:
-      - OS.Family == "freebsd"
+      - Host.OS == "freebsd"
     hub_spec:
       collections:
         - crowdsecurity/freebsd
 
   windows:
     when:
-      - OS.Family == "windows"
+      - Host.OS == "windows"
     hub_spec:
       collections:
         - crowdsecurity/windows

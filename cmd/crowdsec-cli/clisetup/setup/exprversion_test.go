@@ -51,12 +51,12 @@ func TestVersionCheck(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		e := ExprOS{RawVersion: tc.version}
 
 		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := e.VersionCheck(tc.constraint)
+			v := &ExprVersion{}
+			actual, err := v.Check(tc.version, tc.constraint)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, actual)
 		})

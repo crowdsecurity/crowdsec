@@ -9,7 +9,7 @@ import (
 func TestUnitEnabled(t *testing.T) {
 	ctx := t.Context()
 
-	env := NewExprSystemd(UnitMap{"crowdsec-setup-installed.service": struct{}{}}, []string{})
+	env := NewExprSystemd(UnitMap{"crowdsec-setup-installed.service": struct{}{}})
 
 	installed, err := env.UnitEnabled(ctx, "crowdsec-setup-installed.service")
 	require.NoError(t, err)

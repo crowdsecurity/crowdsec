@@ -67,7 +67,7 @@ detect:
 
   linux:
     when:
-      - OS.Family == "linux"
+      - Host.OS == "linux"
     hub_spec:
       collections:
         - crowdsecurity/linux
@@ -84,14 +84,14 @@ detect:
 
   freebsd:
     when:
-      - OS.Family == "freebsd"
+      - Host.OS == "freebsd"
     hub_spec:
       collections:
         - crowdsecurity/freebsd
 
   windows:
     when:
-      - OS.Family == "windows"
+      - Host.OS == "windows"
     hub_spec:
       collections:
         - crowdsecurity/windows

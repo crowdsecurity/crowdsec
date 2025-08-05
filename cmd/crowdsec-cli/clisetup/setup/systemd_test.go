@@ -38,7 +38,7 @@ apparmor.service                          enabled  enabled
 func TestDetectSystemdUnits(t *testing.T) {
 	ctx := t.Context()
 
-	units, err := DetectSystemdUnits(ctx, fakeExecCommand, nil)
+	units, err := DetectSystemdUnits(ctx, fakeExecCommand)
 	require.NoError(t, err)
 
 	require.Equal(t, UnitMap{
@@ -59,6 +59,6 @@ func fakeExecCommandNotFound(ctx context.Context, command string, args ...string
 
 func TestDetectSystemdUnits_NotFound(t *testing.T) {
 	ctx := t.Context()
-	_, err := DetectSystemdUnits(ctx, fakeExecCommandNotFound, nil)
+	_, err := DetectSystemdUnits(ctx, fakeExecCommandNotFound)
 	cstest.RequireErrorContains(t, err, `running systemctl: exec: "this-command-does-not-exist": executable file not found`)
 }

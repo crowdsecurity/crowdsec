@@ -31,9 +31,6 @@ cscli setup unattended --acquis-dir /path/to/acquis.d
 
 # use a different detection configuration file.
 cscli setup unattended --detect-config /path/to/detact.yaml
-
-# force the OS to be detected as 'ubuntu 25.04'
-cscli setup unattended --force-os-family linux --force-os-id ubuntu --force-os-version 25.04
 `,
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
