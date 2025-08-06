@@ -1,6 +1,6 @@
 package setup
 
-import(
+import (
 	"github.com/Masterminds/semver/v3"
 )
 

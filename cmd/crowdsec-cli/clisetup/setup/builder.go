@@ -98,6 +98,7 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 		for name := range want {
 			missing = append(missing, name)
 		}
+
 		sort.Strings(missing)
 
 		return nil, fmt.Errorf("could not found the following services: %v, please check the service detection rules", missing)

@@ -13,10 +13,11 @@ type DetectConfig struct {
 // The same software can have multiple profiles, for example, a service running on a systemd unit and another one running as a simple process.
 // They will be detected by different rules, will need the same hub items but possibly different acquisition configuration (journalctl vs log file).
 type ServiceProfile struct {
-	// The conditions are evaluated in order, they must all be true for the service to be detected, and there is no short-circuiting.
-	When                  []string `yaml:"when"`
-	compiledWhen          []*vm.Program
 	InstallRecommendation `yaml:",inline"`
+
+	// The conditions are evaluated in order, they must all be true for the service to be detected, and there is no short-circuiting.
+	When         []string `yaml:"when"`
+	compiledWhen []*vm.Program
 }
 
 // InstallRecommendation contains the items and acquisition configuration that should be installed to support a service.
@@ -60,13 +61,14 @@ type Setup struct {
 
 // ServicePlan describes the actions to perform for a detected service.
 type ServicePlan struct {
-	Name                  string `yaml:"detected_service"`
 	InstallRecommendation `yaml:",inline"`
+
+	Name string `yaml:"detected_service"`
 }
 
 // DetectOptions contains additional options for the detection process.
 type DetectOptions struct {
-	SkipServices    []string // slice of service specs that will be ignored. detection will happen anyway to spot possible errors.
-	WantServices    []string // slice of service specs that will be forced.
-	SkipSystemd     bool     // ignore all systemd services. the others can still be detected by process name lookup or other mechanism.
+	SkipServices []string // slice of service specs that will be ignored. detection will happen anyway to spot possible errors.
+	WantServices []string // slice of service specs that will be forced.
+	SkipSystemd  bool     // ignore all systemd services. the others can still be detected by process name lookup or other mechanism.
 }

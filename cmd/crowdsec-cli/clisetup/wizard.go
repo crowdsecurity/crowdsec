@@ -213,6 +213,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 			// and nothing happened, so no reload message
 			fmt.Fprintln(os.Stdout, err.Error())
 			leavingMessage(os.Stdout)
+
 			return nil
 		case err != nil:
 			return err

@@ -51,7 +51,6 @@ func TestVersionCheck(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-
 		t.Run(fmt.Sprintf("Check(%s,%s)", tc.version, tc.constraint), func(t *testing.T) {
 			t.Parallel()
 
