@@ -182,7 +182,6 @@ update_bins() {
 }
 
 update_full() {
-
     if [ ! -f "$CROWDSEC_BIN" ]; then
         log_err "Crowdsec binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
     fi
@@ -367,6 +366,36 @@ main() {
         show_link
         return
     fi
+
+    if [ "$1" = "unattended" ];
+    then
+        log_info "checking if crowdsec is installed"
+        detect_cs_install
+        ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
+        log_info "installing crowdsec"
+        install_crowdsec
+        log_dbg "configuring ${CSCLI_BIN_INSTALLED}"
+
+        ${CSCLI_BIN_INSTALLED} hub update --error || (log_err "fail to update crowdsec hub. exiting" && exit 1)
+        ${CSCLI_BIN_INSTALLED} setup unattended
+
+        # install patterns/ folder
+        log_dbg "Installing patterns"
+        mkdir -p "${PATTERNS_PATH}"
+        cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
+
+        # api register
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" || log_fatal "unable to add machine to the local API"
+        log_dbg "Crowdsec LAPI registered"
+
+        ${CSCLI_BIN_INSTALLED} capi register --error || log_fatal "unable to register to the Central API"
+
+        systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
+        systemctl start crowdsec >/dev/null || log_fatal "unable to start crowdsec"
+        log_info "enabling and starting crowdsec daemon"
+        show_link
+        return
+    fi
 }
 
 usage() {
@@ -378,6 +407,7 @@ usage() {
       echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
+      echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
 }
 
@@ -417,6 +447,10 @@ do
         ;;
     -c|--configure)
         ACTION="configure"
+        shift # past argument
+        ;;
+    --unattended)
+        ACTION="unattended"
         shift # past argument
         ;;
     -f|--force)
