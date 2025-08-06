@@ -310,3 +310,8 @@ teardown() {
     # there are no retired features
     rune -0 cscli config feature-flags --retired
 }
+
+@test "cscli dashboard" {
+    rune -1 cscli dashboard xyz
+    assert_stderr --partial "command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/"
+}
