@@ -260,7 +260,6 @@ check_running_bouncers() {
 uninstall_crowdsec() {
     systemctl stop crowdsec.service >/dev/null
     systemctl disable -q crowdsec.service >/dev/null
-    ${CSCLI_BIN} dashboard remove -f -y >/dev/null
     delete_bins
 
     rm -rf "$CROWDSEC_USR_DIR" || echo ""
