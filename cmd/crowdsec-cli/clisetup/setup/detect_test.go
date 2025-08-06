@@ -222,7 +222,7 @@ func TestDetectUnit(t *testing.T) {
 detect:
   wizard:
     when:
-      - Systemd.UnitEnabled("crowdsec-setup-detect.service")
+      - Systemd.UnitInstalled("crowdsec-setup-detect.service")
     acquisition_spec:
       filename: wizard.yaml
       datasource:

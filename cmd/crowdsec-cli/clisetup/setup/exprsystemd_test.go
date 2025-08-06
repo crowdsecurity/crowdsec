@@ -6,16 +6,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUnitEnabled(t *testing.T) {
+func TestUnitInstalled(t *testing.T) {
 	ctx := t.Context()
 
 	env := NewExprSystemd(UnitMap{"crowdsec-setup-installed.service": struct{}{}})
 
-	installed, err := env.UnitEnabled(ctx, "crowdsec-setup-installed.service")
+	installed, err := env.UnitInstalled(ctx, "crowdsec-setup-installed.service")
 	require.NoError(t, err)
 	require.True(t, installed)
 
-	installed, err = env.UnitEnabled(ctx, "crowdsec-setup-missing.service")
+	installed, err = env.UnitInstalled(ctx, "crowdsec-setup-missing.service")
 	require.NoError(t, err)
 	require.False(t, installed)
 }

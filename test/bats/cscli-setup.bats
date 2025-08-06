@@ -174,7 +174,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  apache2:
 	    when:
-	      - Systemd.UnitEnabled("mock-apache2.service")
+	      - Systemd.UnitInstalled("mock-apache2.service")
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
@@ -225,7 +225,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  apache2:
 	    when:
-	      - Systemd.UnitEnabled("mock-apache2.service")
+	      - Systemd.UnitInstalled("mock-apache2.service")
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
@@ -255,7 +255,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  apache2:
 	    when:
-	      - Systemd.UnitEnabled("force-apache2")
+	      - Systemd.UnitInstalled("force-apache2")
 	    acquisition_spec:
 	      filename: apache2.yaml
 	      datasource:
@@ -265,7 +265,7 @@ update-notifier-motd.timer              enabled enabled
 	          type: apache2
 	  apache3:
 	    when:
-	      - Systemd.UnitEnabled("force-apache3")
+	      - Systemd.UnitInstalled("force-apache3")
 	    acquisition_spec:
 	      filename: apache3.yaml
 	      datasource:
@@ -289,7 +289,7 @@ update-notifier-motd.timer              enabled enabled
     assert_json '[{"acquisition_spec":{"datasource":{"filename":"dummy.log","labels":{"type":"apache2"},"source":"file"},"filename":"apache2.yaml"},"detected_service":"apache2"},{"acquisition_spec":{"datasource":{"filename":"dummy.log","labels":{"type":"apache3"},"source":"file"},"filename":"apache3.yaml"},"detected_service":"apache3"}]'
 
     rune -1 cscli setup detect --force something-else --force mock-doesnotexist
-    assert_stderr --partial "Error: cscli setup detect: parsing $DETECT_YAML: could not found the following services: [mock-doesnotexist something-else], please check the service detection rules"
+    assert_stderr --partial "Error: cscli setup detect: parsing $DETECT_YAML: could not find the following services: [mock-doesnotexist something-else], please check the service detection rules"
 }
 
 @test "cscli setup detect (process)" {
@@ -320,7 +320,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  apache2:
 	    when:
-	      - Systemd.UnitEnabled("force-apache2")
+	      - Systemd.UnitInstalled("force-apache2")
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
@@ -341,7 +341,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  apache2:
 	    when:
-	      - Systemd.UnitEnabled("force-apache2")
+	      - Systemd.UnitInstalled("force-apache2")
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
@@ -796,7 +796,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  thewiz:
 	    when:
-	      - Systemd.UnitEnabled("thewiz.service")
+	      - Systemd.UnitInstalled("thewiz.service")
 	    acquisition_spec:
 	      filename: thewiz.yaml
 	      datasource:
@@ -832,7 +832,7 @@ update-notifier-motd.timer              enabled enabled
 	detect:
 	  smb:
 	    when:
-	      - Systemd.UnitEnabled("smb.service")
+	      - Systemd.UnitInstalled("smb.service")
 	    hub_spec:
 	      collections:
 	        - crowdsecurity/smb

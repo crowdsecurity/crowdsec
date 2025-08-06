@@ -22,7 +22,7 @@ detect:
 
   apache2-systemd:
     when:
-      - Systemd.UnitEnabled("apache2.service")
+      - Systemd.UnitInstalled("apache2.service")
       - OS.ID != "centos"
     hub_spec:
       collections:
@@ -38,7 +38,7 @@ detect:
 
   apache2-systemd-centos:
     when:
-      - Systemd.UnitEnabled("httpd.service")
+      - Systemd.UnitInstalled("httpd.service")
       - OS.ID == "centos"
     hub_spec:
       collections:
@@ -52,7 +52,7 @@ detect:
 
   ssh-systemd:
     when:
-      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
     hub_spec:
       collections:
         - crowdsecurity/apache2

@@ -18,8 +18,8 @@ func NewExprSystemd(installedUnits UnitMap) *ExprSystemd {
 	return ret
 }
 
-// UnitEnabled returns true if the unit exists and is enabled in the systemctl output.
-func (e *ExprSystemd) UnitEnabled(ctx context.Context, unitName string) (bool, error) {
+// UnitInstalled returns true if the unit is found in the systemctl output.
+func (e *ExprSystemd) UnitInstalled(ctx context.Context, unitName string) (bool, error) {
 	e.unitsSearched[unitName] = struct{}{}
 	_, ok := e.installedUnits[unitName]
 

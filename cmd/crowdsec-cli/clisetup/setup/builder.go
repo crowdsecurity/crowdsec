@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 	"sort"
 
 	goccyyaml "github.com/goccy/go-yaml"
@@ -13,6 +12,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
+
+func toSet(list []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(list))
+	for _, v := range list {
+		set[v] = struct{}{}
+	}
+	return set
+}
 
 // BuildSetup creates a Setup. The actual detection of services is done here.
 func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOptions, exprPath ExprPath, installedUnits UnitMap, runningProcesses ProcessMap, logger logrus.FieldLogger) (*Setup, error) {
@@ -48,10 +55,8 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 
 	detected := make(map[string]ServicePlan)
 
-	want := make(map[string]struct{})
-	for _, name := range opts.WantServices {
-		want[name] = struct{}{}
-	}
+	want := toSet(opts.WantServices)
+	skip := toSet(opts.SkipServices)
 
 	for name, svc := range detectConfig.Detect {
 		match, err := svc.Evaluate(env, logger)
@@ -69,7 +74,7 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 		}
 
 		// User asked to ignore this service
-		if slices.Contains(opts.SkipServices, name) {
+		if _, skipIt := skip[name]; skipIt {
 			continue
 		}
 
@@ -101,7 +106,7 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 
 		sort.Strings(missing)
 
-		return nil, fmt.Errorf("could not found the following services: %v, please check the service detection rules", missing)
+		return nil, fmt.Errorf("could not find the following services: %v, please check the service detection rules", missing)
 	}
 
 	return &s, nil
