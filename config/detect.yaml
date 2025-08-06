@@ -8,8 +8,9 @@ detect:
     when:
       # check if apache2 is in "systemctl list-unit-files --type=service"
       - Systemd.UnitInstalled("apache2.service")
-      # broad distribution category (use OS.ID to disambiguate "ubuntu" from "debian")
-      - Path.Exists("/etc/debian_version")
+      # broad distribution category (use Host.Platform to disambiguate "ubuntu" from "debian")
+      # full list at https://github.com/shirou/gopsutil/blob/master/host/host_linux.go
+      - Host.PlatformFamily == "debian"
     hub_spec:
       # If the rules match, install the following items
       collections:
@@ -28,7 +29,7 @@ detect:
   apache2-systemd-rpm:
     when:
       - Systemd.UnitInstalled("httpd.service")
-      - Path.Exists("/etc/redhat-release")
+      - Host.PlatformFamily in ['rhel', 'fedora']
     hub_spec:
       collections:
         - crowdsecurity/apache2
@@ -85,7 +86,7 @@ detect:
       datasource:
         source: file
         labels:
-          type: dovecot
+          type: syslog
         filenames:
           - /var/log/mail.log
 
@@ -191,7 +192,7 @@ detect:
   pgsql-systemd-deb:
     when:
       - Systemd.UnitInstalled("postgresql.service")
-      - Path.Exists("/etc/debian_version")
+      - Host.PlatformFamily == "debian"
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -208,7 +209,7 @@ detect:
   pgsql-systemd-rpm:
     when:
       - Systemd.UnitInstalled("postgresql.service")
-      - Path.Exists("/etc/redhat-release")
+      - Host.PlatformFamily in ['rhel', 'fedora']
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -555,7 +556,7 @@ detect:
 #ombi-systemd:
 #  when:
 #    - Systemd.UnitInstalled("ombi.service")
-#    - Path.Exists("/etc/debian_version")
+#    - Host.PlatformFamily == "debian"
 #  hub_spec:
 #    collections:
 #      - LePresidente/ombi
