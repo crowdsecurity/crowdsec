@@ -17,6 +17,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
@@ -284,6 +285,39 @@ func (t *HubTestItem) Clean() {
 	}
 }
 
+func (t *HubTestItem) ImprovedLogDisplay(crowdsecLogFile string) error {
+	crowdsecLog, err := os.ReadFile(crowdsecLogFile)
+	if err != nil {
+		log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
+	}
+	success := []string{}
+	failures := []string{}
+	general := []string{}
+	for _, line := range strings.Split(string(crowdsecLog), "\n") {
+		if strings.Contains(line, `"Evaluating operator: MATCH"`) {
+			success = append(success, line)
+		} else if strings.Contains(line, `"Evaluating operator: NO MATCH"`) {
+			failures = append(failures, line)
+		}
+		general = append(general, line)
+	}
+	log.Infof("General log -------------\n%s\n", strings.Join(general, "\n"))
+	if len(success) > 0 {
+		log.Infof("Success log -------------")
+		for _, line := range success {
+			log.Infof("%s - %s", emoji.GreenCircle, line)
+		}
+	}
+	if len(failures) > 0 {
+		log.Errorf("Failure log -------------")
+		for _, line := range failures {
+			log.Infof("%s - %s", emoji.RedCircle, line)
+		}
+	}
+
+	return nil
+}
+
 func (t *HubTestItem) RunWithNucleiTemplate() error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
@@ -296,7 +330,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+	cscliRegisterCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
@@ -310,7 +344,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliBouncerCmd.Dir = testPath
-	cscliBouncerCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+	cscliBouncerCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
@@ -324,7 +358,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
 	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecDaemon.Dir = testPath
-	crowdsecDaemon.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+	crowdsecDaemon.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	crowdsecDaemon.Start()
 
@@ -374,12 +408,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		} else {
 			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
 
-			crowdsecLog, err := os.ReadFile(crowdsecLogFile)
+			err = t.ImprovedLogDisplay(crowdsecLogFile)
 			if err != nil {
 				log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
-			} else {
-				log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
-				log.Errorf("%s\n", string(crowdsecLog))
 			}
 		}
 	} else {
@@ -388,12 +419,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		} else {
 			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
 
-			crowdsecLog, err := os.ReadFile(crowdsecLogFile)
+			err = t.ImprovedLogDisplay(crowdsecLogFile)
 			if err != nil {
 				log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
-			} else {
-				log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
-				log.Errorf("%s\n", string(crowdsecLog))
 			}
 		}
 	}
@@ -435,7 +463,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
-	cscliRegisterCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+	cscliRegisterCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	log.Debugf("%s", cscliRegisterCmd.String())
 
@@ -456,7 +484,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	crowdsecCmd.Dir = testPath
-	crowdsecCmd.Env = []string{"TESTDIR="+testPath, "DATADIR="+t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
+	crowdsecCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
 	log.Debugf("%s", crowdsecCmd.String())
 
