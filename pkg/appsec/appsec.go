@@ -108,9 +108,11 @@ type AppsecRuntimeConfig struct {
 	// CorazaLogger              debuglog.Logger
 
 	// those are ephemeral, created/destroyed with every req
-	OutOfBandTx ExtendedTransaction // is it a good idea ?
-	InBandTx    ExtendedTransaction // is it a good idea ?
-	Response    AppsecTempResponse
+	OutOfBandTx            ExtendedTransaction // is it a good idea ?
+	InBandTx               ExtendedTransaction // is it a good idea ?
+	Response               AppsecTempResponse
+	EarlyTermination       bool   // Set by the user with DropRequest()
+	EarlyTerminationReason string // Set by the user with DropRequest()
 	// should we store matched rules here ?
 
 	Logger *log.Entry
@@ -148,9 +150,9 @@ type AppsecConfig struct {
 
 func (w *AppsecRuntimeConfig) ClearResponse() {
 	w.Response = AppsecTempResponse{}
-	w.Response.Action = w.Config.DefaultPassAction
-	w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
-	w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
+	w.Response.Action = ""
+	w.Response.BouncerHTTPResponseCode = 0
+	w.Response.UserHTTPResponseCode = 0
 	w.Response.SendEvent = true
 	w.Response.SendAlert = true
 }
@@ -722,6 +724,14 @@ func (w *AppsecRuntimeConfig) SetHTTPCode(code int) error {
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) DropRequest(reason string) error {
+	w.Logger.Debugf("dropping request, reason: %s", reason)
+	w.EarlyTermination = true
+	w.EarlyTerminationReason = reason
+
+	return nil
+}
+
 type BodyResponse struct {
 	Action     string `json:"action"`
 	HTTPStatus int    `json:"http_status"`
@@ -731,7 +741,8 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	var bouncerStatusCode int
 
 	resp := BodyResponse{Action: response.Action}
-	if response.Action == AllowRemediation {
+	if response.Action == AllowRemediation || response.Action == "" {
+		resp.Action = w.Config.DefaultPassAction
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
 	} else { // ban, captcha and anything else
