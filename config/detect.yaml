@@ -1,6 +1,7 @@
 ---
 # Main block defining all service detection rules
 detect:
+
   # Detect apache2 on Debian-based systems
   apache2-systemd-deb:
     # all conditions must evaluate to true
@@ -88,40 +89,7 @@ detect:
         filenames:
           - /var/log/mail.log
 
-  # Emby media server
-  emby-systemd:
-    when:
-      - Systemd.UnitInstalled("emby-server.service")
-    hub_spec:
-      collections:
-        - LePresidente/emby
-    acquisition_spec:
-      filename: emby.yaml
-      datasource:
-        source: file
-        labels:
-          type: emby
-        filenames:
-          - /var/log/embyserver.txt
-
-  # Endlessh SSH tarpit
-  endlessh-systemd:
-    when:
-      - Systemd.UnitInstalled("endlessh.service")
-    hub_spec:
-      collections:
-        - crowdsecurity/endlessh
-    acquisition_spec:
-      filename: endlessh.yaml
-      datasource:
-        source: journalctl
-        labels:
-          type: endlessh
-        # XXX this? or /var/log/syslog?
-        journalctl_filter:
-          - "_SYSTEMD_UNIT=endlessh.service"
-
-  # Gitea Git server (XXX untested)
+  # Gitea Git server
   gitea-systemd:
     when:
       - Systemd.UnitInstalled("gitea.service")
@@ -188,6 +156,8 @@ detect:
   # Nginx
   nginx-systemd:
     when:
+      # if nginx is still detected after removing the "nginx" package,
+      # remove the nginx-common package too.
       - Systemd.UnitInstalled("nginx.service")
     hub_spec:
       collections:
@@ -216,43 +186,6 @@ detect:
           type: nginx
         filenames:
           - /usr/local/openresty/nginx/logs/*.log
-
-  # Odoo ERP
-  odoo-systemd:
-    when:
-      - Systemd.UnitInstalled("odoo.service")
-    hub_spec:
-      collections:
-        - crowdsecurity/odoo
-    acquisition_spec:
-      filename: odoo.yaml
-      datasource:
-        source: file
-        labels:
-          type: odoo
-        filenames:
-          - /var/log/odoo/*.log
-
-  # This only works on deb-based systems. On other distributions, the
-  # application is run from the release tarball and the log location depends on
-  # the location it's run from.
-
-  # Ombi media request system
-  ombi-systemd:
-    when:
-      - Systemd.UnitInstalled("ombi.service")
-      - Path.Exists("/etc/debian_version")
-    hub_spec:
-      collections:
-        - LePresidente/ombi
-    acquisition_spec:
-      filename: ombi.yaml
-      datasource:
-        source: file
-        labels:
-          type: ombi
-        filenames:
-          - /var/log/ombi/log-*.txt
 
   # PostgreSQL (deb)
   pgsql-systemd-deb:
@@ -427,10 +360,6 @@ detect:
         journalctl_filter:
           - "_SYSTEMD_UNIT=sshd.service"
 
-  #
-  #
-  ###
-
   # Suricata IDS/IPS
   suricata-systemd:
     when:
@@ -463,7 +392,8 @@ detect:
         filenames:
           - /var/log/vsftpd/*.log
 
-  # if you do this, do it at home (not in production)
+  # There is no standard systemd unit for telnetd, so
+  # we rely on file detection only.
   telnet:
     when:
       - len(Path.Glob("/var/log/telnetd*.log")) > 0
@@ -478,7 +408,7 @@ detect:
           type: telnet
         filenames:
           - /var/log/telnetd*.log
-  
+
   windows_iis:
     when:
       - Windows.ServiceEnabled("W3SVC")
@@ -494,7 +424,7 @@ detect:
           - C:\inetpub\logs\LogFiles\*\*.log
         labels:
           type: iis
-  
+
   windows_sqlserver:
     when:
       - Windows.ServiceEnabled("MSSQLSERVER")
@@ -562,3 +492,78 @@ detect:
     hub_spec:
       parsers:
         - crowdsecurity/whitelists
+
+# ------------------------------------------------
+# The following have not been extensively tested.
+# Feedback is welcome.
+# ------------------------------------------------
+
+## Emby media server
+#emby-systemd:
+#  when:
+#    - Systemd.UnitInstalled("emby-server.service")
+#  hub_spec:
+#    collections:
+#      - LePresidente/emby
+#  acquisition_spec:
+#    filename: emby.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: emby
+#      filenames:
+#        - /var/log/embyserver.txt
+
+## Endlessh SSH tarpit
+#endlessh-systemd:
+#  when:
+#    - Systemd.UnitInstalled("endlessh.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/endlessh
+#  acquisition_spec:
+#    filename: endlessh.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: endlessh
+#      # XXX this? or /var/log/syslog?
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=endlessh.service"
+
+## Odoo ERP
+#odoo-systemd:
+#  when:
+#    - Systemd.UnitInstalled("odoo.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/odoo
+#  acquisition_spec:
+#    filename: odoo.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: odoo
+#      filenames:
+#        - /var/log/odoo/*.log
+
+## This only works on deb-based systems. On other distributions, the
+## application is run from the release tarball and the log location depends on
+## the location it's run from.
+#
+## Ombi media request system
+#ombi-systemd:
+#  when:
+#    - Systemd.UnitInstalled("ombi.service")
+#    - Path.Exists("/etc/debian_version")
+#  hub_spec:
+#    collections:
+#      - LePresidente/ombi
+#  acquisition_spec:
+#    filename: ombi.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: ombi
+#      filenames:
+#        - /var/log/ombi/log-*.txt
