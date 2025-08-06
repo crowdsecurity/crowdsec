@@ -16,12 +16,8 @@ import (
 // detectFlags are reused for "unattended" and "interactive"
 type detectFlags struct {
 	detectConfigFile string
-	forcedUnits      []string
-	forcedProcesses  []string
-	forcedOSFamily   string
-	forcedOSID       string
-	forcedOSVersion  string
 	skipServices     []string
+	wantServices     []string
 	skipSystemd      bool
 }
 
@@ -53,12 +49,8 @@ func (f *detectFlags) bind(cmd *cobra.Command) {
 
 	flags := cmd.Flags()
 	flags.StringVar(&f.detectConfigFile, "detect-config", defaultServiceDetect, "path to service detection configuration, will use $CROWDSEC_SETUP_DETECT_CONFIG if defined")
-	flags.StringSliceVar(&f.forcedUnits, "force-unit", nil, "force detection of a systemd unit (can be repeated)")
-	flags.StringSliceVar(&f.forcedProcesses, "force-process", nil, "force detection of a running process (can be repeated)")
-	flags.StringSliceVar(&f.skipServices, "skip-service", nil, "ignore a service, don't recommend hub/datasources (can be repeated)")
-	flags.StringVar(&f.forcedOSFamily, "force-os-family", "", "override OS.Family: one of linux, freebsd, windows or darwin")
-	flags.StringVar(&f.forcedOSID, "force-os-id", "", "override OS.ID=[debian | ubuntu | redhat...]")
-	flags.StringVar(&f.forcedOSVersion, "force-os-version", "", "override OS.RawVersion (of OS or Linux distribution)")
+	flags.StringSliceVar(&f.skipServices, "ignore", nil, "ignore a detected service (can be repeated)")
+	flags.StringSliceVar(&f.wantServices, "force", nil, "force the detection of a service (can be repeated)")
 	flags.BoolVar(&f.skipSystemd, "skip-systemd", false, "don't use systemd, even if available")
 
 	flags.SortFlags = false
@@ -73,21 +65,13 @@ func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions
 		}
 	}
 
-	if f.forcedOSFamily == "" && f.forcedOSID != "" {
-		logger.Debug("force-os-id is set: force-os-family defaults to 'linux'")
-
-		f.forcedOSFamily = "linux"
-	}
+	logger.Debug("SkipServices: ", f.skipServices)
+	logger.Debug("WantServices: ", f.wantServices)
+	logger.Debug("SkipSystemd: ", f.skipSystemd)
 
 	return setup.DetectOptions{
-		ForcedUnits:     f.forcedUnits,
-		ForcedProcesses: f.forcedProcesses,
-		ForcedOS: setup.ExprOS{
-			Family:     f.forcedOSFamily,
-			ID:         f.forcedOSID,
-			RawVersion: f.forcedOSVersion,
-		},
 		SkipServices: f.skipServices,
+		WantServices: f.wantServices,
 		SkipSystemd:  f.skipSystemd,
 	}
 }
@@ -104,27 +88,15 @@ func (cli *cliSetup) newDetectCmd() *cobra.Command {
 		Use:   "detect",
 		Short: "Detect installed services and generate a setup file",
 		Long: `Detects the services installed on the machine and builds a specification
-to be used with the "setup install-*" commands.
-
-You can force the detection of specific processes or units, or override OS information
-using command-line flags.`,
+to be used with the "setup install-*" commands.`,
 		Example: `# detect services and print the setup plan
 cscli setup detect
 
 # force yaml instead of json (easier to edit)
 cscli setup detect --yaml
 
-# pretend that a process named "nginx" is running
-cscli setup detect --force-process nginx
-
-# pretend that a systemd unit named "some.service" is running
-cscli setup detect --force-unit some.service
-
 # detect and skip certain services
 cscli setup detect --skip-service whitelists
-
-# override the OS family
-cscli setup detect --force-os-family freebsd
 `,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
@@ -149,12 +121,12 @@ cscli setup detect --force-os-family freebsd
 			units := setup.UnitMap{}
 
 			if !f.skipSystemd {
-				if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext, f.forcedUnits); err != nil {
+				if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext); err != nil {
 					return err
 				}
 			}
 
-			procs, err := setup.DetectProcesses(ctx, f.forcedProcesses, logger)
+			procs, err := setup.DetectProcesses(ctx, logger)
 			if err != nil {
 				return err
 			}

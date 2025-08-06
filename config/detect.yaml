@@ -1,14 +1,16 @@
 ---
 # Main block defining all service detection rules
 detect:
+
   # Detect apache2 on Debian-based systems
   apache2-systemd-deb:
     # all conditions must evaluate to true
     when:
-      # check if apache2 is in "systemctl list-unit-files --state=enabled,generated,static"
-      - Systemd.UnitEnabled("apache2.service")
-      # broad distribution category (use OS.ID to disambiguate "ubuntu" from "debian")
-      - Path.Exists("/etc/debian_version")
+      # check if apache2 is in "systemctl list-unit-files --type=service"
+      - Systemd.UnitInstalled("apache2.service")
+      # broad distribution category (use Host.Platform to disambiguate "ubuntu" from "debian")
+      # full list at https://github.com/shirou/gopsutil/blob/master/host/host_linux.go
+      - Host.PlatformFamily == "debian"
     hub_spec:
       # If the rules match, install the following items
       collections:
@@ -26,8 +28,8 @@ detect:
   # Detect apache2 on rpm-based systems
   apache2-systemd-rpm:
     when:
-      - Systemd.UnitEnabled("httpd.service")
-      - Path.Exists("/etc/redhat-release")
+      - Systemd.UnitInstalled("httpd.service")
+      - Host.PlatformFamily in ['rhel', 'fedora']
     hub_spec:
       collections:
         - crowdsecurity/apache2
@@ -43,7 +45,7 @@ detect:
   # Asterisk PBX
   asterisk-systemd:
     when:
-      - Systemd.UnitEnabled("asterisk.service")
+      - Systemd.UnitInstalled("asterisk.service")
     hub_spec:
       collections:
         - crowdsecurity/asterisk
@@ -59,7 +61,7 @@ detect:
   # Caddy web server
   caddy-systemd:
     when:
-      - Systemd.UnitEnabled("caddy.service")
+      - Systemd.UnitInstalled("caddy.service")
     hub_spec:
       collections:
         - crowdsecurity/caddy
@@ -75,7 +77,7 @@ detect:
   # Dovecot IMAP/POP3 server
   dovecot-systemd:
     when:
-      - Systemd.UnitEnabled("dovecot.service")
+      - Systemd.UnitInstalled("dovecot.service")
     hub_spec:
       collections:
         - crowdsecurity/dovecot
@@ -84,47 +86,14 @@ detect:
       datasource:
         source: file
         labels:
-          type: dovecot
+          type: syslog
         filenames:
           - /var/log/mail.log
 
-  # Emby media server
-  emby-systemd:
-    when:
-      - Systemd.UnitEnabled("emby-server.service")
-    hub_spec:
-      collections:
-        - LePresidente/emby
-    acquisition_spec:
-      filename: emby.yaml
-      datasource:
-        source: file
-        labels:
-          type: emby
-        filenames:
-          - /var/log/embyserver.txt
-
-  # Endlessh SSH tarpit
-  endlessh-systemd:
-    when:
-      - Systemd.UnitEnabled("endlessh.service")
-    hub_spec:
-      collections:
-        - crowdsecurity/endlessh
-    acquisition_spec:
-      filename: endlessh.yaml
-      datasource:
-        source: journalctl
-        labels:
-          type: endlessh
-        # XXX this? or /var/log/syslog?
-        journalctl_filter:
-          - "_SYSTEMD_UNIT=endlessh.service"
-
-  # Gitea Git server (XXX untested)
+  # Gitea Git server
   gitea-systemd:
     when:
-      - Systemd.UnitEnabled("gitea.service")
+      - Systemd.UnitInstalled("gitea.service")
     hub_spec:
       collections:
         - crowdsecurity/gitea
@@ -140,7 +109,7 @@ detect:
   # HAProxy load balancer
   haproxy-systemd:
     when:
-      - Systemd.UnitEnabled("haproxy.service")
+      - Systemd.UnitInstalled("haproxy.service")
     hub_spec:
       collections:
         - crowdsecurity/haproxy
@@ -156,7 +125,7 @@ detect:
   # MariaDB server
   mariadb-systemd:
     when:
-      - Systemd.UnitEnabled("mariadb.service")
+      - Systemd.UnitInstalled("mariadb.service")
     hub_spec:
       collections:
         - crowdsecurity/mariadb
@@ -172,7 +141,7 @@ detect:
   # MySQL server
   mysql-systemd:
     when:
-      - Systemd.UnitEnabled("mysql.service")
+      - Systemd.UnitInstalled("mysql.service")
     hub_spec:
       collections:
         - crowdsecurity/mysql
@@ -188,7 +157,9 @@ detect:
   # Nginx
   nginx-systemd:
     when:
-      - Systemd.UnitEnabled("nginx.service")
+      # if nginx is still detected after removing the "nginx" package,
+      # remove the nginx-common package too.
+      - Systemd.UnitInstalled("nginx.service")
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -204,7 +175,7 @@ detect:
   # OpenResty (nginx distribution)
   openresty-systemd:
     when:
-      - Systemd.UnitEnabled("openresty.service")
+      - Systemd.UnitInstalled("openresty.service")
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -217,48 +188,11 @@ detect:
         filenames:
           - /usr/local/openresty/nginx/logs/*.log
 
-  # Odoo ERP
-  odoo-systemd:
-    when:
-      - Systemd.UnitEnabled("odoo.service")
-    hub_spec:
-      collections:
-        - crowdsecurity/odoo
-    acquisition_spec:
-      filename: odoo.yaml
-      datasource:
-        source: file
-        labels:
-          type: odoo
-        filenames:
-          - /var/log/odoo/*.log
-
-  # This only works on deb-based systems. On other distributions, the
-  # application is run from the release tarball and the log location depends on
-  # the location it's run from.
-
-  # Ombi media request system
-  ombi-systemd:
-    when:
-      - Systemd.UnitEnabled("ombi.service")
-      - Path.Exists("/etc/debian_version")
-    hub_spec:
-      collections:
-        - LePresidente/ombi
-    acquisition_spec:
-      filename: ombi.yaml
-      datasource:
-        source: file
-        labels:
-          type: ombi
-        filenames:
-          - /var/log/ombi/log-*.txt
-
   # PostgreSQL (deb)
   pgsql-systemd-deb:
     when:
-      - Systemd.UnitEnabled("postgresql.service")
-      - Path.Exists("/etc/debian_version")
+      - Systemd.UnitInstalled("postgresql.service")
+      - Host.PlatformFamily == "debian"
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -274,8 +208,8 @@ detect:
   # PostgreSQL (rpm)
   pgsql-systemd-rpm:
     when:
-      - Systemd.UnitEnabled("postgresql.service")
-      - Path.Exists("/etc/redhat-release")
+      - Systemd.UnitInstalled("postgresql.service")
+      - Host.PlatformFamily in ['rhel', 'fedora']
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -291,7 +225,7 @@ detect:
   # Postfix mail server
   postfix-systemd:
     when:
-      - Systemd.UnitEnabled("postfix.service")
+      - Systemd.UnitInstalled("postfix.service")
     hub_spec:
       collections:
         - crowdsecurity/postfix
@@ -303,11 +237,12 @@ detect:
           type: syslog
         filenames:
           - /var/log/mail.log
+          - /var/log/maillog
 
   # ProFTPD FTP server
   proftpd-systemd:
     when:
-      - Systemd.UnitEnabled("proftpd.service")
+      - Systemd.UnitInstalled("proftpd.service")
     hub_spec:
       collections:
         - crowdsecurity/proftpd
@@ -323,7 +258,7 @@ detect:
   # Pure-FTPd server
   pureftpd-systemd:
     when:
-      - Systemd.UnitEnabled("pure-ftpd.service")
+      - Systemd.UnitInstalled("pure-ftpd.service")
     hub_spec:
       collections:
         - fulljackz/pureftpd
@@ -341,7 +276,7 @@ detect:
     when:
       # deb -> smbd.service
       # rpm -> smb.service
-      - Systemd.UnitEnabled("smbd.service") or Systemd.UnitEnabled("smb.service")
+      - Systemd.UnitInstalled("smbd.service") or Systemd.UnitInstalled("smb.service")
     hub_spec:
       collections:
         - crowdsecurity/smb
@@ -360,7 +295,7 @@ detect:
 
   ssh-systemd-file:
     when:
-      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
       - Path.Exists("/var/log/auth.log")
     hub_spec:
       collections:
@@ -378,7 +313,7 @@ detect:
 
   sshd-systemd-file:
     when:
-      - Systemd.UnitEnabled("sshd.service") or Systemd.UnitEnabled("sshd.socket")
+      - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
       - Path.Exists("/var/log/auth.log")
     hub_spec:
       collections:
@@ -396,7 +331,7 @@ detect:
 
   ssh-systemd-journalctl:
     when:
-      - Systemd.UnitEnabled("ssh.service") or Systemd.UnitEnabled("ssh.socket")
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
       - not Path.Exists("/var/log/auth.log")
     hub_spec:
       collections:
@@ -412,7 +347,7 @@ detect:
 
   sshd-systemd-journalctl:
     when:
-      - Systemd.UnitEnabled("sshd.service") or Systemd.UnitEnabled("sshd.socket")
+      - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
       - not Path.Exists("/var/log/auth.log")
     hub_spec:
       collections:
@@ -426,14 +361,10 @@ detect:
         journalctl_filter:
           - "_SYSTEMD_UNIT=sshd.service"
 
-  #
-  #
-  ###
-
   # Suricata IDS/IPS
   suricata-systemd:
     when:
-      - Systemd.UnitEnabled("suricata.service")
+      - Systemd.UnitInstalled("suricata.service")
     hub_spec:
       collections:
         - crowdsecurity/suricata
@@ -449,7 +380,7 @@ detect:
   # vsftpd FTP server
   vsftpd-systemd:
     when:
-      - Systemd.UnitEnabled("vsftpd.service")
+      - Systemd.UnitInstalled("vsftpd.service")
     hub_spec:
       collections:
         - crowdsecurity/vsftpd
@@ -462,7 +393,8 @@ detect:
         filenames:
           - /var/log/vsftpd/*.log
 
-  # if you do this, do it at home (not in production)
+  # There is no standard systemd unit for telnetd, so
+  # we rely on file detection only.
   telnet:
     when:
       - len(Path.Glob("/var/log/telnetd*.log")) > 0
@@ -477,7 +409,7 @@ detect:
           type: telnet
         filenames:
           - /var/log/telnetd*.log
-  
+
   windows_iis:
     when:
       - Windows.ServiceEnabled("W3SVC")
@@ -493,7 +425,7 @@ detect:
           - C:\inetpub\logs\LogFiles\*\*.log
         labels:
           type: iis
-  
+
   windows_sqlserver:
     when:
       - Windows.ServiceEnabled("MSSQLSERVER")
@@ -516,7 +448,7 @@ detect:
 
   linux:
     when:
-      - OS.Family == "linux"
+      - Host.OS == "linux"
     hub_spec:
       collections:
         - crowdsecurity/linux
@@ -533,14 +465,14 @@ detect:
 
   freebsd:
     when:
-      - OS.Family == "freebsd"
+      - Host.OS == "freebsd"
     hub_spec:
       collections:
         - crowdsecurity/freebsd
 
   windows:
     when:
-      - OS.Family == "windows"
+      - Host.OS == "windows"
     hub_spec:
       collections:
         - crowdsecurity/windows
@@ -561,3 +493,78 @@ detect:
     hub_spec:
       parsers:
         - crowdsecurity/whitelists
+
+# ------------------------------------------------
+# The following have not been extensively tested.
+# Feedback is welcome.
+# ------------------------------------------------
+
+## Emby media server
+#emby-systemd:
+#  when:
+#    - Systemd.UnitInstalled("emby-server.service")
+#  hub_spec:
+#    collections:
+#      - LePresidente/emby
+#  acquisition_spec:
+#    filename: emby.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: emby
+#      filenames:
+#        - /var/log/embyserver.txt
+
+## Endlessh SSH tarpit
+#endlessh-systemd:
+#  when:
+#    - Systemd.UnitInstalled("endlessh.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/endlessh
+#  acquisition_spec:
+#    filename: endlessh.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: endlessh
+#      # XXX this? or /var/log/syslog?
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=endlessh.service"
+
+## Odoo ERP
+#odoo-systemd:
+#  when:
+#    - Systemd.UnitInstalled("odoo.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/odoo
+#  acquisition_spec:
+#    filename: odoo.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: odoo
+#      filenames:
+#        - /var/log/odoo/*.log
+
+## This only works on deb-based systems. On other distributions, the
+## application is run from the release tarball and the log location depends on
+## the location it's run from.
+#
+## Ombi media request system
+#ombi-systemd:
+#  when:
+#    - Systemd.UnitInstalled("ombi.service")
+#    - Host.PlatformFamily == "debian"
+#  hub_spec:
+#    collections:
+#      - LePresidente/ombi
+#  acquisition_spec:
+#    filename: ombi.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: ombi
+#      filenames:
+#        - /var/log/ombi/log-*.txt

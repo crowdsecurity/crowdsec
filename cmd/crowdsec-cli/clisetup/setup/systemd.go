@@ -16,9 +16,9 @@ type Executor func(ctx context.Context, name string, args ...string) *exec.Cmd
 // DetectSystemdUnits returns all enabled systemd units.
 // It needs to parse the table because -o json does not work everywhere.
 // The additionalUnits parameter will force the function to return these as well, even if they are not detected.
-func DetectSystemdUnits(ctx context.Context, executor Executor, additionalUnits []string) (UnitMap, error) {
+func DetectSystemdUnits(ctx context.Context, executor Executor) (UnitMap, error) {
 	ret := UnitMap{}
-	cmd := executor(ctx, "systemctl", "list-unit-files", "--state=enabled,generated,static")
+	cmd := executor(ctx, "systemctl", "list-unit-files", "--type=service")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -53,10 +53,6 @@ func DetectSystemdUnits(ctx context.Context, executor Executor, additionalUnits 
 
 	if err := cmd.Wait(); err != nil {
 		return nil, fmt.Errorf("running systemctl: %w", err)
-	}
-
-	for _, name := range additionalUnits {
-		ret[name] = struct{}{}
 	}
 
 	return ret, nil

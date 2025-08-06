@@ -21,6 +21,7 @@ linters:
 
     - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
     - funcorder
+    - exhaustive
 
     # we allow named returns (to improve readability, in the function signatures)
     # but disallow implicit (or "naked") returns, to improve readability in the actual code.

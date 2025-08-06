@@ -147,12 +147,12 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 	units := setup.UnitMap{}
 
 	if !opts.SkipSystemd {
-		if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext, opts.ForcedUnits); err != nil {
+		if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext); err != nil {
 			return err
 		}
 	}
 
-	procs, err := setup.DetectProcesses(ctx, opts.ForcedProcesses, logger)
+	procs, err := setup.DetectProcesses(ctx, logger)
 	if err != nil {
 		return err
 	}
@@ -213,6 +213,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 			// and nothing happened, so no reload message
 			fmt.Fprintln(os.Stdout, err.Error())
 			leavingMessage(os.Stdout)
+
 			return nil
 		case err != nil:
 			return err
