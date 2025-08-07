@@ -89,6 +89,7 @@ detect:
           type: syslog
         filenames:
           - /var/log/mail.log
+          - /var/log/maillog
 
   # Gitea Git server
   gitea-systemd:
