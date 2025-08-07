@@ -96,7 +96,7 @@ detect:
       - Systemd.UnitInstalled("gitea.service")
     hub_spec:
       collections:
-        - crowdsecurity/gitea
+        - LePresidente/gitea
     acquisition_spec:
       filename: gitea.yaml
       datasource:
