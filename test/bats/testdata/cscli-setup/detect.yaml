@@ -1,0 +1,97 @@
+# TODO: windows, use_time_machine, event support (see https://hub.crowdsec.net/author/crowdsecurity/collections/iis)
+
+---
+
+detect:
+  apache2:
+    when:
+      - System.ProcessRunning("apache2")
+    hub_spec:
+      collections:
+        - crowdsecurity/apache2
+    acquisition_spec:
+      filename: apache.yaml
+      datasource:
+        source: file
+        labels:
+          type: apache2
+        filenames:
+          - /var/log/apache2/*.log
+          - /var/log/*http*/*.log
+          - /var/log/httpd/*.log
+
+  apache2-systemd:
+    when:
+      - Systemd.UnitInstalled("apache2.service")
+      - OS.ID != "centos"
+    hub_spec:
+      collections:
+        - crowdsecurity/apache2
+    acquisition_spec:
+      filename: apache.yaml
+      datasource:
+        source: journalctl
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=mock-apache2.service"
+        labels:
+          type: apache2
+
+  apache2-systemd-centos:
+    when:
+      - Systemd.UnitInstalled("httpd.service")
+      - OS.ID == "centos"
+    hub_spec:
+      collections:
+        - crowdsecurity/apache2
+    acquisition_spec:
+      filename: apache.yaml
+      datasource:
+        source: journalctl
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=httpd.service"
+
+  ssh-systemd:
+    when:
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
+    hub_spec:
+      collections:
+        - crowdsecurity/apache2
+    acquisition_spec:
+      filename: ssh.yaml
+      datasource:
+        source: journalctl
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=ssh.service"
+        labels:
+          type: syslog
+
+  linux:
+    when:
+      - Host.OS == "linux"
+    hub_spec:
+      collections:
+        - crowdsecurity/linux
+    acquisition_spec:
+      filename: linux.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/syslog
+          - /var/log/kern.log
+          - /var/log/messages
+
+  freebsd:
+    when:
+      - Host.OS == "freebsd"
+    hub_spec:
+      collections:
+        - crowdsecurity/freebsd
+
+  windows:
+    when:
+      - Host.OS == "windows"
+    hub_spec:
+      collections:
+        - crowdsecurity/windows

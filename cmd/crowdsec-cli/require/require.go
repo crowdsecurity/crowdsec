@@ -13,6 +13,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
+var ErrAgentDisabled = errors.New("log processor is disabled -- this command cannot run on a LAPI-only instance")
+
+func Agent(c *csconfig.Config) error {
+	if err := c.LoadCrowdsec(); err != nil {
+		return err
+	}
+
+	if c.DisableAgent {
+		return ErrAgentDisabled
+	}
+
+	return nil
+}
+
 func _lapi(c *csconfig.Config, skipOnlineCreds bool) error {
 	if err := c.LoadAPIServer(true, skipOnlineCreds); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)

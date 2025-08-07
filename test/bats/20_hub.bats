@@ -193,3 +193,9 @@ teardown() {
     rune -0 cscli hub types -o json
     assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
 }
+
+@test "cscli hub foobar" {
+    rune -1 cscli hub foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli hub"'
+}

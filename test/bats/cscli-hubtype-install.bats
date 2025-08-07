@@ -143,20 +143,20 @@ get_latest_version() {
 @test "install an item (already installed)" {
     rune -0 cscli parsers install crowdsecurity/whitelists
     rune -0 cscli parsers install crowdsecurity/whitelists --dry-run
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers install crowdsecurity/whitelists
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
 }
 
 @test "install an item (force is no-op if not tainted)" {
     rune -0 cscli parsers install crowdsecurity/whitelists
     rune -0 cscli parsers install crowdsecurity/whitelists
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
     rune -0 cscli parsers install crowdsecurity/whitelists --force
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
     refute_stderr
 }
 
@@ -166,14 +166,14 @@ get_latest_version() {
 
     rune -0 cscli parsers install crowdsecurity/whitelists --dry-run
     assert_output - --stderr <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     # XXX should this fail with status 1 instead?
     rune -0 cscli parsers install crowdsecurity/whitelists
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
@@ -220,7 +220,7 @@ get_latest_version() {
 @test "install one or multiple items (ignore errors)" {
     rune -0 cscli parsers install foo/bar --ignore
     assert_stderr --partial "can't find 'foo/bar' in parsers"
-    assert_output "Nothing to do."
+    assert_output "Nothing to install or remove."
 
     rune -0 cscli parsers install crowdsecurity/whitelists
     echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
@@ -228,7 +228,7 @@ get_latest_version() {
     # and maybe re-evaluate the --ignore flag
     rune -0 cscli parsers install crowdsecurity/whitelists --ignore
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 

@@ -161,7 +161,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, err
 	}
 
-	uniqueId := uuid.NewString()
+	uniqueID := uuid.NewString()
 
 	if transformExpr != "" {
 		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
@@ -169,10 +169,10 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
 
-		transformRuntimes[uniqueId] = vm
+		transformRuntimes[uniqueID] = vm
 	}
 
-	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
+	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueID)
 	if err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
@@ -204,38 +204,34 @@ func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.Acquisitio
 	return metrics.AcquisitionMetricsLevelFull
 }
 
-func detectTypes(r io.Reader) ([]string, error) {
+func detectType(r io.Reader) (string, error) {
 	collectedKeys, err := csyaml.GetDocumentKeys(r)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	ret := make([]string, len(collectedKeys))
-
-	for idx, keys := range collectedKeys {
-		var detected string
-
-		switch {
-		case slices.Contains(keys, "source"):
-			detected = ""
-		case slices.Contains(keys, "filename"):
-			detected = "file"
-		case slices.Contains(keys, "filenames"):
-			detected = "file"
-		case slices.Contains(keys, "journalctl_filter"):
-			detected = "journalctl"
-		default:
-			detected = ""
-		}
-
-		ret[idx] = detected
+	if len(collectedKeys) == 0 {
+		return "", nil
 	}
 
-	return ret, nil
+	keys := collectedKeys[0]
+
+	switch {
+	case slices.Contains(keys, "source"):
+		return "", nil
+	case slices.Contains(keys, "filename"):
+		return "file", nil
+	case slices.Contains(keys, "filenames"):
+		return "file", nil
+	case slices.Contains(keys, "journalctl_filter"):
+		return "journalctl", nil
+	default:
+		return "", nil
+	}
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -254,11 +250,6 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 
 	expandedAcquis := csstring.StrictExpand(string(acquisContent), os.LookupEnv)
 
-	detectedTypes, err := detectTypes(strings.NewReader(expandedAcquis))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
-	}
-
 	documents, err := csyaml.SplitDocuments(strings.NewReader(expandedAcquis))
 	if err != nil {
 		return nil, err
@@ -267,18 +258,22 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 	idx := -1
 
 	for _, yamlDoc := range documents {
+		detectedType, err := detectType(bytes.NewReader(yamlDoc))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
+		}
+
 		idx += 1
 
 		var sub configuration.DataSourceCommonCfg
 
 		// can't be strict here, the doc contains specific datasource config too but we won't collect them now.
-		err := yaml.UnmarshalWithOptions(yamlDoc, &sub)
-		if err != nil {
+		if err = yaml.UnmarshalWithOptions(yamlDoc, &sub); err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), errors.New(yaml.FormatError(err, false, false)))
 		}
 
 		// for backward compat ('type' was not mandatory, detect it)
-		if guessType := detectedTypes[idx]; guessType != "" {
+		if guessType := detectedType; guessType != "" {
 			log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
 
 			if sub.Source != "" && sub.Source != guessType {
@@ -317,10 +312,10 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 			return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
 		}
 
-		uniqueId := uuid.NewString()
-		sub.UniqueId = uniqueId
+		uniqueID := uuid.NewString()
+		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(sub, yamlDoc, metrics_level)
+		src, err := DataSourceConfigure(sub, yamlDoc, metricsLevel)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -337,7 +332,7 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 			}
 
-			transformRuntimes[uniqueId] = vm
+			transformRuntimes[uniqueID] = vm
 		}
 
 		sources = append(sources, src)
@@ -350,10 +345,10 @@ func sourcesFromFile(acquisFile string, metrics_level metrics.AcquisitionMetrics
 func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
 	var allSources []DataSource
 
-	metrics_level := GetMetricsLevelFromPromCfg(prom)
+	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(acquisFile, metrics_level)
+		sources, err := sourcesFromFile(acquisFile, metricsLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -403,7 +398,8 @@ func copyEvent(evt types.Event, line string) types.Event {
 
 func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
-	logger.Infof("transformer started")
+
+	logger.Info("transformer started")
 
 	for {
 		select {

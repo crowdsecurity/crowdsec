@@ -23,6 +23,11 @@ func TestLoadCrowdsec(t *testing.T) {
 	contextFileFullPath, err := filepath.Abs("./testdata/context.yaml")
 	require.NoError(t, err)
 
+	notExist := "./testdata/acquis_not_exist.yaml"
+
+	notExistFullPath, err := filepath.Abs(notExist)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name        string
 		input       *Config
@@ -162,10 +167,20 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{
 					ConsoleContextPath:  "",
-					AcquisitionFilePath: "./testdata/acquis_not_exist.yaml",
+					AcquisitionFilePath: notExist,
 				},
 			},
-			expectedErr: cstest.FileNotFoundMessage,
+			expected: &CrowdsecServiceCfg{
+				Enable:              ptr.Of(true),
+				AcquisitionFilePath: notExistFullPath,
+				AcquisitionFiles:    []string{},
+				SimulationConfig: &SimulationConfig{
+					Simulation: ptr.Of(false),
+				},
+				ParserRoutinesCount:  1,
+				OutputRoutinesCount:  1,
+				BucketsRoutinesCount: 1,
+			},
 		},
 		{
 			name: "agent disabled",

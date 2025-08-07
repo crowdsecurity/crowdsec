@@ -51,10 +51,10 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
-install -m 755 -D wizard.sh %{buildroot}/usr/share/crowdsec/wizard.sh
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
 install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 600 -D config/detect.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
@@ -83,7 +83,6 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %{_bindir}/cscli
-%{_datadir}/%{name}/wizard.sh
 %{_libdir}/%{name}/plugins/notification-slack
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
@@ -118,6 +117,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/console.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/detect.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/console/context.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
@@ -148,24 +148,16 @@ rm -rf %{buildroot}
 #fi
 
 
-%post -p /bin/bash
+%post -p /bin/sh
 
 #install
-if [ $1 == 1 ]; then
+if [ "$1" = 1 ]; then
     if [ ! -f "/var/lib/crowdsec/data/crowdsec.db" ] ; then
         touch /var/lib/crowdsec/data/crowdsec.db
     fi
 
     echo $SHELL
-    . /usr/share/crowdsec/wizard.sh -n
 
-    echo Creating acquisition configuration
-    if [ ! -f "/etc/crowsec/acquis.yaml" ] ; then
-        set +e
-        SILENT=true detect_services
-        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
-        set +e
-    fi
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] ; then
         install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
         cscli capi register --error
@@ -177,7 +169,9 @@ if [ $1 == 1 ]; then
 
     cscli hub update
     cscli hub upgrade
-    CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
+
+    echo "Creating acquisition configuration"
+    cscli setup unattended
 
     GREEN='\033[0;32m'
     BOLD='\033[1m'
@@ -192,6 +186,8 @@ if [ $1 == 1 ]; then
     echo -e "===================================================================================================================="
     echo -e " * Subscribe to ${BOLD}additional blocklists${RESET}, ${BOLD}visualize${RESET} your alerts and more with the console: ${GREEN}${BOLD}https://app.crowdsec.net${RESET}"
 fi
+
+echo "You can always run the configuration again interactively by using 'cscli setup'"
 
 %systemd_post %{name}.service
 

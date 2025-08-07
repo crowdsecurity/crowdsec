@@ -441,8 +441,8 @@ wheels = [
 
 [[package]]
 name = "pytest-cs"
-version = "0.7.23"
-source = { git = "https://github.com/crowdsecurity/pytest-cs#0ba706aaa34401a55b4e35b4d4252bc953242570" }
+version = "0.7.24"
+source = { git = "https://github.com/crowdsecurity/pytest-cs#0c085d717f4f9df8dc4b0387f11c0c1f7fdbc6b4" }
 dependencies = [
     { name = "docker" },
     { name = "psutil" },
