@@ -44,7 +44,7 @@ func (f *detectFlags) detectConfig() (*setup.DetectConfig, string, error) {
 func (f *detectFlags) bind(cmd *cobra.Command) {
 	defaultServiceDetect := os.Getenv("CROWDSEC_SETUP_DETECT_CONFIG")
 	if defaultServiceDetect == "" {
-		defaultServiceDetect = csconfig.DefaultConfigPath("detect.yaml")
+		defaultServiceDetect = csconfig.DefaultDataPath("detect.yaml")
 	}
 
 	flags := cmd.Flags()

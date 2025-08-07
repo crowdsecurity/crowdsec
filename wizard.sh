@@ -154,13 +154,13 @@ install_crowdsec() {
     [ ! -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" ] && install -v -m 600 -D "./config/$CLIENT_SECRETS" "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR/$LAPI_SECRETS" ]   && install -v -m 600 -D "./config/$LAPI_SECRETS"   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/config.yaml ]     && install -v -m 600 -D ./config/config.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
-    [ ! -f "$CROWDSEC_CONFIG_DIR"/detect.yaml ]     && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/dev.yaml ]        && install -v -m 644 -D ./config/dev.yaml          "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/user.yaml ]       && install -v -m 644 -D ./config/user.yaml         "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/acquis.yaml ]     && install -v -m 644 -D ./config/acquis.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/profiles.yaml ]   && install -v -m 644 -D ./config/profiles.yaml     "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/simulation.yaml ] && install -v -m 644 -D ./config/simulation.yaml   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]    && install -v -m 644 -D ./config/console.yaml      "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_DATA_DIR"/detect.yaml ]       && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_DATA_DIR" >/dev/null || exit
 
     DATA="$CROWDSEC_DATA_DIR" CFG="$CROWDSEC_CONFIG_DIR" envsubst '$CFG $DATA' < ./config/user.yaml > "$CROWDSEC_CONFIG_DIR"/user.yaml || log_fatal "unable to generate user configuration file"
     if [ "$DOCKER_MODE" = "false" ]; then
