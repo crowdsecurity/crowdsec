@@ -503,7 +503,7 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd
 		seekInfo.Whence = io.SeekEnd
 	}
 
-	logger.Infof("Starting tail for file %s (offset: %d, whence: %d)", file, seekInfo.Offset, seekInfo.Whence)
+	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
 	tail, err := tail.TailFile(file, tail.Config{
 		ReOpen:   true,
