@@ -294,27 +294,9 @@ detect:
   # SSH daemon
   #
 
-  ssh-systemd-file:
-    when:
-      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
-      - Path.Exists("/var/log/auth.log")
-    hub_spec:
-      collections:
-        - crowdsecurity/sshd
-    acquisition_spec:
-      filename: sshd.yaml
-      datasource:
-        source: file
-        labels:
-          type: syslog
-        filenames:
-          - /var/log/auth.log
-          - /var/log/sshd.log
-          - /var/log/secure
-
   sshd-systemd-file:
     when:
-      - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket") or Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
       - Path.Exists("/var/log/auth.log")
     hub_spec:
       collections:
@@ -333,7 +315,7 @@ detect:
   ssh-systemd-journalctl:
     when:
       - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
-      - not Path.Exists("/var/log/auth.log")
+      - not Path.Exists("/var/log/auth.log") and not Path.Exists("/var/log/sshd.log") and not Path.Exists("/var/log/secure")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -349,7 +331,7 @@ detect:
   sshd-systemd-journalctl:
     when:
       - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
-      - not Path.Exists("/var/log/auth.log")
+      - not Path.Exists("/var/log/auth.log") and not Path.Exists("/var/log/sshd.log") and not Path.Exists("/var/log/secure")
     hub_spec:
       collections:
         - crowdsecurity/sshd
