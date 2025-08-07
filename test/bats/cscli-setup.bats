@@ -543,6 +543,19 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable collections:crowdsecurity/linux'
 }
 
+@test "cscli setup install-hub (missing hub item)" {
+    # a missing item does not prevent the others from being installed
+    rune -0 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["foo/bar", "crowdsecurity/caddy"]}}]}'
+    assert_output --partial "download collections:crowdsecurity/caddy"
+    assert_output --partial "enable collections:crowdsecurity/caddy"
+    assert_stderr --regexp "Could not find .*collections:foo/bar.* in hub index, skipping install"
+
+    rune -0 cscli setup install-hub - <<< '{"setup":[{"hub_spec":{"collections":["foo/bar", "crowdsecurity/caddy"]}}]}'
+    assert_output --partial "downloading collections:crowdsecurity/caddy"
+    assert_output --partial "enabling collections:crowdsecurity/caddy"
+    assert_stderr --regexp "Could not find .*collections:foo/bar.* in hub index, skipping install"
+}
+
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
     # Dry run mode of "cscli setup install-hub", with more stuff.
 
@@ -553,9 +566,6 @@ update-notifier-motd.timer              enabled enabled
     assert_line --regexp 'enable scenarios:crowdsecurity/smb-bf'
     assert_line --regexp 'enable postoverflows:crowdsecurity/cdn-whitelist'
     assert_line --regexp 'enable postoverflows:crowdsecurity/rdns'
-
-    rune -1 cscli setup install-hub - --dry-run <<< '{"setup":[{"hub_spec":{"collections":["crowdsecurity/foo"]}}]}'
-    assert_stderr --partial 'Error: cscli setup install-hub: item collections:crowdsecurity/foo not found'
 }
 
 @test "cscli setup install-hub (missing arguments or directory)" {
@@ -854,7 +864,6 @@ update-notifier-motd.timer              enabled enabled
     rune -0 cat "$BATS_TEST_TMPDIR/setup.smb.yaml"
     assert_output --partial "/path/to/smb.log"
 }
-
 
 @test "cscli setup unattended (default acquis-dir)" {
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')

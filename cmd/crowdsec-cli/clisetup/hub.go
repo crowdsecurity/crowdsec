@@ -51,7 +51,9 @@ cscli setup install-hub setup.yaml --dry-run
 				return err
 			}
 
-			plan, err := cli.install(cmd.Context(), interactive, dryRun, stup.CollectHubSpecs())
+			logger := logrus.StandardLogger()
+
+			plan, err := cli.install(cmd.Context(), interactive, dryRun, stup.CollectHubSpecs(), logger)
 			if err != nil {
 				return err
 			}
@@ -72,7 +74,7 @@ cscli setup install-hub setup.yaml --dry-run
 	return cmd
 }
 
-func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, hubSpecs []setup.HubSpec) (*hubops.ActionPlan, error) {
+func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool, hubSpecs []setup.HubSpec, logger logrus.FieldLogger) (*hubops.ActionPlan, error) {
 	cfg := cli.cfg()
 
 	hub, err := require.Hub(cfg, logrus.StandardLogger())
@@ -98,7 +100,8 @@ func (cli *cliSetup) install(ctx context.Context, interactive bool, dryRun bool,
 
 				item, err := hub.GetItemFQ(fqName)
 				if err != nil {
-					return nil, err
+					logger.Errorf("Could not find %q in hub index, skipping install", fqName)
+					continue
 				}
 
 				if err := plan.AddCommand(hubops.NewDownloadCommand(item, contentProvider, false)); err != nil {

@@ -206,7 +206,7 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 	hubSpecs := stup.CollectHubSpecs()
 
 	if len(hubSpecs) > 0 {
-		_, err := cli.install(ctx, interactive, dryRun, hubSpecs)
+		_, err := cli.install(ctx, interactive, dryRun, hubSpecs, logger)
 		switch {
 		case errors.Is(err, hubops.ErrUserCanceled):
 			// not a real error... no need to exit with 1
