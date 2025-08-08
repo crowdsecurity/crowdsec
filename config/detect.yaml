@@ -29,7 +29,7 @@ detect:
   apache2-systemd-rpm:
     when:
       - Systemd.UnitInstalled("httpd.service")
-      - Host.PlatformFamily in ['rhel', 'fedora']
+      - Host.PlatformFamily in ['rhel', 'fedora', 'suse']
     hub_spec:
       collections:
         - crowdsecurity/apache2
@@ -210,7 +210,7 @@ detect:
   pgsql-systemd-rpm:
     when:
       - Systemd.UnitInstalled("postgresql.service")
-      - Host.PlatformFamily in ['rhel', 'fedora']
+      - Host.PlatformFamily in ['rhel', 'fedora', 'suse']
     hub_spec:
       collections:
         - crowdsecurity/pgsql
