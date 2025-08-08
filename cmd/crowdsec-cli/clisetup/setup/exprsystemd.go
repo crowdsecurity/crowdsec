@@ -16,23 +16,44 @@ func NewExprSystemd(installedUnits UnitMap) *ExprSystemd {
 	return ret
 }
 
-// UnitInstalled returns true if the unit is found in the systemctl output.
+// UnitInstalled returns true if the unit is installed, even if it is not enabled or running.
 func (e *ExprSystemd) UnitInstalled(ctx context.Context, unitName string) (bool, error) {
 	_, ok := e.installedUnits[unitName]
 
 	return ok, nil
 }
 
-// UnitHasJournal returns true if the unit exists and wrote to the journal.
-func (e *ExprSystemd) UnitHasJournal(ctx context.Context, unitName string) (bool, error) {
-	_, ok := e.installedUnits[unitName]
+// UnitConfig returns the value of the specified key in the unit's configuration.
+func (e *ExprSystemd) UnitConfig(ctx context.Context, unitName, key string) (string, error) {
+	unit, ok := e.installedUnits[unitName]
+	if !ok {
+		return "", nil
+	}
 
-	return ok, nil
+	return unit.Config[key], nil
 }
 
-// UnitStandardOutput returns the value of the StandardOutput property for the unit, or an empty string if the unit is not installed.
-func (e *ExprSystemd) UnitStandardOutput(ctx context.Context, unitName string) (bool, error) {
-	_, ok := e.installedUnits[unitName]
+// UnitLogsToJournal returns true if the unit's logs are configured to go to the journal, either through
+// standard output or standard error.
+func (e *ExprSystemd) UnitLogsToJournal(ctx context.Context, unitName string) (bool, error) {
+	stdout, err := e.UnitConfig(ctx, unitName, "StandardOutput")
+	if err != nil {
+		return false, err
+	}
 
-	return ok, nil
+	if stdout == "journal" || stdout == "journal+console" {
+		return true, nil
+	}
+
+	stderr, err := e.UnitConfig(ctx, unitName, "StandardError")
+	if err != nil {
+		return false, err
+	}
+
+	if stderr == "journal" || stderr == "journal+console" {
+		return true, nil
+	}
+
+	return false, nil
 }
+

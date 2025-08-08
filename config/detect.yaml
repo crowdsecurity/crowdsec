@@ -295,10 +295,9 @@ detect:
   #
 
   # on deb-based systems: the name of the unit is ssh.service, while sshd.service is an alias that can't be used to read the journal
-  # XXX: check if a distro writes to /var/log/messages (suse?)
   sshd-journald-ssh:
     when:
-      - Systemd.UnitInstalled("ssh.service") and (Systemd.UnitStandardOutput("ssh.service") == "journal")
+      - Systemd.UnitInstalled("ssh.service") and Systemd.UnitLogsToJournal("ssh.service")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -312,9 +311,10 @@ detect:
           - "_SYSTEMD_UNIT=ssh.service"
 
   # on rpm-based systems and others: the name of the unit is sshd.service
+  # and we have to skip this if ssh.service also exists
   sshd-journald-sshd:
     when:
-      - Systemd.UnitInstalled("sshd.service") and (Systemd.UnitStandardOutput("sshd.service") == "journal")
+      - (not Systemd.UnitInstalled("ssh.service")) and Systemd.UnitInstalled("sshd.service") and Systemd.UnitLogsToJournal("sshd.service")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -332,8 +332,8 @@ detect:
   sshd-auth:
     when:
       - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("sshd.service") or Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
-      - Systemd.UnitStandardOutput("ssh.service") != "journal"
-      - Systemd.UnitStandardOutput("sshd.service") != "journal"
+      - not Systemd.UnitLogsToJournal("ssh.service")
+      - not Systemd.UnitLogsToJournal("sshd.service")
     hub_spec:
       collections:
         - crowdsecurity/sshd
