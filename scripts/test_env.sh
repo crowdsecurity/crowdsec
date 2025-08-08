@@ -54,7 +54,7 @@ NOTIF_DIR="notifications"
 log_info() {
 	msg=$1
 	date=$(date +%x:%X)
-	echo -e "[$date][INFO] $msg"
+	echo "[$date][INFO] $msg"
 }
 
 create_tree() {
