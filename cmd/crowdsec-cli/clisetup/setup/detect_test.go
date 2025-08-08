@@ -258,7 +258,7 @@ detect:
 			require.NoError(t, err)
 			got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 				OSExprPath{},
-				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
+				UnitMap{"crowdsec-setup-detect.service": UnitInfo{}},
 				nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)

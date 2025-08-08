@@ -160,7 +160,7 @@ detect:
     when:
       # if nginx is still detected after removing the "nginx" package,
       # remove the nginx-common package too.
-      - Systemd.UnitInstalled("nginx.service")
+      - (Systemd.UnitInstalled("nginx.service") or len(Path.Glob("/var/log/nginx/*.log")) > 0)
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -294,28 +294,11 @@ detect:
   # SSH daemon
   #
 
-  sshd-systemd-file:
+  # on deb-based systems: the name of the unit is ssh.service, while sshd.service is an alias that can't be used to read the journal
+  # XXX: check if a distro writes to /var/log/messages (suse?)
+  sshd-journald-ssh:
     when:
-      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket") or Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
-      - Path.Exists("/var/log/auth.log")
-    hub_spec:
-      collections:
-        - crowdsecurity/sshd
-    acquisition_spec:
-      filename: sshd.yaml
-      datasource:
-        source: file
-        labels:
-          type: syslog
-        filenames:
-          - /var/log/auth.log
-          - /var/log/sshd.log
-          - /var/log/secure
-
-  ssh-systemd-journalctl:
-    when:
-      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
-      - not Path.Exists("/var/log/auth.log") and not Path.Exists("/var/log/sshd.log") and not Path.Exists("/var/log/secure")
+      - Systemd.UnitInstalled("ssh.service") and (Systemd.UnitStandardOutput("ssh.service") == "journal")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -328,10 +311,10 @@ detect:
         journalctl_filter:
           - "_SYSTEMD_UNIT=ssh.service"
 
-  sshd-systemd-journalctl:
+  # on rpm-based systems and others: the name of the unit is sshd.service
+  sshd-journald-sshd:
     when:
-      - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
-      - not Path.Exists("/var/log/auth.log") and not Path.Exists("/var/log/sshd.log") and not Path.Exists("/var/log/secure")
+      - Systemd.UnitInstalled("sshd.service") and (Systemd.UnitStandardOutput("sshd.service") == "journal")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -343,6 +326,26 @@ detect:
           type: syslog
         journalctl_filter:
           - "_SYSTEMD_UNIT=sshd.service"
+
+  # If we detect the ssh unit but it doesn't log to journal, we assume it logs to /var/log/auth.log or /var/log/secure
+  # unless it's /var/log/messages which is already acquired (see the linux collection)
+  sshd-auth:
+    when:
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("sshd.service") or Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
+      - Systemd.UnitStandardOutput("ssh.service") != "journal"
+      - Systemd.UnitStandardOutput("sshd.service") != "journal"
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/secure
 
   # Suricata IDS/IPS
   suricata-systemd:

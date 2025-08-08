@@ -42,9 +42,9 @@ func TestDetectSystemdUnits(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, UnitMap{
-		"crowdsec-setup-detect.service": struct{}{},
-		"apache2.service":               struct{}{},
-		"apparmor.service":              struct{}{},
+		"crowdsec-setup-detect.service": UnitInfo{},
+		"apache2.service":               UnitInfo{},
+		"apparmor.service":              UnitInfo{},
 	}, units)
 }
 
