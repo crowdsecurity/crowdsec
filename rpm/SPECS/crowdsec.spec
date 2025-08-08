@@ -54,7 +54,7 @@ install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
 install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
-install -m 600 -D config/detect.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 600 -D config/detect.yaml %{buildroot}/var/lib/%{name}/data/
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
