@@ -64,13 +64,22 @@ if [ "$1" = configure ]; then
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
+    LAPI=true
     API=$(cscli config show --key "Config.API.Server")
     if [ "$API" = "nil" ] ; then
         LAPI=false
     else
-        PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
+        # If API server is explicitly disabled, don't attempt port checks
+        ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
+        if [ "$ENABLED" = "false" ]; then
+            LAPI=false
+        fi
+        # Extract port from ListenURI robustly (handles IPv6 like ::8080)
+        URI=$(cscli config show --key "Config.API.Server.ListenURI" 2>/dev/null || true)
+        PORT=${URI##*:}
     fi
-    if [ "$LAPI" = false ] || [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ]  ; then
+    # Start if lapi disabled, or if port is unspecified, or if port is free.
+    if [ "$LAPI" = false ] || [ -z "$PORT" ] || [ -z "$(ss -nlt "sport = ${PORT}" 2>/dev/null | grep -v ^State || true)" ]  ; then
         systemctl start crowdsec
     else
         echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
