@@ -205,7 +205,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 			}
 		} else if request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
 			in, _, err = request.Tx.ReadRequestBodyFrom(request.HTTPRequest.Body)
-			if err != nil {
+			if err != nil && err != io.ErrUnexpectedEOF {
 				r.logger.Errorf("unable to read request body from reader: %s", err)
 				return err
 			}
