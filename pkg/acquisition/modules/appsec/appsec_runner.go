@@ -1,7 +1,9 @@
 package appsecacquisition
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -190,14 +192,26 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		return nil
 	}
 
-	if len(request.Body) > 0 {
-		in, _, err = request.Tx.WriteRequestBody(request.Body)
-		if err != nil {
-			r.logger.Errorf("unable to write request body : %s", err)
-			return err
-		}
-		if in != nil {
-			return nil
+	// Body handling: prefer using an existing buffer, otherwise stream from the reader if accessible
+	if request.Tx.IsRequestBodyAccessible() {
+		if len(request.Body) > 0 {
+			in, _, err = request.Tx.WriteRequestBody(request.Body)
+			if err != nil {
+				r.logger.Errorf("unable to write request body : %s", err)
+				return err
+			}
+			if in != nil {
+				return nil
+			}
+		} else if request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
+			in, _, err = request.Tx.ReadRequestBodyFrom(request.HTTPRequest.Body)
+			if err != nil {
+				r.logger.Errorf("unable to read request body from reader: %s", err)
+				return err
+			}
+			if in != nil {
+				return nil
+			}
 		}
 	}
 
@@ -351,6 +365,25 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	//to measure the time spent in the Application Security Engine for InBand rules
 	startInBandParsing := time.Now()
 	startGlobalParsing := time.Now()
+
+	// If we will need the body later for out-of-band processing with body inspection,
+	// pre-buffer it once here to avoid re-reading later.
+	needOutOfBandBody := len(r.AppsecRuntime.OutOfBandRules) > 0 && !r.AppsecRuntime.Config.OutOfBandOptions.DisableBodyInspection
+	if needOutOfBandBody && len(request.Body) == 0 && request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
+		// Optional: respect a soft cap using the configured in-memory limit when available
+		var reader io.Reader = request.HTTPRequest.Body
+		if r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
+			reader = io.LimitReader(reader, int64(*r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit))
+		}
+		buf, err := io.ReadAll(reader)
+		if err != nil {
+			logger.Errorf("unable to pre-buffer request body: %s", err)
+		} else {
+			request.Body = buf
+			// Reset the body reader in case it is used elsewhere
+			request.HTTPRequest.Body = io.NopCloser(bytes.NewReader(request.Body))
+		}
+	}
 
 	//inband appsec rules
 	err := r.ProcessInBandRules(request)

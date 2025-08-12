@@ -1,6 +1,8 @@
 package appsec
 
 import (
+	"io"
+
 	"github.com/corazawaf/coraza/v3"
 	"github.com/corazawaf/coraza/v3/experimental"
 	"github.com/corazawaf/coraza/v3/experimental/plugins/plugintypes"
@@ -72,6 +74,11 @@ func (t *ExtendedTransaction) WriteRequestBody(body []byte) (*types.Interruption
 	return t.Tx.WriteRequestBody(body)
 }
 
+// ReadRequestBodyFrom streams the request body from the provided reader into the transaction.
+func (t *ExtendedTransaction) ReadRequestBodyFrom(r io.Reader) (*types.Interruption, int, error) {
+	return t.Tx.ReadRequestBodyFrom(r)
+}
+
 func (t *ExtendedTransaction) Interruption() *types.Interruption {
 	return t.Tx.Interruption()
 }
@@ -94,4 +101,9 @@ func (t *ExtendedTransaction) ID() string {
 
 func (t *ExtendedTransaction) Close() error {
 	return t.Tx.Close()
+}
+
+// IsRequestBodyAccessible exposes whether the engine has request body access enabled.
+func (t *ExtendedTransaction) IsRequestBodyAccessible() bool {
+	return t.Tx.IsRequestBodyAccessible()
 }
