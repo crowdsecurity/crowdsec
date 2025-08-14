@@ -26,13 +26,13 @@ type StagePool struct {
 	logger *log.Entry
 }
 
-func NewStagePool(name string, t *tomb.Tomb, inLen func() (int, int), min, max int, launchWorker func(), logger *log.Entry) *StagePool {
+func NewStagePool(name string, t *tomb.Tomb, inLen func() (int, int), minWorkers, maxWorkers int, launchWorker func(), logger *log.Entry) *StagePool {
 	return &StagePool{
 		name:         name,
 		tomb:         t,
 		inLen:        inLen,
-		min:          min,
-		max:          max,
+		min:          minWorkers,
+		max:          maxWorkers,
 		launchWorker: launchWorker,
 		upThresh:     70,
 		downThresh:   20,
