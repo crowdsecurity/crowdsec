@@ -63,7 +63,7 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 var bucketOverflows []types.Event
 
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets, postOverflowCTX parser.UnixParserCtx,
-	postOverflowNodes []parser.Node, client *apiclient.ApiClient) error {
+	postOverflowNodes []parser.Node, client *apiclient.ApiClient, stop <-chan struct{}, _ time.Duration) error {
 	var (
 		cache      []types.RuntimeAlert
 		cacheMutex sync.Mutex
@@ -74,6 +74,9 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 
 	for {
 		select {
+		case <-stop:
+			// For outputs, stop immediately without waiting for idle, to avoid blocking flushes
+			return nil
 		case <-ticker.C:
 			if len(cache) > 0 {
 				cacheMutex.Lock()

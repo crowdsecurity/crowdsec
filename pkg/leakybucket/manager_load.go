@@ -316,7 +316,12 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 
 func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	allFactories := []BucketFactory{}
-	response := make(chan types.Event, 1)
+	// Buffer overflow channel relative to the number of output routines to smooth bursts of overflows
+	overflowBufSize := cscfg.OutputRoutinesCount * 4
+	if overflowBufSize < 1 {
+		overflowBufSize = 1
+	}
+	response := make(chan types.Event, overflowBufSize)
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)

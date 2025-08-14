@@ -13,8 +13,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
+func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config, stop <-chan struct{}, idleTimeout time.Duration) error {
 	count := 0
+	if idleTimeout <= 0 {
+		idleTimeout = 30 * time.Second
+	}
+	lastActive := time.Now()
+	idleTimer := time.NewTimer(idleTimeout)
+	if !idleTimer.Stop() {
+		select {
+		case <-idleTimer.C:
+		default:
+		}
+	}
+	stopping := false
 
 	for {
 		// bucket is now ready
@@ -22,7 +34,34 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		case <-bucketsTomb.Dying():
 			log.Infof("Bucket routine exiting")
 			return nil
+		case <-stop:
+			stopping = true
+			since := time.Since(lastActive)
+			if since >= idleTimeout {
+				return nil
+			}
+			if !idleTimer.Stop() {
+				select {
+				case <-idleTimer.C:
+				default:
+				}
+			}
+			idleTimer.Reset(idleTimeout - since)
+		case <-idleTimer.C:
+			if stopping {
+				return nil
+			}
 		case parsed := <-input:
+			lastActive = time.Now()
+			if stopping {
+				if !idleTimer.Stop() {
+					select {
+					case <-idleTimer.C:
+					default:
+					}
+				}
+				idleTimer.Reset(idleTimeout)
+			}
 			startTime := time.Now()
 
 			count++
