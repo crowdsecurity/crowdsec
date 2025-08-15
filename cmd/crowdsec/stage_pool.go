@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -9,13 +10,12 @@ import (
 
 // StagePool is a minimal scaffold to manage a pool of workers for a stage and a monitor to autoscale.
 type StagePool struct {
-	name         string
-	tomb         *tomb.Tomb
-	inLen        func() (int, int) // returns len and cap of the input queue
-	min          int
-	max          int
-	launchWorker func()
-	requestStop  func() bool // ask one worker to stop, returns true if a worker was signaled
+	name          string
+	tomb          *tomb.Tomb
+	inLen         func() (int, int) // returns len and cap of the input queue
+	min           int
+	max           int
+	workerFactory func(stop chan struct{}) func() error
 
 	// autoscale tuning
 	upThresh     int // percent
@@ -24,21 +24,25 @@ type StagePool struct {
 	downCooldown time.Duration
 
 	logger *log.Entry
+
+	// internal worker bookkeeping
+	mu        sync.Mutex
+	stopChans []chan struct{}
 }
 
-func NewStagePool(name string, t *tomb.Tomb, inLen func() (int, int), minWorkers, maxWorkers int, launchWorker func(), logger *log.Entry) *StagePool {
+func NewStagePool(name string, t *tomb.Tomb, inLen func() (int, int), minWorkers, maxWorkers int, workerFactory func(stop chan struct{}) func() error, logger *log.Entry) *StagePool {
 	return &StagePool{
-		name:         name,
-		tomb:         t,
-		inLen:        inLen,
-		min:          minWorkers,
-		max:          maxWorkers,
-		launchWorker: launchWorker,
-		upThresh:     70,
-		downThresh:   20,
-		upCooldown:   time.Second,
-		downCooldown: 5 * time.Second,
-		logger:       logger,
+		name:          name,
+		tomb:          t,
+		inLen:         inLen,
+		min:           minWorkers,
+		max:           maxWorkers,
+		workerFactory: workerFactory,
+		upThresh:      70,
+		downThresh:    20,
+		upCooldown:    time.Second,
+		downCooldown:  5 * time.Second,
+		logger:        logger,
 	}
 }
 
@@ -58,7 +62,11 @@ func (p *StagePool) Start(initial int, enableAutoscale bool) {
 
 	// launch initial workers
 	for range initial {
-		p.launchWorker()
+		stop := make(chan struct{}, 1)
+		p.tomb.Go(p.workerFactory(stop))
+		p.mu.Lock()
+		p.stopChans = append(p.stopChans, stop)
+		p.mu.Unlock()
 	}
 
 	if !enableAutoscale {
@@ -88,7 +96,11 @@ func (p *StagePool) Start(initial int, enableAutoscale bool) {
 					hotCount++
 					coldCount = 0
 					if hotCount >= 3 && time.Since(lastUp) >= p.upCooldown {
-						p.launchWorker()
+						stop := make(chan struct{}, 1)
+						p.tomb.Go(p.workerFactory(stop))
+						p.mu.Lock()
+						p.stopChans = append(p.stopChans, stop)
+						p.mu.Unlock()
 						current++
 						lastUp = time.Now()
 						p.logger.Infof("autoscale(%s): scale up to %d (queue %d/%d)", p.name, current, llen, capn)
@@ -97,11 +109,21 @@ func (p *StagePool) Start(initial int, enableAutoscale bool) {
 					coldCount++
 					hotCount = 0
 					if coldCount >= 10 && time.Since(lastDown) >= p.downCooldown {
-						// attempt to gracefully stop one worker
+						// attempt to gracefully stop one worker we own
 						stopped := false
-						if p.requestStop != nil {
-							stopped = p.requestStop()
+						p.mu.Lock()
+					stopSearch:
+						for i := len(p.stopChans) - 1; i >= 0; i-- {
+							select {
+							case p.stopChans[i] <- struct{}{}:
+								// remove from slice
+								p.stopChans = append(p.stopChans[:i], p.stopChans[i+1:]...)
+								stopped = true
+								break stopSearch
+							default:
+							}
 						}
+						p.mu.Unlock()
 						if stopped {
 							current--
 							lastDown = time.Now()

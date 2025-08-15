@@ -95,18 +95,11 @@ func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 		parserWg.Add(1)
 
 		// worker launcher with stop channel for downscale
-		type workerRef struct{ stop chan struct{} }
-		var workersMu sync.Mutex
-		var workerRefs []workerRef
-		launchWorker := func() {
-			stop := make(chan struct{}, 1)
-			workersMu.Lock()
-			workerRefs = append(workerRefs, workerRef{stop: stop})
-			workersMu.Unlock()
-			parsersTomb.Go(func() error {
+		workerFactory := func(stop chan struct{}) func() error {
+			return func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 				return runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes, stop, 30*time.Second)
-			})
+			}
 		}
 
 		// StagePool with downscale support via worker stop requests
@@ -116,25 +109,9 @@ func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 			func() (int, int) { return len(inputLineChan), cap(inputLineChan) },
 			minWorkers,
 			maxWorkers,
-			launchWorker,
+			workerFactory,
 			log.WithField("stage", "parser"),
 		)
-		pool.requestStop = func() bool {
-			workersMu.Lock()
-			defer workersMu.Unlock()
-			if len(workerRefs) <= minWorkers {
-				return false
-			}
-			// signal the last worker to stop; runParse will exit on idle
-			ref := workerRefs[len(workerRefs)-1]
-			select {
-			case ref.stop <- struct{}{}:
-				workerRefs = workerRefs[:len(workerRefs)-1]
-				return true
-			default:
-				return false
-			}
-		}
 		pool.Start(initialWorkers, enableAutoscale)
 
 		parserWg.Done()
@@ -166,18 +143,11 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 		bucketWg.Add(1)
 
 		// worker launcher with stop channel for downscale
-		type workerRef struct{ stop chan struct{} }
-		var workersMu sync.Mutex
-		var workerRefs []workerRef
-		launchWorker := func() {
-			stop := make(chan struct{}, 1)
-			workersMu.Lock()
-			workerRefs = append(workerRefs, workerRef{stop: stop})
-			workersMu.Unlock()
-			bucketsTomb.Go(func() error {
+		workerFactory := func(stop chan struct{}) func() error {
+			return func() error {
 				defer trace.CatchPanic("crowdsec/runPour")
 				return runPour(inputEventChan, holders, buckets, cConfig, stop, 30*time.Second)
-			})
+			}
 		}
 
 		pool := NewStagePool(
@@ -186,24 +156,9 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 			func() (int, int) { return len(inputEventChan), cap(inputEventChan) },
 			minWorkers,
 			maxWorkers,
-			launchWorker,
+			workerFactory,
 			log.WithField("stage", "buckets"),
 		)
-		pool.requestStop = func() bool {
-			workersMu.Lock()
-			defer workersMu.Unlock()
-			if len(workerRefs) <= minWorkers {
-				return false
-			}
-			ref := workerRefs[len(workerRefs)-1]
-			select {
-			case ref.stop <- struct{}{}:
-				workerRefs = workerRefs[:len(workerRefs)-1]
-				return true
-			default:
-				return false
-			}
-		}
 
 		pool.Start(initialWorkers, enableAutoscale)
 
@@ -241,18 +196,11 @@ func startOutputRoutines(cConfig *csconfig.Config, parsers *parser.Parsers, apiC
 		outputWg.Add(1)
 
 		// worker launcher with stop channel for downscale
-		type workerRef struct{ stop chan struct{} }
-		var workersMu sync.Mutex
-		var workerRefs []workerRef
-		launchWorker := func() {
-			stop := make(chan struct{}, 1)
-			workersMu.Lock()
-			workerRefs = append(workerRefs, workerRef{stop: stop})
-			workersMu.Unlock()
-			outputsTomb.Go(func() error {
+		workerFactory := func(stop chan struct{}) func() error {
+			return func() error {
 				defer trace.CatchPanic("crowdsec/runOutput")
 				return runOutput(inputEventChan, outputEventChan, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, stop, 30*time.Second)
-			})
+			}
 		}
 
 		pool := NewStagePool(
@@ -261,24 +209,9 @@ func startOutputRoutines(cConfig *csconfig.Config, parsers *parser.Parsers, apiC
 			func() (int, int) { return len(outputEventChan), cap(outputEventChan) },
 			minWorkers,
 			maxWorkers,
-			launchWorker,
+			workerFactory,
 			log.WithField("stage", "outputs"),
 		)
-		pool.requestStop = func() bool {
-			workersMu.Lock()
-			defer workersMu.Unlock()
-			if len(workerRefs) <= minWorkers {
-				return false
-			}
-			ref := workerRefs[len(workerRefs)-1]
-			select {
-			case ref.stop <- struct{}{}:
-				workerRefs = workerRefs[:len(workerRefs)-1]
-				return true
-			default:
-				return false
-			}
-		}
 
 		pool.Start(initialWorkers, enableAutoscale)
 
@@ -321,11 +254,11 @@ func startLPMetrics(cConfig *csconfig.Config, apiClient *apiclient.ApiClient, hu
 func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
 	// Buffer channels to reduce context switches and backpressure between stages.
 	// Size them relative to the number of worker routines in the next stage.
-	parserBufSize := cConfig.Crowdsec.ParserRoutinesCount * 4
+	parserBufSize := cConfig.Crowdsec.ParserRoutinesCount * 16
 	if parserBufSize < 1 {
 		parserBufSize = 1
 	}
-	bucketBufSize := cConfig.Crowdsec.BucketsRoutinesCount * 4
+	bucketBufSize := cConfig.Crowdsec.BucketsRoutinesCount * 16
 	if bucketBufSize < 1 {
 		bucketBufSize = 1
 	}

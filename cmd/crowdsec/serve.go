@@ -110,18 +110,32 @@ func ShutdownCrowdsecRoutines() error {
 	parsersTomb.Kill(nil)
 	drainChan(inputEventChan)
 
-	if err := parsersTomb.Wait(); err != nil {
-		log.Warningf("Parsers returned error : %s", err)
-		reterr = err
+	parsersDone := make(chan error, 1)
+	go func() { parsersDone <- parsersTomb.Wait() }()
+	select {
+	case err := <-parsersDone:
+		if err != nil {
+			log.Warningf("Parsers returned error : %s", err)
+			reterr = err
+		}
+	case <-time.After(5 * time.Second):
+		log.Warningf("Parsers didn't finish in time, proceeding with shutdown")
 	}
 
 	log.Debugf("parsers is done")
 	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
 	bucketsTomb.Kill(nil)
 
-	if err := bucketsTomb.Wait(); err != nil {
-		log.Warningf("Buckets returned error : %s", err)
-		reterr = err
+	bucketsDone := make(chan error, 1)
+	go func() { bucketsDone <- bucketsTomb.Wait() }()
+	select {
+	case err := <-bucketsDone:
+		if err != nil {
+			log.Warningf("Buckets returned error : %s", err)
+			reterr = err
+		}
+	case <-time.After(5 * time.Second):
+		log.Warningf("Buckets didn't finish in time, proceeding with shutdown")
 	}
 
 	log.Debugf("buckets is done")
