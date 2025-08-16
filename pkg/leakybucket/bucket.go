@@ -266,7 +266,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 			if leaky.timedOverflow {
 				metrics.BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-				alert, err = NewAlert(leaky, ofw)
+				alert, err = NewAlert(leaky, *ofw)
 				if err != nil {
 					log.Error(err)
 				}
