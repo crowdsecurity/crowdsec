@@ -5,12 +5,12 @@ import (
 )
 
 type ExprSystem struct {
-	runningProcesses  ProcessMap
+	runningProcesses ProcessMap
 }
 
 func NewExprSystem(runningProcesses ProcessMap) *ExprSystem {
 	ret := &ExprSystem{
-		runningProcesses:  runningProcesses,
+		runningProcesses: runningProcesses,
 	}
 
 	return ret

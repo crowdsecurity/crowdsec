@@ -74,19 +74,19 @@ func TestDetectSystemdUnits(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, UnitMap{
-		"crowdsec-setup-detect.service": UnitInfo{Config:UnitConfig{
-			"Names": "crowdsec-setup-detect.service",
-			"StandardError": "journal",
+		"crowdsec-setup-detect.service": UnitInfo{Config: UnitConfig{
+			"Names":          "crowdsec-setup-detect.service",
+			"StandardError":  "journal",
 			"StandardOutput": "journal",
 		}},
-		"apache2.service": UnitInfo{Config:UnitConfig{
-			"Names": "apache2.service",
-			"StandardError": "journal",
+		"apache2.service": UnitInfo{Config: UnitConfig{
+			"Names":          "apache2.service",
+			"StandardError":  "journal",
 			"StandardOutput": "journal",
 		}},
-		"apparmor.service": UnitInfo{Config:UnitConfig{
-			"Names": "apparmor.service",
-			"StandardError": "journal",
+		"apparmor.service": UnitInfo{Config: UnitConfig{
+			"Names":          "apparmor.service",
+			"StandardError":  "journal",
 			"StandardOutput": "journal",
 		}},
 	}, units)

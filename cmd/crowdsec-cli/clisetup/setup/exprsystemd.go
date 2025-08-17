@@ -56,4 +56,3 @@ func (e *ExprSystemd) UnitLogsToJournal(ctx context.Context, unitName string) (b
 
 	return false, nil
 }
-
