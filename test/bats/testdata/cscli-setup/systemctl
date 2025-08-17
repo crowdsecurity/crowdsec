@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+    echo "systemctl: missing arguments" >&2
+    exit 1
+fi
+
+case "$1" in
+    list-unit-files)
+        if [[ "${2:-}" == "--type=service" ]]; then
+            cat <<-'EOF'
+	UNIT FILE                               STATE   VENDOR PRESET
+	snap-bare-5.mount                       enabled enabled
+	snap-core-13308.mount                   enabled enabled
+	snap-firefox-1635.mount                 enabled enabled
+	snap-fx-158.mount                       enabled enabled
+	snap-gimp-393.mount                     enabled enabled
+	snap-gtk\x2dcommon\x2dthemes-1535.mount enabled enabled
+	snap-kubectl-2537.mount                 enabled enabled
+	snap-rustup-1027.mount                  enabled enabled
+	cups.path                               enabled enabled
+	console-setup.service                   enabled enabled
+	dmesg.service                           enabled enabled
+	getty@.service                          enabled enabled
+	grub-initrd-fallback.service            enabled enabled
+	irqbalance.service                      enabled enabled
+	keyboard-setup.service                  enabled enabled
+	mock-apache2.service                    enabled enabled
+	networkd-dispatcher.service             enabled enabled
+	ua-timer.timer                          enabled enabled
+	update-notifier-download.timer          enabled enabled
+	update-notifier-motd.timer              enabled enabled
+
+	20 unit files listed.
+	EOF
+            exit 0
+        fi
+        ;;
+    show)
+        unit="${2:-unknown.service}"
+        printf 'Names=%s\n' "$unit"
+        echo 'StandardOutput=journal'
+        echo 'StandardError=journal'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+exit 1

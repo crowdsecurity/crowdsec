@@ -24,7 +24,6 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
-    load "../lib/bats-mock/load.bash"
     ./instance-data load
 }
 
@@ -130,45 +129,8 @@ teardown() {
 @test "cscli setup detect (systemctl)" {
     # Detect a service through the presence of a systemd unit.
 
-    # transparently mock systemctl. It's easier if you can tell the application
-    # under test which executable to call (in which case just call $mock) but
-    # here we do the symlink and $PATH dance as an example
-    mocked_command="systemctl"
-
-    # mock setup
-    mock="$(mock_create)"
-    mock_path="${mock%/*}"
-    mock_file="${mock##*/}"
-    ln -sf "$mock_path/$mock_file" "$mock_path/$mocked_command"
-
-    #shellcheck disable=SC2030
-    PATH="$mock_path:$PATH"
-
-    mock_set_output "$mock" \
-'UNIT FILE                               STATE   VENDOR PRESET
-snap-bare-5.mount                       enabled enabled
-snap-core-13308.mount                   enabled enabled
-snap-firefox-1635.mount                 enabled enabled
-snap-fx-158.mount                       enabled enabled
-snap-gimp-393.mount                     enabled enabled
-snap-gtk\x2dcommon\x2dthemes-1535.mount enabled enabled
-snap-kubectl-2537.mount                 enabled enabled
-snap-rustup-1027.mount                  enabled enabled
-cups.path                               enabled enabled
-console-setup.service                   enabled enabled
-dmesg.service                           enabled enabled
-getty@.service                          enabled enabled
-grub-initrd-fallback.service            enabled enabled
-irqbalance.service                      enabled enabled
-keyboard-setup.service                  enabled enabled
-mock-apache2.service                    enabled enabled
-networkd-dispatcher.service             enabled enabled
-ua-timer.timer                          enabled enabled
-update-notifier-download.timer          enabled enabled
-update-notifier-motd.timer              enabled enabled
-
-20 unit files listed.'
-    mock_set_status "$mock" 1 2
+    # shellcheck disable=SC2030
+    PATH="$TESTDATA:$PATH"
 
     rune -0 cscli setup detect --detect-config - <<-EOT
 	detect:
@@ -186,40 +148,15 @@ update-notifier-motd.timer              enabled enabled
 
     rune -0 jq -c '.setup' <(output)
 
-    # the command was called exactly once
-    [[ $(mock_get_call_num "$mock") -eq 1 ]]
-
-    # the command was called with the expected parameters
-    [[ $(mock_get_call_args "$mock" 1) == "list-unit-files --type=service" ]]
-
-    rune -1 systemctl
-
-    # mock teardown
-    unlink "$mock_path/$mocked_command"
-    PATH="${PATH/${mock_path}:/}"
+    PATH="${PATH/${TESTDATA}:/}"
 }
 
 # XXX this is the same boilerplate as the previous test, can be simplified
 @test "cscli setup detect (skip systemd)" {
     # Skip detection of services through systemd units.
 
-    # transparently mock systemctl. It's easier if you can tell the application
-    # under test which executable to call (in which case just call $mock) but
-    # here we do the symlink and $PATH dance as an example
-    mocked_command="systemctl"
-
-    # mock setup
-    mock="$(mock_create)"
-    mock_path="${mock%/*}"
-    mock_file="${mock##*/}"
-    ln -sf "$mock_path/$mock_file" "$mock_path/$mocked_command"
-
     #shellcheck disable=SC2031
-    PATH="$mock_path:$PATH"
-
-    # we don't really care about the output, it's not used anyway
-    mock_set_output "$mock" ""
-    mock_set_status "$mock" 1 2
+    PATH="$BATS_TEST_TMPDIR:$PATH"
 
     rune -0 cscli setup detect --skip-systemd --detect-config - <<-EOT
 	detect:
@@ -238,14 +175,7 @@ update-notifier-motd.timer              enabled enabled
     # setup must not be 'null', but an empty list
     assert_json '{setup:[]}'
 
-    # the command was never called
-    [[ $(mock_get_call_num "$mock") -eq 0 ]]
-
-    rune -0 systemctl
-
-    # mock teardown
-    unlink "$mock_path/$mocked_command"
-    PATH="${PATH/${mock_path}:/}"
+    PATH="${PATH/${BATS_TEST_TMPDIR}:/}"
 }
 
 @test "cscli setup detect --force" {

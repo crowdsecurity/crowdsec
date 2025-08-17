@@ -6,17 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
 func quote(args []string) string {
-	var b strings.Builder
-	for i, a := range args {
-		if i > 0 { b.WriteByte(' ') }
-		b.WriteString(strconv.Quote(a))
-	}
-	return b.String()
+	return strings.Join(args, " ")
 }
 
 // UnitConfig holds all systemd properties for a unit.
