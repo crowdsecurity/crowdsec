@@ -71,7 +71,6 @@ func (a *AcquisitionSpec) Path(toDir string) (string, error) {
 }
 
 // Open creates or truncates the acquisition file and returns it opened for writing.
-// If interactive is true, it will prompt the user to confirm overwriting an existing file.
 func (a *AcquisitionSpec) Open(toDir string) (*os.File, error) {
 	path, err := a.Path(toDir)
 	if err != nil {

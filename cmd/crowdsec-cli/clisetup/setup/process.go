@@ -20,7 +20,7 @@ func DetectProcesses(ctx context.Context, logger logrus.FieldLogger) (ProcessMap
 	for _, p := range procs {
 		name, err := p.Name()
 		if err != nil {
-			logrus.WithError(err).Warnf("Failed to get process name for PID %d", p.Pid)
+			logger.WithError(err).Warnf("Failed to get process name for PID %d", p.Pid)
 			continue
 		}
 

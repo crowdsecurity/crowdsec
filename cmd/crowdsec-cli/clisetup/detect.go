@@ -96,7 +96,7 @@ cscli setup detect
 cscli setup detect --yaml
 
 # detect and skip certain services
-cscli setup detect --skip-service whitelists
+cscli setup detect --ignore whitelists
 `,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
