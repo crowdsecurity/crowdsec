@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-ORANGE='\033[0;33m'
-NC='\033[0m'
+RED=$(printf '\033[0;31m')
+BLUE=$(printf '\033[0;34m')
+GREEN=$(printf '\033[0;32m')
+YELLOW=$(printf '\033[1;33m')
+ORANGE=$(printf '\033[0;33m')
+NC=$(printf '\033[0m')
 
 DOCKER_MODE="false"
 
@@ -45,33 +45,33 @@ PLUGINS="http slack splunk email sentinel file"
 log_info() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_fatal() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" >&2
     exit 1
 }
 
 log_warn() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_err() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_dbg() {
     if [ "$DEBUG_MODE" = "true" ]; then
         msg=$1
         date=$(date "+%Y-%m-%d %H:%M:%S")
-        echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" >&2
+        echo "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" >&2
     fi
 }
 
