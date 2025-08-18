@@ -104,5 +104,5 @@ func fakeExecCommandNotFound(ctx context.Context, command string, args ...string
 func TestDetectSystemdUnits_NotFound(t *testing.T) {
 	ctx := t.Context()
 	_, err := DetectSystemdUnits(ctx, fakeExecCommandNotFound)
-	cstest.RequireErrorContains(t, err, `"systemctl list-unit-files --type=service": exec: "this-command-does-not-exist": executable file not found in $PATH`)
+	cstest.RequireErrorContains(t, err, `"systemctl list-unit-files --type=service": exec: "this-command-does-not-exist": executable file not found`)
 }

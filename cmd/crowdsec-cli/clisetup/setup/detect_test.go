@@ -356,7 +356,7 @@ detect:
         labels:
           type: something`,
 			want:    nil,
-			wantErr: "invalid acquisition spec for wizard: source is empty",
+			wantErr: "invalid acquisition spec for wizard: source field is required",
 		}, {
 			name: "source is unknown",
 			config: `
