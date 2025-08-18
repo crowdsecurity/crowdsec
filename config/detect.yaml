@@ -2,15 +2,17 @@
 # Main block defining all service detection rules
 detect:
 
-  # Detect apache2 on Debian-based systems
-  apache2-systemd-deb:
-    # all conditions must evaluate to true
+  # Detect apache2 with journal logging (on deb-based systems, the name is apache2.service)
+  apache2-journal-apache2:
+    # All conditions must evaluate to true
     when:
-      # check if apache2 is in "systemctl list-unit-files --type=service"
+      # Check if apache2 is installed (enabled or not)
       - Systemd.UnitInstalled("apache2.service")
-      # broad distribution category (use Host.Platform to disambiguate "ubuntu" from "debian")
-      # full list at https://github.com/shirou/gopsutil/blob/master/host/host_linux.go
-      - Host.PlatformFamily == "debian"
+      # Check if the unit logs through systemd
+      - Systemd.UnitLogsToJournal("apache2.service")
+      # A direct way to detect distribution family, usually not necessary.
+      # Use Host.Platform to disambiguate "ubuntu" from "debian"
+      # - Host.PlatformFamily == "debian"
     hub_spec:
       # If the rules match, install the following items
       collections:
@@ -19,17 +21,55 @@ detect:
       # If the rules match, generate an acquisition file named "setup.apache2.yaml"
       filename: apache2.yaml
       datasource:
+        source: journalctl
+        labels:
+          type: apache2
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=apache2.service"
+
+  # Detect apache2 with journal logging (on rpm-based systems, the name is httpd.service)
+  apache2-journal-httpd:
+    # All conditions must evaluate to true
+    when:
+      - Systemd.UnitInstalled("httpd.service")
+      - Systemd.UnitLogsToJournal("httpd.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/apache2
+    acquisition_spec:
+      filename: apache2.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: apache2
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=httpd.service"
+
+  # Detect apache2 without journal logging, or detect log files directly (deb-based systems)
+  apache2-file-apache2:
+    when:
+      - Systemd.UnitInstalled("apache2.service") or len(Path.Glob("/var/log/apache2/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("apache2.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/apache2
+    acquisition_spec:
+      filename: apache2.yaml
+      datasource:
         source: file
         filenames:
           - /var/log/apache2/*.log
         labels:
           type: apache2
 
-  # Detect apache2 on rpm-based systems
-  apache2-systemd-rpm:
+  # Detect apache2 without journal logging, or detect log files directly (rpm-based systems)
+  apache2-file-httpd:
     when:
-      - Systemd.UnitInstalled("httpd.service")
-      - Host.PlatformFamily in ['rhel', 'fedora']
+      - Systemd.UnitInstalled("httpd.service") or len(Path.Glob("/var/log/httpd/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("httpd.service")
+      # a direct way to detect distribution family (usually not necessary)
+      # full list at https://github.com/shirou/gopsutil/blob/master/host/host_linux.go
+      # - Host.PlatformFamily in ['rhel', 'fedora']
     hub_spec:
       collections:
         - crowdsecurity/apache2
@@ -43,9 +83,26 @@ detect:
           type: apache2
 
   # Asterisk PBX
-  asterisk-systemd:
+  asterisk-journal:
     when:
       - Systemd.UnitInstalled("asterisk.service")
+      - Systemd.UnitLogsToJournal("asterisk.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/asterisk
+    acquisition_spec:
+      filename: asterisk.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: asterisk
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=asterisk.service"
+
+  asterisk-file:
+    when:
+      - Systemd.UnitInstalled("asterisk.service") or len(Path.Glob("/var/log/asterisk/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("asterisk.service")
     hub_spec:
       collections:
         - crowdsecurity/asterisk
@@ -59,9 +116,26 @@ detect:
           - /var/log/asterisk/*.log
 
   # Caddy web server
-  caddy-systemd:
+  caddy-journal:
     when:
       - Systemd.UnitInstalled("caddy.service")
+      - Systemd.UnitLogsToJournal("caddy.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/caddy
+    acquisition_spec:
+      filename: caddy.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: caddy
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=caddy.service"
+
+  caddy-file:
+    when:
+      - Systemd.UnitInstalled("caddy.service") or len(Path.Glob("/var/log/caddy/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("caddy.service")
     hub_spec:
       collections:
         - crowdsecurity/caddy
@@ -75,9 +149,27 @@ detect:
           - /var/log/caddy/*.log
 
   # Dovecot IMAP/POP3 server
-  dovecot-systemd:
+  dovecot-journal:
     when:
       - Systemd.UnitInstalled("dovecot.service")
+      - Systemd.UnitLogsToJournal("dovecot.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/dovecot
+    acquisition_spec:
+      filename: dovecot.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=dovecot.service"
+
+  dovecot-file:
+    when:
+      - Systemd.UnitInstalled("dovecot.service")
+      # We can't detect mail.log/maillog directly because they could come from postfix
+      - not Systemd.UnitLogsToJournal("dovecot.service")
     hub_spec:
       collections:
         - crowdsecurity/dovecot
@@ -92,9 +184,26 @@ detect:
           - /var/log/maillog
 
   # Gitea Git server
-  gitea-systemd:
+  gitea-journal:
     when:
       - Systemd.UnitInstalled("gitea.service")
+      - Systemd.UnitLogsToJournal("gitea.service")
+    hub_spec:
+      collections:
+        - LePresidente/gitea
+    acquisition_spec:
+      filename: gitea.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: gitea
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=gitea.service"
+
+  gitea-file:
+    when:
+      - Systemd.UnitInstalled("gitea.service") or Path.Exists("/var/log/gitea.log") or len(Path.Glob("/var/log/gitea/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("gitea.service")
     hub_spec:
       collections:
         - LePresidente/gitea
@@ -106,11 +215,29 @@ detect:
           type: gitea
         filenames:
           - /var/log/gitea.log
+          - /var/log/gitea/*.log
 
   # HAProxy load balancer
-  haproxy-systemd:
+  haproxy-journal:
     when:
       - Systemd.UnitInstalled("haproxy.service")
+      - Systemd.UnitLogsToJournal("haproxy.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/haproxy
+    acquisition_spec:
+      filename: haproxy.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: haproxy
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=haproxy.service"
+
+  haproxy-file:
+    when:
+      - Systemd.UnitInstalled("haproxy.service") or len(Path.Glob("/var/log/haproxy/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("haproxy.service")
     hub_spec:
       collections:
         - crowdsecurity/haproxy
@@ -124,9 +251,27 @@ detect:
           - /var/log/haproxy/*.log
 
   # MariaDB server
-  mariadb-systemd:
+  mariadb-journal:
     when:
       - Systemd.UnitInstalled("mariadb.service")
+      - Systemd.UnitLogsToJournal("mariadb.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/mariadb
+    acquisition_spec:
+      filename: mariadb.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: mysql
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=mariadb.service"
+
+  mariadb-file:
+    when:
+      - Systemd.UnitInstalled("mariadb.service")
+      - not Systemd.UnitLogsToJournal("mariadb.service")
+      # We can't detect error.log directly because it could come from mysql
     hub_spec:
       collections:
         - crowdsecurity/mariadb
@@ -138,11 +283,30 @@ detect:
           type: mysql
         filenames:
           - /var/log/mysql/error.log
+          - /var/log/mariadb/*.log
 
   # MySQL server
-  mysql-systemd:
+  mysql-journal:
     when:
       - Systemd.UnitInstalled("mysql.service")
+      - Systemd.UnitLogsToJournal("mysql.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/mysql
+    acquisition_spec:
+      filename: mysql.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: mysql
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=mysql.service"
+
+  mysql-file:
+    when:
+      - Systemd.UnitInstalled("mysql.service")
+      - not Systemd.UnitLogsToJournal("mysql.service")
+      # We can't detect error.log directly because it could come from mysql
     hub_spec:
       collections:
         - crowdsecurity/mysql
@@ -156,11 +320,28 @@ detect:
           - /var/log/mysql/error.log
 
   # Nginx
-  nginx-systemd:
+  nginx-journal:
     when:
       # if nginx is still detected after removing the "nginx" package,
       # remove the nginx-common package too.
       - Systemd.UnitInstalled("nginx.service")
+      - Systemd.UnitLogsToJournal("nginx.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/nginx
+    acquisition_spec:
+      filename: nginx.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: nginx
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=nginx.service"
+
+  nginx-file:
+    when:
+      - Systemd.UnitInstalled("nginx.service") or len(Path.Glob("/var/log/nginx/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("nginx.service")
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -174,9 +355,26 @@ detect:
           - /var/log/nginx/*.log
 
   # OpenResty (nginx distribution)
-  openresty-systemd:
+  openresty-journal:
     when:
       - Systemd.UnitInstalled("openresty.service")
+      - Systemd.UnitLogsToJournal("openresty.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/nginx
+    acquisition_spec:
+      filename: openresty.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: nginx
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=openresty.service"
+
+  openresty-file:
+    when:
+      - Systemd.UnitInstalled("openresty.service") or len(Path.Glob("/usr/local/openresty/nginx/logs/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("openresty.service")
     hub_spec:
       collections:
         - crowdsecurity/nginx
@@ -190,27 +388,26 @@ detect:
           - /usr/local/openresty/nginx/logs/*.log
 
   # PostgreSQL (deb)
-  pgsql-systemd-deb:
+  postgres-journal:
     when:
       - Systemd.UnitInstalled("postgresql.service")
-      - Host.PlatformFamily == "debian"
+      - Systemd.UnitLogsToJournal("postgresql.service")
     hub_spec:
       collections:
         - crowdsecurity/pgsql
     acquisition_spec:
       filename: pgsql.yaml
       datasource:
-        source: file
+        source: journalctl
         labels:
           type: postgres
-        filenames:
-          - /var/log/postgresql/*.log
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=postgresql.service"
 
-  # PostgreSQL (rpm)
-  pgsql-systemd-rpm:
+  postgres-file:
     when:
-      - Systemd.UnitInstalled("postgresql.service")
-      - Host.PlatformFamily in ['rhel', 'fedora']
+      - Systemd.UnitInstalled("postgresql.service") or (len(Path.Glob("/var/log/postgresql/*.log")) > 0) or (len(Path.Glob("/var/lib/pgsql/data/log/*.log")) > 0)
+      - not Systemd.UnitLogsToJournal("postgresql.service")
     hub_spec:
       collections:
         - crowdsecurity/pgsql
@@ -221,12 +418,33 @@ detect:
         labels:
           type: postgres
         filenames:
+          # deb uses /var/log
+          - /var/log/postgresql/*.log
+          # rpm uses /var/lib
           - /var/lib/pgsql/data/log/*.log
 
   # Postfix mail server
-  postfix-systemd:
+  postfix-journal:
     when:
       - Systemd.UnitInstalled("postfix.service")
+      - Systemd.UnitLogsToJournal("postfix.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/postfix
+    acquisition_spec:
+      filename: postfix.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=postfix.service"
+
+  postfix-file:
+    when:
+      - Systemd.UnitInstalled("postfix.service")
+      # We can't detect mail.log/maillog directly because they could come from postfix
+      - not Systemd.UnitLogsToJournal("postfix.service")
     hub_spec:
       collections:
         - crowdsecurity/postfix
@@ -241,9 +459,26 @@ detect:
           - /var/log/maillog
 
   # ProFTPD FTP server
-  proftpd-systemd:
+  proftpd-journal:
     when:
       - Systemd.UnitInstalled("proftpd.service")
+      - Systemd.UnitLogsToJournal("proftpd.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/proftpd
+    acquisition_spec:
+      filename: proftpd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: proftpd
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=proftpd.service"
+
+  proftpd-file:
+    when:
+      - Systemd.UnitInstalled("proftpd.service") or len(Path.Glob("/var/log/proftpd/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("proftpd.service")
     hub_spec:
       collections:
         - crowdsecurity/proftpd
@@ -257,9 +492,26 @@ detect:
           - /var/log/proftpd/*.log
 
   # Pure-FTPd server
-  pureftpd-systemd:
+  pureftpd-journal:
     when:
       - Systemd.UnitInstalled("pure-ftpd.service")
+      - Systemd.UnitLogsToJournal("pure-ftpd.service")
+    hub_spec:
+      collections:
+        - fulljackz/pureftpd
+    acquisition_spec:
+      filename: pureftpd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: pure-ftpd
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=pure-ftpd.service"
+
+  pureftpd-file:
+    when:
+      - Systemd.UnitInstalled("pure-ftpd.service") or len(Path.Glob("/var/log/pure-ftpd/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("pure-ftpd.service")
     hub_spec:
       collections:
         - fulljackz/pureftpd
@@ -273,11 +525,45 @@ detect:
           - /var/log/pure-ftpd/*.log
 
   # Samba server
-  smb-systemd:
+  smb-journal-smbd:
     when:
       # deb -> smbd.service
+      - Systemd.UnitInstalled("smbd.service")
+      - Systemd.UnitLogsToJournal("smbd.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/smb
+    acquisition_spec:
+      filename: smb.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: smb
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=smbd.service"
+
+  smb-journal-smb:
+    when:
       # rpm -> smb.service
-      - Systemd.UnitInstalled("smbd.service") or Systemd.UnitInstalled("smb.service")
+      - Systemd.UnitInstalled("smb.service")
+      - Systemd.UnitLogsToJournal("smb.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/smb
+    acquisition_spec:
+      filename: smb.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: smb
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=smb.service"
+
+  smb-file:
+    when:
+      - Systemd.UnitInstalled("smbd.service") or Systemd.UnitInstalled("smb.service") or len(Path.Glob("/var/log/samba/*.log")) > 0 or len(Path.Glob("/var/log/samba/log.*")) > 0
+      - not Systemd.UnitLogsToJournal("smbd.service")
+      - not Systemd.UnitLogsToJournal("smb.service")
     hub_spec:
       collections:
         - crowdsecurity/smb
@@ -288,52 +574,18 @@ detect:
         labels:
           type: smb
         filenames:
-          - /var/log/samba*.log
+          - /var/log/samba/*.log
+          - /var/log/samba/log.*
 
   ###
   # SSH daemon
   #
 
-  ssh-systemd-file:
+  # on deb-based systems: the name of the unit is ssh.service, while sshd.service is an alias that can't be used to read the journal
+  ssh-journal-ssh:
     when:
-      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
-      - Path.Exists("/var/log/auth.log")
-    hub_spec:
-      collections:
-        - crowdsecurity/sshd
-    acquisition_spec:
-      filename: sshd.yaml
-      datasource:
-        source: file
-        labels:
-          type: syslog
-        filenames:
-          - /var/log/auth.log
-          - /var/log/sshd.log
-          - /var/log/secure
-
-  sshd-systemd-file:
-    when:
-      - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
-      - Path.Exists("/var/log/auth.log")
-    hub_spec:
-      collections:
-        - crowdsecurity/sshd
-    acquisition_spec:
-      filename: sshd.yaml
-      datasource:
-        source: file
-        labels:
-          type: syslog
-        filenames:
-          - /var/log/auth.log
-          - /var/log/sshd.log
-          - /var/log/secure
-
-  ssh-systemd-journalctl:
-    when:
-      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("ssh.socket")
-      - not Path.Exists("/var/log/auth.log")
+      - Systemd.UnitInstalled("ssh.service")
+      - Systemd.UnitLogsToJournal("ssh.service")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -346,10 +598,13 @@ detect:
         journalctl_filter:
           - "_SYSTEMD_UNIT=ssh.service"
 
-  sshd-systemd-journalctl:
+  # on rpm-based systems and others: the name of the unit is sshd.service
+  # and we have to skip this if ssh.service also exists
+  ssh-journal-sshd:
     when:
-      - Systemd.UnitInstalled("sshd.service") or Systemd.UnitInstalled("sshd.socket")
-      - not Path.Exists("/var/log/auth.log")
+      - Systemd.UnitInstalled("sshd.service")
+      - Systemd.UnitLogsToJournal("sshd.service")
+      - not Systemd.UnitInstalled("ssh.service")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -362,10 +617,47 @@ detect:
         journalctl_filter:
           - "_SYSTEMD_UNIT=sshd.service"
 
+  # If we detect the ssh unit but it doesn't log to journal, we assume it logs to /var/log/auth.log or /var/log/secure
+  # unless it's /var/log/messages which is already acquired (see the linux collection)
+  ssh-file:
+    when:
+      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("sshd.service") or Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
+      - not Systemd.UnitLogsToJournal("ssh.service")
+      - not Systemd.UnitLogsToJournal("sshd.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/secure
+
   # Suricata IDS/IPS
-  suricata-systemd:
+  suricata-journal:
     when:
       - Systemd.UnitInstalled("suricata.service")
+      - Systemd.UnitLogsToJournal("suricata.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/suricata
+    acquisition_spec:
+      filename: suricata.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: suricata-evelogs
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=suricata.service"
+
+  suricata-file:
+    when:
+      - Systemd.UnitInstalled("suricata.service") or Path.Exists("/var/log/suricata/eve.json")
+      - not Systemd.UnitLogsToJournal("suricata.service")
     hub_spec:
       collections:
         - crowdsecurity/suricata
@@ -379,9 +671,26 @@ detect:
           - /var/log/suricata/eve.json
 
   # vsftpd FTP server
-  vsftpd-systemd:
+  vsftpd-journal:
     when:
       - Systemd.UnitInstalled("vsftpd.service")
+      - Systemd.UnitLogsToJournal("vsftpd.service")
+    hub_spec:
+      collections:
+        - crowdsecurity/vsftpd
+    acquisition_spec:
+      filename: vsftpd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: vsftpd
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=vsftpd.service"
+
+  vsftpd-file:
+    when:
+      - Systemd.UnitInstalled("vsftpd.service") or len(Path.Glob("/var/log/vsftpd/*.log")) > 0
+      - not Systemd.UnitLogsToJournal("vsftpd.service")
     hub_spec:
       collections:
         - crowdsecurity/vsftpd
