@@ -26,9 +26,8 @@ import (
 	"github.com/crowdsecurity/dlog"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type DockerConfiguration struct {

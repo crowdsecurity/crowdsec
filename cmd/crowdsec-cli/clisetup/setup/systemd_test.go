@@ -28,6 +28,7 @@ func TestHelperProcess(t *testing.T) {
 
 	// Find the command after the "--"
 	args := os.Args
+
 	i := 0
 	for ; i < len(args); i++ {
 		if args[i] == "--" {
@@ -35,6 +36,7 @@ func TestHelperProcess(t *testing.T) {
 			break
 		}
 	}
+
 	if i >= len(args) {
 		os.Exit(2) //nolint:revive
 	}

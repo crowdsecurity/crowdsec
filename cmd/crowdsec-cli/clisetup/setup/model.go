@@ -20,7 +20,6 @@ type ServiceProfile struct {
 	// The conditions are evaluated in order, they must all be true for the service to be detected, and there is no short-circuiting.
 	When         []string `yaml:"when"`
 	compiledWhen []*vm.Program
-
 }
 
 // InstallRecommendation contains the items and acquisition configuration that should be installed to support a service.
@@ -68,7 +67,7 @@ type Setup struct {
 
 // ServicePlan describes the actions to perform for a detected service.
 type ServicePlan struct {
-	Name string `yaml:"detected_service"`
+	Name                  string `yaml:"detected_service"`
 	InstallRecommendation `yaml:",inline"`
 }
 

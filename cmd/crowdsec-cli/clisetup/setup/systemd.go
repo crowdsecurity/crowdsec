@@ -58,26 +58,33 @@ func parseUnitList(r io.Reader) (UnitMap, error) {
 		if line == "" {
 			break // the rest is footer
 		}
+
 		if header {
 			header = false
 			continue
 		}
+
 		spaceIdx := strings.IndexRune(line, ' ')
 		if spaceIdx == -1 {
 			return units, fmt.Errorf("can't parse systemctl output: %q", line)
 		}
+
 		name := line[:spaceIdx]
 		if name == "" {
 			continue
 		}
+
 		if strings.Contains(name, "@.") { // skip template units
 			continue
 		}
+
 		units[name] = UnitInfo{}
 	}
+
 	if err := sc.Err(); err != nil {
 		return nil, err
 	}
+
 	return units, nil
 }
 
@@ -85,42 +92,52 @@ func parseUnitList(r io.Reader) (UnitMap, error) {
 // and returns all Key=Value pairs as a UnitConfig.
 func parseUnitConfig(r io.Reader) (UnitConfig, error) {
 	cfg := make(UnitConfig)
+
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
 		if line == "" {
 			continue
 		}
+
 		kv := strings.SplitN(line, "=", 2)
 		if len(kv) != 2 {
 			return nil, fmt.Errorf("unexpected line: %q", line)
 		}
+
 		cfg[kv[0]] = kv[1]
 	}
+
 	if err := sc.Err(); err != nil {
 		return nil, err
 	}
+
 	return cfg, nil
 }
 
 func fetchUnitList(ctx context.Context, executor Executor) (UnitMap, error) {
 	cmdline := []string{"systemctl", "list-unit-files", "--type=service"}
 	cmd := executor(ctx, cmdline[0], cmdline[1:]...)
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
+
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
+
 	units, err := parseUnitList(stdout)
 	if err != nil {
 		_ = cmd.Wait()
 		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
+
 	if err := cmd.Wait(); err != nil {
 		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
+
 	return units, nil
 }
 
@@ -135,6 +152,7 @@ func DetectSystemdUnits(ctx context.Context, executor Executor) (UnitMap, error)
 		if err != nil {
 			return nil, err
 		}
+
 		info := units[name]
 		info.Config = cfg
 		units[name] = info

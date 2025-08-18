@@ -2,15 +2,22 @@ package setup
 
 import (
 	"context"
+	"errors"
+
+	"github.com/sirupsen/logrus"
 )
+
+var ErrSystemdPropertyNotFound = errors.New("systemd property not found")
 
 type ExprSystemd struct {
 	installedUnits UnitMap
+	logger         logrus.FieldLogger
 }
 
-func NewExprSystemd(installedUnits UnitMap) *ExprSystemd {
+func NewExprSystemd(installedUnits UnitMap, logger logrus.FieldLogger) *ExprSystemd {
 	ret := &ExprSystemd{
 		installedUnits: installedUnits,
+		logger:         logger,
 	}
 
 	return ret
@@ -27,17 +34,28 @@ func (e *ExprSystemd) UnitInstalled(ctx context.Context, unitName string) (bool,
 func (e *ExprSystemd) UnitConfig(ctx context.Context, unitName, key string) (string, error) {
 	unit, ok := e.installedUnits[unitName]
 	if !ok {
+		// unit not installed
 		return "", nil
 	}
 
-	return unit.Config[key], nil
+	val, ok := unit.Config[key]
+	if !ok {
+		// unit installed but key not found
+		return "", ErrSystemdPropertyNotFound
+	}
+
+	return val, nil
 }
 
 // UnitLogsToJournal returns true if the unit's logs are configured to go to the journal, either through
 // standard output or standard error.
 func (e *ExprSystemd) UnitLogsToJournal(ctx context.Context, unitName string) (bool, error) {
 	stdout, err := e.UnitConfig(ctx, unitName, "StandardOutput")
-	if err != nil {
+	switch {
+	case errors.Is(err, ErrSystemdPropertyNotFound):
+		e.logger.WithField("unit", unitName).WithField("key", "StandardOutput").Error(err)
+		return false, nil
+	case err != nil:
 		return false, err
 	}
 
@@ -46,7 +64,11 @@ func (e *ExprSystemd) UnitLogsToJournal(ctx context.Context, unitName string) (b
 	}
 
 	stderr, err := e.UnitConfig(ctx, unitName, "StandardError")
-	if err != nil {
+	switch {
+	case errors.Is(err, ErrSystemdPropertyNotFound):
+		e.logger.WithField("unit", unitName).WithField("key", "StandardError").Error(err)
+		return false, nil
+	case err != nil:
 		return false, err
 	}
 
