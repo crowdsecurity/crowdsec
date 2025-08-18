@@ -119,7 +119,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("use_service_labels and service_name, service_id, service_id_regexp, service_name_regexp are mutually exclusive")
 	}
 
-	if d.Config.CheckInterval != "" {
+	if d.Config.CheckInterval != "" && d.logger != nil {
 		d.logger.Warn("check_interval is deprecated, it will be removed in a future version")
 	}
 

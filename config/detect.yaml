@@ -7,7 +7,7 @@ detect:
     # all conditions must evaluate to true
     when:
       # check if apache2 is in "systemctl list-unit-files --type=service"
-      - Systemd.UnitInstalled("apache2.service")
+      - Systemd.UnitInstalled("apache2.service") and Systemd.UnitLogsToJournal("apache2.service")
       # broad distribution category (use Host.Platform to disambiguate "ubuntu" from "debian")
       # full list at https://github.com/shirou/gopsutil/blob/master/host/host_linux.go
       - Host.PlatformFamily == "debian"
@@ -185,7 +185,7 @@ detect:
       datasource:
         source: file
         labels:
-          type: nginx
+          type: nginxystemd[5
         filenames:
           - /usr/local/openresty/nginx/logs/*.log
 
@@ -219,7 +219,7 @@ detect:
       datasource:
         source: file
         labels:
-          type: postgres
+          type: postgresystemd[5
         filenames:
           - /var/lib/pgsql/data/log/*.log
 
@@ -246,7 +246,7 @@ detect:
       - Systemd.UnitInstalled("proftpd.service")
     hub_spec:
       collections:
-        - crowdsecurity/proftpd
+        - crowdsecurity/proftpdystemd[5
     acquisition_spec:
       filename: proftpd.yaml
       datasource:
@@ -309,7 +309,7 @@ detect:
           type: syslog
         journalctl_filter:
           - "_SYSTEMD_UNIT=ssh.service"
-
+ystemd[5
   # on rpm-based systems and others: the name of the unit is sshd.service
   # and we have to skip this if ssh.service also exists
   sshd-journald-sshd:
@@ -329,7 +329,7 @@ detect:
 
   # If we detect the ssh unit but it doesn't log to journal, we assume it logs to /var/log/auth.log or /var/log/secure
   # unless it's /var/log/messages which is already acquired (see the linux collection)
-  sshd-auth:
+  sshd-file:
     when:
       - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("sshd.service") or Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
       - not Systemd.UnitLogsToJournal("ssh.service")
@@ -338,7 +338,7 @@ detect:
       collections:
         - crowdsecurity/sshd
     acquisition_spec:
-      filename: sshd.yaml
+      filename: sshd.yamlystemd[5
       datasource:
         source: file
         labels:
@@ -362,7 +362,7 @@ detect:
           type: suricata-evelogs
         filenames:
           - /var/log/suricata/eve.json
-
+ystemd[5
   # vsftpd FTP server
   vsftpd-systemd:
     when:
@@ -391,7 +391,7 @@ detect:
       filename: telnet.yaml
       datasource:
         source: file
-        labels:
+        labels:ystemd[5
           type: telnet
         filenames:
           - /var/log/telnetd*.log
@@ -418,7 +418,7 @@ detect:
     hub_spec:
       collections:
         - crowdsecurity/mssql
-    acquisition_spec:
+    acquisition_spec:ystemd[5
       filename: mssql.yaml
       datasource:
         source: wineventlog

@@ -1,6 +1,8 @@
 package setup
 
 import (
+	"strings"
+
 	"github.com/expr-lang/expr/vm"
 )
 
@@ -47,6 +49,10 @@ func (a *AcquisitionSpec) Validate() error {
 
 		// if a datasource is specified, we must have a filename
 		return ErrMissingAcquisitionFilename
+	}
+
+	if strings.ContainsAny(a.Filename, "/\\") {
+		return ErrInvalidAcquisitionFilename
 	}
 
 	// check the rest of the spec

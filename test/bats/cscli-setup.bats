@@ -151,7 +151,6 @@ teardown() {
     PATH="${PATH/${TESTDATA}:/}"
 }
 
-# XXX this is the same boilerplate as the previous test, can be simplified
 @test "cscli setup detect (skip systemd)" {
     # Skip detection of services through systemd units.
 
@@ -446,7 +445,7 @@ teardown() {
 	          type: something
 	EOT
 
-    assert_stderr --partial "Error: cscli setup detect: parsing <stdin>: invalid acquisition spec for foobar: source is empty"
+    assert_stderr --partial "Error: cscli setup detect: parsing <stdin>: invalid acquisition spec for foobar: source field is required"
 
     # more datasource-specific tests are in detect_test.go
 }
@@ -518,6 +517,7 @@ teardown() {
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
+	        source: file
 	        filenames:
 	          - /var/log/apache2/*.log
 	EOT
@@ -553,6 +553,51 @@ teardown() {
 	EOT
 }
 
+@test "cscli setup install-acquisition (missing or bad filename)" {
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	EOT
+
+    assert_stderr --partial "Error: cscli setup install-acquisition: invalid acquisition spec (0): a filename for the datasource configuration is required"
+
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      filename: 
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	EOT
+
+    assert_stderr --partial "Error: cscli setup install-acquisition: invalid acquisition spec (0): a filename for the datasource configuration is required"
+
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      filename: apache2/apache2.yaml
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	          - /var/log/*http*/*.log
+	          - /var/log/httpd/*.log
+	EOT
+
+    assert_stderr --partial "Error: cscli setup install-acquisition: invalid acquisition spec (0): acquisition filename must not contain slashes (/) or backslashes (\\)"
+}
+
 @test "cscli setup install-acquisition (multiple services)" {
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
@@ -560,6 +605,7 @@ teardown() {
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: syslog
 	        filenames:
@@ -570,6 +616,7 @@ teardown() {
 	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: foobar
 	        filenames:
@@ -578,6 +625,7 @@ teardown() {
 	    acquisition_spec:
 	      filename: bar.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: barbaz
 	        filenames:
@@ -592,6 +640,7 @@ teardown() {
 	  - /var/log/httpd/*.log
 	labels:
 	  type: syslog
+	source: file
 	EOT
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.foo.yaml"
@@ -600,6 +649,7 @@ teardown() {
 	  - /var/log/foobar/*.log
 	labels:
 	  type: foobar
+	source: file
 	EOT
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.bar.yaml"
@@ -608,13 +658,14 @@ teardown() {
 	  - /path/to/barbaz.log
 	labels:
 	  type: barbaz
+	source: file
 	EOT
 }
 
 @test "cscli setup install-acquisition (incorrect)" {
-    # the datasource is copied as-is, even if incorrect.
+    # the datasource is validated according to its type.
 
-    rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
 	  - detected_service: apache2
 	    hub_spec:
@@ -629,15 +680,7 @@ teardown() {
 	        somethingdifferent: xyz
 	EOT
 
-    # keys are sorted.
-
-    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.apache.yaml"
-    assert_output - <<-EOT
-	labels:
-	  type: apache2
-	somethingdifferent: xyz
-	source: docker
-	EOT
+    assert_stderr --partial 'Error: cscli setup install-acquisition: invalid acquisition spec (0): while parsing DockerAcquisition configuration: [3:1] unknown field "somethingdifferent"'
 }
 
 @test "cscli setup install-acquisition (key order)" {
@@ -653,23 +696,23 @@ teardown() {
 	        source: docker
 	        labels:
 	          type: docker
-	        z: 1
-	        m: 2
-	        d: 3
-	        a: 4
+	        follow_stderr: true
+	        use_container_labels: true
+	        follow_stdout: true
+	        check_interval: "2 minutes"
 	EOT
 
     # keys are sorted.
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.docker.yaml"
     assert_output - <<-EOT
-	a: 4
-	d: 3
+	check_interval: 2 minutes
+	follow_stderr: true
+	follow_stdout: true
 	labels:
 	  type: docker
-	m: 2
 	source: docker
-	z: 1
+	use_container_labels: true
 	EOT
 }
 
@@ -684,6 +727,7 @@ teardown() {
 	    acquisition_spec:
 	      filename: something.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: syslog
 	        filenames:

@@ -18,11 +18,13 @@ import (
 
 var (
 	ErrEmptyDatasourceConfig      = errors.New("datasource configuration is empty")
-	ErrMissingAcquisitionFilename = errors.New("a filename for the datasource configuration is mandatory")
+	ErrMissingSourceField         = errors.New("source field is required")
+	ErrMissingAcquisitionFilename = errors.New("a filename for the datasource configuration is required")
+	ErrInvalidAcquisitionFilename = errors.New("acquisition filename must not contain slashes (/) or backslashes (\\)")
 )
 
 // Validate runs static checks on the configuration, but does not guarantee that
-// the datasource will be initialized correctly at runtime (some require network connections, etc).
+// the datasource will be initialized correctly at runtime (may require network connections, etc).
 func (d DatasourceConfig) Validate() error {
 	if len(d) == 0 {
 		return ErrEmptyDatasourceConfig
@@ -43,7 +45,7 @@ func (d DatasourceConfig) Validate() error {
 	}
 
 	if commonDS.Source == "" {
-		return errors.New("source is empty")
+		return ErrMissingSourceField
 	}
 
 	ds, err := acquisition.GetDataSourceIface(commonDS.Source)
@@ -64,10 +66,7 @@ func (d DatasourceConfig) Validate() error {
 // Path returns the path where the acquisition spec will be written.
 // The "setup." prefix is added purely as visual hint and for grouping generated files in the directory listing.
 func (a *AcquisitionSpec) Path(toDir string) (string, error) {
-	if a.Filename == "" {
-		return "", errors.New("empty acquisition filename")
-	}
-
+	// Filename has already been checked with Validate()
 	return filepath.Join(toDir, "setup."+a.Filename), nil
 }
 
