@@ -9,10 +9,6 @@ import (
 	"strings"
 )
 
-func quote(args []string) string {
-	return strings.Join(args, " ")
-}
-
 // UnitConfig holds all systemd properties for a unit.
 type UnitConfig map[string]string
 
@@ -22,21 +18,21 @@ func NewUnitConfig(ctx context.Context, executor Executor, unit string) (UnitCon
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 
 	cfg, err := parseUnitConfig(stdout)
 	if err != nil {
 		_ = cmd.Wait()
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 
 	return cfg, nil
@@ -112,18 +108,18 @@ func fetchUnitList(ctx context.Context, executor Executor) (UnitMap, error) {
 	cmd := executor(ctx, cmdline[0], cmdline[1:]...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 	units, err := parseUnitList(stdout)
 	if err != nil {
 		_ = cmd.Wait()
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("%q: %w", quote(cmdline), err)
+		return nil, fmt.Errorf("%q: %w", strings.Join(cmdline, " "), err)
 	}
 	return units, nil
 }

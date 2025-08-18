@@ -582,7 +582,7 @@ detect:
   #
 
   # on deb-based systems: the name of the unit is ssh.service, while sshd.service is an alias that can't be used to read the journal
-  sshd-journald-ssh:
+  ssh-journal-ssh:
     when:
       - Systemd.UnitInstalled("ssh.service")
       - Systemd.UnitLogsToJournal("ssh.service")
@@ -600,7 +600,7 @@ detect:
 
   # on rpm-based systems and others: the name of the unit is sshd.service
   # and we have to skip this if ssh.service also exists
-  sshd-journald-sshd:
+  ssh-journal-sshd:
     when:
       - Systemd.UnitInstalled("sshd.service")
       - Systemd.UnitLogsToJournal("sshd.service")
@@ -619,7 +619,7 @@ detect:
 
   # If we detect the ssh unit but it doesn't log to journal, we assume it logs to /var/log/auth.log or /var/log/secure
   # unless it's /var/log/messages which is already acquired (see the linux collection)
-  sshd-file:
+  ssh-file:
     when:
       - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("sshd.service") or Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
       - not Systemd.UnitLogsToJournal("ssh.service")

@@ -120,7 +120,7 @@ func TestEvaluateRules(t *testing.T) {
 			"",
 		},
 		{
-			"each expression must be a boolan",
+			"each expression must be a boolean",
 			[]string{"true", `"notabool"`},
 			false,
 			"",
@@ -129,7 +129,7 @@ func TestEvaluateRules(t *testing.T) {
 		{
 			// we keep evaluating expressions to ensure that the
 			// file is formally correct, even if it can some time.
-			"each expression must be a boolan (no short circuit)",
+			"each expression must be a boolean (no short circuit)",
 			[]string{"false", "3"},
 			false,
 			"",
