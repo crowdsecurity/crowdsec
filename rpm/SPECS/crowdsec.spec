@@ -113,6 +113,7 @@ rm -rf %{buildroot}
 %{_sysconfdir}/%{name}/patterns/aws
 %{_sysconfdir}/%{name}/patterns/smb
 %{_sysconfdir}/%{name}/patterns/mongodb
+%attr(0640, root, root) /var/lib/%{name}/data/detect.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/config.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
