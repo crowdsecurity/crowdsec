@@ -113,7 +113,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
-		Queue:           types.NewQueue(Qsize),
+		Queue:           types.CreateQueue(bucketFactory.hash, Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *types.QueueInterface, 1),
 		Suicide:         make(chan bool, 1),

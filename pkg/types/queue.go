@@ -53,10 +53,6 @@ type QueueInterface interface {
 	Add(evt Event)
 }
 
-func NewQueue(l int) QueueInterface {
-	return NewLocalQueue(l)
-}
-
 // for compatibility with
 type Queue struct {
 	Queue []Event
