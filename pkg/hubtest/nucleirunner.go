@@ -51,11 +51,10 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 	}
 
 	if err != nil {
-		log.Warningf("Error running nuclei: %s", err)
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
-		return err
+		return fmt.Errorf("running nuclei: %w", err)
 	} else if out.String() == "" {
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
