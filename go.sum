@@ -108,8 +108,8 @@ github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4 h1:Cw
 github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4/go.mod h1:YfyL16lx2wA8Z6t/TG1x1/FBngOIpuCuo7nM/FSuP54=
 github.com/crowdsecurity/grokky v0.2.2 h1:yALsI9zqpDArYzmSSxfBq2dhYuGUTKMJq8KOEIAsuo4=
 github.com/crowdsecurity/grokky v0.2.2/go.mod h1:33usDIYzGDsgX1kHAThCbseso6JuWNJXOzRQDGXHtWM=
-github.com/crowdsecurity/machineid v1.0.2 h1:wpkpsUghJF8Khtmn/tg6GxgdhLA1Xflerh5lirI+bdc=
-github.com/crowdsecurity/machineid v1.0.2/go.mod h1:XWUSlnS0R0+u/JK5ulidwlbceNT3ZOCKteoVQEn6Luo=
+github.com/crowdsecurity/machineid v1.0.3 h1:mgd//PhMJqyA1EdRTgwRvafwbzNjoktdJyEgZGVCD2Q=
+github.com/crowdsecurity/machineid v1.0.3/go.mod h1:XWUSlnS0R0+u/JK5ulidwlbceNT3ZOCKteoVQEn6Luo=
 github.com/daulet/tokenizers v0.9.0 h1:PSjFUGeuhqb3C0GKP9hdvtHvJ6L1AZceV+0nYGACtCk=
 github.com/daulet/tokenizers v0.9.0/go.mod h1:tGnMdZthXdcWY6DGD07IygpwJqiPvG85FQUnhs/wSCs=
 github.com/davecgh/go-spew v0.0.0-20161028175848-04cdfd42973b/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

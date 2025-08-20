@@ -44,7 +44,7 @@ func (f *detectFlags) detectConfig() (*setup.DetectConfig, string, error) {
 func (f *detectFlags) bind(cmd *cobra.Command) {
 	defaultServiceDetect := os.Getenv("CROWDSEC_SETUP_DETECT_CONFIG")
 	if defaultServiceDetect == "" {
-		defaultServiceDetect = csconfig.DefaultConfigPath("detect.yaml")
+		defaultServiceDetect = csconfig.DefaultDataPath("detect.yaml")
 	}
 
 	flags := cmd.Flags()
@@ -96,7 +96,7 @@ cscli setup detect
 cscli setup detect --yaml
 
 # detect and skip certain services
-cscli setup detect --skip-service whitelists
+cscli setup detect --ignore whitelists
 `,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
