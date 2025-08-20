@@ -2201,3 +2201,252 @@ func TestParseKv(t *testing.T) {
 		})
 	}
 }
+
+func TestReplaceRegexp(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		env    map[string]any
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "ReplaceRegexp() test: replace first occurrence",
+			env: map[string]any{
+				"pattern": "foo",
+				"source":  "foobar foobaz",
+				"repl":    "qux",
+			},
+			code:   "ReplaceRegexp(pattern, source, repl)",
+			result: "quxbar foobaz",
+		},
+		{
+			name: "ReplaceRegexp() test: no match",
+			env: map[string]any{
+				"pattern": "xyz",
+				"source":  "foobar foobaz",
+				"repl":    "qux",
+			},
+			code:   "ReplaceRegexp(pattern, source, repl)",
+			result: "foobar foobaz",
+		},
+		{
+			name: "ReplaceRegexp() test: regex with special chars",
+			env: map[string]any{
+				"pattern": "\\d+",
+				"source":  "abc123def456",
+				"repl":    "X",
+			},
+			code:   "ReplaceRegexp(pattern, source, repl)",
+			result: "abcXdef456",
+		},
+		{
+			name: "ReplaceRegexp() test: case insensitive",
+			env: map[string]any{
+				"pattern": "(?i)FOO",
+				"source":  "foobar FOOBAZ",
+				"repl":    "qux",
+			},
+			code:   "ReplaceRegexp(pattern, source, repl)",
+			result: "quxbar FOOBAZ",
+		},
+		{
+			name: "ReplaceRegexp() test: invalid regex",
+			env: map[string]any{
+				"pattern": "[",
+				"source":  "foobar",
+				"repl":    "qux",
+			},
+			code: "ReplaceRegexp(pattern, source, repl)",
+			err:  "error parsing regexp",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, test.env)
+
+			if test.err != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+}
+
+func TestReplaceAllRegex(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		env    map[string]any
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "ReplaceAllRegex() test: replace all occurrences",
+			env: map[string]any{
+				"pattern": "foo",
+				"source":  "foobar foobaz",
+				"repl":    "qux",
+			},
+			code:   "ReplaceAllRegex(pattern, source, repl)",
+			result: "quxbar quxbaz",
+		},
+		{
+			name: "ReplaceAllRegex() test: no match",
+			env: map[string]any{
+				"pattern": "xyz",
+				"source":  "foobar foobaz",
+				"repl":    "qux",
+			},
+			code:   "ReplaceAllRegex(pattern, source, repl)",
+			result: "foobar foobaz",
+		},
+		{
+			name: "ReplaceAllRegex() test: regex with special chars",
+			env: map[string]any{
+				"pattern": "\\d+",
+				"source":  "abc123def456",
+				"repl":    "X",
+			},
+			code:   "ReplaceAllRegex(pattern, source, repl)",
+			result: "abcXdefX",
+		},
+		{
+			name: "ReplaceAllRegex() test: case insensitive",
+			env: map[string]any{
+				"pattern": "(?i)FOO",
+				"source":  "foobar FOOBAZ",
+				"repl":    "qux",
+			},
+			code:   "ReplaceAllRegex(pattern, source, repl)",
+			result: "quxbar quxBAZ",
+		},
+		{
+			name: "ReplaceAllRegex() test: multiple matches with capture groups",
+			env: map[string]any{
+				"pattern": "(\\w+)@(\\w+)",
+				"source":  "user1@domain1 user2@domain2",
+				"repl":    "$1[at]$2",
+			},
+			code:   "ReplaceAllRegex(pattern, source, repl)",
+			result: "user1[at]domain1 user2[at]domain2",
+		},
+		{
+			name: "ReplaceAllRegex() test: invalid regex",
+			env: map[string]any{
+				"pattern": "[",
+				"source":  "foobar",
+				"repl":    "qux",
+			},
+			code: "ReplaceAllRegex(pattern, source, repl)",
+			err:  "error parsing regexp",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, test.env)
+
+			if test.err != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+}
+
+func TestAnsiRegex(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		env    map[string]any
+		code   string
+		result string
+	}{
+		{
+			name:   "AnsiRegex() test: returns ANSI regex pattern",
+			env:    map[string]any{},
+			code:   "AnsiRegex()",
+			result: `\x1b\[[0-9;]*m|\033\[[0-9;]*m`,
+		},
+		{
+			name: "AnsiRegex() test: can be used with ReplaceAllRegex",
+			env: map[string]any{
+				"coloredText": "\x1b[31mHello\x1b[0m \x1b[32mWorld\x1b[0m",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), coloredText, '')",
+			result: "Hello World",
+		},
+		{
+			name: "AnsiRegex() test: can be used with ReplaceRegexp (first occurrence only)",
+			env: map[string]any{
+				"coloredText": "\x1b[31mHello\x1b[0m \x1b[32mWorld\x1b[0m",
+			},
+			code:   "ReplaceRegexp(AnsiRegex(), coloredText, '')",
+			result: "Hello\x1b[0m \x1b[32mWorld\x1b[0m",
+		},
+		{
+			name: "AnsiRegex() test: handles complex ANSI sequences",
+			env: map[string]any{
+				"complexText": "\x1b[38;5;208mOrange\x1b[0m \x1b[38;5;119mLightGreen\x1b[0m",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), complexText, '')",
+			result: "Orange LightGreen",
+		},
+		{
+			name: "AnsiRegex() test: handles background colors",
+			env: map[string]any{
+				"bgText": "\x1b[41mRed Background\x1b[0m \x1b[42mGreen Background\x1b[0m",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), bgText, '')",
+			result: "Red Background Green Background",
+		},
+		{
+			name: "AnsiRegex() test: handles mixed hex and octal formats",
+			env: map[string]any{
+				"mixedText": "\x1b[31mRed\x1b[0m \033[32mGreen\033[0m \x1b[33mYellow\x1b[0m",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), mixedText, '')",
+			result: "Red Green Yellow",
+		},
+		{
+			name: "AnsiRegex() test: handles both hex and octal formats",
+			env: map[string]any{
+				"bothFormats": "\x1b[31mRed\x1b[0m \033[32mGreen\033[0m \x1b[33mYellow\x1b[0m",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), bothFormats, '')",
+			result: "Red Green Yellow",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, test.env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+}
