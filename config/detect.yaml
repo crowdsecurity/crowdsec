@@ -127,8 +127,6 @@ detect:
         labels:
           type: syslog
         filenames:
-          - /var/log/mail.log
-          - /var/log/mail.err
           - /var/log/maillog
 
   # Nginx
@@ -357,7 +355,7 @@ detect:
   # MySQL server
   mysql:
     when:
-      # deb: msqyl.service
+      # deb: mysql.service
       # rpm: mysqld.service
       - Systemd.UnitInstalled("mysql.service") or Systemd.UnitInstalled("mysqld.service") or Path.Exists("/var/log/mysql/mysqld.log")
       # We can't detect error.log directly because it could come from mariadb
