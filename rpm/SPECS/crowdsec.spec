@@ -156,8 +156,6 @@ if [ "$1" = 1 ]; then
         touch /var/lib/crowdsec/data/crowdsec.db
     fi
 
-    echo $SHELL
-
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] ; then
         install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
         cscli capi register --error
