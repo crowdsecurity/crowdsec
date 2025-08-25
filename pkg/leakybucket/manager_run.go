@@ -99,11 +99,16 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	attempts := 0
 	start := time.Now().UTC()
 
+	// exponential backoff to avoid busy-spin when the bucket input is full
+	backoff := 50 * time.Microsecond
+	const maxBackoff = 5 * time.Millisecond
+
 	for !sent {
 		attempts += 1
 		/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
 		if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now().UTC()) {
-			holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d failed_sent:%d attempts:%d)", time.Since(start),
+			// Demote to debug to avoid noisy warnings under normal backpressure
+			holder.logger.Debugf("stuck for %s sending event to %s (sigclosed:%d failed_sent:%d attempts:%d)", time.Since(start),
 				buckey, sigclosed, failed_sent, attempts)
 		}
 
@@ -167,8 +172,14 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			sent = true
 			continue
 		default:
-			failed_sent += 1
-			//holder.logger.Tracef("Failed to send, try again")
+			// backoff briefly to avoid busy spinning when bucket channel is full
+			time.Sleep(backoff)
+			if backoff < maxBackoff {
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+			}
 			continue
 
 		}
@@ -194,7 +205,8 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		default:
 			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
 		}
-		fresh_bucket.In = make(chan *types.Event)
+		// small buffer for elasticity while preserving ordering
+		fresh_bucket.In = make(chan *types.Event, 4)
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
