@@ -82,7 +82,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 		if c.posterior > c.threshold {
 			l.logger.Debugf("Bayesian bucket overflow")
 			l.Ovflw_ts = l.Last_ts
-			l.Out <- l.Queue
+			l.Out <- &l.Queue
 			return nil
 		}
 
@@ -108,7 +108,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	}
 
 	l.logger.Debugf("running condition expression: %s", b.rawCondition.ConditionalFilterName)
-	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
+	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue.GetQueue(), "leaky": l}, l.logger, l.BucketConfig.Debug)
 	if err != nil {
 		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}
