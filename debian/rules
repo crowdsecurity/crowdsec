@@ -2,7 +2,6 @@
 
 export DEB_VERSION=$(shell dpkg-parsechangelog -SVersion)
 export BUILD_VERSION=v${DEB_VERSION}-debian-pragmatic
-export GO111MODULE=on
 
 %:
 	dh $@
@@ -26,12 +25,23 @@ override_dh_auto_install:
 	mkdir -p debian/crowdsec/usr/lib/crowdsec/plugins/
 	mkdir -p debian/crowdsec/etc/crowdsec/notifications/
 
-	install -m 551 cmd/notification-slack/notification-slack debian/crowdsec/usr/lib/crowdsec/plugins/
-	install -m 551 cmd/notification-http/notification-http debian/crowdsec/usr/lib/crowdsec/plugins/
-	install -m 551 cmd/notification-splunk/notification-splunk debian/crowdsec/usr/lib/crowdsec/plugins/
-	install -m 551 cmd/notification-email/notification-email debian/crowdsec/usr/lib/crowdsec/plugins/
-	install -m 551 cmd/notification-sentinel/notification-sentinel debian/crowdsec/usr/lib/crowdsec/plugins/
-	install -m 551 cmd/notification-file/notification-file debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 \
+		cmd/notification-slack/notification-slack \
+		cmd/notification-http/notification-http \
+		cmd/notification-splunk/notification-splunk \
+		cmd/notification-email/notification-email \
+		cmd/notification-sentinel/notification-sentinel \
+		cmd/notification-file/notification-file \
+		debian/crowdsec/usr/lib/crowdsec/plugins/
+
+	install -m 600 \
+		cmd/notification-slack/slack.yaml \
+		cmd/notification-http/http.yaml \
+		cmd/notification-splunk/splunk.yaml \
+		cmd/notification-email/email.yaml \
+		cmd/notification-sentinel/sentinel.yaml \
+		cmd/notification-file/file.yaml \
+		debian/crowdsec/etc/crowdsec/notifications/
 
 	cp cmd/crowdsec/crowdsec debian/crowdsec/usr/bin
 	cp cmd/crowdsec-cli/cscli debian/crowdsec/usr/bin
