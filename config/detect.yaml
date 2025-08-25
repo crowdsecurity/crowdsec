@@ -66,7 +66,8 @@ detect:
   # Caddy web server
   #
   # By default the caddy packages don't contain a "log" directive in the Caddyfile,
-  # but the deb package has an empty /var/log/caddy directory so we look for files there (the rpm doesn't have it).
+  # but the deb package has an empty /var/log/caddy directory so we look for files there
+  # (the rpm doesn't have it).
   # If no log file is found, there could be a bare "log" directive which means
   # logs go to stderr and are captured by systemd.
   # It is possible that logs would go to file but no access has been logged yet.
@@ -209,13 +210,15 @@ detect:
   # Openssh
   #
 
-  # on deb-based systems: the name of the unit is ssh.service, while sshd.service is an alias that can't be used to read the journal
+  # on deb-based systems: the name of the unit is ssh.service,
+  # while sshd.service is an alias that can't be used to read the journal
   openssh-journal-ssh:
     when:
+      # ubuntu-minimal and recent debians don't install rsyslog by default
       - Systemd.UnitInstalled("ssh.service")
-      # Check if the unit logs through systemd,
-      # this prevents attempting to read from the alias
-      - Systemd.UnitLogsToJournal("ssh.service")
+      - not Path.Exists("/var/log/auth.log")
+      - not Path.Exists("/var/log/secure")
+      - not Path.Exists("/var/log/messages")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -233,8 +236,10 @@ detect:
   openssh-journal-sshd:
     when:
       - Systemd.UnitInstalled("sshd.service")
-      - Systemd.UnitLogsToJournal("sshd.service")
       - not Systemd.UnitInstalled("ssh.service")
+      - not Path.Exists("/var/log/auth.log")
+      - not Path.Exists("/var/log/secure")
+      - not Path.Exists("/var/log/messages")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -247,13 +252,11 @@ detect:
         journalctl_filter:
           - "_SYSTEMD_UNIT=sshd.service"
 
-  # If we detect the ssh unit but it doesn't log to journal, we assume it logs to /var/log/auth.log or /var/log/secure
-  # unless it's /var/log/messages which is already acquired (see the linux collection)
+  # Acquire rsyslog files if they exist (some distributions have them in /var/log/messages,
+  # already acquired by the linux service below)
   openssh-file:
     when:
-      - Systemd.UnitInstalled("ssh.service") or Systemd.UnitInstalled("sshd.service") or Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
-      - not Systemd.UnitLogsToJournal("ssh.service")
-      - not Systemd.UnitLogsToJournal("sshd.service")
+      - Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
     hub_spec:
       collections:
         - crowdsecurity/sshd
@@ -271,7 +274,8 @@ detect:
   #
   # Logs go to syslog, then
   # - on deb, they are dispatched to /var/log/haproxy.log (via /etc/rsyslog.d/49-haproxy.conf)
-  # - on rpm, the dispatch is missing (default -> /var/log/messages), but can be added with, assuming rsyslog:
+  # - on rpm, the dispatch is missing (default -> /var/log/messages), but can be added with,
+  #   assuming rsyslog:
   #
   # # /etc/rsyslog.d/10-haproxy.conf
   # module(load="imudp")
@@ -326,7 +330,8 @@ detect:
         labels:
           type: smb
         filenames:
-          # authentication failures go to syslog (/var/log/syslog, /var/log/messages, already acquired by linux collection)
+          # authentication failures go to syslog (/var/log/syslog, /var/log/messages,
+          # already acquired by linux collection)
           - /var/log/samba/*.log
           - /var/log/samba/log.*
 
@@ -702,4 +707,3 @@ detect:
 #        type: vsftpd
 #      filenames:
 #        - /var/log/vsftpd/*.log
-
