@@ -304,7 +304,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=gruueq", emptyBody, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.JSONEq(t, `{"message":"invalid ip address 'gruueq'"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"ParseAddr(\"gruueq\"): unable to parse IP"}`, w.Body.String())
 
 	// test range (ok)
 
@@ -323,7 +323,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?range=ratata", emptyBody, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.JSONEq(t, `{"message":"invalid ip address 'ratata'"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"ParseAddr(\"ratata\"): unable to parse IP"}`, w.Body.String())
 
 	// test since (ok)
 
