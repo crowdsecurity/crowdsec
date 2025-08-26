@@ -162,8 +162,10 @@ install_crowdsec() {
     [ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]    && install -v -m 644 -D ./config/console.yaml      "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_DATA_DIR"/detect.yaml ]       && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_DATA_DIR" >/dev/null || exit
 
+    # shellcheck disable=SC2016
     DATA="$CROWDSEC_DATA_DIR" CFG="$CROWDSEC_CONFIG_DIR" envsubst '$CFG $DATA' < ./config/user.yaml > "$CROWDSEC_CONFIG_DIR"/user.yaml || log_fatal "unable to generate user configuration file"
     if [ "$DOCKER_MODE" = "false" ]; then
+        # shellcheck disable=SC2016
         CFG="$CROWDSEC_CONFIG_DIR" BIN="$CROWDSEC_BIN_INSTALLED" envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
