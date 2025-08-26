@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
@@ -22,6 +23,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+// If we have a match in one of those zones, we do not populate the matchedRules with name/id/msg/....
+// But rather name_internal,id_internal,...
+// This is rather CRS-specific, but we don't expect to write custom rules as complex as the CRS
+var excludedMatchZones = []string{
+	"REQBODY_PROCESSOR", // Matched when enabling the body processor
+	"UNKNOWN",           // Matched by the anomaly score rule
+	"TX",                // Score has been exceeded
+}
 
 func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 
@@ -58,6 +68,39 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 		src.Range = record.String()
 	}
 	return nil
+}
+
+func getHighestSeverityMsg(rules types.MatchedRules) string {
+	msg := ""
+	// Severity goes from 0 to 7, 0 being the most severe
+	highestSeverity := 255
+	for _, rule := range rules {
+		sev, ok := rule["severity_int"].(int)
+		if ok && sev < highestSeverity {
+			highestSeverity = sev
+			msg, ok = rule["msg"].(string)
+			if !ok {
+				continue
+			}
+		}
+	}
+	return msg
+}
+
+func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMatches bool) string {
+	msg := "anomaly score "
+	switch {
+	case hasInBandMatches:
+		msg += "in-band: "
+	case hasOutBandMatches:
+		msg += "out-of-band: "
+	}
+	for _, var_name := range appsec.CRSAnomalyScores {
+		if val, ok := vars[var_name]; ok && val != "0" {
+			msg += fmt.Sprintf("%s: %s, ", strings.Replace(var_name, "TX.", "", 1), val)
+		}
+	}
+	return msg
 }
 
 func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
@@ -100,12 +143,44 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 
 	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
 	alert.Leakspeed = ptr.Of("")
-	alert.Scenario = ptr.Of(inEvt.Appsec.GetName())
+
+	scenarioName := ""
+
+	// Own custom format, just get the name
+	if !strings.HasPrefix(inEvt.Appsec.GetName(), "native_rule:") {
+		scenarioName = inEvt.Appsec.GetName()
+	} else {
+		// This is a modsec rule match
+		// If from CRS (TX scores are set), use that as the name
+		// If from a custom rule, use the log message from the 1st highest severity rule
+		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
+		} else {
+			scenarioName = getHighestSeverityMsg(inEvt.Appsec.MatchedRules)
+			//Not sure if this can happen
+			//Default to native_rule:XXX if msg is empty
+			if len(scenarioName) == 0 {
+				scenarioName = inEvt.Appsec.GetName()
+			}
+		}
+	}
+
+	alert.Scenario = ptr.Of(scenarioName)
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.GetHash())
 	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
 	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
-	msg := fmt.Sprintf("AppSec block: %s from %s (%s)", inEvt.Appsec.GetName(),
+
+	msg := ""
+
+	switch {
+	case inEvt.Appsec.HasInBandMatches:
+		msg = "WAF block: "
+	case inEvt.Appsec.HasOutBandMatches:
+		msg = "WAF out-of-band match: "
+	}
+
+	msg += fmt.Sprintf("%s from %s (%s)", scenarioName,
 		alert.Source.IP, inEvt.Parsed["remediation_cmpt_ip"])
 	alert.Message = &msg
 	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
@@ -211,6 +286,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
+			r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
 			key := variable.Variable().Name()
 			if variable.Key() != "" {
 				key += "." + variable.Key()
@@ -235,6 +311,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	})
 
 	for _, rule := range req.Tx.MatchedRules() {
+		// Drop the rule if it has no message (it's likely a CRS setup rule)
 		if rule.Message() == "" {
 			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
@@ -279,6 +356,10 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			matchedZones = append(matchedZones, zone)
 		}
 
+		//FIXME: If it's a rule we don't care about (eg, matching a non-user tainted zone),
+		// Put everything that comes from the rule object in XXX_debug ?
+		// Same for matched zones, as we don't want the user to see them
+
 		corazaRule := map[string]any{
 			"id":            rule.Rule().ID(),
 			"uri":           evt.Parsed["target_uri"],
@@ -293,6 +374,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			"accuracy":      rule.Rule().Accuracy(),
 			"msg":           rule.Message(),
 			"severity":      rule.Rule().Severity().String(),
+			"severity_int":  rule.Rule().Severity().Int(),
 			"name":          name,
 			"hash":          hash,
 			"version":       version,
