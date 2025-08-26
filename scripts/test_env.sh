@@ -48,7 +48,7 @@ SCENARIOS_DIR="$CONFIG_DIR/scenarios"
 POSTOVERFLOWS_DIR="$CONFIG_DIR/postoverflows"
 HUB_DIR="$CONFIG_DIR/hub"
 PLUGINS="http slack splunk email sentinel"
-PLUGINS_DIR="plugins"
+PLUGINS_DIR="$BASE/plugins"
 NOTIF_DIR="notifications"
 
 log_info() {
@@ -71,7 +71,7 @@ create_tree() {
 	mkdir -p "$CSCLI_DIR"
 	mkdir -p "$HUB_DIR"
 	mkdir -p "$CONFIG_DIR/$NOTIF_DIR/$plugin"
-	mkdir -p "$BASE/$PLUGINS_DIR"
+	mkdir -p "$PLUGINS_DIR"
 }
 
 copy_files() {
@@ -83,10 +83,11 @@ copy_files() {
 	cp "./config/acquis.yaml" "$CONFIG_DIR"
 	touch "$CONFIG_DIR"/local_api_credentials.yaml
 	touch "$CONFIG_DIR"/online_api_credentials.yaml
-	envsubst < "./config/dev.yaml" > $BASE/dev.yaml
+	# shellcheck disable=SC2016
+	CONFIG_DIR="$CONFIG_DIR" DATA_DIR="$DATA_DIR" PLUGINS_DIR="$PLUGINS_DIR" envsubst '$CONFIG_DIR $DATA_DIR $PLUGINS_DIR' < "./config/dev.yaml" > "$BASE/dev.yaml"
 	for plugin in $PLUGINS
 	do
-		cp cmd/notification-$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
+		cp cmd/notification-$plugin/notification-$plugin $PLUGINS_DIR/notification-$plugin
 		cp cmd/notification-$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
 	done
 }
