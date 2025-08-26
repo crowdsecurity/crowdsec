@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 BASE="./tests"
 
@@ -9,7 +9,7 @@ usage() {
 }
 
 
-while [[ $# -gt 0 ]]
+while [ $# -gt 0 ]
 do
 	key="${1}"
 	case ${key} in
