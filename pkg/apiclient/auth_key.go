@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -14,8 +13,6 @@ type APIKeyTransport struct {
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
 	Transport     http.RoundTripper
-	URL           *url.URL
-	VersionPrefix string
 	UserAgent     string
 }
 

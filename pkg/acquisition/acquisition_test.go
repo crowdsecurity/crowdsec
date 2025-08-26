@@ -316,11 +316,9 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 
 type MockCat struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	logger                            *log.Entry
 }
 
 func (f *MockCat) Configure(_ []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
-	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
@@ -353,11 +351,9 @@ func (*MockCat) GetUuid() string { return "" }
 
 type MockTail struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	logger                            *log.Entry
 }
 
 func (f *MockTail) Configure(_ []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
-	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
 	}
