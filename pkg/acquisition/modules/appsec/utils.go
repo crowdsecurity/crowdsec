@@ -76,7 +76,10 @@ func getHighestSeverityMsg(rules types.MatchedRules) string {
 	highestSeverity := 255
 	for _, rule := range rules {
 		sev, ok := rule["severity_int"].(int)
-		if ok && sev < highestSeverity {
+		if !ok {
+			continue
+		}
+		if sev < highestSeverity {
 			highestSeverity = sev
 			msg, ok = rule["msg"].(string)
 			if !ok {
@@ -144,7 +147,7 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
 	alert.Leakspeed = ptr.Of("")
 
-	scenarioName := ""
+	var scenarioName string
 
 	// Own custom format, just get the name
 	if !strings.HasPrefix(inEvt.Appsec.GetName(), "native_rule:") {
@@ -159,7 +162,7 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 			scenarioName = getHighestSeverityMsg(inEvt.Appsec.MatchedRules)
 			//Not sure if this can happen
 			//Default to native_rule:XXX if msg is empty
-			if len(scenarioName) == 0 {
+			if scenarioName == "" {
 				scenarioName = inEvt.Appsec.GetName()
 			}
 		}
