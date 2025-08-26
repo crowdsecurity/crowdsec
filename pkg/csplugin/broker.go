@@ -300,7 +300,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 			continue
 		}
 
-		pluginClient, err := pb.loadNotificationPlugin(pSubtype, binaryPath)
+		pluginClient, err := pb.loadNotificationPlugin(ctx, pSubtype, binaryPath)
 		if err != nil {
 			return err
 		}
@@ -331,7 +331,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 	return pb.verifyPluginBinaryWithProfile()
 }
 
-func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (protobufs.NotifierServer, error) {
+func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string, binaryPath string) (protobufs.NotifierServer, error) {
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err
@@ -339,7 +339,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 
 	log.Debugf("Executing plugin %s", binaryPath)
 
-	cmd, err := pb.CreateCmd(binaryPath)
+	cmd, err := pb.CreateCmd(ctx, binaryPath)
 	if err != nil {
 		return nil, err
 	}
