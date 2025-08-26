@@ -30,7 +30,7 @@ do
 	esac
 done
 
-BASE=$(realpath $BASE)
+BASE=$(realpath "$BASE")
 
 DATA_DIR="$BASE/data"
 
@@ -86,19 +86,19 @@ copy_files() {
 	CONFIG_DIR="$CONFIG_DIR" DATA_DIR="$DATA_DIR" PLUGINS_DIR="$PLUGINS_DIR" envsubst '$CONFIG_DIR $DATA_DIR $PLUGINS_DIR' < "./config/dev.yaml" > "$BASE/dev.yaml"
 	for plugin in $PLUGINS
 	do
-		cp cmd/notification-$plugin/notification-$plugin $PLUGINS_DIR/notification-$plugin
-		cp cmd/notification-$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
+		cp "cmd/notification-$plugin/notification-$plugin" "$PLUGINS_DIR/notification-$plugin"
+		cp "cmd/notification-$plugin/$plugin.yaml" "$CONFIG_DIR/$NOTIF_DIR/$plugin.yaml"
 	done
 }
 
 
 setup() {
-	$BASE/cscli -c "$CONFIG_FILE" hub update
-	$BASE/cscli -c "$CONFIG_FILE" collections install crowdsecurity/linux
+	"$BASE/cscli" -c "$CONFIG_FILE" hub update
+	"$BASE/cscli" -c "$CONFIG_FILE" collections install crowdsecurity/linux
 }
 
 setup_api() {
-	$BASE/cscli -c "$CONFIG_FILE" machines add test -p testpassword -f $CONFIG_DIR/local_api_credentials.yaml --force
+	"$BASE/cscli" -c "$CONFIG_FILE" machines add test -p testpassword -f "$CONFIG_DIR/local_api_credentials.yaml" --force
 }
 
 
@@ -111,10 +111,10 @@ main() {
 	log_info "Files copied"
 	log_info "Setting up configurations"
 	CURRENT_PWD=$(pwd)
-	cd $BASE
+	cd "$BASE" || exit 2
 	setup_api
 	setup
-	cd $CURRENT_PWD
+	cd "$CURRENT_PWD" || exit 2
 	log_info "Environment is ready in $BASE"
 }
 
