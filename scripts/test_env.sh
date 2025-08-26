@@ -6,7 +6,6 @@ usage() {
 	echo "Usage:"
 	echo "    $0 -h                             Display this help message."
 	echo "    $0 -d ./tests                     Create test environment in './tests' folder"
-	exit 0
 }
 
 
