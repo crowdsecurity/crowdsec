@@ -3,7 +3,7 @@ package setup
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
+	"github.com/shirou/gopsutil/v4/host"
 )
 
 type ExprPath interface {
@@ -14,16 +14,12 @@ type ExprPath interface {
 // ExprEnvironment is used to expose functions and values to the rule engine.
 // It can cache the results of service detection commands, like systemctl etc.
 type ExprEnvironment struct {
-	OS      ExprOS
+	Host    host.InfoStat
 	Path    ExprPath
 	Systemd *ExprSystemd
 	System  *ExprSystem
+	Version ExprVersion
 	Windows *ExprWindows
 
 	Ctx context.Context //nolint:containedctx
-}
-
-func (e *ExprEnvironment) checkConsumedForcedItems(logger logrus.FieldLogger) {
-	e.System.checkConsumedProcesses(logger)
-	e.Systemd.checkConsumedForcedUnits(logger)
 }

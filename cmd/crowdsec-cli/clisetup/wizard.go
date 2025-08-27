@@ -147,12 +147,12 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 	units := setup.UnitMap{}
 
 	if !opts.SkipSystemd {
-		if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext, opts.ForcedUnits); err != nil {
+		if units, err = setup.DetectSystemdUnits(ctx, exec.CommandContext); err != nil {
 			return err
 		}
 	}
 
-	procs, err := setup.DetectProcesses(ctx, opts.ForcedProcesses, logger)
+	procs, err := setup.DetectProcesses(ctx, logger)
 	if err != nil {
 		return err
 	}
@@ -206,13 +206,14 @@ func (cli *cliSetup) wizard(ctx context.Context, detectConfig *setup.DetectConfi
 	hubSpecs := stup.CollectHubSpecs()
 
 	if len(hubSpecs) > 0 {
-		_, err := cli.install(ctx, interactive, dryRun, hubSpecs)
+		_, err := cli.install(ctx, interactive, dryRun, hubSpecs, logger)
 		switch {
 		case errors.Is(err, hubops.ErrUserCanceled):
 			// not a real error... no need to exit with 1
 			// and nothing happened, so no reload message
 			fmt.Fprintln(os.Stdout, err.Error())
 			leavingMessage(os.Stdout)
+
 			return nil
 		case err != nil:
 			return err

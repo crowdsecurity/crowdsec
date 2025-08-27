@@ -31,9 +31,6 @@ cscli setup interactive --acquis-dir /path/to/acquis.d
 
 # use a different set of detection rules
 cscli setup interactive --detect-config /path/to/detact.yaml
-
-# force the OS to be detected as 'ubuntu 25.04'
-cscli setup interactive --force-os-family linux --force-os-id ubuntu --force-os-version 25.04
 `,
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,

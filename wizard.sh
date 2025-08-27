@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-ORANGE='\033[0;33m'
-NC='\033[0m'
+RED=$(printf '\033[0;31m')
+BLUE=$(printf '\033[0;34m')
+GREEN=$(printf '\033[0;32m')
+YELLOW=$(printf '\033[1;33m')
+ORANGE=$(printf '\033[0;33m')
+NC=$(printf '\033[0m')
 
 DOCKER_MODE="false"
 
@@ -40,51 +40,38 @@ ACTION=""
 DEBUG_MODE="false"
 FORCE_MODE="false"
 
-HTTP_PLUGIN_BINARY="./cmd/notification-http/notification-http"
-SLACK_PLUGIN_BINARY="./cmd/notification-slack/notification-slack"
-SPLUNK_PLUGIN_BINARY="./cmd/notification-splunk/notification-splunk"
-EMAIL_PLUGIN_BINARY="./cmd/notification-email/notification-email"
-SENTINEL_PLUGIN_BINARY="./cmd/notification-sentinel/notification-sentinel"
-FILE_PLUGIN_BINARY="./cmd/notification-file/notification-file"
-
-HTTP_PLUGIN_CONFIG="./cmd/notification-http/http.yaml"
-SLACK_PLUGIN_CONFIG="./cmd/notification-slack/slack.yaml"
-SPLUNK_PLUGIN_CONFIG="./cmd/notification-splunk/splunk.yaml"
-EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
-SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
-FILE_PLUGIN_CONFIG="./cmd/notification-file/file.yaml"
-
+PLUGINS="http slack splunk email sentinel file"
 
 log_info() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}"
+    echo "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_fatal() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2
+    echo "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" >&2
     exit 1
 }
 
 log_warn() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}"
+    echo "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_err() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2
+    echo "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_dbg() {
     if [ "$DEBUG_MODE" = "true" ]; then
         msg=$1
         date=$(date "+%Y-%m-%d %H:%M:%S")
-        echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" 1>&2
+        echo "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" >&2
     fi
 }
 
@@ -167,13 +154,13 @@ install_crowdsec() {
     [ ! -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" ] && install -v -m 600 -D "./config/$CLIENT_SECRETS" "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR/$LAPI_SECRETS" ]   && install -v -m 600 -D "./config/$LAPI_SECRETS"   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/config.yaml ]     && install -v -m 600 -D ./config/config.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
-    [ ! -f "$CROWDSEC_CONFIG_DIR"/detect.yaml ]     && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/dev.yaml ]        && install -v -m 644 -D ./config/dev.yaml          "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/user.yaml ]       && install -v -m 644 -D ./config/user.yaml         "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/acquis.yaml ]     && install -v -m 644 -D ./config/acquis.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/profiles.yaml ]   && install -v -m 644 -D ./config/profiles.yaml     "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/simulation.yaml ] && install -v -m 644 -D ./config/simulation.yaml   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]    && install -v -m 644 -D ./config/console.yaml      "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_DATA_DIR"/detect.yaml ]       && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_DATA_DIR" >/dev/null || exit
 
     DATA="$CROWDSEC_DATA_DIR" CFG="$CROWDSEC_CONFIG_DIR" envsubst '$CFG $DATA' < ./config/user.yaml > "$CROWDSEC_CONFIG_DIR"/user.yaml || log_fatal "unable to generate user configuration file"
     if [ "$DOCKER_MODE" = "false" ]; then
@@ -195,7 +182,6 @@ update_bins() {
 }
 
 update_full() {
-
     if [ ! -f "$CROWDSEC_BIN" ]; then
         log_err "Crowdsec binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
     fi
@@ -215,8 +201,8 @@ update_full() {
 
 install_bins() {
     log_dbg "Installing crowdsec binaries"
-    install -v -m 755 -D "$CROWDSEC_BIN" "$CROWDSEC_BIN_INSTALLED" 1> /dev/null || exit
-    install -v -m 755 -D "$CSCLI_BIN" "$CSCLI_BIN_INSTALLED" 1> /dev/null || exit
+    install -v -m 755 -D "$CROWDSEC_BIN" "$CROWDSEC_BIN_INSTALLED" >/dev/null || exit
+    install -v -m 755 -D "$CSCLI_BIN" "$CSCLI_BIN_INSTALLED" >/dev/null || exit
     if command -v systemctl >/dev/null && systemctl is-active --quiet crowdsec; then
         systemctl stop crowdsec
     fi
@@ -247,17 +233,11 @@ install_plugins() {
     mkdir -p "$CROWDSEC_PLUGIN_DIR"
     mkdir -p /etc/crowdsec/notifications
 
-    cp "$SLACK_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$SPLUNK_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$HTTP_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$EMAIL_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$SENTINEL_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-    cp "$FILE_PLUGIN_BINARY" "$CROWDSEC_PLUGIN_DIR"
-
-    for yaml_conf in ${SLACK_PLUGIN_CONFIG} ${SPLUNK_PLUGIN_CONFIG} ${HTTP_PLUGIN_CONFIG} ${EMAIL_PLUGIN_CONFIG} ${SENTINEL_PLUGIN_CONFIG} ${FILE_PLUGIN_CONFIG}; do
-        if [ ! -e /etc/crowdsec/notifications/"$(basename "$yaml_conf")" ]; then
-            cp "$yaml_conf" /etc/crowdsec/notifications/
-        fi
+    for name in $PLUGINS; do
+        bin="./cmd/notification-${name}/notification-${name}"
+        conf="./cmd/notification-${name}/${name}.yaml"
+        install -m 755 -D "$bin" "$CROWDSEC_PLUGIN_DIR"
+        [ ! -e "/etc/crowdsec/notifications/${name}.yaml" ] && install -m 600 "$conf" "/etc/crowdsec/notifications/"
     done
 }
 
@@ -277,9 +257,8 @@ check_running_bouncers() {
 
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
-    systemctl stop crowdsec.service 1>/dev/null
-    systemctl disable -q crowdsec.service 1>/dev/null
-    ${CSCLI_BIN} dashboard remove -f -y >/dev/null
+    systemctl stop crowdsec.service >/dev/null
+    systemctl disable -q crowdsec.service >/dev/null
     delete_bins
 
     rm -rf "$CROWDSEC_USR_DIR" || echo ""
@@ -313,12 +292,13 @@ main() {
         fi
     fi
 
+    if [ "$(id -u)" != "0" ]; then
+        log_err "Please run the wizard as root or with sudo"
+        exit 1
+    fi
+
     if [ "$1" = "binupgrade" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         check_cs_version
         update_bins
         return
@@ -326,10 +306,6 @@ main() {
 
     if [ "$1" = "upgrade" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         check_cs_version
         update_full
         return
@@ -337,11 +313,6 @@ main() {
 
     if [ "$1" = "configure" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
-
         ${CSCLI_BIN_INSTALLED} hub update --error || (log_err "fail to update crowdsec hub. exiting" && exit 1)
         ${CSCLI_BIN_INSTALLED} setup interactive
 
@@ -350,10 +321,6 @@ main() {
 
     if [ "$1" = "uninstall" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         check_running_bouncers
         uninstall_crowdsec
         return
@@ -361,10 +328,6 @@ main() {
 
     if [ "$1" = "bininstall" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         log_info "checking existing crowdsec install"
         detect_cs_install
         log_info "installing crowdsec"
@@ -376,10 +339,6 @@ main() {
 
     if [ "$1" = "install" ];
     then
-        if ! [ "$(id -u)" = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
         log_info "checking if crowdsec is installed"
         detect_cs_install
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
@@ -389,6 +348,36 @@ main() {
 
         ${CSCLI_BIN_INSTALLED} hub update --error || (log_err "fail to update crowdsec hub. exiting" && exit 1)
         ${CSCLI_BIN_INSTALLED} setup interactive
+
+        # install patterns/ folder
+        log_dbg "Installing patterns"
+        mkdir -p "${PATTERNS_PATH}"
+        cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
+
+        # api register
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" || log_fatal "unable to add machine to the local API"
+        log_dbg "Crowdsec LAPI registered"
+
+        ${CSCLI_BIN_INSTALLED} capi register --error || log_fatal "unable to register to the Central API"
+
+        systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
+        systemctl start crowdsec >/dev/null || log_fatal "unable to start crowdsec"
+        log_info "enabling and starting crowdsec daemon"
+        show_link
+        return
+    fi
+
+    if [ "$1" = "unattended" ];
+    then
+        log_info "checking if crowdsec is installed"
+        detect_cs_install
+        ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
+        log_info "installing crowdsec"
+        install_crowdsec
+        log_dbg "configuring ${CSCLI_BIN_INSTALLED}"
+
+        ${CSCLI_BIN_INSTALLED} hub update --error || (log_err "fail to update crowdsec hub. exiting" && exit 1)
+        ${CSCLI_BIN_INSTALLED} setup unattended
 
         # install patterns/ folder
         log_dbg "Installing patterns"
@@ -418,6 +407,7 @@ usage() {
       echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
+      echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
 }
 
@@ -457,6 +447,10 @@ do
         ;;
     -c|--configure)
         ACTION="configure"
+        shift # past argument
+        ;;
+    --unattended)
+        ACTION="unattended"
         shift # past argument
         ;;
     -f|--force)
