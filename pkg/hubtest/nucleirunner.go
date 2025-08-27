@@ -17,7 +17,10 @@ type NucleiConfig struct {
 	CmdLineOptions []string `yaml:"cmdline_options"`
 }
 
-var ErrNucleiTemplateFail = errors.New("nuclei template failed")
+var (
+	ErrNucleiTemplateFail = errors.New("nuclei template failed")
+	ErrNucleiRunFail = errors.New("nuclei run failed")
+)
 
 func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, target string) error {
 	tstamp := time.Now().Unix()
@@ -54,7 +57,7 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
-		return fmt.Errorf("running nuclei: %w", err)
+		return fmt.Errorf("%w: %w", ErrNucleiRunFail, err)
 	} else if out.String() == "" {
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
