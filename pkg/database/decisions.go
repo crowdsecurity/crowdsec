@@ -1,15 +1,15 @@
 package database
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/pkg/errors"
-
-	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -318,7 +318,7 @@ func (c *Client) ExpireDecisions(ctx context.Context, decisions []*ent.Decision)
 
 	total := 0
 
-	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
+	for chunk := range slices.Chunk(decisions, max(1, cmp.Or(decisionDeleteBulkSize, len(decisions)))) {
 		rows, err := c.ExpireDecisions(ctx, chunk)
 		if err != nil {
 			return total, err
@@ -350,7 +350,7 @@ func (c *Client) DeleteDecisions(ctx context.Context, decisions []*ent.Decision)
 
 	tot := 0
 
-	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
+	for chunk := range slices.Chunk(decisions, max(1, cmp.Or(decisionDeleteBulkSize, len(decisions)))) {
 		rows, err := c.DeleteDecisions(ctx, chunk)
 		if err != nil {
 			return tot, err
