@@ -33,8 +33,8 @@ type Match struct {
 }
 
 type CustomRule struct {
-	Name string `yaml:"name"`
-
+	Name      string   `yaml:"name"`
+	Severity  string   `yaml:"severity"`
 	Zones     []string `yaml:"zones"`
 	Variables []string `yaml:"variables"`
 

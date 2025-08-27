@@ -27,7 +27,7 @@ import (
 // If we have a match in one of those zones, we do not populate the matchedRules with name/id/msg/....
 // But rather name_internal,id_internal,...
 // This is rather CRS-specific, but we don't expect to write custom rules as complex as the CRS
-var excludedMatchZones = []string{
+var excludedMatchCollections = []string{
 	"REQBODY_PROCESSOR", // Matched when enabling the body processor
 	"UNKNOWN",           // Matched by the anomaly score rule
 	"TX",                // Score has been exceeded
@@ -149,21 +149,39 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 
 	var scenarioName string
 
-	// Own custom format, just get the name
-	if !strings.HasPrefix(inEvt.Appsec.GetName(), "native_rule:") {
-		scenarioName = inEvt.Appsec.GetName()
-	} else {
-		// This is a modsec rule match
-		// If from CRS (TX scores are set), use that as the name
-		// If from a custom rule, use the log message from the 1st highest severity rule
-		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
-			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
+	// If multiple matches:
+	// Get the list of rules with highest severity
+	// Choose the name from those:
+	// Priority to our custom rules
+	// Then CRS scoring
+	// Then log message
+	// Then native_rule:ID
+	sev := inEvt.Appsec.GetHighestSeverity().String()
+
+	sevRules := inEvt.Appsec.BySeverity(sev)
+
+	for _, rule := range sevRules {
+		name, ok := rule["name"].(string)
+		if !ok {
+			continue
+		}
+		// Own custom format, just get the name
+		if !strings.HasPrefix(name, "native_rule:") {
+			scenarioName = name
+			break // No need to continue, highest priority
 		} else {
-			scenarioName = getHighestSeverityMsg(inEvt.Appsec.MatchedRules)
-			//Not sure if this can happen
-			//Default to native_rule:XXX if msg is empty
-			if scenarioName == "" {
-				scenarioName = inEvt.Appsec.GetName()
+			// This is a modsec rule match
+			// If from CRS (TX scores are set), use that as the name
+			// If from a custom rule, use the log message from the 1st highest severity rule
+			if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+				scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
+			} else {
+				scenarioName, ok = sevRules[0]["msg"].(string)
+				//Not sure if this can happen
+				//Default to native_rule:XXX if msg is empty
+				if scenarioName == "" || !ok {
+					scenarioName = inEvt.Appsec.GetName()
+				}
 			}
 		}
 	}
@@ -192,6 +210,26 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	evt.Overflow.Alert = &alert
 
 	return &evt, nil
+}
+
+func containsAll(excludedZones []string, matchedZones []string) bool {
+	if len(matchedZones) == 0 {
+		return false
+	}
+	supersetMap := make(map[string]struct{}, len(excludedZones))
+	for _, item := range excludedZones {
+		supersetMap[item] = struct{}{}
+	}
+
+	for _, item := range matchedZones {
+		if _, ok := supersetMap[item]; !ok {
+			return false
+		}
+	}
+
+	log.Infof("all matched zones %v are in excluded zones %v", matchedZones, excludedZones)
+
+	return true
 }
 
 func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.Event, error) {
@@ -347,21 +385,24 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
 		matchedZones := make([]string, 0)
+		matchedCollections := make([]string, 0)
 
+		// Get matched zones
+		internalRule := false
 		for _, matchData := range rule.MatchedDatas() {
 			zone := matchData.Variable().Name()
-
+			matchedCollections = append(matchedCollections, zone)
 			varName := matchData.Key()
 			if varName != "" {
 				zone += "." + varName
 			}
-
 			matchedZones = append(matchedZones, zone)
 		}
 
-		//FIXME: If it's a rule we don't care about (eg, matching a non-user tainted zone),
-		// Put everything that comes from the rule object in XXX_debug ?
-		// Same for matched zones, as we don't want the user to see them
+		if containsAll(excludedMatchCollections, matchedCollections) {
+			internalRule = true
+			r.logger.Infof("ignoring rule %d match on zone %+v", rule.Rule().ID(), matchedZones)
+		}
 
 		corazaRule := map[string]any{
 			"id":            rule.Rule().ID(),
@@ -384,6 +425,10 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			"matched_zones": matchedZones,
 			"logdata":       rule.Data(),
 		}
+		if internalRule {
+			corazaRule["internal"] = true
+		}
+
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 	}
 
