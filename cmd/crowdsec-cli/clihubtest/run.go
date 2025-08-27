@@ -43,7 +43,7 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 
 	patternDir := cfg.ConfigPaths.PatternDir
 
-	var eg errgroup.Group
+	eg, gctx := errgroup.WithContext(ctx)
 
 	if isAppsecTest {
 		log.Info("Appsec tests can not run in parallel: setting max_jobs=1")
@@ -59,7 +59,13 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 		}
 
 		eg.Go(func() error {
-			return test.Run(ctx, patternDir)
+			// don't run if another goroutine failed
+			select {
+			case <-gctx.Done():
+				return gctx.Err()
+			default:
+			}
+			return test.Run(gctx, patternDir)
 		})
 	}
 
