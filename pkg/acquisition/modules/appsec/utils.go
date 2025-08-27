@@ -226,9 +226,6 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 			return false
 		}
 	}
-
-	log.Infof("all matched zones %v are in excluded zones %v", matchedZones, excludedZones)
-
 	return true
 }
 
