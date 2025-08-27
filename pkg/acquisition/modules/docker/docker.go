@@ -26,9 +26,8 @@ import (
 	"github.com/crowdsecurity/dlog"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type DockerConfiguration struct {
@@ -119,7 +118,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("use_service_labels and service_name, service_id, service_id_regexp, service_name_regexp are mutually exclusive")
 	}
 
-	if d.Config.CheckInterval != "" {
+	if d.Config.CheckInterval != "" && d.logger != nil {
 		d.logger.Warn("check_interval is deprecated, it will be removed in a future version")
 	}
 
