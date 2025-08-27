@@ -133,7 +133,7 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
-	alert.Events = make([]*models.Event, len(evt.Appsec.GetRuleIDs()))
+	alert.Events = make([]*models.Event, len(evt.Appsec.MatchedRules))
 
 	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec, request)
 	if len(errors) > 0 {
@@ -168,20 +168,23 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 		// Own custom format, just get the name
 		if !strings.HasPrefix(name, "native_rule:") {
 			scenarioName = name
-			break // No need to continue, highest priority
+			break
+		}
+	}
+
+	// This is a modsec rule match
+	if scenarioName == "" {
+
+		// If from CRS (TX scores are set), use that as the name
+		// If from a custom rule, use the log message from the 1st highest severity rule
+		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
 		} else {
-			// This is a modsec rule match
-			// If from CRS (TX scores are set), use that as the name
-			// If from a custom rule, use the log message from the 1st highest severity rule
-			if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
-				scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
-			} else {
-				scenarioName, ok = sevRules[0]["msg"].(string)
-				//Not sure if this can happen
-				//Default to native_rule:XXX if msg is empty
-				if scenarioName == "" || !ok {
-					scenarioName = inEvt.Appsec.GetName()
-				}
+			scenarioName, ok = sevRules[0]["msg"].(string)
+			//Not sure if this can happen
+			//Default to native_rule:XXX if msg is empty
+			if scenarioName == "" || !ok {
+				scenarioName = inEvt.Appsec.GetName()
 			}
 		}
 	}
