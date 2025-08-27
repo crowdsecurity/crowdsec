@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -63,8 +64,9 @@ listen_addr: 10.0.0`,
 	}
 }
 
-func writeToSyslog(logs []string) {
-	conn, err := net.Dial("udp", "127.0.0.1:4242")
+func writeToSyslog(ctx context.Context, logs []string) {
+	dialer := &net.Dialer{}
+	conn, err := dialer.DialContext(ctx, "udp", "127.0.0.1:4242")
 	if err != nil {
 		fmt.Printf("could not establish connection to syslog server : %s", err)
 		return
@@ -178,7 +180,7 @@ disable_rfc_parser: true`,
 			}
 
 			actualLines := 0
-			go writeToSyslog(ts.logs)
+			go writeToSyslog(ctx, ts.logs)
 		READLOOP:
 			for {
 				select {

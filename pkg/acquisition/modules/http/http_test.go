@@ -516,10 +516,11 @@ headers:
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
+	dialer := &net.Dialer{}
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial("unix", socketFile)
+				return dialer.DialContext(ctx, "unix", socketFile)
 			},
 		},
 	}
