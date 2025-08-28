@@ -117,8 +117,8 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			depth++
 			andRule.Severity = rule.Severity
 			lastRule := c == len(rule.And)-1 // || len(rule.Or) == 0
-			isRoot := c == 0
-			rules, err := m.buildRules(&andRule, appsecRuleName, !lastRule, 0, depth, isRoot)
+			root := c == 0
+			rules, err := m.buildRules(&andRule, appsecRuleName, !lastRule, 0, depth, root)
 			if err != nil {
 				return nil, err
 			}
@@ -131,8 +131,8 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			depth++
 			orRule.Severity = rule.Severity
 			skip := len(rule.Or) - c - 1
-			isRoot := c == 0
-			rules, err := m.buildRules(&orRule, appsecRuleName, false, skip, depth, isRoot)
+			root := c == 0
+			rules, err := m.buildRules(&orRule, appsecRuleName, false, skip, depth, root)
 			if err != nil {
 				return nil, err
 			}

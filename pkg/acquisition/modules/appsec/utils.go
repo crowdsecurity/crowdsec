@@ -70,26 +70,6 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 	return nil
 }
 
-func getHighestSeverityMsg(rules types.MatchedRules) string {
-	msg := ""
-	// Severity goes from 0 to 7, 0 being the most severe
-	highestSeverity := 255
-	for _, rule := range rules {
-		sev, ok := rule["severity_int"].(int)
-		if !ok {
-			continue
-		}
-		if sev < highestSeverity {
-			highestSeverity = sev
-			msg, ok = rule["msg"].(string)
-			if !ok {
-				continue
-			}
-		}
-	}
-	return msg
-}
-
 func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMatches bool) string {
 	msg := "anomaly score "
 	switch {
