@@ -233,7 +233,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig *csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -290,9 +290,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.BucketName = seed.Generate()
 		bucketFactory.ret = response
 
-		if simulationConfig != nil {
-			bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
-		}
+		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
 
 		bucketFactory.ScenarioVersion = item.State.LocalVersion
 		bucketFactory.hash = item.State.LocalHash
