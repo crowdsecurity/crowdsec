@@ -135,6 +135,48 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	alert.Capacity = ptr.Of(int32(1))
 	alert.Events = make([]*models.Event, len(evt.Appsec.MatchedRules))
 
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	for _, rule := range inEvt.Appsec.MatchedRules {
+		event := models.Event{}
+		meta := models.Meta{}
+
+		if rule_name, ok := rule["name"].(string); ok {
+			meta = append(meta, &models.MetaItems0{
+				Key:   "rule_name",
+				Value: rule_name,
+			})
+		}
+		if msg, ok := rule["msg"].(string); ok {
+			meta = append(meta, &models.MetaItems0{
+				Key:   "message",
+				Value: msg,
+			})
+		}
+		if uri, ok := rule["uri"].(string); ok {
+			meta = append(meta, &models.MetaItems0{
+				Key:   "uri",
+				Value: uri,
+			})
+		}
+		if matchedZones, ok := rule["matched_zones"].([]string); ok {
+			meta = append(meta, &models.MetaItems0{
+				Key:   "matched_zones",
+				Value: strings.Join(matchedZones, ","),
+			})
+		}
+		if logdata, ok := rule["logdata"].(string); ok {
+			meta = append(meta, &models.MetaItems0{
+				Key:   "data",
+				Value: logdata,
+			})
+		}
+
+		event.Meta = meta
+		event.Timestamp = &now
+		alert.Events = append(alert.Events, &event)
+	}
+
 	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec, request)
 	if len(errors) > 0 {
 		for _, err := range errors {
@@ -174,7 +216,6 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 
 	// This is a modsec rule match
 	if scenarioName == "" {
-
 		// If from CRS (TX scores are set), use that as the name
 		// If from a custom rule, use the log message from the 1st highest severity rule
 		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
