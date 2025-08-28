@@ -27,7 +27,6 @@ function create_tree() {
 
 function copy_file() {
     $null = Copy-Item ".\config\profiles.yaml" $config_dir
-	$null = Copy-Item  ".\config\simulation.yaml" $config_dir
 	$null = Copy-Item ".\cmd\crowdsec\crowdsec.exe" $base
 	$null = Copy-Item ".\cmd\crowdsec-cli\cscli.exe" $base
 	$null = Copy-Item -Recurse ".\config\patterns" $config_dir

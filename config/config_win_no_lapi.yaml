@@ -5,7 +5,6 @@ common:
 config_paths:
   config_dir:  C:\ProgramData\CrowdSec\config\
   data_dir:  C:\ProgramData\CrowdSec\data\
-  simulation_path:   C:\ProgramData\CrowdSec\config\simulation.yaml
   hub_dir:  C:\ProgramData\CrowdSec\hub\
   index_path:  C:\ProgramData\CrowdSec\hub\.index.json
   plugin_dir: C:\ProgramData\CrowdSec\plugins\

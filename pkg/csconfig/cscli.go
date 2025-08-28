@@ -11,10 +11,8 @@ type CscliCfg struct {
 	HubBranch        string            `yaml:"hub_branch"`
 	HubURLTemplate   string            `yaml:"__hub_url_template__,omitempty"`
 	HubWithContent   bool              `yaml:"hub_with_content,omitempty"`
-	SimulationConfig *SimulationConfig `yaml:"-"`
 	DbConfig         *DatabaseCfg      `yaml:"-"`
 
-	SimulationFilePath string `yaml:"-"`
 	PrometheusUrl      string `yaml:"prometheus_uri"`
 }
 

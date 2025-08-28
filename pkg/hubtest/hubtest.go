@@ -22,7 +22,6 @@ type HubTest struct {
 	HubIndexFile              string
 	TemplateConfigPath        string
 	TemplateProfilePath       string
-	TemplateSimulationPath    string
 	TemplateAcquisPath        string
 	TemplateAppsecProfilePath string
 	NucleiTargetHost          string
@@ -34,7 +33,6 @@ type HubTest struct {
 
 const (
 	templateConfigFile        = "template_config2.yaml"
-	templateSimulationFile    = "template_simulation.yaml"
 	templateProfileFile       = "template_profiles.yaml"
 	templateAcquisFile        = "template_acquis.yaml"
 	templateAppsecProfilePath = "template_appsec-profile.yaml"
@@ -154,7 +152,6 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			HubIndexFile:              hubIndexFile,
 			TemplateConfigPath:        filepath.Join(HubTestPath, templateConfigFile),
 			TemplateProfilePath:       filepath.Join(HubTestPath, templateProfileFile),
-			TemplateSimulationPath:    filepath.Join(HubTestPath, templateSimulationFile),
 			TemplateAppsecProfilePath: filepath.Join(HubTestPath, templateAppsecProfilePath),
 			TemplateAcquisPath:        filepath.Join(HubTestPath, templateAcquisFile),
 			NucleiTargetHost:          DefaultNucleiTarget,
@@ -192,7 +189,6 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		HubIndexFile:           hubIndexFile,
 		TemplateConfigPath:     filepath.Join(HubTestPath, templateConfigFile),
 		TemplateProfilePath:    filepath.Join(HubTestPath, templateProfileFile),
-		TemplateSimulationPath: filepath.Join(HubTestPath, templateSimulationFile),
 		HubIndex:               hub,
 	}, nil
 }

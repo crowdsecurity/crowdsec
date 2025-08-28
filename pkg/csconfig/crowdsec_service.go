@@ -24,12 +24,10 @@ type CrowdsecServiceCfg struct {
 	ParserRoutinesCount       int               `yaml:"parser_routines"`
 	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
 	OutputRoutinesCount       int               `yaml:"output_routines"`
-	SimulationConfig          *SimulationConfig `yaml:"-"`
 	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
-	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
 }
 
@@ -130,10 +128,6 @@ func (c *Config) LoadCrowdsec() error {
 		return err
 	default:
 		c.Crowdsec.AcquisitionFiles = acquisitionFiles
-	}
-
-	if err = c.LoadSimulation(); err != nil {
-		return fmt.Errorf("load error (simulation): %w", err)
 	}
 
 	if c.Crowdsec.ParserRoutinesCount <= 0 {

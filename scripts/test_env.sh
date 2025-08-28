@@ -76,7 +76,6 @@ create_tree() {
 
 copy_files() {
 	cp "./config/profiles.yaml" "$CONFIG_DIR"
-	cp "./config/simulation.yaml" "$CONFIG_DIR"
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
 	cp -r "./config/patterns" "$CONFIG_DIR"

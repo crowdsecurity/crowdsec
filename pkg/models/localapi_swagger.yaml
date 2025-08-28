@@ -994,7 +994,6 @@ definitions:
       - stop_at
       - capacity
       - leakspeed
-      - simulated
       - events
       - source
   Source:

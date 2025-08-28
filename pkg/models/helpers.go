@@ -137,12 +137,6 @@ func (a *Alert) FormatAsStrings(machineID string, logger *log.Logger) []string {
 
 	for i, decisionItem := range a.Decisions {
 		decision := ""
-		if a.Simulated != nil && *a.Simulated {
-			decision = "(simulated alert)"
-		} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
-			decision = "(simulated decision)"
-		}
-
 		if logger.IsLevelEnabled(log.DebugLevel) {
 			logger.Debug(spew.Sdump(decisionItem))
 		}

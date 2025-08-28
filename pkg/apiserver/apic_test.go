@@ -1070,24 +1070,10 @@ func TestAPICPush(t *testing.T) {
 					Scenario:        ptr.Of("crowdsec/test"),
 					ScenarioHash:    ptr.Of("certified"),
 					ScenarioVersion: ptr.Of("v1.0"),
-					Simulated:       ptr.Of(false),
 					Source:          &models.Source{},
 				},
 			},
 			expectedCalls: 1,
-		},
-		{
-			name: "simulated alert is not pushed",
-			alerts: []*models.Alert{
-				{
-					Scenario:        ptr.Of("crowdsec/test"),
-					ScenarioHash:    ptr.Of("certified"),
-					ScenarioVersion: ptr.Of("v1.0"),
-					Simulated:       ptr.Of(true),
-					Source:          &models.Source{},
-				},
-			},
-			expectedCalls: 0,
 		},
 		{
 			name:          "1 request per 50 alerts",
@@ -1099,7 +1085,6 @@ func TestAPICPush(t *testing.T) {
 						Scenario:        ptr.Of("crowdsec/test"),
 						ScenarioHash:    ptr.Of("certified"),
 						ScenarioVersion: ptr.Of("v1.0"),
-						Simulated:       ptr.Of(false),
 						Source:          &models.Source{},
 					}
 				}
@@ -1248,7 +1233,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareCustomScenarios: ptr.Of(true),
 			},
-			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			alert:         &models.Alert{},
 			shareSignals:  true,
 			expectedRet:   true,
 			expectedTrust: "custom",
@@ -1258,7 +1243,7 @@ func TestShouldShareAlert(t *testing.T) {
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareCustomScenarios: ptr.Of(false),
 			},
-			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			alert:         &models.Alert{},
 			shareSignals:  true,
 			expectedRet:   false,
 			expectedTrust: "custom",
@@ -1270,7 +1255,6 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
 			},
 			expectedRet:   true,
@@ -1283,7 +1267,6 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated: ptr.Of(false),
 				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
 			},
 			expectedRet:   false,
@@ -1296,7 +1279,6 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
 			},
 			expectedRet:   true,
@@ -1309,7 +1291,6 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
 			},
 			expectedRet:   false,
@@ -1322,7 +1303,6 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			shareSignals: false,
 			alert: &models.Alert{
-				Simulated:    ptr.Of(false),
 				ScenarioHash: ptr.Of("whateverHash"),
 			},
 			expectedRet:   false,

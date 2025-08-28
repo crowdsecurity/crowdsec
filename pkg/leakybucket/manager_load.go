@@ -67,7 +67,6 @@ type BucketFactory struct {
 	output              bool                   // ??
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
 	hash                string
-	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb                *tomb.Tomb
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
@@ -233,7 +232,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig *csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -290,10 +289,6 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.BucketName = seed.Generate()
 		bucketFactory.ret = response
 
-		if simulationConfig != nil {
-			bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
-		}
-
 		bucketFactory.ScenarioVersion = item.State.LocalVersion
 		bucketFactory.hash = item.State.LocalHash
 
@@ -321,7 +316,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, tomb, response, orderEvent, cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, tomb, response, orderEvent)
 		if err != nil {
 			return nil, nil, err
 		}

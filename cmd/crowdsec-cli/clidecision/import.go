@@ -177,7 +177,6 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 			Scenario:  ptr.Of(d.Scenario),
 			Type:      ptr.Of(d.Type),
 			Scope:     ptr.Of(d.Scope),
-			Simulated: ptr.Of(false),
 		}
 	}
 
@@ -238,7 +237,6 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 			StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
 			StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
 			Capacity:        ptr.Of(int32(0)),
-			Simulated:       ptr.Of(false),
 			EventsCount:     ptr.Of(int32(len(chunk))),
 			Leakspeed:       ptr.Of(""),
 			ScenarioHash:    ptr.Of(""),

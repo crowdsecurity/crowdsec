@@ -123,17 +123,12 @@ func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequ
 			Origin:   ptr.Of(*decision.Origin),
 			Scenario: ptr.Of(*decision.Scenario),
 			Scope:    ptr.Of(*decision.Scope),
-			// Simulated: *decision.Simulated,
 			Type:  ptr.Of(*decision.Type),
 			Until: decision.Until,
 			Value: ptr.Of(*decision.Value),
 			UUID:  decision.UUID,
 		}
 		*x.ID = decision.ID
-
-		if decision.Simulated != nil {
-			x.Simulated = *decision.Simulated
-		}
 
 		apiDecisions = append(apiDecisions, x)
 	}
@@ -360,11 +355,6 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 		return false
 	}
 
-	if *alert.Simulated {
-		log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
-		return false
-	}
-
 	switch scenarioTrust := getScenarioTrustOfAlert(alert); scenarioTrust {
 	case "manual":
 		if !*consoleConfig.ShareManualDecisions {
@@ -540,7 +530,6 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
 		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
 		Capacity:        ptr.Of(int32(0)),
-		Simulated:       ptr.Of(false),
 		EventsCount:     ptr.Of(int32(0)),
 		Leakspeed:       ptr.Of(""),
 		ScenarioHash:    ptr.Of(""),

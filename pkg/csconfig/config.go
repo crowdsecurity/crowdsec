@@ -125,7 +125,6 @@ func NewDefaultConfig() *Config {
 	configPaths := ConfigurationPaths{
 		ConfigDir:          DefaultConfigPath("."),
 		DataDir:            DefaultDataPath("."),
-		SimulationFilePath: DefaultConfigPath("simulation.yaml"),
 		HubDir:             DefaultConfigPath("hub"),
 		HubIndexFile:       DefaultConfigPath("hub", ".index.json"),
 	}

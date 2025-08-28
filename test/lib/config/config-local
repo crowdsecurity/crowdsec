@@ -56,7 +56,6 @@ config_generate() {
     mkdir -p "${CONFIG_DIR}"
 
     cp ../config/profiles.yaml \
-       ../config/simulation.yaml \
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
@@ -82,7 +81,6 @@ config_generate() {
     .common.log_dir=strenv(LOG_DIR) |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
-    .config_paths.simulation_path=strenv(CONFIG_DIR)+"/simulation.yaml" |
     .config_paths.hub_dir=strenv(HUB_DIR) |
     .config_paths.index_path=strenv(HUB_DIR)+"/.index.json" |
     .config_paths.notification_dir=strenv(CONFIG_DIR)+"/notifications" |

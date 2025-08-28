@@ -41,7 +41,6 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		StopAt:          &StopAt,
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
-		Simulated:       &alert.Simulated,
 		Remediation:     alert.Remediation,
 		UUID:            alert.UUID,
 		Source: &models.Source{
@@ -88,7 +87,6 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 			Scope:     &decisionItem.Scope,
 			Value:     &decisionItem.Value,
 			Origin:    &decisionItem.Origin,
-			Simulated: outputAlert.Simulated,
 			ID:        int64(decisionItem.ID),
 		})
 	}

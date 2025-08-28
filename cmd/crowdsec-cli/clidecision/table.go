@@ -25,10 +25,6 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 
 	for _, alertItem := range *alerts {
 		for _, decisionItem := range alertItem.Decisions {
-			if *alertItem.Simulated {
-				*decisionItem.Type = "(simul)" + *decisionItem.Type
-			}
-
 			duration := *decisionItem.Duration
 			if strings.HasPrefix(duration, "-") && wantColor != "no" {
 				duration = color.RedString(duration)

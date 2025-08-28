@@ -41,7 +41,6 @@
         "scenario": "crowdsecurity/http_bf",
         "scenario_hash": "hashtest",
         "scenario_version": "v1",
-        "simulated": false,
         "source": {
             "as_name": "test",
             "as_number": "0123456",
@@ -98,7 +97,6 @@
         "scenario": "crowdsecurity/ssh_bf",
         "scenario_hash": "hashtest",
         "scenario_version": "v1",
-        "simulated": false,
         "source": {
             "as_name": "test",
             "as_number": "0123456",
@@ -155,7 +153,6 @@
         "scenario": "crowdsecurity/ddos",
         "scenario_hash": "hashtest",
         "scenario_version": "v1",
-        "simulated": false,
         "source": {
             "as_name": "test",
             "as_number": "0123456",

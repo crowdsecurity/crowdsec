@@ -38,7 +38,7 @@ func TestNewProfile(t *testing.T) {
 				DurationExpr: "1==1",
 				Debug:        &boolFalse,
 				Decisions: []models.Decision{
-					{Type: &typ, Scope: &scope, Simulated: &boolTrue, Duration: &duration},
+					{Type: &typ, Scope: &scope, Duration: &duration},
 				},
 			},
 			expectedNbProfile: 1,
@@ -53,7 +53,7 @@ func TestNewProfile(t *testing.T) {
 				DurationExpr: "1==1",
 				Debug:        &boolFalse,
 				Decisions: []models.Decision{
-					{Type: &typ, Scope: &scope, Simulated: &boolFalse, Duration: &duration},
+					{Type: &typ, Scope: &scope, Duration: &duration},
 				},
 			},
 			expectedNbProfile: 0,
@@ -67,7 +67,7 @@ func TestNewProfile(t *testing.T) {
 				DurationExpr: "unknownExprHelper() == 'foo'",
 				Debug:        &boolFalse,
 				Decisions: []models.Decision{
-					{Type: &typ, Scope: &scope, Simulated: &boolFalse, Duration: &duration},
+					{Type: &typ, Scope: &scope, Duration: &duration},
 				},
 			},
 			expectedNbProfile: 0,
@@ -81,7 +81,7 @@ func TestNewProfile(t *testing.T) {
 				DurationExpr: "1==1",
 				Debug:        &boolTrue,
 				Decisions: []models.Decision{
-					{Type: &typ, Scope: &scope, Simulated: &boolFalse, Duration: &duration},
+					{Type: &typ, Scope: &scope, Duration: &duration},
 				},
 			},
 			expectedNbProfile: 1,
@@ -94,7 +94,7 @@ func TestNewProfile(t *testing.T) {
 				},
 				Debug: &boolTrue,
 				Decisions: []models.Decision{
-					{Type: &typ, Scope: &scope, Simulated: &boolFalse},
+					{Type: &typ, Scope: &scope},
 				},
 			},
 			expectedNbProfile: 1,
@@ -169,8 +169,8 @@ func TestEvaluateProfile(t *testing.T) {
 				profileCfg: &csconfig.ProfileCfg{
 					Filters: []string{"1==1"},
 					Decisions: []models.Decision{
-						{Type: &typ, Scope: &scope, Simulated: &boolTrue, Duration: &duration},
-						{Type: &typ, Scope: &scope, Simulated: &boolFalse, Duration: &duration},
+						{Type: &typ, Scope: &scope, Duration: &duration},
+						{Type: &typ, Scope: &scope, Duration: &duration},
 					},
 				},
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
@@ -184,7 +184,7 @@ func TestEvaluateProfile(t *testing.T) {
 				profileCfg: &csconfig.ProfileCfg{
 					Filters: []string{"1==1"},
 					Decisions: []models.Decision{
-						{Type: &typ, Scope: &scope, Simulated: &boolFalse},
+						{Type: &typ, Scope: &scope},
 					},
 					DurationExpr: "Sprintf('%dh', 4*4)",
 				},

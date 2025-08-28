@@ -84,28 +84,6 @@ teardown() {
     rune -0 cscli decisions list
 }
 
-@test "simulation.yaml.local" {
-    rune -0 config_get '.config_paths.simulation_path'
-    refute_output null
-    SIMULATION="$output"
-
-    echo "simulation: off" >"$SIMULATION"
-    rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: disabled"
-
-    echo "simulation: on" >"$SIMULATION"
-    rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: enabled"
-
-    echo "simulation: off" >"${SIMULATION}.local"
-    rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: disabled"
-
-    rm -f "${SIMULATION}.local"
-    rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: enabled"
-}
-
 @test "profiles.yaml.local" {
     rune -0 config_get '.api.server.profiles_path'
     refute_output null

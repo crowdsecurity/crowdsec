@@ -332,7 +332,6 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 				ScenarioHash:    ptr.Of(""),
 				Scenario:        ptr.Of("test alert"),
 				ScenarioVersion: ptr.Of(""),
-				Simulated:       ptr.Of(false),
 				Source: &models.Source{
 					AsName:   "",
 					AsNumber: "",

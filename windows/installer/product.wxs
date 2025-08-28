@@ -67,9 +67,6 @@
                   <Component Id="ProfilesConfig" Guid="8d6fca04-b3be-4a52-a9df-278139d0498e">
                      <File Id="profiles.yaml" Source="config\profiles.yaml" />
                   </Component>
-                  <Component Id="SimulationConfig" Guid="a27346e6-af4a-4ee6-aea9-d783b036cd21">
-                     <File Id="simulation.yaml" Source="config\simulation.yaml" />
-                  </Component>
                   <Component Id="ConsoleConfig" Guid="8393e488-18d5-4578-9e4c-99b54f7b2bb6">
                      <File Id="console.yaml" Source="config\console.yaml" />
                   </Component>
@@ -168,7 +165,6 @@
          <ComponentRef Id="LocalCreds"/>
          <ComponentRef Id="OnlineCreds"/>
          <ComponentRef Id="ProfilesConfig"/>
-         <ComponentRef Id="SimulationConfig"/>
          <ComponentRef Id="ConsoleConfig"/>
          <ComponentRef Id="SetupDetect"/>
          <ComponentRef Id="CreateLog" />

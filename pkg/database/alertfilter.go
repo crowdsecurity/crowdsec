@@ -19,13 +19,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func handleSimulatedFilter(filter map[string][]string, predicates *[]predicate.Alert) {
-	/* the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
-	if v, ok := filter["simulated"]; ok && v[0] == "false" {
-		*predicates = append(*predicates, alert.SimulatedEQ(false))
-	}
-}
-
 func handleOriginFilter(filter map[string][]string, predicates *[]predicate.Alert) {
 	if _, ok := filter["origin"]; ok {
 		filter["include_capi"] = []string{"true"}
@@ -192,7 +185,6 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 
-	handleSimulatedFilter(filter, &predicates)
 	handleOriginFilter(filter, &predicates)
 
 	for param, value := range filter {

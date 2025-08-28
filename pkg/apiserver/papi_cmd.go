@@ -123,7 +123,6 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		alert.EventsCount = ptr.Of(int32(0))
 		alert.Capacity = ptr.Of(int32(0))
 		alert.Leakspeed = ptr.Of("")
-		alert.Simulated = ptr.Of(false)
 		alert.ScenarioHash = ptr.Of("")
 		alert.ScenarioVersion = ptr.Of("")
 		alert.Message = ptr.Of("")

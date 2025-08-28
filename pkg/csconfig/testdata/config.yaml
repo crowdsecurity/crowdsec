@@ -29,6 +29,7 @@ api:
 config_paths:
   config_dir: ./testdata
   data_dir: .
+  # keep simulation_path to test we don't have errors with legacy config
   simulation_path: ./testdata/simulation.yaml
   index_path: ./testdata/hub/.index.json
   hub_dir: ./testdata/hub

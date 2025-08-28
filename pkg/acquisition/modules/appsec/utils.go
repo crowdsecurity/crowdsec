@@ -103,7 +103,6 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	alert.Scenario = ptr.Of(inEvt.Appsec.GetName())
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.GetHash())
 	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
-	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
 	msg := fmt.Sprintf("AppSec block: %s from %s (%s)", inEvt.Appsec.GetName(),
 		alert.Source.IP, inEvt.Parsed["remediation_cmpt_ip"])

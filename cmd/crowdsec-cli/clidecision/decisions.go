@@ -44,7 +44,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 		newDecisions := make([]*models.Decision, 0)
 
 		for _, decisionItem := range alertItem.Decisions {
-			spamKey := fmt.Sprintf("%t:%s:%s:%s", *decisionItem.Simulated, *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
+			spamKey := fmt.Sprintf("%s:%s:%s", *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
 				skipped++
 				continue
@@ -61,7 +61,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	switch cli.cfg().Cscli.Output {
 	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
-		header := []string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"}
+		header := []string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "alert_id"}
 
 		if printMachine {
 			header = append(header, "machine")
@@ -84,7 +84,6 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 					alertItem.Source.GetAsNumberName(),
 					strconv.FormatInt(int64(*alertItem.EventsCount), 10),
 					*decisionItem.Duration,
-					strconv.FormatBool(*decisionItem.Simulated),
 					strconv.FormatInt(alertItem.ID, 10),
 				}
 				if printMachine {
@@ -183,10 +182,6 @@ func (cli *cliDecisions) list(ctx context.Context, filter apiclient.AlertsListOp
 	filter.ActiveDecisionEquals = new(bool)
 	*filter.ActiveDecisionEquals = true
 
-	if noSimu != nil && *noSimu {
-		filter.IncludeSimulated = new(bool)
-	}
-
 	/* nullify the empty entries to avoid bad filter */
 
 	if *filter.IncludeCAPI {
@@ -273,7 +268,6 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 	leakSpeed := "0"
 	eventsCount := int32(1)
 	empty := ""
-	simulated := false
 	startAt := time.Now().UTC().Format(time.RFC3339)
 	stopAt := time.Now().UTC().Format(time.RFC3339)
 	createdAt := time.Now().UTC().Format(time.RFC3339)
@@ -326,7 +320,6 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 		ScenarioHash:    &empty,
 		Scenario:        &addReason,
 		ScenarioVersion: &empty,
-		Simulated:       &simulated,
 		// setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
 		Source: &models.Source{
 			AsName:   "",

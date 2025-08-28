@@ -45,10 +45,6 @@ func decisionsFromAlert(alert *models.Alert) string {
 
 	for _, decision := range alert.Decisions {
 		k := *decision.Type
-		if *decision.Simulated {
-			k = "(simul)" + k
-		}
-
 		v := decMap[k]
 		decMap[k] = v + 1
 	}
@@ -129,7 +125,6 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
  - ID           : {{.ID}}
  - Date         : {{.CreatedAt}}
  - Machine      : {{.MachineID}}
- - Simulation   : {{.Simulated}}
  - Remediation  : {{.Remediation}}
  - Reason       : {{.Scenario}}
  - Events Count : {{.EventsCount}}

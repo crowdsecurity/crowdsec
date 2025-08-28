@@ -313,7 +313,6 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		Message:         new(string),
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
-		Simulated:       &leaky.Simulated,
 	}
 
 	if leaky.BucketConfig == nil {

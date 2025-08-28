@@ -62,7 +62,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 				  "origin":"crowdsec",
 				  "scenario":"crowdsecurity/ssh-bf",
 				  "scope":"Ip",
-				  "simulated":false,
 				  "type":"ban",
 				  "value":"1.1.1.172"}
 				  ],
@@ -87,7 +86,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 				"scenario":"crowdsecurity/ssh-bf",
 				"scenario_hash":"4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
 				"scenario_version":"0.1",
-				"simulated":false,
 				"source":{
 					"as_name":"Cloudflare Inc",
 					"cn":"AU",
@@ -122,7 +120,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 					Scenario: &tscenario,
 
 					Scope:     &tscope,
-					Simulated: ptr.Of(false),
 					Type:      ptr.Of("ban"),
 					Value:     &tvalue,
 				},
@@ -163,7 +160,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 			Scenario:        &tscenario,
 			ScenarioHash:    ptr.Of("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
 			ScenarioVersion: ptr.Of("0.1"),
-			Simulated:       ptr.Of(false),
 			Source: &models.Source{
 				AsName:    "Cloudflare Inc",
 				AsNumber:  "",
@@ -241,7 +237,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 				  "origin":"crowdsec",
 				  "scenario":"crowdsecurity/ssh-bf",
 				  "scope":"Ip",
-				  "simulated":false,
 				  "start_ip":16843180,
 				  "type":"ban",
 				  "value":"1.1.1.172"}
@@ -267,7 +262,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 				"scenario":"crowdsecurity/ssh-bf",
 				"scenario_hash":"4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
 				"scenario_version":"0.1",
-				"simulated":false,
 				"source":{
 					"as_name":"Cloudflare Inc",
 					"cn":"AU",
@@ -300,7 +294,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 				Scenario: &tscenario,
 
 				Scope:     &tscope,
-				Simulated: ptr.Of(false),
 				Type:      &ttype,
 				Value:     &tvalue,
 			},
@@ -341,7 +334,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		Scenario:        &tscenario,
 		ScenarioHash:    ptr.Of("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
 		ScenarioVersion: ptr.Of("0.1"),
-		Simulated:       ptr.Of(false),
 		Source: &models.Source{
 			AsName:    "Cloudflare Inc",
 			AsNumber:  "",

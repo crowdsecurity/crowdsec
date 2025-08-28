@@ -5,7 +5,6 @@ common:
 config_paths:
   config_dir: /etc/crowdsec/
   data_dir: /var/lib/crowdsec/data/
-  simulation_path: /etc/crowdsec/simulation.yaml
   hub_dir: /etc/crowdsec/hub/
   index_path: /etc/crowdsec/hub/.index.json
   notification_dir: /etc/crowdsec/notifications/

@@ -158,7 +158,6 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
-			SetSimulated(*alertItem.Simulated).
 			SetUUID(decisionItem.UUID)
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
@@ -243,7 +242,6 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		SetSourceLongitude(alertItem.Source.Longitude).
 		SetCapacity(*alertItem.Capacity).
 		SetLeakSpeed(*alertItem.Leakspeed).
-		SetSimulated(*alertItem.Simulated).
 		SetScenarioVersion(*alertItem.ScenarioVersion).
 		SetScenarioHash(*alertItem.ScenarioHash).
 		SetRemediation(true) // it's from CAPI, we always have decisions
@@ -315,7 +313,6 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
-			SetSimulated(*alertItem.Simulated).
 			SetOwner(alertRef)
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
@@ -367,7 +364,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
+func (c *Client) createDecisionChunk(ctx context.Context, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
@@ -399,7 +396,6 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			SetValue(*decisionItem.Value).
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
-			SetSimulated(simulated).
 			SetUUID(decisionItem.UUID)
 
 		decisionCreate = append(decisionCreate, newDecision)
@@ -547,7 +543,7 @@ func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client,
 
 	decisionChunks := slicetools.Chunks(alertItem.Decisions, client.decisionBulkSize)
 	for _, decisionChunk := range decisionChunks {
-		decisionRet, err := client.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
+		decisionRet, err := client.createDecisionChunk(ctx, stopAtTime, decisionChunk)
 		if err != nil {
 			return nil, 0, fmt.Errorf("creating alert decisions: %w", err)
 		}
@@ -669,7 +665,6 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			SetSourceLongitude(alertItem.Source.Longitude).
 			SetCapacity(*alertItem.Capacity).
 			SetLeakSpeed(*alertItem.Leakspeed).
-			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
 			SetRemediation(alertItem.Remediation).

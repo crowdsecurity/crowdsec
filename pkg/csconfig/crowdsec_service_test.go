@@ -49,7 +49,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath:       "./testdata/acquis.yaml",
-					SimulationFilePath:        "./testdata/simulation.yaml",
 					ConsoleContextPath:        "./testdata/context.yaml",
 					ConsoleContextValueLength: 2500,
 				},
@@ -64,14 +63,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 2500,
 				AcquisitionFiles:          []string{acquisFullPath},
-				SimulationFilePath:        "./testdata/simulation.yaml",
 				// context is loaded in pkg/alertcontext
 				// ContextToSend: map[string][]string{
 				// 	"source_ip": {"evt.Parsed.source_ip"},
 				// },
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 			},
 		},
 		{
@@ -90,7 +85,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath: "./testdata/acquis.yaml",
 					AcquisitionDirPath:  "./testdata/acquis/",
-					SimulationFilePath:  "./testdata/simulation.yaml",
 					ConsoleContextPath:  "./testdata/context.yaml",
 				},
 			},
@@ -108,10 +102,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				// ContextToSend: map[string][]string{
 				// 	"source_ip": {"evt.Parsed.source_ip"},
 				// },
-				SimulationFilePath: "./testdata/simulation.yaml",
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 			},
 		},
 		{
@@ -142,14 +132,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 10,
 				AcquisitionFiles:          []string{},
-				SimulationFilePath:        "",
 				// context is loaded in pkg/alertcontext
 				// ContextToSend: map[string][]string{
 				// 	"source_ip": {"evt.Parsed.source_ip"},
 				// },
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 			},
 		},
 		{
@@ -174,9 +160,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				Enable:              ptr.Of(true),
 				AcquisitionFilePath: notExistFullPath,
 				AcquisitionFiles:    []string{},
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				BucketsRoutinesCount: 1,

@@ -258,7 +258,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -483,7 +482,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "cn": "US",
       "ip": "1.2.3.4",
@@ -706,7 +704,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "cn": "US",
       "ip": "1.2.3.6",
@@ -977,7 +974,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -1250,7 +1246,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -1523,7 +1518,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -1796,7 +1790,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -2069,7 +2062,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -2342,7 +2334,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -2615,7 +2606,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -2888,7 +2878,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -3161,7 +3150,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -3434,7 +3422,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -3707,7 +3694,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -3980,7 +3966,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -4253,7 +4238,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -4526,7 +4510,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -4799,7 +4782,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -5072,7 +5054,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",
@@ -5345,7 +5326,6 @@
     "scenario": "crowdsecurity/ssh-bf",
     "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
     "scenario_version": "0.1",
-    "simulated": false,
     "source": {
       "as_name": "OVH SAS",
       "cn": "FR",

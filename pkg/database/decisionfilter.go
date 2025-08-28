@@ -24,17 +24,6 @@ func applyDecisionFilter(query *ent.DecisionQuery, filter map[string][]string) (
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 
-	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
-	if v, ok := filter["simulated"]; ok {
-		if v[0] == "false" {
-			query = query.Where(decision.SimulatedEQ(false))
-		}
-
-		delete(filter, "simulated")
-	} else {
-		query = query.Where(decision.SimulatedEQ(false))
-	}
-
 	for param, value := range filter {
 		switch param {
 		case "contains":

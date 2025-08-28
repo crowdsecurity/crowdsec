@@ -102,15 +102,6 @@ func (profile *Runtime) GenerateDecisionFromProfile(alert *models.Alert) ([]*mod
 
 	for _, refDecision := range profile.Cfg.Decisions {
 		decision := models.Decision{}
-		/*the reference decision from profile is in simulated mode */
-		if refDecision.Simulated != nil && *refDecision.Simulated {
-			decision.Simulated = new(bool)
-			*decision.Simulated = true
-			/*the event is already in simulation mode */
-		} else if alert.Simulated != nil && *alert.Simulated {
-			decision.Simulated = new(bool)
-			*decision.Simulated = true
-		}
 		/*If the profile specifies a scope, this will prevail.
 		If not, we're going to get the scope from the source itself*/
 		decision.Scope = new(string)

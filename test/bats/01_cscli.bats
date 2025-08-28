@@ -179,7 +179,6 @@ teardown() {
     config_set '.common.log_dir="./log"'
     config_set '.config_paths.config_dir="./local/etc/crowdsec"'
     config_set '.config_paths.data_dir="./data"'
-    config_set '.config_paths.simulation_path="./simulation"'
     config_set '.config_paths.index_path="./index"'
     config_set '.config_paths.hub_dir="./hub"'
     config_set '.config_paths.plugin_dir="./plugins"'
@@ -195,7 +194,6 @@ teardown() {
     assert_stderr --regexp '.*Using a relative path for .*\./log.* is deprecated and will be disallowed in a future release'
     assert_stderr --regexp '.*Using a relative path for .*\./local/etc/crowdsec.* is deprecated and will be disallowed in a future release'
     assert_stderr --regexp '.*Using a relative path for .*\./data.* is deprecated and will be disallowed in a future release'
-    assert_stderr --regexp '.*Using a relative path for .*\./simulation.* is deprecated and will be disallowed in a future release'
     assert_stderr --regexp '.*Using a relative path for .*\./index.* is deprecated and will be disallowed in a future release'
     assert_stderr --regexp '.*Using a relative path for .*\./hub.* is deprecated and will be disallowed in a future release'
     assert_stderr --regexp '.*Using a relative path for .*\./plugins.* is deprecated and will be disallowed in a future release'
@@ -314,4 +312,9 @@ teardown() {
 @test "cscli dashboard" {
     rune -1 cscli dashboard xyz
     assert_stderr --partial "command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/"
+}
+
+@test "cscli simulation" {
+    rune -1 cscli simulation xyz
+    assert_stderr --partial "command 'simulation' has been removed, please read https://docs.crowdsec.net/blog/cscli_simulation_deprecation/"
 }

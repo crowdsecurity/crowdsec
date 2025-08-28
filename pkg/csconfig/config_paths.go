@@ -8,7 +8,7 @@ import (
 type ConfigurationPaths struct {
 	ConfigDir          string `yaml:"config_dir"`
 	DataDir            string `yaml:"data_dir,omitempty"`
-	SimulationFilePath string `yaml:"simulation_path,omitempty"`
+	SimulationFilePath string `yaml:"simulation_path,omitempty"`   // deprecated/ignored, keep here to avoid errors in legacy config.yaml
 	HubIndexFile       string `yaml:"index_path,omitempty"` // path of the .index.json
 	HubDir             string `yaml:"hub_dir,omitempty"`
 	PluginDir          string `yaml:"plugin_dir,omitempty"`
@@ -50,7 +50,6 @@ func (c *Config) loadConfigurationPaths() error {
 		&c.ConfigPaths.HubIndexFile,
 		&c.ConfigPaths.ConfigDir,
 		&c.ConfigPaths.DataDir,
-		&c.ConfigPaths.SimulationFilePath,
 		&c.ConfigPaths.PluginDir,
 		&c.ConfigPaths.NotificationDir,
 		&c.ConfigPaths.PatternDir,

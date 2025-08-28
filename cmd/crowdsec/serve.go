@@ -76,11 +76,6 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
 
-		// reload the simulation state
-		if err := cConfig.LoadSimulation(); err != nil {
-			log.Errorf("reload error (simulation) : %s", err)
-		}
-
 		agentReady := make(chan bool, 1)
 		serveCrowdsec(csParsers, cConfig, hub, datasources, agentReady)
 	}

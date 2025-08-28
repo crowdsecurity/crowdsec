@@ -53,7 +53,6 @@ type HubTestItem struct {
 	RuntimePatternsPath       string
 	RuntimeConfigFilePath     string
 	RuntimeProfileFilePath    string
-	RuntimeSimulationFilePath string
 	RuntimeAcquisFilePath     string
 	RuntimeHubConfig          *csconfig.LocalHubCfg
 
@@ -67,7 +66,6 @@ type HubTestItem struct {
 	HubIndexFile              string
 	TemplateConfigPath        string
 	TemplateProfilePath       string
-	TemplateSimulationPath    string
 	TemplateAcquisPath        string
 	TemplateAppsecProfilePath string
 	HubIndex                  *cwhub.Hub
@@ -148,7 +146,6 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 		RuntimeDBDir:              filepath.Join(runtimeFolder, "data"),
 		RuntimeConfigFilePath:     filepath.Join(runtimeFolder, "config.yaml"),
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
-		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
 		RuntimeAcquisFilePath:     filepath.Join(runtimeFolder, "acquis.yaml"),
 		ResultsPath:               resultPath,
 		ParserResultFile:          filepath.Join(resultPath, ParserResultFileName),
@@ -166,7 +163,6 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 		HubIndexFile:              hubTest.HubIndexFile,
 		TemplateConfigPath:        hubTest.TemplateConfigPath,
 		TemplateProfilePath:       hubTest.TemplateProfilePath,
-		TemplateSimulationPath:    hubTest.TemplateSimulationPath,
 		TemplateAcquisPath:        hubTest.TemplateAcquisPath,
 		TemplateAppsecProfilePath: hubTest.TemplateAppsecProfilePath,
 		HubIndex:                  hubTest.HubIndex,
@@ -606,11 +602,6 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	// copy template profile file to runtime folder
 	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
 		return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
-	}
-
-	// copy template simulation file to runtime folder
-	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %w", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
 	}
 
 	// copy template patterns folder to runtime folder

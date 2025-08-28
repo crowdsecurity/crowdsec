@@ -77,8 +77,7 @@ type Alert struct {
 	ScenarioVersion *string `json:"scenario_version"`
 
 	// simulated
-	// Required: true
-	Simulated *bool `json:"simulated"`
+	Simulated bool `json:"simulated,omitempty"`
 
 	// source
 	// Required: true
@@ -138,10 +137,6 @@ func (m *Alert) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateScenarioVersion(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateSimulated(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -290,15 +285,6 @@ func (m *Alert) validateScenarioHash(formats strfmt.Registry) error {
 func (m *Alert) validateScenarioVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("scenario_version", "body", m.ScenarioVersion); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *Alert) validateSimulated(formats strfmt.Registry) error {
-
-	if err := validate.Required("simulated", "body", m.Simulated); err != nil {
 		return err
 	}
 

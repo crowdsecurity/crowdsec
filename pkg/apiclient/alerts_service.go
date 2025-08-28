@@ -24,7 +24,7 @@ type AlertsListOpts struct {
 	Since                cstime.DurationWithDays `url:"since,omitempty"`
 	TypeEquals           string                  `url:"decision_type,omitempty"`
 	Until                cstime.DurationWithDays `url:"until,omitempty"`
-	IncludeSimulated     *bool                   `url:"simulated,omitempty"`
+	IncludeSimulated     *bool                   `url:"simulated,omitempty"`    // ignored, keep for backward compatibility
 	ActiveDecisionEquals *bool                   `url:"has_active_decision,omitempty"`
 	IncludeCAPI          *bool                   `url:"include_capi,omitempty"`
 	Limit                *int                    `url:"limit,omitempty"`

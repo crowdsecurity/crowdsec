@@ -68,7 +68,6 @@ func (cli *cliConfig) template() string {
    - Data Folder            : {{.ConfigPaths.DataDir}}
    - Hub Folder             : {{.ConfigPaths.HubDir}}
    - Notification Folder    : {{.ConfigPaths.NotificationDir}}
-   - Simulation File        : {{.ConfigPaths.SimulationFilePath}}
 {{- end }}
 
 {{- if .Common }}

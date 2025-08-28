@@ -28,7 +28,6 @@ PROFILE_FILE="/etc/crowdsec/profiles.yaml"
 CONFIG_FILE="/etc/crowdsec/config.yaml"
 LOCAL_API_FILE="/etc/crowdsec/local_api_credentials.yaml"
 ONLINE_API_FILE="/etc/crowdsec/online_api_credentials.yaml"
-SIMULATION_FILE="/etc/crowdsec/simulation.yaml"
 DB_FILE="/var/lib/crowdsec/data/crowdsec.db"
 
 SYSTEMD_FILE="/etc/systemd/system/crowdsec.service"
@@ -102,9 +101,6 @@ function init
     echo "[*] Tainting config file"
     echo "  # test taint config file" >> ${CONFIG_FILE}
 
-    echo "[*] Tainting simulation file"
-    echo "  # test taint simulation file" >> ${SIMULATION_FILE}
-
     echo "[*] Adding a decision"
     cscli decisions add -i 1.2.3.4
 
@@ -119,7 +115,6 @@ function init
     md5sum ${LOCAL_API_FILE} >> local_api_creds.md5
     md5sum ${ONLINE_API_FILE} >> online_api_creds.md5
     md5sum ${CONFIG_FILE} >> config.md5
-    md5sum ${SIMULATION_FILE} >> simulation.md5
     md5sum ${DB_FILE} >> db.md5
     md5sum ${SYSTEMD_FILE} >> systemd.md5
 
@@ -271,14 +266,6 @@ function test_db_file
   assert_equal "$new" "$old"
 }
 
-function test_simulation_file
-{
-  echo $FUNCNAME
-  new=$(find ${SIMULATION_FILE} -type f -exec md5sum "{}" +)
-  old=$(cat simulation.md5)
-  assert_equal "$new" "$old"
-}
-
 function test_systemd_file
 {
   echo $FUNCNAME
@@ -306,7 +293,6 @@ function start_test
   test_online_api_creds_file
   test_local_api_creds_file
   test_profile_file
-  test_simulation_file
   test_db_file
   test_systemd_file
   test_bouncer_dir

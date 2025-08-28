@@ -50,7 +50,6 @@ type Leaky struct {
 	Signal       chan bool `json:"-"`
 	Suicide      chan bool `json:"-"`
 	Reprocess    bool
-	Simulated    bool
 	Uuid         string
 	First_ts     time.Time
 	Last_ts      time.Time
@@ -128,7 +127,6 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		scopeType:       bucketFactory.ScopeType,
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
-		Simulated:       bucketFactory.Simulated,
 		tomb:            bucketFactory.tomb,
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
