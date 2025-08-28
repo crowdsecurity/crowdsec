@@ -24,8 +24,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-// If we have a match in one of those zones, we do not populate the matchedRules with name/id/msg/....
-// But rather name_internal,id_internal,...
+// If we have a match in one of those zones, set the `internal` flag of the MatchedRule
+// To prevent them from being sent in the context (as they are almost never relevant to the user)
+// They are still present in the metas of the alert itself for reference
 // This is rather CRS-specific, but we don't expect to write custom rules as complex as the CRS
 var excludedMatchCollections = []string{
 	"REQBODY_PROCESSOR", // Matched when enabling the body processor
