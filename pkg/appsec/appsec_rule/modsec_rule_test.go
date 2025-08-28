@@ -16,7 +16,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Match:     Match{Type: "eq", Value: "1"},
 				Transform: []string{"count"},
 			},
-			expected: `SecRule &ARGS_GET:foo "@eq 1" "id:853070236,phase:2,deny,log,msg:'Collection count',tag:'crowdsec-Collection count',severity:'critical'"`,
+			expected: `SecRule &ARGS_GET:foo "@eq 1" "id:853070236,phase:2,deny,log,msg:'Collection count',tag:'crowdsec-Collection count',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
 			name: "Base Rule",
@@ -26,7 +26,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
-			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:2203944045,phase:2,deny,log,msg:'Base Rule',tag:'crowdsec-Base Rule',severity:'critical',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:2203944045,phase:2,deny,log,msg:'Base Rule',tag:'crowdsec-Base Rule',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
 			name: "One zone, multi var",
@@ -36,7 +36,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
-			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar "@rx [^a-zA-Z]" "id:385719930,phase:2,deny,log,msg:'One zone, multi var',tag:'crowdsec-One zone, multi var',severity:'critical',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar "@rx [^a-zA-Z]" "id:385719930,phase:2,deny,log,msg:'One zone, multi var',tag:'crowdsec-One zone, multi var',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
 			name: "Base Rule #2",
@@ -44,7 +44,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Zones: []string{"METHOD"},
 				Match: Match{Type: "startsWith", Value: "toto"},
 			},
-			expected: `SecRule REQUEST_METHOD "@beginsWith toto" "id:2759779019,phase:2,deny,log,msg:'Base Rule #2',tag:'crowdsec-Base Rule #2',severity:'critical'"`,
+			expected: `SecRule REQUEST_METHOD "@beginsWith toto" "id:2759779019,phase:2,deny,log,msg:'Base Rule #2',tag:'crowdsec-Base Rule #2',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
 			name: "Base Negative Rule",
@@ -52,7 +52,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Zones: []string{"METHOD"},
 				Match: Match{Type: "startsWith", Value: "toto", Not: true},
 			},
-			expected: `SecRule REQUEST_METHOD "!@beginsWith toto" "id:3966251995,phase:2,deny,log,msg:'Base Negative Rule',tag:'crowdsec-Base Negative Rule',severity:'critical'"`,
+			expected: `SecRule REQUEST_METHOD "!@beginsWith toto" "id:3966251995,phase:2,deny,log,msg:'Base Negative Rule',tag:'crowdsec-Base Negative Rule',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
 			name: "Multiple Zones",
@@ -62,7 +62,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
-			expected: `SecRule ARGS_GET:foo|ARGS_POST:foo "@rx [^a-zA-Z]" "id:3387135861,phase:2,deny,log,msg:'Multiple Zones',tag:'crowdsec-Multiple Zones',severity:'critical',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo|ARGS_POST:foo "@rx [^a-zA-Z]" "id:3387135861,phase:2,deny,log,msg:'Multiple Zones',tag:'crowdsec-Multiple Zones',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
 			name: "Multiple Zones Multi Var",
@@ -72,7 +72,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
-			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar|ARGS_POST:foo|ARGS_POST:bar "@rx [^a-zA-Z]" "id:1119773585,phase:2,deny,log,msg:'Multiple Zones Multi Var',tag:'crowdsec-Multiple Zones Multi Var',severity:'critical',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar|ARGS_POST:foo|ARGS_POST:bar "@rx [^a-zA-Z]" "id:1119773585,phase:2,deny,log,msg:'Multiple Zones Multi Var',tag:'crowdsec-Multiple Zones Multi Var',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
 			name: "Multiple Zones No Vars",
@@ -81,7 +81,7 @@ func TestVPatchRuleString(t *testing.T) {
 				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
-			expected: `SecRule ARGS_GET|ARGS_POST "@rx [^a-zA-Z]" "id:2020110336,phase:2,deny,log,msg:'Multiple Zones No Vars',tag:'crowdsec-Multiple Zones No Vars',severity:'critical',t:lowercase"`,
+			expected: `SecRule ARGS_GET|ARGS_POST "@rx [^a-zA-Z]" "id:2020110336,phase:2,deny,log,msg:'Multiple Zones No Vars',tag:'crowdsec-Multiple Zones No Vars',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
 			name: "Basic AND",
@@ -101,8 +101,8 @@ func TestVPatchRuleString(t *testing.T) {
 					},
 				},
 			},
-			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:4145519614,phase:2,deny,log,msg:'Basic AND',tag:'crowdsec-Basic AND',severity:'critical',t:lowercase,chain"
-SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:2,deny,log,msg:'Basic AND',tag:'crowdsec-Basic AND',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:4145519614,phase:2,deny,log,msg:'Basic AND',tag:'crowdsec-Basic AND',tag:'cs-custom-rule',severity:'emergency',t:lowercase,chain"
+SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:2,deny,log,msg:'Basic AND',tag:'crowdsec-Basic AND',tag:'cs-custom-rule',t:lowercase"`,
 		},
 		{
 			name: "Basic OR",
@@ -122,8 +122,8 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:2,deny,log,msg:'Basic 
 					},
 				},
 			},
-			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:651140804,phase:2,deny,log,msg:'Basic OR',tag:'crowdsec-Basic OR',severity:'critical',t:lowercase,skip:1"
-SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:2,deny,log,msg:'Basic OR',tag:'crowdsec-Basic OR',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:651140804,phase:2,deny,log,msg:'Basic OR',tag:'crowdsec-Basic OR',tag:'cs-custom-rule',severity:'emergency',t:lowercase,skip:1"
+SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:2,deny,log,msg:'Basic OR',tag:'crowdsec-Basic OR',tag:'cs-custom-rule',t:lowercase"`,
 		},
 		{
 			name: "OR AND mix",
@@ -151,9 +151,9 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:2,deny,log,msg:'Basic O
 					},
 				},
 			},
-			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1714963250,phase:2,deny,log,msg:'OR AND mix',tag:'crowdsec-OR AND mix',severity:'critical',t:lowercase,skip:1"
-SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'OR AND mix',tag:'crowdsec-OR AND mix',t:lowercase"
-SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'OR AND mix',tag:'crowdsec-OR AND mix',severity:'critical',t:lowercase"`,
+			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1714963250,phase:2,deny,log,msg:'OR AND mix',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',severity:'emergency',t:lowercase,skip:1"
+SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'OR AND mix',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase"
+SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'OR AND mix',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 	}
 
