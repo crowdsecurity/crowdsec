@@ -74,13 +74,13 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	msg := "anomaly score "
 	switch {
 	case hasInBandMatches:
-		msg += "in-band: "
+		msg += "block: "
 	case hasOutBandMatches:
 		msg += "out-of-band: "
 	}
 	for _, var_name := range appsec.CRSAnomalyScores {
 		if val, ok := vars[var_name]; ok && val != "0" {
-			msg += fmt.Sprintf("%s: %s, ", strings.Replace(var_name, "TX.", "", 1), val)
+			msg += fmt.Sprintf("%s: %s, ", strings.Replace(strings.Replace(var_name, "TX.", "", 1), "_score", "", 1), val)
 		}
 	}
 	return msg
