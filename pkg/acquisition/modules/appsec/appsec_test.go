@@ -75,7 +75,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 
 	//build rules
 	for ridx, rule := range test.inband_rules {
-		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
+		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name, "")
 		if err != nil {
 			t.Fatalf("failed compilation of rule %d/%d of %s : %s", ridx, len(test.inband_rules), test.name, err)
 		}
@@ -85,7 +85,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	nativeInbandRules = append(nativeInbandRules, test.inband_native_rules...)
 	nativeOutofbandRules = append(nativeOutofbandRules, test.outofband_native_rules...)
 	for ridx, rule := range test.outofband_rules {
-		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
+		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name, "")
 		if err != nil {
 			t.Fatalf("failed compilation of rule %d/%d of %s : %s", ridx, len(test.outofband_rules), test.name, err)
 		}

@@ -69,7 +69,7 @@ var bodyTypeMatch = map[string]string{
 	"urlencoded": "URLENCODED",
 }
 
-func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string) (string, []uint32, error) {
+func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string, appsecRuleDescription string) (string, []uint32, error) {
 	//Validate severity
 	if rule.Severity == "" {
 		rule.Severity = cztypes.RuleSeverityEmergency.String()
@@ -79,7 +79,7 @@ func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string) (string
 		return "", nil, err
 	}
 
-	rules, err := m.buildRules(rule, appsecRuleName, false, 0, 0, true)
+	rules, err := m.buildRules(rule, appsecRuleName, appsecRuleDescription, false, 0, 0, true)
 	if err != nil {
 		return "", nil, err
 	}
@@ -105,7 +105,7 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 	return id
 }
 
-func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, and bool, toSkip int, depth int, isRoot bool) ([]string, error) {
+func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, appsecRuleDescription string, and bool, toSkip int, depth int, isRoot bool) ([]string, error) {
 	ret := make([]string, 0)
 
 	if len(rule.And) != 0 && len(rule.Or) != 0 {
@@ -118,7 +118,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			andRule.Severity = rule.Severity
 			lastRule := c == len(rule.And)-1 // || len(rule.Or) == 0
 			root := c == 0
-			rules, err := m.buildRules(&andRule, appsecRuleName, !lastRule, 0, depth, root)
+			rules, err := m.buildRules(&andRule, appsecRuleName, appsecRuleDescription, !lastRule, 0, depth, root)
 			if err != nil {
 				return nil, err
 			}
@@ -132,7 +132,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			orRule.Severity = rule.Severity
 			skip := len(rule.Or) - c - 1
 			root := c == 0
-			rules, err := m.buildRules(&orRule, appsecRuleName, false, skip, depth, root)
+			rules, err := m.buildRules(&orRule, appsecRuleName, appsecRuleDescription, false, skip, depth, root)
 			if err != nil {
 				return nil, err
 			}
@@ -192,7 +192,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	}
 
 	//Should phase:2 be configurable?
-	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), appsecRuleName, appsecRuleName))
+	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), appsecRuleDescription, appsecRuleName))
 
 	if rule.Severity != "" && isRoot { // Only put severity on the root rule
 		r.WriteString(fmt.Sprintf(`,severity:'%s'`, rule.Severity))

@@ -137,7 +137,7 @@ func NewAppsecRule(cfg configGetter) *cliItem {
 			fmt.Fprintf(os.Stdout, "\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
 
 			for _, rule := range appsecRule.Rules {
-				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
+				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name, appsecRule.Description)
 				if err != nil {
 					return fmt.Errorf("unable to convert rule %s: %w", rule.Name, err)
 				}
