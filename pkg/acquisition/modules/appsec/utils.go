@@ -422,7 +422,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 		if containsAll(excludedMatchCollections, matchedCollections) {
 			internalRule = true
-			r.logger.Infof("ignoring rule %d match on zone %+v", rule.Rule().ID(), matchedZones)
+			r.logger.Debugf("ignoring rule %d match on zone %+v", rule.Rule().ID(), matchedZones)
 		}
 
 		corazaRule := map[string]any{
