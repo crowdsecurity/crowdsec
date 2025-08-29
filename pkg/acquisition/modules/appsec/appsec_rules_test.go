@@ -43,7 +43,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Equal(t, types.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
@@ -266,7 +266,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Equal(t, types.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
@@ -297,7 +297,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Equal(t, types.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
@@ -328,7 +328,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Equal(t, types.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
@@ -366,7 +366,7 @@ toto
 				require.Equal(t, types.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
@@ -435,7 +435,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -459,7 +459,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -483,7 +483,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -508,7 +508,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -533,7 +533,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -558,7 +558,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -583,7 +583,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -608,7 +608,7 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 	}
@@ -647,7 +647,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -675,7 +675,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule2", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -705,7 +705,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -735,7 +735,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule2", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -764,7 +764,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -793,7 +793,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule2", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -816,7 +816,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -840,7 +840,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -863,7 +863,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -886,7 +886,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -911,7 +911,7 @@ func TestAppsecRuleZones(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 	}
