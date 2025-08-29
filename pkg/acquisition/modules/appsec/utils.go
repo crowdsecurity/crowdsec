@@ -118,6 +118,7 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
+	// Create one event (in the overflow) per matched rule
 	for _, rule := range inEvt.Appsec.MatchedRules {
 		event := models.Event{}
 		meta := models.Meta{}
@@ -237,6 +238,7 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	return &evt, nil
 }
 
+// Check if all the rule matched zones are part of the excluded zones
 func containsAll(excludedZones []string, matchedZones []string) bool {
 	if len(matchedZones) == 0 {
 		return false
