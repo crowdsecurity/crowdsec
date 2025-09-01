@@ -45,7 +45,7 @@ jobs:
 
     - name: Unit tests
       run: |
-        go install gotest.tools/gotestsum@v1.12.1
+        go install gotest.tools/gotestsum@v1.12.3
         make testcover
 
     - name: Upload unit coverage to Codecov

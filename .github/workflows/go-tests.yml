@@ -180,7 +180,7 @@ jobs:
 
     - name: Unit tests
       run: |
-        go install gotest.tools/gotestsum@v1.12.1
+        go install gotest.tools/gotestsum@v1.12.3
         # make the repo read-only, with the exception of coverage output
         touch coverage.out
         chmod -R a-w .
