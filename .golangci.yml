@@ -297,10 +297,6 @@ linters:
         - -QF1003
         - -QF1012
 
-    wsl:
-      # Allow blocks to end with comments
-      allow-trailing-comment: true
-
   exclusions:
     presets:
       - comments
@@ -322,13 +318,6 @@ linters:
         text: fmt.Sprintf can be replaced .*
 
       # Will fix, easy but some thinking required
-
-      - linters:
-          - errorlint
-        text: non-wrapping format verb for fmt.Errorf. Use `%w` to format errors
-      - linters:
-          - nosprintfhostport
-        text: host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf
 
       # https://github.com/timakin/bodyclose
       - linters:
