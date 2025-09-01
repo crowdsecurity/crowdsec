@@ -29,6 +29,7 @@ type AppsecCollectionConfig struct {
 	SecLangFilesRules []string                 `yaml:"seclang_files_rules"`
 	SecLangRules      []string                 `yaml:"seclang_rules"`
 	Rules             []appsec_rule.CustomRule `yaml:"rules"`
+	Severity          string                   `yaml:"severity"`
 
 	Labels map[string]any `yaml:"labels"` // Labels is K:V list aiming at providing context the overflow
 
@@ -105,7 +106,8 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 
 		if appsecRule.Rules != nil {
 			for _, rule := range appsecRule.Rules {
-				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name)
+				rule.Severity = appsecRule.Severity
+				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name, appsecRule.Description)
 				if err != nil {
 					logger.Errorf("unable to convert rule %s : %s", appsecRule.Name, err)
 					return nil, err
