@@ -191,8 +191,15 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, ap
 		r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
 	}
 
+	var msg string
+	if appsecRuleDescription != "" {
+		msg = appsecRuleDescription
+	} else {
+		msg = appsecRuleName
+	}
+
 	//Should phase:2 be configurable?
-	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), appsecRuleDescription, appsecRuleName))
+	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), msg, appsecRuleName))
 
 	if rule.Severity != "" && isRoot { // Only put severity on the root rule
 		r.WriteString(fmt.Sprintf(`,severity:'%s'`, rule.Severity))
