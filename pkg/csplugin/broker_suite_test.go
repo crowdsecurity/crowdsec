@@ -51,7 +51,9 @@ func (s *PluginSuite) SetupSuite() {
 		s.builtBinary += ".exe"
 	}
 
-	cmd := exec.Command("go", "build", "-o", s.builtBinary, "../../cmd/notification-dummy/")
+	ctx := t.Context()
+
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", s.builtBinary, "../../cmd/notification-dummy/")
 	err = cmd.Run()
 	require.NoError(t, err, "while building dummy plugin")
 }

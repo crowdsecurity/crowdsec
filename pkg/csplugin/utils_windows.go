@@ -3,6 +3,7 @@
 package csplugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -200,9 +201,9 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 	}, nil
 }
 
-func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
+func (pb *PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
-	cmd := exec.Command(binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath)
 	cmd.SysProcAttr, err = getProcessAtr()
 	if err != nil {
 		return nil, fmt.Errorf("while getting process attributes: %w", err)

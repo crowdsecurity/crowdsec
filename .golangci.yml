@@ -469,10 +469,6 @@ linters:
 
       - linters:
           - noctx
-        text: "exec.Command must not be called"
-
-      - linters:
-          - noctx
         text: "net.LookupAddr must not be called"
 
       - linters:

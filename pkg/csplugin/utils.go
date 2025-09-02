@@ -3,6 +3,7 @@
 package csplugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -25,9 +26,9 @@ func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
 	}
 }
 
-func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
+func (pb *PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
-	cmd := exec.Command(binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath)
 	if pb.pluginProcConfig.User != "" || pb.pluginProcConfig.Group != "" {
 		if pb.pluginProcConfig.User == "" || pb.pluginProcConfig.Group == "" {
 			return nil, errors.New("while getting process attributes: both plugin user and group must be set")
