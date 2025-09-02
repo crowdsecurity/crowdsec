@@ -11,13 +11,56 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func runParse(input chan types.Event, output chan types.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
+func runParse(input chan types.Event, output chan types.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node, stop <-chan struct{}, idleTimeout time.Duration) error {
+	// per-worker idle tracking for graceful downscale
+	if idleTimeout <= 0 {
+		idleTimeout = 30 * time.Second
+	}
+	lastActive := time.Now()
+	idleTimer := time.NewTimer(idleTimeout)
+	if !idleTimer.Stop() {
+		select {
+		case <-idleTimer.C:
+		default:
+		}
+	}
+	stopping := false
 	for {
 		select {
 		case <-parsersTomb.Dying():
 			log.Infof("Killing parser routines")
 			return nil
+		case <-stop:
+			// request graceful stop on next idle period
+			stopping = true
+			// if already idle long enough, exit immediately; else arm timer for remaining time
+			since := time.Since(lastActive)
+			if since >= idleTimeout {
+				return nil
+			}
+			if !idleTimer.Stop() {
+				select {
+				case <-idleTimer.C:
+				default:
+				}
+			}
+			idleTimer.Reset(idleTimeout - since)
+		case <-idleTimer.C:
+			if stopping {
+				return nil
+			}
 		case event := <-input:
+			lastActive = time.Now()
+			if stopping {
+				// we've become active again; reset idle timer to wait another quiet period
+				if !idleTimer.Stop() {
+					select {
+					case <-idleTimer.C:
+					default:
+					}
+				}
+				idleTimer.Reset(idleTimeout)
+			}
 			if !event.Process {
 				continue
 			}
