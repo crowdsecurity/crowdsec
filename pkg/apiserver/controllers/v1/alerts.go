@@ -20,8 +20,8 @@ import (
 )
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {
-	startAt := alert.StartedAt.String()
-	StopAt := alert.StoppedAt.String()
+	startAt := alert.StartedAt.Format(time.RFC3339)
+	StopAt := alert.StoppedAt.Format(time.RFC3339)
 
 	machineID := "N/A"
 	if alert.Edges.Owner != nil {

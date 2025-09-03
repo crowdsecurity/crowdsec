@@ -839,6 +839,16 @@ teardown() {
     assert_output --partial "/path/to/smb.log"
 }
 
+@test "cscli setup unattended (disabled via envvar)" {
+    CROWDSEC_SETUP_UNATTENDED_DISABLE=x rune -0 cscli setup unattended
+    assert_output --partial "Unattended setup is disabled (CROWDSEC_SETUP_UNATTENDED_DISABLE is set)."
+    refute_stderr
+
+    CROWDSEC_SETUP_UNATTENDED_DISABLE= rune -0 cscli setup unattended
+    refute_output --partial "Unattended setup is disabled"
+    refute_stderr
+}
+
 @test "cscli setup unattended (default acquis-dir)" {
     ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
 

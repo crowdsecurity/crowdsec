@@ -156,8 +156,6 @@ if [ "$1" = 1 ]; then
         touch /var/lib/crowdsec/data/crowdsec.db
     fi
 
-    echo $SHELL
-
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] ; then
         install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
         cscli capi register --error
@@ -191,14 +189,20 @@ echo "You can always run the configuration again interactively by using 'cscli s
 
 %systemd_post %{name}.service
 
-if [ $1 == 1 ]; then
-    API=$(cscli config show --key "Config.API.Server")
-    if [ "$API" = "nil" ] ; then
-        LAPI=false
-    else
-        PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
-    fi
-    if [ "$LAPI" = false ] || [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ]  ; then
+ if [ $1 == 1 ]; then
+     LAPI=true
+     API=$(cscli config show --key "Config.API.Server")
+     if [ "$API" = "nil" ] ; then
+         LAPI=false
+     else
+        ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
+        if [ "$ENABLED" = "false" ]; then
+            LAPI=false
+        fi
+         URI=$(cscli config show --key "Config.API.Server.ListenURI" 2>/dev/null || true)
+         PORT=${URI##*:}
+     fi
+     if [ "$LAPI" = false ] || [ -z "$PORT" ] || [ -z "$(ss -nlt "sport = ${PORT}" 2>/dev/null | grep -v ^State || true)" ]  ; then
         %if 0%{?fc35} || 0%{?fc36}
         systemctl enable crowdsec 
         %endif

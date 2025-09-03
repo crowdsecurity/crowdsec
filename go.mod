@@ -1,6 +1,6 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.24.5
+go 1.24.6
 
 require (
 	entgo.io/ent v0.14.2
