@@ -189,21 +189,22 @@ fi
 echo "You can always run the configuration again interactively by using 'cscli setup'"
 
 %systemd_post %{name}.service
+%systemd_post %{name}-hubupdate.timer
 
- if [ $1 == 1 ]; then
-     LAPI=true
-     API=$(cscli config show --key "Config.API.Server")
-     if [ "$API" = "nil" ] ; then
-         LAPI=false
-     else
-        ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
-        if [ "$ENABLED" = "false" ]; then
-            LAPI=false
-        fi
-         URI=$(cscli config show --key "Config.API.Server.ListenURI" 2>/dev/null || true)
-         PORT=${URI##*:}
-     fi
-     if [ "$LAPI" = false ] || [ -z "$PORT" ] || [ -z "$(ss -nlt "sport = ${PORT}" 2>/dev/null | grep -v ^State || true)" ]  ; then
+if [ $1 == 1 ]; then
+    LAPI=true
+    API=$(cscli config show --key "Config.API.Server")
+    if [ "$API" = "nil" ] ; then
+        LAPI=false
+    else
+       ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
+       if [ "$ENABLED" = "false" ]; then
+           LAPI=false
+       fi
+        URI=$(cscli config show --key "Config.API.Server.ListenURI" 2>/dev/null || true)
+        PORT=${URI##*:}
+    fi
+    if [ "$LAPI" = false ] || [ -z "$PORT" ] || [ -z "$(ss -nlt "sport = ${PORT}" 2>/dev/null | grep -v ^State || true)" ]  ; then
         %if 0%{?fc35} || 0%{?fc36}
         systemctl enable crowdsec 
         %endif
@@ -219,10 +220,12 @@ fi
 #systemctl stop crowdsec || echo "crowdsec was not started"
 
 %systemd_preun %{name}.service
+%systemd_preun %{name}-hubupdate.timer
 
 %postun
 
 %systemd_postun_with_restart %{name}.service
+%systemd_postun %{name}-hubupdate.timer
 
 if [ $1 == 0 ]; then
     rm -rf /etc/crowdsec/hub
