@@ -12,7 +12,6 @@ Patch0:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  systemd
-Requires: (crontabs or cron)
 %{?fc33:BuildRequires: systemd-rpm-macros}
 %{?fc34:BuildRequires: systemd-rpm-macros}
 %{?fc35:BuildRequires: systemd-rpm-macros}
@@ -52,6 +51,8 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
+install -m 644 -D debian/crowdsec-hupupdate.service %{buildroot}%{_unitdir}/%{name}-hubupdate.service
+install -m 644 -D debian/crowdsec-hupupdate.timer %{buildroot}%{_unitdir}/%{name}-hubupdate.timer
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
 install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 600 -D config/detect.yaml %{buildroot}/var/lib/%{name}/data/
@@ -59,7 +60,6 @@ install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/context.yaml %{buildroot}%{_sysconfdir}/crowdsec/console/
-install -m 750 -D config/%{name}.cron.daily %{buildroot}%{_sysconfdir}/cron.daily/%{name}
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
 install -m 551 cmd/notification-slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
@@ -126,9 +126,10 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/sentinel.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/file.yaml
-%config(noreplace) %{_sysconfdir}/cron.daily/%{name}
 
 %{_unitdir}/%{name}.service
+%{_unitdir}/%{name}-hubupdate.service
+%{_unitdir}/%{name}-hubupdate.timer
 
 %ghost %{_sysconfdir}/%{name}/hub/.index.json
 %ghost %{_localstatedir}/log/%{name}.log
