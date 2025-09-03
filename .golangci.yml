@@ -457,6 +457,11 @@ linters:
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
 
+      - linters:
+          - containedctx
+        path: pkg/acquisition/modules/s3/s3.go
+        text: found a struct that contains a context.Context field
+
       # migrate over time
 
       - linters:
