@@ -12,9 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cwTypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+
 	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -35,7 +37,7 @@ type CloudwatchSource struct {
 	/*runtime stuff*/
 	logger           *log.Entry
 	t                *tomb.Tomb
-	cwClient         *cloudwatchlogs.CloudWatchLogs
+	cwClient         *cloudwatchlogs.Client
 	monitoredStreams []*LogStreamTailConfig
 	streamIndexes    map[string]string
 }
@@ -47,8 +49,8 @@ type CloudwatchSourceConfiguration struct {
 	StreamRegexp                      *string        `yaml:"stream_regexp,omitempty"` // allow to filter specific streams
 	StreamName                        *string        `yaml:"stream_name,omitempty"`
 	StartTime, EndTime                *time.Time     `yaml:"-"`
-	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` // batch size for DescribeLogStreamsPagesWithContext
-	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitempty"`
+	DescribeLogStreamsLimit           *int32         `yaml:"describelogstreams_limit,omitempty"` // batch size for DescribeLogStreamsPagesWithContext
+	GetLogEventsPagesLimit            *int32         `yaml:"getlogeventspages_limit,omitempty"`
 	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` // frequency at which we poll for new streams within the log group
 	MaxStreamAge                      *time.Duration `yaml:"max_stream_age,omitempty"`           // monitor only streams that have been updated within $duration
 	PollStreamInterval                *time.Duration `yaml:"poll_stream_interval,omitempty"`     // frequency at which we poll each stream
@@ -57,14 +59,14 @@ type CloudwatchSourceConfiguration struct {
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
 	AwsConfigDir                      *string        `yaml:"aws_config_dir,omitempty"`
-	AwsRegion                         *string        `yaml:"aws_region,omitempty"`
+	AwsRegion                         string        `yaml:"aws_region,omitempty"`
 }
 
 // LogStreamTailConfig is the configuration for one given stream within one group
 type LogStreamTailConfig struct {
 	GroupName                  string
 	StreamName                 string
-	GetLogEventsPagesLimit     int64
+	GetLogEventsPagesLimit     int32
 	PollStreamInterval         time.Duration
 	StreamReadTimeout          time.Duration
 	PrependCloudwatchTimestamp *bool
@@ -83,7 +85,7 @@ var (
 	def_AwsApiCallTimeout       = 10 * time.Second
 	def_StreamReadTimeout       = 10 * time.Minute
 	def_PollDeadStreamInterval  = 10 * time.Second
-	def_GetLogEventsPagesLimit  = int64(1000)
+	def_GetLogEventsPagesLimit  = int32(1000)
 	def_AwsConfigDir            = ""
 )
 
@@ -177,15 +179,15 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metr
 		os.Setenv("AWS_CONFIG_FILE", fmt.Sprintf("%s/config", *cw.Config.AwsConfigDir))
 		os.Setenv("AWS_SHARED_CREDENTIALS_FILE", fmt.Sprintf("%s/credentials", *cw.Config.AwsConfigDir))
 	} else {
-		if cw.Config.AwsRegion == nil {
+		if cw.Config.AwsRegion == "" {
 			cw.logger.Errorf("aws_region is not specified, specify it or aws_config_dir")
 			return errors.New("aws_region is not specified, specify it or aws_config_dir")
 		}
 
-		os.Setenv("AWS_REGION", *cw.Config.AwsRegion)
+		os.Setenv("AWS_REGION", cw.Config.AwsRegion)
 	}
 
-	if err := cw.newClient(); err != nil {
+	if err := cw.newClient(context.TODO()); err != nil {
 		return err
 	}
 
@@ -208,35 +210,32 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metr
 	return nil
 }
 
-func (cw *CloudwatchSource) newClient() error {
-	var sess *session.Session
+func (cw *CloudwatchSource) newClient(ctx context.Context) error {
+	var loadOpts []func(*config.LoadOptions) error
+	if cw.Config.AwsProfile != nil && *cw.Config.AwsProfile != "" {
+		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*cw.Config.AwsProfile))
+	}
+	region := cw.Config.AwsRegion
+	if region == "" {
+		region = "us-east-1"
+	}
+	loadOpts = append(loadOpts, config.WithRegion(region))
 
-	if cw.Config.AwsProfile != nil {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-			Profile:           *cw.Config.AwsProfile,
-		}))
-	} else {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
+	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to load aws config: %w", err)
 	}
 
-	if sess == nil {
-		return errors.New("failed to create aws session")
-	}
-
+	var clientOpts []func(*cloudwatchlogs.Options)
 	if v := os.Getenv("AWS_ENDPOINT_FORCE"); v != "" {
 		cw.logger.Debugf("[testing] overloading endpoint with %s", v)
-		cw.cwClient = cloudwatchlogs.New(sess, aws.NewConfig().WithEndpoint(v))
-	} else {
-		cw.cwClient = cloudwatchlogs.New(sess)
+		clientOpts = append(clientOpts, func(o *cloudwatchlogs.Options) {
+			o.BaseEndpoint = aws.String(v)
+		})
+		clientOpts = append(clientOpts, )
 	}
 
-	if cw.cwClient == nil {
-		return errors.New("failed to create cloudwatch client")
-	}
-
+	cw.cwClient = cloudwatchlogs.NewFromConfig(cfg, clientOpts...)
 	return nil
 }
 
@@ -300,7 +299,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 						LogGroupName: aws.String(cw.Config.GroupName),
 						Descending:   aws.Bool(true),
 						NextToken:    startFrom,
-						OrderBy:      aws.String(cloudwatchlogs.OrderByLastEventTime),
+						OrderBy:      cwTypes.OrderByLastEventTime,
 						Limit:        cw.Config.DescribeLogStreamsLimit,
 					},
 					func(page *cloudwatchlogs.DescribeLogStreamsOutput, lastPage bool) bool {
@@ -493,7 +492,7 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
 				err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
 					&cloudwatchlogs.GetLogEventsInput{
-						Limit:         aws.Int64(cfg.GetLogEventsPagesLimit),
+						Limit:         aws.Int32(cfg.GetLogEventsPagesLimit),
 						LogGroupName:  aws.String(cfg.GroupName),
 						LogStreamName: aws.String(cfg.StreamName),
 						NextToken:     startFrom,
@@ -640,7 +639,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 	cw.logger.Tracef("stream=%s", *cw.Config.StreamName)
 	cw.Config.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
 
-	if err := cw.newClient(); err != nil {
+	if err := cw.newClient(context.TODO()); err != nil {
 		return err
 	}
 
@@ -693,7 +692,7 @@ func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTail
 			}
 			err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
 				&cloudwatchlogs.GetLogEventsInput{
-					Limit:         aws.Int64(10),
+					Limit:         aws.Int32(10),
 					LogGroupName:  aws.String(cfg.GroupName),
 					LogStreamName: aws.String(cfg.StreamName),
 					StartTime:     aws.Int64(startTime),
@@ -734,7 +733,7 @@ func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTail
 	return nil
 }
 
-func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) (types.Event, error) {
+func cwLogToEvent(log cwTypes.OutputLogEvent, cfg *LogStreamTailConfig) (types.Event, error) {
 	l := types.Line{}
 	evt := types.MakeEvent(cfg.ExpectMode == types.TIMEMACHINE, types.LOG, true)
 	if log.Message == nil {
