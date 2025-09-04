@@ -78,7 +78,7 @@ type LogStreamTailConfig struct {
 }
 
 var (
-	def_DescribeLogStreamsLimit = int64(50)
+	def_DescribeLogStreamsLimit = int32(50)
 	def_PollNewStreamInterval   = 10 * time.Second
 	def_MaxStreamAge            = 5 * time.Minute
 	def_PollStreamInterval      = 10 * time.Second
@@ -221,7 +221,18 @@ func (cw *CloudwatchSource) newClient(ctx context.Context) error {
 	}
 	loadOpts = append(loadOpts, config.WithRegion(region))
 
+	var sharedConfigProfileNotExistError config.SharedConfigProfileNotExistError
+
 	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
+	if errors.As(err, &sharedConfigProfileNotExistError) {
+		// Fallback for tests/CI where the profile is not present
+		cw.logger.Debugf("shared config profile %q not found; retrying without profile", aws.ToString(cw.Config.AwsProfile))
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(region),
+			config.WithCredentialsProvider(aws.AnonymousCredentials{}),
+		)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %w", err)
 	}
@@ -232,7 +243,6 @@ func (cw *CloudwatchSource) newClient(ctx context.Context) error {
 		clientOpts = append(clientOpts, func(o *cloudwatchlogs.Options) {
 			o.BaseEndpoint = aws.String(v)
 		})
-		clientOpts = append(clientOpts, )
 	}
 
 	cw.cwClient = cloudwatchlogs.NewFromConfig(cfg, clientOpts...)
@@ -278,86 +288,60 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 	cw.logger.Debugf("Starting to watch group (interval:%s)", cw.Config.PollNewStreamInterval)
 	ticker := time.NewTicker(*cw.Config.PollNewStreamInterval)
 
-	var startFrom *string
-
 	for {
 		select {
 		case <-cw.t.Dying():
 			cw.logger.Infof("stopping group watch")
 			return nil
 		case <-ticker.C:
-			hasMoreStreams := true
-			startFrom = nil
-
-			for hasMoreStreams {
-				cw.logger.Tracef("doing the call to DescribeLogStreamsPagesWithContext")
-
-				// there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
-				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
-					ctx,
-					&cloudwatchlogs.DescribeLogStreamsInput{
-						LogGroupName: aws.String(cw.Config.GroupName),
-						Descending:   aws.Bool(true),
-						NextToken:    startFrom,
-						OrderBy:      cwTypes.OrderByLastEventTime,
-						Limit:        cw.Config.DescribeLogStreamsLimit,
-					},
-					func(page *cloudwatchlogs.DescribeLogStreamsOutput, lastPage bool) bool {
-						cw.logger.Tracef("in helper of DescribeLogStreamsPagesWithContext")
-
-						for _, event := range page.LogStreams {
-							startFrom = page.NextToken
-							// we check if the stream has been written to recently enough to be monitored
-							if event.LastIngestionTime != nil {
-								// aws uses millisecond since the epoch
-								oldest := time.Now().UTC().Add(-*cw.Config.MaxStreamAge)
-								// TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
-								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
-								if LastIngestionTime.Before(oldest) {
-									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().UTC().Add(-*cw.Config.MaxStreamAge))
-
-									hasMoreStreams = false
-
-									return false
-								}
-
-								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
-								// the stream has been updated recently, check if we should monitor it
-								var expectMode int
-								if !cw.Config.UseTimeMachine {
-									expectMode = types.LIVE
-								} else {
-									expectMode = types.TIMEMACHINE
-								}
-
-								monitorStream := LogStreamTailConfig{
-									GroupName:                  cw.Config.GroupName,
-									StreamName:                 *event.LogStreamName,
-									GetLogEventsPagesLimit:     *cw.Config.GetLogEventsPagesLimit,
-									PollStreamInterval:         *cw.Config.PollStreamInterval,
-									StreamReadTimeout:          *cw.Config.StreamReadTimeout,
-									PrependCloudwatchTimestamp: cw.Config.PrependCloudwatchTimestamp,
-									ExpectMode:                 expectMode,
-									Labels:                     cw.Config.Labels,
-								}
-								out <- monitorStream
-							}
-						}
-
-						if lastPage {
-							cw.logger.Tracef("reached last page")
-
-							hasMoreStreams = false
-						}
-
-						return true
-					},
+			p := cloudwatchlogs.NewDescribeLogStreamsPaginator(
+				cw.cwClient,
+				&cloudwatchlogs.DescribeLogStreamsInput{
+					LogGroupName: aws.String(cw.Config.GroupName),
+					Descending:   aws.Bool(true),
+					OrderBy:      cwTypes.OrderByLastEventTime,
+					Limit:        cw.Config.DescribeLogStreamsLimit,
+				},
 				)
+			Pageloop:
+			for p.HasMorePages() {
+				page, err := p.NextPage(ctx)
 				if err != nil {
 					return fmt.Errorf("while describing group %s: %w", cw.Config.GroupName, err)
 				}
+				for _, event := range page.LogStreams {
+					// we check if the stream has been written to recently enough to be monitored
+					if event.LastIngestionTime == nil {
+						continue
+					}
 
-				cw.logger.Tracef("after DescribeLogStreamsPagesWithContext")
+					// aws uses millisecond since the epoch
+					oldest := time.Now().UTC().Add(-*cw.Config.MaxStreamAge)
+					// TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
+					LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
+					if LastIngestionTime.Before(oldest) {
+						cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", aws.ToString(event.LogStreamName), LastIngestionTime, time.Now().UTC().Add(-*cw.Config.MaxStreamAge))
+						break Pageloop
+					}
+					var expectMode int
+					if !cw.Config.UseTimeMachine {
+						expectMode = types.LIVE
+					} else {
+						expectMode = types.TIMEMACHINE
+					}
+
+					monitorStream := LogStreamTailConfig{
+						GroupName:                  cw.Config.GroupName,
+						StreamName:                 aws.ToString(event.LogStreamName),
+						GetLogEventsPagesLimit:     *cw.Config.GetLogEventsPagesLimit,
+						PollStreamInterval:         *cw.Config.PollStreamInterval,
+						StreamReadTimeout:          *cw.Config.StreamReadTimeout,
+						PrependCloudwatchTimestamp: cw.Config.PrependCloudwatchTimestamp,
+						ExpectMode:                 expectMode,
+						Labels:                     cw.Config.Labels,
+					}
+					out <- monitorStream
+				}
 			}
 		}
 	}
@@ -469,90 +453,70 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 
 	lastReadMessage := time.Now().UTC()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
+
 	// resume at existing index if we already had
 	streamIndexMutex.Lock()
-	v := cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName]
-	streamIndexMutex.Unlock()
-
-	if v != "" {
+	if v := cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName]; v != "" {
 		cfg.logger.Debugf("restarting on index %s", v)
 		startFrom = &v
 	}
-	/*during first run, we want to avoid reading any message, but just get a token.
-	if we don't, we might end up sending the same item several times. hence the 'startup' hack */
+	streamIndexMutex.Unlock()
+
 	for {
 		select {
 		case <-ticker.C:
-			cfg.logger.Tracef("entering loop")
-
-			hasMorePages := true
-
-			for hasMorePages {
-				/*for the first call, we only consume the last item*/
-				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
-				err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
-					&cloudwatchlogs.GetLogEventsInput{
-						Limit:         aws.Int32(cfg.GetLogEventsPagesLimit),
-						LogGroupName:  aws.String(cfg.GroupName),
-						LogStreamName: aws.String(cfg.StreamName),
-						NextToken:     startFrom,
-						StartFromHead: aws.Bool(true),
-					},
-					func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
-						cfg.logger.Tracef("%d results, last:%t", len(page.Events), lastPage)
-						startFrom = page.NextForwardToken
-
-						if page.NextForwardToken != nil {
-							streamIndexMutex.Lock()
-							cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName] = *page.NextForwardToken
-							streamIndexMutex.Unlock()
-						}
-
-						if lastPage { /*wait another ticker to check on new log availability*/
-							cfg.logger.Tracef("last page")
-
-							hasMorePages = false
-						}
-
-						if len(page.Events) > 0 {
-							lastReadMessage = time.Now().UTC()
-						}
-
-						for _, event := range page.Events {
-							evt, err := cwLogToEvent(event, cfg)
-							if err != nil {
-								cfg.logger.Warningf("cwLogToEvent error, discarded event : %s", err)
-							} else {
-								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
-
-								if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-									metrics.CloudWatchDatasourceLinesRead.With(
-										prometheus.Labels{"group": cfg.GroupName,
-											"stream":          cfg.StreamName,
-											"datasource_type": "cloudwatch",
-											"acquis_type":     evt.Line.Labels["type"],
-										}).Inc()
-								}
-								outChan <- evt
-							}
-						}
-
-						return true
-					},
+			p := cloudwatchlogs.NewGetLogEventsPaginator(
+				cw.cwClient,
+				&cloudwatchlogs.GetLogEventsInput{
+					Limit:         aws.Int32(cfg.GetLogEventsPagesLimit),
+					LogGroupName:  aws.String(cfg.GroupName),
+					LogStreamName: aws.String(cfg.StreamName),
+					NextToken:     startFrom,   // if set, StartFromHead is ignored by AWS
+					StartFromHead: aws.Bool(true),
+				},
 				)
+			for p.HasMorePages() {
+				page, err := p.NextPage(ctx)
 				if err != nil {
 					newerr := fmt.Errorf("while reading %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
-					cfg.logger.Warningf("err : %s", newerr)
-
+					cfg.logger.Warningf("err: %s", newerr)
 					return newerr
 				}
-				cfg.logger.Tracef("done reading GetLogEventsPagesWithContext")
+
+				// Update token/index
+				startFrom = page.NextForwardToken
+				if startFrom != nil {
+					streamIndexMutex.Lock()
+					cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName] = *startFrom
+					streamIndexMutex.Unlock()
+				}
+
+				if len(page.Events) > 0 {
+					lastReadMessage = time.Now().UTC()
+				}
+
+				for _, ev := range page.Events {
+					evt, err := cwLogToEvent(ev, cfg)
+					if err != nil {
+						cfg.logger.Warningf("cwLogToEvent error, discarded event : %s", err)
+						continue
+					}
+					if cw.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+						metrics.CloudWatchDatasourceLinesRead.With(prometheus.Labels{
+							"group": cfg.GroupName, "stream": cfg.StreamName,
+							"datasource_type": "cloudwatch", "acquis_type": evt.Line.Labels["type"],
+						}).Inc()
+					}
+					outChan <- evt
+				}
+
 				if time.Since(lastReadMessage) > cfg.StreamReadTimeout {
-					cfg.logger.Infof("%s/%s reached timeout (%s) (last message was %s)", cfg.GroupName, cfg.StreamName, time.Since(lastReadMessage),
-						lastReadMessage)
+					cfg.logger.Infof("%s/%s reached timeout (%s) (last message was %s)",
+						cfg.GroupName, cfg.StreamName, time.Since(lastReadMessage), lastReadMessage)
 					return nil
 				}
 			}
+
 		case <-cfg.t.Dying():
 			cfg.logger.Infof("logstream tail stopping")
 			return errors.New("killed")
@@ -690,7 +654,9 @@ func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTail
 			if startFrom != nil {
 				cfg.logger.Tracef("next_token: %s", *startFrom)
 			}
-			err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
+
+			p := cloudwatchlogs.NewGetLogEventsPaginator(
+				cw.cwClient,
 				&cloudwatchlogs.GetLogEventsInput{
 					Limit:         aws.Int32(10),
 					LogGroupName:  aws.String(cfg.GroupName),
@@ -700,27 +666,26 @@ func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTail
 					StartFromHead: &head,
 					NextToken:     startFrom,
 				},
-				func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
-					cfg.logger.Tracef("in GetLogEventsPagesWithContext handker (%d events) (last:%t)", len(page.Events), lastPage)
-					for _, event := range page.Events {
-						evt, err := cwLogToEvent(event, cfg)
-						if err != nil {
-							cfg.logger.Warningf("discard event : %s", err)
-						}
-						cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
-						outChan <- evt
+				)
+			for p.HasMorePages() {
+				page, err := p.NextPage(ctx)
+				if err != nil {
+					return fmt.Errorf("while reading logs from %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
+				}
+				for _, e := range page.Events {
+					evt, err := cwLogToEvent(e, cfg)
+					if err != nil {
+						cfg.logger.Warningf("discard event: %s", err)
 					}
-					if startFrom != nil && *page.NextForwardToken == *startFrom {
-						cfg.logger.Debugf("reached end of available events")
-						hasMoreEvents = false
-						return false
-					}
-					startFrom = page.NextForwardToken
-					return true
-				},
-			)
-			if err != nil {
-				return fmt.Errorf("while reading logs from %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
+					cfg.logger.Debugf("pushing message: %s", evt.Line.Raw)
+					outChan <- evt
+				}
+				if startFrom != nil && page.NextForwardToken != nil && *page.NextForwardToken == *startFrom {
+					cfg.logger.Debugf("reached end of available events")
+					hasMoreEvents = false
+					break
+				}
+				startFrom = page.NextForwardToken
 			}
 			cfg.logger.Tracef("after GetLogEventsPagesWithContext")
 		case <-cw.t.Dying():
