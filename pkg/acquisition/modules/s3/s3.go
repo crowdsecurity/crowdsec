@@ -143,7 +143,9 @@ func (s *S3Source) newS3Client() error {
 
 	var clientOpts []func(*s3.Options)
 	if s.Config.AwsEndpoint != "" {
-		clientOpts = append(clientOpts, func(o *s3.Options) { o.BaseEndpoint = aws.String(s.Config.AwsEndpoint) })
+		clientOpts = append(clientOpts, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(s.Config.AwsEndpoint)
+		})
 	}
 
 	s.s3Client = s3.NewFromConfig(cfg, clientOpts...)
