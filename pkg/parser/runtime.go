@@ -160,7 +160,8 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			}
 		}
 
-		if static.Method != "" {
+		switch {
+		case static.Method != "":
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
@@ -186,22 +187,22 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			if !processed {
 				clog.Debugf("method '%s' doesn't exist", static.Method)
 			}
-		} else if static.Parsed != "" {
+		case static.Parsed != "":
 			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
 			event.Parsed[static.Parsed] = value
-		} else if static.Meta != "" {
+		case static.Meta != "":
 			clog.Debugf(".Meta[%s] = '%s'", static.Meta, value)
 			event.Meta[static.Meta] = value
-		} else if static.Enriched != "" {
+		case static.Enriched != "":
 			clog.Debugf(".Enriched[%s] = '%s'", static.Enriched, value)
 			event.Enriched[static.Enriched] = value
-		} else if static.TargetByName != "" {
+		case static.TargetByName != "":
 			if !SetTargetByName(static.TargetByName, value, event) {
 				clog.Errorf("Unable to set value of '%s'", static.TargetByName)
 			} else {
 				clog.Debugf("%s = '%s'", static.TargetByName, value)
 			}
-		} else {
+		default:
 			clog.Fatal("unable to process static : unknown target")
 		}
 	}

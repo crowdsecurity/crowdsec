@@ -1,7 +1,8 @@
 package csconfig
 
 import (
-	"fmt"
+	"net"
+	"strconv"
 )
 
 /*cscli specific config, such as hub directory*/
@@ -26,7 +27,10 @@ func (c *Config) loadCSCLI() error {
 	}
 
 	if c.Prometheus.ListenAddr != "" && c.Prometheus.ListenPort != 0 {
-		c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d/metrics", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
+		c.Cscli.PrometheusUrl =  "http://" + net.JoinHostPort(
+			c.Prometheus.ListenAddr,
+			strconv.Itoa(c.Prometheus.ListenPort),
+		) + "/metrics"
 	}
 
 	if c.Cscli.HubURLTemplate == "" {
