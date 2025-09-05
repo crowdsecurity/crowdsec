@@ -61,7 +61,7 @@ jobs:
           working-directory: "./docker/test"
 
       - name: "Set up Python"
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: "./docker/test/.python-version"
 
