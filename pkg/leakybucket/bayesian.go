@@ -42,11 +42,6 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	var err error
 	BayesianEventArray := make([]*BayesianEvent, len(g.BayesianConditions))
 
-	if conditionalExprCache == nil {
-		conditionalExprCache = make(map[string]*vm.Program)
-	}
-	conditionalExprCacheLock.Lock()
-
 	for index, bcond := range g.BayesianConditions {
 		var bayesianEvent BayesianEvent
 		bayesianEvent.rawCondition = bcond
@@ -57,7 +52,6 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 		bayesianEvent.conditionalFilterRuntime = prog
 		BayesianEventArray[index] = &bayesianEvent
 	}
-	conditionalExprCacheLock.Unlock()
 	c.bayesianEventArray = BayesianEventArray
 
 	c.prior = g.BayesianPrior
