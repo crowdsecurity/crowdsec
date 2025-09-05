@@ -109,7 +109,7 @@ func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login st
 
 	pwd := strfmt.Password(password)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     login,
 		Password:      pwd,
 		URL:           apiURL,
@@ -119,9 +119,6 @@ func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login st
 			return scenarios, nil
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("new client api: %w", err)
-	}
 
 	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &login,
@@ -153,7 +150,7 @@ func GetLAPIClient() (*ApiClient, error) {
 	return lapiClient, nil
 }
 
-func NewClient(config *Config) (*ApiClient, error) {
+func NewClient(config *Config) *ApiClient {
 	userAgent := config.UserAgent
 	if userAgent == "" {
 		userAgent = useragent.Default()
@@ -211,7 +208,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.HeartBeat = (*HeartBeatService)(&c.common)
 	c.UsageMetrics = (*UsageMetricsService)(&c.common)
 
-	return c, nil
+	return c
 }
 
 func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {

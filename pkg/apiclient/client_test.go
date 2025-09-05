@@ -93,13 +93,12 @@ func TestNewClientOk(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -131,15 +130,13 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -171,13 +168,12 @@ func TestNewClientKo(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {

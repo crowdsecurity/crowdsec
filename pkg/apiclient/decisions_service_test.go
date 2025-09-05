@@ -424,13 +424,12 @@ func TestDeleteDecisions(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	deleted, _, err := client.Decisions.Delete(ctx, DecisionsDeleteOpts{IPEquals: "1.2.3.4"})
 	require.NoError(t, err)

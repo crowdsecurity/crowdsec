@@ -150,15 +150,12 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			cli.client, err = apiclient.NewClient(&apiclient.Config{
+			cli.client = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			return nil
 		},

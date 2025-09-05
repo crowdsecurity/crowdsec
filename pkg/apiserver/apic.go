@@ -223,7 +223,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
+	ret.apiClient = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
@@ -234,9 +234,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 			return dbClient.SaveAPICToken(ctx, tokenKey, token)
 		},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("while creating api client: %w", err)
-	}
 
 	err = ret.Authenticate(ctx, config)
 
