@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	conditionalExprCache = make(map[string]vm.Program)
+	conditionalExprCache = make(map[string]*vm.Program)
 	conditionalExprCacheLock sync.Mutex
 )
 
@@ -29,7 +29,7 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	conditionalExprCacheLock.Lock()
 	if compiled, ok := conditionalExprCache[g.ConditionalOverflow]; ok {
 		conditionalExprCacheLock.Unlock()
-		c.ConditionalFilterRuntime = &compiled
+		c.ConditionalFilterRuntime = compiled
 	} else {
 		conditionalExprCacheLock.Unlock()
 		//release the lock during compile
@@ -39,7 +39,7 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 		}
 		c.ConditionalFilterRuntime = compiledExpr
 		conditionalExprCacheLock.Lock()
-		conditionalExprCache[g.ConditionalOverflow] = *compiledExpr
+		conditionalExprCache[g.ConditionalOverflow] = compiledExpr
 		conditionalExprCacheLock.Unlock()
 	}
 	return err
