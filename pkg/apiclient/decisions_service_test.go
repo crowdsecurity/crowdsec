@@ -366,6 +366,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, isModified)
 
+	assert.NotEmpty(t, decisions)
 	log.Infof("decision1: %+v", decisions[0])
 	log.Infof("expected1: %+v", expected[0])
 	log.Infof("decisions: %s, %s, %s, %s, %s, %s", *decisions[0].Value, *decisions[0].Duration, *decisions[0].Scenario, *decisions[0].Scope, *decisions[0].Type, *decisions[0].Origin)
