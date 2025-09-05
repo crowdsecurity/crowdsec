@@ -108,7 +108,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	}
 
 	l.logger.Debugf("running condition expression: %s", b.rawCondition.ConditionalFilterName)
-	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
+	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
 	if err != nil {
 		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}
@@ -142,23 +142,33 @@ func (b *BayesianEvent) triggerGuillotine() {
 }
 
 func (b *BayesianEvent) compileCondition() error {
-	var err error
-	var compiledExpr *vm.Program
+	name := b.rawCondition.ConditionalFilterName
 
-	if compiled, ok := conditionalExprCache[b.rawCondition.ConditionalFilterName]; ok {
-		b.conditionalFilterRuntime = &compiled
+	conditionalExprCacheLock.Lock()
+	prog, ok := conditionalExprCache[name]
+	conditionalExprCacheLock.Unlock()
+	if ok {
+		b.conditionalFilterRuntime = &prog
 		return nil
 	}
 
-	conditionalExprCacheLock.Unlock()
-	//release the lock during compile same as coditional bucket
-	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+	// don't hold lock during compile
+	compiled, err := expr.Compile(name, exprhelpers.GetExprOptions(map[string]any{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("bayesian condition compile error: %w", err)
 	}
-	b.conditionalFilterRuntime = compiledExpr
-	conditionalExprCacheLock.Lock()
-	conditionalExprCache[b.rawCondition.ConditionalFilterName] = *compiledExpr
 
+	// re-check under lock in case of race, avoid double compilation
+	conditionalExprCacheLock.Lock()
+	if prog2, ok := conditionalExprCache[name]; ok {
+		conditionalExprCacheLock.Unlock()
+		b.conditionalFilterRuntime = &prog2
+		return nil
+	}
+
+	conditionalExprCache[name] = *compiled
+	conditionalExprCacheLock.Unlock()
+
+	b.conditionalFilterRuntime = compiled
 	return nil
 }
