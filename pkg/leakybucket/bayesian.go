@@ -42,21 +42,16 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	var err error
 	BayesianEventArray := make([]*BayesianEvent, len(g.BayesianConditions))
 
-	if conditionalExprCache == nil {
-		conditionalExprCache = make(map[string]vm.Program)
-	}
-	conditionalExprCacheLock.Lock()
-
 	for index, bcond := range g.BayesianConditions {
 		var bayesianEvent BayesianEvent
 		bayesianEvent.rawCondition = bcond
-		err = bayesianEvent.compileCondition()
+		prog, err := bayesianEvent.compileCondition()
 		if err != nil {
 			return err
 		}
+		bayesianEvent.conditionalFilterRuntime = prog
 		BayesianEventArray[index] = &bayesianEvent
 	}
-	conditionalExprCacheLock.Unlock()
 	c.bayesianEventArray = BayesianEventArray
 
 	c.prior = g.BayesianPrior
@@ -108,7 +103,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	}
 
 	l.logger.Debugf("running condition expression: %s", b.rawCondition.ConditionalFilterName)
-	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
+	ret, err := exprhelpers.Run(b.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
 	if err != nil {
 		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}
@@ -141,24 +136,31 @@ func (b *BayesianEvent) triggerGuillotine() {
 	b.guillotineState = true
 }
 
-func (b *BayesianEvent) compileCondition() error {
-	var err error
-	var compiledExpr *vm.Program
+func (b *BayesianEvent) compileCondition() (*vm.Program, error) {
+	name := b.rawCondition.ConditionalFilterName
 
-	if compiled, ok := conditionalExprCache[b.rawCondition.ConditionalFilterName]; ok {
-		b.conditionalFilterRuntime = &compiled
-		return nil
-	}
-
-	conditionalExprCacheLock.Unlock()
-	//release the lock during compile same as coditional bucket
-	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
-	if err != nil {
-		return fmt.Errorf("bayesian condition compile error: %w", err)
-	}
-	b.conditionalFilterRuntime = compiledExpr
 	conditionalExprCacheLock.Lock()
-	conditionalExprCache[b.rawCondition.ConditionalFilterName] = *compiledExpr
+	prog, ok := conditionalExprCache[name]
+	conditionalExprCacheLock.Unlock()
+	if ok {
+		return prog, nil
+	}
 
-	return nil
+	// don't hold lock during compile
+	compiled, err := expr.Compile(name, exprhelpers.GetExprOptions(map[string]any{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+	if err != nil {
+		return nil, fmt.Errorf("bayesian condition compile error: %w", err)
+	}
+
+	// re-check under lock in case of race, avoid double compilation
+	conditionalExprCacheLock.Lock()
+	if prog2, ok := conditionalExprCache[name]; ok {
+		conditionalExprCacheLock.Unlock()
+		return prog2, nil
+	}
+
+	conditionalExprCache[name] = compiled
+	conditionalExprCacheLock.Unlock()
+
+	return compiled, nil
 }
