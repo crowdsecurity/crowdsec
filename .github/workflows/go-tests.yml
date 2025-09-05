@@ -180,7 +180,7 @@ jobs:
 
     - name: Unit tests
       run: |
-        go install gotest.tools/gotestsum@v1.12.1
+        go install gotest.tools/gotestsum@v1.12.3
         # make the repo read-only, with the exception of coverage output
         touch coverage.out
         chmod -R a-w .
@@ -209,6 +209,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
       with:
-        version: v2.3
+        version: v2.4
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
