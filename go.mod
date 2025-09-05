@@ -10,7 +10,7 @@ require (
 	github.com/agext/levenshtein v1.2.3
 	github.com/alexliesenfeld/health v0.8.1
 	github.com/appleboy/gin-jwt/v2 v2.10.1
-	github.com/aws/aws-lambda-go v1.47.0
+	github.com/aws/aws-lambda-go v1.49.0
 	github.com/aws/aws-sdk-go v1.52.0
 	github.com/beevik/etree v1.4.1
 	github.com/blackfireio/osinfo v1.1.0
