@@ -498,15 +498,12 @@ func (cli *cliNotifications) fetchAlertFromArgString(ctx context.Context, toPars
 		return nil, fmt.Errorf("error parsing the URL of the API: %w", err)
 	}
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error creating the client for the API: %w", err)
-	}
 
 	alert, _, err := client.Alerts.GetByID(ctx, id)
 	if err != nil {

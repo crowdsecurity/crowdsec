@@ -68,20 +68,24 @@ func TestIndexJSON(t *testing.T) {
 	// but it can't be an empty string
 	hub, err := testHub(t, nil, "")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: unexpected end of JSON input")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	// it must be valid json
 	hub, err = testHub(t, nil, "def not json")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: invalid character 'd' looking for beginning of value. Run 'sudo cscli hub update' to download the index again")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	hub, err = testHub(t, nil, "{")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: unexpected end of JSON input")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	// and by json we mean an object
 	hub, err = testHub(t, nil, "[]")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: json: cannot unmarshal array into Go value of type cwhub.HubItems")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 }
 

@@ -82,7 +82,7 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		return err
 	}
 
-	c, _ := apiclient.NewClient(&apiclient.Config{
+	c := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
 		URL:           apiURL,

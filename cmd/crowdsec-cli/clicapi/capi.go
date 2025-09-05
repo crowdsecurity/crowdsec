@@ -172,7 +172,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 
 	passwd := strfmt.Password(password)
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID: login,
 		Password:  passwd,
 		URL:       apiURL,
@@ -183,9 +183,6 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 			return itemsForAPI, nil
 		},
 	})
-	if err != nil {
-		return capiStatus{}, err
-	}
 
 	pw := strfmt.Password(password)
 

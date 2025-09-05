@@ -138,8 +138,7 @@ func TestWatcherAuth(t *testing.T) {
 		UpdateScenario: updateScenario,
 	}
 
-	client, err := NewClient(clientConfig)
-	require.NoError(t, err)
+	client := NewClient(clientConfig)
 
 	scenarios, err := clientConfig.UpdateScenario(ctx)
 	require.NoError(t, err)
@@ -157,8 +156,7 @@ func TestWatcherAuth(t *testing.T) {
 	for _, errorCodeToTest := range errorCodesToTest {
 		clientConfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
 
-		client, err := NewClient(clientConfig)
-		require.NoError(t, err)
+		client := NewClient(clientConfig)
 
 		_, resp, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 			MachineID: &clientConfig.MachineID,
@@ -228,8 +226,7 @@ func TestWatcherUnregister(t *testing.T) {
 		UpdateScenario: updateScenario,
 	}
 
-	client, err := NewClient(mycfg)
-	require.NoError(t, err)
+	client := NewClient(mycfg)
 
 	_, err = client.Auth.UnregisterWatcher(ctx)
 	require.NoError(t, err)
@@ -288,8 +285,7 @@ func TestWatcherEnroll(t *testing.T) {
 		UpdateScenario: updateScenario,
 	}
 
-	client, err := NewClient(mycfg)
-	require.NoError(t, err)
+	client := NewClient(mycfg)
 
 	_, err = client.Auth.EnrollWatcher(ctx, "goodkey", "", []string{}, false)
 	require.NoError(t, err)
