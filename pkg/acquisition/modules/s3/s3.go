@@ -16,12 +16,12 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3Manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -31,6 +31,16 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+type S3API interface {
+	s3Manager.ListObjectsV2APIClient
+	s3Manager.DownloadAPIClient
+}
+
+type SQSAPI interface {
+	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+}
 
 type S3Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -51,12 +61,12 @@ type S3Source struct {
 	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       S3Configuration
 	logger       *log.Entry
-	s3Client     s3iface.S3API
-	sqsClient    sqsiface.SQSAPI
+	s3Client     S3API
+	sqsClient    SQSAPI
 	readerChan   chan S3Object
 	t            *tomb.Tomb
 	out          chan types.Event
-	ctx          aws.Context
+	ctx          context.Context
 	cancel       context.CancelFunc
 }
 
@@ -109,62 +119,60 @@ const (
 )
 
 func (s *S3Source) newS3Client() error {
-	options := session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}
-	if s.Config.AwsProfile != nil {
-		options.Profile = *s.Config.AwsProfile
+	if s.s3Client != nil {
+		return nil
 	}
 
-	sess, err := session.NewSessionWithOptions(options)
+	var loadOpts []func(*config.LoadOptions) error
+	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
+		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
+	}
+	region := s.Config.AwsRegion
+	if region == "" {
+		region = "us-east-1"
+	}
+	loadOpts = append(loadOpts, config.WithRegion(region))
+	loadOpts = append(loadOpts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+	cfg, err := config.LoadDefaultConfig(s.ctx, loadOpts...)
 	if err != nil {
-		return fmt.Errorf("failed to create aws session: %w", err)
+		return fmt.Errorf("failed to load aws config: %w", err)
 	}
 
-	config := aws.NewConfig()
-	if s.Config.AwsRegion != "" {
-		config = config.WithRegion(s.Config.AwsRegion)
-	}
+	var clientOpts []func(*s3.Options)
 	if s.Config.AwsEndpoint != "" {
-		config = config.WithEndpoint(s.Config.AwsEndpoint)
+		clientOpts = append(clientOpts, func(o *s3.Options) { o.BaseEndpoint = aws.String(s.Config.AwsEndpoint) })
 	}
 
-	s.s3Client = s3.New(sess, config)
-	if s.s3Client == nil {
-		return errors.New("failed to create S3 client")
-	}
-
+	s.s3Client = s3.NewFromConfig(cfg, clientOpts...)
 	return nil
 }
 
 func (s *S3Source) newSQSClient() error {
-	var sess *session.Session
-
-	if s.Config.AwsProfile != nil {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-			Profile:           *s.Config.AwsProfile,
-		}))
-	} else {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
+	if s.sqsClient != nil {
+		return nil
 	}
 
-	if sess == nil {
-		return errors.New("failed to create aws session")
+	var loadOpts []func(*config.LoadOptions) error
+	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
+		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
 	}
-	config := aws.NewConfig()
-	if s.Config.AwsRegion != "" {
-		config = config.WithRegion(s.Config.AwsRegion)
+	region := s.Config.AwsRegion
+	if region == "" {
+		region = "us-east-1"
 	}
+	loadOpts = append(loadOpts, config.WithRegion(region))
+	loadOpts = append(loadOpts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+	cfg, err := config.LoadDefaultConfig(s.ctx, loadOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to load aws config: %w", err)
+	}
+
+	var clientOpts []func(*sqs.Options)
 	if s.Config.AwsEndpoint != "" {
-		config = config.WithEndpoint(s.Config.AwsEndpoint)
+		clientOpts = append(clientOpts, func(o *sqs.Options) { o.BaseEndpoint = aws.String(s.Config.AwsEndpoint) })
 	}
-	s.sqsClient = sqs.New(sess, config)
-	if s.sqsClient == nil {
-		return errors.New("failed to create SQS client")
-	}
+
+	s.sqsClient = sqs.NewFromConfig(cfg, clientOpts...)
 	return nil
 }
 
@@ -186,13 +194,13 @@ func (s *S3Source) readManager() {
 	}
 }
 
-func (s *S3Source) getBucketContent() ([]*s3.Object, error) {
+func (s *S3Source) getBucketContent() ([]s3types.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
-	bucketObjects := make([]*s3.Object, 0)
+	bucketObjects := make([]s3types.Object, 0)
 	var continuationToken *string
 	for {
-		out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
+		out, err := s.s3Client.ListObjectsV2(s.ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.Config.BucketName),
 			Prefix:            aws.String(s.Config.Prefix),
 			ContinuationToken: continuationToken,
@@ -340,10 +348,10 @@ func (s *S3Source) sqsPoll() error {
 			return nil
 		default:
 			logger.Trace("Polling SQS queue")
-			out, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
+			out, err := s.sqsClient.ReceiveMessage(s.ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSName),
-				MaxNumberOfMessages: aws.Int64(10),
-				WaitTimeSeconds:     aws.Int64(20), // Probably no need to make it configurable ?
+				MaxNumberOfMessages: 10,
+				WaitTimeSeconds:     20, // Probably no need to make it configurable ?
 			})
 			if err != nil {
 				logger.Errorf("Error while polling SQS: %s", err)
@@ -359,10 +367,11 @@ func (s *S3Source) sqsPoll() error {
 				if err != nil {
 					logger.Errorf("Error while parsing SQS message: %s", err)
 					// Always delete the message to avoid infinite loop
-					_, err = s.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
-						QueueUrl:      aws.String(s.Config.SQSName),
-						ReceiptHandle: message.ReceiptHandle,
-					})
+					_, err = s.sqsClient.DeleteMessage(s.ctx,
+						&sqs.DeleteMessageInput{
+							QueueUrl:      aws.String(s.Config.SQSName),
+							ReceiptHandle: message.ReceiptHandle,
+						})
 					if err != nil {
 						logger.Errorf("Error while deleting SQS message: %s", err)
 					}
@@ -370,10 +379,11 @@ func (s *S3Source) sqsPoll() error {
 				}
 				logger.Debugf("Received SQS message for object %s/%s", bucket, key)
 				s.readerChan <- S3Object{Key: key, Bucket: bucket}
-				_, err = s.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
-					QueueUrl:      aws.String(s.Config.SQSName),
-					ReceiptHandle: message.ReceiptHandle,
-				})
+				_, err = s.sqsClient.DeleteMessage(s.ctx,
+					&sqs.DeleteMessageInput{
+						QueueUrl:      aws.String(s.Config.SQSName),
+						ReceiptHandle: message.ReceiptHandle,
+					})
 				if err != nil {
 					logger.Errorf("Error while deleting SQS message: %s", err)
 				}
@@ -393,7 +403,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		"key":    key,
 	})
 
-	output, err := s.s3Client.GetObjectWithContext(s.ctx, &s3.GetObjectInput{
+	output, err := s.s3Client.GetObject(s.ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
