@@ -1,6 +1,7 @@
 package hubtest
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 )
@@ -8,7 +9,7 @@ import (
 func basename(params ...any) (any, error) {
 	// keep nilaway happy
 	if len(params) == 0 || params[0] == nil {
-		return "", fmt.Errorf("basename: missing argument")
+		return "", errors.New("basename: missing argument")
 	}
 
 	// keep forcetypeassert happy

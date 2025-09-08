@@ -49,8 +49,12 @@ type Config struct {
 	Limit int
 }
 
-func updateURI(uri string, newStart time.Time) string {
-	u, _ := url.Parse(uri)
+func updateURI(uri string, newStart time.Time) (string, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return "", fmt.Errorf("invalid VictoriaLogs URL %q: %w", uri, err)
+	}
+
 	queryParams := u.Query()
 
 	if !newStart.IsZero() {
@@ -61,7 +65,7 @@ func updateURI(uri string, newStart time.Time) string {
 
 	u.RawQuery = queryParams.Encode()
 
-	return u.String()
+	return u.String(), nil
 }
 
 func (lc *VLClient) SetTomb(t *tomb.Tomb) {
@@ -120,7 +124,7 @@ func (lc *VLClient) doQueryRange(ctx context.Context, uri string, c chan *Log, i
 			resp, err := lc.Get(ctx, uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
-					return fmt.Errorf("error querying range: %w", err)
+					return fmt.Errorf("querying range: %w", err)
 				}
 
 				lc.increaseTicker(ticker)
@@ -144,7 +148,7 @@ func (lc *VLClient) doQueryRange(ctx context.Context, uri string, c chan *Log, i
 
 			n, largestTime, err := lc.readResponse(ctx, resp, c)
 			if err != nil {
-				return err
+				return fmt.Errorf("querying range: %w", err)
 			}
 
 			if !infinite && n < lc.config.Limit {
@@ -165,7 +169,10 @@ func (lc *VLClient) doQueryRange(ctx context.Context, uri string, c chan *Log, i
 				}
 			}
 
-			uri = updateURI(uri, largestTime)
+			uri, err = updateURI(uri, largestTime)
+			if err != nil {
+				return fmt.Errorf("querying range: %w", err)
+			}
 		}
 	}
 }
