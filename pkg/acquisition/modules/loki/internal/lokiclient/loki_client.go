@@ -48,8 +48,11 @@ type Config struct {
 	Limit    int
 }
 
-func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) string {
-	u, _ := url.Parse(uri)
+func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) (string, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return "", fmt.Errorf("invalid Loki URL %q: %w", uri, err)
+	}
 	queryParams := u.Query()
 
 	if len(lq.Data.Result) > 0 {
@@ -63,7 +66,7 @@ func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) string {
 	}
 
 	u.RawQuery = queryParams.Encode()
-	return u.String()
+	return u.String(), nil
 }
 
 func (lc *LokiClient) SetTomb(t *tomb.Tomb) {
@@ -171,7 +174,10 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 				}
 			}
 
-			uri = updateURI(uri, lq, infinite)
+			uri, err = updateURI(uri, lq, infinite)
+			if err != nil {
+				return fmt.Errorf("querying range: %w", err)
+			}
 		}
 	}
 }

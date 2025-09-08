@@ -2,6 +2,7 @@ package lokiclient
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -17,6 +18,11 @@ func (e *Entry) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+
+	if len(values) < 2 {
+		return fmt.Errorf("invalid Loki entry: expected [timestamp, line], got %v", values)
+	}
+
 	t, err := strconv.Atoi(values[0])
 	if err != nil {
 		return err
