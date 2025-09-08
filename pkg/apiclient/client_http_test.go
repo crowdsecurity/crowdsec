@@ -31,7 +31,7 @@ func TestNewRequestInvalid(t *testing.T) {
 	})
 
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
 		assert.NoError(t, err)

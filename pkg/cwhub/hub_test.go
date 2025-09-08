@@ -42,16 +42,17 @@ func testHubCfg(t *testing.T) *csconfig.LocalHubCfg {
 	return &local
 }
 
-func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJson string) (*Hub, error) {
+func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJSON string) (*Hub, error) {
 	if localCfg == nil {
 		localCfg = testHubCfg(t)
 	}
 
-	err := os.WriteFile(localCfg.HubIndexFile, []byte(indexJson), 0o644)
+	err := os.WriteFile(localCfg.HubIndexFile, []byte(indexJSON), 0o644)
 	require.NoError(t, err)
 
 	hub, err := NewHub(localCfg, nil)
 	require.NoError(t, err)
+
 	err = hub.Load()
 
 	return hub, err

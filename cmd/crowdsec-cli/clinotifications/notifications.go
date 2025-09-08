@@ -219,14 +219,17 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
+
 			ncfgs, err := cli.getProfilesConfigs()
 			if err != nil {
 				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
+
 			ncfg, ok := ncfgs[args[0]]
 			if !ok {
 				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
 			}
+
 			if cfg.Cscli.Output == "human" || cfg.Cscli.Output == "raw" {
 				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Type", ncfg.Config.Type)
 				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Name", ncfg.Config.Name)
@@ -250,7 +253,7 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliNotifications) notificationConfigFilter(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	ncfgs, err := cli.getProfilesConfigs()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError

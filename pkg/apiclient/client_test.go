@@ -138,7 +138,7 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	})
 
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
@@ -176,7 +176,7 @@ func TestNewClientKo(t *testing.T) {
 	})
 
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
 		assert.NoError(t, err)
@@ -205,7 +205,7 @@ func TestNewDefaultClient(t *testing.T) {
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	require.NoError(t, err)
 
-	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 		assert.NoError(t, err)
@@ -236,7 +236,7 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 		t.Fatalf("new api client: %s", err)
 	}
 
-	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 		assert.NoError(t, err)

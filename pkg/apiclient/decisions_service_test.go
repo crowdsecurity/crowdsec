@@ -404,7 +404,7 @@ func TestDeleteDecisions(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
 
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)

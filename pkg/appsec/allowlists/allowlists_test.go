@@ -52,7 +52,7 @@ func TestAppsecAllowlist(t *testing.T) {
 
 	mux.HandleFunc("/allowlists", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("with_content") != "true" {
-			t.Errorf("with_content not set")
+			t.Error("with_content not set")
 		}
 
 		w.WriteHeader(http.StatusOK)

@@ -64,6 +64,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
+
 	inbandRules := []string{}
 	nativeInbandRules := []string{}
 	outofbandRules := []string{}
@@ -80,8 +81,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 			t.Fatalf("failed compilation of rule %d/%d of %s : %s", ridx, len(test.inband_rules), test.name, err)
 		}
 		inbandRules = append(inbandRules, strRule)
-
 	}
+
 	nativeInbandRules = append(nativeInbandRules, test.inband_native_rules...)
 	nativeOutofbandRules = append(nativeOutofbandRules, test.outofband_native_rules...)
 	for ridx, rule := range test.outofband_rules {
@@ -130,13 +131,14 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/allowlists", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("with_content") != "true" {
-			t.Errorf("with_content not set")
+			t.Error("with_content not set")
 		}
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`[{"allowlist_id":"xxxx","console_managed":false,"created_at":"2025-02-11T14:47:35.839Z","description":"test_desc2",
@@ -158,6 +160,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		outChan:                OutChan,
 		appsecAllowlistsClient: allowlistClient,
 	}
+
 	err = runner.Init("/tmp/")
 	if err != nil {
 		if !test.expected_load_ok {
@@ -166,7 +169,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		t.Fatalf("unable to initialize runner : %s", err)
 	}
 	if !test.expected_load_ok {
-		t.Fatalf("expected load to fail but it didn't")
+		t.Fatal("expected load to fail but it didn't")
 	}
 
 	if test.afterload_asserts != nil {
