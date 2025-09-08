@@ -1,15 +1,15 @@
 package climetrics
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
-
-	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
@@ -25,14 +25,22 @@ func (cli *cliMetrics) list() error {
 	var allMetrics []metricType
 
 	ms := NewMetricStore()
-	for _, section := range maptools.SortedKeys(ms) {
-		title, description := ms[section].Description()
+	for sectionName, section := range ms {
+		if section == nil {
+			continue
+		}
+		title, description := section.Description()
 		allMetrics = append(allMetrics, metricType{
-			Type:        section,
+			Type:        sectionName,
 			Title:       title,
 			Description: description,
 		})
 	}
+
+	// consistent output order
+	slices.SortFunc(allMetrics, func(a, b metricType) int {
+		return cmp.Compare(a.Type, b.Type)
+	})
 
 	outputFormat := cli.cfg().Cscli.Output
 
