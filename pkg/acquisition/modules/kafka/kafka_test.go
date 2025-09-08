@@ -76,9 +76,9 @@ brokers:
 topic: crowdsec
 sasl:
   use_ssl: true
-  mechanism: "PLAIN"
-  username: "$ConnectionString"
-	password: "foo"`,
+  mechanism: PLAIN
+  username: $ConnectionString
+  password: foo`,
 			expectedErr: "",
 		},
 	}
