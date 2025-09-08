@@ -299,7 +299,7 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 		dialer.TLS = tlsConfig
 	} else if kc.SASL != nil && kc.SASL.UseSSL {
 		// to use SSL to connect to the broker, the kafka-go module
-		// simply needs an empty TLS Config. Only server cert is checked in this case.
+		// simply needs an empty TLS Config.
 		tlsConfig := tls.Config{}
 		dialer.TLS = &tlsConfig
 	}
