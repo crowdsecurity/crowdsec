@@ -488,7 +488,6 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 		select {
 		case <-ticker.C:
 			records, err := k.kClient.GetRecords(&kinesis.GetRecordsInput{ShardIterator: it})
-			it = records.NextShardIterator
 
 			var throughputErr *kinesis.ProvisionedThroughputExceededException
 			if errors.As(err, &throughputErr) {
@@ -510,6 +509,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 
 			k.ParseAndPushRecords(records.Records, out, logger, shardId)
 
+			it = records.NextShardIterator
 			if it == nil {
 				logger.Warnf("Shard has been closed")
 				return nil
