@@ -81,6 +81,19 @@ sasl:
   password: foo`,
 			expectedErr: "",
 		},
+		{
+			config: `
+source: kafka
+brokers:
+  - localhost:9092
+topic: crowdsec
+sasl:
+  use_ssl: true
+  mechanism: SCRAM
+  username: theUserName
+  password: 0123456789abcdef`,
+			expectedErr: "cannot create kafka dialer: unsupported sasl mechanism: SCRAM",
+		},
 	}
 
 	subLogger := log.WithField("type", "kafka")
