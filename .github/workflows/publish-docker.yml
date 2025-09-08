@@ -67,7 +67,7 @@ jobs:
         id: slim
         run: |
           DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
-          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
+          GHCR_IMAGE=ghcr.io/smartcommercecloud/crowdsec
           VERSION=${{ inputs.image_version }}
           DEBIAN=${{ inputs.debian && '-debian' || '' }}
           TAGS="${DOCKERHUB_IMAGE}:${VERSION}-slim${DEBIAN},${GHCR_IMAGE}:${VERSION}-slim${DEBIAN}"
@@ -81,7 +81,7 @@ jobs:
         id: full
         run: |
           DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
-          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
+          GHCR_IMAGE=ghcr.io/smartcommercecloud/crowdsec
           VERSION=${{ inputs.image_version }}
           DEBIAN=${{ inputs.debian && '-debian' || '' }}
           TAGS="${DOCKERHUB_IMAGE}:${VERSION}${DEBIAN},${GHCR_IMAGE}:${VERSION}${DEBIAN}"
