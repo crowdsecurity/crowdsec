@@ -39,7 +39,7 @@ var (
 	pluginTomb    tomb.Tomb
 	lpMetricsTomb tomb.Tomb
 
-	flags *Flags
+	flags Flags
 
 	// the state of acquisition
 	dataSources []acquisition.DataSource
@@ -236,7 +236,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	var logLevelViaFlag bool
 
-	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, flags)
+	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, &flags)
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
@@ -344,7 +344,6 @@ func main() {
 	log.Debugf("os.Args: %v", os.Args)
 
 	// Handle command line arguments
-	flags = &Flags{}
 	flags.Parse()
 
 	if len(flag.Args()) > 0 {
