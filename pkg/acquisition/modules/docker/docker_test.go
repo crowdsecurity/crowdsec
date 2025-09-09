@@ -31,9 +31,6 @@ import (
 const testContainerName = "docker_test"
 const testServiceName = "test_service"
 
-var readLogs = false
-var readServiceLogs = false
-
 func TestConfigure(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
 
@@ -234,11 +231,7 @@ func (cli *mockDockerCli) ServiceList(ctx context.Context, options dockerTypes.S
 }
 
 func (cli *mockDockerCli) ServiceLogs(ctx context.Context, serviceID string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
-	if readServiceLogs {
-		return io.NopCloser(strings.NewReader("")), nil
-	}
-
-	readServiceLogs = true
+	// Return test data - behavior depends on whether this is streaming or oneshot
 	data := []string{"service\n", "log\n", "test\n"}
 	ret := ""
 
@@ -249,8 +242,23 @@ func (cli *mockDockerCli) ServiceLogs(ctx context.Context, serviceID string, opt
 		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}
 
-	r := io.NopCloser(strings.NewReader(ret))
-	return r, nil
+	if !options.Follow {
+		// OneShot mode: return all data and close immediately
+		return io.NopCloser(strings.NewReader(ret)), nil
+	}
+
+	// Streaming mode: send data then block to simulate a live service
+	// This prevents infinite retry loops in streaming tests
+	reader, writer := io.Pipe()
+	go func() {
+		defer writer.Close()
+		// Write the test data
+		writer.Write([]byte(ret))
+		// Then block to simulate a continuous connection
+		<-ctx.Done()
+	}()
+
+	return reader, nil
 }
 
 func TestStreamingAcquisition(t *testing.T) {
@@ -341,8 +349,6 @@ service_name_regexp:
 				subLogger = log.WithField("type", "docker")
 			}
 
-			readLogs = false
-			readServiceLogs = false
 			dockerTomb := tomb.Tomb{}
 			out := make(chan types.Event)
 			dockerSource := DockerSource{}
@@ -590,10 +596,7 @@ service_name:
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
-	if readLogs {
-		return []dockerTypes.Container{}, nil
-	}
-
+	// Always return test container for the mock
 	containers := make([]dockerTypes.Container, 0)
 	container := &dockerTypes.Container{
 		ID:    "12456",
@@ -605,11 +608,7 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerConta
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
-	if readLogs {
-		return io.NopCloser(strings.NewReader("")), nil
-	}
-
-	readLogs = true
+	// Return test data - behavior depends on whether this is streaming or oneshot
 	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
 
@@ -620,9 +619,23 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}
 
-	r := io.NopCloser(strings.NewReader(ret)) // r type is io.ReadCloser
+	if !options.Follow {
+		// OneShot mode: return all data and close immediately
+		return io.NopCloser(strings.NewReader(ret)), nil
+	}
 
-	return r, nil
+	// Streaming mode: send data then block to simulate a live container
+	// This prevents infinite retry loops in streaming tests
+	reader, writer := io.Pipe()
+	go func() {
+		defer writer.Close()
+		// Write the test data
+		writer.Write([]byte(ret))
+		// Then block to simulate a continuous connection
+		<-ctx.Done()
+	}()
+
+	return reader, nil
 }
 
 func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (dockerTypes.ContainerJSON, error) {
@@ -707,7 +720,6 @@ func TestOneShot(t *testing.T) {
 				subLogger = log.WithField("type", "docker")
 			}
 
-			readLogs = false
 			dockerClient := &DockerSource{}
 			labels := make(map[string]string)
 			labels["type"] = ts.logType
