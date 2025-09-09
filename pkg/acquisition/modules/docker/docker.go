@@ -18,6 +18,7 @@ import (
 	dockerFilter "github.com/docker/docker/api/types/filters"
 	dockerTypesSwarm "github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -49,7 +50,6 @@ type DockerConfiguration struct {
 	ServiceIDRegexp      []string `yaml:"service_id_regexp"`
 	UseServiceLabels     bool     `yaml:"use_service_labels"`
 	UseContainerLabels   bool     `yaml:"use_container_labels"`
-	RetryCount           int      `yaml:"retry_count"`
 	RetryBackoffDuration string   `yaml:"retry_backoff_duration"`
 }
 
@@ -98,7 +98,6 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
 		FollowStdout:         true, // default
 		FollowStdErr:         true, // default
-		RetryCount:           3,    // default: 3 retries
 		RetryBackoffDuration: "5s", // default: 5 second backoff
 	}
 
@@ -177,11 +176,6 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		return fmt.Errorf("invalid retry_backoff_duration: %w", err)
 	}
 	d.retryBackoffDuration = backoffDuration
-
-	// Validate retry count
-	if d.Config.RetryCount < 0 {
-		return fmt.Errorf("retry_count must be >= 0, got %d", d.Config.RetryCount)
-	}
 
 	d.containerLogsOptions = &dockerContainer.LogsOptions{
 		ShowStdout: d.Config.FollowStdout,
@@ -929,7 +923,12 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *ContainerConfig) bool {
 	containerInfo, err := d.Client.ContainerInspect(ctx, container.ID)
 	if err != nil {
-		// If we can't inspect the container, assume it's a connection issue, not container death
+		if errdefs.IsNotFound(err) {
+			// Container does not exist - it was removed
+			container.logger.Debugf("container %s not found, was removed", container.Name)
+			return false
+		}
+		// Other errors (connection issues, etc.) - assume container is still running
 		container.logger.Debugf("failed to inspect container %s: %v, assuming still running", container.Name, err)
 		return true
 	}
@@ -943,9 +942,14 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *ContainerConfig) bool {
 	_, _, err := d.Client.ServiceInspectWithRaw(ctx, service.ID, dockerTypes.ServiceInspectOptions{})
 	if err != nil {
-		// If we can't inspect the service, it might have been removed
-		service.logger.Debugf("failed to inspect service %s: %v, assuming removed", service.Name, err)
-		return false
+		if errdefs.IsNotFound(err) {
+			// Service does not exist - it was removed
+			service.logger.Debugf("service %s not found, was removed", service.Name)
+			return false
+		}
+		// Other errors (connection issues, etc.) - assume service still exists
+		service.logger.Debugf("failed to inspect service %s: %v, assuming still running", service.Name, err)
+		return true
 	}
 
 	service.logger.Debugf("service %s still exists", service.Name)
