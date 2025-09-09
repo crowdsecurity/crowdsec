@@ -65,7 +65,7 @@ type Leaky struct {
 	tomb                *tomb.Tomb
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
-	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
+	mutex               sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
 	orderEvent          bool
 }
 
@@ -126,7 +126,6 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		tomb:            bucketFactory.tomb,
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
-		mutex:           &sync.Mutex{},
 		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
