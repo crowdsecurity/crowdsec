@@ -34,23 +34,22 @@ import (
 type DockerConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 
-	CheckInterval        string   `yaml:"check_interval"`
-	FollowStdout         bool     `yaml:"follow_stdout"`
-	FollowStdErr         bool     `yaml:"follow_stderr"`
-	Until                string   `yaml:"until"`
-	Since                string   `yaml:"since"`
-	DockerHost           string   `yaml:"docker_host"`
-	ContainerName        []string `yaml:"container_name"`
-	ContainerID          []string `yaml:"container_id"`
-	ContainerNameRegexp  []string `yaml:"container_name_regexp"`
-	ContainerIDRegexp    []string `yaml:"container_id_regexp"`
-	ServiceName          []string `yaml:"service_name"`
-	ServiceID            []string `yaml:"service_id"`
-	ServiceNameRegexp    []string `yaml:"service_name_regexp"`
-	ServiceIDRegexp      []string `yaml:"service_id_regexp"`
-	UseServiceLabels     bool     `yaml:"use_service_labels"`
-	UseContainerLabels   bool     `yaml:"use_container_labels"`
-	RetryBackoffDuration string   `yaml:"retry_backoff_duration"`
+	CheckInterval       string   `yaml:"check_interval"`
+	FollowStdout        bool     `yaml:"follow_stdout"`
+	FollowStdErr        bool     `yaml:"follow_stderr"`
+	Until               string   `yaml:"until"`
+	Since               string   `yaml:"since"`
+	DockerHost          string   `yaml:"docker_host"`
+	ContainerName       []string `yaml:"container_name"`
+	ContainerID         []string `yaml:"container_id"`
+	ContainerNameRegexp []string `yaml:"container_name_regexp"`
+	ContainerIDRegexp   []string `yaml:"container_id_regexp"`
+	ServiceName         []string `yaml:"service_name"`
+	ServiceID           []string `yaml:"service_id"`
+	ServiceNameRegexp   []string `yaml:"service_name_regexp"`
+	ServiceIDRegexp     []string `yaml:"service_id_regexp"`
+	UseServiceLabels    bool     `yaml:"use_service_labels"`
+	UseContainerLabels  bool     `yaml:"use_container_labels"`
 }
 
 type DockerSource struct {
@@ -67,7 +66,6 @@ type DockerSource struct {
 	t                     *tomb.Tomb
 	containerLogsOptions  *dockerContainer.LogsOptions
 	isSwarmManager        bool
-	retryBackoffDuration  time.Duration
 }
 
 type ContainerConfig struct {
@@ -96,9 +94,8 @@ func (dc *DockerConfiguration) hasContainerConfig() bool {
 
 func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
-		FollowStdout:         true, // default
-		FollowStdErr:         true, // default
-		RetryBackoffDuration: "5s", // default: 5 second backoff
+		FollowStdout: true, // default
+		FollowStdErr: true, // default
 	}
 
 	if err := yaml.UnmarshalWithOptions(yamlConfig, &d.Config, yaml.Strict()); err != nil {
@@ -169,13 +166,6 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	if d.Config.Since == "" {
 		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 	}
-
-	// Parse retry backoff duration
-	backoffDuration, err := time.ParseDuration(d.Config.RetryBackoffDuration)
-	if err != nil {
-		return fmt.Errorf("invalid retry_backoff_duration: %w", err)
-	}
-	d.retryBackoffDuration = backoffDuration
 
 	d.containerLogsOptions = &dockerContainer.LogsOptions{
 		ShowStdout: d.Config.FollowStdout,
@@ -988,17 +978,9 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 		// Update the Since timestamp to avoid re-reading logs from before the failure
 		container.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
 
-		container.logger.Warnf("container %s tail failed but container is healthy: %v, retrying in %v",
-			container.Name, err, d.retryBackoffDuration)
+		container.logger.Warnf("tail failed but container is healthy: %v, retrying immediately", err)
 
-		// Wait before retrying to avoid spamming logs/connections
-		select {
-		case <-time.After(d.retryBackoffDuration):
-			continue
-		case <-container.t.Dying():
-			container.logger.Infof("tail stopped for container %s during retry backoff", container.Name)
-			return nil
-		}
+		// Since container is healthy, retry immediately - no need to wait
 	}
 }
 
@@ -1006,6 +988,11 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 	dockerReader, err := d.Client.ContainerLogs(ctx, container.ID, *container.logOptions)
 	if err != nil {
 		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
+	}
+
+	// Log successful reconnection if this is a retry after failure
+	if container.logOptions.Since != "" {
+		container.logger.Info("successfully reconnected to container logs")
 	}
 
 	var scanner *bufio.Scanner
@@ -1089,17 +1076,9 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 		// Update the Since timestamp to avoid re-reading logs from before the failure
 		service.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
 
-		service.logger.Warnf("service %s tail failed but service is healthy: %v, retrying in %v",
-			service.Name, err, d.retryBackoffDuration)
+		service.logger.Warnf("tail failed but service is healthy: %v, retrying immediately", err)
 
-		// Wait before retrying to avoid spamming logs/connections
-		select {
-		case <-time.After(d.retryBackoffDuration):
-			continue
-		case <-service.t.Dying():
-			service.logger.Infof("tail stopped for service %s during retry backoff", service.Name)
-			return nil
-		}
+		// Since service is healthy, retry immediately - no need to wait
 	}
 }
 
@@ -1109,6 +1088,11 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 	dockerReader, err := d.Client.ServiceLogs(ctx, service.ID, *service.logOptions)
 	if err != nil {
 		return fmt.Errorf("unable to read logs from service %s: %w", service.Name, err)
+	}
+
+	// Log successful reconnection if this is a retry after failure
+	if service.logOptions.Since != "" {
+		service.logger.Info("successfully reconnected to service logs")
 	}
 
 	// Service logs don't use TTY, so we always use the dlog reader
