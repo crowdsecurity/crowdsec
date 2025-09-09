@@ -64,24 +64,26 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-func (r *LogRotate) rotateLogs(cfg PluginConfig) {
+func (r *LogRotate) rotateLogs(cfg PluginConfig) error {
 	// Rotate the log file
 	err := r.rotateLogFile(cfg.LogPath, r.MaxFiles)
 	if err != nil {
-		logger.Error("Failed to rotate log file", "error", err)
+		return err
 	}
 	// Reopen the FileWriter
 	FileWriter.Close()
 	FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		logger.Error("Failed to reopen log file", "error", err)
+		return err
 	}
 	// Reset the file size
 	FileInfo, err := FileWriter.Stat()
 	if err != nil {
-		logger.Error("Failed to get file info", "error", err)
+		return err
 	}
 	FileSize = FileInfo.Size()
+
+	return nil
 }
 
 func (r *LogRotate) rotateLogFile(logPath string, maxBackups int) error {
@@ -193,7 +195,9 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 		if FileSize > int64(cfg.LogRotate.MaxSize)*1024*1024 && cfg.LogRotate.Enabled {
 			logger.Debug("Rotating log file", "file", cfg.LogPath)
 			// Rotate the log file
-			cfg.LogRotate.rotateLogs(cfg)
+			if err = cfg.LogRotate.rotateLogs(cfg); err != nil {
+				logger.Error("Failed to rotate log file", "error", err)
+			}
 		}
 	}
 	return err
