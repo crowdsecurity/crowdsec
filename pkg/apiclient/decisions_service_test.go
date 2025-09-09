@@ -405,7 +405,7 @@ func TestDeleteDecisions(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
 
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
@@ -425,13 +425,12 @@ func TestDeleteDecisions(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	deleted, _, err := client.Decisions.Delete(ctx, DecisionsDeleteOpts{IPEquals: "1.2.3.4"})
 	require.NoError(t, err)
