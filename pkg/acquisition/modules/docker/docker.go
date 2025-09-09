@@ -947,7 +947,7 @@ func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *Conta
 }
 
 func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
-	container.logger.Info("start tail")
+	container.logger.Info("start monitoring")
 
 	for {
 		select {
@@ -990,10 +990,8 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
 	}
 
-	// Log successful reconnection if this is a retry after failure
-	if container.logOptions.Since != "" {
-		container.logger.Info("successfully reconnected to container logs")
-	}
+	// Log connection (both initial and reconnections)
+	container.logger.Info("connected to container logs")
 
 	var scanner *bufio.Scanner
 	// we use this library to normalize docker API logs (cf. https://ahmet.im/blog/docker-logs-api-binary-format-explained/)
@@ -1045,7 +1043,7 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 }
 
 func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
-	service.logger.Info("start tail")
+	service.logger.Info("start monitoring")
 
 	for {
 		select {
@@ -1090,10 +1088,8 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 		return fmt.Errorf("unable to read logs from service %s: %w", service.Name, err)
 	}
 
-	// Log successful reconnection if this is a retry after failure
-	if service.logOptions.Since != "" {
-		service.logger.Info("successfully reconnected to service logs")
-	}
+	// Log connection (both initial and reconnections)
+	service.logger.Info("connected to service logs")
 
 	// Service logs don't use TTY, so we always use the dlog reader
 	reader := dlog.NewReader(dockerReader)
