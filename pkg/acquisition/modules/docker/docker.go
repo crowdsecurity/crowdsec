@@ -178,11 +178,11 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	// Parse retry backoff duration
-	if backoffDuration, err := time.ParseDuration(d.Config.RetryBackoffDuration); err != nil {
+	backoffDuration, err := time.ParseDuration(d.Config.RetryBackoffDuration)
+	if err != nil {
 		return fmt.Errorf("invalid retry_backoff_duration: %w", err)
-	} else {
-		d.retryBackoffDuration = backoffDuration
 	}
+	d.retryBackoffDuration = backoffDuration
 
 	// Validate retry count
 	if d.Config.RetryCount < 0 {
@@ -970,27 +970,27 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 		consecutiveFailures++
 
 		// Check if this is a connection error and we should retry
-		if consecutiveFailures <= maxRetries {
-			// Set the Since timestamp to when we first failed to avoid re-reading logs
-			container.logOptions.Since = initialFailureTime
-
-			container.logger.Warnf("container %s tail failed (attempt %d/%d): %v, retrying in %v",
-				container.Name, consecutiveFailures, maxRetries+1, err, d.retryBackoffDuration)
-
-			// Wait before retrying, but allow cancellation
-			select {
-			case <-time.After(d.retryBackoffDuration):
-				continue
-			case <-container.t.Dying():
-				container.logger.Infof("tail stopped for container %s during retry backoff", container.Name)
-				return nil
-			}
-		} else {
+		if consecutiveFailures > maxRetries {
 			// Exhausted retries, remove container from monitoring
-			container.logger.Errorf("container %s tail failed after %d consecutive attempts, removing from monitoring: %v",
+			container.logger.Errorf("container %s tail failed after %d consecutive attempts, removing from monitoring: %v", 
 				container.Name, maxRetries+1, err)
 			deleteChan <- container
 			return err
+		}
+
+		// Set the Since timestamp to when we first failed to avoid re-reading logs
+		container.logOptions.Since = initialFailureTime
+		
+		container.logger.Warnf("container %s tail failed (attempt %d/%d): %v, retrying in %v", 
+			container.Name, consecutiveFailures, maxRetries+1, err, d.retryBackoffDuration)
+
+		// Wait before retrying, but allow cancellation
+		select {
+		case <-time.After(d.retryBackoffDuration):
+			continue
+		case <-container.t.Dying():
+			container.logger.Infof("tail stopped for container %s during retry backoff", container.Name)
+			return nil
 		}
 	}
 }
@@ -1104,27 +1104,27 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 		consecutiveFailures++
 
 		// Check if this is a connection error and we should retry
-		if consecutiveFailures <= maxRetries {
-			// Set the Since timestamp to when we first failed to avoid re-reading logs
-			service.logOptions.Since = initialFailureTime
-
-			service.logger.Warnf("service %s tail failed (attempt %d/%d): %v, retrying in %v",
-				service.Name, consecutiveFailures, maxRetries+1, err, d.retryBackoffDuration)
-
-			// Wait before retrying, but allow cancellation
-			select {
-			case <-time.After(d.retryBackoffDuration):
-				continue
-			case <-service.t.Dying():
-				service.logger.Infof("tail stopped for service %s during retry backoff", service.Name)
-				return nil
-			}
-		} else {
+		if consecutiveFailures > maxRetries {
 			// Exhausted retries, remove service from monitoring
 			service.logger.Errorf("service %s tail failed after %d consecutive attempts, removing from monitoring: %v",
 				service.Name, maxRetries+1, err)
 			deleteChan <- service
 			return err
+		}
+
+		// Set the Since timestamp to when we first failed to avoid re-reading logs
+		service.logOptions.Since = initialFailureTime
+
+		service.logger.Warnf("service %s tail failed (attempt %d/%d): %v, retrying in %v",
+			service.Name, consecutiveFailures, maxRetries+1, err, d.retryBackoffDuration)
+
+		// Wait before retrying, but allow cancellation
+		select {
+		case <-time.After(d.retryBackoffDuration):
+			continue
+		case <-service.t.Dying():
+			service.logger.Infof("tail stopped for service %s during retry backoff", service.Name)
+			return nil
 		}
 	}
 }
