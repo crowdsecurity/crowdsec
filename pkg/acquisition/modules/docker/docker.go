@@ -30,12 +30,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-// Error types for distinguishing different failure modes
-var (
-	ErrConnectionSuccessfulThenLost = errors.New("connection was successful but then lost")
-	ErrConnectionLostImmediately    = errors.New("connection lost immediately")
-)
-
 type DockerConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 
@@ -931,12 +925,35 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 	return scanner.Err()
 }
 
+// isContainerStillRunning checks if a container is still running via Docker API
+func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *ContainerConfig) bool {
+	containerInfo, err := d.Client.ContainerInspect(ctx, container.ID)
+	if err != nil {
+		// If we can't inspect the container, assume it's a connection issue, not container death
+		container.logger.Debugf("failed to inspect container %s: %v, assuming still running", container.Name, err)
+		return true
+	}
+
+	isRunning := containerInfo.State.Running
+	container.logger.Debugf("container %s running status: %v", container.Name, isRunning)
+	return isRunning
+}
+
+// isServiceStillRunning checks if a service still exists via Docker API
+func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *ContainerConfig) bool {
+	_, _, err := d.Client.ServiceInspectWithRaw(ctx, service.ID, dockerTypes.ServiceInspectOptions{})
+	if err != nil {
+		// If we can't inspect the service, it might have been removed
+		service.logger.Debugf("failed to inspect service %s: %v, assuming removed", service.Name, err)
+		return false
+	}
+
+	service.logger.Debugf("service %s still exists", service.Name)
+	return true
+}
+
 func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
 	container.logger.Info("start tail")
-
-	consecutiveFailures := 0
-	maxRetries := d.Config.RetryCount
-	var initialFailureTime string
 
 	for {
 		select {
@@ -953,38 +970,24 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 			return nil
 		}
 
-		// Check if this was a connection that worked for a while before failing
-		// If so, reset consecutive failures as this indicates the connection/container is healthy
-		if errors.Is(err, ErrConnectionSuccessfulThenLost) {
-			if consecutiveFailures > 0 {
-				container.logger.Infof("container %s had successful connection before failure, resetting failure count", container.Name)
-			}
-			consecutiveFailures = 0
-		}
+		// Check container health to determine if we should retry or give up
+		containerHealthy := d.isContainerStillRunning(ctx, container)
 
-		// First time we encounter an error in this failure sequence, capture the timestamp
-		if consecutiveFailures == 0 {
-			initialFailureTime = time.Now().UTC().Format(time.RFC3339)
-		}
-
-		consecutiveFailures++
-
-		// Check if this is a connection error and we should retry
-		if consecutiveFailures > maxRetries {
-			// Exhausted retries, remove container from monitoring
-			container.logger.Errorf("container %s tail failed after %d consecutive attempts, removing from monitoring: %v", 
-				container.Name, maxRetries+1, err)
+		if !containerHealthy {
+			// Container is dead/stopped - don't retry, remove from monitoring
+			container.logger.Infof("container %s is no longer running, removing from monitoring: %v", container.Name, err)
 			deleteChan <- container
 			return err
 		}
 
-		// Set the Since timestamp to when we first failed to avoid re-reading logs
-		container.logOptions.Since = initialFailureTime
-		
-		container.logger.Warnf("container %s tail failed (attempt %d/%d): %v, retrying in %v", 
-			container.Name, consecutiveFailures, maxRetries+1, err, d.retryBackoffDuration)
+		// Container is still running, so this is likely a temporary network/proxy issue
+		// Update the Since timestamp to avoid re-reading logs from before the failure
+		container.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
 
-		// Wait before retrying, but allow cancellation
+		container.logger.Warnf("container %s tail failed but container is healthy: %v, retrying in %v",
+			container.Name, err, d.retryBackoffDuration)
+
+		// Wait before retrying to avoid spamming logs/connections
 		select {
 		case <-time.After(d.retryBackoffDuration):
 			continue
@@ -998,7 +1001,7 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan types.Event) error {
 	dockerReader, err := d.Client.ContainerLogs(ctx, container.ID, *container.logOptions)
 	if err != nil {
-		return fmt.Errorf("container %s unable to read logs: %w", container.Name, ErrConnectionLostImmediately)
+		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
 	}
 
 	var scanner *bufio.Scanner
@@ -1016,10 +1019,6 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 		return ReadTailScanner(scanner, readerChan, readerTomb)
 	})
 
-	// Track if we've successfully processed any lines to distinguish between
-	// immediate connection failures vs connection that worked for a while
-	successfulConnection := false
-
 	for {
 		select {
 		case <-container.t.Dying():
@@ -1028,11 +1027,6 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 		case line := <-readerChan:
 			if line == "" {
 				continue
-			}
-
-			// Mark that we've successfully received data from this connection
-			if !successfulConnection {
-				successfulConnection = true
 			}
 
 			l := types.Line{}
@@ -1054,23 +1048,13 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 			// The only known case currently is when using docker-socket-proxy (and maybe a docker daemon restart)
 			container.logger.Debugf("readerTomb dying for container %s, connection lost", container.Name)
 			readerTomb.Kill(nil)
-
-			// Return different error types to help caller distinguish between immediate vs delayed failures
-			if successfulConnection {
-				return fmt.Errorf("container %s: %w", container.Name, ErrConnectionSuccessfulThenLost)
-			} else {
-				return fmt.Errorf("container %s: %w", container.Name, ErrConnectionLostImmediately)
-			}
+			return fmt.Errorf("reader connection lost for container %s", container.Name)
 		}
 	}
 }
 
 func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
 	service.logger.Info("start tail")
-
-	consecutiveFailures := 0
-	maxRetries := d.Config.RetryCount
-	var initialFailureTime string
 
 	for {
 		select {
@@ -1087,38 +1071,24 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 			return nil
 		}
 
-		// Check if this was a connection that worked for a while before failing
-		// If so, reset consecutive failures as this indicates the connection/service is healthy
-		if errors.Is(err, ErrConnectionSuccessfulThenLost) {
-			if consecutiveFailures > 0 {
-				service.logger.Infof("service %s had successful connection before failure, resetting failure count", service.Name)
-			}
-			consecutiveFailures = 0
-		}
+		// Check service health to determine if we should retry or give up
+		serviceHealthy := d.isServiceStillRunning(ctx, service)
 
-		// First time we encounter an error in this failure sequence, capture the timestamp
-		if consecutiveFailures == 0 {
-			initialFailureTime = time.Now().UTC().Format(time.RFC3339)
-		}
-
-		consecutiveFailures++
-
-		// Check if this is a connection error and we should retry
-		if consecutiveFailures > maxRetries {
-			// Exhausted retries, remove service from monitoring
-			service.logger.Errorf("service %s tail failed after %d consecutive attempts, removing from monitoring: %v",
-				service.Name, maxRetries+1, err)
+		if !serviceHealthy {
+			// Service was removed - don't retry, remove from monitoring
+			service.logger.Infof("service %s no longer exists, removing from monitoring: %v", service.Name, err)
 			deleteChan <- service
 			return err
 		}
 
-		// Set the Since timestamp to when we first failed to avoid re-reading logs
-		service.logOptions.Since = initialFailureTime
+		// Service still exists, so this is likely a temporary network/proxy issue
+		// Update the Since timestamp to avoid re-reading logs from before the failure
+		service.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
 
-		service.logger.Warnf("service %s tail failed (attempt %d/%d): %v, retrying in %v",
-			service.Name, consecutiveFailures, maxRetries+1, err, d.retryBackoffDuration)
+		service.logger.Warnf("service %s tail failed but service is healthy: %v, retrying in %v",
+			service.Name, err, d.retryBackoffDuration)
 
-		// Wait before retrying, but allow cancellation
+		// Wait before retrying to avoid spamming logs/connections
 		select {
 		case <-time.After(d.retryBackoffDuration):
 			continue
@@ -1134,7 +1104,7 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 	// Docker service logs aggregates logs from all running tasks of the service
 	dockerReader, err := d.Client.ServiceLogs(ctx, service.ID, *service.logOptions)
 	if err != nil {
-		return fmt.Errorf("service %s unable to read logs: %w", service.Name, ErrConnectionLostImmediately)
+		return fmt.Errorf("unable to read logs from service %s: %w", service.Name, err)
 	}
 
 	// Service logs don't use TTY, so we always use the dlog reader
@@ -1147,10 +1117,6 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 		return ReadTailScanner(scanner, readerChan, readerTomb)
 	})
 
-	// Track if we've successfully processed any lines to distinguish between
-	// immediate connection failures vs connection that worked for a while
-	successfulConnection := false
-
 	for {
 		select {
 		case <-service.t.Dying():
@@ -1159,11 +1125,6 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 		case line := <-readerChan:
 			if line == "" {
 				continue
-			}
-
-			// Mark that we've successfully received data from this connection
-			if !successfulConnection {
-				successfulConnection = true
 			}
 
 			l := types.Line{}
@@ -1184,13 +1145,7 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 			// Handle connection loss similar to containers
 			service.logger.Debugf("readerTomb dying for service %s, connection lost", service.Name)
 			readerTomb.Kill(nil)
-
-			// Return different error types to help caller distinguish between immediate vs delayed failures
-			if successfulConnection {
-				return fmt.Errorf("service %s: %w", service.Name, ErrConnectionSuccessfulThenLost)
-			} else {
-				return fmt.Errorf("service %s: %w", service.Name, ErrConnectionLostImmediately)
-			}
+			return fmt.Errorf("reader connection lost for service %s", service.Name)
 		}
 	}
 }

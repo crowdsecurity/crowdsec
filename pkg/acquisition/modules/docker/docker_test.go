@@ -627,12 +627,30 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 
 func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (dockerTypes.ContainerJSON, error) {
 	r := dockerTypes.ContainerJSON{
+		ContainerJSONBase: &dockerTypes.ContainerJSONBase{
+			State: &dockerTypes.ContainerState{
+				Running: true, // Mock container is running
+			},
+		},
 		Config: &dockerContainer.Config{
 			Tty: false,
 		},
 	}
 
 	return r, nil
+}
+
+func (cli *mockDockerCli) ServiceInspectWithRaw(ctx context.Context, serviceID string, opts dockerTypes.ServiceInspectOptions) (dockerTypesSwarm.Service, []byte, error) {
+	// Return a mock service that exists
+	service := dockerTypesSwarm.Service{
+		ID: serviceID,
+		Spec: dockerTypesSwarm.ServiceSpec{
+			Annotations: dockerTypesSwarm.Annotations{
+				Name: testServiceName,
+			},
+		},
+	}
+	return service, []byte("{}"), nil
 }
 
 // Since we are mocking the docker client, we return channels that will never be used
