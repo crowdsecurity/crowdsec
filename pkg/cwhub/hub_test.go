@@ -42,16 +42,17 @@ func testHubCfg(t *testing.T) *csconfig.LocalHubCfg {
 	return &local
 }
 
-func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJson string) (*Hub, error) {
+func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJSON string) (*Hub, error) {
 	if localCfg == nil {
 		localCfg = testHubCfg(t)
 	}
 
-	err := os.WriteFile(localCfg.HubIndexFile, []byte(indexJson), 0o644)
+	err := os.WriteFile(localCfg.HubIndexFile, []byte(indexJSON), 0o644)
 	require.NoError(t, err)
 
 	hub, err := NewHub(localCfg, nil)
 	require.NoError(t, err)
+
 	err = hub.Load()
 
 	return hub, err
@@ -68,20 +69,24 @@ func TestIndexJSON(t *testing.T) {
 	// but it can't be an empty string
 	hub, err := testHub(t, nil, "")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: unexpected end of JSON input")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	// it must be valid json
 	hub, err = testHub(t, nil, "def not json")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: invalid character 'd' looking for beginning of value. Run 'sudo cscli hub update' to download the index again")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	hub, err = testHub(t, nil, "{")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: unexpected end of JSON input")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	// and by json we mean an object
 	hub, err = testHub(t, nil, "[]")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: json: cannot unmarshal array into Go value of type cwhub.HubItems")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 }
 
