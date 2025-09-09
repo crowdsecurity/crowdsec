@@ -40,7 +40,7 @@ func updateProbability(prior, probGivenEvil, probGivenBenign float32) float32 {
 
 func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	var err error
-	BayesianEventArray := make([]*BayesianEvent, len(g.BayesianConditions))
+	bayesianEventArray := make([]*BayesianEvent, len(g.BayesianConditions))
 
 	for index, bcond := range g.BayesianConditions {
 		var bayesianEvent BayesianEvent
@@ -50,9 +50,9 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 			return err
 		}
 		bayesianEvent.conditionalFilterRuntime = prog
-		BayesianEventArray[index] = &bayesianEvent
+		bayesianEventArray[index] = &bayesianEvent
 	}
-	c.bayesianEventArray = BayesianEventArray
+	c.bayesianEventArray = bayesianEventArray
 
 	c.prior = g.BayesianPrior
 	c.threshold = g.BayesianThreshold
@@ -60,7 +60,7 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	return err
 }
 
-func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
+func (c *BayesianBucket) AfterBucketPour(_ *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, l *Leaky) *types.Event {
 		c.posterior = c.prior
 		l.logger.Debugf("starting bayesian evaluation with prior: %v", c.posterior)
@@ -129,6 +129,7 @@ func (b *BayesianEvent) getGuillotineState() bool {
 	if b.rawCondition.Guillotine {
 		return b.guillotineState
 	}
+
 	return false
 }
 
