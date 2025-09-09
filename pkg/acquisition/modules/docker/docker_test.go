@@ -254,7 +254,7 @@ func (cli *mockDockerCli) ServiceLogs(ctx context.Context, serviceID string, opt
 		defer writer.Close()
 		// Write the test data
 		if _, err := writer.Write([]byte(ret)); err != nil {
-			return // Context likely cancelled
+			return // Context likely canceled
 		}
 		// Then block to simulate a continuous connection
 		<-ctx.Done()
@@ -633,7 +633,7 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 		defer writer.Close()
 		// Write the test data
 		if _, err := writer.Write([]byte(ret)); err != nil {
-			return // Context likely cancelled
+			return // Context likely canceled
 		}
 		// Then block to simulate a continuous connection
 		<-ctx.Done()
