@@ -129,6 +129,7 @@ func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequ
 			Value: ptr.Of(*decision.Value),
 			UUID:  decision.UUID,
 		}
+
 		*x.ID = decision.ID
 
 		if decision.Simulated != nil {
@@ -174,6 +175,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 				Key:   meta.Key,
 				Value: meta.Value,
 			}
+
 			signal.Context = append(signal.Context, &contextItem)
 		}
 	}
@@ -223,7 +225,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
+	ret.apiClient = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
@@ -234,9 +236,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 			return dbClient.SaveAPICToken(ctx, tokenKey, token)
 		},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("while creating api client: %w", err)
-	}
 
 	err = ret.Authenticate(ctx, config)
 
@@ -331,7 +330,9 @@ func (a *apic) Push(ctx context.Context) error {
 			}
 
 			a.mu.Lock()
+
 			cache = append(cache, signals...)
+
 			a.mu.Unlock()
 		}
 	}
@@ -424,6 +425,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
+
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
 
@@ -461,6 +463,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 			}
 
 			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
+
 			nbDeleted += dbCliDel
 		}
 	}

@@ -133,7 +133,7 @@ jobs:
         submodules: false
 
     - name: "Set up Go"
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
       with:
         go-version-file: go.mod
 
@@ -200,7 +200,7 @@ jobs:
         make build BUILD_PROFILE=minimal
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@fdcc8476540edceab3de004e990f80d881c6cc00
+      uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
       with:
         files: coverage.out
         flags: unit-linux
