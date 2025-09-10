@@ -12,11 +12,15 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/blackfireio/osinfo"
+	"gopkg.in/yaml.v3"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/host"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -42,7 +46,7 @@ const (
 	SUPPORT_METRICS_DIR           = "metrics/"
 	SUPPORT_VERSION_PATH          = "version.txt"
 	SUPPORT_FEATURES_PATH         = "features.txt"
-	SUPPORT_OS_INFO_PATH          = "osinfo.txt"
+	SUPPORT_SYSTEM_PATH           = "system.yaml"
 	SUPPORT_HUB                   = "hub.txt"
 	SUPPORT_BOUNCERS_PATH         = "lapi/bouncers.txt"
 	SUPPORT_AGENTS_PATH           = "lapi/agents.txt"
@@ -153,25 +157,61 @@ func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
 	cli.writeToZip(zw, SUPPORT_FEATURES_PATH, time.Now(), w)
 }
 
-func (cli *cliSupport) dumpOSInfo(zw *zip.Writer) error {
-	log.Info("Collecting OS info")
+func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
+	log.Info("Collecting system info (gopsutil + runtime)")
 
-	info, err := osinfo.GetOSInfo()
-	if err != nil {
-		return err
+	type snapshot struct {
+		Timestamp  time.Time `yaml:"timestamp"`
+		GoOS       string    `yaml:"go_os"`
+		GoARCH     string    `yaml:"go_arch"`
+		GoVersion  string    `yaml:"go_version"`
+		NumCPU     int       `yaml:"num_cpu"`
+		Goroutines int       `yaml:"goroutines"`
+		CgoCalls   int64     `yaml:"cgo_calls"`
+
+		Host       *host.InfoStat             `yaml:"host,omitempty"`
+		CPUInfo    []cpu.InfoStat             `yaml:"cpu_info,omitempty"`
+		CPUCounts  struct {
+			Logical  int `yaml:"logical"`
+			Physical int `yaml:"physical"`
+		} `yaml:"cpu_counts"`
+		BuildInfo *debug.BuildInfo  `yaml:"build_info,omitempty"`
 	}
 
-	w := new(bytes.Buffer)
-	fmt.Fprintf(w, "Architecture: %s\n", info.Architecture)
-	fmt.Fprintf(w, "Family: %s\n", info.Family)
-	fmt.Fprintf(w, "ID: %s\n", info.ID)
-	fmt.Fprintf(w, "Name: %s\n", info.Name)
-	fmt.Fprintf(w, "Codename: %s\n", info.Codename)
-	fmt.Fprintf(w, "Version: %s\n", info.Version)
-	fmt.Fprintf(w, "Build: %s\n", info.Build)
+	s := snapshot{
+		Timestamp:  time.Now(),
+		GoOS:       runtime.GOOS,
+		GoARCH:     runtime.GOARCH,
+		GoVersion:  runtime.Version(),
+		NumCPU:     runtime.NumCPU(),
+		Goroutines: runtime.NumGoroutine(),
+		CgoCalls:   runtime.NumCgoCall(),
+	}
 
-	cli.writeToZip(zw, SUPPORT_OS_INFO_PATH, time.Now(), w)
+	// best-effort, errors ignored
 
+	if h, err := host.Info(); err == nil {
+		s.Host = h
+	}
+	if ci, err := cpu.Info(); err == nil {
+		s.CPUInfo = ci
+	}
+	if n, err := cpu.Counts(true); err == nil {
+		s.CPUCounts.Logical = n
+	}
+	if n, err := cpu.Counts(false); err == nil {
+		s.CPUCounts.Physical = n
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		s.BuildInfo = bi
+	}
+
+	buf, err := yaml.Marshal(&s)
+	if err != nil {
+		return fmt.Errorf("serialize system info to YAML: %w", err)
+	}
+
+	cli.writeToZip(zw, SUPPORT_SYSTEM_PATH, time.Now(), bytes.NewReader(buf))
 	return nil
 }
 
@@ -513,8 +553,8 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		log.Warn(err)
 	}
 
-	if err = cli.dumpOSInfo(zipWriter); err != nil {
-		log.Warnf("could not collect OS information: %s", err)
+	if err = cli.dumpSystemInfo(zipWriter); err != nil {
+		log.Warnf("could not collect system information: %s", err)
 	}
 
 	if err = cli.dumpConfigYAML(zipWriter); err != nil {
@@ -613,7 +653,7 @@ func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 		Short: "Dump all your configuration to a zip file for easier support",
 		Long: `Dump the following information:
 - Crowdsec version
-- OS version
+- OS version and runtime system information
 - Enabled feature flags
 - Latest Crowdsec logs (log processor, LAPI, remediation components)
 - Installed collections, parsers, scenarios...
