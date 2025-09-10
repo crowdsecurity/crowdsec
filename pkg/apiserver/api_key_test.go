@@ -14,7 +14,7 @@ func TestAPIKey(t *testing.T) {
 	ctx := t.Context()
 	router, config := NewAPITest(t, ctx)
 
-	APIKey, _ := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+	apiKey, _ := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
 
 	// Login with empty token
 	w := httptest.NewRecorder()
@@ -44,7 +44,7 @@ func TestAPIKey(t *testing.T) {
 	req, err = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("X-Api-Key", APIKey)
+	req.Header.Add("X-Api-Key", apiKey)
 	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 
@@ -56,7 +56,7 @@ func TestAPIKey(t *testing.T) {
 	req, err = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("X-Api-Key", APIKey)
+	req.Header.Add("X-Api-Key", apiKey)
 	req.RemoteAddr = "4.3.2.1:1234"
 	router.ServeHTTP(w, req)
 
@@ -68,7 +68,7 @@ func TestAPIKey(t *testing.T) {
 	req, err = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("X-Api-Key", APIKey)
+	req.Header.Add("X-Api-Key", apiKey)
 	req.RemoteAddr = "4.3.2.1:1234"
 	router.ServeHTTP(w, req)
 
@@ -80,7 +80,7 @@ func TestAPIKey(t *testing.T) {
 	req, err = http.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("X-Api-Key", APIKey)
+	req.Header.Add("X-Api-Key", apiKey)
 	req.RemoteAddr = "127.0.0.1:1234"
 	router.ServeHTTP(w, req)
 

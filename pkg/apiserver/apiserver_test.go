@@ -48,7 +48,7 @@ var (
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -98,7 +98,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 
 func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -145,7 +145,7 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 	apiServer, err := NewServer(ctx, config.API.Server)
 	require.NoError(t, err)
 
-	log.Printf("Creating new API server")
+	log.Info("Creating new API server")
 	gin.SetMode(gin.TestMode)
 
 	return apiServer, config
@@ -175,7 +175,7 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 	err = apiServer.InitController()
 	require.NoError(t, err)
 
-	log.Printf("Creating new API server")
+	log.Info("Creating new API server")
 	gin.SetMode(gin.TestMode)
 
 	router, err := apiServer.Router()
@@ -366,7 +366,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -420,7 +420,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
