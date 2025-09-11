@@ -14,7 +14,7 @@ RUN git clone https://github.com/daulet/tokenizers.git /tokenizer && \
     cargo build --release && \
     cp target/release/libtokenizers.a /tokenizer/libtokenizers.a
 
-FROM docker.io/golang:1.24-bookworm AS build
+FROM docker.io/golang:1.25-bookworm AS build
 
 ARG BUILD_VERSION
 ARG ONNXRUNTIME_VERSION=1.18.1

@@ -308,15 +308,12 @@ func (cli *cliAllowLists) newListCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			client, err := apiclient.NewClient(&apiclient.Config{
+			client := apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			return cli.list(cmd.Context(), client, color.Output)
 		},
@@ -534,15 +531,12 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			client, err := apiclient.NewClient(&apiclient.Config{
+			client := apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			name := args[0]
 
@@ -671,15 +665,12 @@ func (cli *cliAllowLists) check(ctx context.Context, ips []string) error {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		return fmt.Errorf("creating api client: %w", err)
-	}
 
 	for _, ip := range ips {
 		resp, _, err := client.Allowlists.CheckIfAllowlistedWithReason(ctx, ip)
