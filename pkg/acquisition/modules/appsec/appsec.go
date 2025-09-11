@@ -407,6 +407,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		listener, err := net.Listen("tcp", url)
 		if err != nil {
 			serverError <- fmt.Errorf("listening on %s: %w", url, err)
+			return
 		}
 
 		w.logger.Infof("Appsec listening on %s", url)
