@@ -98,18 +98,20 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	return true
 }
 
-func printStaticTarget(static ExtraField) string {
+// targetExpr returns a human-readable selector string that describes
+// where this ExtraField will write its value in the event.
+func (ef ExtraField) targetExpr() string {
 	switch {
-	case static.Method != "":
-		return static.Method
-	case static.Parsed != "":
-		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	case static.Meta != "":
-		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	case static.Enriched != "":
-		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	case static.TargetByName != "":
-		return static.TargetByName
+	case ef.Method != "":
+		return ef.Method
+	case ef.Parsed != "":
+		return fmt.Sprintf(".Parsed[%s]", ef.Parsed)
+	case ef.Meta != "":
+		return fmt.Sprintf(".Meta[%s]", ef.Meta)
+	case ef.Enriched != "":
+		return fmt.Sprintf(".Enriched[%s]", ef.Enriched)
+	case ef.TargetByName != "":
+		return ef.TargetByName
 	default:
 		return "?"
 	}
@@ -155,7 +157,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		if value == "" {
 			// allow ParseDate to have empty input
 			if static.Method != "ParseDate" {
-				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
+				clog.Debugf("Empty value for %s, skip.", static.targetExpr())
 				continue
 			}
 		}
