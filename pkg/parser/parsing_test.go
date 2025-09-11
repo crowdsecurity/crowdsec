@@ -105,7 +105,7 @@ func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, di
 
 	log.Warningf("testing %s", dir)
 
-	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
+	parser_cfg_file := filepath.Join(dir, "parsers.yaml")
 
 	cfg, err := os.ReadFile(parser_cfg_file)
 	if err != nil {
@@ -135,7 +135,7 @@ func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, di
 
 	// TBD: Load post overflows
 	// func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
-	parser_test_file := fmt.Sprintf("%s/test.yaml", dir)
+	parser_test_file := filepath.Join(dir, "test.yaml")
 	tests := loadTestFile(t, parser_test_file)
 	count := 1
 
