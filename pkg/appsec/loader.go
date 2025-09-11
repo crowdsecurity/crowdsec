@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -30,6 +31,10 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 		if err != nil {
 			log.Warnf("unable to parse file %s : %s", hubAppsecRuleItem.State.LocalPath, err)
 			continue
+		}
+
+		if rule.Name == "" {
+			return fmt.Errorf("appsec rule name is empty for %s", hubAppsecRuleItem.State.LocalPath)
 		}
 
 		rule.hash = hubAppsecRuleItem.State.LocalHash
