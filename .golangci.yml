@@ -142,11 +142,19 @@ linters:
         - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterHeaders
         - (*github.com/crowdsecurity/crowdsec/pkg/longpollclient.LongPollClient).Stop
 
+    errorlint:
+      # Check whether fmt.Errorf uses the %w verb for formatting errors.
+      # See the https://github.com/polyfloyd/go-errorlint for caveats.
+      # Default: true
+      errorf: false
+      errorf-multi: true
+      asserts: true
+      comparison: true
+
     gocritic:
       enable-all: true
       disabled-checks:
         - paramTypeCombine
-        - ifElseChain
         - hugeParam
         - commentedOutCode
         - commentedOutImport
@@ -162,6 +170,10 @@ linters:
         - docStub
         - preferFprint
         - importShadow
+
+      settings:
+        ifElseChain:
+          minThreshold: 4
 
     gomoddirectives:
       replace-allow-list:
@@ -297,10 +309,6 @@ linters:
         - -QF1003
         - -QF1012
 
-    wsl:
-      # Allow blocks to end with comments
-      allow-trailing-comment: true
-
   exclusions:
     presets:
       - comments
@@ -322,13 +330,6 @@ linters:
         text: fmt.Sprintf can be replaced .*
 
       # Will fix, easy but some thinking required
-
-      - linters:
-          - errorlint
-        text: non-wrapping format verb for fmt.Errorf. Use `%w` to format errors
-      - linters:
-          - nosprintfhostport
-        text: host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf
 
       # https://github.com/timakin/bodyclose
       - linters:
