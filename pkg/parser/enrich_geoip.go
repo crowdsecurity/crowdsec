@@ -64,8 +64,11 @@ func GeoIpASN(field string, p *types.Event, plog *log.Entry) (map[string]string,
 
 	ret := make(map[string]string)
 
-	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	ret["ASNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	// narrator: it was actually 16 bits
+	asnStr := strconv.FormatUint(uint64(record.AutonomousSystemNumber), 10)
+
+	ret["ASNNumber"] = asnStr
+	ret["ASNumber"] = asnStr // back-compat
 	ret["ASNOrg"] = record.AutonomousSystemOrganization
 
 	plog.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNNumber"], ret["ASNOrg"])

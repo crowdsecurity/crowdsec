@@ -42,7 +42,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 
 	iter := reflect.ValueOf(evt).Elem()
 	if !iter.IsValid() || iter.IsZero() {
-		log.Tracef("event is nil")
+		log.Trace("event is nil")
 		return false
 	}
 
@@ -98,18 +98,20 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	return true
 }
 
-func printStaticTarget(static ExtraField) string {
+// targetExpr returns a human-readable selector string that describes
+// where this ExtraField will write its value in the event.
+func (ef ExtraField) targetExpr() string {
 	switch {
-	case static.Method != "":
-		return static.Method
-	case static.Parsed != "":
-		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	case static.Meta != "":
-		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	case static.Enriched != "":
-		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	case static.TargetByName != "":
-		return static.TargetByName
+	case ef.Method != "":
+		return ef.Method
+	case ef.Parsed != "":
+		return fmt.Sprintf(".Parsed[%s]", ef.Parsed)
+	case ef.Meta != "":
+		return fmt.Sprintf(".Meta[%s]", ef.Meta)
+	case ef.Enriched != "":
+		return fmt.Sprintf(".Enriched[%s]", ef.Enriched)
+	case ef.TargetByName != "":
+		return ef.TargetByName
 	default:
 		return "?"
 	}
@@ -122,12 +124,14 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 
 	clog := n.Logger
 
+	exprEnv := map[string]any{"evt": event}
+
 	for _, static := range statics {
 		value = ""
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := exprhelpers.Run(static.RunTimeValue, map[string]any{"evt": event}, clog, n.Debug)
+			output, err := exprhelpers.Run(static.RunTimeValue, exprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -155,7 +159,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		if value == "" {
 			// allow ParseDate to have empty input
 			if static.Method != "ParseDate" {
-				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
+				clog.Debugf("Empty value for %s, skip.", static.targetExpr())
 				continue
 			}
 		}
@@ -268,6 +272,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		ensureStageCache()
 	}
 
+	exprEnv := map[string]any{"evt": &event}
+
 	for _, stage := range ctx.Stages {
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
@@ -298,7 +304,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				nodes[idx].Profiling = true
 			}
-			ret, err := nodes[idx].process(&event, ctx, map[string]any{"evt": &event})
+			ret, err := nodes[idx].process(&event, ctx, exprEnv)
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err
