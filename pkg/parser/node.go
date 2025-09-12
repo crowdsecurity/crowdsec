@@ -112,7 +112,7 @@ func (n *Node) validate(ectx EnricherCtx) error {
 		}
 	}
 
-	for idx:= range n.Stash {
+	for idx := range n.Stash {
 		// pointer not value, to avoid throwing away the defaults
 		stash := &n.Stash[idx]
 
@@ -345,8 +345,10 @@ func (n *Node) processLeaves(
 	nodeHasOKGrok bool,
 ) (bool, error) {
 	nodeState := initialState
+
 	for idx := range n.LeavesNodes {
 		child := &n.LeavesNodes[idx]
+
 		ret, err := child.process(p, ctx, cachedExprEnv)
 		if err != nil {
 			n.Logger.Tracef("\tNode (%s) failed: %v", child.rn, err)
@@ -368,10 +370,10 @@ func (n *Node) processLeaves(
 				If the parent node has a successful grok pattern, its state will stay successful even if one or more childs fail.
 				If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
 			*/
-
 			nodeState = false
 		}
 	}
+
 	return nodeState, nil
 }
 
@@ -404,7 +406,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if err != nil {
 		return false, err
 	}
-	
+
 	// Process the stash (data collection) if: a grok was present and succeeded, or if there is no grok
 	if nodeHasOKGrok || n.Grok.RunTimeRegexp == nil {
 		if err := n.processStash(p, cachedExprEnv, clog); err != nil {
@@ -416,6 +418,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if err != nil {
 		return false, err
 	}
+
 	nodeState = leafState
 
 	/*todo : check if a node made the state change ?*/
