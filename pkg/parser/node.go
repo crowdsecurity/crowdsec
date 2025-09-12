@@ -112,7 +112,7 @@ func (n *Node) validate(ectx EnricherCtx) error {
 		}
 	}
 
-	for idx:= range n.Stash {
+	for idx := range n.Stash {
 		// pointer not value, to avoid throwing away the defaults
 		stash := &n.Stash[idx]
 
@@ -337,6 +337,46 @@ func (n *Node) processStash(p *types.Event, cachedExprEnv map[string]any, logger
 	return nil
 }
 
+func (n *Node) processLeaves(
+	p *types.Event,
+	ctx UnixParserCtx,
+	cachedExprEnv map[string]any,
+	initialState bool,
+	nodeHasOKGrok bool,
+) (bool, error) {
+	nodeState := initialState
+
+	for idx := range n.LeavesNodes {
+		child := &n.LeavesNodes[idx]
+
+		ret, err := child.process(p, ctx, cachedExprEnv)
+		if err != nil {
+			n.Logger.Tracef("\tNode (%s) failed: %v", child.rn, err)
+			n.Logger.Debugf("Event leaving node: ko")
+			return false, err
+		}
+
+		n.Logger.Tracef("\tsub-node (%s) ret: %v (strategy:%s)", child.rn, ret, n.OnSuccess)
+
+		if ret {
+			nodeState = true
+			/* if child is successful, stop processing */
+			if n.OnSuccess == "next_stage" {
+				n.Logger.Debugf("child is success, OnSuccess=next_stage, skip")
+				break
+			}
+		} else if !nodeHasOKGrok {
+			/*
+				If the parent node has a successful grok pattern, its state will stay successful even if one or more childs fail.
+				If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
+			*/
+			nodeState = false
+		}
+	}
+
+	return nodeState, nil
+}
+
 func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]any) (bool, error) {
 	clog := n.Logger
 
@@ -374,34 +414,13 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 	}
 
-	// Iterate on leafs
-	leaves := n.LeavesNodes
-	for idx := range leaves {
-		ret, err := leaves[idx].process(p, ctx, cachedExprEnv)
-		if err != nil {
-			clog.Tracef("\tNode (%s) failed : %v", leaves[idx].rn, err)
-			clog.Debugf("Event leaving node : ko")
-
-			return false, err
-		}
-
-		clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaves[idx].rn, ret, n.OnSuccess)
-
-		if ret {
-			nodeState = true
-			/* if child is successful, stop processing */
-			if n.OnSuccess == "next_stage" {
-				clog.Debugf("child is success, OnSuccess=next_stage, skip")
-				break
-			}
-		} else if !nodeHasOKGrok {
-			/*
-				If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
-				If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
-			*/
-			nodeState = false
-		}
+	leafState, err := n.processLeaves(p, ctx, cachedExprEnv, nodeState, nodeHasOKGrok)
+	if err != nil {
+		return false, err
 	}
+
+	nodeState = leafState
+
 	/*todo : check if a node made the state change ?*/
 	/* should the childs inherit the on_success behavior */
 
