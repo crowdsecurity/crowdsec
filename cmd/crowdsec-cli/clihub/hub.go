@@ -234,12 +234,12 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
 	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
-	switch {
-	case errors.Is(err, hubops.ErrUserCanceled):
+	if err != nil {
+		if !errors.Is(err, hubops.ErrUserCanceled) {
+			return err
+		}
 		// not a real error, and we'll want to print the reload message anyway
 		fmt.Fprintln(os.Stdout, err.Error())
-	case err != nil:
-		return err
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
