@@ -160,7 +160,8 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			}
 		}
 
-		if static.Method != "" {
+		switch {
+		case static.Method != "":
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
@@ -186,22 +187,22 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			if !processed {
 				clog.Debugf("method '%s' doesn't exist", static.Method)
 			}
-		} else if static.Parsed != "" {
+		case static.Parsed != "":
 			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
 			event.Parsed[static.Parsed] = value
-		} else if static.Meta != "" {
+		case static.Meta != "":
 			clog.Debugf(".Meta[%s] = '%s'", static.Meta, value)
 			event.Meta[static.Meta] = value
-		} else if static.Enriched != "" {
+		case static.Enriched != "":
 			clog.Debugf(".Enriched[%s] = '%s'", static.Enriched, value)
 			event.Enriched[static.Enriched] = value
-		} else if static.TargetByName != "" {
+		case static.TargetByName != "":
 			if !SetTargetByName(static.TargetByName, value, event) {
 				clog.Errorf("Unable to set value of '%s'", static.TargetByName)
 			} else {
 				clog.Debugf("%s = '%s'", static.TargetByName, value)
 			}
-		} else {
+		default:
 			clog.Fatal("unable to process static : unknown target")
 		}
 	}
@@ -225,8 +226,13 @@ var (
 )
 
 var (
-	StageParseCache dumps.ParserResults
+	StageParseCache dumps.ParserResults = make(dumps.ParserResults)
 	StageParseMutex sync.Mutex
+	// initialize the cache only once, even if called concurrently
+	ensureStageCache = sync.OnceFunc(func() {
+		StageParseCache["success"] = make(map[string][]dumps.ParserResult)
+		StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
+	})
 )
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
@@ -259,23 +265,10 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	if ParseDump {
-		if StageParseCache == nil {
-			StageParseMutex.Lock()
-			StageParseCache = make(dumps.ParserResults)
-			StageParseCache["success"] = make(map[string][]dumps.ParserResult)
-			StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
-			StageParseMutex.Unlock()
-		}
+		ensureStageCache()
 	}
 
 	for _, stage := range ctx.Stages {
-		if ParseDump {
-			StageParseMutex.Lock()
-			if _, ok := StageParseCache[stage]; !ok {
-				StageParseCache[stage] = make(map[string][]dumps.ParserResult)
-			}
-			StageParseMutex.Unlock()
-		}
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
 		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
@@ -313,19 +306,31 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 			if ParseDump {
 				var parserIdxInStage int
-				StageParseMutex.Lock()
-				if len(StageParseCache[stage][nodes[idx].Name]) == 0 {
-					StageParseCache[stage][nodes[idx].Name] = make([]dumps.ParserResult, 0)
-					parserIdxInStage = len(StageParseCache[stage])
-				} else {
-					parserIdxInStage = StageParseCache[stage][nodes[idx].Name][0].Idx
-				}
-				StageParseMutex.Unlock()
 
+				// copy outside of critical section
 				evtcopy := deepcopy.Copy(event)
-				parserInfo := dumps.ParserResult{Evt: evtcopy.(types.Event), Success: ret, Idx: parserIdxInStage}
+				name := nodes[idx].Name
+
+				// ensure the stage map exists
 				StageParseMutex.Lock()
-				StageParseCache[stage][nodes[idx].Name] = append(StageParseCache[stage][nodes[idx].Name], parserInfo)
+				stageMap, ok := StageParseCache[stage]
+				if !ok {
+					stageMap = make(map[string][]dumps.ParserResult)
+					StageParseCache[stage] = stageMap
+				}
+
+				// ensure the slice for this parser exists
+				if _, ok := stageMap[name]; !ok {
+					stageMap[name] = make([]dumps.ParserResult, 0)
+					parserIdxInStage = len(stageMap)
+				} else {
+					parserIdxInStage = stageMap[name][0].Idx
+				}
+
+				stageMap[name] = append(stageMap[name], dumps.ParserResult{
+					Evt: evtcopy.(types.Event),
+					Success: ret, Idx: parserIdxInStage,
+				})
 				StageParseMutex.Unlock()
 			}
 			if ret {

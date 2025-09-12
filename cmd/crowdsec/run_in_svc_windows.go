@@ -37,31 +37,33 @@ func StartRunSvc() error {
 		return runService(svcName)
 	}
 
-	if flags.WinSvc == "Install" {
+	switch flags.WinSvc {
+	case "Install":
 		err = installService(svcName, svcDescription)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "Remove" {
+	case "Remove":
 		err = removeService(svcName)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "Start" {
+	case "Start":
 		err = startService(svcName)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "Stop" {
+	case "Stop":
 		err = controlService(svcName, svc.Stop, svc.Stopped)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "" {
+	case "":
 		return WindowsRun()
-	} else {
+	default:
 		return fmt.Errorf("Invalid value for winsvc parameter: %s", flags.WinSvc)
 	}
+
 	return nil
 }
 

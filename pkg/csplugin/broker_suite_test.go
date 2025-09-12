@@ -51,7 +51,9 @@ func (s *PluginSuite) SetupSuite() {
 		s.builtBinary += ".exe"
 	}
 
-	cmd := exec.Command("go", "build", "-o", s.builtBinary, "../../cmd/notification-dummy/")
+	ctx := t.Context()
+
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", s.builtBinary, "../../cmd/notification-dummy/")
 	err = cmd.Run()
 	require.NoError(t, err, "while building dummy plugin")
 }
@@ -120,6 +122,7 @@ func (s *PluginSuite) SetupSubTest() {
 
 	err = copyFile(s.builtBinary, s.pluginBinary)
 	require.NoError(t, err, "while copying built binary")
+
 	err = os.Chmod(s.pluginBinary, 0o744)
 	require.NoError(t, err, "chmod 0744 %s", s.pluginBinary)
 
