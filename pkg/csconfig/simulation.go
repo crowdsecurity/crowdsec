@@ -14,7 +14,7 @@ import (
 )
 
 type SimulationConfig struct {
-	Simulation bool    `yaml:"simulation"`
+	Simulation bool     `yaml:"simulation"`
 	Exclusions []string `yaml:"exclusions,omitempty"`
 }
 

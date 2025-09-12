@@ -162,9 +162,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:              ptr.Of(true),
-				AcquisitionFilePath: notExistFullPath,
-				AcquisitionFiles:    []string{},
+				Enable:               ptr.Of(true),
+				AcquisitionFilePath:  notExistFullPath,
+				AcquisitionFiles:     []string{},
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				BucketsRoutinesCount: 1,
