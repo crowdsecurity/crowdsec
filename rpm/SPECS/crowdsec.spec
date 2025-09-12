@@ -131,13 +131,13 @@ rm -rf %{buildroot}
 %{_unitdir}/%{name}-hubupdate.service
 %{_unitdir}/%{name}-hubupdate.timer
 
-%ghost %{_sysconfdir}/%{name}/hub/.index.json
-%ghost %{_localstatedir}/log/%{name}.log
+%ghost %attr(0600,root,root) %{_sysconfdir}/%{name}/hub/.index.json
+%ghost %attr(0600,root,root) %{_localstatedir}/log/%{name}.log
 %dir /var/lib/%{name}/data/
 %dir %{_sysconfdir}/%{name}/hub
 
-%ghost %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-%ghost %{_sysconfdir}/crowdsec/online_api_credentials.yaml
+%ghost %attr(0600,root,root) %{_sysconfdir}/crowdsec/local_api_credentials.yaml
+%ghost %attr(0600,root,root) %{_sysconfdir}/crowdsec/online_api_credentials.yaml
 %ghost %{_sysconfdir}/crowdsec/acquis.yaml
 
 %pre

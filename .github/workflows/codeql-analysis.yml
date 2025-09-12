@@ -50,14 +50,14 @@ jobs:
         fetch-depth: 0
 
     - name: "Set up Go"
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
       with:
         go-version-file: go.mod
         cache-dependency-path: "**/go.sum"
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@3c3833e0f8c1c83d449a7478aa59c036a9165498
+      uses: github/codeql-action/init@192325c86100d080feab897ff886c34abd4c83a3
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -81,4 +81,4 @@ jobs:
        make clean build BUILD_RE2_WASM=1
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@3c3833e0f8c1c83d449a7478aa59c036a9165498
+      uses: github/codeql-action/analyze@192325c86100d080feab897ff886c34abd4c83a3

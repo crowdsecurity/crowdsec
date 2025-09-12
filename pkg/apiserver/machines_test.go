@@ -19,7 +19,8 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid format
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader("test"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader("test"))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -28,7 +29,8 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid input
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(`{"test": "test"}`))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(`{"test": "test"}`))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -42,7 +44,8 @@ func TestCreateMachine(t *testing.T) {
 	body := string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -62,7 +65,8 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Real-Ip", "1.1.1.1")
 	router.ServeHTTP(w, req)
@@ -86,7 +90,8 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Real-IP", "1.1.1.1")
 	router.ServeHTTP(w, req)
@@ -112,7 +117,8 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -133,12 +139,14 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	body := CreateTestMachine(t, ctx, router, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -159,7 +167,8 @@ func TestAutoRegistration(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)
@@ -175,7 +184,8 @@ func TestAutoRegistration(t *testing.T) {
 	body = string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.RemoteAddr = "42.42.42.42:4242"
 	router.ServeHTTP(w, req)
@@ -191,7 +201,8 @@ func TestAutoRegistration(t *testing.T) {
 	body = string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.RemoteAddr = "42.42.42.42:4242"
 	router.ServeHTTP(w, req)
@@ -207,7 +218,8 @@ func TestAutoRegistration(t *testing.T) {
 	body = string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)
@@ -223,7 +235,8 @@ func TestAutoRegistration(t *testing.T) {
 	body = string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)

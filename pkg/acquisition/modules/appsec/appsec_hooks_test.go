@@ -361,10 +361,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, http.StatusOK, statusCode)
 				// We have both an event an overflow
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
-				require.Nil(t, events[0].Overflow.Alert)
-				require.NotNil(t, events[1].Overflow.Alert)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Nil(t, events[1].Overflow.Alert)
+				require.NotNil(t, events[0].Overflow.Alert)
 			},
 		},
 		{
