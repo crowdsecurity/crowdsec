@@ -1,0 +1,15 @@
+#!/bin/sh
+
+test -x /usr/bin/cscli || exit 0
+
+# splay hub upgrade and crowdsec reload
+sleep "$(seq 1 300 | shuf -n 1)"
+
+/usr/bin/cscli --error hub update >/dev/null
+
+upgraded=$(/usr/bin/cscli --error hub upgrade)
+if [ -n "$upgraded" ]; then
+    systemctl reload crowdsec
+fi
+
+exit 0
