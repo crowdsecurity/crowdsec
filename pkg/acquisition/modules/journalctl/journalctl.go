@@ -146,6 +146,14 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)
+			// Some journalctl warnings are benign (eg. corrupted journal files that are ignored by systemd)
+			lowerStderr := strings.ToLower(stderrLine)
+			if strings.Contains(lowerStderr, "ignoring file") {
+				// Do not kill the datasource for non-fatal journalctl warnings about ignored files
+				logger.Infof("journalctl reported an ignored file, continuing: %s", stderrLine)
+				continue
+			}
+
 			err := fmt.Errorf("journalctl error : %s", stderrLine)
 			t.Kill(err)
 		case errScanner, ok := <-errChan:
