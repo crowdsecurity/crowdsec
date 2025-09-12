@@ -18,8 +18,9 @@ import (
 
 var (
 	serialized      map[string]Leaky
-	BucketPourCache map[string][]types.Event
+	BucketPourCache map[string][]types.Event = make(map[string][]types.Event)
 	BucketPourTrack bool
+	bucketPourMu	sync.Mutex
 )
 
 /*
@@ -158,11 +159,11 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
-				if _, ok := BucketPourCache[bucket.Name]; !ok {
-					BucketPourCache[bucket.Name] = make([]types.Event, 0)
-				}
-				evt := deepcopy.Copy(*parsed)
-				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt.(types.Event))
+				evt := deepcopy.Copy(*parsed).(types.Event)
+
+				bucketPourMu.Lock()
+				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt)
+				bucketPourMu.Unlock()
 			}
 			sent = true
 			continue
@@ -220,14 +221,11 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	var ok, condition, poured bool
 
 	if BucketPourTrack {
-		if BucketPourCache == nil {
-			BucketPourCache = make(map[string][]types.Event)
-		}
-		if _, ok = BucketPourCache["OK"]; !ok {
-			BucketPourCache["OK"] = make([]types.Event, 0)
-		}
-		evt := deepcopy.Copy(parsed)
-		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
+		evt := deepcopy.Copy(parsed).(types.Event)
+
+		bucketPourMu.Lock()
+		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt)
+		bucketPourMu.Unlock()
 	}
 	//find the relevant holders (scenarios)
 	for idx := range holders {
