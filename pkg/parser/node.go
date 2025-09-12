@@ -147,7 +147,7 @@ func (n *Node) validate(ectx EnricherCtx) error {
 func (n *Node) processFilter(cachedExprEnv map[string]any) (bool, error) {
 	clog := n.Logger
 	if n.RunTimeFilter == nil {
-		clog.Trace("Node has not filter, enter")
+		clog.Trace("Node has no filter, enter")
 		return true, nil
 	}
 
