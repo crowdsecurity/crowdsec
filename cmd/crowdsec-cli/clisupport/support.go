@@ -18,11 +18,11 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/host"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -169,13 +169,13 @@ func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
 		Goroutines int       `yaml:"goroutines"`
 		CgoCalls   int64     `yaml:"cgo_calls"`
 
-		Host       *host.InfoStat             `yaml:"host,omitempty"`
-		CPUInfo    []cpu.InfoStat             `yaml:"cpu_info,omitempty"`
-		CPUCounts  struct {
+		Host      *host.InfoStat `yaml:"host,omitempty"`
+		CPUInfo   []cpu.InfoStat `yaml:"cpu_info,omitempty"`
+		CPUCounts struct {
 			Logical  int `yaml:"logical"`
 			Physical int `yaml:"physical"`
 		} `yaml:"cpu_counts"`
-		BuildInfo *debug.BuildInfo  `yaml:"build_info,omitempty"`
+		BuildInfo *debug.BuildInfo `yaml:"build_info,omitempty"`
 	}
 
 	s := snapshot{
@@ -193,15 +193,19 @@ func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
 	if h, err := host.Info(); err == nil {
 		s.Host = h
 	}
+
 	if ci, err := cpu.Info(); err == nil {
 		s.CPUInfo = ci
 	}
+
 	if n, err := cpu.Counts(true); err == nil {
 		s.CPUCounts.Logical = n
 	}
+
 	if n, err := cpu.Counts(false); err == nil {
 		s.CPUCounts.Physical = n
 	}
+
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		s.BuildInfo = bi
 	}
@@ -212,6 +216,7 @@ func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
 	}
 
 	cli.writeToZip(zw, SUPPORT_SYSTEM_PATH, time.Now(), bytes.NewReader(buf))
+
 	return nil
 }
 
@@ -459,7 +464,7 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 }
 
 // writeToZip adds a file to the zip archive, from a reader
-func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) {
+func (*cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) {
 	header := &zip.FileHeader{
 		Name:     filename,
 		Method:   zip.Deflate,
