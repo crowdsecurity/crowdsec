@@ -374,6 +374,8 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		}
 	}
 
+	listenConfig := &net.ListenConfig{}
+
 	// Starting Unix socket listener
 	go func(socket string) {
 		if socket == "" {
@@ -388,7 +390,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 		w.logger.Infof("creating unix socket %s", socket)
 
-		listener, err := net.Listen("unix", socket)
+		listener, err := listenConfig.Listen(ctx, "unix", socket)
 		if err != nil {
 			serverError <- csnet.WrapSockErr(err, socket)
 			return
@@ -404,7 +406,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 			return
 		}
 
-		listener, err := net.Listen("tcp", url)
+		listener, err := listenConfig.Listen(ctx, "tcp", url)
 		if err != nil {
 			serverError <- fmt.Errorf("listening on %s: %w", url, err)
 			return
