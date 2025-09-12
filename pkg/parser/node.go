@@ -112,7 +112,10 @@ func (n *Node) validate(ectx EnricherCtx) error {
 		}
 	}
 
-	for idx, stash := range n.Stash {
+	for idx:= range n.Stash {
+		// pointer not value, to avoid throwing away the defaults
+		stash := &n.Stash[idx]
+
 		if stash.Name == "" {
 			return fmt.Errorf("stash %d : name must be set", idx)
 		}
