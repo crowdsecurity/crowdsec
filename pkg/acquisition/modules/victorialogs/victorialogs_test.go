@@ -16,6 +16,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -212,10 +213,10 @@ func TestConfigureDSN(t *testing.T) {
 		}
 
 		if test.scheme != "" {
-			url, _ := url.Parse(vlSource.Config.URL)
-			if test.scheme != url.Scheme {
-				t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
-			}
+			url, err := url.Parse(vlSource.Config.URL)
+			require.NoError(t, err)
+			require.NotNil(t, url)
+			require.Equal(t, test.scheme, url.Scheme)
 		}
 
 		if test.waitForReady != 0 {
