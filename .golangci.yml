@@ -474,10 +474,6 @@ linters:
 
       - linters:
           - noctx
-        text: "net.Dial must not be called"
-
-      - linters:
-          - noctx
         text: "net.LookupHost must not be called"
 
     paths:

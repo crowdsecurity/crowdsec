@@ -101,8 +101,11 @@ func getTLSClient(c *PluginConfig) error {
 	if c.UnixSocket != "" {
 		logger.Info(fmt.Sprintf("Using socket '%s'", c.UnixSocket))
 
-		transport.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", strings.TrimSuffix(c.UnixSocket, "/"))
+		dialer := &net.Dialer{}
+		socketPath := strings.TrimSuffix(c.UnixSocket, "/")
+
+		transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "unix", socketPath)
 		}
 	}
 
