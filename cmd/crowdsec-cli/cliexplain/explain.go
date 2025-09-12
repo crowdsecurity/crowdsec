@@ -19,8 +19,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func getLineCountForFile(filepath string) (int, error) {
-	f, err := os.Open(filepath)
+func getLineCountForFile(pth string) (int, error) {
+	f, err := os.Open(pth)
 	if err != nil {
 		return 0, err
 	}
@@ -232,7 +232,7 @@ func (cli *cliExplain) run(ctx context.Context) error {
 
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(string(output))
+		fmt.Fprintln(os.Stdout, string(output))
 
 		return fmt.Errorf("fail to run crowdsec for test: %w", err)
 	}

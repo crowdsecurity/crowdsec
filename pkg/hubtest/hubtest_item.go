@@ -123,10 +123,10 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
-	ParserAssert := NewParserAssert(parserAssertFilePath)
+	parserAssert := NewParserAssert(parserAssertFilePath)
 
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
-	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
+	scenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
 
 	// force own_data_dir for backard compatibility
 	if name == "magento-ccs-by-as" || name == "magento-ccs-by-country" || name == "geoip-enrich" {
@@ -170,8 +170,8 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 		TemplateAcquisPath:        hubTest.TemplateAcquisPath,
 		TemplateAppsecProfilePath: hubTest.TemplateAppsecProfilePath,
 		HubIndex:                  hubTest.HubIndex,
-		ScenarioAssert:            ScenarioAssert,
-		ParserAssert:              ParserAssert,
+		ScenarioAssert:            scenarioAssert,
+		ParserAssert:              parserAssert,
 		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
 		NucleiTargetHost:          hubTest.NucleiTargetHost,
 		AppSecHost:                hubTest.AppSecHost,

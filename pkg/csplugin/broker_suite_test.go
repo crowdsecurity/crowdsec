@@ -122,6 +122,7 @@ func (s *PluginSuite) SetupSubTest() {
 
 	err = copyFile(s.builtBinary, s.pluginBinary)
 	require.NoError(t, err, "while copying built binary")
+
 	err = os.Chmod(s.pluginBinary, 0o744)
 	require.NoError(t, err, "chmod 0744 %s", s.pluginBinary)
 
