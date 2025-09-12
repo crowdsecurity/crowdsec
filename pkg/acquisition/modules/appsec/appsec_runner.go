@@ -321,6 +321,9 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 			return
 		}
 
+		// The alert needs to be sent first:
+		// The event and the alert share the same internal map (parsed, meta, ...)
+		// The event can be modified by the parsers, which might cause a concurrent map read/write
 		// Should the match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
