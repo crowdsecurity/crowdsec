@@ -1147,11 +1147,24 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 }
 
 func updateCounterForDecision(counter map[string]map[string]int, origin *string, scenario *string, totalDecisions int) {
+	if counter == nil || origin == nil {
+		return
+	}
+
+	m, ok := counter[*origin]
+	if !ok {
+		m = make(map[string]int)
+		counter[*origin] = m
+	}
+
 	switch *origin {
 	case types.CAPIOrigin:
-		counter[*origin]["all"] += totalDecisions
+		m["all"] += totalDecisions
 	case types.ListOrigin:
-		counter[*origin][*scenario] += totalDecisions
+		if scenario == nil {
+			return
+		}
+		m[*scenario] += totalDecisions
 	default:
 		log.Warningf("Unknown origin %s", *origin)
 	}
