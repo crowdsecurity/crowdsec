@@ -1,6 +1,7 @@
 package hubtest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -11,10 +12,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func IsAlive(target string) (bool, error) {
+func IsAlive(ctx context.Context, target string) (bool, error) {
 	start := time.Now()
 	for {
-		conn, err := net.Dial("tcp", target)
+		dialer := &net.Dialer{}
+		conn, err := dialer.DialContext(ctx, "tcp", target)
 		if err == nil {
 			log.Debugf("'%s' is up after %s", target, time.Since(start))
 			conn.Close()

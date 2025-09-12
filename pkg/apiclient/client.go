@@ -312,9 +312,12 @@ func createTransport(url *url.URL) (*http.Transport, *url.URL) {
 	url.Host = "unix"
 	url.Scheme = "http"
 
+	dialer := &net.Dialer{}
+	socketPath := strings.TrimSuffix(urlString, "/")
+
 	return &http.Transport{
-		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", strings.TrimSuffix(urlString, "/"))
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "unix", socketPath)
 		},
 	}, url
 }
