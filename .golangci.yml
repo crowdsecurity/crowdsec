@@ -177,7 +177,7 @@ linters:
 
     gomoddirectives:
       replace-allow-list:
-        - golang.org/x/time/rate
+        - golang.org/x/time
         - github.com/corazawaf/coraza/v3
 
     govet:
@@ -481,7 +481,6 @@ linters:
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/time/rate
       - pkg/metabase
       - third_party$
       - builtin$

@@ -10,12 +10,12 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
