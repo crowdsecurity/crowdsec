@@ -65,7 +65,7 @@ func TestParser(t *testing.T) {
 }
 
 func BenchmarkParser(t *testing.B) {
-	log.Printf("start bench !!!!")
+	log.Print("start bench !!!!")
 
 	debug = false
 
@@ -98,18 +98,17 @@ func BenchmarkParser(t *testing.B) {
 
 func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
 	var (
-		err            error
-		pnodes         []Node
-		parser_configs []Stagefile
+		pnodes        []Node
+		parserConfigs []Stagefile
 	)
 
 	log.Warningf("testing %s", dir)
 
-	parser_cfg_file := filepath.Join(dir, "parsers.yaml")
+	parserCfgFile := filepath.Join(dir, "parsers.yaml")
 
-	cfg, err := os.ReadFile(parser_cfg_file)
+	cfg, err := os.ReadFile(parserCfgFile)
 	if err != nil {
-		return fmt.Errorf("failed opening %s: %w", parser_cfg_file, err)
+		return fmt.Errorf("failed opening %s: %w", parserCfgFile, err)
 	}
 
 	tmpl, err := template.New("test").Parse(string(cfg))
@@ -124,19 +123,19 @@ func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, di
 		panic(err)
 	}
 
-	if err = yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
-		return fmt.Errorf("failed to parse %s: %w", parser_cfg_file, err)
+	if err = yaml.UnmarshalStrict(out.Bytes(), &parserConfigs); err != nil {
+		return fmt.Errorf("failed to parse %s: %w", parserCfgFile, err)
 	}
 
-	pnodes, err = LoadStages(parser_configs, pctx, ectx)
+	pnodes, err = LoadStages(parserConfigs, pctx, ectx)
 	if err != nil {
 		return fmt.Errorf("unable to load parser config: %w", err)
 	}
 
 	// TBD: Load post overflows
 	// func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
-	parser_test_file := filepath.Join(dir, "test.yaml")
-	tests := loadTestFile(t, parser_test_file)
+	parserTestFile := filepath.Join(dir, "test.yaml")
+	tests := loadTestFile(t, parserTestFile)
 	count := 1
 
 	if b != nil {
@@ -298,6 +297,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 			valid = true
 		}
 	}
+
 checkFinished:
 	if valid {
 		if debug {

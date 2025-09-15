@@ -73,7 +73,7 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 	return isWhitelisted
 }
 
-func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event) (bool, error) {
+func (n *Node) CheckExprWL(cachedExprEnv map[string]any, p *types.Event) (bool, error) {
 	isWhitelisted := false
 
 	if !n.ContainsExprLists() {
@@ -82,7 +82,7 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event)
 	n.bumpWhitelistMetric(metrics.NodesWlHits, p)
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		//if we already know the event is whitelisted, skip the rest of the expressions
+		// if we already know the event is whitelisted, skip the rest of the expressions
 		if isWhitelisted {
 			break
 		}
@@ -150,11 +150,11 @@ func (n *Node) bumpWhitelistMetric(counter *prometheus.CounterVec, p *types.Even
 	}
 
 	labels := prometheus.Labels{
-		"source": p.Line.Src,
-		"type": p.Line.Module,
-		"name": n.Name,
-		"reason": n.Whitelist.Reason,
-		"stage": p.Stage,
+		"source":      p.Line.Src,
+		"type":        p.Line.Module,
+		"name":        n.Name,
+		"reason":      n.Whitelist.Reason,
+		"stage":       p.Stage,
 		"acquis_type": acquisType,
 	}
 

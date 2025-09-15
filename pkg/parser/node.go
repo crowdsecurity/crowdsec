@@ -285,7 +285,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 	return true, nodeHasOKGrok, nil
 }
 
-func (n *Node) processStash(p *types.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
+func (n *Node) processStash(_ *types.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
 	for idx, stash := range n.Stash {
 		var (
 			key   string

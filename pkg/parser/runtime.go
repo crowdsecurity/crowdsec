@@ -170,16 +170,20 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
 				clog.Tracef("Found method '%s'", static.Method)
+
 				ret, err := enricherPlugin.EnrichFunc(value, event, n.Logger.WithField("method", static.Method))
 				if err != nil {
 					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
 				}
+
 				processed = true
+
 				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
-				//Hackish check, but those methods do not return any data by design
+				// Hackish check, but those methods do not return any data by design
 				if len(ret) == 0 && static.Method != "UnmarshalJSON" {
 					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
 				}
+
 				for k, v := range ret {
 					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
 					event.Enriched[k] = v
@@ -281,6 +285,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			log.Tracef("skipping stage, we are already at [%s] expecting [%s]", event.Stage, stage)
 			continue
 		}
+
 		log.Tracef("node stage : %s, current stage : %s", event.Stage, stage)
 
 		/* if the stage is wrong, it means that the log didn't manage "pass" a stage with a onsuccess: next_stage tag */
@@ -291,8 +296,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		}
 
 		isStageOK := false
+
 		for idx := range nodes {
-			//Only process current stage's nodes
+			// Only process current stage's nodes
 			if event.Stage != nodes[idx].Stage {
 				continue
 			}
@@ -334,9 +340,10 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				}
 
 				stageMap[name] = append(stageMap[name], dumps.ParserResult{
-					Evt: evtcopy.(types.Event),
+					Evt:     evtcopy.(types.Event),
 					Success: ret, Idx: parserIdxInStage,
 				})
+
 				StageParseMutex.Unlock()
 			}
 			if ret {
@@ -346,7 +353,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
-			//the parsed object moved onto the next phase
+			// the parsed object moved onto the next phase
 			if event.Stage != stage {
 				clog.Tracef("node moved stage, break and redo")
 				break
@@ -360,5 +367,6 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	event.Process = true
+
 	return event, nil
 }
