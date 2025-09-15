@@ -199,7 +199,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	args = append(args, j.config.Filters...)
 
 	j.args = args
-	j.src = "journalctl-%s" + strings.Join(j.config.Filters, ".")
+	j.src = "journalctl-" + strings.Join(j.config.Filters, ".")
 
 	return nil
 }
