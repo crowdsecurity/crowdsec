@@ -91,19 +91,19 @@ teardown() {
 
     echo "simulation: off" >"$SIMULATION"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: disabled"
+    assert_output "global simulation: disabled"
 
     echo "simulation: on" >"$SIMULATION"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: enabled"
+    assert_output "global simulation: enabled"
 
     echo "simulation: off" >"${SIMULATION}.local"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: disabled"
+    assert_output "global simulation: disabled"
 
     rm -f "${SIMULATION}.local"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: enabled"
+    assert_output "global simulation: enabled"
 }
 
 @test "profiles.yaml.local" {
