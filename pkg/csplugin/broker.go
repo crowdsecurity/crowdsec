@@ -61,7 +61,7 @@ type PluginConfig struct {
 	Name           string        `yaml:"name"`
 	GroupWait      time.Duration `yaml:"group_wait,omitempty"`
 	GroupThreshold int           `yaml:"group_threshold,omitempty"`
-	MaxRetry       int           `yaml:"max_retry,omitempty"`
+	MaxRetry       uint          `yaml:"max_retry,omitempty"`
 	TimeOut        time.Duration `yaml:"timeout,omitempty"`
 
 	Format string `yaml:"format,omitempty"` // specific to notification plugins
@@ -80,10 +80,6 @@ func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
 
 	if aux.Type == "" {
 		return errors.New("missing required field 'type'")
-	}
-
-	if aux.MaxRetry == 0 {
-		aux.MaxRetry = 1
 	}
 
 	if aux.TimeOut == 0 {
@@ -415,36 +411,58 @@ func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginNam
 		return nil
 	}
 
-	message, err := FormatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
-	if err != nil {
-		return err
-	}
+	pluginCfg := pb.pluginConfigByName[pluginName]
 
-	maxRetries := max(uint(pb.pluginConfigByName[pluginName].MaxRetry), 1)
+	message, err := FormatAlerts(pluginCfg.Format, alerts)
+	if err != nil {
+		return fmt.Errorf("format alerts for notification: %w", err)
+	}
 
 	bo := backoff.NewExponentialBackOff()
 	bo.InitialInterval = 1 * time.Second
-	bo.Multiplier = 2
+	bo.Multiplier = 2.0
+	bo.RandomizationFactor = 0.3
+	// XXX: bo.MaxInterval = 10 * time.Second
+	bo.Reset()
 
-	attemptLeft := maxRetries
+	var attempt uint64
+	onRetry := func(err error, next time.Duration) {
+		attempt++
+		logger.WithFields(log.Fields{
+			"attempt": attempt,
+			"next":    next.String(),
+		}).Warnf("notify attempt failed: %v", err)
+	}
 
 	operation := func() (struct{}, error) {
-		attemptLeft--
-		if err = pb.tryNotify(ctx, pluginName, message); err != nil {
-			if attemptLeft > 0 {
-				logger.Errorf("notification error: %s, %d retries left", err, attemptLeft)
-			}
+		// Per-attempt timeout
+		attemptCtx, cancel := context.WithTimeout(ctx, pluginCfg.TimeOut)
+		defer cancel()
 
-			return struct{}{}, fmt.Errorf("retryable error: %w", err)
+		if err := pb.tryNotify(attemptCtx, pluginName, message); err != nil {
+			return struct{}{}, err
 		}
-
 		return struct{}{}, nil
 	}
 
-	if _, err := backoff.Retry(ctx, operation, backoff.WithBackOff(bo), backoff.WithMaxTries(maxRetries)); err != nil {
-		return err
+	options := []backoff.RetryOption{
+		backoff.WithBackOff(bo),
+		backoff.WithNotify(onRetry),
+		// XXX: backoff.WithMaxElapsedTime(5 * time.Minute),
 	}
 
+	if pluginCfg.MaxRetry > 0 {
+		options = append(options, backoff.WithMaxTries(pluginCfg.MaxRetry+1))
+	}
+
+	_, err = backoff.Retry(ctx, operation, options...)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			logger.Warn("delivery canceled during shutdown")
+		} else {
+			logger.Errorf("delivery failed after retries: %v", err)
+		}
+	}
 	return err
 }
 
