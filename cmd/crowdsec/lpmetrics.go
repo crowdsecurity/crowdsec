@@ -48,6 +48,7 @@ type MetricsProvider struct {
 
 type staticMetrics struct {
 	osName         string
+	osFamily       string
 	osVersion      string
 	startupTS      int64
 	featureFlags   []string
@@ -93,10 +94,11 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 		datasourceMap[ds.GetName()] += 1
 	}
 
-	osName, osVersion := version.DetectOS()
+	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
 		osName:         osName,
+		osFamily:       osFamily,
 		osVersion:      osVersion,
 		startupTS:      time.Now().UTC().Unix(),
 		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
@@ -112,7 +114,7 @@ func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logge
 
 	static := newStaticMetrics(consoleOptions, datasources, hub)
 	
-	logger.Debugf("Static LP metrics: detected %s %s", static.osName, static.osVersion)
+	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
 
 	return &MetricsProvider{
 		apic:     apic,
