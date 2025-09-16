@@ -109,11 +109,16 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
 	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
 ) *MetricsProvider {
+
+	static := newStaticMetrics(consoleOptions, datasources, hub)
+	
+	logger.Debugf("Static LP metrics: detected %s %s", static.osName, static.osVersion)
+
 	return &MetricsProvider{
 		apic:     apic,
 		interval: interval,
 		logger:   logger,
-		static:   newStaticMetrics(consoleOptions, datasources, hub),
+		static:   static,
 	}
 }
 
