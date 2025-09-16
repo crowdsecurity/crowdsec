@@ -24,7 +24,8 @@ import (
 
 type JournalCtlConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Filters                           []string `yaml:"journalctl_filter"`
+
+	Filters []string `yaml:"journalctl_filter"`
 }
 
 type JournalCtlSource struct {
@@ -165,11 +166,11 @@ func (j *JournalCtlSource) GetUuid() string {
 	return j.config.UniqueId
 }
 
-func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
+func (*JournalCtlSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
-func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
+func (*JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
@@ -269,7 +270,7 @@ func (j *JournalCtlSource) GetMode() string {
 	return j.config.Mode
 }
 
-func (j *JournalCtlSource) GetName() string {
+func (*JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
@@ -291,12 +292,12 @@ func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan ty
 	return nil
 }
 
-func (j *JournalCtlSource) CanRun() error {
+func (*JournalCtlSource) CanRun() error {
 	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
 
-func (j *JournalCtlSource) Dump() interface{} {
+func (j *JournalCtlSource) Dump() any {
 	return j
 }
