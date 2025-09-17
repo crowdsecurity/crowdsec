@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -237,8 +238,21 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 
 	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
-		if err = appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
-			return fmt.Errorf("unable to load appsec_config: %w", err)
+		// Support fileglob patterns for AppsecConfigPath
+		files, err := filepath.Glob(w.config.AppsecConfigPath)
+		if err != nil {
+			return fmt.Errorf("glob failure for appsec_config_path %s: %w", w.config.AppsecConfigPath, err)
+		}
+
+		if len(files) == 0 {
+			w.logger.Warnf("No matching files for pattern %s", w.config.AppsecConfigPath)
+		}
+
+		for _, file := range files {
+			if err = appsecCfg.LoadByPath(file); err != nil {
+				return fmt.Errorf("unable to load appsec_config from %s: %w", file, err)
+			}
+			w.logger.Infof("Loaded appsec config from %s", file)
 		}
 	} else if w.config.AppsecConfig != "" {
 		if err = appsecCfg.Load(w.config.AppsecConfig); err != nil {
