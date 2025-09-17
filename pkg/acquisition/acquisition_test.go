@@ -58,13 +58,6 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel metri
 	return nil
 }
 func (f *MockSource) GetMode() string { return f.Mode }
-func (f *MockSource) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
-	return nil
-}
-
-func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
-	return nil
-}
 func (f *MockSource) CanRun() error                            { return nil }
 func (f *MockSource) Dump() any                                { return f }
 func (f *MockSource) GetName() string                          { return "mock" }
@@ -352,9 +345,6 @@ func (f *MockCat) OneShotAcquisition(ctx context.Context, out chan types.Event, 
 	return nil
 }
 
-func (f *MockCat) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
-	return errors.New("can't run in tail")
-}
 func (f *MockCat) CanRun() error                            { return nil }
 func (f *MockCat) Dump() any                                { return f }
 func (f *MockCat) GetUuid() string { return "" }
@@ -517,13 +507,6 @@ func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel 
 	return nil
 }
 func (f *MockSourceByDSN) GetMode() string { return f.Mode }
-func (f *MockSourceByDSN) OneShotAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
-	return nil
-}
-
-func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event, *tomb.Tomb) error {
-	return nil
-}
 func (f *MockSourceByDSN) CanRun() error                            { return nil }
 func (f *MockSourceByDSN) Dump() any                                { return f }
 func (f *MockSourceByDSN) GetName() string                          { return "mockdsn" }
@@ -572,3 +555,44 @@ func TestConfigureByDSN(t *testing.T) {
 		})
 	}
 }
+
+
+// TailModeNoTailer configures itself in "tail" mode but does not implement the Tailer methods.
+type TailModeNoTailer struct {}
+func (s *TailModeNoTailer) UnmarshalConfig([]byte) error { return nil }
+func (s *TailModeNoTailer) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
+func (s *TailModeNoTailer) GetMode() string   { return configuration.TAIL_MODE }
+func (s *TailModeNoTailer) GetName() string   { return "tail_no_tailer" }
+func (s *TailModeNoTailer) GetUuid() string   { return "" }
+func (s *TailModeNoTailer) Dump() any         { return s }
+func (s *TailModeNoTailer) CanRun() error     { return nil }
+
+func TestStartAcquisition_MissingTailer(t *testing.T) {
+	ctx := t.Context()
+	out := make(chan types.Event)
+	var tb tomb.Tomb
+	errCh := make(chan error, 1)
+	go func() { errCh <- StartAcquisition(ctx, []DataSource{&TailModeNoTailer{}}, out, &tb) }()
+	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but StreamingAcquisition is not supported")
+}
+
+
+// CatModeNoTailer configures itself in "cat" mode but does not implement the Fetcher methods.
+type CatModeNoFetcher struct {}
+func (s *CatModeNoFetcher) UnmarshalConfig([]byte) error { return nil }
+func (s *CatModeNoFetcher) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
+func (s *CatModeNoFetcher) GetMode() string { return configuration.CAT_MODE }
+func (s *CatModeNoFetcher) GetName() string { return "cat_no_fetcher" }
+func (s *CatModeNoFetcher) GetUuid() string { return "" }
+func (s *CatModeNoFetcher) Dump() any       { return s }
+func (s *CatModeNoFetcher) CanRun() error   { return nil }
+
+func TestStartAcquisition_MissingFetcher(t *testing.T) {
+	ctx := t.Context()
+	out := make(chan types.Event)
+	var tb tomb.Tomb
+	errCh := make(chan error, 1)
+	go func() { errCh <- StartAcquisition(ctx, []DataSource{&CatModeNoFetcher{}}, out, &tb) }()
+	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
+}
+

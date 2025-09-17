@@ -528,7 +528,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 				if s, ok := subsrc.(Fetcher); ok {
 					err = s.OneShotAcquisition(ctx, outChan, acquisTomb)
 				} else {
-					err = fmt.Errorf("%s: tail mode is set but OneShotAcquisition is not supported", subsrc.GetName())
+					err = fmt.Errorf("%s: cat mode is set but OneShotAcquisition is not supported", subsrc.GetName())
 				}
 			}
 
