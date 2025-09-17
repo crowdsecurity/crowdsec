@@ -232,8 +232,8 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
 		UpdateScenario: ret.FetchScenariosListFromDB,
-		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
-			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		TokenSave: func(ctx context.Context, token string) error {
+			return dbClient.SaveAPICToken(ctx, token)
 		},
 	})
 
@@ -248,7 +248,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 //
 // If a new token is obtained, it is saved back to the database for caching.
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	if token, exp := a.dbClient.LoadAPICToken(ctx, apiclient.TokenDBField, config.Credentials.Login, log.StandardLogger()); token != "" {
+	if token, exp := a.dbClient.LoadAPICToken(ctx, config.Credentials.Login, log.StandardLogger()); token != "" {
 		log.Debug("using valid token from DB")
 
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
@@ -281,7 +281,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
-	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
