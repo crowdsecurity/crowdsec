@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,13 +66,8 @@ func (f *MockSource) StreamingAcquisition(context.Context, chan types.Event, *to
 	return nil
 }
 func (f *MockSource) CanRun() error                            { return nil }
-func (f *MockSource) GetMetrics() []prometheus.Collector       { return nil }
-func (f *MockSource) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockSource) Dump() any                                { return f }
 func (f *MockSource) GetName() string                          { return "mock" }
-func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return errors.New("not supported")
-}
 func (f *MockSource) GetUuid() string { return "" }
 
 // copy the mocksource, but this one can't run
@@ -362,12 +356,7 @@ func (f *MockCat) StreamingAcquisition(context.Context, chan types.Event, *tomb.
 	return errors.New("can't run in tail")
 }
 func (f *MockCat) CanRun() error                            { return nil }
-func (f *MockCat) GetMetrics() []prometheus.Collector       { return nil }
-func (f *MockCat) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockCat) Dump() any                                { return f }
-func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return errors.New("not supported")
-}
 func (f *MockCat) GetUuid() string { return "" }
 
 //----
@@ -393,9 +382,6 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics
 func (f *MockTail) UnmarshalConfig(cfg []byte) error { return nil }
 func (f *MockTail) GetName() string                  { return "mock_tail" }
 func (f *MockTail) GetMode() string                  { return "tail" }
-func (f *MockTail) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("can't run in cat mode")
-}
 
 func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	for range 10 {
@@ -409,12 +395,7 @@ func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Even
 	return nil
 }
 func (f *MockTail) CanRun() error                            { return nil }
-func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
-func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockTail) Dump() any                                { return f }
-func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return errors.New("not supported")
-}
 func (f *MockTail) GetUuid() string { return "" }
 
 // func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
@@ -544,8 +525,6 @@ func (f *MockSourceByDSN) StreamingAcquisition(context.Context, chan types.Event
 	return nil
 }
 func (f *MockSourceByDSN) CanRun() error                            { return nil }
-func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector       { return nil }
-func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockSourceByDSN) Dump() any                                { return f }
 func (f *MockSourceByDSN) GetName() string                          { return "mockdsn" }
 func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {

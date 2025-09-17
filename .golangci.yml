@@ -186,7 +186,7 @@ linters:
       enable-all: true
 
     interfacebloat:
-      max: 12
+      max: 7
 
     maintidx:
       # raise this after refactoring
