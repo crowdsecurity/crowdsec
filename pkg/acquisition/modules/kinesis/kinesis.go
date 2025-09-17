@@ -29,15 +29,16 @@ import (
 
 type KinesisConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	StreamName                        string  `yaml:"stream_name"`
-	StreamARN                         string  `yaml:"stream_arn"`
-	UseEnhancedFanOut                 bool    `yaml:"use_enhanced_fanout"` // Use RegisterStreamConsumer and SubscribeToShard instead of GetRecords
-	AwsProfile                        *string `yaml:"aws_profile"`
-	AwsRegion                         string  `yaml:"aws_region"`
-	AwsEndpoint                       string  `yaml:"aws_endpoint"`
-	ConsumerName                      string  `yaml:"consumer_name"`
-	FromSubscription                  bool    `yaml:"from_subscription"`
-	MaxRetries                        int     `yaml:"max_retries"`
+
+	StreamName        string  `yaml:"stream_name"`
+	StreamARN         string  `yaml:"stream_arn"`
+	UseEnhancedFanOut bool    `yaml:"use_enhanced_fanout"` // Use RegisterStreamConsumer and SubscribeToShard instead of GetRecords
+	AwsProfile        *string `yaml:"aws_profile"`
+	AwsRegion         string  `yaml:"aws_region"`
+	AwsEndpoint       string  `yaml:"aws_endpoint"`
+	ConsumerName      string  `yaml:"consumer_name"`
+	FromSubscription  bool    `yaml:"from_subscription"`
+	MaxRetries        int     `yaml:"max_retries"`
 }
 
 type KinesisSource struct {
@@ -103,11 +104,11 @@ func (k *KinesisSource) newClient() error {
 	return nil
 }
 
-func (k *KinesisSource) GetMetrics() []prometheus.Collector {
+func (*KinesisSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.KinesisDataSourceLinesRead, metrics.KinesisDataSourceLinesReadShards}
 }
 
-func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
+func (*KinesisSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.KinesisDataSourceLinesRead, metrics.KinesisDataSourceLinesReadShards}
 }
 
@@ -173,7 +174,7 @@ func (k *KinesisSource) GetMode() string {
 	return k.Config.Mode
 }
 
-func (k *KinesisSource) GetName() string {
+func (*KinesisSource) GetName() string {
 	return "kinesis"
 }
 
@@ -296,16 +297,16 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 	return streamConsumer, nil
 }
 
-func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry, shardId string) {
+func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry, shardID string) {
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardID}).Inc()
 				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "datasource_type": "kinesis", "acquis_type": k.Config.Labels["type"]}).Inc()
 			}
 		} else {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardID}).Inc()
 				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "datasource_type": "kinesis", "acquis_type": k.Config.Labels["type"]}).Inc()
 			}
 		}
@@ -349,8 +350,8 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 	}
 }
 
-func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardId string, streamName string) error {
-	logger := k.logger.WithField("shard_id", shardId)
+func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardID string, streamName string) error {
+	logger := k.logger.WithField("shard_id", shardID)
 	// ghetto sync, kinesis allows to subscribe to a closed shard, which will make the goroutine exit immediately
 	// and we won't be able to start a new one if this is the first one started by the tomb
 	// TODO: look into parent shards to see if a shard is closed before starting to read it ?
@@ -374,7 +375,7 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 
 			switch event := event.(type) {
 			case *kinesis.SubscribeToShardEvent:
-				k.ParseAndPushRecords(event.Records, out, logger, shardId)
+				k.ParseAndPushRecords(event.Records, out, logger, shardID)
 			case *kinesis.SubscribeToShardEventStreamUnknownEvent:
 				logger.Infof("got an unknown event, what to do ?")
 			}
@@ -391,10 +392,10 @@ func (k *KinesisSource) SubscribeToShards(arn arn.ARN, streamConsumer *kinesis.R
 	}
 
 	for _, shard := range shards.Shards {
-		shardId := *shard.ShardId
+		shardID := *shard.ShardId
 
 		r, err := k.kClient.SubscribeToShard(&kinesis.SubscribeToShardInput{
-			ShardId:          aws.String(shardId),
+			ShardId:          aws.String(shardID),
 			StartingPosition: &kinesis.StartingPosition{Type: aws.String(kinesis.ShardIteratorTypeLatest)},
 			ConsumerARN:      streamConsumer.Consumer.ConsumerARN,
 		})
@@ -403,7 +404,7 @@ func (k *KinesisSource) SubscribeToShards(arn arn.ARN, streamConsumer *kinesis.R
 		}
 
 		k.shardReaderTomb.Go(func() error {
-			return k.ReadFromSubscription(r.GetEventStream().Reader, out, shardId, arn.Resource[7:])
+			return k.ReadFromSubscription(r.GetEventStream().Reader, out, shardID, arn.Resource[7:])
 		})
 	}
 
@@ -466,12 +467,12 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) error {
-	logger := k.logger.WithField("shard", shardId)
+func (k *KinesisSource) ReadFromShard(out chan types.Event, shardID string) error {
+	logger := k.logger.WithField("shard", shardID)
 	logger.Debugf("Starting to read shard")
 
 	sharIt, err := k.kClient.GetShardIterator(&kinesis.GetShardIteratorInput{
-		ShardId:           aws.String(shardId),
+		ShardId:           aws.String(shardID),
 		StreamName:        &k.Config.StreamName,
 		ShardIteratorType: aws.String(kinesis.ShardIteratorTypeLatest),
 	})
@@ -507,7 +508,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 				return fmt.Errorf("cannot get records: %w", err)
 			}
 
-			k.ParseAndPushRecords(records.Records, out, logger, shardId)
+			k.ParseAndPushRecords(records.Records, out, logger, shardID)
 
 			it = records.NextShardIterator
 			if it == nil {
@@ -538,11 +539,11 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 		k.shardReaderTomb = &tomb.Tomb{}
 
 		for _, shard := range shards.Shards {
-			shardId := *shard.ShardId
+			shardID := *shard.ShardId
 
 			k.shardReaderTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
-				return k.ReadFromShard(out, shardId)
+				return k.ReadFromShard(out, shardID)
 			})
 		}
 		select {
@@ -566,7 +567,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 	}
 }
 
-func (k *KinesisSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
 
@@ -580,10 +581,10 @@ func (k *KinesisSource) StreamingAcquisition(ctx context.Context, out chan types
 	return nil
 }
 
-func (k *KinesisSource) CanRun() error {
+func (*KinesisSource) CanRun() error {
 	return nil
 }
 
-func (k *KinesisSource) Dump() interface{} {
+func (k *KinesisSource) Dump() any {
 	return k
 }

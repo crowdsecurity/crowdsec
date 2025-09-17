@@ -139,7 +139,7 @@ var (
 	labels     = make(labelsMap)
 )
 
-func (l *labelsMap) String() string {
+func (*labelsMap) String() string {
 	return "labels"
 }
 

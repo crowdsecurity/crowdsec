@@ -1164,6 +1164,7 @@ func updateCounterForDecision(counter map[string]map[string]int, origin *string,
 		if scenario == nil {
 			return
 		}
+
 		m[*scenario] += totalDecisions
 	default:
 		log.Warningf("Unknown origin %s", *origin)
