@@ -248,7 +248,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 //
 // If a new token is obtained, it is saved back to the database for caching.
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
+	if token, exp := a.dbClient.LoadAPICToken(ctx, apiclient.TokenDBField, config.Credentials.Login, log.StandardLogger()); token != "" {
 		log.Debug("using valid token from DB")
 
 		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
@@ -257,7 +257,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		return nil
 	}
 
-	log.Debug("No token found, authenticating")
+	log.Debug("Cached token not found or invalid. Authenticating")
 
 	scenarios, err := a.FetchScenariosListFromDB(ctx)
 	if err != nil {
