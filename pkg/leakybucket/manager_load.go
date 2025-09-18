@@ -16,13 +16,14 @@ import (
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -233,7 +234,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig *csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -290,9 +291,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.BucketName = seed.Generate()
 		bucketFactory.ret = response
 
-		if simulationConfig != nil {
-			bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
-		}
+		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
 
 		bucketFactory.ScenarioVersion = item.State.LocalVersion
 		bucketFactory.hash = item.State.LocalHash

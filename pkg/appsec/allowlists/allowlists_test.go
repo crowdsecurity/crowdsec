@@ -37,13 +37,12 @@ func TestAppsecAllowlist(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -53,7 +52,7 @@ func TestAppsecAllowlist(t *testing.T) {
 
 	mux.HandleFunc("/allowlists", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("with_content") != "true" {
-			t.Errorf("with_content not set")
+			t.Error("with_content not set")
 		}
 
 		w.WriteHeader(http.StatusOK)

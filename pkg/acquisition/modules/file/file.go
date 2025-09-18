@@ -388,6 +388,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	var ticker *time.Ticker
 	if f.config.DiscoveryPollEnable {
 		interval := cmp.Or(f.config.DiscoveryPollInterval, defaultPollInterval)
+		logger.Infof("File discovery polling enabled with interval: %s", interval)
 		ticker = time.NewTicker(interval)
 		tickerChan = ticker.C
 		defer ticker.Stop()
@@ -501,6 +502,8 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd
 	if seekEnd {
 		seekInfo.Whence = io.SeekEnd
 	}
+
+	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
 	tail, err := tail.TailFile(file, tail.Config{
 		ReOpen:   true,

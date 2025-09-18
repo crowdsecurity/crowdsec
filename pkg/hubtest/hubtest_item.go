@@ -123,10 +123,10 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
-	ParserAssert := NewParserAssert(parserAssertFilePath)
+	parserAssert := NewParserAssert(parserAssertFilePath)
 
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
-	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
+	scenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
 
 	// force own_data_dir for backard compatibility
 	if name == "magento-ccs-by-as" || name == "magento-ccs-by-country" || name == "geoip-enrich" {
@@ -170,8 +170,8 @@ func NewTest(name string, hubTest *HubTest, dataDir string) (*HubTestItem, error
 		TemplateAcquisPath:        hubTest.TemplateAcquisPath,
 		TemplateAppsecProfilePath: hubTest.TemplateAppsecProfilePath,
 		HubIndex:                  hubTest.HubIndex,
-		ScenarioAssert:            ScenarioAssert,
-		ParserAssert:              ParserAssert,
+		ScenarioAssert:            scenarioAssert,
+		ParserAssert:              parserAssert,
 		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
 		NucleiTargetHost:          hubTest.NucleiTargetHost,
 		AppSecHost:                hubTest.AppSecHost,
@@ -318,7 +318,7 @@ func (t *HubTestItem) ImprovedLogDisplay(crowdsecLogFile string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithNucleiTemplate() error {
+func (t *HubTestItem) RunWithNucleiTemplate(ctx context.Context) error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
@@ -328,7 +328,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	// machine add
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
-	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
+	cscliRegisterCmd := exec.CommandContext(ctx, t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
 	cscliRegisterCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
@@ -342,7 +342,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	// hardcode bouncer key
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
-	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
+	cscliBouncerCmd := exec.CommandContext(ctx, t.CscliPath, cmdArgs...)
 	cscliBouncerCmd.Dir = testPath
 	cscliBouncerCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
@@ -356,7 +356,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	// start crowdsec service
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
-	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
+	crowdsecDaemon := exec.CommandContext(ctx, t.CrowdSecPath, cmdArgs...)
 	crowdsecDaemon.Dir = testPath
 	crowdsecDaemon.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
@@ -400,7 +400,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	// the value in config is relative
 	nucleiTemplate := filepath.Join(t.Path, t.Config.NucleiTemplate)
 
-	err = nucleiConfig.RunNucleiTemplate(t.Name, nucleiTemplate, t.NucleiTargetHost)
+	err = nucleiConfig.RunNucleiTemplate(ctx, t.Name, nucleiTemplate, t.NucleiTargetHost)
 	if errors.Is(err, ErrNucleiRunFail) {
 		return err
 	}
@@ -445,7 +445,7 @@ func createDirs(dirs []string) error {
 	return nil
 }
 
-func (t *HubTestItem) RunWithLogFile() error {
+func (t *HubTestItem) RunWithLogFile(ctx context.Context) error {
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
@@ -465,7 +465,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 	}
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
-	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
+	cscliRegisterCmd := exec.CommandContext(ctx, t.CscliPath, cmdArgs...)
 	cscliRegisterCmd.Dir = testPath
 	cscliRegisterCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
@@ -486,7 +486,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 		cmdArgs = append(cmdArgs, "-label", arg)
 	}
 
-	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
+	crowdsecCmd := exec.CommandContext(ctx, t.CrowdSecPath, cmdArgs...)
 	crowdsecCmd.Dir = testPath
 	crowdsecCmd.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
@@ -653,11 +653,11 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	}
 
 	if t.Config.LogFile != "" {
-		return t.RunWithLogFile()
+		return t.RunWithLogFile(ctx)
 	}
 
 	if t.Config.NucleiTemplate != "" {
-		return t.RunWithNucleiTemplate()
+		return t.RunWithNucleiTemplate(ctx)
 	}
 
 	return fmt.Errorf("log file or nuclei template must be set in '%s'", t.Name)

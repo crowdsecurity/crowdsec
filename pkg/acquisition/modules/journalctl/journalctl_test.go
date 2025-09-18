@@ -264,9 +264,9 @@ journalctl_filter:
 		err = tomb.Wait()
 		require.NoError(t, err)
 
-		output, _ := exec.Command("pgrep", "-x", "journalctl").CombinedOutput()
+		output, _ := exec.CommandContext(ctx, "pgrep", "-x", "journalctl").CombinedOutput()
 		if len(output) != 0 {
-			t.Fatalf("Found a journalctl process after killing the tomb !")
+			t.Fatal("Found a journalctl process after killing the tomb !")
 		}
 
 		if ts.expectedOutput != "" {
