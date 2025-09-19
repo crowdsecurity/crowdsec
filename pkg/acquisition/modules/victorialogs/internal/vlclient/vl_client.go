@@ -184,13 +184,13 @@ func (lc *VLClient) readResponse(ctx context.Context, resp *http.Response, c cha
 	var (
 		finishedReading bool
 		n               int
-		latestTs        time.Time
+		latestTS        time.Time
 	)
 
 	for !finishedReading {
 		select {
 		case <-ctx.Done():
-			return n, latestTs, nil
+			return n, latestTS, nil
 		default:
 		}
 
@@ -205,9 +205,9 @@ func (lc *VLClient) readResponse(ctx context.Context, resp *http.Response, c cha
 				// b can be != nil when EOF is returned, so we need to process it
 				finishedReading = true
 			} else if errors.Is(err, context.Canceled) {
-				return n, latestTs, nil
+				return n, latestTS, nil
 			} else {
-				return n, latestTs, fmt.Errorf("cannot read line in response: %w", err)
+				return n, latestTS, fmt.Errorf("cannot read line in response: %w", err)
 			}
 		}
 
@@ -229,12 +229,12 @@ func (lc *VLClient) readResponse(ctx context.Context, resp *http.Response, c cha
 		lc.Logger.Tracef("Got response: %+v", logLine)
 		c <- &logLine
 
-		if logLine.Time.After(latestTs) {
-			latestTs = logLine.Time
+		if logLine.Time.After(latestTS) {
+			latestTS = logLine.Time
 		}
 	}
 
-	return n, latestTs, nil
+	return n, latestTS, nil
 }
 
 func (lc *VLClient) getURLFor(endpoint string, params map[string]string) string {
