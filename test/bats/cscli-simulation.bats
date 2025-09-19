@@ -30,6 +30,18 @@ setup() {
 
 #----------
 
+@test "cscli simulation" {
+    rune -0 cscli help
+    assert_line --regexp '^ +simulation +Manage simulation status of scenarios$'
+
+    rune -0 cscli simulation --help
+    assert_line 'Usage:'
+
+    # should be -1
+    rune -0 cscli simulation blahblah
+    assert_line 'Usage:'
+}
+
 @test "we have one decision" {
     rune -0 cscli simulation disable --global
     fake_log | "$CROWDSEC" -dsn file:///dev/fd/0 -type syslog -no-api
