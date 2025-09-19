@@ -25,7 +25,7 @@ type LokiClient struct {
 
 	config                Config
 	t                     *tomb.Tomb
-	fail_start            time.Time
+	failStart             time.Time
 	currentTickerInterval time.Duration
 	requestHeaders        map[string]string
 }
@@ -56,9 +56,9 @@ func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) (string, er
 	queryParams := u.Query()
 
 	if len(lq.Data.Result) > 0 {
-		lastTs := lq.Data.Result[0].Entries[len(lq.Data.Result[0].Entries)-1].Timestamp
+		lastTS := lq.Data.Result[0].Entries[len(lq.Data.Result[0].Entries)-1].Timestamp
 		// +1 the last timestamp to avoid getting the same result again.
-		queryParams.Set("start", strconv.Itoa(int(lastTs.UnixNano()+1)))
+		queryParams.Set("start", strconv.Itoa(int(lastTS.UnixNano()+1)))
 	}
 
 	if infinite {
@@ -74,19 +74,19 @@ func (lc *LokiClient) SetTomb(t *tomb.Tomb) {
 }
 
 func (lc *LokiClient) resetFailStart() {
-	if !lc.fail_start.IsZero() {
-		log.Infof("loki is back after %s", time.Since(lc.fail_start))
+	if !lc.failStart.IsZero() {
+		log.Infof("loki is back after %s", time.Since(lc.failStart))
 	}
-	lc.fail_start = time.Time{}
+	lc.failStart = time.Time{}
 }
 
 func (lc *LokiClient) shouldRetry() bool {
-	if lc.fail_start.IsZero() {
+	if lc.failStart.IsZero() {
 		lc.Logger.Warningf("loki is not available, will retry for %s", lc.config.FailMaxDuration)
-		lc.fail_start = time.Now()
+		lc.failStart = time.Now()
 		return true
 	}
-	if time.Since(lc.fail_start) > lc.config.FailMaxDuration {
+	if time.Since(lc.failStart) > lc.config.FailMaxDuration {
 		lc.Logger.Errorf("loki didn't manage to recover after %s, giving up", lc.config.FailMaxDuration)
 		return false
 	}
@@ -307,7 +307,7 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 	return c
 }
 
-// Create a wrapper for http.Get to be able to set headers and auth
+// Get creates a wrapper for http.Get to be able to set headers and auth
 func (lc *LokiClient) Get(ctx context.Context, url string) (*http.Response, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
