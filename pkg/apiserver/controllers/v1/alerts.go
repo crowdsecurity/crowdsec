@@ -21,7 +21,7 @@ import (
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {
 	startAt := alert.StartedAt.Format(time.RFC3339)
-	StopAt := alert.StoppedAt.Format(time.RFC3339)
+	stopAt := alert.StoppedAt.Format(time.RFC3339)
 
 	machineID := "N/A"
 	if alert.Edges.Owner != nil {
@@ -38,7 +38,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		Message:         &alert.Message,
 		EventsCount:     &alert.EventsCount,
 		StartAt:         &startAt,
-		StopAt:          &StopAt,
+		StopAt:          &stopAt,
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
 		Simulated:       &alert.Simulated,
@@ -60,15 +60,15 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 	for _, eventItem := range alert.Edges.Events {
 		timestamp := eventItem.Time.String()
 
-		var Metas models.Meta
+		var metas models.Meta
 
-		if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
+		if err := json.Unmarshal([]byte(eventItem.Serialized), &metas); err != nil {
 			log.Errorf("unable to parse events meta '%s' : %s", eventItem.Serialized, err)
 		}
 
 		outputAlert.Events = append(outputAlert.Events, &models.Event{
 			Timestamp: &timestamp,
-			Meta:      Metas,
+			Meta:      metas,
 		})
 	}
 
@@ -291,7 +291,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	gctx.JSON(http.StatusCreated, alerts)
 }
 
-// FindAlerts: returns alerts from the database based on the specified filter
+// FindAlerts returns alerts from the database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
 	ctx := gctx.Request.Context()
 
