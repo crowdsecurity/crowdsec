@@ -225,6 +225,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	// wait for the idle duration
 	<-done
 
+	require.NotEmpty(t, responses)
 	httpStatus, appsecResponse := AppsecRuntime.GenerateResponse(responses[0], logger)
 	log.Infof("events : %s", spew.Sdump(events))
 	log.Infof("responses : %s", spew.Sdump(responses))
