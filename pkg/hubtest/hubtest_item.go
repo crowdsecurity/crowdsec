@@ -360,7 +360,9 @@ func (t *HubTestItem) RunWithNucleiTemplate(ctx context.Context) error {
 	crowdsecDaemon.Dir = testPath
 	crowdsecDaemon.Env = []string{"TESTDIR=" + testPath, "DATADIR=" + t.RuntimeHubConfig.InstallDataDir, "TZ=UTC"}
 
-	crowdsecDaemon.Start()
+	if err := crowdsecDaemon.Start(); err != nil {
+		return fmt.Errorf("starting crowdsec daemon: %w", err)
+	}
 
 	// wait for the appsec port to be available
 	if _, err = IsAlive(t.AppSecHost); err != nil {

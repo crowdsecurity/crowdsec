@@ -120,7 +120,6 @@ linters:
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
         - (net/http.ResponseWriter).Write   # TODO
-        - (*os/exec.Cmd).Start
         - (*os/exec.Cmd).Wait
         - (*os.Process).Kill
         - (*text/template.Template).ExecuteTemplate
