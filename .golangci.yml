@@ -19,7 +19,6 @@ linters:
 
     # Disabled atm
 
-    - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
     - funcorder
     - exhaustive
 
