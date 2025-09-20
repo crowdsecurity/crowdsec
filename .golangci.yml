@@ -121,7 +121,6 @@ linters:
         - (*bytes.Buffer).ReadFrom          # TODO
         - (net/http.ResponseWriter).Write   # TODO
         - (*os/exec.Cmd).Wait
-        - (*os.Process).Kill
         - (*text/template.Template).ExecuteTemplate
         - syscall.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
