@@ -119,7 +119,6 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - io.Copy                           # TODO
         - (net/http.ResponseWriter).Write   # TODO
         - (*os/exec.Cmd).Start
         - (*os/exec.Cmd).Wait
