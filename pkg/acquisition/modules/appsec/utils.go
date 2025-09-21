@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,6 +33,18 @@ var excludedMatchCollections = []string{
 	"REQBODY_PROCESSOR", // Matched when enabling the body processor
 	"UNKNOWN",           // Matched by the anomaly score rule
 	"TX",                // Score has been exceeded
+}
+
+var CRSAnomalyScores = []string{
+	"sql_injection_score",
+	"xss_score",
+	"rfi_score",
+	"lfi_score",
+	"rce_score",
+	"php_injection_score",
+	"http_violation_score",
+	"session_fixation_score",
+	"anomaly_score",
 }
 
 func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
@@ -79,9 +92,9 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	case hasOutBandMatches:
 		msg += "out-of-band: "
 	}
-	for _, var_name := range appsec.CRSAnomalyScores {
-		if val, ok := vars[var_name]; ok && val != "0" {
-			msg += fmt.Sprintf("%s: %s, ", strings.Replace(strings.Replace(var_name, "TX.", "", 1), "_score", "", 1), val)
+	for _, var_name := range CRSAnomalyScores {
+		if val, ok := vars["TX."+var_name]; ok && val != "0" {
+			msg += fmt.Sprintf("%s: %s, ", strings.Replace(var_name, "_score", "", 1), val)
 		}
 	}
 	return msg
@@ -349,31 +362,43 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Appsec.Vars = map[string]string{}
 	}
 
-	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
-		for _, variable := range col.FindAll() {
-			r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
-			key := variable.Variable().Name()
-			if variable.Key() != "" {
-				key += "." + variable.Key()
-			}
+	txCollection := req.Tx.Variables().TX()
 
-			if variable.Value() == "" {
-				continue
-			}
+	txMatchedData := txCollection.FindAll()
 
-			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
-				match := collectionToKeep.MatchString(key)
-				if match {
-					evt.Appsec.Vars[key] = variable.Value()
-					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
-				} else {
-					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+	for _, match := range txMatchedData {
+		if slices.Contains(CRSAnomalyScores, match.Key()) {
+			evt.Appsec.Vars["TX."+match.Key()] = match.Value()
+		}
+	}
+
+	if len(r.AppsecRuntime.CompiledVariablesTracking) > 0 {
+		req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+			for _, variable := range col.FindAll() {
+				r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
+				key := variable.Variable().Name()
+				if variable.Key() != "" {
+					key += "." + variable.Key()
+				}
+
+				if variable.Value() == "" {
+					continue
+				}
+
+				for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
+					match := collectionToKeep.MatchString(key)
+					if match {
+						evt.Appsec.Vars[key] = variable.Value()
+						r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+					} else {
+						r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+					}
 				}
 			}
-		}
 
-		return true
-	})
+			return true
+		})
+	}
 
 	for _, rule := range req.Tx.MatchedRules() {
 		// Drop the rule if it has no message (it's likely a CRS setup rule)

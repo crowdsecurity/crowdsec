@@ -42,7 +42,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 
 	iter := reflect.ValueOf(evt).Elem()
 	if !iter.IsValid() || iter.IsZero() {
-		log.Tracef("event is nil")
+		log.Trace("event is nil")
 		return false
 	}
 
@@ -98,18 +98,20 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	return true
 }
 
-func printStaticTarget(static ExtraField) string {
+// targetExpr returns a human-readable selector string that describes
+// where this ExtraField will write its value in the event.
+func (ef ExtraField) targetExpr() string {
 	switch {
-	case static.Method != "":
-		return static.Method
-	case static.Parsed != "":
-		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	case static.Meta != "":
-		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	case static.Enriched != "":
-		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	case static.TargetByName != "":
-		return static.TargetByName
+	case ef.Method != "":
+		return ef.Method
+	case ef.Parsed != "":
+		return fmt.Sprintf(".Parsed[%s]", ef.Parsed)
+	case ef.Meta != "":
+		return fmt.Sprintf(".Meta[%s]", ef.Meta)
+	case ef.Enriched != "":
+		return fmt.Sprintf(".Enriched[%s]", ef.Enriched)
+	case ef.TargetByName != "":
+		return ef.TargetByName
 	default:
 		return "?"
 	}
@@ -122,12 +124,14 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 
 	clog := n.Logger
 
+	exprEnv := map[string]any{"evt": event}
+
 	for _, static := range statics {
 		value = ""
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := exprhelpers.Run(static.RunTimeValue, map[string]any{"evt": event}, clog, n.Debug)
+			output, err := exprhelpers.Run(static.RunTimeValue, exprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -155,7 +159,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		if value == "" {
 			// allow ParseDate to have empty input
 			if static.Method != "ParseDate" {
-				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
+				clog.Debugf("Empty value for %s, skip.", static.targetExpr())
 				continue
 			}
 		}
@@ -166,16 +170,20 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
 				clog.Tracef("Found method '%s'", static.Method)
+
 				ret, err := enricherPlugin.EnrichFunc(value, event, n.Logger.WithField("method", static.Method))
 				if err != nil {
 					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
 				}
+
 				processed = true
+
 				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
-				//Hackish check, but those methods do not return any data by design
+				// Hackish check, but those methods do not return any data by design
 				if len(ret) == 0 && static.Method != "UnmarshalJSON" {
 					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
 				}
+
 				for k, v := range ret {
 					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
 					event.Enriched[k] = v
@@ -226,8 +234,13 @@ var (
 )
 
 var (
-	StageParseCache dumps.ParserResults
+	StageParseCache dumps.ParserResults = make(dumps.ParserResults)
 	StageParseMutex sync.Mutex
+	// initialize the cache only once, even if called concurrently
+	ensureStageCache = sync.OnceFunc(func() {
+		StageParseCache["success"] = make(map[string][]dumps.ParserResult)
+		StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
+	})
 )
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
@@ -260,29 +273,19 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	if ParseDump {
-		if StageParseCache == nil {
-			StageParseMutex.Lock()
-			StageParseCache = make(dumps.ParserResults)
-			StageParseCache["success"] = make(map[string][]dumps.ParserResult)
-			StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
-			StageParseMutex.Unlock()
-		}
+		ensureStageCache()
 	}
 
+	exprEnv := map[string]any{"evt": &event}
+
 	for _, stage := range ctx.Stages {
-		if ParseDump {
-			StageParseMutex.Lock()
-			if _, ok := StageParseCache[stage]; !ok {
-				StageParseCache[stage] = make(map[string][]dumps.ParserResult)
-			}
-			StageParseMutex.Unlock()
-		}
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
 		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
 			log.Tracef("skipping stage, we are already at [%s] expecting [%s]", event.Stage, stage)
 			continue
 		}
+
 		log.Tracef("node stage : %s, current stage : %s", event.Stage, stage)
 
 		/* if the stage is wrong, it means that the log didn't manage "pass" a stage with a onsuccess: next_stage tag */
@@ -293,8 +296,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		}
 
 		isStageOK := false
+
 		for idx := range nodes {
-			//Only process current stage's nodes
+			// Only process current stage's nodes
 			if event.Stage != nodes[idx].Stage {
 				continue
 			}
@@ -306,7 +310,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				nodes[idx].Profiling = true
 			}
-			ret, err := nodes[idx].process(&event, ctx, map[string]any{"evt": &event})
+			ret, err := nodes[idx].process(&event, ctx, exprEnv)
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err
@@ -314,19 +318,32 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 			if ParseDump {
 				var parserIdxInStage int
-				StageParseMutex.Lock()
-				if len(StageParseCache[stage][nodes[idx].Name]) == 0 {
-					StageParseCache[stage][nodes[idx].Name] = make([]dumps.ParserResult, 0)
-					parserIdxInStage = len(StageParseCache[stage])
-				} else {
-					parserIdxInStage = StageParseCache[stage][nodes[idx].Name][0].Idx
-				}
-				StageParseMutex.Unlock()
 
+				// copy outside of critical section
 				evtcopy := deepcopy.Copy(event)
-				parserInfo := dumps.ParserResult{Evt: evtcopy.(types.Event), Success: ret, Idx: parserIdxInStage}
+				name := nodes[idx].Name
+
+				// ensure the stage map exists
 				StageParseMutex.Lock()
-				StageParseCache[stage][nodes[idx].Name] = append(StageParseCache[stage][nodes[idx].Name], parserInfo)
+				stageMap, ok := StageParseCache[stage]
+				if !ok {
+					stageMap = make(map[string][]dumps.ParserResult)
+					StageParseCache[stage] = stageMap
+				}
+
+				// ensure the slice for this parser exists
+				if _, ok := stageMap[name]; !ok {
+					stageMap[name] = make([]dumps.ParserResult, 0)
+					parserIdxInStage = len(stageMap)
+				} else {
+					parserIdxInStage = stageMap[name][0].Idx
+				}
+
+				stageMap[name] = append(stageMap[name], dumps.ParserResult{
+					Evt:     evtcopy.(types.Event),
+					Success: ret, Idx: parserIdxInStage,
+				})
+
 				StageParseMutex.Unlock()
 			}
 			if ret {
@@ -336,7 +353,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
-			//the parsed object moved onto the next phase
+			// the parsed object moved onto the next phase
 			if event.Stage != stage {
 				clog.Tracef("node moved stage, break and redo")
 				break
@@ -350,5 +367,6 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	event.Process = true
+
 	return event, nil
 }
