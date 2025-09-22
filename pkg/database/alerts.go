@@ -593,7 +593,7 @@ func retryOnBusy(fn func() error) error {
 func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]string, error) {
 	if len(batch) == 0 {
 		log.Warningf("no alerts to create, discarded?")
-		return []string{}, nil
+		return nil, nil
 	}
 
 	// extract builders in the same order
