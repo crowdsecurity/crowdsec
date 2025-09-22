@@ -377,12 +377,22 @@ func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string,
 }
 
 func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message string) error {
-	timeout := pb.pluginConfigByName[pluginName].TimeOut
+	// config guard
+	pc, ok := pb.pluginConfigByName[pluginName]
+	if !ok {
+		return fmt.Errorf("plugin %q: config not found", pluginName)
+	}
+
+	timeout := pc.TimeOut
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeout)
 
 	defer cancel()
 
-	plugin := pb.notificationPluginByName[pluginName]
+	// plugin guard
+	plugin, ok := pb.notificationPluginByName[pluginName]
+	if !ok || plugin == nil {
+		return fmt.Errorf("plugin %q: notifier not registered", pluginName)
+	}
 
 	_, err := plugin.Notify(
 		ctxTimeout,
