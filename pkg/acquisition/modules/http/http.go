@@ -170,20 +170,12 @@ func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLeve
 	return nil
 }
 
-func (h *HTTPSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
-}
-
 func (h *HTTPSource) GetMode() string {
 	return h.Config.Mode
 }
 
 func (h *HTTPSource) GetName() string {
 	return dataSourceName
-}
-
-func (h *HTTPSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
 func (h *HTTPSource) CanRun() error {
@@ -469,17 +461,13 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		return nil
 	})
 
-	//nolint //fp
-	for {
-		select {
-		case <-t.Dying():
-			h.logger.Infof("%s datasource stopping", dataSourceName)
-			if err := h.Server.Close(); err != nil {
-				return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
-			}
-			return nil
-		}
+	<-t.Dying()
+
+	h.logger.Infof("%s datasource stopping", dataSourceName)
+	if err := h.Server.Close(); err != nil {
+		return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
 	}
+	return nil
 }
 
 func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {

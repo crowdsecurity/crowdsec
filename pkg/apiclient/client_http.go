@@ -54,7 +54,6 @@ func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body
 		} else {
 			buf = jsonBuf
 		}
-
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
@@ -134,17 +133,17 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v any) (*Response
 	}
 
 	if v != nil {
-		w, ok := v.(io.Writer)
-		if !ok {
-			decErr := json.NewDecoder(resp.Body).Decode(v)
-			if errors.Is(decErr, io.EOF) {
-				decErr = nil // ignore EOF errors caused by empty response body
-			}
-
-			return response, decErr
+		if w, ok := v.(io.Writer); ok {
+			_, copyErr := io.Copy(w, resp.Body)
+			return response, copyErr
 		}
 
-		io.Copy(w, resp.Body)
+		decErr := json.NewDecoder(resp.Body).Decode(v)
+		if errors.Is(decErr, io.EOF) {
+			decErr = nil // ignore EOF errors caused by empty response body
+		}
+
+		return response, decErr
 	}
 
 	return response, err

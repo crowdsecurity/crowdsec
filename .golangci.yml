@@ -19,7 +19,6 @@ linters:
 
     # Disabled atm
 
-    - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
     - funcorder
     - exhaustive
 
@@ -120,12 +119,8 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - io.Copy                           # TODO
         - (net/http.ResponseWriter).Write   # TODO
-        - (*os/exec.Cmd).Start
         - (*os/exec.Cmd).Wait
-        - (*os.Process).Kill
-        - (*text/template.Template).ExecuteTemplate
         - syscall.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
@@ -177,7 +172,7 @@ linters:
 
     gomoddirectives:
       replace-allow-list:
-        - golang.org/x/time/rate
+        - golang.org/x/time
         - github.com/corazawaf/coraza/v3
 
     govet:
@@ -186,7 +181,7 @@ linters:
       enable-all: true
 
     interfacebloat:
-      max: 12
+      max: 7
 
     maintidx:
       # raise this after refactoring
@@ -204,7 +199,7 @@ linters:
 
     nolintlint:
       require-explanation: false  # don't require an explanation for nolint directives
-      require-specific: false     # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true     # don't require nolint directives to be specific about which linter is being skipped
       allow-unused: false         # report any unused nolint directives
 
     revive:
@@ -474,14 +469,9 @@ linters:
 
       - linters:
           - noctx
-        text: "net.Dial must not be called"
-
-      - linters:
-          - noctx
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/time/rate
       - pkg/metabase
       - third_party$
       - builtin$

@@ -114,20 +114,12 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, met
 	return nil
 }
 
-func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return errors.New("k8s-audit datasource does not support command-line acquisition")
-}
-
 func (ka *KubernetesAuditSource) GetMode() string {
 	return ka.config.Mode
 }
 
 func (ka *KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
-}
-
-func (ka *KubernetesAuditSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
 func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {

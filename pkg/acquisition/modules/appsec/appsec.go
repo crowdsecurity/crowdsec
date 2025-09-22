@@ -324,20 +324,12 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	return nil
 }
 
-func (w *AppsecSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return errors.New("AppSec datasource does not support command line acquisition")
-}
-
 func (w *AppsecSource) GetMode() string {
 	return w.config.Mode
 }
 
 func (w *AppsecSource) GetName() string {
 	return "appsec"
-}
-
-func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
 func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
