@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -22,6 +23,7 @@ type AlertCreate struct {
 	config
 	mutation *AlertMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -525,6 +527,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 		_node = &Alert{config: ac.config}
 		_spec = sqlgraph.NewCreateSpec(alert.Table, sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = ac.conflict
 	if value, ok := ac.mutation.CreatedAt(); ok {
 		_spec.SetField(alert.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -689,11 +692,231 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Alert.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.AlertUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (ac *AlertCreate) OnConflict(opts ...sql.ConflictOption) *AlertUpsertOne {
+	ac.conflict = opts
+	return &AlertUpsertOne{
+		create: ac,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Alert.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (ac *AlertCreate) OnConflictColumns(columns ...string) *AlertUpsertOne {
+	ac.conflict = append(ac.conflict, sql.ConflictColumns(columns...))
+	return &AlertUpsertOne{
+		create: ac,
+	}
+}
+
+type (
+	// AlertUpsertOne is the builder for "upsert"-ing
+	//  one Alert node.
+	AlertUpsertOne struct {
+		create *AlertCreate
+	}
+
+	// AlertUpsert is the "OnConflict" setter.
+	AlertUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AlertUpsert) SetUpdatedAt(v time.Time) *AlertUpsert {
+	u.Set(alert.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AlertUpsert) UpdateUpdatedAt() *AlertUpsert {
+	u.SetExcluded(alert.FieldUpdatedAt)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.Alert.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *AlertUpsertOne) UpdateNewValues() *AlertUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(alert.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.Scenario(); exists {
+			s.SetIgnore(alert.FieldScenario)
+		}
+		if _, exists := u.create.mutation.BucketId(); exists {
+			s.SetIgnore(alert.FieldBucketId)
+		}
+		if _, exists := u.create.mutation.Message(); exists {
+			s.SetIgnore(alert.FieldMessage)
+		}
+		if _, exists := u.create.mutation.EventsCount(); exists {
+			s.SetIgnore(alert.FieldEventsCount)
+		}
+		if _, exists := u.create.mutation.StartedAt(); exists {
+			s.SetIgnore(alert.FieldStartedAt)
+		}
+		if _, exists := u.create.mutation.StoppedAt(); exists {
+			s.SetIgnore(alert.FieldStoppedAt)
+		}
+		if _, exists := u.create.mutation.SourceIp(); exists {
+			s.SetIgnore(alert.FieldSourceIp)
+		}
+		if _, exists := u.create.mutation.SourceRange(); exists {
+			s.SetIgnore(alert.FieldSourceRange)
+		}
+		if _, exists := u.create.mutation.SourceAsNumber(); exists {
+			s.SetIgnore(alert.FieldSourceAsNumber)
+		}
+		if _, exists := u.create.mutation.SourceAsName(); exists {
+			s.SetIgnore(alert.FieldSourceAsName)
+		}
+		if _, exists := u.create.mutation.SourceCountry(); exists {
+			s.SetIgnore(alert.FieldSourceCountry)
+		}
+		if _, exists := u.create.mutation.SourceLatitude(); exists {
+			s.SetIgnore(alert.FieldSourceLatitude)
+		}
+		if _, exists := u.create.mutation.SourceLongitude(); exists {
+			s.SetIgnore(alert.FieldSourceLongitude)
+		}
+		if _, exists := u.create.mutation.SourceScope(); exists {
+			s.SetIgnore(alert.FieldSourceScope)
+		}
+		if _, exists := u.create.mutation.SourceValue(); exists {
+			s.SetIgnore(alert.FieldSourceValue)
+		}
+		if _, exists := u.create.mutation.Capacity(); exists {
+			s.SetIgnore(alert.FieldCapacity)
+		}
+		if _, exists := u.create.mutation.LeakSpeed(); exists {
+			s.SetIgnore(alert.FieldLeakSpeed)
+		}
+		if _, exists := u.create.mutation.ScenarioVersion(); exists {
+			s.SetIgnore(alert.FieldScenarioVersion)
+		}
+		if _, exists := u.create.mutation.ScenarioHash(); exists {
+			s.SetIgnore(alert.FieldScenarioHash)
+		}
+		if _, exists := u.create.mutation.Simulated(); exists {
+			s.SetIgnore(alert.FieldSimulated)
+		}
+		if _, exists := u.create.mutation.UUID(); exists {
+			s.SetIgnore(alert.FieldUUID)
+		}
+		if _, exists := u.create.mutation.Remediation(); exists {
+			s.SetIgnore(alert.FieldRemediation)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Alert.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *AlertUpsertOne) Ignore() *AlertUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *AlertUpsertOne) DoNothing() *AlertUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the AlertCreate.OnConflict
+// documentation for more info.
+func (u *AlertUpsertOne) Update(set func(*AlertUpsert)) *AlertUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&AlertUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AlertUpsertOne) SetUpdatedAt(v time.Time) *AlertUpsertOne {
+	return u.Update(func(s *AlertUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AlertUpsertOne) UpdateUpdatedAt() *AlertUpsertOne {
+	return u.Update(func(s *AlertUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *AlertUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for AlertCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *AlertUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *AlertUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *AlertUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // AlertCreateBulk is the builder for creating many Alert entities in bulk.
 type AlertCreateBulk struct {
 	config
 	err      error
 	builders []*AlertCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Alert entities in the database.
@@ -723,6 +946,7 @@ func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
 					_, err = mutators[i+1].Mutate(root, acb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = acb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, acb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -773,6 +997,197 @@ func (acb *AlertCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (acb *AlertCreateBulk) ExecX(ctx context.Context) {
 	if err := acb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Alert.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.AlertUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (acb *AlertCreateBulk) OnConflict(opts ...sql.ConflictOption) *AlertUpsertBulk {
+	acb.conflict = opts
+	return &AlertUpsertBulk{
+		create: acb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Alert.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (acb *AlertCreateBulk) OnConflictColumns(columns ...string) *AlertUpsertBulk {
+	acb.conflict = append(acb.conflict, sql.ConflictColumns(columns...))
+	return &AlertUpsertBulk{
+		create: acb,
+	}
+}
+
+// AlertUpsertBulk is the builder for "upsert"-ing
+// a bulk of Alert nodes.
+type AlertUpsertBulk struct {
+	create *AlertCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Alert.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *AlertUpsertBulk) UpdateNewValues() *AlertUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(alert.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.Scenario(); exists {
+				s.SetIgnore(alert.FieldScenario)
+			}
+			if _, exists := b.mutation.BucketId(); exists {
+				s.SetIgnore(alert.FieldBucketId)
+			}
+			if _, exists := b.mutation.Message(); exists {
+				s.SetIgnore(alert.FieldMessage)
+			}
+			if _, exists := b.mutation.EventsCount(); exists {
+				s.SetIgnore(alert.FieldEventsCount)
+			}
+			if _, exists := b.mutation.StartedAt(); exists {
+				s.SetIgnore(alert.FieldStartedAt)
+			}
+			if _, exists := b.mutation.StoppedAt(); exists {
+				s.SetIgnore(alert.FieldStoppedAt)
+			}
+			if _, exists := b.mutation.SourceIp(); exists {
+				s.SetIgnore(alert.FieldSourceIp)
+			}
+			if _, exists := b.mutation.SourceRange(); exists {
+				s.SetIgnore(alert.FieldSourceRange)
+			}
+			if _, exists := b.mutation.SourceAsNumber(); exists {
+				s.SetIgnore(alert.FieldSourceAsNumber)
+			}
+			if _, exists := b.mutation.SourceAsName(); exists {
+				s.SetIgnore(alert.FieldSourceAsName)
+			}
+			if _, exists := b.mutation.SourceCountry(); exists {
+				s.SetIgnore(alert.FieldSourceCountry)
+			}
+			if _, exists := b.mutation.SourceLatitude(); exists {
+				s.SetIgnore(alert.FieldSourceLatitude)
+			}
+			if _, exists := b.mutation.SourceLongitude(); exists {
+				s.SetIgnore(alert.FieldSourceLongitude)
+			}
+			if _, exists := b.mutation.SourceScope(); exists {
+				s.SetIgnore(alert.FieldSourceScope)
+			}
+			if _, exists := b.mutation.SourceValue(); exists {
+				s.SetIgnore(alert.FieldSourceValue)
+			}
+			if _, exists := b.mutation.Capacity(); exists {
+				s.SetIgnore(alert.FieldCapacity)
+			}
+			if _, exists := b.mutation.LeakSpeed(); exists {
+				s.SetIgnore(alert.FieldLeakSpeed)
+			}
+			if _, exists := b.mutation.ScenarioVersion(); exists {
+				s.SetIgnore(alert.FieldScenarioVersion)
+			}
+			if _, exists := b.mutation.ScenarioHash(); exists {
+				s.SetIgnore(alert.FieldScenarioHash)
+			}
+			if _, exists := b.mutation.Simulated(); exists {
+				s.SetIgnore(alert.FieldSimulated)
+			}
+			if _, exists := b.mutation.UUID(); exists {
+				s.SetIgnore(alert.FieldUUID)
+			}
+			if _, exists := b.mutation.Remediation(); exists {
+				s.SetIgnore(alert.FieldRemediation)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Alert.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *AlertUpsertBulk) Ignore() *AlertUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *AlertUpsertBulk) DoNothing() *AlertUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the AlertCreateBulk.OnConflict
+// documentation for more info.
+func (u *AlertUpsertBulk) Update(set func(*AlertUpsert)) *AlertUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&AlertUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AlertUpsertBulk) SetUpdatedAt(v time.Time) *AlertUpsertBulk {
+	return u.Update(func(s *AlertUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AlertUpsertBulk) UpdateUpdatedAt() *AlertUpsertBulk {
+	return u.Update(func(s *AlertUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *AlertUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the AlertCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for AlertCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *AlertUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

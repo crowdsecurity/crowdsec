@@ -471,17 +471,13 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 		return nil
 	})
 
-	//nolint //fp
-	for {
-		select {
-		case <-t.Dying():
-			h.logger.Infof("%s datasource stopping", dataSourceName)
-			if err := h.Server.Close(); err != nil {
-				return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
-			}
-			return nil
-		}
+	<-t.Dying()
+
+	h.logger.Infof("%s datasource stopping", dataSourceName)
+	if err := h.Server.Close(); err != nil {
+		return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
 	}
+	return nil
 }
 
 func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
