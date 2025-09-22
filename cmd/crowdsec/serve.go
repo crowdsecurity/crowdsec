@@ -24,7 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func reloadHandler(ctx context.Context, sig os.Signal) (*csconfig.Config, error) {
+func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -82,7 +82,7 @@ func reloadHandler(ctx context.Context, sig os.Signal) (*csconfig.Config, error)
 		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
 	}
 
-	log.Printf("Reload is finished")
+	log.Info("Reload is finished")
 
 	return cConfig, nil
 }
@@ -126,6 +126,7 @@ func ShutdownCrowdsecRoutines() error {
 	outputsTomb.Kill(nil)
 
 	done := make(chan error, 1)
+
 	go func() {
 		done <- outputsTomb.Wait()
 	}()
@@ -188,7 +189,7 @@ func shutdownCrowdsec() error {
 	return nil
 }
 
-func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
+func shutdown(_ os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
 			return fmt.Errorf("failed to shut down crowdsec: %w", err)
@@ -244,6 +245,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
+
 	Loop:
 		for {
 			s := <-signalChan
@@ -270,11 +272,13 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
+
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
 
 					break Loop
 				}
+
 				exitChan <- nil
 			}
 		}

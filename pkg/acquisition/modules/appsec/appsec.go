@@ -170,12 +170,12 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *AppsecSource) GetMetrics() []prometheus.Collector {
+func (*AppsecSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
 		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
 
-func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
+func (*AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
 		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
@@ -332,7 +332,7 @@ func (w *AppsecSource) GetMode() string {
 	return w.config.Mode
 }
 
-func (w *AppsecSource) GetName() string {
+func (*AppsecSource) GetName() string {
 	return "appsec"
 }
 
@@ -473,7 +473,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 	return nil
 }
 
-func (w *AppsecSource) CanRun() error {
+func (*AppsecSource) CanRun() error {
 	return nil
 }
 
@@ -481,7 +481,7 @@ func (w *AppsecSource) GetUuid() string {
 	return w.config.UniqueId
 }
 
-func (w *AppsecSource) Dump() interface{} {
+func (w *AppsecSource) Dump() any {
 	return w
 }
 
@@ -507,7 +507,6 @@ func (w *AppsecSource) isValidKey(ctx context.Context, apiKey string) (bool, err
 }
 
 func (w *AppsecSource) checkAuth(ctx context.Context, apiKey string) error {
-
 	if apiKey == "" {
 		return errMissingAPIKey
 	}
@@ -524,10 +523,12 @@ func (w *AppsecSource) checkAuth(ctx context.Context, apiKey string) error {
 			if err != nil {
 				w.logger.Errorf("Error checking auth for API key: %s", err)
 			}
+
 			return errInvalidAPIKey
 		}
 		// Cache the valid API key
 		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+
 		return nil
 	}
 

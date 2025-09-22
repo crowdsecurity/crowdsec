@@ -44,6 +44,7 @@ func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 
 		go func() {
 			defer trace.CatchPanic("crowdsec/runAPIServer")
+
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 
 			if err := apiServer.Run(ctx, apiReady); err != nil {

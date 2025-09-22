@@ -25,7 +25,6 @@ import (
 // initCrowdsec prepares the log processor service
 func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*parser.Parsers, []acquisition.DataSource, error) {
 	var err error
-
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
 		return nil, nil, fmt.Errorf("while loading context: %w", err)
 	}
@@ -117,7 +116,7 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 	bucketWg.Wait()
 }
 
-func startHeartBeat(ctx context.Context, cConfig *csconfig.Config, apiClient *apiclient.ApiClient) {
+func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclient.ApiClient) {
 	log.Debugf("Starting HeartBeat service")
 	apiClient.HeartBeat.StartHeartBeat(ctx, &outputsTomb)
 }
@@ -211,6 +210,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 			defer trace.CatchPanic("crowdsec/runCrowdsec")
 			// this logs every time, even at config reload
 			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
+
 			agentReady <- true
 
 			if err := runCrowdsec(ctx, cConfig, parsers, hub, datasources); err != nil {
@@ -235,6 +235,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 			if err := dumpAllStates(); err != nil {
 				log.Fatal(err)
 			}
+
 			os.Exit(0)
 		}
 

@@ -250,7 +250,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	controller.DecisionDeleteChan = nil
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
-		log.Printf("Loading CAPI manager")
+		log.Info("Loading CAPI manager")
 
 		apiClient, err = NewAPIC(ctx, config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {

@@ -20,7 +20,7 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 
 	for idx, alert := range alerts {
 		log.Tracef("alert %d/%d", idx, len(alerts))
-		/*if we have more than one source, we need to dedup */
+		// if we have more than one source, we need to dedup
 		if len(alert.Sources) == 0 || len(alert.Sources) == 1 {
 			dedupCache = append(dedupCache, alert.Alert)
 			continue
@@ -98,7 +98,7 @@ func runOutput(ctx context.Context, input chan types.Event, overflow chan types.
 			}
 			return nil
 		case event := <-overflow:
-			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
+			// if alert is empty and mapKey is present, the overflow is just to cleanup bucket
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 				break

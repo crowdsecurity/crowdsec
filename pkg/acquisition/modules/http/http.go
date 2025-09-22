@@ -190,15 +190,15 @@ func (h *HTTPSource) CanRun() error {
 	return nil
 }
 
-func (h *HTTPSource) GetMetrics() []prometheus.Collector {
+func (*HTTPSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
+func (*HTTPSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) Dump() interface{} {
+func (h *HTTPSource) Dump() any {
 	return h
 }
 
@@ -337,6 +337,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
+
 		out <- evt
 	}
 
@@ -367,7 +368,7 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 		}
 
 		if r.RemoteAddr == "@" {
-			//We check if request came from unix socket and if so we set to loopback
+			// We check if request came from unix socket and if so we set to loopback
 			r.RemoteAddr = "127.0.0.1:65535"
 		}
 
@@ -474,9 +475,11 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 	<-t.Dying()
 
 	h.logger.Infof("%s datasource stopping", dataSourceName)
+
 	if err := h.Server.Close(); err != nil {
 		return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
 	}
+
 	return nil
 }
 
