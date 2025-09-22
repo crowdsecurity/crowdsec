@@ -45,8 +45,7 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 	if !n.ContainsIPLists() {
 		return isWhitelisted
 	}
-	metrics.NodesWlHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason,
-		"stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+	n.bumpWhitelistMetric(metrics.NodesWlHits, p)
 	for _, src := range srcs {
 		if isWhitelisted {
 			break
@@ -69,23 +68,21 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 		}
 	}
 	if isWhitelisted {
-		metrics.NodesWlHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason,
-			"stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+		n.bumpWhitelistMetric(metrics.NodesWlHitsOk, p)
 	}
 	return isWhitelisted
 }
 
-func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event) (bool, error) {
+func (n *Node) CheckExprWL(cachedExprEnv map[string]any, p *types.Event) (bool, error) {
 	isWhitelisted := false
 
 	if !n.ContainsExprLists() {
 		return false, nil
 	}
-	metrics.NodesWlHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason,
-		"stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+	n.bumpWhitelistMetric(metrics.NodesWlHits, p)
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		//if we already know the event is whitelisted, skip the rest of the expressions
+		// if we already know the event is whitelisted, skip the rest of the expressions
 		if isWhitelisted {
 			break
 		}
@@ -107,8 +104,7 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event)
 		}
 	}
 	if isWhitelisted {
-		metrics.NodesWlHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "reason": n.Whitelist.Reason,
-			"stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+		n.bumpWhitelistMetric(metrics.NodesWlHitsOk, p)
 	}
 	return isWhitelisted, nil
 }
@@ -144,4 +140,23 @@ func (n *Node) CompileWLs() (bool, error) {
 		n.Logger.Debugf("adding expression %s to whitelists", filter)
 	}
 	return n.ContainsWLs(), nil
+}
+
+func (n *Node) bumpWhitelistMetric(counter *prometheus.CounterVec, p *types.Event) {
+	// better safe than sorry
+	acquisType := p.Line.Labels["type"]
+	if acquisType == "" {
+		acquisType = "unknown"
+	}
+
+	labels := prometheus.Labels{
+		"source":      p.Line.Src,
+		"type":        p.Line.Module,
+		"name":        n.Name,
+		"reason":      n.Whitelist.Reason,
+		"stage":       p.Stage,
+		"acquis_type": acquisType,
+	}
+
+	counter.With(labels).Inc()
 }
