@@ -118,20 +118,12 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLev
 	return nil
 }
 
-func (*KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
-}
-
 func (k *KafkaSource) GetMode() string {
 	return k.Config.Mode
 }
 
 func (*KafkaSource) GetName() string {
 	return dataSourceName
-}
-
-func (*KafkaSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
 func (*KafkaSource) CanRun() error {

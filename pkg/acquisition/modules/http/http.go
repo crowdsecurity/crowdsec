@@ -170,20 +170,12 @@ func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLeve
 	return nil
 }
 
-func (h *HTTPSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
-}
-
 func (h *HTTPSource) GetMode() string {
 	return h.Config.Mode
 }
 
 func (h *HTTPSource) GetName() string {
 	return dataSourceName
-}
-
-func (h *HTTPSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
 }
 
 func (h *HTTPSource) CanRun() error {

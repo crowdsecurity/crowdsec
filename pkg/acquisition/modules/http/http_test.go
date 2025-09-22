@@ -200,18 +200,6 @@ path: 15
 	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 4: found a tab character that violates indentation")
 }
 
-func TestConfigureByDSN(t *testing.T) {
-	h := HTTPSource{}
-	err := h.ConfigureByDSN("http://localhost:8080/test", map[string]string{}, log.WithFields(log.Fields{
-		"type": "http",
-	}), "test")
-	cstest.AssertErrorMessage(
-		t,
-		err,
-		"http datasource does not support command-line acquisition",
-	)
-}
-
 func TestGetMode(t *testing.T) {
 	h := HTTPSource{}
 	h.Config.Mode = "test"
