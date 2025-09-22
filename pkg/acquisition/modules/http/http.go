@@ -182,15 +182,15 @@ func (h *HTTPSource) CanRun() error {
 	return nil
 }
 
-func (h *HTTPSource) GetMetrics() []prometheus.Collector {
+func (*HTTPSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
+func (*HTTPSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) Dump() interface{} {
+func (h *HTTPSource) Dump() any {
 	return h
 }
 
@@ -329,13 +329,14 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
+
 		out <- evt
 	}
 
 	return nil
 }
 
-func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.Config.Path, func(w http.ResponseWriter, r *http.Request) {
 		if err := authorizeRequest(r, &h.Config); err != nil {
@@ -359,7 +360,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		}
 
 		if r.RemoteAddr == "@" {
-			//We check if request came from unix socket and if so we set to loopback
+			// We check if request came from unix socket and if so we set to loopback
 			r.RemoteAddr = "127.0.0.1:65535"
 		}
 
@@ -408,6 +409,8 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		h.Server.TLSConfig = tlsConfig
 	}
 
+	listenConfig := &net.ListenConfig{}
+
 	t.Go(func() error {
 		if h.Config.ListenSocket == "" {
 			return nil
@@ -416,7 +419,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
 		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
 		_ = os.Remove(h.Config.ListenSocket)
-		listener, err := net.Listen("unix", h.Config.ListenSocket)
+		listener, err := listenConfig.Listen(ctx, "unix", h.Config.ListenSocket)
 		if err != nil {
 			return csnet.WrapSockErr(err, h.Config.ListenSocket)
 		}
@@ -464,9 +467,11 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	<-t.Dying()
 
 	h.logger.Infof("%s datasource stopping", dataSourceName)
+
 	if err := h.Server.Close(); err != nil {
 		return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
 	}
+
 	return nil
 }
 
@@ -475,7 +480,7 @@ func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/live")
-		return h.RunServer(out, t)
+		return h.RunServer(ctx, out, t)
 	})
 
 	return nil
