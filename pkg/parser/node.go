@@ -147,7 +147,7 @@ func (n *Node) validate(ectx EnricherCtx) error {
 func (n *Node) processFilter(cachedExprEnv map[string]any) (bool, error) {
 	clog := n.Logger
 	if n.RunTimeFilter == nil {
-		clog.Trace("Node has not filter, enter")
+		clog.Trace("Node has no filter, enter")
 		return true, nil
 	}
 
@@ -285,7 +285,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 	return true, nodeHasOKGrok, nil
 }
 
-func (n *Node) processStash(p *types.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
+func (n *Node) processStash(_ *types.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
 	for idx, stash := range n.Stash {
 		var (
 			key   string
@@ -394,7 +394,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	if n.Name != "" {
-		metrics.NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+		n.bumpNodeMetric(metrics.NodesHits, p)
 	}
 
 	isWhitelisted, err := n.processWhitelist(cachedExprEnv, p)
@@ -429,7 +429,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	// grok or leafs failed, don't process statics
 	if !nodeState {
 		if n.Name != "" {
-			metrics.NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+			n.bumpNodeMetric(metrics.NodesHitsKo, p)
 		}
 
 		clog.Debug("Event leaving node: ko")
@@ -438,7 +438,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	if n.Name != "" {
-		metrics.NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name, "stage": p.Stage, "acquis_type": p.Line.Labels["type"]}).Inc()
+		n.bumpNodeMetric(metrics.NodesHitsOk, p)
 	}
 
 	/*
@@ -681,4 +681,21 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	return n.validate(ectx)
+}
+
+func (n *Node) bumpNodeMetric(counter *prometheus.CounterVec, p *types.Event) {
+	// better safe than sorry
+	acquisType := p.Line.Labels["type"]
+	if acquisType == "" {
+		acquisType = "unknown"
+	}
+
+	labels := prometheus.Labels{
+		"source":      p.Line.Src,
+		"type":        p.Line.Module,
+		"name":        n.Name,
+		"stage":       p.Stage,
+		"acquis_type": acquisType,
+	}
+	counter.With(labels).Inc()
 }
