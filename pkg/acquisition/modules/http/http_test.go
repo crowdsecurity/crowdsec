@@ -519,7 +519,7 @@ headers:
 	dialer := &net.Dialer{}
 	client := &http.Client{
 		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 				return dialer.DialContext(ctx, "unix", socketFile)
 			},
 		},
@@ -596,6 +596,7 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 			return
 		}
 	}
+
 	errChan <- nil
 }
 
@@ -910,7 +911,7 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 	}
 
 	if !isExist && expected > 0 {
-		t.Fatalf("expected metric cs_httpsource_hits_total not found")
+		t.Fatal("expected metric cs_httpsource_hits_total not found")
 	}
 
 	for _, metric := range metrics {

@@ -29,16 +29,16 @@ var (
 type TokenSave func(ctx context.Context, tokenKey string, token string) error
 
 type ApiClient struct {
-	/*The http client used to make requests*/
+	// The http client used to make requests
 	client *http.Client
-	/*Reuse a single struct instead of allocating one for each service on the heap.*/
+	// Reuse a single struct instead of allocating one for each service on the heap.
 	common service
-	/*config stuff*/
+	// config stuff
 	BaseURL   *url.URL
 	PapiURL   *url.URL
 	URLPrefix string
 	UserAgent string
-	/*exposed Services*/
+	// exposed Services
 	Decisions      *DecisionsService
 	DecisionDelete *DecisionDeleteService
 	Alerts         *AlertsService

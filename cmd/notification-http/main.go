@@ -165,7 +165,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	return &protobufs.Empty{}, nil
 }
 
-func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *HTTPPlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 
 	err := yaml.Unmarshal(config.Config, &d)

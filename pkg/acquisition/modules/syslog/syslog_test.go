@@ -180,7 +180,9 @@ disable_rfc_parser: true`,
 			}
 
 			actualLines := 0
+
 			go writeToSyslog(ctx, ts.logs)
+
 		READLOOP:
 			for {
 				select {
