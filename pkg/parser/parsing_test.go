@@ -267,7 +267,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 
 	valid = true
 
-	for mapIdx := range len(expectMaps) {
+	for mapIdx := range expectMaps {
 		for expKey, expVal := range expectMaps[mapIdx] {
 			outVal, ok := outMaps[mapIdx][expKey]
 			if !ok {

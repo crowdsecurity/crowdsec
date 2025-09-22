@@ -198,17 +198,14 @@ func (k *KafkaSource) RunReader(ctx context.Context, out chan types.Event, t *to
 	t.Go(func() error {
 		return k.ReadMessage(ctx, out)
 	})
-	//nolint //fp
-	for {
-		select {
-		case <-t.Dying():
-			k.logger.Infof("%s datasource topic %s stopping", dataSourceName, k.Config.Topic)
-			if err := k.Reader.Close(); err != nil {
-				return fmt.Errorf("while closing  %s reader on topic '%s': %w", dataSourceName, k.Config.Topic, err)
-			}
-			return nil
-		}
+
+	<-t.Dying()
+
+	k.logger.Infof("%s datasource topic %s stopping", dataSourceName, k.Config.Topic)
+	if err := k.Reader.Close(); err != nil {
+		return fmt.Errorf("while closing  %s reader on topic '%s': %w", dataSourceName, k.Config.Topic, err)
 	}
+	return nil
 }
 
 func (k *KafkaSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {

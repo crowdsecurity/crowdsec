@@ -226,6 +226,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-replace golang.org/x/time => github.com/crowdsecurity/time v0.0.0-20250912193045-33d51b7d3995
+replace golang.org/x/time => github.com/crowdsecurity/time v0.13.0-crowdsec.20250912
 
 replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.3.3-crowdsec.20250609
