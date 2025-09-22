@@ -54,7 +54,6 @@ func (c *ApiClient) PrepareRequest(ctx context.Context, method, url string, body
 		} else {
 			buf = jsonBuf
 		}
-
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
