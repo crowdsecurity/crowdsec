@@ -108,8 +108,8 @@ github.com/crowdsecurity/grokky v0.2.2 h1:yALsI9zqpDArYzmSSxfBq2dhYuGUTKMJq8KOEI
 github.com/crowdsecurity/grokky v0.2.2/go.mod h1:33usDIYzGDsgX1kHAThCbseso6JuWNJXOzRQDGXHtWM=
 github.com/crowdsecurity/machineid v1.0.3 h1:mgd//PhMJqyA1EdRTgwRvafwbzNjoktdJyEgZGVCD2Q=
 github.com/crowdsecurity/machineid v1.0.3/go.mod h1:XWUSlnS0R0+u/JK5ulidwlbceNT3ZOCKteoVQEn6Luo=
-github.com/crowdsecurity/time v0.0.0-20250912193045-33d51b7d3995 h1:BNp50mHtpMv3+3QTDpofZHLR3XVuDFVVJibqWVYu+Pk=
-github.com/crowdsecurity/time v0.0.0-20250912193045-33d51b7d3995/go.mod h1:eL/Oa2bBBK0TkX57Fyni+NgnyQQN4LitPmob2Hjnqw4=
+github.com/crowdsecurity/time v0.13.0-crowdsec.20250912 h1:O+lHeYhtRPubKvqDxhuZSjxefd8RbV1Ik5J7hDthoIA=
+github.com/crowdsecurity/time v0.13.0-crowdsec.20250912/go.mod h1:eL/Oa2bBBK0TkX57Fyni+NgnyQQN4LitPmob2Hjnqw4=
 github.com/davecgh/go-spew v0.0.0-20161028175848-04cdfd42973b/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
