@@ -37,7 +37,7 @@ func (f *MockSource) UnmarshalConfig(cfg []byte) error {
 	return nil
 }
 
-func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (f *MockSource) Configure(cfg []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if err := f.UnmarshalConfig(cfg); err != nil {
 		return err
@@ -58,18 +58,18 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry, metricsLevel metri
 	return nil
 }
 func (f *MockSource) GetMode() string { return f.Mode }
-func (f *MockSource) CanRun() error                            { return nil }
-func (f *MockSource) Dump() any                                { return f }
-func (f *MockSource) GetName() string                          { return "mock" }
-func (f *MockSource) GetUuid() string { return "" }
+func (*MockSource) CanRun() error     { return nil }
+func (f *MockSource) Dump() any       { return f }
+func (*MockSource) GetName() string   { return "mock" }
+func (*MockSource) GetUuid() string   { return "" }
 
 // copy the mocksource, but this one can't run
 type MockSourceCantRun struct {
 	MockSource
 }
 
-func (f *MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") }
-func (f *MockSourceCantRun) GetName() string { return "mock_cant_run" }
+func (*MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") }
+func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
 func appendMockSource() {
@@ -319,7 +319,7 @@ type MockCat struct {
 	logger                            *log.Entry
 }
 
-func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (f *MockCat) Configure(_ []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
@@ -332,10 +332,10 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.
 	return nil
 }
 
-func (f *MockCat) UnmarshalConfig(cfg []byte) error { return nil }
-func (f *MockCat) GetName() string                  { return "mock_cat" }
-func (f *MockCat) GetMode() string                  { return "cat" }
-func (f *MockCat) OneShotAcquisition(ctx context.Context, out chan types.Event, tomb *tomb.Tomb) error {
+func (*MockCat) UnmarshalConfig(_ []byte) error { return nil }
+func (*MockCat) GetName() string                { return "mock_cat" }
+func (*MockCat) GetMode() string                { return "cat" }
+func (*MockCat) OneShotAcquisition(_ context.Context, out chan types.Event, _ *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -345,18 +345,18 @@ func (f *MockCat) OneShotAcquisition(ctx context.Context, out chan types.Event, 
 	return nil
 }
 
-func (f *MockCat) CanRun() error                            { return nil }
-func (f *MockCat) Dump() any                                { return f }
-func (f *MockCat) GetUuid() string { return "" }
+func (*MockCat) CanRun() error   { return nil }
+func (f *MockCat) Dump() any     { return f }
+func (*MockCat) GetUuid() string { return "" }
 
-//----
+// ----
 
 type MockTail struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	logger                            *log.Entry
 }
 
-func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (f *MockTail) Configure(_ []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
@@ -369,11 +369,11 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics
 	return nil
 }
 
-func (f *MockTail) UnmarshalConfig(cfg []byte) error { return nil }
-func (f *MockTail) GetName() string                  { return "mock_tail" }
-func (f *MockTail) GetMode() string                  { return "tail" }
+func (*MockTail) UnmarshalConfig(_ []byte) error { return nil }
+func (*MockTail) GetName() string                { return "mock_tail" }
+func (*MockTail) GetMode() string                { return "tail" }
 
-func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (*MockTail) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -384,9 +384,9 @@ func (f *MockTail) StreamingAcquisition(ctx context.Context, out chan types.Even
 
 	return nil
 }
-func (f *MockTail) CanRun() error                            { return nil }
-func (f *MockTail) Dump() any                                { return f }
-func (f *MockTail) GetUuid() string { return "" }
+func (*MockTail) CanRun() error   { return nil }
+func (f *MockTail) Dump() any     { return f }
+func (*MockTail) GetUuid() string { return "" }
 
 // func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
@@ -400,11 +400,12 @@ func TestStartAcquisitionCat(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Errorf("unexpected error")
+			t.Error("unexpected error")
 		}
 	}()
 
 	count := 0
+
 READLOOP:
 	for {
 		select {
@@ -428,11 +429,12 @@ func TestStartAcquisitionTail(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Errorf("unexpected error")
+			t.Error("unexpected error")
 		}
 	}()
 
 	count := 0
+
 READLOOP:
 	for {
 		select {
@@ -454,7 +456,7 @@ type MockTailError struct {
 	MockTail
 }
 
-func (f *MockTailError) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (*MockTailError) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
 	for range 10 {
 		evt := types.Event{}
 		evt.Line.Src = "test"
@@ -481,6 +483,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	}()
 
 	count := 0
+
 READLOOP:
 	for {
 		select {
@@ -490,6 +493,7 @@ READLOOP:
 			break READLOOP
 		}
 	}
+
 	assert.Equal(t, 10, count)
 	// acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
@@ -498,19 +502,19 @@ READLOOP:
 
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Toto                              string     `yaml:"toto"`
-	logger                            *log.Entry //nolint: unused
+	Toto                              string `yaml:"toto"`
+	logger                            *log.Entry //nolint:unused
 }
 
-func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error { return nil }
-func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (*MockSourceByDSN) UnmarshalConfig(_ []byte) error { return nil }
+func (*MockSourceByDSN) Configure(_ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
 func (f *MockSourceByDSN) GetMode() string { return f.Mode }
-func (f *MockSourceByDSN) CanRun() error                            { return nil }
-func (f *MockSourceByDSN) Dump() any                                { return f }
-func (f *MockSourceByDSN) GetName() string                          { return "mockdsn" }
-func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (*MockSourceByDSN) CanRun() error     { return nil }
+func (f *MockSourceByDSN) Dump() any       { return f }
+func (*MockSourceByDSN) GetName() string   { return "mockdsn" }
+func (*MockSourceByDSN) ConfigureByDSN(dsn string, _ map[string]string, _ *log.Entry, _ string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {
 		return errors.New("unexpected value")
@@ -518,7 +522,7 @@ func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, l
 
 	return nil
 }
-func (f *MockSourceByDSN) GetUuid() string { return "" }
+func (*MockSourceByDSN) GetUuid() string { return "" }
 
 func TestConfigureByDSN(t *testing.T) {
 	tests := []struct {
@@ -559,13 +563,13 @@ func TestConfigureByDSN(t *testing.T) {
 
 // TailModeNoTailer configures itself in "tail" mode but does not implement the Tailer methods.
 type TailModeNoTailer struct {}
-func (s *TailModeNoTailer) UnmarshalConfig([]byte) error { return nil }
-func (s *TailModeNoTailer) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
-func (s *TailModeNoTailer) GetMode() string   { return configuration.TAIL_MODE }
-func (s *TailModeNoTailer) GetName() string   { return "tail_no_tailer" }
-func (s *TailModeNoTailer) GetUuid() string   { return "" }
-func (s *TailModeNoTailer) Dump() any         { return s }
-func (s *TailModeNoTailer) CanRun() error     { return nil }
+func (*TailModeNoTailer) UnmarshalConfig([]byte) error { return nil }
+func (*TailModeNoTailer) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
+func (*TailModeNoTailer) GetMode() string   { return configuration.TAIL_MODE }
+func (*TailModeNoTailer) GetName() string   { return "tail_no_tailer" }
+func (*TailModeNoTailer) GetUuid() string   { return "" }
+func (s *TailModeNoTailer) Dump() any       { return s }
+func (*TailModeNoTailer) CanRun() error     { return nil }
 
 func TestStartAcquisition_MissingTailer(t *testing.T) {
 	ctx := t.Context()
@@ -579,13 +583,13 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 // CatModeNoTailer configures itself in "cat" mode but does not implement the Fetcher methods.
 type CatModeNoFetcher struct {}
-func (s *CatModeNoFetcher) UnmarshalConfig([]byte) error { return nil }
-func (s *CatModeNoFetcher) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
-func (s *CatModeNoFetcher) GetMode() string { return configuration.CAT_MODE }
-func (s *CatModeNoFetcher) GetName() string { return "cat_no_fetcher" }
-func (s *CatModeNoFetcher) GetUuid() string { return "" }
+func (*CatModeNoFetcher) UnmarshalConfig([]byte) error { return nil }
+func (*CatModeNoFetcher) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
+func (*CatModeNoFetcher) GetMode() string { return configuration.CAT_MODE }
+func (*CatModeNoFetcher) GetName() string { return "cat_no_fetcher" }
+func (*CatModeNoFetcher) GetUuid() string { return "" }
 func (s *CatModeNoFetcher) Dump() any       { return s }
-func (s *CatModeNoFetcher) CanRun() error   { return nil }
+func (*CatModeNoFetcher) CanRun() error   { return nil }
 
 func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	ctx := t.Context()
@@ -595,4 +599,3 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	go func() { errCh <- StartAcquisition(ctx, []DataSource{&CatModeNoFetcher{}}, out, &tb) }()
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }
-

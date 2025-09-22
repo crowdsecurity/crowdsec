@@ -541,7 +541,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 		})
 	}
 
-	/*return only when acquisition is over (cat) or never (tail)*/
+	// return only when acquisition is over (cat) or never (tail)
 	err := acquisTomb.Wait()
 
 	return err
