@@ -121,7 +121,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 	var rng csnet.Range
 
 	for _, decisionItem := range missingDecisions {
-		/*if the scope is IP or Range, convert the value to integers */
+		// if the scope is IP or Range, convert the value to integers
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
@@ -294,7 +294,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 		var rng csnet.Range
 
-		/*if the scope is IP or Range, convert the value to integers */
+		// if the scope is IP or Range, convert the value to integers
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
@@ -302,7 +302,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			}
 		}
 
-		/*bulk insert some new decisions*/
+		// bulk insert some new decisions
 		decisionBuilder := c.Ent.Decision.Create().
 			SetUntil(ts.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
@@ -320,7 +320,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
 
-		/*for bulk delete of duplicate decisions*/
+		// for bulk delete of duplicate decisions
 		if decisionItem.Value == nil {
 			log.Warning("nil value in community decision")
 			continue
@@ -378,7 +378,7 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 			return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 		}
 
-		/*if the scope is IP or Range, convert the value to integers */
+		// if the scope is IP or Range, convert the value to integers
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
@@ -590,8 +590,23 @@ func retryOnBusy(fn func() error) error {
 	return fmt.Errorf("exceeded %d busy retries", maxLockRetries)
 }
 
-func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate, alertDecisions [][]*ent.Decision) ([]string, error) {
-	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(ctx)
+func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]string, error) {
+	if len(batch) == 0 {
+		log.Warningf("no alerts to create, discarded?")
+		return nil, nil
+	}
+
+	// extract builders in the same order
+	builders := make([]*ent.AlertCreate, len(batch))
+	for i := range batch {
+		if batch[i].builder == nil {
+			return nil, fmt.Errorf("nil alert builder at index %d", i)
+		}
+
+		builders[i] = batch[i].builder
+	}
+
+	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(builders...).Save(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 	}
@@ -600,7 +615,11 @@ func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate
 	for i, a := range alertsCreateBulk {
 		ret[i] = strconv.Itoa(a.ID)
 
-		d := alertDecisions[i]
+		d := batch[i].decisions
+		if len(d) == 0 {
+			continue
+		}
+
 		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
 
 		for _, d2 := range decisionsChunk {
@@ -616,16 +635,20 @@ func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate
 	return ret, nil
 }
 
+type alertCreatePlan struct {
+	builder *ent.AlertCreate
+	decisions []*ent.Decision
+}
+
 func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
-	alertBuilders := []*ent.AlertCreate{}
-	alertDecisions := [][]*ent.Decision{}
+	batch := make([]alertCreatePlan, 0, len(alerts))
 
 	for _, alertItem := range alerts {
 		var err error
 
 		startAtTime, stopAtTime := parseAlertTimes(alertItem, c.Log)
 
-		/*display proper alert in logs*/
+		// display proper alert in logs
 		for _, disp := range alertItem.FormatAsStrings(machineID, log.StandardLogger()) {
 			c.Log.Info(disp)
 		}
@@ -651,7 +674,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			continue
 		}
 
-		alertBuilder := c.Ent.Alert.
+		builder := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
 			SetMessage(*alertItem.Message).
@@ -678,20 +701,17 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			AddMetas(metas...)
 
 		if owner != nil {
-			alertBuilder.SetOwner(owner)
+			builder.SetOwner(owner)
 		}
 
-		alertBuilders = append(alertBuilders, alertBuilder)
-		alertDecisions = append(alertDecisions, decisions)
-	}
-
-	if len(alertBuilders) == 0 {
-		log.Warningf("no alerts to create, discarded?")
-		return nil, nil
+		batch = append(batch, alertCreatePlan{
+			builder: builder,
+			decisions: decisions,
+		})
 	}
 
 	// Save alerts, then attach decisions with retry logic
-	ids, err := saveAlerts(ctx, c, alertBuilders, alertDecisions)
+	ids, err := saveAlerts(ctx, c, batch)
 	if err != nil {
 		return nil, err
 	}
@@ -964,15 +984,15 @@ func (c *Client) DeleteAlertWithFilter(ctx context.Context, filter map[string][]
 func (c *Client) GetAlertByID(ctx context.Context, alertID int) (*ent.Alert, error) {
 	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(ctx)
 	if err != nil {
-		/*record not found, 404*/
+		// record not found, 404
 		if ent.IsNotFound(err) {
 			log.Warningf("GetAlertByID (not found): %s", err)
-			return &ent.Alert{}, ItemNotFound
+			return nil, ItemNotFound
 		}
 
 		c.Log.Warningf("GetAlertByID : %s", err)
 
-		return &ent.Alert{}, QueryFail
+		return nil, QueryFail
 	}
 
 	return alert, nil

@@ -256,7 +256,10 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 	switch outputFormat {
 	case "human":
 		for _, section := range maptools.SortedKeys(want) {
-			want[section].Table(out, wantColor, noUnit, showEmpty)
+			// always ok, but keep nilaway happy
+			if sec, ok := want[section]; ok && sec != nil {
+				sec.Table(out, wantColor, noUnit, showEmpty)
+			}
 		}
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")
