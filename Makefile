@@ -18,7 +18,7 @@ BUILD_RE2_WASM ?= 0
 #expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,expr_debug
 
-# By default, build with CGO and sqlite3.
+# By default, build with sqlite3.
 BUILD_SQLITE ?= mattn
 SQLITE_MSG = Using mattn/go-sqlite3
 
@@ -159,15 +159,21 @@ COMPONENTS := \
 	datasource_s3 \
 	datasource_syslog \
 	datasource_wineventlog \
-	cscli_setup
+	cscli_setup \
+	db_mysql \
+	db_postgres \
+	db_sqlite
 
 comma := ,
 space := $(empty) $(empty)
 
 # Predefined profiles
 
-# keep only datasource-file
-EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
+# What we want to KEEP in the minimal build,
+# which should always include at least one data source and a sql driver.
+INCLUDE_MINIMAL := db_sqlite datasource_file
+
+EXCLUDE_MINIMAL := $(filter-out $(INCLUDE_MINIMAL),$(strip $(COMPONENTS)))
 
 # example
 # EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3

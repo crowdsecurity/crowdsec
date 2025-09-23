@@ -8,9 +8,6 @@ import (
 	"os"
 
 	entsql "entgo.io/ent/dialect/sql"
-	// load database backends
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/jackc/pgx/v4/stdlib"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -85,6 +82,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB connection string: %w", err)
 	}
+
 	drv, err := getEntDriver(typ, dia, dbConnectionString, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening connection to %s: %w", config.Type, err)
