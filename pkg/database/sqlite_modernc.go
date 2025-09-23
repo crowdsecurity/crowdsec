@@ -10,6 +10,11 @@ import (
 )
 
 func IsSqliteBusyError(err error) bool {
-	var sqliteErr sqlite.Error
-	return errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_BUSY
+	var se *sqlite.Error
+
+	if errors.As(err, &se) {
+		return se.Code() == sqlite3.SQLITE_BUSY
+	}
+
+	return false
 }
