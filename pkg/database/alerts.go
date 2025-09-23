@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
-	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -377,7 +376,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
+func (c *Client) createDecisionBatch(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
@@ -554,15 +553,15 @@ func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.C
 
 func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
 	decisions := []*ent.Decision{}
-
-	decisionChunks := slicetools.Chunks(alertItem.Decisions, client.decisionBulkSize)
-	for _, decisionChunk := range decisionChunks {
-		decisionRet, err := client.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
+	if err := Batch(ctx, alertItem.Decisions, client.decisionBulkSize, func(ctx context.Context, part []*models.Decision) error {
+		ret, err := client.createDecisionBatch(ctx, *alertItem.Simulated, stopAtTime, part)
 		if err != nil {
-			return nil, 0, fmt.Errorf("creating alert decisions: %w", err)
+			return fmt.Errorf("creating alert decisions: %w", err)
 		}
-
-		decisions = append(decisions, decisionRet...)
+		decisions = append(decisions, ret...)
+		return nil
+	}); err != nil {
+		return nil, 0, err
 	}
 
 	discarded := len(alertItem.Decisions) - len(decisions)
@@ -623,15 +622,13 @@ func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]stri
 			continue
 		}
 
-		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
-
-		for _, d2 := range decisionsChunk {
-			if err := retryOnBusy(func() error {
+		if err := Batch(ctx, d, c.decisionBulkSize, func(ctx context.Context, d2 []*ent.Decision) error {
+			return retryOnBusy(func() error {
 				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
 				return err
-			}); err != nil {
-				return nil, fmt.Errorf("attach decisions to alert %d: %w", a.ID, err)
-			}
+			})
+		}); err != nil {
+			return nil, fmt.Errorf("attach decisions to alert %d: %w", a.ID, err)
 		}
 	}
 
@@ -643,7 +640,7 @@ type alertCreatePlan struct {
 	decisions []*ent.Decision
 }
 
-func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
+func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	batch := make([]alertCreatePlan, 0, len(alerts))
 
 	for _, alertItem := range alerts {
@@ -743,16 +740,16 @@ func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []
 
 	c.Log.Debugf("writing %d items", len(alertList))
 
-	alertChunks := slicetools.Chunks(alertList, alertCreateBulkSize)
 	alertIDs := []string{}
-
-	for _, alertChunk := range alertChunks {
-		ids, err := c.createAlertChunk(ctx, machineID, owner, alertChunk)
+	if err := Batch(ctx, alertList, alertCreateBulkSize, func(ctx context.Context, part []*models.Alert) error {
+		ids, err := c.createAlertBatch(ctx, machineID, owner, part)
 		if err != nil {
-			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
+			return fmt.Errorf("machine %q: %w", machineID, err)
 		}
-
 		alertIDs = append(alertIDs, ids...)
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	if owner != nil {
