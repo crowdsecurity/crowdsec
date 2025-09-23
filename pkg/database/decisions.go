@@ -9,6 +9,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/pkg/errors"
 
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -329,7 +331,7 @@ func (c *Client) ExpireDecisions(ctx context.Context, decisions []*ent.Decision)
 	now := time.Now().UTC()
 
 	total := 0
-	err := Batch(ctx, decisions, decisionDeleteBulkSize, func(ctx context.Context, batch []*ent.Decision) error {
+	err := slicetools.Batch(ctx, decisions, decisionDeleteBulkSize, func(ctx context.Context, batch []*ent.Decision) error {
 		rows, err := c.expireDecisionBatch(ctx, batch, now)
 		if err != nil {
 			return err
@@ -365,7 +367,7 @@ func (c *Client) DeleteDecisions(ctx context.Context, decisions []*ent.Decision)
 	}
 
 	total := 0
-	err := Batch(ctx, decisions, decisionDeleteBulkSize, func(ctx context.Context, batch []*ent.Decision) error {
+	err := slicetools.Batch(ctx, decisions, decisionDeleteBulkSize, func(ctx context.Context, batch []*ent.Decision) error {
 		rows, err := c.deleteDecisionBatch(ctx, batch)
 		if err != nil {
 			return err
