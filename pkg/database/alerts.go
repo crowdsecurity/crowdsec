@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -172,7 +173,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 	// create missing decisions in batches
 
 	decisions := make([]*ent.Decision, 0, len(decisionBuilders))
-	if err := Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
+	if err := slicetools.Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
 		ret, err := c.Ent.Decision.CreateBulk(b...).Save(ctx)
 		if err != nil {
 			return fmt.Errorf("creating alert decisions: %w", err)
@@ -185,7 +186,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 
 	// attach decisions to alert in batches
 
-	if err := Batch(ctx, decisions, c.decisionBulkSize, func(ctx context.Context, d []*ent.Decision) error {
+	if err := slicetools.Batch(ctx, decisions, c.decisionBulkSize, func(ctx context.Context, d []*ent.Decision) error {
 		if err := c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(d...).Exec(ctx); err != nil {
 			return fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
 		}
@@ -337,7 +338,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	// Delete older decisions from capi
 
-	if err := Batch(ctx, valueList, c.decisionBulkSize, func(ctx context.Context, vals []string) error {
+	if err := slicetools.Batch(ctx, valueList, c.decisionBulkSize, func(ctx context.Context, vals []string) error {
 		deletedDecisions, err := txClient.Decision.Delete().
 			Where(decision.And(
 				decision.OriginEQ(decOrigin),
@@ -355,7 +356,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	// Insert new decisions
 
-	if err := Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
+	if err := slicetools.Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
 		insertedDecisions, err := txClient.Decision.CreateBulk(b...).Save(ctx)
 		if err != nil {
 			return err
@@ -553,7 +554,7 @@ func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.C
 
 func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
 	decisions := []*ent.Decision{}
-	if err := Batch(ctx, alertItem.Decisions, client.decisionBulkSize, func(ctx context.Context, part []*models.Decision) error {
+	if err := slicetools.Batch(ctx, alertItem.Decisions, client.decisionBulkSize, func(ctx context.Context, part []*models.Decision) error {
 		ret, err := client.createDecisionBatch(ctx, *alertItem.Simulated, stopAtTime, part)
 		if err != nil {
 			return fmt.Errorf("creating alert decisions: %w", err)
@@ -622,7 +623,7 @@ func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]stri
 			continue
 		}
 
-		if err := Batch(ctx, d, c.decisionBulkSize, func(ctx context.Context, d2 []*ent.Decision) error {
+		if err := slicetools.Batch(ctx, d, c.decisionBulkSize, func(ctx context.Context, d2 []*ent.Decision) error {
 			return retryOnBusy(func() error {
 				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
 				return err
@@ -741,7 +742,7 @@ func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []
 	c.Log.Debugf("writing %d items", len(alertList))
 
 	alertIDs := []string{}
-	if err := Batch(ctx, alertList, alertCreateBulkSize, func(ctx context.Context, part []*models.Alert) error {
+	if err := slicetools.Batch(ctx, alertList, alertCreateBulkSize, func(ctx context.Context, part []*models.Alert) error {
 		ids, err := c.createAlertBatch(ctx, machineID, owner, part)
 		if err != nil {
 			return fmt.Errorf("machine %q: %w", machineID, err)
