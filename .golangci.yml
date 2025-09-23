@@ -120,7 +120,6 @@ linters:
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
         - (net/http.ResponseWriter).Write   # TODO
-        - (*os/exec.Cmd).Wait
         - syscall.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
