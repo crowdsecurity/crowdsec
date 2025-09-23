@@ -15,6 +15,22 @@ include mk/gmsl
 # (including cscli) so it is not recommended for production use.
 BUILD_RE2_WASM ?= 0
 
+GO_TAGS :=
+
+# By default, build with CGO and sqlite3.
+BUILD_SQLITE ?= mattn
+SQLITE_MSG = Using mattn/go-sqlite3
+
+# Optionally, use a pure Go implementation of sqlite.
+ifeq ($(BUILD_SQLITE),modernc)
+GO_TAGS := $(GO_TAGS),sqlite_modernc
+SQLITE_MSG = Using modernc/sqlite
+else
+ifneq ($(BUILD_SQLITE),mattn)
+$(error BUILD_SQLITE must be 'mattn' or 'modernc')
+endif
+endif
+
 # To build static binaries, run "make BUILD_STATIC=1".
 # On some platforms, this requires additional packages
 # (e.g. glibc-static and libstdc++-static on fedora, centos.. which are on the powertools/crb repository).
@@ -78,7 +94,7 @@ LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
 #expr_debug tag is required to enable the debug mode in expr
-GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
+GO_TAGS := $(GO_TAGS),netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
 # Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
 export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
@@ -220,6 +236,7 @@ ifneq (,$(RE2_FAIL))
 endif
 
 	$(info $(RE2_MSG))
+	$(info $(SQLITE_MSG))
 
 ifeq ($(call bool,$(DEBUG)),1)
 	$(info Building with debug symbols and disabled optimizations)
