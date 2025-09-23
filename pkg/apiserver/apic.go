@@ -744,102 +744,100 @@ func (a *apic) PullAllowlist(ctx context.Context, allowlist *modelscapi.Allowlis
 	return nil
 }
 
+func (a *apic) updateOneAllowlist(ctx context.Context, client *apiclient.ApiClient, link *modelscapi.AllowlistLink) error {
+	if log.IsLevelEnabled(log.TraceLevel) {
+		log.Tracef("allowlist body: %+v", spew.Sdump(link))
+	}
+
+	if link.Name == nil {
+		return errors.New("allowlist has no name")
+	}
+
+	if link.URL == nil {
+		return fmt.Errorf("allowlist %s has no URL", *link.Name)
+	}
+
+	if link.ID == nil {
+		return fmt.Errorf("allowlist %s has no ID", *link.Name)
+	}
+
+	description := ""
+	if link.Description != nil {
+		description = *link.Description
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("while pulling allowlist: %s", err)
+	}
+
+	resp, err := client.GetClient().Do(req)
+	if err != nil {
+		return fmt.Errorf("while pulling allowlist: %s", err)
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	items := make([]*models.AllowlistItem, 0)
+
+	for scanner.Scan() {
+		item := scanner.Text()
+		j := &models.AllowlistItem{}
+
+		if err := json.Unmarshal([]byte(item), j); err != nil {
+			return fmt.Errorf("while unmarshalling allowlist item: %s", err)
+		}
+
+		items = append(items, j)
+	}
+
+	list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return fmt.Errorf("while getting allowlist %s: %s", *link.Name, err)
+		}
+	}
+
+	if list == nil {
+		list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, *link.ID, true)
+		if err != nil {
+			return fmt.Errorf("while creating allowlist %s: %s", *link.Name, err)
+		}
+	}
+
+	added, err := a.dbClient.ReplaceAllowlist(ctx, list, items, true)
+	if err != nil {
+		return fmt.Errorf("while replacing allowlist %s: %s", *link.Name, err)
+	}
+
+	log.Infof("added %d values to allowlist %s", added, list.Name)
+
+	if list.Name != *link.Name || list.Description != description {
+		err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
+		if err != nil {
+			return fmt.Errorf("while updating allowlist meta %s: %s", *link.Name, err)
+		}
+	}
+
+	log.Infof("Allowlist %s updated", *link.Name)
+
+	return nil
+}
+
 func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelscapi.AllowlistLink, forcePull bool) error {
 	if len(allowlistsLinks) == 0 {
 		return nil
 	}
 
-	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	client, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
 	if err != nil {
 		return fmt.Errorf("while creating default client: %w", err)
 	}
 
 	for _, link := range allowlistsLinks {
-		if log.IsLevelEnabled(log.TraceLevel) {
-			log.Tracef("allowlist body: %+v", spew.Sdump(link))
+		if err := a.updateOneAllowlist(ctx, client, link); err != nil {
+			log.Errorf("updating allowlists from CAPI: %s", err)
 		}
-
-		if link.Name == nil {
-			log.Warningf("allowlist has no name")
-			continue
-		}
-
-		if link.URL == nil {
-			log.Warningf("allowlist %s has no URL", *link.Name)
-			continue
-		}
-
-		if link.ID == nil {
-			log.Warningf("allowlist %s has no ID", *link.Name)
-			continue
-		}
-
-		description := ""
-		if link.Description != nil {
-			description = *link.Description
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
-		if err != nil {
-			log.Errorf("while pulling allowlist: %s", err)
-			continue
-		}
-
-		resp, err := defaultClient.GetClient().Do(req)
-		if err != nil {
-			log.Errorf("while pulling allowlist: %s", err)
-			continue
-		}
-		defer resp.Body.Close()
-
-		scanner := bufio.NewScanner(resp.Body)
-		items := make([]*models.AllowlistItem, 0)
-
-		for scanner.Scan() {
-			item := scanner.Text()
-			j := &models.AllowlistItem{}
-
-			if err := json.Unmarshal([]byte(item), j); err != nil {
-				log.Errorf("while unmarshalling allowlist item: %s", err)
-				continue
-			}
-
-			items = append(items, j)
-		}
-
-		list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
-		if err != nil {
-			if !ent.IsNotFound(err) {
-				log.Errorf("while getting allowlist %s: %s", *link.Name, err)
-				continue
-			}
-		}
-
-		if list == nil {
-			list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, *link.ID, true)
-			if err != nil {
-				log.Errorf("while creating allowlist %s: %s", *link.Name, err)
-				continue
-			}
-		}
-
-		added, err := a.dbClient.ReplaceAllowlist(ctx, list, items, true)
-		if err != nil {
-			log.Errorf("while replacing allowlist %s: %s", *link.Name, err)
-			continue
-		}
-
-		log.Infof("added %d values to allowlist %s", added, list.Name)
-
-		if list.Name != *link.Name || list.Description != description {
-			err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
-			if err != nil {
-				log.Errorf("while updating allowlist meta %s: %s", *link.Name, err)
-				continue
-			}
-		}
-
-		log.Infof("Allowlist %s updated", *link.Name)
 	}
 
 	return nil
