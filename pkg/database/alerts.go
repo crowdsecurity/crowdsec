@@ -336,32 +336,35 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		valueList = append(valueList, *decisionItem.Value)
 	}
 
-	deleteChunks := slicetools.Chunks(valueList, c.decisionBulkSize)
+	// Delete older decisions from capi
 
-	for _, deleteChunk := range deleteChunks {
-		// Deleting older decisions from capi
+	if err := Batch(ctx, valueList, c.decisionBulkSize, func(ctx context.Context, vals []string) error {
 		deletedDecisions, err := txClient.Decision.Delete().
 			Where(decision.And(
 				decision.OriginEQ(decOrigin),
 				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
-				decision.ValueIn(deleteChunk...),
-			)).Exec(ctx)
+				decision.ValueIn(vals...),
+				)).Exec(ctx)
 		if err != nil {
-			return 0, 0, 0, rollbackOnError(txClient, err, "deleting older community blocklist decisions")
+			return err
 		}
-
 		deleted += deletedDecisions
+		return nil
+	}); err != nil {
+		return 0, 0, 0, rollbackOnError(txClient, err, "deleting older community blocklist decisions")
 	}
 
-	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
+	// Insert new decisions
 
-	for _, builderChunk := range builderChunks {
-		insertedDecisions, err := txClient.Decision.CreateBulk(builderChunk...).Save(ctx)
+	if err := Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
+		insertedDecisions, err := txClient.Decision.CreateBulk(b...).Save(ctx)
 		if err != nil {
-			return 0, 0, 0, rollbackOnError(txClient, err, "bulk creating decisions")
+			return err
 		}
-
 		inserted += len(insertedDecisions)
+		return nil
+	}); err != nil {
+		return 0, 0, 0, rollbackOnError(txClient, err, "bulk creating decisions")
 	}
 
 	log.Debugf("deleted %d decisions for %s vs %s", deleted, decOrigin, *alertItem.Decisions[0].Origin)
