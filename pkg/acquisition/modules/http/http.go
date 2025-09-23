@@ -350,7 +350,9 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 		case http.MethodGet, http.MethodHead: // Return a 200 if the auth was successful
 			h.logger.Infof("successful %s request from '%s'", r.Method, r.RemoteAddr)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			if _, err := w.Write([]byte("OK")); err != nil {
+				h.logger.Errorf("failed to write response: %v", err)
+			}
 			return
 		case http.MethodPost: // POST is handled below
 		default:
@@ -382,7 +384,9 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 			w.WriteHeader(http.StatusOK)
 		}
 
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			h.logger.Errorf("failed to write response: %v", err)
+		}
 	})
 
 	h.Server = &http.Server{
