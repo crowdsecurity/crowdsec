@@ -15,7 +15,8 @@ include mk/gmsl
 # (including cscli) so it is not recommended for production use.
 BUILD_RE2_WASM ?= 0
 
-GO_TAGS :=
+#expr_debug tag is required to enable the debug mode in expr
+GO_TAGS := netgo,osusergo,expr_debug
 
 # By default, build with CGO and sqlite3.
 BUILD_SQLITE ?= mattn
@@ -23,10 +24,13 @@ SQLITE_MSG = Using mattn/go-sqlite3
 
 # Optionally, use a pure Go implementation of sqlite.
 ifeq ($(BUILD_SQLITE),modernc)
-GO_TAGS := $(GO_TAGS),sqlite_modernc
 SQLITE_MSG = Using modernc/sqlite
+GO_TAGS := $(GO_TAGS),sqlite_modernc
 else
-ifneq ($(BUILD_SQLITE),mattn)
+ifeq ($(BUILD_SQLITE),mattn)
+SQLITE_MSG = Using modernc/sqlite
+GO_TAGS := $(GO_TAGS),sqlite_omit_load_extension
+else
 $(error BUILD_SQLITE must be 'mattn' or 'modernc')
 endif
 endif
@@ -92,9 +96,6 @@ LD_OPTS_VARS= \
 ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
-
-#expr_debug tag is required to enable the debug mode in expr
-GO_TAGS := $(GO_TAGS),netgo,osusergo,sqlite_omit_load_extension,expr_debug
 
 # Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
 export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
