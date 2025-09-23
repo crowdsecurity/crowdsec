@@ -164,32 +164,35 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			SetOrigin(*decisionItem.Origin).
 			SetSimulated(*alertItem.Simulated).
 			SetUUID(decisionItem.UUID)
+			// XXX: can we attach the alert here and remove the second call to Batch() ?
+			// SetOwnerID(foundAlert.ID)
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
 	}
 
-	decisions := []*ent.Decision{}
+	// create missing decisions in batches
 
-	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
-
-	for _, builderChunk := range builderChunks {
-		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(ctx)
+	decisions := make([]*ent.Decision, 0, len(decisionBuilders))
+	if err := Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
+		ret, err := c.Ent.Decision.CreateBulk(b...).Save(ctx)
 		if err != nil {
-			return "", fmt.Errorf("creating alert decisions: %w", err)
+			return fmt.Errorf("creating alert decisions: %w", err)
 		}
-
-		decisions = append(decisions, decisionsCreateRet...)
+		decisions = append(decisions, ret...)
+		return nil
+	}); err != nil {
+		return "", err
 	}
 
-	// now that we bulk created missing decisions, let's update the alert
+	// attach decisions to alert in batches
 
-	decisionChunks := slicetools.Chunks(decisions, c.decisionBulkSize)
-
-	for _, decisionChunk := range decisionChunks {
-		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisionChunk...).Exec(ctx)
-		if err != nil {
-			return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
+	if err := Batch(ctx, decisions, c.decisionBulkSize, func(ctx context.Context, d []*ent.Decision) error {
+		if err := c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(d...).Exec(ctx); err != nil {
+			return fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
 		}
+		return nil
+	}); err != nil {
+		return "", err
 	}
 
 	return "", nil
