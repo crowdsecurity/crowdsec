@@ -80,12 +80,9 @@ func runOutput(ctx context.Context, input chan types.Event, overflow chan types.
 				cache = newcache
 				cacheMutex.Unlock()
 				/*
-					This loop is intended to block as little as possible (alerts are stored in a cache, then pushed periodically)
-					But the push itself blocks the entire loop: in low traffic conditions, this does not really have an impact, but under high loads (hundreds of alerts per second)
-					or if LAPI is down.
-					The actual push will take a long time (between 1 and 2s for ~100 alerts, longer if LAPI is down)
-					which blocks the entire loop and slows down the parsing/buckets routines or the WAF.
-					Just start a new goroutine each time we push the alerts to avoid blocking everything.
+					This loop needs to block as little as possible as scenarios directly write to the input chan
+					Under high load, LAPI may take between 1 and 2 seconds to process ~100 alerts, which slows down everything including the WAF.
+					Send the alerts from a goroutine to avoid staying too long in this case.
 				*/
 				outputsTomb.Go(func() error {
 					if err := PushAlerts(ctx, cachecopy, client); err != nil {
