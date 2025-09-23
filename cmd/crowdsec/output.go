@@ -79,13 +79,21 @@ func runOutput(ctx context.Context, input chan types.Event, overflow chan types.
 				newcache := make([]types.RuntimeAlert, 0)
 				cache = newcache
 				cacheMutex.Unlock()
-				if err := PushAlerts(ctx, cachecopy, client); err != nil {
-					log.Errorf("while pushing to api : %s", err)
-					// just push back the events to the queue
-					cacheMutex.Lock()
-					cache = append(cache, cachecopy...)
-					cacheMutex.Unlock()
-				}
+				/*
+					This loop needs to block as little as possible as scenarios directly write to the input chan
+					Under high load, LAPI may take between 1 and 2 seconds to process ~100 alerts, which slows down everything including the WAF.
+					Send the alerts from a goroutine to avoid staying too long in this case.
+				*/
+				outputsTomb.Go(func() error {
+					if err := PushAlerts(ctx, cachecopy, client); err != nil {
+						log.Errorf("while pushing to api : %s", err)
+						// just push back the events to the queue
+						cacheMutex.Lock()
+						cache = append(cache, cachecopy...)
+						cacheMutex.Unlock()
+					}
+					return nil
+				})
 			}
 		case <-outputsTomb.Dying():
 			if len(cache) > 0 {
