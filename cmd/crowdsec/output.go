@@ -79,13 +79,16 @@ func runOutput(ctx context.Context, input chan types.Event, overflow chan types.
 				newcache := make([]types.RuntimeAlert, 0)
 				cache = newcache
 				cacheMutex.Unlock()
-				if err := PushAlerts(ctx, cachecopy, client); err != nil {
-					log.Errorf("while pushing to api : %s", err)
-					// just push back the events to the queue
-					cacheMutex.Lock()
-					cache = append(cache, cachecopy...)
-					cacheMutex.Unlock()
-				}
+				outputsTomb.Go(func() error {
+					if err := PushAlerts(ctx, cachecopy, client); err != nil {
+						log.Errorf("while pushing to api : %s", err)
+						// just push back the events to the queue
+						cacheMutex.Lock()
+						cache = append(cache, cachecopy...)
+						cacheMutex.Unlock()
+					}
+					return nil
+				})
 			}
 		case <-outputsTomb.Dying():
 			if len(cache) > 0 {
