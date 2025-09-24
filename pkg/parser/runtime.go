@@ -100,7 +100,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 
 // targetExpr returns a human-readable selector string that describes
 // where this Static will write its value in the event.
-func (s Static) targetExpr() string {
+func (s *Static) targetExpr() string {
 	switch {
 	case s.Method != "":
 		return s.Method
@@ -117,7 +117,7 @@ func (s Static) targetExpr() string {
 	}
 }
 
-func (n *Node) ProcessStatics(statics []Static, event *types.Event) error {
+func (n *Node) ProcessStatics(statics []RuntimeStatic, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
@@ -128,8 +128,8 @@ func (n *Node) ProcessStatics(statics []Static, event *types.Event) error {
 
 	for _, static := range statics {
 		value = ""
-		if static.Value != "" {
-			value = static.Value
+		if static.Config.Value != "" {
+			value = static.Config.Value
 		} else if static.RunTimeValue != nil {
 			output, err := exprhelpers.Run(static.RunTimeValue, exprEnv, clog, n.Debug)
 			if err != nil {
@@ -145,43 +145,43 @@ func (n *Node) ProcessStatics(statics []Static, event *types.Event) error {
 			case float64, float32:
 				value = fmt.Sprintf("%f", out)
 			case map[string]any:
-				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
+				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.Config.ExpValue)
 			case []any:
-				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
+				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.Config.ExpValue)
 			case nil:
-				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
+				clog.Debugf("Expression '%s' returned nil, skipping", static.Config.ExpValue)
 			default:
-				clog.Errorf("unexpected return type for '%s' : %T", static.ExpValue, output)
+				clog.Errorf("unexpected return type for '%s' : %T", static.Config.ExpValue, output)
 				return errors.New("unexpected return type for RunTimeValue")
 			}
 		}
 
 		if value == "" {
 			// allow ParseDate to have empty input
-			if static.Method != "ParseDate" {
-				clog.Debugf("Empty value for %s, skip.", static.targetExpr())
+			if static.Config.Method != "ParseDate" {
+				clog.Debugf("Empty value for %s, skip.", static.Config.targetExpr())
 				continue
 			}
 		}
 
 		switch {
-		case static.Method != "":
+		case static.Config.Method != "":
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
-			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
-				clog.Tracef("Found method '%s'", static.Method)
+			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Config.Method]; ok {
+				clog.Tracef("Found method '%s'", static.Config.Method)
 
-				ret, err := enricherPlugin.EnrichFunc(value, event, n.Logger.WithField("method", static.Method))
+				ret, err := enricherPlugin.EnrichFunc(value, event, n.Logger.WithField("method", static.Config.Method))
 				if err != nil {
-					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
+					clog.Errorf("method '%s' returned an error : %v", static.Config.Method, err)
 				}
 
 				processed = true
 
-				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
+				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Config.Method, value, len(ret))
 				// Hackish check, but those methods do not return any data by design
-				if len(ret) == 0 && static.Method != "UnmarshalJSON" {
-					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
+				if len(ret) == 0 && static.Config.Method != "UnmarshalJSON" {
+					clog.Debugf("+ Method '%s' empty response on '%s'", static.Config.Method, value)
 				}
 
 				for k, v := range ret {
@@ -189,26 +189,26 @@ func (n *Node) ProcessStatics(statics []Static, event *types.Event) error {
 					event.Enriched[k] = v
 				}
 			} else {
-				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
+				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Config.Method)
 			}
 
 			if !processed {
-				clog.Debugf("method '%s' doesn't exist", static.Method)
+				clog.Debugf("method '%s' doesn't exist", static.Config.Method)
 			}
-		case static.Parsed != "":
-			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
-			event.Parsed[static.Parsed] = value
-		case static.Meta != "":
-			clog.Debugf(".Meta[%s] = '%s'", static.Meta, value)
-			event.Meta[static.Meta] = value
-		case static.Enriched != "":
-			clog.Debugf(".Enriched[%s] = '%s'", static.Enriched, value)
-			event.Enriched[static.Enriched] = value
-		case static.TargetByName != "":
-			if !SetTargetByName(static.TargetByName, value, event) {
-				clog.Errorf("Unable to set value of '%s'", static.TargetByName)
+		case static.Config.Parsed != "":
+			clog.Debugf(".Parsed[%s] = '%s'", static.Config.Parsed, value)
+			event.Parsed[static.Config.Parsed] = value
+		case static.Config.Meta != "":
+			clog.Debugf(".Meta[%s] = '%s'", static.Config.Meta, value)
+			event.Meta[static.Config.Meta] = value
+		case static.Config.Enriched != "":
+			clog.Debugf(".Enriched[%s] = '%s'", static.Config.Enriched, value)
+			event.Enriched[static.Config.Enriched] = value
+		case static.Config.TargetByName != "":
+			if !SetTargetByName(static.Config.TargetByName, value, event) {
+				clog.Errorf("Unable to set value of '%s'", static.Config.TargetByName)
 			} else {
-				clog.Debugf("%s = '%s'", static.TargetByName, value)
+				clog.Debugf("%s = '%s'", static.Config.TargetByName, value)
 			}
 		default:
 			clog.Fatal("unable to process static : unknown target")
