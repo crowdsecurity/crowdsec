@@ -117,101 +117,107 @@ func (s *Static) targetExpr() string {
 	}
 }
 
-func (n *Node) ProcessStatics(statics []RuntimeStatic, event *types.Event) error {
+func (rs *RuntimeStatic) Apply(event *types.Event, enrichFunctions EnricherCtx, logger *log.Entry, debug bool) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
 
-	clog := n.Logger
-
 	exprEnv := map[string]any{"evt": event}
 
-	for _, static := range statics {
-		value = ""
-		if static.Config.Value != "" {
-			value = static.Config.Value
-		} else if static.RunTimeValue != nil {
-			output, err := exprhelpers.Run(static.RunTimeValue, exprEnv, clog, n.Debug)
-			if err != nil {
-				clog.Warningf("failed to run RunTimeValue : %v", err)
-				continue
-			}
-
-			switch out := output.(type) {
-			case string:
-				value = out
-			case int:
-				value = strconv.Itoa(out)
-			case float64, float32:
-				value = fmt.Sprintf("%f", out)
-			case map[string]any:
-				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.Config.ExpValue)
-			case []any:
-				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.Config.ExpValue)
-			case nil:
-				clog.Debugf("Expression '%s' returned nil, skipping", static.Config.ExpValue)
-			default:
-				clog.Errorf("unexpected return type for '%s' : %T", static.Config.ExpValue, output)
-				return errors.New("unexpected return type for RunTimeValue")
-			}
+	value = ""
+	if rs.Config.Value != "" {
+		value = rs.Config.Value
+	} else if rs.RunTimeValue != nil {
+		output, err := exprhelpers.Run(rs.RunTimeValue, exprEnv, logger, debug)
+		if err != nil {
+			logger.Warningf("failed to run RunTimeValue : %v", err)
+			return nil
 		}
 
-		if value == "" {
-			// allow ParseDate to have empty input
-			if static.Config.Method != "ParseDate" {
-				clog.Debugf("Empty value for %s, skip.", static.Config.targetExpr())
-				continue
-			}
-		}
-
-		switch {
-		case static.Config.Method != "":
-			processed := false
-			/*still way too hackish, but : inject all the results in enriched, and */
-			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Config.Method]; ok {
-				clog.Tracef("Found method '%s'", static.Config.Method)
-
-				ret, err := enricherPlugin.EnrichFunc(value, event, n.Logger.WithField("method", static.Config.Method))
-				if err != nil {
-					clog.Errorf("method '%s' returned an error : %v", static.Config.Method, err)
-				}
-
-				processed = true
-
-				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Config.Method, value, len(ret))
-				// Hackish check, but those methods do not return any data by design
-				if len(ret) == 0 && static.Config.Method != "UnmarshalJSON" {
-					clog.Debugf("+ Method '%s' empty response on '%s'", static.Config.Method, value)
-				}
-
-				for k, v := range ret {
-					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
-					event.Enriched[k] = v
-				}
-			} else {
-				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Config.Method)
-			}
-
-			if !processed {
-				clog.Debugf("method '%s' doesn't exist", static.Config.Method)
-			}
-		case static.Config.Parsed != "":
-			clog.Debugf(".Parsed[%s] = '%s'", static.Config.Parsed, value)
-			event.Parsed[static.Config.Parsed] = value
-		case static.Config.Meta != "":
-			clog.Debugf(".Meta[%s] = '%s'", static.Config.Meta, value)
-			event.Meta[static.Config.Meta] = value
-		case static.Config.Enriched != "":
-			clog.Debugf(".Enriched[%s] = '%s'", static.Config.Enriched, value)
-			event.Enriched[static.Config.Enriched] = value
-		case static.Config.TargetByName != "":
-			if !SetTargetByName(static.Config.TargetByName, value, event) {
-				clog.Errorf("Unable to set value of '%s'", static.Config.TargetByName)
-			} else {
-				clog.Debugf("%s = '%s'", static.Config.TargetByName, value)
-			}
+		switch out := output.(type) {
+		case string:
+			value = out
+		case int:
+			value = strconv.Itoa(out)
+		case float64, float32:
+			value = fmt.Sprintf("%f", out)
+		case map[string]any:
+			logger.Warnf("Expression %q returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", rs.Config.ExpValue)
+		case []any:
+			logger.Warnf("Expression %q returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", rs.Config.ExpValue)
+		case nil:
+			logger.Debugf("Expression %q returned nil, skipping", rs.Config.ExpValue)
 		default:
-			clog.Fatal("unable to process static : unknown target")
+			logger.Errorf("unexpected return type for %q: %T", rs.Config.ExpValue, output)
+			return errors.New("unexpected return type for RunTimeValue")
+		}
+	}
+
+	if value == "" {
+		// allow ParseDate to have empty input
+		if rs.Config.Method != "ParseDate" {
+			logger.Debugf("Empty value for %s, skip.", rs.Config.targetExpr())
+			return nil
+		}
+	}
+
+	switch {
+	case rs.Config.Method != "":
+		processed := false
+		/*still way too hackish, but : inject all the results in enriched, and */
+		if enricherPlugin, ok := enrichFunctions.Registered[rs.Config.Method]; ok {
+			logger.Tracef("Found method '%s'", rs.Config.Method)
+
+			ret, err := enricherPlugin.EnrichFunc(value, event, logger.WithField("method", rs.Config.Method))
+			if err != nil {
+				logger.Errorf("method '%s' returned an error : %v", rs.Config.Method, err)
+			}
+
+			processed = true
+
+			logger.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", rs.Config.Method, value, len(ret))
+			// Hackish check, but those methods do not return any data by design
+			if len(ret) == 0 && rs.Config.Method != "UnmarshalJSON" {
+				logger.Debugf("+ Method '%s' empty response on '%s'", rs.Config.Method, value)
+			}
+
+			for k, v := range ret {
+				logger.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
+				event.Enriched[k] = v
+			}
+		} else {
+			logger.Debugf("method '%s' doesn't exist or plugin not initialized", rs.Config.Method)
+		}
+
+		if !processed {
+			logger.Debugf("method '%s' doesn't exist", rs.Config.Method)
+		}
+	case rs.Config.Parsed != "":
+		logger.Debugf(".Parsed[%s] = '%s'", rs.Config.Parsed, value)
+		event.Parsed[rs.Config.Parsed] = value
+	case rs.Config.Meta != "":
+		logger.Debugf(".Meta[%s] = '%s'", rs.Config.Meta, value)
+		event.Meta[rs.Config.Meta] = value
+	case rs.Config.Enriched != "":
+		logger.Debugf(".Enriched[%s] = '%s'", rs.Config.Enriched, value)
+		event.Enriched[rs.Config.Enriched] = value
+	case rs.Config.TargetByName != "":
+		if !SetTargetByName(rs.Config.TargetByName, value, event) {
+			logger.Errorf("Unable to set value of '%s'", rs.Config.TargetByName)
+		} else {
+			logger.Debugf("%s = '%s'", rs.Config.TargetByName, value)
+		}
+	default:
+		logger.Fatal("unable to process static : unknown target")
+	}
+
+	return nil
+}
+
+func (n *Node) ProcessStatics(statics []RuntimeStatic, event *types.Event) error {
+	for _, rs := range statics {
+		if err := rs.Apply(event, n.EnrichFunctions, n.Logger, n.Debug); err != nil {
+			return fmt.Errorf("applying static %s: %w", rs.Config.targetExpr(), err)
 		}
 	}
 
