@@ -46,7 +46,7 @@ type Node struct {
 	// Filter is executed at runtime (with current log line as context)
 	// and must succeed or node is exited
 	Filter        string      `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program `yaml:"-" json:"-"` // the actual compiled filter
+	RunTimeFilter *vm.Program `yaml:"-"` // the actual compiled filter
 	// If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	// Flag used to describe when to 'break' or return an 'error'
@@ -59,7 +59,8 @@ type Node struct {
 	// Holds a grok pattern
 	Grok GrokPattern `yaml:"grok,omitempty"`
 	// Statics can be present in any type of node and is executed last
-	Statics []ExtraField `yaml:"statics,omitempty"`
+	Statics []Static `yaml:"statics,omitempty"`
+	RuntimeStatics []RuntimeStatic `yaml:"-"`
 	// Stash allows to capture data from the log line and store it in an accessible cache
 	Stash []DataCapture `yaml:"stash,omitempty"`
 	// Whitelists
@@ -93,22 +94,8 @@ func (n *Node) validate(ectx EnricherCtx) error {
 	}
 
 	for idx, static := range n.Statics {
-		if static.Method != "" {
-			if static.ExpValue == "" {
-				return fmt.Errorf("static %d: when method is set, expression must be present", idx)
-			}
-
-			if _, ok := ectx.Registered[static.Method]; !ok {
-				log.Warningf("the method %q doesn't exist or the plugin has not been initialized", static.Method)
-			}
-		} else {
-			if static.Meta == "" && static.Parsed == "" && static.TargetByName == "" {
-				return fmt.Errorf("static %d: at least one of meta/event/target must be set", idx)
-			}
-
-			if static.Value == "" && static.RunTimeValue == nil {
-				return fmt.Errorf("static %d value or expression must be set", idx)
-			}
+		if err := static.Validate(ectx); err != nil {
+			return fmt.Errorf("static %d: %w", idx, err)
 		}
 	}
 
@@ -192,8 +179,8 @@ func (n *Node) processWhitelist(cachedExprEnv map[string]any, p *types.Event) (b
 	if isWhitelisted && !p.Whitelisted {
 		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
-		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
-		if p.Type == types.OVFLW { /*don't do this at home kids */
+		// huglily wipe the ban order if the event is whitelisted and it's an overflow
+		if p.Type == types.OVFLW { // don't do this at home kids
 			ips := []string{}
 			for k := range p.Overflow.Sources {
 				ips = append(ips, k)
@@ -266,7 +253,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		return false, false, nil
 	}
 
-	/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
+	// tag explicitly that the *current* node had a successful grok pattern. it's important to know success state
 	nodeHasOKGrok = true
 
 	clog.Debugf("+ Grok %q returned %d entries to merge in Parsed", groklabel, len(grok))
@@ -276,7 +263,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		p.Parsed[k] = v
 	}
 	// if the grok succeed, process associated statics
-	err := n.ProcessStatics(n.Grok.Statics, p)
+	err := n.ProcessStatics(n.Grok.RuntimeStatics, p)
 	if err != nil {
 		clog.Errorf("(%s) Failed to process statics: %v", n.rn, err)
 		return false, false, err
@@ -421,8 +408,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	nodeState = leafState
 
-	/*todo : check if a node made the state change ?*/
-	/* should the childs inherit the on_success behavior */
+	// todo : check if a node made the state change ?
+	// should the childs inherit the on_success behavior
 
 	clog.Tracef("State after nodes: %v", nodeState)
 
@@ -448,7 +435,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if len(n.Statics) > 0 && (isWhitelisted || !n.ContainsWLs()) {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
-		err := n.ProcessStatics(n.Statics, p)
+		err := n.ProcessStatics(n.RuntimeStatics, p)
 		if err != nil {
 			clog.Errorf("Failed to process statics: %v", err)
 			return false, err
@@ -572,7 +559,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		valid = true
 	}
 
-	/*if grok source is an expression*/
+	// if grok source is an expression
 	if n.Grok.ExpValue != "" {
 		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
 			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
@@ -583,14 +570,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	/* load grok statics */
 	// compile expr statics if present
-	for idx := range n.Grok.Statics {
-		if n.Grok.Statics[idx].ExpValue != "" {
-			n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,
-				exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
-			if err != nil {
-				return err
-			}
+	for _, static := range n.Grok.Statics {
+		compiled, err := static.Compile()
+		if err != nil {
+			return err
 		}
+
+		n.Grok.RuntimeStatics = append(n.Grok.RuntimeStatics, *compiled)
 
 		valid = true
 	}
@@ -632,7 +618,8 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if n.LeavesNodes[idx].Name == "" {
 			n.LeavesNodes[idx].Name = "child-" + n.Name
 		}
-		/*propagate debug/stats to child nodes*/
+
+		// propagate debug/stats to child nodes
 		if !n.LeavesNodes[idx].Debug && n.Debug {
 			n.LeavesNodes[idx].Debug = true
 		}
@@ -652,14 +639,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* load statics if present */
-	for idx := range n.Statics {
-		if n.Statics[idx].ExpValue != "" {
-			n.Statics[idx].RunTimeValue, err = expr.Compile(n.Statics[idx].ExpValue, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
-			if err != nil {
-				n.Logger.Errorf("Statics Compilation failed %v.", err)
-				return err
-			}
+	for _, static := range n.Statics {
+		compiled, err := static.Compile()
+		if err != nil {
+			return err
 		}
+
+		n.RuntimeStatics = append(n.RuntimeStatics, *compiled)
 
 		valid = true
 	}
