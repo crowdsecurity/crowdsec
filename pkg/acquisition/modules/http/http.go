@@ -174,11 +174,11 @@ func (h *HTTPSource) GetMode() string {
 	return h.Config.Mode
 }
 
-func (h *HTTPSource) GetName() string {
+func (*HTTPSource) GetName() string {
 	return dataSourceName
 }
 
-func (h *HTTPSource) CanRun() error {
+func (*HTTPSource) CanRun() error {
 	return nil
 }
 
@@ -269,6 +269,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 
 	if h.logger.Logger.IsLevelEnabled(log.TraceLevel) {
 		h.logger.Tracef("processing request from '%s' with method '%s' and path '%s'", r.RemoteAddr, r.Method, r.URL.Path)
+
 		bodyContent, err := httputil.DumpRequest(r, true)
 		if err != nil {
 			h.logger.Errorf("failed to dump request: %s", err)
@@ -350,9 +351,11 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 		case http.MethodGet, http.MethodHead: // Return a 200 if the auth was successful
 			h.logger.Infof("successful %s request from '%s'", r.Method, r.RemoteAddr)
 			w.WriteHeader(http.StatusOK)
+
 			if _, err := w.Write([]byte("OK")); err != nil {
 				h.logger.Errorf("failed to write response: %v", err)
 			}
+
 			return
 		case http.MethodPost: // POST is handled below
 		default:
@@ -421,12 +424,15 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 		}
 
 		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
+
 		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
 		_ = os.Remove(h.Config.ListenSocket)
+
 		listener, err := listenConfig.Listen(ctx, "unix", h.Config.ListenSocket)
 		if err != nil {
 			return csnet.WrapSockErr(err, h.Config.ListenSocket)
 		}
+
 		if h.Config.TLS != nil {
 			err := h.Server.ServeTLS(listener, h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
