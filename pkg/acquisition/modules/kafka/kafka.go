@@ -265,6 +265,9 @@ func (kc *KafkaConfiguration) NewTLSConfig() (*tls.Config, error) {
 }
 
 func (kc *KafkaConfiguration) NewSASLConfig() (sasl.Mechanism, error) {
+	if kc.SASL == nil {
+		return nil, errors.New("SASL not configured")
+	}
 	if kc.SASL.Mechanism == "PLAIN" {
 		mechanism := plain.Mechanism{
 			Username: kc.SASL.Username,
@@ -297,14 +300,17 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 			return dialer, err
 		}
 		dialer.TLS = tlsConfig
-	} else if kc.SASL != nil && kc.SASL.UseSSL {
-		// to use SSL to connect to the broker, the kafka-go module
-		// simply needs an empty TLS Config
-		tlsConfig := tls.Config{}
-		dialer.TLS = &tlsConfig
 	}
 
 	if kc.SASL != nil {
+
+		if kc.SASL.UseSSL && kc.TLS == nil {
+			// If SASL requires SSL but no SSL config has been set up above,
+			// we create a default one by passing an empty TLS Config to the dialer.
+			tlsConfig := tls.Config{}
+			dialer.TLS = &tlsConfig
+		}
+
 		saslMechanism, err := kc.NewSASLConfig()
 		if err != nil {
 			return dialer, err
