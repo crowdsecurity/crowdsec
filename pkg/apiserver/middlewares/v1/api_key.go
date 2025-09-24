@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,31 @@ type APIKey struct {
 	HeaderName string
 	DbClient   *database.Client
 	TlsAuth    *TLSAuth
+}
+
+// baseBouncerName removes any trailing "@<ip>" segments from a bouncer's name.
+//
+// When a bouncer changes its IP address, it is detected by LAPI as a new bouncer,
+// to allow for key sharing. LAPI then creates a new DB entry by appending "@<ip>"
+// to the existing name. If the existing name already ends with "@<ip>", this can lead to
+// chained names like "my-bouncer@1.2.3.4@5.6.7.8". To prevent runaway suffixes,
+// this helper repeatedly strips the final "@<ip>" token until no valid IPv4/IPv6
+// address remains, returning the "base" bouncer name.
+func baseBouncerName(name string) string {
+    for {
+        i := strings.LastIndexByte(name, '@')
+        if i < 0 {
+            return name
+        }
+
+        tail := name[i+1:]
+        if _, err := netip.ParseAddr(tail); err == nil {
+            name = name[:i]
+            continue
+        }
+
+        return name
+    }
 }
 
 func GenerateAPIKey(n int) (string, error) {
@@ -173,7 +199,8 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	// Bouncers are ordered by ID, first one *should* be the manually created one
 	// Can probably get a bit weird if the user deletes the manually created one
-	bouncerName := fmt.Sprintf("%s@%s", bouncers[0].Name, clientIP)
+	base := baseBouncerName(bouncers[0].Name)
+	bouncerName := fmt.Sprintf("%s@%s", base, clientIP)
 
 	logger.Infof("Creating bouncer %s", bouncerName)
 
