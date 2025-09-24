@@ -237,6 +237,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			continue
 
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 	holder.logger.Debugf("bucket '%s' is poured", holder.Name)
 	return sent, nil
