@@ -270,7 +270,7 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 	return cmd
 }
 
-func detectStaticField(grokStatics []parser.ExtraField) []string {
+func detectStaticField(grokStatics []parser.Static) []string {
 	ret := make([]string, 0)
 
 	for _, static := range grokStatics {

@@ -9,7 +9,7 @@ import (
 )
 
 // Used mostly for statics
-type ExtraField struct {
+type Static struct {
 	//if the target is indicated by name Struct.Field etc,
 	TargetByName string `yaml:"target,omitempty"`
 	//if the target field is in Event map
@@ -40,7 +40,7 @@ type GrokPattern struct {
 	ExpValue     string      `yaml:"expression,omitempty"`
 	RunTimeValue *vm.Program `json:"-"` //the actual compiled filter
 	//a grok can contain statics that apply if pattern is successful
-	Statics []ExtraField `yaml:"statics,omitempty"`
+	Statics []Static `yaml:"statics,omitempty"`
 }
 
 type DataCapture struct {

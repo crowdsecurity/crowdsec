@@ -35,7 +35,7 @@ type HubTestItemConfig struct {
 	LogType               string              `yaml:"log_type,omitempty"`
 	Labels                map[string]string   `yaml:"labels,omitempty"`
 	IgnoreParsers         bool                `yaml:"ignore_parsers,omitempty"`   // if we test a scenario, we don't want to assert on Parser
-	OverrideStatics       []parser.ExtraField `yaml:"override_statics,omitempty"` // Allow to override statics. Executed before s00
+	OverrideStatics       []parser.Static     `yaml:"override_statics,omitempty"` // Allow to override statics. Executed before s00
 	OwnDataDir            bool                `yaml:"own_data_dir,omitempty"`     // Don't share dataDir with the other tests
 }
 

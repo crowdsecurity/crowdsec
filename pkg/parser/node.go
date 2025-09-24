@@ -59,7 +59,7 @@ type Node struct {
 	// Holds a grok pattern
 	Grok GrokPattern `yaml:"grok,omitempty"`
 	// Statics can be present in any type of node and is executed last
-	Statics []ExtraField `yaml:"statics,omitempty"`
+	Statics []Static `yaml:"statics,omitempty"`
 	// Stash allows to capture data from the log line and store it in an accessible cache
 	Stash []DataCapture `yaml:"stash,omitempty"`
 	// Whitelists

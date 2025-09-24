@@ -99,25 +99,25 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 }
 
 // targetExpr returns a human-readable selector string that describes
-// where this ExtraField will write its value in the event.
-func (ef ExtraField) targetExpr() string {
+// where this Static will write its value in the event.
+func (s Static) targetExpr() string {
 	switch {
-	case ef.Method != "":
-		return ef.Method
-	case ef.Parsed != "":
-		return fmt.Sprintf(".Parsed[%s]", ef.Parsed)
-	case ef.Meta != "":
-		return fmt.Sprintf(".Meta[%s]", ef.Meta)
-	case ef.Enriched != "":
-		return fmt.Sprintf(".Enriched[%s]", ef.Enriched)
-	case ef.TargetByName != "":
-		return ef.TargetByName
+	case s.Method != "":
+		return s.Method
+	case s.Parsed != "":
+		return fmt.Sprintf(".Parsed[%s]", s.Parsed)
+	case s.Meta != "":
+		return fmt.Sprintf(".Meta[%s]", s.Meta)
+	case s.Enriched != "":
+		return fmt.Sprintf(".Enriched[%s]", s.Enriched)
+	case s.TargetByName != "":
+		return s.TargetByName
 	default:
 		return "?"
 	}
 }
 
-func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
+func (n *Node) ProcessStatics(statics []Static, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
