@@ -28,7 +28,7 @@ SQLITE_MSG = Using modernc/sqlite
 GO_TAGS := $(GO_TAGS),sqlite_modernc
 else
 ifeq ($(BUILD_SQLITE),mattn)
-SQLITE_MSG = Using modernc/sqlite
+SQLITE_MSG = Using mattn/go-sqlite3
 GO_TAGS := $(GO_TAGS),sqlite_omit_load_extension
 else
 $(error BUILD_SQLITE must be 'mattn' or 'modernc')
