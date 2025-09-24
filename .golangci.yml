@@ -236,8 +236,8 @@ linters:
         - name: function-length
           arguments:
             # lower this after refactoring
-            - 87
-            - 198
+            - 86
+            - 174
         - name: get-return
           disabled: true
         - name: increment-decrement

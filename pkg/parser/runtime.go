@@ -212,10 +212,20 @@ func (rs *RuntimeStatic) Apply(event *types.Event, enrichFunctions EnricherCtx, 
 	return nil
 }
 
-func (n *Node) ProcessStatics(statics []RuntimeStatic, event *types.Event) error {
-	for _, rs := range statics {
+func (n *Node) ProcessStatics(event *types.Event) error {
+	for _, rs := range n.RuntimeStatics {
 		if err := rs.Apply(event, n.EnrichFunctions, n.Logger, n.Debug); err != nil {
-			return fmt.Errorf("applying static %s: %w", rs.Config.targetExpr(), err)
+			return fmt.Errorf("applying %s: %w", rs.Config.targetExpr(), err)
+		}
+	}
+
+	return nil
+}
+
+func (rg *RuntimeGrokPattern) ProcessStatics(event *types.Event, ectx EnricherCtx, logger *log.Entry, debug bool) error {
+	for _, rs := range rg.RuntimeStatics {
+		if err := rs.Apply(event, ectx, logger, debug); err != nil {
+			return fmt.Errorf("applying %s: %w", rs.Config.targetExpr(), err)
 		}
 	}
 
