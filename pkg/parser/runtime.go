@@ -53,7 +53,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		switch iter.Kind() { //nolint:exhaustive
 		case reflect.Map:
 			tmp := iter.MapIndex(reflect.ValueOf(f))
-			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
+			// if we're in a map and the field doesn't exist, the user wants to add it :)
 			if !tmp.IsValid() || tmp.IsZero() {
 				log.Debugf("map entry is zero in '%s'", target)
 			}
@@ -118,13 +118,11 @@ func (s *Static) targetExpr() string {
 }
 
 func (rs *RuntimeStatic) Apply(event *types.Event, enrichFunctions EnricherCtx, logger *log.Entry, debug bool) error {
-	//we have a few cases :
-	//(meta||key) + (static||reference||expr)
-	var value string
-
+	// we have a few cases :
+	// (meta||key) + (static||reference||expr)
 	exprEnv := map[string]any{"evt": event}
+	value := ""
 
-	value = ""
 	if rs.Config.Value != "" {
 		value = rs.Config.Value
 	} else if rs.RunTimeValue != nil {
@@ -257,6 +255,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		event.Stage = ctx.Stages[0]
 		log.Tracef("no stage, set to : %s", event.Stage)
 	}
+
 	event.Process = false
 	if event.Time.IsZero() {
 		event.Time = time.Now().UTC()
@@ -265,15 +264,19 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	if event.Parsed == nil {
 		event.Parsed = make(map[string]string)
 	}
+
 	if event.Enriched == nil {
 		event.Enriched = make(map[string]string)
 	}
+
 	if event.Meta == nil {
 		event.Meta = make(map[string]string)
 	}
+
 	if event.Unmarshaled == nil {
 		event.Unmarshaled = make(map[string]any)
 	}
+
 	if event.Type == types.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
@@ -308,20 +311,26 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if event.Stage != nodes[idx].Stage {
 				continue
 			}
+
 			clog := log.WithFields(log.Fields{
 				"node-name": nodes[idx].rn,
 				"stage":     event.Stage,
 			})
+
 			clog.Tracef("Processing node %d/%d -> %s", idx, len(nodes), nodes[idx].rn)
+
 			if ctx.Profiling {
 				nodes[idx].Profiling = true
 			}
+
 			ret, err := nodes[idx].process(&event, ctx, exprEnv)
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err
 			}
+
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
+
 			if ParseDump {
 				var parserIdxInStage int
 
@@ -352,19 +361,23 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 				StageParseMutex.Unlock()
 			}
+
 			if ret {
 				isStageOK = true
 			}
+
 			if ret && nodes[idx].OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
+
 			// the parsed object moved onto the next phase
 			if event.Stage != stage {
 				clog.Tracef("node moved stage, break and redo")
 				break
 			}
 		}
+
 		if !isStageOK {
 			log.Debugf("Log didn't finish stage %s", event.Stage)
 			event.Process = false

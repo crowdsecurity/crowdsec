@@ -3,6 +3,7 @@ package clilapi
 import (
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -114,7 +115,7 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 			}
 
 			if len(cfg.Crowdsec.ContextToSend) == 0 {
-				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
+				fmt.Fprintln(os.Stdout, "No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
 				return nil
 			}
 
@@ -123,7 +124,7 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 				return fmt.Errorf("unable to show context status: %w", err)
 			}
 
-			fmt.Print(string(dump))
+			fmt.Fprint(os.Stdout, string(dump))
 
 			return nil
 		},
@@ -185,11 +186,10 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				}
 			}
 
-			fmt.Printf("Acquisition :\n\n")
-			fmt.Printf("  - evt.Line.Module\n")
-			fmt.Printf("  - evt.Line.Raw\n")
-			fmt.Printf("  - evt.Line.Src\n")
-			fmt.Println()
+			fmt.Fprint(os.Stdout, "Acquisition :\n\n")
+			fmt.Fprint(os.Stdout, "  - evt.Line.Module\n")
+			fmt.Fprint(os.Stdout, "  - evt.Line.Raw\n")
+			fmt.Fprint(os.Stdout, "  - evt.Line.Src\n\n")
 
 			parsersKey := make([]string, 0)
 			for k := range fieldByParsers {
@@ -201,13 +201,13 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				if len(fieldByParsers[k]) == 0 {
 					continue
 				}
-				fmt.Printf("%s :\n\n", k)
+				fmt.Fprintf(os.Stdout, "%s :\n\n", k)
 				values := fieldByParsers[k]
 				sort.Strings(values)
 				for _, value := range values {
-					fmt.Printf("  - %s\n", value)
+					fmt.Fprintf(os.Stdout, "  - %s\n", value)
 				}
-				fmt.Println()
+				fmt.Fprintln(os.Stdout)
 			}
 
 			if len(args) > 0 {

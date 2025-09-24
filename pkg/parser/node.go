@@ -179,8 +179,8 @@ func (n *Node) processWhitelist(cachedExprEnv map[string]any, p *types.Event) (b
 	if isWhitelisted && !p.Whitelisted {
 		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
-		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
-		if p.Type == types.OVFLW { /*don't do this at home kids */
+		// huglily wipe the ban order if the event is whitelisted and it's an overflow
+		if p.Type == types.OVFLW { // don't do this at home kids
 			ips := []string{}
 			for k := range p.Overflow.Sources {
 				ips = append(ips, k)
@@ -253,7 +253,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		return false, false, nil
 	}
 
-	/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
+	// tag explicitly that the *current* node had a successful grok pattern. it's important to know success state
 	nodeHasOKGrok = true
 
 	clog.Debugf("+ Grok %q returned %d entries to merge in Parsed", groklabel, len(grok))
@@ -408,8 +408,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	nodeState = leafState
 
-	/*todo : check if a node made the state change ?*/
-	/* should the childs inherit the on_success behavior */
+	// todo : check if a node made the state change ?
+	// should the childs inherit the on_success behavior
 
 	clog.Tracef("State after nodes: %v", nodeState)
 
@@ -559,7 +559,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		valid = true
 	}
 
-	/*if grok source is an expression*/
+	// if grok source is an expression
 	if n.Grok.ExpValue != "" {
 		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
 			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
@@ -575,6 +575,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if err != nil {
 			return err
 		}
+
 		n.Grok.RuntimeStatics = append(n.Grok.RuntimeStatics, *compiled)
 
 		valid = true
@@ -617,7 +618,8 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if n.LeavesNodes[idx].Name == "" {
 			n.LeavesNodes[idx].Name = "child-" + n.Name
 		}
-		/*propagate debug/stats to child nodes*/
+
+		// propagate debug/stats to child nodes
 		if !n.LeavesNodes[idx].Debug && n.Debug {
 			n.LeavesNodes[idx].Debug = true
 		}
@@ -642,6 +644,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if err != nil {
 			return err
 		}
+
 		n.RuntimeStatics = append(n.RuntimeStatics, *compiled)
 
 		valid = true
