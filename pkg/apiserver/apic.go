@@ -750,11 +750,13 @@ func (a *apic) updateOneAllowlist(ctx context.Context, client *apiclient.ApiClie
 	}
 
 	if link.Name == nil {
-		return errors.New("allowlist has no name")
+		log.Warn("allowlist has no name")
+		return nil
 	}
 
 	if link.URL == nil {
-		return fmt.Errorf("allowlist %s has no URL", *link.Name)
+		log.Warnf("allowlist %s has no URL", *link.Name)
+		return nil
 	}
 
 	if link.ID == nil {
