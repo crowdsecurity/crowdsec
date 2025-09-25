@@ -48,6 +48,7 @@ type MetricsProvider struct {
 
 type staticMetrics struct {
 	osName         string
+	osFamily       string
 	osVersion      string
 	startupTS      int64
 	featureFlags   []string
@@ -93,10 +94,11 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 		datasourceMap[ds.GetName()] += 1
 	}
 
-	osName, osVersion := version.DetectOS()
+	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
 		osName:         osName,
+		osFamily:       osFamily,
 		osVersion:      osVersion,
 		startupTS:      time.Now().UTC().Unix(),
 		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
@@ -109,11 +111,16 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
 	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
 ) *MetricsProvider {
+
+	static := newStaticMetrics(consoleOptions, datasources, hub)
+	
+	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
+
 	return &MetricsProvider{
 		apic:     apic,
 		interval: interval,
 		logger:   logger,
-		static:   newStaticMetrics(consoleOptions, datasources, hub),
+		static:   static,
 	}
 }
 

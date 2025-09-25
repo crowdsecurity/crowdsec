@@ -150,10 +150,11 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		},
 	}
 
-	osName, osVersion := version.DetectOS()
+	osName, osFamily, osVersion := version.DetectOS()
 
 	allMetrics.Lapi.Os = &models.OSversion{
 		Name:    ptr.Of(osName),
+		Family:  osFamily,
 		Version: ptr.Of(osVersion),
 	}
 	allMetrics.Lapi.Version = ptr.Of(version.String())
