@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -18,7 +19,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
-	"maps"
 )
 
 type VLClient struct {
@@ -64,28 +64,6 @@ func updateURI(uri string, newStart time.Time) string {
 	return u.String()
 }
 
-// newStart should be the desired start time for the tail query
-// start_offset is computed from this
-func updateTailURI(uri string, newStart time.Time) string {
-	u, _ := url.Parse(uri)
-	queryParams := u.Query()
-
-	queryTime := time.Now()
-	startOffset := 5000
-	gracePeriod := 50*time.Millisecond
-
-	if !newStart.IsZero() {
-		if newStart.Before(queryTime) {
-			startOffset = int((queryTime.Sub(newStart) + gracePeriod).Milliseconds())
-		}
-	} else {
-	}
-	queryParams.Set("start_offset", strconv.Itoa(startOffset))
-
-	u.RawQuery = queryParams.Encode()
-
-	return u.String()
-}
 func (lc *VLClient) SetTomb(t *tomb.Tomb) {
 	lc.t = t
 }
@@ -310,37 +288,48 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 }
 
 func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
-
 	// These control how the timing of requests when the active connection is lost
 	minBackoff := 100 * time.Millisecond
 	maxBackoff := 10 * time.Second
 	backoffInterval := minBackoff
-	queryStart := time.Now()
+	vlURL, _ := url.Parse(uri)
+	lastDatapoint := time.Now().Add(-1 * lc.config.Since)
 
+	firstHandled := false
 	for {
-		// Wait for the backoff interval, respect context ending as well
-		// Putting this first keeps the logic simpler
-		if backoffInterval > maxBackoff {
-			backoffInterval = maxBackoff
-		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-lc.t.Dying():
 			return lc.t.Err()
-		case <-time.After(backoffInterval):
-			// now we can make the next request
+		default:
+			if firstHandled {
+				lc.Logger.Debugf("sleeping for %s before retry", backoffInterval)
+				time.Sleep(backoffInterval)
+			}
+		}
+		firstHandled = true
+
+		// callback to increase backoff interval on error
+		backoffError := func() {
+			backoffInterval *= 2
+			if backoffInterval > maxBackoff {
+				backoffInterval = maxBackoff
+			}
 		}
 
-		// update start_offset in the request
-		// This needs to be done just before the query is made, since
-		// the desired offset depends on the query time.
-		uri = updateTailURI(uri, queryStart)
-		// Make the HTTP request
-		resp, err := lc.Get(ctx, uri)
+		q := vlURL.Query()
+		offset := lastDatapoint.Sub(time.Now()).Abs()
+		if offset > time.Millisecond {
+			// do not use offset less than a millisecond, as VL does not support it
+			q.Set("start_offset", offset.String())
+		}
+		vlURL.RawQuery = q.Encode()
+
+		resp, err := lc.Get(ctx, vlURL.String())
 		if err != nil {
 			lc.Logger.Warnf("error tailing logs: %w", err)
-			backoffInterval *= 2
+			backoffError()
 			continue
 		}
 
@@ -348,8 +337,8 @@ func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			lc.Logger.Warnf("bad HTTP response code for tail request: %d: %s: %w", resp.StatusCode, body, err)
-			backoffInterval *= 2
+			lc.Logger.Warnf("bad HTTP response code for tail request: %d, expected: %d; response: %s;", resp.StatusCode, http.StatusOK, body)
+			backoffError()
 			continue
 		}
 
@@ -357,18 +346,15 @@ func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
 		n, largestTime, err := lc.readResponse(ctx, resp, c)
 		if err != nil {
 			lc.Logger.Warnf("error while reading tail response: %w", err)
-			backoffInterval *= 2
+			backoffError()
 		} else if n > 0 {
 			// as long as we get results, reset the backoff interval
 			backoffInterval = minBackoff
 			// update the queryStart time if the latest result was later
-			if largestTime.After(queryStart) {
-				queryStart = largestTime
+			if largestTime.After(lastDatapoint) {
+				lastDatapoint = largestTime
 			}
-		} else {
-			backoffInterval *= 2
 		}
-
 	}
 }
 
@@ -377,7 +363,6 @@ func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
 func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 	t := time.Now().Add(-1 * lc.config.Since)
 	u := lc.getURLFor("select/logsql/tail", map[string]string{
-		"start_offset": "0",
 		"query": lc.config.Query,
 	})
 

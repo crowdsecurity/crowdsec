@@ -94,11 +94,6 @@ func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
 		l.Config.Limit = defaultLimit
 	}
 
-	if l.Config.Mode == configuration.TAIL_MODE {
-		l.logger.Infof("Resetting since")
-		l.Config.Since = 0
-	}
-
 	if l.Config.MaxFailureDuration == 0 {
 		l.Config.MaxFailureDuration = 30 * time.Second
 	}
@@ -300,7 +295,7 @@ func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan types.Even
 	}
 
 	lctx, clientCancel := context.WithCancel(ctx)
-	//Don't defer clientCancel(), the client outlives this function call
+	// Don't defer clientCancel(), the client outlives this function call
 
 	t.Go(func() error {
 		<-t.Dying()
