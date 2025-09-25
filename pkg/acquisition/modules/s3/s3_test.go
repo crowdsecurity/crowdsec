@@ -16,6 +16,7 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -121,9 +122,7 @@ polling_method: list
 			logger := log.NewEntry(log.New())
 
 			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -150,14 +149,15 @@ var mockListOutput map[string][]s3types.Object = map[string][]s3types.Object{
 	},
 }
 
-func (m mockS3Client) ListObjectsV2(ctx context.Context, input *s3.ListObjectsV2Input, options ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+func (mockS3Client) ListObjectsV2(_ context.Context, input *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
 	log.Infof("returning mock list output for %s, %v", *input.Bucket, mockListOutput[*input.Bucket])
+
 	return &s3.ListObjectsV2Output{
 		Contents: mockListOutput[*input.Bucket],
 	}, nil
 }
 
-func (m mockS3Client) GetObject(ctx context.Context, input *s3.GetObjectInput, options ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+func (mockS3Client) GetObject(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 	r := strings.NewReader("foo\nbar")
 	return &s3.GetObjectOutput{Body: io.NopCloser(r)}, nil
 }
@@ -166,11 +166,13 @@ type mockSQSClient struct {
 	counter *int32
 }
 
-func (msqs mockSQSClient) ReceiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput, options ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+func (msqs mockSQSClient) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	if atomic.LoadInt32(msqs.counter) == 1 {
 		return &sqs.ReceiveMessageOutput{}, nil
 	}
+
 	atomic.AddInt32(msqs.counter, 1)
+
 	return &sqs.ReceiveMessageOutput{
 		Messages: []sqstypes.Message{
 			{
@@ -181,7 +183,7 @@ func (msqs mockSQSClient) ReceiveMessage(ctx context.Context, input *sqs.Receive
 	}, nil
 }
 
-func (msqs mockSQSClient) DeleteMessage(ctx context.Context, input *sqs.DeleteMessageInput, options ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (mockSQSClient) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
@@ -189,11 +191,13 @@ type mockSQSClientNotif struct {
 	counter *int32
 }
 
-func (msqs mockSQSClientNotif) ReceiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput, options ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+func (msqs mockSQSClientNotif) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	if atomic.LoadInt32(msqs.counter) == 1 {
 		return &sqs.ReceiveMessageOutput{}, nil
 	}
+
 	atomic.AddInt32(msqs.counter, 1)
+
 	return &sqs.ReceiveMessageOutput{
 		Messages: []sqstypes.Message{
 			{
@@ -204,7 +208,7 @@ func (msqs mockSQSClientNotif) ReceiveMessage(ctx context.Context, input *sqs.Re
 	}, nil
 }
 
-func (msqs mockSQSClientNotif) DeleteMessage(ctx context.Context, input *sqs.DeleteMessageInput, options ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (mockSQSClientNotif) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
@@ -212,11 +216,13 @@ type mockSQSClientSNS struct {
 	counter *int32
 }
 
-func (msqs mockSQSClientSNS) ReceiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput, options ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+func (msqs mockSQSClientSNS) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	if atomic.LoadInt32(msqs.counter) == 1 {
 		return &sqs.ReceiveMessageOutput{}, nil
 	}
+
 	atomic.AddInt32(msqs.counter, 1)
+
 	return &sqs.ReceiveMessageOutput{
 		Messages: []sqstypes.Message{
 			{
@@ -228,7 +234,7 @@ func (msqs mockSQSClientSNS) ReceiveMessage(ctx context.Context, input *sqs.Rece
 	}, nil
 }
 
-func (msqs mockSQSClientSNS) DeleteMessage(ctx context.Context, input *sqs.DeleteMessageInput, options ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (mockSQSClientSNS) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
@@ -264,13 +270,11 @@ func TestDSNAcquis(t *testing.T) {
 			logger := log.NewEntry(log.New())
 			f.s3Client = mockS3Client{}
 			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger, "")
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			assert.Equal(t, test.expectedBucketName, f.Config.BucketName)
 			assert.Equal(t, test.expectedPrefix, f.Config.Prefix)
-			out := make(chan types.Event)
 
+			out := make(chan types.Event)
 			done := make(chan bool)
 
 			go func() {
@@ -287,11 +291,11 @@ func TestDSNAcquis(t *testing.T) {
 
 			tmb := tomb.Tomb{}
 			err = f.OneShotAcquisition(ctx, out, &tmb)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			time.Sleep(2 * time.Second)
+
 			done <- true
+
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}
@@ -333,12 +337,14 @@ prefix: foo/
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
 			logger.Logger.SetLevel(log.TraceLevel)
+
 			f.s3Client = mockS3Client{}
 
 			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
+
 			if f.Config.PollingMethod != PollMethodList {
 				t.Fatalf("expected list polling, got %s", f.Config.PollingMethod)
 			}
@@ -366,9 +372,7 @@ prefix: foo/
 			time.Sleep(2 * time.Second)
 			tb.Kill(nil)
 			err = tb.Wait()
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}
@@ -376,6 +380,7 @@ prefix: foo/
 
 func TestSQSPoll(t *testing.T) {
 	ctx := t.Context()
+
 	tests := []struct {
 		name          string
 		config        string
@@ -420,14 +425,14 @@ sqs_name: test
 			logger := log.NewEntry(log.New())
 			f.s3Client = mockS3Client{}
 			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
+
 			if f.Config.PollingMethod != PollMethodSQS {
 				t.Fatalf("expected sqs polling, got %s", f.Config.PollingMethod)
 			}
 
 			counter := int32(0)
+
 			switch test.notifType {
 			case SQSFormatEventBridge:
 				f.sqsClient = mockSQSClient{counter: &counter}
@@ -461,10 +466,9 @@ sqs_name: test
 
 			time.Sleep(2 * time.Second)
 			tb.Kill(nil)
+
 			err = tb.Wait()
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}

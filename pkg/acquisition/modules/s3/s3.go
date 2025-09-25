@@ -127,12 +127,15 @@ func (s *S3Source) newS3Client() error {
 	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
 		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
 	}
+
 	region := s.Config.AwsRegion
 	if region == "" {
 		region = "us-east-1"
 	}
+
 	loadOpts = append(loadOpts, config.WithRegion(region))
 	loadOpts = append(loadOpts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+
 	cfg, err := config.LoadDefaultConfig(s.ctx, loadOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %w", err)
@@ -144,6 +147,7 @@ func (s *S3Source) newS3Client() error {
 	}
 
 	s.s3Client = s3.NewFromConfig(cfg, clientOpts...)
+
 	return nil
 }
 
@@ -156,12 +160,15 @@ func (s *S3Source) newSQSClient() error {
 	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
 		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
 	}
+
 	region := s.Config.AwsRegion
 	if region == "" {
 		region = "us-east-1"
 	}
+
 	loadOpts = append(loadOpts, config.WithRegion(region))
 	loadOpts = append(loadOpts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+
 	cfg, err := config.LoadDefaultConfig(s.ctx, loadOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to load aws config: %w", err)
@@ -173,11 +180,13 @@ func (s *S3Source) newSQSClient() error {
 	}
 
 	s.sqsClient = sqs.NewFromConfig(cfg, clientOpts...)
+
 	return nil
 }
 
 func (s *S3Source) readManager() {
 	logger := s.logger.WithField("method", "readManager")
+
 	for {
 		select {
 		case <-s.t.Dying():
@@ -186,8 +195,8 @@ func (s *S3Source) readManager() {
 			return
 		case s3Object := <-s.readerChan:
 			logger.Debugf("Reading file %s/%s", s3Object.Bucket, s3Object.Key)
-			err := s.readFile(s3Object.Bucket, s3Object.Key)
-			if err != nil {
+
+			if err := s.readFile(s3Object.Bucket, s3Object.Key); err != nil {
 				logger.Errorf("Error while reading file: %s", err)
 			}
 		}
@@ -197,8 +206,11 @@ func (s *S3Source) readManager() {
 func (s *S3Source) getBucketContent() ([]s3types.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
+
 	bucketObjects := make([]s3types.Object, 0)
+
 	var continuationToken *string
+
 	for {
 		out, err := s.s3Client.ListObjectsV2(s.ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.Config.BucketName),
@@ -209,15 +221,19 @@ func (s *S3Source) getBucketContent() ([]s3types.Object, error) {
 			logger.Errorf("Error while listing bucket content: %s", err)
 			return nil, err
 		}
+
 		bucketObjects = append(bucketObjects, out.Contents...)
 		if out.NextContinuationToken == nil {
 			break
 		}
+
 		continuationToken = out.NextContinuationToken
 	}
+
 	sort.Slice(bucketObjects, func(i, j int) bool {
 		return bucketObjects[i].LastModified.Before(*bucketObjects[j].LastModified)
 	})
+
 	return bucketObjects, nil
 }
 
@@ -225,6 +241,7 @@ func (s *S3Source) listPoll() error {
 	logger := s.logger.WithField("method", "listPoll")
 	ticker := time.NewTicker(time.Duration(s.Config.PollingInterval) * time.Second)
 	lastObjectDate := time.Now()
+
 	defer ticker.Stop()
 
 	for {
@@ -235,25 +252,32 @@ func (s *S3Source) listPoll() error {
 			return nil
 		case <-ticker.C:
 			newObject := false
+
 			bucketObjects, err := s.getBucketContent()
 			if err != nil {
 				logger.Errorf("Error while getting bucket content: %s", err)
 				continue
 			}
+
 			if bucketObjects == nil {
 				continue
 			}
+
 			for i := len(bucketObjects) - 1; i >= 0; i-- {
 				if !bucketObjects[i].LastModified.After(lastObjectDate) {
 					break
 				}
+
 				newObject = true
+
 				logger.Debugf("Found new object %s", *bucketObjects[i].Key)
+
 				s.readerChan <- S3Object{
 					Bucket: s.Config.BucketName,
 					Key:    *bucketObjects[i].Key,
 				}
 			}
+
 			if newObject {
 				lastObjectDate = *bucketObjects[len(bucketObjects)-1].LastModified
 			}
@@ -263,38 +287,44 @@ func (s *S3Source) listPoll() error {
 
 func extractBucketAndPrefixFromEventBridge(message *string) (string, string, error) {
 	eventBody := S3Event{}
-	err := json.Unmarshal([]byte(*message), &eventBody)
-	if err != nil {
+
+	if err := json.Unmarshal([]byte(*message), &eventBody); err != nil {
 		return "", "", err
 	}
+
 	if eventBody.Detail.Bucket.Name != "" {
 		return eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key, nil
 	}
+
 	return "", "", errors.New("invalid event body for event bridge format")
 }
 
 func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) {
 	s3notifBody := events.S3Event{}
-	err := json.Unmarshal([]byte(*message), &s3notifBody)
-	if err != nil {
+
+	if err := json.Unmarshal([]byte(*message), &s3notifBody); err != nil {
 		return "", "", err
 	}
+
 	if len(s3notifBody.Records) == 0 {
 		return "", "", errors.New("no records found in S3 notification")
 	}
+
 	if !strings.HasPrefix(s3notifBody.Records[0].EventName, "ObjectCreated:") {
 		return "", "", fmt.Errorf("event %s is not supported", s3notifBody.Records[0].EventName)
 	}
+
 	return s3notifBody.Records[0].S3.Bucket.Name, s3notifBody.Records[0].S3.Object.Key, nil
 }
 
 func extractBucketAndPrefixFromSNSNotif(message *string) (string, string, error) {
 	snsBody := SNSEvent{}
-	err := json.Unmarshal([]byte(*message), &snsBody)
-	if err != nil {
+
+	if err := json.Unmarshal([]byte(*message), &snsBody); err != nil {
 		return "", "", err
 	}
-	//It's just a SQS message wrapped in SNS
+
+	// It's just a SQS message wrapped in SNS
 	return extractBucketAndPrefixFromS3Notif(&snsBody.Message)
 }
 
@@ -340,6 +370,7 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 
 func (s *S3Source) sqsPoll() error {
 	logger := s.logger.WithField("method", "sqsPoll")
+
 	for {
 		select {
 		case <-s.t.Dying():
@@ -477,11 +508,11 @@ func (s *S3Source) GetUuid() string {
 	return s.Config.UniqueId
 }
 
-func (s *S3Source) GetMetrics() []prometheus.Collector {
+func (*S3Source) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.S3DataSourceLinesRead, metrics.S3DataSourceObjectsRead, metrics.S3DataSourceSQSMessagesReceived}
 }
 
-func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
+func (*S3Source) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.S3DataSourceLinesRead, metrics.S3DataSourceObjectsRead, metrics.S3DataSourceSQSMessagesReceived}
 }
 
@@ -651,7 +682,7 @@ func (s *S3Source) GetMode() string {
 	return s.Config.Mode
 }
 
-func (s *S3Source) GetName() string {
+func (*S3Source) GetName() string {
 	return "s3"
 }
 
@@ -713,10 +744,10 @@ func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Even
 	return nil
 }
 
-func (s *S3Source) CanRun() error {
+func (*S3Source) CanRun() error {
 	return nil
 }
 
-func (s *S3Source) Dump() interface{} {
+func (s *S3Source) Dump() any {
 	return s
 }
