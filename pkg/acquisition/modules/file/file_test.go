@@ -595,7 +595,7 @@ mode: tail
 
 	// Cleanup
 	tomb.Kill(nil)
-	tomb.Wait()
+	require.NoError(t, tomb.Wait())
 }
 
 func TestFileResurrectionViaPolling(t *testing.T) {
@@ -645,5 +645,5 @@ mode: tail
 
 	// Cleanup
 	tomb.Kill(nil)
-	tomb.Wait()
+	require.NoError(t, tomb.Wait())
 }

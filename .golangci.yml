@@ -119,8 +119,6 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - (net/http.ResponseWriter).Write   # TODO
-        - (*os/exec.Cmd).Wait
         - syscall.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
@@ -455,6 +453,11 @@ linters:
       - linters:
           - containedctx
         path: cmd/notification-file/main.go
+        text: found a struct that contains a context.Context field
+
+      - linters:
+          - containedctx
+        path: pkg/acquisition/modules/s3/s3.go
         text: found a struct that contains a context.Context field
 
       # migrate over time
