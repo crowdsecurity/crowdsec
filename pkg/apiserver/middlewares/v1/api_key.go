@@ -154,10 +154,12 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 			logger.Errorf("while fetching bouncer info: %s", err)
 			return nil
 		}
+
 		if len(bouncer) == 0 {
 			logger.Debugf("no bouncer found with this key")
 			return nil
 		}
+
 		return bouncer[0]
 	}
 
@@ -174,6 +176,7 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 			logger.Errorf("bouncer isn't allowed to auth by API key")
 			return nil
 		}
+
 		return bouncer
 	}
 
@@ -251,6 +254,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
+
 				return
 			}
 		}
