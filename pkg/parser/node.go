@@ -85,12 +85,8 @@ func (n *Node) validate(ectx EnricherCtx) error {
 	}
 
 	if n.RuntimeGrok.RunTimeRegexp != nil || n.Grok.TargetField != "" {
-		if n.Grok.TargetField == "" && n.Grok.ExpValue == "" {
-			return errors.New("grok requires 'expression' or 'apply_on'")
-		}
-
-		if n.Grok.RegexpName == "" && n.Grok.RegexpValue == "" {
-			return errors.New("grok needs 'pattern' or 'name'")
+		if err := n.Grok.Validate(); err != nil {
+			return err
 		}
 	}
 
