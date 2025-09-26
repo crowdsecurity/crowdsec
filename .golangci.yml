@@ -155,7 +155,6 @@ linters:
         - sloppyReassign
         - appendCombine
         - commentFormatting
-        - deferInLoop             #
         - whyNoLint
         - equalFold               #
         - unnecessaryBlock        #
@@ -218,8 +217,6 @@ linters:
           arguments:
             # lower this after refactoring
             - 39
-        - name: defer
-          disabled: true
         - name: empty-block
           disabled: true
         - name: empty-lines

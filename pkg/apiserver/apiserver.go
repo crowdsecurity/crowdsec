@@ -86,7 +86,7 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
-	err := recover()
+	err := recover() //nolint:revive
 	if err == nil {
 		return
 	}
