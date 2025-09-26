@@ -11,7 +11,6 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
-	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
@@ -23,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/namegenerator"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -74,9 +74,6 @@ type BucketFactory struct {
 	wgDumpState         *sync.WaitGroup
 	orderEvent          bool
 }
-
-// we use one NameGenerator for all the future buckets
-var seed = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 func validateLeakyType(bucketFactory *BucketFactory) error {
 	if bucketFactory.Capacity <= 0 { // capacity must be a positive int
@@ -288,7 +285,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		}
 
 		bucketFactory.Filename = filepath.Clean(itemPath)
-		bucketFactory.BucketName = seed.Generate()
+		bucketFactory.BucketName = namegenerator.GetRandomName()
 		bucketFactory.ret = response
 
 		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
