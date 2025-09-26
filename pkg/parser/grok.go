@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
@@ -101,16 +100,4 @@ func (g *GrokPattern) Validate() error {
 	}
 
 	return nil
-}
-
-type DataCapture struct {
-	Name            string        `yaml:"name,omitempty"`
-	Key             string        `yaml:"key,omitempty"`
-	KeyExpression   *vm.Program   `yaml:"-"`
-	Value           string        `yaml:"value,omitempty"`
-	ValueExpression *vm.Program   `yaml:"-"`
-	TTL             string        `yaml:"ttl,omitempty"`
-	TTLVal          time.Duration `yaml:"-"`
-	MaxMapSize      int           `yaml:"size,omitempty"`
-	Strategy        string        `yaml:"strategy,omitempty"`
 }

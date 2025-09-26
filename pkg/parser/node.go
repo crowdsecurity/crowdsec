@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
@@ -17,7 +16,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/grokky"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -63,7 +61,8 @@ type Node struct {
 	Statics        []Static        `yaml:"statics,omitempty"`
 	RuntimeStatics []RuntimeStatic `yaml:"-"`
 	// Stash allows to capture data from the log line and store it in an accessible cache
-	Stash []DataCapture `yaml:"stash,omitempty"`
+	Stashes []Stash `yaml:"stash,omitempty"`
+	RuntimeStashes []RuntimeStash `yaml:"-"`
 	// Whitelists
 	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
@@ -96,32 +95,9 @@ func (n *Node) validate(ectx EnricherCtx) error {
 		}
 	}
 
-	for idx := range n.Stash {
-		// pointer not value, to avoid throwing away the defaults
-		stash := &n.Stash[idx]
-
-		if stash.Name == "" {
-			return fmt.Errorf("stash %d: name must be set", idx)
-		}
-
-		if stash.Value == "" {
-			return fmt.Errorf("stash %s: value expression must be set", stash.Name)
-		}
-
-		if stash.Key == "" {
-			return fmt.Errorf("stash %s: key expression must be set", stash.Name)
-		}
-
-		if stash.TTL == "" {
-			return fmt.Errorf("stash %s: ttl must be set", stash.Name)
-		}
-
-		if stash.Strategy == "" {
-			stash.Strategy = "LRU"
-		}
-		// should be configurable
-		if stash.MaxMapSize == 0 {
-			stash.MaxMapSize = 100
+	for idx, stash := range n.Stashes {
+		if err := stash.Validate(); err != nil {
+			return fmt.Errorf("stash %d: %w", idx, err)
 		}
 	}
 
@@ -270,52 +246,8 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 }
 
 func (n *Node) processStash(_ *types.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
-	for idx, stash := range n.Stash {
-		var (
-			key   string
-			value string
-		)
-
-		if stash.ValueExpression == nil {
-			logger.Warningf("Stash %d has no value expression, skipping", idx)
-			continue
-		}
-
-		if stash.KeyExpression == nil {
-			logger.Warningf("Stash %d has no key expression, skipping", idx)
-			continue
-		}
-		// collect the data
-		output, err := exprhelpers.Run(stash.ValueExpression, cachedExprEnv, logger, n.Debug)
-		if err != nil {
-			logger.Warningf("Error while running stash val expression: %v", err)
-		}
-		// can we expect anything else than a string ?
-		switch output := output.(type) {
-		case string:
-			value = output
-		default:
-			logger.Warningf("unexpected type %T (%v) while running %q", output, output, stash.Value)
-			continue
-		}
-
-		// collect the key
-		output, err = exprhelpers.Run(stash.KeyExpression, cachedExprEnv, logger, n.Debug)
-		if err != nil {
-			logger.Warningf("Error while running stash key expression: %v", err)
-		}
-		// can we expect anything else than a string ?
-		switch output := output.(type) {
-		case string:
-			key = output
-		default:
-			logger.Warningf("unexpected type %T (%v) while running %q", output, output, stash.Key)
-			continue
-		}
-
-		if err = cache.SetKey(stash.Name, key, value, &stash.TTLVal); err != nil {
-			logger.Warningf("failed to store data in cache: %s", err.Error())
-		}
+	for idx, stash := range n.RuntimeStashes {
+		stash.Apply(idx, cachedExprEnv, n.Logger, n.Debug)
 	}
 
 	return nil
@@ -531,36 +463,12 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		valid = true
 	}
 
-	/* load data capture (stash) */
-	for i, stash := range n.Stash {
-		n.Stash[i].ValueExpression, err = expr.Compile(stash.Value,
-			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+	for _, stash := range n.Stashes {
+		compiled, err := stash.Compile(n.Logger)
 		if err != nil {
-			return fmt.Errorf("while compiling stash value expression: %w", err)
+			return fmt.Errorf("stash %s: %w", stash.Name, err)
 		}
-
-		n.Stash[i].KeyExpression, err = expr.Compile(stash.Key,
-			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
-		if err != nil {
-			return fmt.Errorf("while compiling stash key expression: %w", err)
-		}
-
-		n.Stash[i].TTLVal, err = time.ParseDuration(stash.TTL)
-		if err != nil {
-			return fmt.Errorf("while parsing stash ttl: %w", err)
-		}
-
-		logLvl := n.Logger.Logger.GetLevel()
-		// init the cache, does it make sense to create it here just to be sure everything is fine ?
-		if err = cache.CacheInit(cache.CacheCfg{
-			Size:     n.Stash[i].MaxMapSize,
-			TTL:      n.Stash[i].TTLVal,
-			Name:     n.Stash[i].Name,
-			Strategy: n.Stash[i].Strategy,
-			LogLevel: &logLvl,
-		}); err != nil {
-			return fmt.Errorf("while initializing cache: %w", err)
-		}
+		n.RuntimeStashes = append(n.RuntimeStashes, *compiled)
 	}
 
 	/* compile leafs if present */
