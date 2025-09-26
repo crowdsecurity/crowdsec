@@ -15,6 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.38.3
 	github.com/aws/aws-sdk-go-v2/config v1.31.6
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.4
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.57.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.87.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.3
 	github.com/beevik/etree v1.4.1
