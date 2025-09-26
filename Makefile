@@ -345,8 +345,9 @@ else
 endif
 
 .PHONY: lint
-lint: check_golangci-lint  ## Run go linters
-	@golangci-lint run
+lint: check_golangci-lint  ## Run go linters for both linux and windows files.
+	GOOS=windows golangci-lint run --build-tags=windows,sqlite_modernc
+	GOOS=linux   golangci-lint run
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \
