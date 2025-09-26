@@ -79,7 +79,7 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 }
 
 // return the diff between the installed version and the latest version
-func (*cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
+func (*cliItem) itemDiff(ctx context.Context, item cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.IsInstalled() {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -144,9 +144,10 @@ func (cli *cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvi
 		sub, err := hub.GetItemFQ(fqsub)
 		if err != nil {
 			ret = append(ret, err.Error())
+			continue
 		}
 
-		diff, err := cli.itemDiff(ctx, sub, contentProvider, reverse)
+		diff, err := cli.itemDiff(ctx, *sub, contentProvider, reverse)
 		if err != nil {
 			ret = append(ret, err.Error())
 		}

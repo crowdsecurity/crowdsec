@@ -71,7 +71,7 @@ type DockerSource struct {
 type ContainerConfig struct {
 	Name       string
 	ID         string
-	t          *tomb.Tomb
+	t          tomb.Tomb
 	logger     *log.Entry
 	Labels     map[string]string
 	Tty        bool
@@ -648,17 +648,17 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 			d.logger.Errorf("cannot connect to docker daemon for service monitoring: %v", err)
 
 			// Kill all running service monitoring if we can't connect
-			for idx, service := range d.runningServiceState {
-				if d.runningServiceState[idx].t.Alive() {
+			for id, service := range d.runningServiceState {
+				if service.t.Alive() {
 					d.logger.Infof("killing tail for service %s", service.Name)
-					d.runningServiceState[idx].t.Kill(nil)
+					service.t.Kill(nil)
 
-					if err := d.runningServiceState[idx].t.Wait(); err != nil {
+					if err := service.t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", service.Name, err)
 					}
 				}
 
-				delete(d.runningServiceState, idx)
+				delete(d.runningServiceState, id)
 			}
 		} else {
 			d.logger.Errorf("service list err: %s", err)
@@ -697,17 +697,17 @@ func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *Cont
 	runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
-			for idx, container := range d.runningContainerState {
-				if d.runningContainerState[idx].t.Alive() {
+			for id, container := range d.runningContainerState {
+				if container.t.Alive() {
 					d.logger.Infof("killing tail for container %s", container.Name)
-					d.runningContainerState[idx].t.Kill(nil)
+					container.t.Kill(nil)
 
-					if err := d.runningContainerState[idx].t.Wait(); err != nil {
+					if err := container.t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
 					}
 				}
 
-				delete(d.runningContainerState, idx)
+				delete(d.runningContainerState, id)
 			}
 		} else {
 			log.Errorf("container list err: %s", err)
@@ -1141,7 +1141,6 @@ func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerC
 		select {
 		case newContainer := <-in:
 			if _, ok := d.runningContainerState[newContainer.ID]; !ok {
-				newContainer.t = &tomb.Tomb{}
 				newContainer.logger = d.logger.WithField("container_name", newContainer.Name)
 				newContainer.t.Go(func() error {
 					return d.TailContainer(ctx, newContainer, outChan, deleteChan)
@@ -1156,12 +1155,12 @@ func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerC
 				delete(d.runningContainerState, containerToDelete.ID)
 			}
 		case <-d.t.Dying():
-			for idx, container := range d.runningContainerState {
-				if d.runningContainerState[idx].t.Alive() {
+			for _, container := range d.runningContainerState {
+				if container.t.Alive() {
 					d.logger.Infof("killing tail for container %s", container.Name)
-					d.runningContainerState[idx].t.Kill(nil)
+					container.t.Kill(nil)
 
-					if err := d.runningContainerState[idx].t.Wait(); err != nil {
+					if err := container.t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
 					}
 				}
@@ -1182,7 +1181,6 @@ func (d *DockerSource) ServiceManager(ctx context.Context, in chan *ContainerCon
 		select {
 		case newService := <-in:
 			if _, ok := d.runningServiceState[newService.ID]; !ok {
-				newService.t = &tomb.Tomb{}
 				newService.logger = d.logger.WithField("service_name", newService.Name)
 				newService.t.Go(func() error {
 					return d.TailService(ctx, newService, outChan, deleteChan)
@@ -1197,12 +1195,12 @@ func (d *DockerSource) ServiceManager(ctx context.Context, in chan *ContainerCon
 				delete(d.runningServiceState, serviceToDelete.ID)
 			}
 		case <-d.t.Dying():
-			for idx, service := range d.runningServiceState {
-				if d.runningServiceState[idx].t.Alive() {
+			for _, service := range d.runningServiceState {
+				if service.t.Alive() {
 					d.logger.Infof("killing tail for service %s", service.Name)
-					d.runningServiceState[idx].t.Kill(nil)
+					service.t.Kill(nil)
 
-					if err := d.runningServiceState[idx].t.Wait(); err != nil {
+					if err := service.t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", service.Name, err)
 					}
 				}

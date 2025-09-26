@@ -60,6 +60,7 @@ var matchMap = map[string]string{
 	"gte":             "@ge",
 	"lte":             "@le",
 	"eq":              "@eq",
+	"fromFile":        "@pmFromFile",
 }
 
 var bodyTypeMatch = map[string]string{

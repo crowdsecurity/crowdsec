@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -19,6 +20,7 @@ type DecisionCreate struct {
 	config
 	mutation *DecisionMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -325,6 +327,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 		_node = &Decision{config: dc.config}
 		_spec = sqlgraph.NewCreateSpec(decision.Table, sqlgraph.NewFieldSpec(decision.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = dc.conflict
 	if value, ok := dc.mutation.CreatedAt(); ok {
 		_spec.SetField(decision.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -405,11 +408,279 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Decision.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DecisionUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (dc *DecisionCreate) OnConflict(opts ...sql.ConflictOption) *DecisionUpsertOne {
+	dc.conflict = opts
+	return &DecisionUpsertOne{
+		create: dc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Decision.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (dc *DecisionCreate) OnConflictColumns(columns ...string) *DecisionUpsertOne {
+	dc.conflict = append(dc.conflict, sql.ConflictColumns(columns...))
+	return &DecisionUpsertOne{
+		create: dc,
+	}
+}
+
+type (
+	// DecisionUpsertOne is the builder for "upsert"-ing
+	//  one Decision node.
+	DecisionUpsertOne struct {
+		create *DecisionCreate
+	}
+
+	// DecisionUpsert is the "OnConflict" setter.
+	DecisionUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DecisionUpsert) SetUpdatedAt(v time.Time) *DecisionUpsert {
+	u.Set(decision.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DecisionUpsert) UpdateUpdatedAt() *DecisionUpsert {
+	u.SetExcluded(decision.FieldUpdatedAt)
+	return u
+}
+
+// SetUntil sets the "until" field.
+func (u *DecisionUpsert) SetUntil(v time.Time) *DecisionUpsert {
+	u.Set(decision.FieldUntil, v)
+	return u
+}
+
+// UpdateUntil sets the "until" field to the value that was provided on create.
+func (u *DecisionUpsert) UpdateUntil() *DecisionUpsert {
+	u.SetExcluded(decision.FieldUntil)
+	return u
+}
+
+// ClearUntil clears the value of the "until" field.
+func (u *DecisionUpsert) ClearUntil() *DecisionUpsert {
+	u.SetNull(decision.FieldUntil)
+	return u
+}
+
+// SetAlertDecisions sets the "alert_decisions" field.
+func (u *DecisionUpsert) SetAlertDecisions(v int) *DecisionUpsert {
+	u.Set(decision.FieldAlertDecisions, v)
+	return u
+}
+
+// UpdateAlertDecisions sets the "alert_decisions" field to the value that was provided on create.
+func (u *DecisionUpsert) UpdateAlertDecisions() *DecisionUpsert {
+	u.SetExcluded(decision.FieldAlertDecisions)
+	return u
+}
+
+// ClearAlertDecisions clears the value of the "alert_decisions" field.
+func (u *DecisionUpsert) ClearAlertDecisions() *DecisionUpsert {
+	u.SetNull(decision.FieldAlertDecisions)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.Decision.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *DecisionUpsertOne) UpdateNewValues() *DecisionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(decision.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.Scenario(); exists {
+			s.SetIgnore(decision.FieldScenario)
+		}
+		if _, exists := u.create.mutation.GetType(); exists {
+			s.SetIgnore(decision.FieldType)
+		}
+		if _, exists := u.create.mutation.StartIP(); exists {
+			s.SetIgnore(decision.FieldStartIP)
+		}
+		if _, exists := u.create.mutation.EndIP(); exists {
+			s.SetIgnore(decision.FieldEndIP)
+		}
+		if _, exists := u.create.mutation.StartSuffix(); exists {
+			s.SetIgnore(decision.FieldStartSuffix)
+		}
+		if _, exists := u.create.mutation.EndSuffix(); exists {
+			s.SetIgnore(decision.FieldEndSuffix)
+		}
+		if _, exists := u.create.mutation.IPSize(); exists {
+			s.SetIgnore(decision.FieldIPSize)
+		}
+		if _, exists := u.create.mutation.Scope(); exists {
+			s.SetIgnore(decision.FieldScope)
+		}
+		if _, exists := u.create.mutation.Value(); exists {
+			s.SetIgnore(decision.FieldValue)
+		}
+		if _, exists := u.create.mutation.Origin(); exists {
+			s.SetIgnore(decision.FieldOrigin)
+		}
+		if _, exists := u.create.mutation.Simulated(); exists {
+			s.SetIgnore(decision.FieldSimulated)
+		}
+		if _, exists := u.create.mutation.UUID(); exists {
+			s.SetIgnore(decision.FieldUUID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Decision.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *DecisionUpsertOne) Ignore() *DecisionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DecisionUpsertOne) DoNothing() *DecisionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DecisionCreate.OnConflict
+// documentation for more info.
+func (u *DecisionUpsertOne) Update(set func(*DecisionUpsert)) *DecisionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DecisionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DecisionUpsertOne) SetUpdatedAt(v time.Time) *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DecisionUpsertOne) UpdateUpdatedAt() *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetUntil sets the "until" field.
+func (u *DecisionUpsertOne) SetUntil(v time.Time) *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.SetUntil(v)
+	})
+}
+
+// UpdateUntil sets the "until" field to the value that was provided on create.
+func (u *DecisionUpsertOne) UpdateUntil() *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.UpdateUntil()
+	})
+}
+
+// ClearUntil clears the value of the "until" field.
+func (u *DecisionUpsertOne) ClearUntil() *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.ClearUntil()
+	})
+}
+
+// SetAlertDecisions sets the "alert_decisions" field.
+func (u *DecisionUpsertOne) SetAlertDecisions(v int) *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.SetAlertDecisions(v)
+	})
+}
+
+// UpdateAlertDecisions sets the "alert_decisions" field to the value that was provided on create.
+func (u *DecisionUpsertOne) UpdateAlertDecisions() *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.UpdateAlertDecisions()
+	})
+}
+
+// ClearAlertDecisions clears the value of the "alert_decisions" field.
+func (u *DecisionUpsertOne) ClearAlertDecisions() *DecisionUpsertOne {
+	return u.Update(func(s *DecisionUpsert) {
+		s.ClearAlertDecisions()
+	})
+}
+
+// Exec executes the query.
+func (u *DecisionUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DecisionCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DecisionUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *DecisionUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *DecisionUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // DecisionCreateBulk is the builder for creating many Decision entities in bulk.
 type DecisionCreateBulk struct {
 	config
 	err      error
 	builders []*DecisionCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Decision entities in the database.
@@ -439,6 +710,7 @@ func (dcb *DecisionCreateBulk) Save(ctx context.Context) ([]*Decision, error) {
 					_, err = mutators[i+1].Mutate(root, dcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = dcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, dcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -489,6 +761,209 @@ func (dcb *DecisionCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (dcb *DecisionCreateBulk) ExecX(ctx context.Context) {
 	if err := dcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Decision.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DecisionUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (dcb *DecisionCreateBulk) OnConflict(opts ...sql.ConflictOption) *DecisionUpsertBulk {
+	dcb.conflict = opts
+	return &DecisionUpsertBulk{
+		create: dcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Decision.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (dcb *DecisionCreateBulk) OnConflictColumns(columns ...string) *DecisionUpsertBulk {
+	dcb.conflict = append(dcb.conflict, sql.ConflictColumns(columns...))
+	return &DecisionUpsertBulk{
+		create: dcb,
+	}
+}
+
+// DecisionUpsertBulk is the builder for "upsert"-ing
+// a bulk of Decision nodes.
+type DecisionUpsertBulk struct {
+	create *DecisionCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Decision.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *DecisionUpsertBulk) UpdateNewValues() *DecisionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(decision.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.Scenario(); exists {
+				s.SetIgnore(decision.FieldScenario)
+			}
+			if _, exists := b.mutation.GetType(); exists {
+				s.SetIgnore(decision.FieldType)
+			}
+			if _, exists := b.mutation.StartIP(); exists {
+				s.SetIgnore(decision.FieldStartIP)
+			}
+			if _, exists := b.mutation.EndIP(); exists {
+				s.SetIgnore(decision.FieldEndIP)
+			}
+			if _, exists := b.mutation.StartSuffix(); exists {
+				s.SetIgnore(decision.FieldStartSuffix)
+			}
+			if _, exists := b.mutation.EndSuffix(); exists {
+				s.SetIgnore(decision.FieldEndSuffix)
+			}
+			if _, exists := b.mutation.IPSize(); exists {
+				s.SetIgnore(decision.FieldIPSize)
+			}
+			if _, exists := b.mutation.Scope(); exists {
+				s.SetIgnore(decision.FieldScope)
+			}
+			if _, exists := b.mutation.Value(); exists {
+				s.SetIgnore(decision.FieldValue)
+			}
+			if _, exists := b.mutation.Origin(); exists {
+				s.SetIgnore(decision.FieldOrigin)
+			}
+			if _, exists := b.mutation.Simulated(); exists {
+				s.SetIgnore(decision.FieldSimulated)
+			}
+			if _, exists := b.mutation.UUID(); exists {
+				s.SetIgnore(decision.FieldUUID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Decision.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *DecisionUpsertBulk) Ignore() *DecisionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DecisionUpsertBulk) DoNothing() *DecisionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DecisionCreateBulk.OnConflict
+// documentation for more info.
+func (u *DecisionUpsertBulk) Update(set func(*DecisionUpsert)) *DecisionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DecisionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DecisionUpsertBulk) SetUpdatedAt(v time.Time) *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DecisionUpsertBulk) UpdateUpdatedAt() *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetUntil sets the "until" field.
+func (u *DecisionUpsertBulk) SetUntil(v time.Time) *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.SetUntil(v)
+	})
+}
+
+// UpdateUntil sets the "until" field to the value that was provided on create.
+func (u *DecisionUpsertBulk) UpdateUntil() *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.UpdateUntil()
+	})
+}
+
+// ClearUntil clears the value of the "until" field.
+func (u *DecisionUpsertBulk) ClearUntil() *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.ClearUntil()
+	})
+}
+
+// SetAlertDecisions sets the "alert_decisions" field.
+func (u *DecisionUpsertBulk) SetAlertDecisions(v int) *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.SetAlertDecisions(v)
+	})
+}
+
+// UpdateAlertDecisions sets the "alert_decisions" field to the value that was provided on create.
+func (u *DecisionUpsertBulk) UpdateAlertDecisions() *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.UpdateAlertDecisions()
+	})
+}
+
+// ClearAlertDecisions clears the value of the "alert_decisions" field.
+func (u *DecisionUpsertBulk) ClearAlertDecisions() *DecisionUpsertBulk {
+	return u.Update(func(s *DecisionUpsert) {
+		s.ClearAlertDecisions()
+	})
+}
+
+// Exec executes the query.
+func (u *DecisionUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the DecisionCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DecisionCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DecisionUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

@@ -2,6 +2,7 @@ package hubtest
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -19,7 +20,7 @@ type NucleiConfig struct {
 
 var ErrNucleiTemplateFail = errors.New("nuclei template failed")
 
-func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, target string) error {
+func (nc *NucleiConfig) RunNucleiTemplate(ctx context.Context, testName string, templatePath string, target string) error {
 	tstamp := time.Now().Unix()
 
 	outputPrefix := fmt.Sprintf("%s/%s-%d", nc.OutputDir, testName, tstamp)
@@ -30,7 +31,7 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		"-o", outputPrefix + ".json",
 	}
 	args = append(args, nc.CmdLineOptions...)
-	cmd := exec.Command(nc.Path, args...)
+	cmd := exec.CommandContext(ctx, nc.Path, args...)
 
 	log.Debugf("Running Nuclei command: '%s'", cmd.String())
 
@@ -41,7 +42,6 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 	cmd.Stderr = &outErr
 
 	err := cmd.Run()
-
 	if err := os.WriteFile(outputPrefix+"_stdout.txt", out.Bytes(), 0o644); err != nil {
 		log.Warningf("Error writing stdout: %s", err)
 	}
@@ -55,13 +55,16 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
+
 		return err
 	} else if out.String() == "" {
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
-		//No stdout means no finding, it means our test failed
+
+		// No stdout means no finding, it means our test failed
 		return ErrNucleiTemplateFail
 	}
+
 	return nil
 }

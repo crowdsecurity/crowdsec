@@ -24,7 +24,8 @@ import (
 
 type JournalCtlConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Filters                           []string `yaml:"journalctl_filter"`
+
+	Filters []string `yaml:"journalctl_filter"`
 }
 
 type JournalCtlSource struct {
@@ -98,7 +99,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 	if stdoutscanner == nil {
 		cancel()
-		cmd.Wait()
+		_ = cmd.Wait()
 		return errors.New("failed to create stdout scanner")
 	}
 
@@ -106,7 +107,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 	if stderrScanner == nil {
 		cancel()
-		cmd.Wait()
+		_ = cmd.Wait()
 		return errors.New("failed to create stderr scanner")
 	}
 
@@ -124,7 +125,10 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() // avoid zombie process
+			// avoid zombie process
+			if waitErr := cmd.Wait(); waitErr != nil {
+				j.logger.Debugf("journalctl exited after cancel: %v", waitErr)
+			}
 
 			return nil
 		case stdoutLine := <-stdoutChan:
@@ -165,11 +169,11 @@ func (j *JournalCtlSource) GetUuid() string {
 	return j.config.UniqueId
 }
 
-func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
+func (*JournalCtlSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
-func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
+func (*JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
@@ -199,7 +203,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	args = append(args, j.config.Filters...)
 
 	j.args = args
-	j.src = "journalctl-%s" + strings.Join(j.config.Filters, ".")
+	j.src = "journalctl-" + strings.Join(j.config.Filters, ".")
 
 	return nil
 }
@@ -269,7 +273,7 @@ func (j *JournalCtlSource) GetMode() string {
 	return j.config.Mode
 }
 
-func (j *JournalCtlSource) GetName() string {
+func (*JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
@@ -291,12 +295,12 @@ func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan ty
 	return nil
 }
 
-func (j *JournalCtlSource) CanRun() error {
+func (*JournalCtlSource) CanRun() error {
 	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
 
-func (j *JournalCtlSource) Dump() interface{} {
+func (j *JournalCtlSource) Dump() any {
 	return j
 }

@@ -219,14 +219,17 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg := cli.cfg()
+
 			ncfgs, err := cli.getProfilesConfigs()
 			if err != nil {
 				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
+
 			ncfg, ok := ncfgs[args[0]]
 			if !ok {
 				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
 			}
+
 			if cfg.Cscli.Output == "human" || cfg.Cscli.Output == "raw" {
 				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Type", ncfg.Config.Type)
 				fmt.Fprintf(os.Stdout, " - %15s: %15s\n", "Name", ncfg.Config.Name)
@@ -250,7 +253,7 @@ func (cli *cliNotifications) newInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliNotifications) notificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliNotifications) notificationConfigFilter(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	ncfgs, err := cli.getProfilesConfigs()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -357,7 +360,7 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 
 			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(errors.New("terminating"))
-			pluginTomb.Wait()
+			_ = pluginTomb.Wait()
 
 			return nil
 		},
@@ -475,7 +478,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(errors.New("terminating"))
-			pluginTomb.Wait()
+			_ = pluginTomb.Wait()
 
 			return nil
 		},
@@ -498,15 +501,12 @@ func (cli *cliNotifications) fetchAlertFromArgString(ctx context.Context, toPars
 		return nil, fmt.Errorf("error parsing the URL of the API: %w", err)
 	}
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error creating the client for the API: %w", err)
-	}
 
 	alert, _, err := client.Alerts.GetByID(ctx, id)
 	if err != nil {

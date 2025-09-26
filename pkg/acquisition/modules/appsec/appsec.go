@@ -170,12 +170,12 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *AppsecSource) GetMetrics() []prometheus.Collector {
+func (*AppsecSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
 		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
 
-func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
+func (*AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.AppsecReqCounter, metrics.AppsecBlockCounter, metrics.AppsecRuleHits,
 		metrics.AppsecOutbandParsingHistogram, metrics.AppsecInbandParsingHistogram, metrics.AppsecGlobalParsingHistogram}
 }
@@ -324,20 +324,12 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	return nil
 }
 
-func (w *AppsecSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return errors.New("AppSec datasource does not support command line acquisition")
-}
-
 func (w *AppsecSource) GetMode() string {
 	return w.config.Mode
 }
 
-func (w *AppsecSource) GetName() string {
+func (*AppsecSource) GetName() string {
 	return "appsec"
-}
-
-func (w *AppsecSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("AppSec datasource does not support command line acquisition")
 }
 
 func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
@@ -374,6 +366,8 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		}
 	}
 
+	listenConfig := &net.ListenConfig{}
+
 	// Starting Unix socket listener
 	go func(socket string) {
 		if socket == "" {
@@ -388,7 +382,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 		w.logger.Infof("creating unix socket %s", socket)
 
-		listener, err := net.Listen("unix", socket)
+		listener, err := listenConfig.Listen(ctx, "unix", socket)
 		if err != nil {
 			serverError <- csnet.WrapSockErr(err, socket)
 			return
@@ -404,9 +398,10 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 			return
 		}
 
-		listener, err := net.Listen("tcp", url)
+		listener, err := listenConfig.Listen(ctx, "tcp", url)
 		if err != nil {
 			serverError <- fmt.Errorf("listening on %s: %w", url, err)
+			return
 		}
 
 		w.logger.Infof("Appsec listening on %s", url)
@@ -470,7 +465,7 @@ func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.
 	return nil
 }
 
-func (w *AppsecSource) CanRun() error {
+func (*AppsecSource) CanRun() error {
 	return nil
 }
 
@@ -478,7 +473,7 @@ func (w *AppsecSource) GetUuid() string {
 	return w.config.UniqueId
 }
 
-func (w *AppsecSource) Dump() interface{} {
+func (w *AppsecSource) Dump() any {
 	return w
 }
 
@@ -504,7 +499,6 @@ func (w *AppsecSource) isValidKey(ctx context.Context, apiKey string) (bool, err
 }
 
 func (w *AppsecSource) checkAuth(ctx context.Context, apiKey string) error {
-
 	if apiKey == "" {
 		return errMissingAPIKey
 	}
@@ -521,10 +515,12 @@ func (w *AppsecSource) checkAuth(ctx context.Context, apiKey string) error {
 			if err != nil {
 				w.logger.Errorf("Error checking auth for API key: %s", err)
 			}
+
 			return errInvalidAPIKey
 		}
 		// Cache the valid API key
 		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+
 		return nil
 	}
 

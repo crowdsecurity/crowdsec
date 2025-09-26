@@ -38,18 +38,6 @@ const (
 	AllowRemediation   = "allow"
 )
 
-var CRSAnomalyScores = []string{
-	"TX.sql_injection_score",
-	"TX.xss_score",
-	"TX.rfi_score",
-	"TX.lfi_score",
-	"TX.rce_score",
-	"TX.php_injection_score",
-	"TX.http_violation_score",
-	"TX.session_fixation_score",
-	"TX.anomaly_score",
-}
-
 func (h *Hook) Build(hookStage int) error {
 	ctx := map[string]interface{}{}
 
@@ -226,9 +214,6 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	if tmp.VariablesTracking != nil {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
-
-	// In all cases, track the CRS anomaly scores
-	wc.VariablesTracking = append(wc.VariablesTracking, CRSAnomalyScores...)
 
 	// override other options
 	wc.LogLevel = tmp.LogLevel

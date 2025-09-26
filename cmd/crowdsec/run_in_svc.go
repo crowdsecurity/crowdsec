@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"runtime/pprof"
 
 	log "github.com/sirupsen/logrus"
@@ -14,13 +15,14 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 func isWindowsService() (bool, error) {
 	return false, nil
 }
 
-func StartRunSvc() error {
+func StartRunSvc(ctx context.Context) error {
 	var (
 		cConfig *csconfig.Config
 		err     error
@@ -36,6 +38,12 @@ func StartRunSvc() error {
 		return err
 	}
 
+	if fflag.PProfBlockProfile.IsEnabled() {
+		runtime.SetBlockProfileRate(1)
+		runtime.SetMutexProfileFraction(1)
+		log.Warn("pprof block/mutex profiling enabled, expect a performance hit")
+	}
+
 	log.Infof("Crowdsec %s", version.String())
 
 	agentReady := make(chan bool, 1)
@@ -45,8 +53,6 @@ func StartRunSvc() error {
 		var dbClient *database.Client
 
 		var err error
-
-		ctx := context.TODO()
 
 		if cConfig.DbConfig != nil {
 			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
@@ -65,5 +71,5 @@ func StartRunSvc() error {
 		}()
 	}
 
-	return Serve(cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady)
 }

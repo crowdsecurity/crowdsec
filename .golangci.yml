@@ -19,7 +19,6 @@ linters:
 
     # Disabled atm
 
-    - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
     - funcorder
     - exhaustive
 
@@ -120,12 +119,6 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - io.Copy                           # TODO
-        - (net/http.ResponseWriter).Write   # TODO
-        - (*os/exec.Cmd).Start
-        - (*os/exec.Cmd).Wait
-        - (*os.Process).Kill
-        - (*text/template.Template).ExecuteTemplate
         - syscall.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
@@ -142,11 +135,19 @@ linters:
         - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterHeaders
         - (*github.com/crowdsecurity/crowdsec/pkg/longpollclient.LongPollClient).Stop
 
+    errorlint:
+      # Check whether fmt.Errorf uses the %w verb for formatting errors.
+      # See the https://github.com/polyfloyd/go-errorlint for caveats.
+      # Default: true
+      errorf: false
+      errorf-multi: true
+      asserts: true
+      comparison: true
+
     gocritic:
       enable-all: true
       disabled-checks:
         - paramTypeCombine
-        - ifElseChain
         - hugeParam
         - commentedOutCode
         - commentedOutImport
@@ -163,9 +164,13 @@ linters:
         - preferFprint
         - importShadow
 
+      settings:
+        ifElseChain:
+          minThreshold: 4
+
     gomoddirectives:
       replace-allow-list:
-        - golang.org/x/time/rate
+        - golang.org/x/time
         - github.com/corazawaf/coraza/v3
 
     govet:
@@ -174,7 +179,7 @@ linters:
       enable-all: true
 
     interfacebloat:
-      max: 12
+      max: 7
 
     maintidx:
       # raise this after refactoring
@@ -192,7 +197,7 @@ linters:
 
     nolintlint:
       require-explanation: false  # don't require an explanation for nolint directives
-      require-specific: false     # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true     # don't require nolint directives to be specific about which linter is being skipped
       allow-unused: false         # report any unused nolint directives
 
     revive:
@@ -231,8 +236,8 @@ linters:
         - name: function-length
           arguments:
             # lower this after refactoring
-            - 87
-            - 198
+            - 86
+            - 174
         - name: get-return
           disabled: true
         - name: increment-decrement
@@ -297,10 +302,6 @@ linters:
         - -QF1003
         - -QF1012
 
-    wsl:
-      # Allow blocks to end with comments
-      allow-trailing-comment: true
-
   exclusions:
     presets:
       - comments
@@ -322,13 +323,6 @@ linters:
         text: fmt.Sprintf can be replaced .*
 
       # Will fix, easy but some thinking required
-
-      - linters:
-          - errorlint
-        text: non-wrapping format verb for fmt.Errorf. Use `%w` to format errors
-      - linters:
-          - nosprintfhostport
-        text: host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf
 
       # https://github.com/timakin/bodyclose
       - linters:
@@ -461,15 +455,12 @@ linters:
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
 
+      - linters:
+          - containedctx
+        path: pkg/acquisition/modules/s3/s3.go
+        text: found a struct that contains a context.Context field
+
       # migrate over time
-
-      - linters:
-          - noctx
-        text: "net.Listen must not be called"
-
-      - linters:
-          - noctx
-        text: "exec.Command must not be called"
 
       - linters:
           - noctx
@@ -477,14 +468,9 @@ linters:
 
       - linters:
           - noctx
-        text: "net.Dial must not be called"
-
-      - linters:
-          - noctx
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/time/rate
       - pkg/metabase
       - third_party$
       - builtin$

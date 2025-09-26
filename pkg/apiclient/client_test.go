@@ -70,7 +70,9 @@ func setupUnixSocketWithPrefix(t *testing.T, socket string, urlPrefix string) (m
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))
 
 	server := httptest.NewUnstartedServer(apiHandler)
-	l, err := net.Listen("unix", socket)
+	lc := &net.ListenConfig{}
+	ctx := t.Context()
+	l, err := lc.Listen(ctx, "unix", socket)
 	require.NoError(t, err)
 	err = server.Listener.Close()
 	require.NoError(t, err)
@@ -93,13 +95,12 @@ func TestNewClientOk(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -131,17 +132,15 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
@@ -171,16 +170,15 @@ func TestNewClientKo(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
 		assert.NoError(t, err)
@@ -209,7 +207,7 @@ func TestNewDefaultClient(t *testing.T) {
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	require.NoError(t, err)
 
-	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 		assert.NoError(t, err)
@@ -240,7 +238,7 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 		t.Fatalf("new api client: %s", err)
 	}
 
-	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 		assert.NoError(t, err)

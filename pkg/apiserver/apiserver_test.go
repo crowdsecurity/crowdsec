@@ -48,7 +48,7 @@ var (
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -98,7 +98,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 
 func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -145,7 +145,7 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 	apiServer, err := NewServer(ctx, config.API.Server)
 	require.NoError(t, err)
 
-	log.Printf("Creating new API server")
+	log.Info("Creating new API server")
 	gin.SetMode(gin.TestMode)
 
 	return apiServer, config
@@ -175,7 +175,7 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 	err = apiServer.InitController()
 	require.NoError(t, err)
 
-	log.Printf("Creating new API server")
+	log.Info("Creating new API server")
 	gin.SetMode(gin.TestMode)
 
 	router, err := apiServer.Router()
@@ -292,7 +292,8 @@ func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, to
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -338,7 +339,8 @@ func TestUnknownPath(t *testing.T) {
 	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test", http.NoBody)
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -364,7 +366,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -397,7 +399,8 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -417,7 +420,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -449,7 +452,8 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
