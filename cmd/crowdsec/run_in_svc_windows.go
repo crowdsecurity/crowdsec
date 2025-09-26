@@ -21,7 +21,7 @@ func isWindowsService() (bool, error) {
 	return svc.IsWindowsService()
 }
 
-func StartRunSvc() error {
+func StartRunSvc(ctx context.Context) error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
@@ -61,7 +61,7 @@ func StartRunSvc() error {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	case "":
-		return WindowsRun()
+		return WindowsRun(ctx)
 	default:
 		return fmt.Errorf("Invalid value for winsvc parameter: %s", flags.WinSvc)
 	}
@@ -69,7 +69,7 @@ func StartRunSvc() error {
 	return nil
 }
 
-func WindowsRun() error {
+func WindowsRun(ctx context.Context) error {
 	var (
 		cConfig *csconfig.Config
 		err     error
@@ -95,8 +95,6 @@ func WindowsRun() error {
 		var dbClient *database.Client
 		var err error
 
-		ctx := context.TODO()
-
 		if cConfig.DbConfig != nil {
 			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
 
@@ -107,5 +105,5 @@ func WindowsRun() error {
 		registerPrometheus(cConfig.Prometheus)
 		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
 	}
-	return Serve(cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady)
 }

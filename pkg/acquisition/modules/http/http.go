@@ -174,23 +174,23 @@ func (h *HTTPSource) GetMode() string {
 	return h.Config.Mode
 }
 
-func (h *HTTPSource) GetName() string {
+func (*HTTPSource) GetName() string {
 	return dataSourceName
 }
 
-func (h *HTTPSource) CanRun() error {
+func (*HTTPSource) CanRun() error {
 	return nil
 }
 
-func (h *HTTPSource) GetMetrics() []prometheus.Collector {
+func (*HTTPSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
+func (*HTTPSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) Dump() interface{} {
+func (h *HTTPSource) Dump() any {
 	return h
 }
 
@@ -269,6 +269,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 
 	if h.logger.Logger.IsLevelEnabled(log.TraceLevel) {
 		h.logger.Tracef("processing request from '%s' with method '%s' and path '%s'", r.RemoteAddr, r.Method, r.URL.Path)
+
 		bodyContent, err := httputil.DumpRequest(r, true)
 		if err != nil {
 			h.logger.Errorf("failed to dump request: %s", err)
@@ -329,13 +330,14 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
+
 		out <- evt
 	}
 
 	return nil
 }
 
-func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.Config.Path, func(w http.ResponseWriter, r *http.Request) {
 		if err := authorizeRequest(r, &h.Config); err != nil {
@@ -349,7 +351,11 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		case http.MethodGet, http.MethodHead: // Return a 200 if the auth was successful
 			h.logger.Infof("successful %s request from '%s'", r.Method, r.RemoteAddr)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+
+			if _, err := w.Write([]byte("OK")); err != nil {
+				h.logger.Errorf("failed to write response: %v", err)
+			}
+
 			return
 		case http.MethodPost: // POST is handled below
 		default:
@@ -359,7 +365,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		}
 
 		if r.RemoteAddr == "@" {
-			//We check if request came from unix socket and if so we set to loopback
+			// We check if request came from unix socket and if so we set to loopback
 			r.RemoteAddr = "127.0.0.1:65535"
 		}
 
@@ -381,7 +387,9 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 			w.WriteHeader(http.StatusOK)
 		}
 
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			h.logger.Errorf("failed to write response: %v", err)
+		}
 	})
 
 	h.Server = &http.Server{
@@ -408,18 +416,23 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		h.Server.TLSConfig = tlsConfig
 	}
 
+	listenConfig := &net.ListenConfig{}
+
 	t.Go(func() error {
 		if h.Config.ListenSocket == "" {
 			return nil
 		}
 
 		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
+
 		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
 		_ = os.Remove(h.Config.ListenSocket)
-		listener, err := net.Listen("unix", h.Config.ListenSocket)
+
+		listener, err := listenConfig.Listen(ctx, "unix", h.Config.ListenSocket)
 		if err != nil {
 			return csnet.WrapSockErr(err, h.Config.ListenSocket)
 		}
+
 		if h.Config.TLS != nil {
 			err := h.Server.ServeTLS(listener, h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
@@ -464,9 +477,11 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 	<-t.Dying()
 
 	h.logger.Infof("%s datasource stopping", dataSourceName)
+
 	if err := h.Server.Close(); err != nil {
 		return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
 	}
+
 	return nil
 }
 
@@ -475,7 +490,7 @@ func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/live")
-		return h.RunServer(out, t)
+		return h.RunServer(ctx, out, t)
 	})
 
 	return nil
