@@ -519,28 +519,37 @@ func (d *DockerSource) processCrowdsecLabels(parsedLabels map[string]any, entity
 	return labels, nil
 }
 
+// NewContainerConfig creates per-container log options by copying the base options
+func NewContainerConfig(baseOpts *dockerContainer.LogsOptions, id string, name string, labels map[string]string, tty bool) *ContainerConfig {
+	opts := &dockerContainer.LogsOptions{
+		ShowStdout: baseOpts.ShowStdout,
+		ShowStderr: baseOpts.ShowStderr,
+		Follow:     baseOpts.Follow,
+		Since:      baseOpts.Since,
+		Until:      baseOpts.Until,
+	}
+	return &ContainerConfig{
+		ID:         id,
+		Name:       name,
+		Labels:     labels,
+		Tty:        tty,
+		logOptions: opts,
+	}
+}
+
 func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.Container) *ContainerConfig {
-	// Create per-container log options by copying the base options
-	createContainerConfig := func(id, name string, labels map[string]string, tty bool) *ContainerConfig {
-		logOptions := &dockerContainer.LogsOptions{
-			ShowStdout: d.containerLogsOptions.ShowStdout,
-			ShowStderr: d.containerLogsOptions.ShowStderr,
-			Follow:     d.containerLogsOptions.Follow,
-			Since:      d.containerLogsOptions.Since,
-			Until:      d.containerLogsOptions.Until,
-		}
-		return &ContainerConfig{
-			ID:         id,
-			Name:       name,
-			Labels:     labels,
-			Tty:        tty,
-			logOptions: logOptions,
-		}
+	// fixed params
+	newConfig := func(name string, labels map[string]string) *ContainerConfig {
+		return NewContainerConfig(d.containerLogsOptions, container.ID, name, labels, d.getContainerTTY(ctx, container.ID))
 	}
 
+	// ID match
+
 	if slices.Contains(d.Config.ContainerID, container.ID) {
-		return createContainerConfig(container.ID, container.Names[0], d.Config.Labels, d.getContainerTTY(ctx, container.ID))
+		return newConfig(container.Names[0], d.Config.Labels)
 	}
+
+	// name match
 
 	for _, containerName := range d.Config.ContainerName {
 		for _, name := range container.Names {
@@ -549,24 +558,30 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 			}
 
 			if name == containerName {
-				return createContainerConfig(container.ID, name, d.Config.Labels, d.getContainerTTY(ctx, container.ID))
+				return newConfig(name, d.Config.Labels)
 			}
 		}
 	}
 
+	// regex ID match
+
 	for _, cont := range d.compiledContainerID {
 		if matched := cont.MatchString(container.ID); matched {
-			return createContainerConfig(container.ID, container.Names[0], d.Config.Labels, d.getContainerTTY(ctx, container.ID))
+			return newConfig(container.Names[0], d.Config.Labels)
 		}
 	}
+
+	// regex name match
 
 	for _, cont := range d.compiledContainerName {
 		for _, name := range container.Names {
 			if matched := cont.MatchString(name); matched {
-				return createContainerConfig(container.ID, name, d.Config.Labels, d.getContainerTTY(ctx, container.ID))
+				return newConfig(name, d.Config.Labels)
 			}
 		}
 	}
+
+	// label match
 
 	if d.Config.UseContainerLabels {
 		parsedLabels := d.getContainerLabels(ctx, container.ID)
@@ -575,56 +590,49 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 			return nil
 		}
 
-		return createContainerConfig(container.ID, container.Names[0], labels, d.getContainerTTY(ctx, container.ID))
+		return newConfig(container.Names[0], labels)
 	}
 
 	return nil
 }
 
 func (d *DockerSource) EvalService(ctx context.Context, service dockerTypesSwarm.Service) *ContainerConfig {
-	// Create per-service log options by copying the base options
-	createServiceConfig := func(id, name string, labels map[string]string) *ContainerConfig {
-		logOptions := &dockerContainer.LogsOptions{
-			ShowStdout: d.containerLogsOptions.ShowStdout,
-			ShowStderr: d.containerLogsOptions.ShowStderr,
-			Follow:     d.containerLogsOptions.Follow,
-			Since:      d.containerLogsOptions.Since,
-			Until:      d.containerLogsOptions.Until,
-		}
-		return &ContainerConfig{
-			ID:         id,
-			Name:       name,
-			Labels:     labels,
-			Tty:        false, // Services don't use TTY
-			logOptions: logOptions,
-		}
+	// fixed params
+	newConfig := func(labels map[string]string) *ContainerConfig {
+		// Services don't use TTY
+		return NewContainerConfig(d.containerLogsOptions, service.ID, service.Spec.Name, labels, false)
 	}
 
-	// Check service ID matches
+	// service ID match
+
 	if slices.Contains(d.Config.ServiceID, service.ID) {
-		return createServiceConfig(service.ID, service.Spec.Name, d.Config.Labels)
+		return newConfig(d.Config.Labels)
 	}
 
-	// Check service name matches
+	// service name match
+
 	if slices.Contains(d.Config.ServiceName, service.Spec.Name) {
-		return createServiceConfig(service.ID, service.Spec.Name, d.Config.Labels)
+		return newConfig(d.Config.Labels)
 	}
 
-	// Check service ID regex matches
+	// service ID regex match
+
 	for _, svc := range d.compiledServiceID {
 		if matched := svc.MatchString(service.ID); matched {
-			return createServiceConfig(service.ID, service.Spec.Name, d.Config.Labels)
+			return newConfig(d.Config.Labels)
 		}
 	}
 
-	// Check service name regex matches
+	// service name regex match
+
 	for _, svc := range d.compiledServiceName {
 		if matched := svc.MatchString(service.Spec.Name); matched {
-			return createServiceConfig(service.ID, service.Spec.Name, d.Config.Labels)
+			return newConfig(d.Config.Labels)
 		}
 	}
 
-	// Check service labels if enabled
+	// labels if enabled
+
 	if d.Config.UseServiceLabels {
 		parsedLabels := parseLabels(service.Spec.Labels)
 		labels, err := d.processCrowdsecLabels(parsedLabels, service.ID, "service")
@@ -632,7 +640,7 @@ func (d *DockerSource) EvalService(ctx context.Context, service dockerTypesSwarm
 			return nil
 		}
 
-		return createServiceConfig(service.ID, service.Spec.Name, labels)
+		return newConfig(labels)
 	}
 
 	return nil
