@@ -57,10 +57,10 @@ type Node struct {
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
 
 	// Holds a grok pattern
-	Grok GrokPattern `yaml:"grok,omitempty"`
+	Grok        GrokPattern        `yaml:"grok,omitempty"`
 	RuntimeGrok RuntimeGrokPattern `yaml:"-"`
 	// Statics can be present in any type of node and is executed last
-	Statics []Static `yaml:"statics,omitempty"`
+	Statics        []Static        `yaml:"statics,omitempty"`
 	RuntimeStatics []RuntimeStatic `yaml:"-"`
 	// Stash allows to capture data from the log line and store it in an accessible cache
 	Stash []DataCapture `yaml:"stash,omitempty"`
@@ -341,6 +341,7 @@ func (n *Node) processLeaves(
 		if err != nil {
 			n.Logger.Tracef("\tNode (%s) failed: %v", child.rn, err)
 			n.Logger.Debugf("Event leaving node: ko")
+
 			return false, err
 		}
 
@@ -529,6 +530,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if err != nil {
 			return err
 		}
+
 		n.RuntimeGrok = *rg
 		valid = true
 	}

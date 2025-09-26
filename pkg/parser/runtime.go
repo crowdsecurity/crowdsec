@@ -311,6 +311,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		if event.Stage != stage {
 			log.Debugf("Event not parsed, expected stage '%s' got '%s', abort", stage, event.Stage)
 			event.Process = false
+
 			return event, nil
 		}
 
@@ -350,6 +351,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 				// ensure the stage map exists
 				StageParseMutex.Lock()
+
 				stageMap, ok := StageParseCache[stage]
 				if !ok {
 					stageMap = make(map[string][]dumps.ParserResult)
@@ -391,6 +393,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		if !isStageOK {
 			log.Debugf("Log didn't finish stage %s", event.Stage)
 			event.Process = false
+
 			return event, nil
 		}
 	}

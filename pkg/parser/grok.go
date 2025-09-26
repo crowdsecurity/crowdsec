@@ -28,7 +28,7 @@ type Static struct {
 	// the source is a static value
 	Value string `yaml:"value,omitempty"`
 	// or the result of an Expression
-	ExpValue     string      `yaml:"expression,omitempty"`
+	ExpValue string `yaml:"expression,omitempty"`
 	// or an enrichment method
 	Method string `yaml:"method,omitempty"`
 }
@@ -86,7 +86,7 @@ type GrokPattern struct {
 	// a proper grok pattern
 	RegexpValue string `yaml:"pattern,omitempty"`
 	// the output of the expression is going to be the source for regexp
-	ExpValue     string      `yaml:"expression,omitempty"`
+	ExpValue string `yaml:"expression,omitempty"`
 	// a grok can contain statics that apply if pattern is successful
 	Statics []Static `yaml:"statics,omitempty"`
 }
@@ -94,8 +94,8 @@ type GrokPattern struct {
 type RuntimeGrokPattern struct {
 	Config *GrokPattern
 
-	RunTimeRegexp  grokky.Pattern  // the actual regexp
-	RunTimeValue   *vm.Program     // the actual compiled filter
+	RunTimeRegexp  grokky.Pattern // the actual regexp
+	RunTimeValue   *vm.Program    // the actual compiled filter
 	RuntimeStatics []RuntimeStatic
 }
 
