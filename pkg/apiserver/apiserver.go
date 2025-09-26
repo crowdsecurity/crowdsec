@@ -38,7 +38,6 @@ type APIServer struct {
 	UnixSocket     string
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
-	logFile        string
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine
@@ -204,7 +203,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	}
 
 	// The logger that will be used by handlers
-	clog, logFile, err := newGinLogger(config)
+	clog, _, err := newGinLogger(config)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +285,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		URL:            config.ListenURI,
 		UnixSocket:     config.ListenSocket,
 		TLS:            config.TLS,
-		logFile:        logFile,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,

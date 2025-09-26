@@ -62,12 +62,10 @@ type AppsecSourceConfig struct {
 
 // runtime structure of AppsecSourceConfig
 type AppsecSource struct {
-	metricsLevel          metrics.AcquisitionMetricsLevel
 	config                AppsecSourceConfig
 	logger                *log.Entry
 	mux                   *http.ServeMux
 	server                *http.Server
-	outChan               chan types.Event
 	InChan                chan appsec.ParsedRequest
 	AppsecRuntime         *appsec.AppsecRuntimeConfig
 	AppsecConfigs         map[string]appsec.AppsecConfig
@@ -209,7 +207,6 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	}
 
 	w.logger = logger
-	w.metricsLevel = metricsLevel
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {
@@ -433,8 +430,6 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 }
 
 func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	w.outChan = out
-
 	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
