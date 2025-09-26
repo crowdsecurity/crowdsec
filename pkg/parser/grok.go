@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -88,6 +89,18 @@ func (g *GrokPattern) Compile(pctx *UnixParserCtx, logger *log.Entry) (*RuntimeG
 	}
 
 	return rg, nil
+}
+
+func (g *GrokPattern) Validate() error {
+	if g.TargetField == "" && g.ExpValue == "" {
+		return errors.New("grok requires 'expression' or 'apply_on'")
+	}
+
+	if g.RegexpName == "" && g.RegexpValue == "" {
+		return errors.New("grok needs 'pattern' or 'name'")
+	}
+
+	return nil
 }
 
 type DataCapture struct {
