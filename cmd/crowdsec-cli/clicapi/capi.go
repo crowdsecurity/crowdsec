@@ -197,7 +197,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 		return capiStatus{}, err
 	}
 
-	if err := db.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token); err != nil {
+	if err := db.SaveAPICToken(ctx, authResp.Token); err != nil {
 		return capiStatus{}, err
 	}
 

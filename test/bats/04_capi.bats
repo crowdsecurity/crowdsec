@@ -116,7 +116,7 @@ setup() {
         --err "CAPI manager configured successfully" \
         "$CROWDSEC"
     assert_stderr --partial "using valid token from DB"
-    refute_stderr --partial "No token found, authenticating"
+    refute_stderr --partial "Cached token not found or invalid. Authenticating"
 
     # not valid anymore
 
@@ -127,7 +127,7 @@ setup() {
         "$CROWDSEC"
     refute_stderr --partial "using valid token from DB"
     assert_stderr --partial "error parsing token: token contains an invalid number of segments"
-    assert_stderr --partial "No token found, authenticating"
+    assert_stderr --partial "Cached token not found or invalid. Authenticating"
 
     # token was re-created
 
@@ -135,7 +135,7 @@ setup() {
         --err "CAPI manager configured successfully" \
         "$CROWDSEC"
     assert_stderr --partial "using valid token from DB"
-    refute_stderr --partial "No token found, authenticating"
+    refute_stderr --partial "Cached token not found or invalid. Authenticating"
 
     # "cscli capi status" also saves the token
 
@@ -145,7 +145,7 @@ setup() {
         --err "CAPI manager configured successfully" \
         "$CROWDSEC"
     assert_stderr --partial "using valid token from DB"
-    refute_stderr --partial "No token found, authenticating"
+    refute_stderr --partial "Cached token not found or invalid. Authenticating"
 }
 
 @test "capi register must be run from lapi" {

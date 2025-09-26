@@ -138,7 +138,7 @@ func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 	t.Token = response.Token
 
 	if t.TokenSave != nil {
-		err = t.TokenSave(ctx, TokenDBField, t.Token)
+		err = t.TokenSave(ctx, t.Token)
 		if err != nil {
 			log.Errorf("unable to save token: %s", err)
 		}
