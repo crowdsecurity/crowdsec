@@ -319,7 +319,7 @@ func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
 		}
 
 		q := vlURL.Query()
-		offset := lastDatapoint.Sub(time.Now()).Abs()
+		offset := time.Until(lastDatapoint).Abs()
 		if offset > time.Millisecond {
 			// do not use offset less than a millisecond, as VL does not support it
 			q.Set("start_offset", offset.String())
