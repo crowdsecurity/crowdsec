@@ -328,7 +328,7 @@ func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
 
 		resp, err := lc.Get(ctx, vlURL.String())
 		if err != nil {
-			lc.Logger.Warnf("error tailing logs: %w", err)
+			lc.Logger.Warnf("error tailing logs: %s", err)
 			backoffError()
 			continue
 		}
@@ -345,7 +345,7 @@ func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
 		// Read all the responses
 		n, largestTime, err := lc.readResponse(ctx, resp, c)
 		if err != nil {
-			lc.Logger.Warnf("error while reading tail response: %w", err)
+			lc.Logger.Warnf("error while reading tail response: %s", err)
 			backoffError()
 		} else if n > 0 {
 			// as long as we get results, reset the backoff interval
