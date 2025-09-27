@@ -14,7 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) newCreateCmd() *cobra.Command {
+func (*cliHubTest) newCreateCmd() *cobra.Command {
 	var (
 		ignoreParsers bool
 		labels        map[string]string
@@ -69,15 +69,17 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				if ntpl == nil {
 					return errors.New("unable to parse nuclei template")
 				}
-				ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: testName})
+				if err := ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: testName}); err != nil {
+					return fmt.Errorf("executing nuclei template %s: %w", nucleiFile.Name(), err)
+				}
 				nucleiFile.Close()
 				configFileData.AppsecRules = []string{"./appsec-rules/<author>/your_rule_here.yaml"}
 				configFileData.NucleiTemplate = nucleiFileName
-				fmt.Println()
-				fmt.Printf("  Test name                   :  %s\n", testName)
-				fmt.Printf("  Test path                   :  %s\n", testPath)
-				fmt.Printf("  Config File                 :  %s\n", configFilePath)
-				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFilePath)
+				fmt.Fprintln(os.Stdout)
+				fmt.Fprintf(os.Stdout, "  Test name                   :  %s\n", testName)
+				fmt.Fprintf(os.Stdout, "  Test path                   :  %s\n", testPath)
+				fmt.Fprintf(os.Stdout, "  Config File                 :  %s\n", configFilePath)
+				fmt.Fprintf(os.Stdout, "  Nuclei Template             :  %s\n", nucleiFilePath)
 			} else {
 				// create empty log file
 				logFileName := testName + ".log"
@@ -120,13 +122,13 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				configFileData.LogType = logType
 				configFileData.IgnoreParsers = ignoreParsers
 				configFileData.Labels = labels
-				fmt.Println()
-				fmt.Printf("  Test name                   :  %s\n", testName)
-				fmt.Printf("  Test path                   :  %s\n", testPath)
-				fmt.Printf("  Log file                    :  %s (please fill it with logs)\n", logFilePath)
-				fmt.Printf("  Parser assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
-				fmt.Printf("  Scenario assertion file     :  %s (please fill it with assertion)\n", scenarioAssertFilePath)
-				fmt.Printf("  Configuration File          :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
+				fmt.Fprintln(os.Stdout)
+				fmt.Fprintf(os.Stdout, "  Test name                   :  %s\n", testName)
+				fmt.Fprintf(os.Stdout, "  Test path                   :  %s\n", testPath)
+				fmt.Fprintf(os.Stdout, "  Log file                    :  %s (please fill it with logs)\n", logFilePath)
+				fmt.Fprintf(os.Stdout, "  Parser assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
+				fmt.Fprintf(os.Stdout, "  Scenario assertion file     :  %s (please fill it with assertion)\n", scenarioAssertFilePath)
+				fmt.Fprintf(os.Stdout, "  Configuration File          :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
 			}
 
 			fd, err := os.Create(configFilePath)

@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"syscall"
 	"time"
@@ -36,7 +37,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 			case <-tick:
 
 			case c := <-r:
-				switch c.Cmd {
+				switch c.Cmd { //nolint:exhaustive
 				case svc.Interrogate:
 					changes <- c.CurrentStatus
 				case svc.Stop, svc.Shutdown:
@@ -54,7 +55,9 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 		}
 	}()
 
-	err := WindowsRun()
+	ctx := context.TODO()
+
+	err := WindowsRun(ctx)
 	changes <- svc.Status{State: svc.Stopped}
 	if err != nil {
 		log.Fatal(err)

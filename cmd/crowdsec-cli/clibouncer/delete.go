@@ -57,7 +57,7 @@ func (cli *cliBouncers) delete(ctx context.Context, bouncers []string, ignoreMis
 			log.Warnf("bouncer '%s' is auto-created and cannot be deleted, delete parent bouncer %s instead", bouncerName, parentBouncer)
 			continue
 		}
-		//Try to find all child bouncers and delete them
+		// Try to find all child bouncers and delete them
 		for _, childBouncer := range allBouncers {
 			if strings.HasPrefix(childBouncer.Name, bouncerName+"@") && childBouncer.AutoCreated {
 				if err := cli.db.DeleteBouncer(ctx, childBouncer.Name); err != nil {

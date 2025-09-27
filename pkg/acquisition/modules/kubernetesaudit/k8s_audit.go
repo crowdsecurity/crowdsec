@@ -9,15 +9,16 @@ import (
 	"net/http"
 	"strings"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 	"k8s.io/apiserver/pkg/apis/audit"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -29,7 +30,7 @@ type KubernetesAuditConfiguration struct {
 }
 
 type KubernetesAuditSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       KubernetesAuditConfiguration
 	logger       *log.Entry
 	mux          *http.ServeMux
@@ -38,38 +39,24 @@ type KubernetesAuditSource struct {
 	addr         string
 }
 
-var eventCount = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_k8sauditsource_hits_total",
-		Help: "Total number of events received by k8s-audit source",
-	},
-	[]string{"source"})
-
-var requestCount = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_k8sauditsource_requests_total",
-		Help: "Total number of requests received",
-	},
-	[]string{"source"})
-
 func (ka *KubernetesAuditSource) GetUuid() string {
 	return ka.config.UniqueId
 }
 
 func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{eventCount, requestCount}
+	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
 func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{eventCount, requestCount}
+	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
 func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	k8sConfig := KubernetesAuditConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &k8sConfig)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &k8sConfig, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse k8s-audit configuration: %w", err)
+		return fmt.Errorf("cannot parse k8s-audit configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	ka.config = k8sConfig
@@ -97,7 +84,7 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel int) error {
+func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	ka.logger = logger
 	ka.metricsLevel = metricsLevel
 
@@ -127,20 +114,12 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, met
 	return nil
 }
 
-func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return errors.New("k8s-audit datasource does not support command-line acquisition")
-}
-
 func (ka *KubernetesAuditSource) GetMode() string {
 	return ka.config.Mode
 }
 
 func (ka *KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
-}
-
-func (ka *KubernetesAuditSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
 func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
@@ -179,8 +158,8 @@ func (ka *KubernetesAuditSource) Dump() interface{} {
 }
 
 func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.Request) {
-	if ka.metricsLevel != configuration.METRICS_NONE {
-		requestCount.WithLabelValues(ka.addr).Inc()
+	if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.K8SAuditDataSourceRequestCount.WithLabelValues(ka.addr).Inc()
 	}
 
 	if r.Method != http.MethodPost {
@@ -213,8 +192,8 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 	remoteIP := strings.Split(r.RemoteAddr, ":")[0]
 
 	for idx := range auditEvents.Items {
-		if ka.metricsLevel != configuration.METRICS_NONE {
-			eventCount.WithLabelValues(ka.addr).Inc()
+		if ka.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+			metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": ka.addr, "datasource_type": "k8s-audit", "acquis_type": ka.config.Labels["type"]}).Inc()
 		}
 
 		bytesEvent, err := json.Marshal(auditEvents.Items[idx])

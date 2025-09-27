@@ -24,17 +24,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var dataSourceName = "http"
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_httpsource_hits_total",
-		Help: "Total lines that were read from http source",
-	},
-	[]string{"path", "src"})
+const dataSourceName = "http"
 
 type HttpConfiguration struct {
 	// IPFilter                       []string           `yaml:"ip_filter"`
@@ -66,7 +60,7 @@ type TLSConfig struct {
 }
 
 type HTTPSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	Config       HttpConfiguration
 	logger       *log.Entry
 	Server       *http.Server
@@ -160,7 +154,7 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	h.logger = logger
 	h.metricsLevel = metricsLevel
 
@@ -176,35 +170,27 @@ func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLeve
 	return nil
 }
 
-func (h *HTTPSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
-	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
-}
-
 func (h *HTTPSource) GetMode() string {
 	return h.Config.Mode
 }
 
-func (h *HTTPSource) GetName() string {
+func (*HTTPSource) GetName() string {
 	return dataSourceName
 }
 
-func (h *HTTPSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("%s datasource does not support one-shot acquisition", dataSourceName)
-}
-
-func (h *HTTPSource) CanRun() error {
+func (*HTTPSource) CanRun() error {
 	return nil
 }
 
-func (h *HTTPSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+func (*HTTPSource) GetMetrics() []prometheus.Collector {
+	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+func (*HTTPSource) GetAggregMetrics() []prometheus.Collector {
+	return []prometheus.Collector{metrics.HTTPDataSourceLinesRead}
 }
 
-func (h *HTTPSource) Dump() interface{} {
+func (h *HTTPSource) Dump() any {
 	return h
 }
 
@@ -283,6 +269,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 
 	if h.logger.Logger.IsLevelEnabled(log.TraceLevel) {
 		h.logger.Tracef("processing request from '%s' with method '%s' and path '%s'", r.RemoteAddr, r.Method, r.URL.Path)
+
 		bodyContent, err := httputil.DumpRequest(r, true)
 		if err != nil {
 			h.logger.Errorf("failed to dump request: %s", err)
@@ -326,27 +313,31 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			Module:  h.GetName(),
 		}
 
-		if h.metricsLevel == configuration.METRICS_AGGREGATE {
+		if h.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 			line.Src = hc.Path
 		}
 
 		evt := types.MakeEvent(h.Config.UseTimeMachine, types.LOG, true)
 		evt.Line = line
 
-		if h.metricsLevel == configuration.METRICS_AGGREGATE {
-			linesRead.With(prometheus.Labels{"path": hc.Path, "src": ""}).Inc()
-		} else if h.metricsLevel == configuration.METRICS_FULL {
-			linesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost}).Inc()
+		switch h.metricsLevel {
+		case metrics.AcquisitionMetricsLevelAggregated:
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+		case metrics.AcquisitionMetricsLevelFull:
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+		case metrics.AcquisitionMetricsLevelNone:
+			// No metrics for this level
 		}
 
 		h.logger.Tracef("line to send: %+v", line)
+
 		out <- evt
 	}
 
 	return nil
 }
 
-func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.Config.Path, func(w http.ResponseWriter, r *http.Request) {
 		if err := authorizeRequest(r, &h.Config); err != nil {
@@ -360,7 +351,11 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		case http.MethodGet, http.MethodHead: // Return a 200 if the auth was successful
 			h.logger.Infof("successful %s request from '%s'", r.Method, r.RemoteAddr)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+
+			if _, err := w.Write([]byte("OK")); err != nil {
+				h.logger.Errorf("failed to write response: %v", err)
+			}
+
 			return
 		case http.MethodPost: // POST is handled below
 		default:
@@ -370,7 +365,7 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		}
 
 		if r.RemoteAddr == "@" {
-			//We check if request came from unix socket and if so we set to loopback
+			// We check if request came from unix socket and if so we set to loopback
 			r.RemoteAddr = "127.0.0.1:65535"
 		}
 
@@ -392,7 +387,9 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 			w.WriteHeader(http.StatusOK)
 		}
 
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			h.logger.Errorf("failed to write response: %v", err)
+		}
 	})
 
 	h.Server = &http.Server{
@@ -419,18 +416,23 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		h.Server.TLSConfig = tlsConfig
 	}
 
+	listenConfig := &net.ListenConfig{}
+
 	t.Go(func() error {
 		if h.Config.ListenSocket == "" {
 			return nil
 		}
 
 		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
+
 		h.logger.Infof("creating unix socket on %s", h.Config.ListenSocket)
 		_ = os.Remove(h.Config.ListenSocket)
-		listener, err := net.Listen("unix", h.Config.ListenSocket)
+
+		listener, err := listenConfig.Listen(ctx, "unix", h.Config.ListenSocket)
 		if err != nil {
 			return csnet.WrapSockErr(err, h.Config.ListenSocket)
 		}
+
 		if h.Config.TLS != nil {
 			err := h.Server.ServeTLS(listener, h.Config.TLS.ServerCert, h.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
@@ -472,17 +474,15 @@ func (h *HTTPSource) RunServer(out chan types.Event, t *tomb.Tomb) error {
 		return nil
 	})
 
-	//nolint //fp
-	for {
-		select {
-		case <-t.Dying():
-			h.logger.Infof("%s datasource stopping", dataSourceName)
-			if err := h.Server.Close(); err != nil {
-				return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
-			}
-			return nil
-		}
+	<-t.Dying()
+
+	h.logger.Infof("%s datasource stopping", dataSourceName)
+
+	if err := h.Server.Close(); err != nil {
+		return fmt.Errorf("while closing %s server: %w", dataSourceName, err)
 	}
+
+	return nil
 }
 
 func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
@@ -490,7 +490,7 @@ func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/http/live")
-		return h.RunServer(out, t)
+		return h.RunServer(ctx, out, t)
 	})
 
 	return nil

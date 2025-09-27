@@ -207,7 +207,10 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "value":
 			predicates = append(predicates, alert.SourceValueEQ(value[0]))
 		case "scenario":
-			predicates = append(predicates, alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
+			predicates = append(predicates, alert.Or(
+				alert.ScenarioEQ(value[0]),  // match alerts with no decisions
+				alert.HasDecisionsWith(decision.ScenarioEQ(value[0])),
+			))
 		case "ip", "range":
 			rng, err = csnet.NewRange(value[0])
 			if err != nil {
@@ -255,7 +258,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	return predicates, nil
 }
 
-func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
+func applyAlertFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	preds, err := alertPredicatesFromFilter(filter)
 	if err != nil {
 		return nil, err

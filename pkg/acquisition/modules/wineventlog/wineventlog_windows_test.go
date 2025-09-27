@@ -14,7 +14,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -30,7 +30,7 @@ func TestBadConfiguration(t *testing.T) {
 		{
 			config: `source: wineventlog
 foobar: 42`,
-			expectedErr: "field foobar not found in type wineventlogacquisition.WinEventLogConfiguration",
+			expectedErr: `[2:1] unknown field "foobar"`,
 		},
 		{
 			config:      `source: wineventlog`,
@@ -54,12 +54,17 @@ event_channel: foo
 xpath_query: test`,
 			expectedErr: "event_channel and xpath_query are mutually exclusive",
 		},
+		{
+			config: `source: wineventlog
+event_ids: true`,
+			expectedErr: "[2:12] boolean was used where sequence is expected",
+		},
 	}
 
 	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
 		f := WinEventLogSource{}
-		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		assert.Contains(t, err.Error(), test.expectedErr)
 	}
 }
@@ -118,8 +123,8 @@ event_level: bla`,
 		t.Run(test.config, func(t *testing.T) {
 			f := WinEventLogSource{}
 
-			err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-			cstest.AssertErrorContains(t, err, test.expectedErr)
+			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 			if test.expectedErr != "" {
 				return
 			}
@@ -193,7 +198,7 @@ event_ids:
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
 
-		err := f.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
+		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		err = f.StreamingAcquisition(ctx, c, to)
@@ -285,7 +290,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			f := WinEventLogSource{}
 
 			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
-			cstest.AssertErrorContains(t, err, test.expectedConfigureErr)
+			cstest.RequireErrorContains(t, err, test.expectedConfigureErr)
 			if test.expectedConfigureErr != "" {
 				return
 			}
@@ -302,14 +307,14 @@ func TestOneShotAcquisition(t *testing.T) {
 			}()
 
 			err = f.OneShotAcquisition(ctx, c, to)
-			if test.expectedErr != "" {
-				assert.Contains(t, err.Error(), test.expectedErr)
-			} else {
-				require.NoError(t, err)
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 
-				time.Sleep(2 * time.Second)
-				assert.Equal(t, test.expectedCount, lineCount)
+			if test.expectedErr != "" {
+				return
 			}
+
+			time.Sleep(2 * time.Second)
+			assert.Equal(t, test.expectedCount, lineCount)
 		})
 	}
 }

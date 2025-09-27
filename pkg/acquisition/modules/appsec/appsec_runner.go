@@ -18,6 +18,7 @@ import (
 	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -319,11 +320,10 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
 		}
-		// Should the match trigger an event ?
-		if r.AppsecRuntime.Response.SendEvent {
-			r.outChan <- evt
-		}
 
+		// The alert needs to be sent first:
+		// The event and the alert share the same internal map (parsed, meta, ...)
+		// The event can be modified by the parsers, which might cause a concurrent map read/write
 		// Should the match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
@@ -334,6 +334,11 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 			if appsecOvlfw != nil {
 				r.outChan <- *appsecOvlfw
 			}
+		}
+
+		// Should the match trigger an event ?
+		if r.AppsecRuntime.Response.SendEvent {
+			r.outChan <- evt
 		}
 	}
 }
@@ -364,7 +369,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	// time spent to process in band rules
 	inBandParsingElapsed := time.Since(startInBandParsing)
-	AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
+	metrics.AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
 
 	if request.Tx.IsInterrupted() {
 		r.handleInBandInterrupt(request)
@@ -403,7 +408,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 		// time spent to process out of band rules
 		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-		AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
+		metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
 		if request.Tx.IsInterrupted() {
 			r.handleOutBandInterrupt(request)
 		}
@@ -414,7 +419,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	}
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
-	AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
+	metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 }
 
 func (r *AppsecRunner) Run(t *tomb.Tomb) error {

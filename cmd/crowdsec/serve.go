@@ -21,41 +21,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-//nolint:unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
-func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
-	var (
-		tmpFile string
-		err     error
-	)
-
-	// stop goroutines
-	if err = ShutdownCrowdsecRoutines(); err != nil {
-		log.Warningf("Failed to shut down routines: %s", err)
-	}
-
-	// todo: properly stop acquis with the tail readers
-	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now().UTC(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
-		log.Warningf("Failed to dump bucket state : %s", err)
-	}
-
-	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-		log.Warningf("Failed to shut down routines : %s", err)
-	}
-
-	log.Printf("Shutdown is finished, buckets are in %s", tmpFile)
-
-	return nil
-}
-
-func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
-	var tmpFile string
-
-	ctx := context.TODO()
-
+func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -83,7 +52,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			return nil, fmt.Errorf("unable to init api server: %w", err)
 		}
 
-		serveAPIServer(apiServer)
+		serveAPIServer(ctx, apiServer)
 	}
 
 	if !cConfig.DisableAgent {
@@ -99,15 +68,9 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		// Reset data files to avoid any potential conflicts with the new configuration
 		exprhelpers.ResetDataFiles()
 
-		csParsers, datasources, err := initCrowdsec(cConfig, hub, false)
+		csParsers, datasources, err := initCrowdsec(ctx, cConfig, hub, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
-		}
-
-		// restore bucket state
-		if tmpFile != "" {
-			log.Warningf("we are now using %s as a state file", tmpFile)
-			cConfig.Crowdsec.BucketStateFile = tmpFile
 		}
 
 		// reload the simulation state
@@ -116,16 +79,10 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(csParsers, cConfig, hub, datasources, agentReady)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
 	}
 
-	log.Printf("Reload is finished")
-	// delete the tmp file, it's safe now :)
-	if tmpFile != "" {
-		if err := os.Remove(tmpFile); err != nil {
-			log.Warningf("Failed to delete temp file (%s) : %s", tmpFile, err)
-		}
-	}
+	log.Info("Reload is finished")
 
 	return cConfig, nil
 }
@@ -169,6 +126,7 @@ func ShutdownCrowdsecRoutines() error {
 	outputsTomb.Kill(nil)
 
 	done := make(chan error, 1)
+
 	go func() {
 		done <- outputsTomb.Wait()
 	}()
@@ -231,7 +189,7 @@ func shutdownCrowdsec() error {
 	return nil
 }
 
-func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
+func shutdown(_ os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
 			return fmt.Errorf("failed to shut down crowdsec: %w", err)
@@ -264,7 +222,7 @@ func drainChan(c chan types.Event) {
 	}
 }
 
-func HandleSignals(cConfig *csconfig.Config) error {
+func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	var (
 		newConfig *csconfig.Config
 		err       error
@@ -287,6 +245,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
+
 	Loop:
 		for {
 			s := <-signalChan
@@ -301,7 +260,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 					break Loop
 				}
 
-				if newConfig, err = reloadHandler(s); err != nil {
+				if newConfig, err = reloadHandler(ctx, s); err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
 
 					break Loop
@@ -313,11 +272,13 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
+
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
 
 					break Loop
 				}
+
 				exitChan <- nil
 			}
 		}
@@ -336,7 +297,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			return err
 		}
 
-		_, err = lapiClient.Auth.UnregisterWatcher(context.TODO())
+		_, err = lapiClient.Auth.UnregisterWatcher(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to unregister watcher: %w", err)
 		}
@@ -347,7 +308,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	return err
 }
 
-func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
+func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -356,8 +317,6 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 	lpMetricsTomb = tomb.Tomb{}
-
-	ctx := context.TODO()
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbClient, err := database.NewClient(ctx, cConfig.API.Server.DbConfig)
@@ -403,7 +362,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		}
 
 		if !flags.TestMode {
-			serveAPIServer(apiServer)
+			serveAPIServer(ctx, apiServer)
 		}
 	}
 
@@ -417,14 +376,14 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			return err
 		}
 
-		csParsers, datasources, err := initCrowdsec(cConfig, hub, flags.TestMode)
+		csParsers, datasources, err := initCrowdsec(ctx, cConfig, hub, flags.TestMode)
 		if err != nil {
 			return fmt.Errorf("crowdsec init: %w", err)
 		}
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(csParsers, cConfig, hub, datasources, agentReady)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
 		} else {
 			agentReady <- true
 		}
@@ -447,7 +406,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 	if cConfig.Common != nil && !flags.haveTimeMachine() && !isWindowsSvc {
 		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
-		return HandleSignals(cConfig)
+		return HandleSignals(ctx, cConfig)
 	}
 
 	waitChans := make([]<-chan struct{}, 0)

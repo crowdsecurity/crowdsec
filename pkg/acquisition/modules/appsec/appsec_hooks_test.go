@@ -361,10 +361,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, http.StatusOK, statusCode)
 				// We have both an event an overflow
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
-				require.Nil(t, events[0].Overflow.Alert)
-				require.NotNil(t, events[1].Overflow.Alert)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
+				require.Nil(t, events[1].Overflow.Alert)
+				require.NotNil(t, events[0].Overflow.Alert)
 			},
 		},
 		{
@@ -459,7 +459,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				require.Equal(t, types.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
@@ -573,7 +573,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				require.True(t, events[0].Appsec.HasOutBandMatches)
 				require.False(t, events[0].Appsec.HasInBandMatches)
 				require.Len(t, events[0].Appsec.MatchedRules, 1)
-				require.Equal(t, "rulez", events[0].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "test-rule", events[0].Appsec.MatchedRules[0]["msg"])
 				//maybe surprising, but response won't mention OOB event, as it's sent as soon as the inband phase is over.
 				require.Len(t, responses, 1)
 				require.False(t, responses[0].InBandInterrupt)

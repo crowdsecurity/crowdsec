@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -27,7 +28,7 @@ func TestConfigure(t *testing.T) {
 			config: `
 foobar: bla
 source: syslog`,
-			expectedErr: "line 2: field foobar not found in type syslogacquisition.SyslogConfiguration",
+			expectedErr: `[2:1] unknown field "foobar"`,
 		},
 		{
 			config:      `source: syslog`,
@@ -37,7 +38,7 @@ source: syslog`,
 			config: `
 source: syslog
 listen_port: asd`,
-			expectedErr: "cannot unmarshal !!str `asd` into int",
+			expectedErr: "[3:14] cannot unmarshal string into Go struct field SyslogConfiguration.Port of type int",
 		},
 		{
 			config: `
@@ -55,14 +56,17 @@ listen_addr: 10.0.0`,
 
 	subLogger := log.WithField("type", "syslog")
 	for _, test := range tests {
-		s := SyslogSource{}
-		err := s.Configure([]byte(test.config), subLogger, configuration.METRICS_NONE)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+		t.Run(test.config, func(t *testing.T) {
+			s := SyslogSource{}
+			err := s.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+		})
 	}
 }
 
-func writeToSyslog(logs []string) {
-	conn, err := net.Dial("udp", "127.0.0.1:4242")
+func writeToSyslog(ctx context.Context, logs []string) {
+	dialer := &net.Dialer{}
+	conn, err := dialer.DialContext(ctx, "udp", "127.0.0.1:4242")
 	if err != nil {
 		fmt.Printf("could not establish connection to syslog server : %s", err)
 		return
@@ -159,7 +163,7 @@ disable_rfc_parser: true`,
 		t.Run(ts.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}
-			err := s.Configure([]byte(ts.config), subLogger, configuration.METRICS_NONE)
+			err := s.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
@@ -176,7 +180,9 @@ disable_rfc_parser: true`,
 			}
 
 			actualLines := 0
-			go writeToSyslog(ts.logs)
+
+			go writeToSyslog(ctx, ts.logs)
+
 		READLOOP:
 			for {
 				select {

@@ -10,24 +10,26 @@ import (
 	"strings"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type JournalCtlConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Filters                           []string `yaml:"journalctl_filter"`
+
+	Filters []string `yaml:"journalctl_filter"`
 }
 
 type JournalCtlSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       JournalCtlConfiguration
 	logger       *log.Entry
 	src          string
@@ -40,13 +42,6 @@ var (
 	journalctlArgsOneShot  = []string{}
 	journalctlArgstreaming = []string{"--follow", "-n", "0"}
 )
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_journalctlsource_hits_total",
-		Help: "Total lines that were read.",
-	},
-	[]string{"source"})
 
 func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error {
 	for scanner.Scan() {
@@ -104,7 +99,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 	if stdoutscanner == nil {
 		cancel()
-		cmd.Wait()
+		_ = cmd.Wait()
 		return errors.New("failed to create stdout scanner")
 	}
 
@@ -112,7 +107,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 	if stderrScanner == nil {
 		cancel()
-		cmd.Wait()
+		_ = cmd.Wait()
 		return errors.New("failed to create stderr scanner")
 	}
 
@@ -130,7 +125,10 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() // avoid zombie process
+			// avoid zombie process
+			if waitErr := cmd.Wait(); waitErr != nil {
+				j.logger.Debugf("journalctl exited after cancel: %v", waitErr)
+			}
 
 			return nil
 		case stdoutLine := <-stdoutChan:
@@ -143,8 +141,8 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 			l.Process = true
 			l.Module = j.GetName()
 
-			if j.metricsLevel != configuration.METRICS_NONE {
-				linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			if j.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "acquis_type": l.Labels["type"]}).Inc()
 			}
 
 			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
@@ -171,20 +169,20 @@ func (j *JournalCtlSource) GetUuid() string {
 	return j.config.UniqueId
 }
 
-func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+func (*JournalCtlSource) GetMetrics() []prometheus.Collector {
+	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
-func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+func (*JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
+	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
 }
 
 func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	j.config = JournalCtlConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &j.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &j.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse JournalCtlSource configuration: %w", err)
+		return fmt.Errorf("cannot parse JournalCtlSource configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if j.config.Mode == "" {
@@ -205,12 +203,12 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	args = append(args, j.config.Filters...)
 
 	j.args = args
-	j.src = "journalctl-%s" + strings.Join(j.config.Filters, ".")
+	j.src = "journalctl-" + strings.Join(j.config.Filters, ".")
 
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	j.logger = logger
 	j.metricsLevel = metricsLevel
 
@@ -275,7 +273,7 @@ func (j *JournalCtlSource) GetMode() string {
 	return j.config.Mode
 }
 
-func (j *JournalCtlSource) GetName() string {
+func (*JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
@@ -297,12 +295,12 @@ func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan ty
 	return nil
 }
 
-func (j *JournalCtlSource) CanRun() error {
+func (*JournalCtlSource) CanRun() error {
 	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
 
-func (j *JournalCtlSource) Dump() interface{} {
+func (j *JournalCtlSource) Dump() any {
 	return j
 }

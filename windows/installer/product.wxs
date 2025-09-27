@@ -73,6 +73,9 @@
                   <Component Id="ConsoleConfig" Guid="8393e488-18d5-4578-9e4c-99b54f7b2bb6">
                      <File Id="console.yaml" Source="config\console.yaml" />
                   </Component>
+                  <Component Id="SetupDetect" Guid="67e6c88d-4a84-45a2-a81b-0ec56e9cbb13">
+                     <File Id="detect.yaml" Source="config\detect.yaml" />
+                  </Component>
                   <Component Id="Csconfig_lapi" Guid="a99bd70c-61af-43ca-8394-6dc789cec566">
                      <Condition>
                         NOT AGENT_ONLY
@@ -167,6 +170,7 @@
          <ComponentRef Id="ProfilesConfig"/>
          <ComponentRef Id="SimulationConfig"/>
          <ComponentRef Id="ConsoleConfig"/>
+         <ComponentRef Id="SetupDetect"/>
          <ComponentRef Id="CreateLog" />
          <ComponentRef Id="CreateHub" />
          <ComponentRef Id="NotifConfig" />

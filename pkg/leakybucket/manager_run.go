@@ -1,11 +1,9 @@
 package leakybucket
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"sync"
 	"time"
 
@@ -14,13 +12,15 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
 	serialized      map[string]Leaky
-	BucketPourCache map[string][]types.Event
+	BucketPourCache map[string][]types.Event = make(map[string][]types.Event)
 	BucketPourTrack bool
+	bucketPourMu	sync.Mutex
 )
 
 /*
@@ -56,7 +56,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		tokcapa = math.Round(tokcapa*100) / 100
 		//bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
-			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
+			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
@@ -77,72 +77,6 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		buckets.Bucket_map.Delete(flushkey)
 	}
 	return nil
-}
-
-func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
-
-	//synchronize with PourItemtoHolders
-	buckets.wgPour.Wait()
-	buckets.wgDumpState.Add(1)
-	defer buckets.wgDumpState.Done()
-
-	if outputdir == "" {
-		return "", errors.New("empty output dir for dump bucket state")
-	}
-	tmpFd, err := os.CreateTemp(os.TempDir(), "crowdsec-buckets-dump-")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file : %s", err)
-	}
-	defer tmpFd.Close()
-	tmpFileName := tmpFd.Name()
-	serialized = make(map[string]Leaky)
-	log.Printf("Dumping buckets state at %s", deadline)
-	total := 0
-	discard := 0
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
-		key := rkey.(string)
-		val := rvalue.(*Leaky)
-		total += 1
-		if !val.Ovflw_ts.IsZero() {
-			discard += 1
-			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
-			return true
-		}
-		/*FIXME : sometimes the gettokenscountat has some rounding issues when we try to
-		match it with bucket capacity, even if the bucket has long due underflow. Round to 2 decimals*/
-		tokat := val.Limiter.GetTokensCountAt(deadline)
-		tokcapa := float64(val.Capacity)
-		tokat = math.Round(tokat*100) / 100
-		tokcapa = math.Round(tokcapa*100) / 100
-
-		if tokat >= tokcapa {
-			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
-			discard += 1
-			return true
-		}
-		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
-
-		if _, ok := serialized[key]; ok {
-			log.Errorf("entry %s already exists", key)
-			return false
-		}
-		log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
-		val.SerializedState = val.Limiter.Dump()
-		serialized[key] = *val
-		return true
-	})
-	bbuckets, err := json.MarshalIndent(serialized, "", " ")
-	if err != nil {
-		return "", fmt.Errorf("failed to parse buckets: %s", err)
-	}
-	size, err := tmpFd.Write(bbuckets)
-	if err != nil {
-		return "", fmt.Errorf("failed to write temp file: %s", err)
-	}
-	log.Infof("Serialized %d live buckets (+%d expired) in %d bytes to %s", len(serialized), discard, size, tmpFd.Name())
-	serialized = nil
-	return tmpFileName, nil
 }
 
 func ShutdownAllBuckets(buckets *Buckets) error {
@@ -225,11 +159,11 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
-				if _, ok := BucketPourCache[bucket.Name]; !ok {
-					BucketPourCache[bucket.Name] = make([]types.Event, 0)
-				}
-				evt := deepcopy.Copy(*parsed)
-				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt.(types.Event))
+				evt := deepcopy.Copy(*parsed).(types.Event)
+
+				bucketPourMu.Lock()
+				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt)
+				bucketPourMu.Unlock()
 			}
 			sent = true
 			continue
@@ -287,14 +221,11 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	var ok, condition, poured bool
 
 	if BucketPourTrack {
-		if BucketPourCache == nil {
-			BucketPourCache = make(map[string][]types.Event)
-		}
-		if _, ok = BucketPourCache["OK"]; !ok {
-			BucketPourCache["OK"] = make([]types.Event, 0)
-		}
-		evt := deepcopy.Copy(parsed)
-		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
+		evt := deepcopy.Copy(parsed).(types.Event)
+
+		bucketPourMu.Lock()
+		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt)
+		bucketPourMu.Unlock()
 	}
 	//find the relevant holders (scenarios)
 	for idx := range holders {

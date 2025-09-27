@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"slices"
 
+	cztypes "github.com/corazawaf/coraza/v3/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -103,6 +104,17 @@ func (w MatchedRules) GetName() string {
 		return rule["name"].(string)
 	}
 	return ""
+}
+
+func (w MatchedRules) GetNames() []string {
+	ret := make([]string, 0)
+	for _, rule := range w {
+		v, ok := rule["name"].(string)
+		if ok {
+			ret = append(ret, v)
+		}
+	}
+	return ret
 }
 
 func (w MatchedRules) GetMethod() string {
@@ -244,4 +256,14 @@ func (w MatchedRules) ByAccuracy(accuracy string) MatchedRules {
 	}
 	log.Debugf("ByAccuracy(%s) -> %d", accuracy, len(ret))
 	return ret
+}
+
+func (w MatchedRules) GetHighestSeverity() cztypes.RuleSeverity {
+	highestSeverity := cztypes.RuleSeverity(255)
+	for _, rule := range w {
+		if sev, ok := rule["severity_int"].(int); ok && sev < int(highestSeverity) {
+			highestSeverity = cztypes.RuleSeverity(sev)
+		}
+	}
+	return highestSeverity
 }

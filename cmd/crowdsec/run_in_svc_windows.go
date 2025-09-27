@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"runtime/pprof"
 
 	log "github.com/sirupsen/logrus"
@@ -13,13 +14,14 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 func isWindowsService() (bool, error) {
 	return svc.IsWindowsService()
 }
 
-func StartRunSvc() error {
+func StartRunSvc(ctx context.Context) error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
@@ -37,35 +39,37 @@ func StartRunSvc() error {
 		return runService(svcName)
 	}
 
-	if flags.WinSvc == "Install" {
+	switch flags.WinSvc {
+	case "Install":
 		err = installService(svcName, svcDescription)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "Remove" {
+	case "Remove":
 		err = removeService(svcName)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "Start" {
+	case "Start":
 		err = startService(svcName)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "Stop" {
+	case "Stop":
 		err = controlService(svcName, svc.Stop, svc.Stopped)
 		if err != nil {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
-	} else if flags.WinSvc == "" {
-		return WindowsRun()
-	} else {
+	case "":
+		return WindowsRun(ctx)
+	default:
 		return fmt.Errorf("Invalid value for winsvc parameter: %s", flags.WinSvc)
 	}
+
 	return nil
 }
 
-func WindowsRun() error {
+func WindowsRun(ctx context.Context) error {
 	var (
 		cConfig *csconfig.Config
 		err     error
@@ -74,6 +78,12 @@ func WindowsRun() error {
 	cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
 		return err
+	}
+
+	if fflag.PProfBlockProfile.IsEnabled() {
+		runtime.SetBlockProfileRate(1)
+		runtime.SetMutexProfileFraction(1)
+		log.Warn("pprof block/mutex profiling enabled, expect a performance hit")
 	}
 
 	log.Infof("Crowdsec %s", version.String())
@@ -85,8 +95,6 @@ func WindowsRun() error {
 		var dbClient *database.Client
 		var err error
 
-		ctx := context.TODO()
-
 		if cConfig.DbConfig != nil {
 			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
 
@@ -97,5 +105,5 @@ func WindowsRun() error {
 		registerPrometheus(cConfig.Prometheus)
 		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
 	}
-	return Serve(cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady)
 }

@@ -300,3 +300,9 @@ esac
 
 # shellcheck disable=SC2090
 export RELOAD_MESSAGE
+
+strip_ansi() {
+    local input="$1"
+    echo "$input" | sed -E 's/\x1b\[[0-9;]*m//g'
+}
+export -f strip_ansi

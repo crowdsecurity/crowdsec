@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/goombaio/namegenerator"
@@ -18,13 +16,14 @@ import (
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -235,7 +234,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig *csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -292,9 +291,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.BucketName = seed.Generate()
 		bucketFactory.ret = response
 
-		if simulationConfig != nil {
-			bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
-		}
+		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
 
 		bucketFactory.ScenarioVersion = item.State.LocalVersion
 		bucketFactory.hash = item.State.LocalHash
@@ -494,76 +491,6 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	bucketFactory.tomb = tomb
-
-	return nil
-}
-
-func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFactory) error {
-	var state map[string]Leaky
-
-	body, err := os.ReadFile(file)
-	if err != nil {
-		return fmt.Errorf("can't read state file %s: %w", file, err)
-	}
-
-	if err := json.Unmarshal(body, &state); err != nil {
-		return fmt.Errorf("can't parse state file %s: %w", file, err)
-	}
-
-	for k := range state {
-		var tbucket *Leaky
-
-		log.Debugf("Reloading bucket %s", k)
-
-		val, ok := buckets.Bucket_map.Load(k)
-		if ok {
-			return fmt.Errorf("key %s already exists: %+v", k, val)
-		}
-		// find back our holder
-		found := false
-
-		for _, h := range bucketFactories {
-			if h.Name != state[k].Name {
-				continue
-			}
-
-			log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
-			// check in which mode the bucket was
-			if state[k].Mode == types.TIMEMACHINE {
-				tbucket = NewTimeMachine(h)
-			} else if state[k].Mode == types.LIVE {
-				tbucket = NewLeaky(h)
-			} else {
-				log.Errorf("Unknown bucket type : %d", state[k].Mode)
-			}
-			/*Trying to restore queue state*/
-			tbucket.Queue = state[k].Queue
-			/*Trying to set the limiter to the saved values*/
-			tbucket.Limiter.Load(state[k].SerializedState)
-			tbucket.In = make(chan *types.Event)
-			tbucket.Mapkey = k
-			tbucket.Signal = make(chan bool, 1)
-			tbucket.First_ts = state[k].First_ts
-			tbucket.Last_ts = state[k].Last_ts
-			tbucket.Ovflw_ts = state[k].Ovflw_ts
-			tbucket.Total_count = state[k].Total_count
-			buckets.Bucket_map.Store(k, tbucket)
-			h.tomb.Go(func() error {
-				return LeakRoutine(tbucket)
-			})
-			<-tbucket.Signal
-
-			found = true
-
-			break
-		}
-
-		if !found {
-			return fmt.Errorf("unable to find holder for bucket %s: %s", k, spew.Sdump(state[k]))
-		}
-	}
-
-	log.Infof("Restored %d buckets from dump", len(state))
 
 	return nil
 }

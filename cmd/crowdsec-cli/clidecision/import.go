@@ -199,7 +199,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		decisionsStr := make([]string, 0, len(chunk))
 
 		for _, d := range chunk {
-			if *d.Scope != types.Ip && *d.Scope != types.Range {
+			if normalizedScope := types.NormalizeScope(*d.Scope); normalizedScope != types.Ip && normalizedScope != types.Range {
 				continue
 			}
 
@@ -212,7 +212,6 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 
 		allowlistResp, _, err := cli.client.Allowlists.CheckIfAllowlistedBulk(ctx, decisionsStr)
-
 		if err != nil {
 			return err
 		}

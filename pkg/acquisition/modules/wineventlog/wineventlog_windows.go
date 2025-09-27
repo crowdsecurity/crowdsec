@@ -12,17 +12,18 @@ import (
 	"syscall"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/google/winops/winlog"
 	"github.com/google/winops/winlog/wevtapi"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -37,7 +38,7 @@ type WinEventLogConfiguration struct {
 }
 
 type WinEventLogSource struct {
-	metricsLevel int
+	metricsLevel metrics.AcquisitionMetricsLevel
 	config       WinEventLogConfiguration
 	logger       *log.Entry
 	evtConfig    *winlog.SubscribeConfig
@@ -56,13 +57,6 @@ type Select struct {
 
 // 0 identifies the local machine in windows APIs
 const localMachine = 0
-
-var linesRead = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_winevtlogsource_hits_total",
-		Help: "Total event that were read.",
-	},
-	[]string{"source"})
 
 func logLevelToInt(logLevel string) ([]string, error) {
 	switch strings.ToUpper(logLevel) {
@@ -155,10 +149,15 @@ func (w *WinEventLogSource) buildXpathQuery() (string, error) {
 	queryList := QueryList{Select: Select{Path: w.config.EventChannel, Query: query}}
 	xpathQuery, err := xml.Marshal(queryList)
 	if err != nil {
+		if w.logger != nil {
+			w.logger.Errorf("Failed to marshal XPath query: %v", err)
+		}
 		w.logger.Errorf("Serialize failed: %v", err)
 		return "", err
 	}
-	w.logger.Debugf("xpathQuery: %s", xpathQuery)
+	if w.logger != nil {
+		w.logger.Debugf("xpathQuery: %s", xpathQuery)
+	}
 	return string(xpathQuery), nil
 }
 
@@ -195,8 +194,8 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					continue
 				}
 				for _, event := range renderedEvents {
-					if w.metricsLevel != configuration.METRICS_NONE {
-						linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+					if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "acquis_type": w.config.Labels["type"]}).Inc()
 					}
 					l := types.Line{}
 					l.Raw = event
@@ -254,9 +253,9 @@ func (w *WinEventLogSource) GetUuid() string {
 func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	w.config = WinEventLogConfiguration{}
 
-	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
+	err := yaml.UnmarshalWithOptions(yamlConfig, &w.config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("unable to parse configuration: %v", err)
+		return fmt.Errorf("cannot parse wineventlog configuration: %s", yaml.FormatError(err, false, false))
 	}
 
 	if w.config.EventChannel != "" && w.config.XPathQuery != "" {
@@ -287,7 +286,7 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel int) error {
+func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	w.logger = logger
 	w.metricsLevel = metricsLevel
 
@@ -364,7 +363,6 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 
 	// FIXME: handle custom xpath query
 	w.query, err = w.buildXpathQuery()
-
 	if err != nil {
 		return fmt.Errorf("buildXpathQuery failed: %w", err)
 	}
@@ -372,7 +370,6 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 	w.logger.Debugf("query: %s\n", w.query)
 
 	w.evtConfig, err = w.generateConfig(w.query, false)
-
 	if err != nil {
 		return fmt.Errorf("generateConfig failed: %w", err)
 	}
@@ -420,8 +417,8 @@ OUTER_LOOP:
 			w.logger.Debugf("Got %d events", len(evts))
 			for _, evt := range evts {
 				w.logger.Tracef("Event: %s", evt)
-				if w.metricsLevel != configuration.METRICS_NONE {
-					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
+				if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "acquis_type": w.config.Labels["type"]}).Inc()
 				}
 				l := types.Line{}
 				l.Raw = evt
@@ -441,11 +438,11 @@ OUTER_LOOP:
 }
 
 func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
 func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
 func (w *WinEventLogSource) GetName() string {

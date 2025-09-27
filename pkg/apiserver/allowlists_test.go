@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestAllowlistList(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	_, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
@@ -37,7 +36,7 @@ func TestAllowlistList(t *testing.T) {
 }
 
 func TestGetAllowlist(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
@@ -72,7 +71,7 @@ func TestGetAllowlist(t *testing.T) {
 }
 
 func TestCheckInAllowlist(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	l, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
@@ -150,7 +149,7 @@ func TestCheckInAllowlist(t *testing.T) {
 }
 
 func TestBulkCheckAllowlist(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// create an allowlist and add one live entry
@@ -191,7 +190,7 @@ func TestBulkCheckAllowlist(t *testing.T) {
 }
 
 func TestBulkCheckAllowlist_BadRequest(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lapi := SetupLAPITest(t, ctx)
 
 	// missing or empty body should yield 400
