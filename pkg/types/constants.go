@@ -23,6 +23,7 @@ const (
 	ListOrigin                        = "lists"
 	CAPIOrigin                        = "CAPI"
 	CommunityBlocklistPullSourceScope = "crowdsecurity/community-blocklist"
+	RemediationSyncOrigin             = "remediation_sync"
 )
 
 const DecisionTypeBan = "ban"
@@ -35,6 +36,7 @@ func GetOrigins() []string {
 		CscliImportOrigin,
 		ListOrigin,
 		CAPIOrigin,
+		RemediationSyncOrigin,
 	}
 }
 
