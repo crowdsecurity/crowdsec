@@ -919,16 +919,26 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 
 // isContainerStillRunning checks if a container is still running via Docker API
 func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *ContainerConfig) bool {
+	if ctx.Err() != nil {
+		container.logger.Debugf("context canceled while checking container %s", container.Name)
+		return false
+	}
+
 	containerInfo, err := d.Client.ContainerInspect(ctx, container.ID)
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			// Container does not exist - it was removed
-			container.logger.Debugf("container %s not found, was removed", container.Name)
+			container.logger.Debugf("container %s no longer exists", container.Name)
 			return false
 		}
+
 		// Other errors (connection issues, etc.) - assume container is still running
-		container.logger.Debugf("failed to inspect container %s: %v, assuming still running", container.Name, err)
+		container.logger.Warnf("failed to inspect container %s: %v (assuming still running)", container.Name, err)
 		return true
+	}
+
+	if containerInfo.State == nil {
+		container.logger.Warnf("container %s inspect returned nil state (assuming not running)", container.Name)
+		return false
 	}
 
 	isRunning := containerInfo.State.Running
@@ -938,15 +948,20 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 
 // isServiceStillRunning checks if a service still exists via Docker API
 func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *ContainerConfig) bool {
+	if ctx.Err() != nil {
+		service.logger.Debugf("context canceled while checking service %s", service.Name)
+		return false
+	}
+
 	_, _, err := d.Client.ServiceInspectWithRaw(ctx, service.ID, dockerTypes.ServiceInspectOptions{})
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			// Service does not exist - it was removed
-			service.logger.Debugf("service %s not found, was removed", service.Name)
+			service.logger.Debugf("service %s no longer exists", service.Name)
 			return false
 		}
+
 		// Other errors (connection issues, etc.) - assume service still exists
-		service.logger.Debugf("failed to inspect service %s: %v, assuming still running", service.Name, err)
+		service.logger.Warnf("failed to inspect service %s: %v (assuming still running)", service.Name, err)
 		return true
 	}
 
@@ -966,7 +981,6 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 		}
 
 		err := d.tailContainerAttempt(ctx, container, outChan)
-
 		if err == nil {
 			// Successful completion - container was stopped gracefully
 			return nil
@@ -974,7 +988,6 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 
 		// Check container health to determine if we should retry or give up
 		containerHealthy := d.isContainerStillRunning(ctx, container)
-
 		if !containerHealthy {
 			// Container is dead/stopped - don't retry, remove from monitoring
 			container.logger.Infof("container %s is no longer running, removing from monitoring: %v", container.Name, err)
