@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	backoff "github.com/cenkalti/backoff/v5"
 	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerTypesEvents "github.com/docker/docker/api/types/events"
@@ -66,6 +67,7 @@ type DockerSource struct {
 	t                     *tomb.Tomb
 	containerLogsOptions  *dockerContainer.LogsOptions
 	isSwarmManager        bool
+	backoffFactory        BackOffFactory
 }
 
 type ContainerConfig struct {
@@ -76,6 +78,19 @@ type ContainerConfig struct {
 	Labels     map[string]string
 	Tty        bool
 	logOptions *dockerContainer.LogsOptions
+}
+
+type BackOffFactory func() backoff.BackOff
+
+func newDockerBackOffFactory() BackOffFactory {
+    return func() backoff.BackOff {
+        exp := backoff.NewExponentialBackOff()
+        exp.InitialInterval = 2 * time.Second
+        exp.Multiplier = 2.5
+        exp.MaxInterval = 2 * time.Minute
+        exp.RandomizationFactor = 0.5
+        return exp
+    }
 }
 
 func (d *DockerSource) GetUuid() string {
@@ -227,6 +242,8 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 		}
 	}
 
+	d.backoffFactory = newDockerBackOffFactory()
+
 	return nil
 }
 
@@ -332,6 +349,8 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	if err != nil {
 		return err
 	}
+
+	d.backoffFactory = newDockerBackOffFactory()
 
 	return nil
 }
@@ -748,72 +767,72 @@ func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *Cont
 	return nil
 }
 
-// subscribeEvents will loop until it can successfully call d.Client.Events()
-// without immediately receiving an error. It applies exponential backoff on failures.
-// Returns the new (eventsChan, errChan) pair or an error if context/tomb is done.
-func (d *DockerSource) subscribeEvents(ctx context.Context) (<-chan dockerTypesEvents.Message, <-chan error, error) {
-	const (
-		initialBackoff = 2 * time.Second
-		backoffFactor  = 2
-		maxBackoff     = 60 * time.Second
-	)
+type subscription struct {
+    events <-chan dockerTypesEvents.Message
+    errs   <-chan error
+}
 
+func (d *DockerSource) trySubscribeEvents(ctx context.Context) (*subscription, error) {
 	f := dockerFilter.NewArgs()
 	f.Add("type", "container")
-
 	if d.isSwarmManager {
 		f.Add("type", "service")
 	}
 
-	options := dockerTypesEvents.ListOptions{
-		Filters: f,
+	options := dockerTypesEvents.ListOptions{Filters: f}
+	ev, errs := d.Client.Events(ctx, options)
+
+	// Is there an immediate error (proxy/daemon unavailable) ?
+	select {
+	case err := <-errs:
+		if err != nil {
+			return nil, fmt.Errorf("docker events connection failed: %w", err)
+		}
+	default:
 	}
 
-	backoff := initialBackoff
-	retries := 0
+	return &subscription{events: ev, errs: errs}, nil
+}
+
+// subscribeEvents will loop until it can successfully call d.Client.Events()
+// without immediately receiving an error. It applies exponential backoff on failures.
+// Returns the new (eventsChan, errChan) pair or an error if context/tomb is done.
+func (d *DockerSource) subscribeEvents(ctx context.Context) (*subscription, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-d.t.Dying():
+		return nil, errors.New("connection aborted, shutting down docker watcher")
+	default:
+	}
 
 	d.logger.Infof("Subscribing to Docker events")
 
-	for {
-		// bail out immediately if the context is canceled
+	operation := func() (*subscription, error) {
 		select {
 		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+			return nil, backoff.Permanent(ctx.Err())
 		case <-d.t.Dying():
-			return nil, nil, errors.New("connection aborted, shutting down docker watcher")
+			return nil, backoff.Permanent(errors.New("connection aborted, shutting down docker watcher"))
 		default:
 		}
 
-		// Try to reconnect
-		eventsChan, errChan := d.Client.Events(ctx, options)
-
-		// Retry if the connection is immediately broken
-		select {
-		case err := <-errChan:
-			d.logger.Errorf("Connection to Docker failed (attempt %d): %v", retries+1, err)
-
-			retries++
-
-			d.logger.Infof("Sleeping %s before next retry", backoff)
-
-			// Wait for 'backoff', but still allow cancellation
-			select {
-			case <-time.After(backoff):
-				// Continue after backoff
-			case <-ctx.Done():
-				return nil, nil, ctx.Err()
-			case <-d.t.Dying():
-				return nil, nil, errors.New("connection aborted, shutting down docker watcher")
-			}
-
-			backoff = max(backoff*backoffFactor, maxBackoff)
-
-			continue
-		default:
-			// great success!
-			return eventsChan, errChan, nil
-		}
+		return d.trySubscribeEvents(ctx)
 	}
+
+	notify := func(err error, wait time.Duration) {
+		d.logger.Warnf("failed to subscribe to Docker events: %v; retrying in %s", err, wait)
+	}
+
+	bo := d.backoffFactory()
+
+	sub, err := backoff.Retry(ctx, operation, backoff.WithBackOff(bo), backoff.WithNotify(notify))
+	if err != nil {
+		return nil, err
+	}
+
+	d.logger.Info("successfully subscribed to Docker events")
+	return sub, nil
 }
 
 func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerConfig, containerDeleteChan chan *ContainerConfig, serviceChan chan *ContainerConfig, serviceDeleteChan chan *ContainerConfig) error {
@@ -829,7 +848,7 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 		}
 	}
 
-	eventsChan, errChan, err := d.subscribeEvents(ctx)
+	sub, err := d.subscribeEvents(ctx)
 	if err != nil {
 		return err
 	}
@@ -840,7 +859,7 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 			d.logger.Infof("stopping container watcher")
 			return nil
 
-		case event := <-eventsChan:
+		case event := <-sub.events:
 			d.logger.Tracef("Received event: %+v", event)
 			if event.Type == dockerTypesEvents.ServiceEventType && (event.Action == dockerTypesEvents.ActionCreate || event.Action == dockerTypesEvents.ActionRemove) {
 				if err := d.checkServices(ctx, serviceChan, serviceDeleteChan); err != nil {
@@ -852,7 +871,7 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 					d.logger.Warnf("Failed to check containers: %v", err)
 				}
 			}
-		case err := <-errChan:
+		case err := <-sub.errs:
 			if err == nil {
 				continue
 			}
@@ -860,14 +879,15 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 			d.logger.Errorf("Docker events error: %v", err)
 
 			// try to reconnect, replacing our channels on success. They are never nil if err is nil.
-			newEvents, newErr, recErr := d.subscribeEvents(ctx)
+			newSub, recErr := d.subscribeEvents(ctx)
 			if recErr != nil {
 				return recErr
 			}
 
-			eventsChan, errChan = newEvents, newErr
+			sub = newSub
 
 			d.logger.Info("Successfully reconnected to Docker events")
+
 			// We check containers after a reconnection because the docker daemon might have restarted
 			// and the container tombs may have self deleted
 			if err := d.checkContainers(ctx, containerChan, containerDeleteChan); err != nil {
@@ -920,48 +940,48 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 // isContainerStillRunning checks if a container is still running via Docker API
 func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *ContainerConfig) bool {
 	if ctx.Err() != nil {
-		container.logger.Debugf("context canceled while checking container %s", container.Name)
+		container.logger.Debugf("context canceled while checking container")
 		return false
 	}
 
 	containerInfo, err := d.Client.ContainerInspect(ctx, container.ID)
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			container.logger.Debugf("container %s no longer exists", container.Name)
+			container.logger.Debugf("container no longer exists")
 			return false
 		}
 
 		// Other errors (connection issues, etc.) - assume container is still running
-		container.logger.Warnf("failed to inspect container %s: %v (assuming still running)", container.Name, err)
+		container.logger.Debugf("failed to inspect: %v (assuming still running)", err)
 		return true
 	}
 
 	if containerInfo.State == nil {
-		container.logger.Warnf("container %s inspect returned nil state (assuming not running)", container.Name)
+		container.logger.Warnf("inspect returned nil state (assuming not running)")
 		return false
 	}
 
 	isRunning := containerInfo.State.Running
-	container.logger.Debugf("container %s running status: %v", container.Name, isRunning)
+	container.logger.Debugf("running status: %v", isRunning)
 	return isRunning
 }
 
 // isServiceStillRunning checks if a service still exists via Docker API
 func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *ContainerConfig) bool {
 	if ctx.Err() != nil {
-		service.logger.Debugf("context canceled while checking service %s", service.Name)
+		service.logger.Debugf("context canceled while checking service")
 		return false
 	}
 
 	_, _, err := d.Client.ServiceInspectWithRaw(ctx, service.ID, dockerTypes.ServiceInspectOptions{})
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			service.logger.Debugf("service %s no longer exists", service.Name)
+			service.logger.Debugf("service no longer exists")
 			return false
 		}
 
 		// Other errors (connection issues, etc.) - assume service still exists
-		service.logger.Warnf("failed to inspect service %s: %v (assuming still running)", service.Name, err)
+		service.logger.Debugf("failed to inspect: %v (assuming still running)", err)
 		return true
 	}
 
@@ -972,15 +992,12 @@ func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *Conta
 func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
 	container.logger.Info("start monitoring")
 
-	for {
-		select {
-		case <-container.t.Dying():
-			container.logger.Infof("tail stopped for container %s", container.Name)
-			return nil
-		default:
-		}
+	// we'll use just the interval generator, won't call backoff.Retry()
+	bo := d.backoffFactory()
+	firstRetry := true
 
-		err := d.tailContainerAttempt(ctx, container, outChan)
+	for {
+		err := d.tailContainerAttempt(ctx, container, outChan, bo)
 		if err == nil {
 			// Successful completion - container was stopped gracefully
 			return nil
@@ -990,7 +1007,7 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 		containerHealthy := d.isContainerStillRunning(ctx, container)
 		if !containerHealthy {
 			// Container is dead/stopped - don't retry, remove from monitoring
-			container.logger.Infof("container %s is no longer running, removing from monitoring: %v", container.Name, err)
+			container.logger.Infof("container no longer running, removing from monitoring: %v", err)
 			deleteChan <- container
 			return err
 		}
@@ -999,13 +1016,27 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 		// Update the Since timestamp to avoid re-reading logs from before the failure
 		container.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
 
-		container.logger.Warnf("tail failed but container is healthy: %v, retrying immediately", err)
+		// retry immediately, the tail may have failed due to idle disconnection from a proxy
+		if firstRetry {
+			firstRetry = false
+			container.logger.Debugf("tail failed but container is (presumed) healthy: %v, retrying immediately", err)
+			continue
+		}
 
-		// Since container is healthy, retry immediately - no need to wait
+		wait := bo.NextBackOff()
+
+		container.logger.Debugf("tail failed but container is (presumed) healthy: %v, retrying in %s", err, wait)
+
+		select {
+		case <-time.After(wait):
+		case <-container.t.Dying():
+			container.logger.Infof("tail stopped")
+			return nil
+		}
 	}
 }
 
-func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan types.Event) error {
+func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan types.Event, bo backoff.BackOff) error {
 	dockerReader, err := d.Client.ContainerLogs(ctx, container.ID, *container.logOptions)
 	if err != nil {
 		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
@@ -1013,6 +1044,9 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 
 	// Log connection (both initial and reconnections)
 	container.logger.Info("connected to container logs")
+
+	// reset backoff so for the next disconnect, the interval doesn't start from 30sec
+	bo.Reset()
 
 	var scanner *bufio.Scanner
 	// we use this library to normalize docker API logs (cf. https://ahmet.im/blog/docker-logs-api-binary-format-explained/)
@@ -1056,7 +1090,7 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 		case <-readerTomb.Dying():
 			// This case is to handle temporarily losing the connection to the docker socket
 			// The only known case currently is when using docker-socket-proxy (and maybe a docker daemon restart)
-			container.logger.Debugf("readerTomb dying for container %s, connection lost", container.Name)
+			container.logger.Debugf("readerTomb dying, connection lost")
 			readerTomb.Kill(nil)
 			return fmt.Errorf("reader connection lost for container %s", container.Name)
 		}
@@ -1066,15 +1100,12 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
 	service.logger.Info("start monitoring")
 
-	for {
-		select {
-		case <-service.t.Dying():
-			service.logger.Infof("tail stopped for service %s", service.Name)
-			return nil
-		default:
-		}
+	// we'll use just the interval generator, won't call backoff.Retry()
+	bo := d.backoffFactory()
+	firstRetry := true
 
-		err := d.tailServiceAttempt(ctx, service, outChan)
+	for {
+		err := d.tailServiceAttempt(ctx, service, outChan, bo)
 
 		if err == nil {
 			// Successful completion - service was stopped gracefully
@@ -1086,7 +1117,7 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 
 		if !serviceHealthy {
 			// Service was removed - don't retry, remove from monitoring
-			service.logger.Infof("service %s no longer exists, removing from monitoring: %v", service.Name, err)
+			service.logger.Infof("service no longer exists, removing from monitoring: %v", err)
 			deleteChan <- service
 			return err
 		}
@@ -1095,13 +1126,27 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 		// Update the Since timestamp to avoid re-reading logs from before the failure
 		service.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
 
-		service.logger.Warnf("tail failed but service is healthy: %v, retrying immediately", err)
+		// retry immediately, the tail may have failed due to idle disconnection from a proxy
+		if firstRetry {
+			firstRetry = false
+			service.logger.Debugf("tail failed but service is (presumed) healthy: %v, retrying immediately", err)
+			continue
+		}
 
-		// Since service is healthy, retry immediately - no need to wait
+		wait := bo.NextBackOff()
+
+		service.logger.Debugf("tail failed but service is (presumed) healthy: %v, retrying in %s", err, wait)
+
+		select {
+		case <-time.After(wait):
+		case <-service.t.Dying():
+			service.logger.Infof("tail stopped")
+			return nil
+		}
 	}
 }
 
-func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan types.Event) error {
+func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan types.Event, bo backoff.BackOff) error {
 	// For services, we need to get the service logs using the service logs API
 	// Docker service logs aggregates logs from all running tasks of the service
 	dockerReader, err := d.Client.ServiceLogs(ctx, service.ID, *service.logOptions)
@@ -1111,6 +1156,8 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 
 	// Log connection (both initial and reconnections)
 	service.logger.Info("connected to service logs")
+
+	bo.Reset()
 
 	// Service logs don't use TTY, so we always use the dlog reader
 	reader := dlog.NewReader(dockerReader)
@@ -1148,7 +1195,7 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
 			// Handle connection loss similar to containers
-			service.logger.Debugf("readerTomb dying for service %s, connection lost", service.Name)
+			service.logger.Debugf("readerTomb dying, connection lost")
 			readerTomb.Kill(nil)
 			return fmt.Errorf("reader connection lost for service %s", service.Name)
 		}
