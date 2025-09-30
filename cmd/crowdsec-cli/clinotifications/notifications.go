@@ -360,7 +360,7 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 
 			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(errors.New("terminating"))
-			pluginTomb.Wait()
+			_ = pluginTomb.Wait()
 
 			return nil
 		},
@@ -478,7 +478,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(errors.New("terminating"))
-			pluginTomb.Wait()
+			_ = pluginTomb.Wait()
 
 			return nil
 		},

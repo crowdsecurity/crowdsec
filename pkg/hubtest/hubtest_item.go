@@ -35,7 +35,7 @@ type HubTestItemConfig struct {
 	LogType               string              `yaml:"log_type,omitempty"`
 	Labels                map[string]string   `yaml:"labels,omitempty"`
 	IgnoreParsers         bool                `yaml:"ignore_parsers,omitempty"`   // if we test a scenario, we don't want to assert on Parser
-	OverrideStatics       []parser.ExtraField `yaml:"override_statics,omitempty"` // Allow to override statics. Executed before s00
+	OverrideStatics       []parser.Static     `yaml:"override_statics,omitempty"` // Allow to override statics. Executed before s00
 	OwnDataDir            bool                `yaml:"own_data_dir,omitempty"`     // Don't share dataDir with the other tests
 }
 
@@ -290,26 +290,34 @@ func (*HubTestItem) ImprovedLogDisplay(crowdsecLogFile string) error {
 	if err != nil {
 		log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
 	}
+
 	success := []string{}
 	failures := []string{}
 	general := []string{}
+
 	for _, line := range strings.Split(string(crowdsecLog), "\n") {
 		if strings.Contains(line, `"Evaluating operator: MATCH"`) {
 			success = append(success, line)
 		} else if strings.Contains(line, `"Evaluating operator: NO MATCH"`) {
 			failures = append(failures, line)
 		}
+
 		general = append(general, line)
 	}
+
 	log.Infof("General log -------------\n%s\n", strings.Join(general, "\n"))
+
 	if len(success) > 0 {
 		log.Infof("Success log -------------")
+
 		for _, line := range success {
 			log.Infof("%s - %s", emoji.GreenCircle, line)
 		}
 	}
+
 	if len(failures) > 0 {
 		log.Errorf("Failure log -------------")
+
 		for _, line := range failures {
 			log.Infof("%s - %s", emoji.RedCircle, line)
 		}
@@ -335,7 +343,7 @@ func (t *HubTestItem) RunWithNucleiTemplate(ctx context.Context) error {
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
-			fmt.Println(string(output))
+			fmt.Fprintln(os.Stdout, string(output))
 			return fmt.Errorf("fail to run '%s' for test '%s': %w", cscliRegisterCmd.String(), t.Name, err)
 		}
 	}
