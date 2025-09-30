@@ -77,8 +77,15 @@ ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
-#expr_debug tag is required to enable the debug mode in expr
+
+# expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
+
+# If DEV_ENV is set to a truthy value, add dev_environment to GO_TAGS
+ifeq ($(call bool,$(DEV_ENV)),1)
+GO_TAGS := $(GO_TAGS),dev_environment
+$(info "Using DEV environment. If you are not working on CAPI/PAPI, this is probably a mistake.")
+endif
 
 # Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
 export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
