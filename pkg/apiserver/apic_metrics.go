@@ -25,7 +25,7 @@ type dbPayload struct {
 
 func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, error) {
 	allMetrics := &models.AllMetrics{}
-	metricsIds := make([]int, 0)
+	metricsIDs := make([]int, 0)
 
 	lps, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
@@ -66,7 +66,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		for _, dbMetric := range dbMetrics {
 			dbPayload := &dbPayload{}
 			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
-			metricsIds = append(metricsIds, dbMetric.ID)
+			metricsIDs = append(metricsIDs, dbMetric.ID)
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
@@ -128,7 +128,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		for _, dbMetric := range dbMetrics {
 			dbPayload := &dbPayload{}
 			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
-			metricsIds = append(metricsIds, dbMetric.ID)
+			metricsIDs = append(metricsIDs, dbMetric.ID)
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
@@ -179,7 +179,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		allMetrics.LogProcessors = make([]*models.LogProcessorsMetrics, 0)
 	}
 
-	return allMetrics, metricsIds, nil
+	return allMetrics, metricsIDs, nil
 }
 
 func (a *apic) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
@@ -359,7 +359,7 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 				ticker.Reset(a.usageMetricsInterval)
 			}
 
-			metrics, metricsId, err := a.GetUsageMetrics(ctx)
+			metrics, metricsID, err := a.GetUsageMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
 				continue
@@ -381,13 +381,13 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 				}
 			}
 
-			err = a.MarkUsageMetricsAsSent(ctx, metricsId)
+			err = a.MarkUsageMetricsAsSent(ctx, metricsID)
 			if err != nil {
 				log.Errorf("unable to mark usage metrics as sent: %s", err)
 				continue
 			}
 
-			log.Infof("Sent %d usage metrics", len(metricsId))
+			log.Infof("Sent %d usage metrics", len(metricsID))
 		}
 	}
 }
