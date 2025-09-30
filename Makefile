@@ -26,6 +26,7 @@ SQLITE_MSG = Using mattn/go-sqlite3
 ifeq ($(BUILD_SQLITE),modernc)
 SQLITE_MSG = Using modernc/sqlite
 GO_TAGS := $(GO_TAGS),sqlite_modernc
+$(info NOTE: The 'modernc' backend for SQLite is slower than the default, has not been extensively tested, and is not meant for production use.)
 else
 ifeq ($(BUILD_SQLITE),mattn)
 SQLITE_MSG = Using mattn/go-sqlite3
