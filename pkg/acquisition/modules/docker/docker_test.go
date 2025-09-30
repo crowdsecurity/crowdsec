@@ -273,10 +273,8 @@ func TestStreamingAcquisition(t *testing.T) {
 		name           string
 		config         string
 		expectedErr    string
-		expectedOutput string
 		expectedLines  int
 		logType        string
-		logLevel       log.Level
 		isSwarmManager bool
 	}{
 		{
@@ -287,10 +285,8 @@ mode: cat
 container_name:
  - docker_test`,
 			expectedErr:    "",
-			expectedOutput: "",
 			expectedLines:  3,
 			logType:        "test",
-			logLevel:       log.InfoLevel,
 			isSwarmManager: false,
 		},
 		{
@@ -301,10 +297,8 @@ mode: cat
 container_name_regexp:
  - docker_*`,
 			expectedErr:    "",
-			expectedOutput: "",
 			expectedLines:  3,
 			logType:        "test",
-			logLevel:       log.InfoLevel,
 			isSwarmManager: false,
 		},
 		{
@@ -315,10 +309,8 @@ mode: cat
 service_name:
  - test_service`,
 			expectedErr:    "",
-			expectedOutput: "",
 			expectedLines:  3,
 			logType:        "test",
-			logLevel:       log.InfoLevel,
 			isSwarmManager: true,
 		},
 		{
@@ -329,34 +321,26 @@ mode: cat
 service_name_regexp:
  - test_*`,
 			expectedErr:    "",
-			expectedOutput: "",
 			expectedLines:  3,
 			logType:        "test",
-			logLevel:       log.InfoLevel,
 			isSwarmManager: true,
 		},
 	}
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			var (
-				logger    *log.Logger
-				subLogger *log.Entry
-			)
-
-			if ts.expectedOutput != "" {
-				logger.SetLevel(ts.logLevel)
-				subLogger = logger.WithField("type", "docker")
-			} else {
-				subLogger = log.WithField("type", "docker")
-			}
+			subLogger := log.WithField("type", "docker")
 
 			dockerTomb := tomb.Tomb{}
 			out := make(chan types.Event)
 			dockerSource := DockerSource{}
 			//nolint:contextcheck
 			err := dockerSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			require.NoError(t, err)
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
+
+			if ts.expectedErr != "" {
+				return
+			}
 
 			mockClient := &mockDockerCli{isSwarmManager: ts.isSwarmManager}
 			dockerSource.Client = mockClient
@@ -364,38 +348,29 @@ service_name_regexp:
 			// Manually set swarm manager flag for testing since Info() mock is simplified
 			dockerSource.isSwarmManager = ts.isSwarmManager
 			actualLines := 0
-			readerTomb := &tomb.Tomb{}
 			streamTomb := tomb.Tomb{}
 			streamTomb.Go(func() error {
 				return dockerSource.StreamingAcquisition(ctx, out, &dockerTomb)
 			})
-			readerTomb.Go(func() error {
-				time.Sleep(1 * time.Second)
-				ticker := time.NewTicker(1 * time.Second)
 
-				for {
-					select {
-					case <-out:
-						actualLines++
-						ticker.Reset(1 * time.Second)
-					case <-ticker.C:
-						log.Infof("no more lines to read")
-						dockerSource.t.Kill(nil)
-						return nil
-					}
+			require.Eventually(t, func() bool {
+				select {
+				case <-out:
+					actualLines++
+				default:
 				}
-			})
-			cstest.AssertErrorContains(t, err, ts.expectedErr)
+				return actualLines >= ts.expectedLines
+			}, 5*time.Second, 100*time.Millisecond, "did not receive expected log lines")
 
-			err = readerTomb.Wait()
+			dockerSource.t.Kill(nil)
+
+			err = streamTomb.Wait()
 			require.NoError(t, err)
 
 			if ts.expectedLines != 0 {
 				assert.Equal(t, ts.expectedLines, actualLines)
 			}
 
-			err = streamTomb.Wait()
-			require.NoError(t, err)
 		})
 	}
 }
@@ -689,7 +664,6 @@ func TestOneShot(t *testing.T) {
 		expectedOutput string
 		expectedLines  int
 		logType        string
-		logLevel       log.Level
 	}{
 		{
 			dsn:            "docker://non_exist_docker",
@@ -697,7 +671,6 @@ func TestOneShot(t *testing.T) {
 			expectedOutput: "",
 			expectedLines:  0,
 			logType:        "test",
-			logLevel:       log.InfoLevel,
 		},
 		{
 			dsn:            "docker://" + testContainerName,
@@ -705,24 +678,12 @@ func TestOneShot(t *testing.T) {
 			expectedOutput: "",
 			expectedLines:  3,
 			logType:        "test",
-			logLevel:       log.InfoLevel,
 		},
 	}
 
 	for _, ts := range tests {
 		t.Run(ts.dsn, func(t *testing.T) {
-			var (
-				subLogger *log.Entry
-				logger    *log.Logger
-			)
-
-			if ts.expectedOutput != "" {
-				logger.SetLevel(ts.logLevel)
-				subLogger = logger.WithField("type", "docker")
-			} else {
-				log.SetLevel(ts.logLevel)
-				subLogger = log.WithField("type", "docker")
-			}
+			subLogger := log.WithField("type", "docker")
 
 			dockerClient := &DockerSource{}
 			labels := make(map[string]string)
