@@ -23,8 +23,11 @@ import (
 )
 
 const (
-	SyncInterval = time.Second * 10
-	PapiPullKey  = "papi:last_pull"
+	PAPIVersion        = "v1"
+	PAPIPollUrl        = "/decisions/stream/poll"
+	PAPIPermissionsUrl = "/permissions"
+	SyncInterval       = time.Second * 10
+	PapiPullKey        = "papi:last_pull"
 )
 
 var operationMap = map[string]func(*Message, *Papi, bool) error{
@@ -90,7 +93,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	}
 
 	papiUrl := *apic.apiClient.PapiURL
-	papiUrl.Path = fmt.Sprintf("%s%s", types.PAPIVersion, types.PAPIPollUrl)
+	papiUrl.Path = fmt.Sprintf("%s%s", PAPIVersion, PAPIPollUrl)
 
 	longPollClient, err := longpollclient.NewLongPollClient(longpollclient.LongPollClientConfig{
 		Url:        papiUrl,
@@ -159,7 +162,7 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 func (p *Papi) GetPermissions(ctx context.Context) (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
-	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
+	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, PAPIVersion, PAPIPermissionsUrl)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, http.NoBody)
 	if err != nil {

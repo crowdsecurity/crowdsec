@@ -27,7 +27,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type configGetter func() *csconfig.Config
@@ -397,7 +396,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				changed := false
 				if wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL == "" {
 					changed = true
-					cfg.API.Server.OnlineClient.Credentials.PapiURL = types.PAPIBaseURL
+					cfg.API.Server.OnlineClient.Credentials.PapiURL = csconfig.PAPIBaseURL
 				} else if !wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL != "" {
 					changed = true
 					cfg.API.Server.OnlineClient.Credentials.PapiURL = ""

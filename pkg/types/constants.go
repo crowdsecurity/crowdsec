@@ -7,15 +7,6 @@ const (
 )
 
 const (
-	PAPIBaseURL        = "https://papi.api.crowdsec.net/"
-	PAPIVersion        = "v1"
-	PAPIPollUrl        = "/decisions/stream/poll"
-	PAPIPermissionsUrl = "/permissions"
-)
-
-const CAPIBaseURL = "https://api.crowdsec.net/"
-
-const (
 	CscliOrigin                       = "cscli"
 	CrowdSecOrigin                    = "crowdsec"
 	ConsoleOrigin                     = "console"
