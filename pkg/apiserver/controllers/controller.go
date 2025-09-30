@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/alexliesenfeld/health"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -49,14 +48,11 @@ func (c *Controller) Init() error {
 
 // endpoint for health checking
 func serveHealth() http.HandlerFunc {
-	checker := health.NewChecker(
-		// just simple up/down status is enough
-		health.WithDisabledDetails(),
-		// no caching required
-		health.WithDisabledCache(),
-	)
-
-	return health.NewHandler(checker)
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"up"}`))
+	}
 }
 
 func eitherAuthMiddleware(jwtMiddleware gin.HandlerFunc, apiKeyMiddleware gin.HandlerFunc) gin.HandlerFunc {
