@@ -1,6 +1,6 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.25.0
+go 1.25.1
 
 require (
 	entgo.io/ent v0.14.2
@@ -18,7 +18,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.87.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.3
 	github.com/beevik/etree v1.4.1
-	github.com/blackfireio/osinfo v1.1.0 // indirect
 	github.com/bluele/gcache v0.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/cenkalti/backoff/v5 v5.0.2
@@ -26,7 +25,7 @@ require (
 	github.com/corazawaf/coraza/v3 v3.3.3
 	github.com/corazawaf/libinjection-go v0.2.2
 	github.com/crowdsecurity/dlog v0.0.2
-	github.com/crowdsecurity/go-cs-lib v0.0.21
+	github.com/crowdsecurity/go-cs-lib v0.0.23
 	github.com/crowdsecurity/go-onnxruntime v0.0.0-20240801073851-3fd7de0127b4
 	github.com/crowdsecurity/grokky v0.2.2
 	github.com/crowdsecurity/machineid v1.0.3
@@ -76,7 +75,7 @@ require (
 	github.com/r3labs/diff/v2 v2.15.1
 	github.com/sanity-io/litter v1.5.8
 	github.com/segmentio/kafka-go v0.4.48
-	github.com/shirou/gopsutil/v4 v4.25.7
+	github.com/shirou/gopsutil/v4 v4.25.8
 	github.com/sirupsen/logrus v1.9.3
 	github.com/slack-go/slack v0.16.0
 	github.com/spf13/cobra v1.10.1
@@ -197,7 +196,7 @@ require (
 	github.com/petar-dambovaliev/aho-corasick v0.0.0-20250424160509-463d218d4745 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
