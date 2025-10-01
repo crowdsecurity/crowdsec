@@ -168,6 +168,20 @@ func (mc *MachineCreate) SetNillableOsname(s *string) *MachineCreate {
 	return mc
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (mc *MachineCreate) SetOsfamily(s string) *MachineCreate {
+	mc.mutation.SetOsfamily(s)
+	return mc
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableOsfamily(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetOsfamily(*s)
+	}
+	return mc
+}
+
 // SetOsversion sets the "osversion" field.
 func (mc *MachineCreate) SetOsversion(s string) *MachineCreate {
 	mc.mutation.SetOsversion(s)
@@ -382,6 +396,10 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	if value, ok := mc.mutation.Osname(); ok {
 		_spec.SetField(machine.FieldOsname, field.TypeString, value)
 		_node.Osname = value
+	}
+	if value, ok := mc.mutation.Osfamily(); ok {
+		_spec.SetField(machine.FieldOsfamily, field.TypeString, value)
+		_node.Osfamily = value
 	}
 	if value, ok := mc.mutation.Osversion(); ok {
 		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
@@ -614,6 +632,24 @@ func (u *MachineUpsert) UpdateOsname() *MachineUpsert {
 // ClearOsname clears the value of the "osname" field.
 func (u *MachineUpsert) ClearOsname() *MachineUpsert {
 	u.SetNull(machine.FieldOsname)
+	return u
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *MachineUpsert) SetOsfamily(v string) *MachineUpsert {
+	u.Set(machine.FieldOsfamily, v)
+	return u
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateOsfamily() *MachineUpsert {
+	u.SetExcluded(machine.FieldOsfamily)
+	return u
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *MachineUpsert) ClearOsfamily() *MachineUpsert {
+	u.SetNull(machine.FieldOsfamily)
 	return u
 }
 
@@ -909,6 +945,27 @@ func (u *MachineUpsertOne) UpdateOsname() *MachineUpsertOne {
 func (u *MachineUpsertOne) ClearOsname() *MachineUpsertOne {
 	return u.Update(func(s *MachineUpsert) {
 		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *MachineUpsertOne) SetOsfamily(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateOsfamily() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *MachineUpsertOne) ClearOsfamily() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsfamily()
 	})
 }
 
@@ -1382,6 +1439,27 @@ func (u *MachineUpsertBulk) UpdateOsname() *MachineUpsertBulk {
 func (u *MachineUpsertBulk) ClearOsname() *MachineUpsertBulk {
 	return u.Update(func(s *MachineUpsert) {
 		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *MachineUpsertBulk) SetOsfamily(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateOsfamily() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *MachineUpsertBulk) ClearOsfamily() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsfamily()
 	})
 }
 
