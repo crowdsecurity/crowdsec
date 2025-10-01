@@ -335,7 +335,21 @@ if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" ; then
 fi
 
 # Enroll instance if enroll key is provided
-if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && { [ "$ENROLL_KEY" != "" ] || [ "$ENROLL_KEY_FILE" != "" ]; }; then
+
+    # prevent ambiguity by using either ENROLL_KEY or ENROLL_KEY_FILE, not both
+    if [ "$ENROLL_KEY" != "" ] && [ "$ENROLL_KEY_FILE" != "" ]; then
+        echo "ENROLL_KEY and ENROLL_KEY_FILE must not both be set" >&2
+        echo "Exiting..." >&2
+        exit 1
+    fi
+
+    if [ "$ENROLL_KEY" != "" ]; then
+        enroll_key_value="$ENROLL_KEY"
+    elif [ "$ENROLL_KEY_FILE" != "" ]; then
+        enroll_key_value="$(cat "$ENROLL_KEY_FILE")"
+    fi
+
     enroll_args=""
     if [ "$ENROLL_INSTANCE_NAME" != "" ]; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
@@ -347,7 +361,7 @@ if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_K
         done
     fi
     # shellcheck disable=SC2086
-    cscli console enroll $enroll_args "$ENROLL_KEY"
+    cscli console enroll $enroll_args "$enroll_key_value"
 fi
 
 # crowdsec sqlite database permissions
