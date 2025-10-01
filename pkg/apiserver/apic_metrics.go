@@ -91,6 +91,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 
 		lpMetrics.Os = &models.OSversion{
 			Name:    ptr.Of(lp.Osname),
+			Family:  lp.Osname,
 			Version: ptr.Of(lp.Osversion),
 		}
 		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
