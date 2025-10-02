@@ -51,6 +51,7 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
+
 			if err := require.CAPI(cfg); err != nil {
 				return err
 			}
@@ -239,14 +240,17 @@ Enable given information push to the central API. Allows to empower the console`
 				if err := cli.setConsoleOpts(csconfig.CONSOLE_CONFIGS, true); err != nil {
 					return err
 				}
+
 				log.Infof("All features have been enabled successfully")
 			} else {
 				if len(args) == 0 {
 					return errors.New("you must specify at least one feature to enable")
 				}
+
 				if err := cli.setConsoleOpts(args, true); err != nil {
 					return err
 				}
+
 				log.Infof("%v have been enabled", args)
 			}
 
@@ -278,14 +282,17 @@ Disable given information push to the central API.`,
 				if err := cli.setConsoleOpts(csconfig.CONSOLE_CONFIGS, false); err != nil {
 					return err
 				}
+
 				log.Infof("All features have been disabled")
 			} else {
 				if len(args) == 0 {
 					return errors.New("you must specify at least one feature to disable")
 				}
+
 				if err := cli.setConsoleOpts(args, false); err != nil {
 					return err
 				}
+
 				log.Infof("%v have been disabled", args)
 			}
 
@@ -311,6 +318,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			consoleCfg := cfg.API.Server.ConsoleConfig
+
 			switch cfg.Cscli.Output {
 			case "human":
 				cmdConsoleStatusTable(color.Output, cfg.Cscli.Color, *consoleCfg)
@@ -322,13 +330,16 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 					csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
 					csconfig.CONSOLE_MANAGEMENT:     consoleCfg.ConsoleManagement,
 				}
+
 				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
 					return fmt.Errorf("failed to serialize configuration: %w", err)
 				}
+
 				fmt.Fprintln(os.Stdout, string(data))
 			case "raw":
 				csvwriter := csv.NewWriter(os.Stdout)
+
 				err := csvwriter.Write([]string{"option", "enabled"})
 				if err != nil {
 					return err
@@ -347,6 +358,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 						return err
 					}
 				}
+
 				csvwriter.Flush()
 			}
 
@@ -384,7 +396,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ConsoleManagement != nil && *consoleCfg.ConsoleManagement == wanted {
 				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 			} else {
@@ -417,7 +429,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				}
 			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareCustomScenarios != nil && *consoleCfg.ShareCustomScenarios == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 			} else {
@@ -425,7 +437,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				consoleCfg.ShareCustomScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareTaintedScenarios != nil && *consoleCfg.ShareTaintedScenarios == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 			} else {
@@ -433,7 +445,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				consoleCfg.ShareTaintedScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareManualDecisions != nil && *consoleCfg.ShareManualDecisions == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 			} else {
@@ -441,7 +453,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				consoleCfg.ShareManualDecisions = ptr.Of(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareContext != nil && *consoleCfg.ShareContext == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 			} else {
