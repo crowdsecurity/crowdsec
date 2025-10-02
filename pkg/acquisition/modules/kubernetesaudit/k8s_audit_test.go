@@ -1,9 +1,7 @@
 package kubernetesauditacquisition
 
 import (
-	"context"
 	"fmt"
-	"net"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -19,14 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
-
-func getFreePort(t *testing.T, ctx context.Context) int {
-	listenConfig := net.ListenConfig{}
-	l, err := listenConfig.Listen(ctx, "tcp", "127.0.0.1")
-	require.NoError(t, err)
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port
-}
 
 func TestBadConfiguration(t *testing.T) {
 	tests := []struct {
@@ -237,7 +227,7 @@ func TestHandler(t *testing.T) {
 
 	subLogger := log.WithField("type", "k8s-audit")
 
-	for _, test := range tests {
+	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			out := make(chan types.Event)
 			tb := &tomb.Tomb{}
@@ -256,7 +246,7 @@ func TestHandler(t *testing.T) {
 
 			f := KubernetesAuditSource{}
 
-			port := getFreePort(t, ctx)
+			port := 49234+idx
 			config := fmt.Sprintf(`source: k8s-audit
 listen_addr: 127.0.0.1
 listen_port: %d
