@@ -1,6 +1,8 @@
 package kubernetesauditacquisition
 
 import (
+	"fmt"
+	"net"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -16,6 +18,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+func getFreePort(t *testing.T) int {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
+}
 
 func TestBadConfiguration(t *testing.T) {
 	tests := []struct {
@@ -109,7 +118,6 @@ func TestHandler(t *testing.T) {
 	ctx := t.Context()
 	tests := []struct {
 		name               string
-		config             string
 		expectedStatusCode int
 		body               string
 		method             string
@@ -117,10 +125,6 @@ func TestHandler(t *testing.T) {
 	}{
 		{
 			name: "valid_json",
-			config: `source: k8s-audit
-listen_addr: 127.0.0.1
-listen_port: 49234
-webhook_path: /k8s-audit`,
 			method:             "POST",
 			expectedStatusCode: 200,
 			body: `
@@ -216,10 +220,6 @@ webhook_path: /k8s-audit`,
 		},
 		{
 			name: "invalid_json",
-			config: `source: k8s-audit
-listen_addr: 127.0.0.1
-listen_port: 49234
-webhook_path: /k8s-audit`,
 			expectedStatusCode: 500,
 			body:               "invalid json",
 			method:             "POST",
@@ -227,10 +227,6 @@ webhook_path: /k8s-audit`,
 		},
 		{
 			name: "invalid_method",
-			config: `source: k8s-audit
-listen_addr: 127.0.0.1
-listen_port: 49234
-webhook_path: /k8s-audit`,
 			expectedStatusCode: 405,
 			method:             "GET",
 			eventCount:         0,
@@ -257,9 +253,17 @@ webhook_path: /k8s-audit`,
 			})
 
 			f := KubernetesAuditSource{}
-			err := f.UnmarshalConfig([]byte(test.config))
+
+			port := getFreePort(t)
+			config := fmt.Sprintf(`source: k8s-audit
+listen_addr: 127.0.0.1
+listen_port: %d
+webhook_path: /k8s-audit`, port)
+
+			err := f.UnmarshalConfig([]byte(config))
 			require.NoError(t, err)
-			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+
+			err = f.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
 
