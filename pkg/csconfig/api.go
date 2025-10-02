@@ -21,8 +21,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+var PAPIBaseURL = "https://papi.api.crowdsec.net/"
 
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
@@ -127,7 +128,7 @@ func (o *OnlineApiClientCfg) Load() error {
 	}
 
 	if o.Credentials != nil && o.Credentials.PapiURL == "" {
-		o.Credentials.PapiURL = types.PAPIBaseURL
+		o.Credentials.PapiURL = PAPIBaseURL
 	}
 
 	return nil
