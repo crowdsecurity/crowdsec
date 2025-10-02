@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerTypesEvents "github.com/docker/docker/api/types/events"
 	dockerTypesSwarm "github.com/docker/docker/api/types/swarm"
@@ -211,7 +210,7 @@ func (cli *mockDockerCli) Info(ctx context.Context) (system.Info, error) {
 	return info, nil
 }
 
-func (cli *mockDockerCli) ServiceList(ctx context.Context, options dockerTypes.ServiceListOptions) ([]dockerTypesSwarm.Service, error) {
+func (cli *mockDockerCli) ServiceList(ctx context.Context, options dockerTypesSwarm.ServiceListOptions) ([]dockerTypesSwarm.Service, error) {
 	if cli.services != nil {
 		return cli.services, nil
 	}
@@ -589,13 +588,13 @@ service_name:
 	}
 }
 
-func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
+func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerContainer.ListOptions) ([]dockerContainer.Summary, error) {
 	if readLogs {
-		return []dockerTypes.Container{}, nil
+		return []dockerContainer.Summary{}, nil
 	}
 
-	containers := make([]dockerTypes.Container, 0)
-	container := &dockerTypes.Container{
+	containers := make([]dockerContainer.Summary, 0)
+	container := &dockerContainer.Summary{
 		ID:    "12456",
 		Names: []string{testContainerName},
 	}
@@ -625,8 +624,8 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 	return r, nil
 }
 
-func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (dockerTypes.ContainerJSON, error) {
-	r := dockerTypes.ContainerJSON{
+func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (dockerContainer.InspectResponse, error) {
+	r := dockerContainer.InspectResponse{
 		Config: &dockerContainer.Config{
 			Tty: false,
 		},

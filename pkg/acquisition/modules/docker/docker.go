@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	dockerTypes "github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerTypesEvents "github.com/docker/docker/api/types/events"
 	dockerFilter "github.com/docker/docker/api/types/filters"
@@ -61,7 +60,7 @@ type DockerSource struct {
 	compiledServiceName   []*regexp.Regexp
 	compiledServiceID     []*regexp.Regexp
 	logger                *log.Entry
-	Client                client.CommonAPIClient
+	Client                client.APIClient
 	t                     *tomb.Tomb
 	containerLogsOptions  *dockerContainer.LogsOptions
 	isSwarmManager        bool
@@ -518,7 +517,7 @@ func (d *DockerSource) processCrowdsecLabels(parsedLabels map[string]any, entity
 	return labels, nil
 }
 
-func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.Container) *ContainerConfig {
+func (d *DockerSource) EvalContainer(ctx context.Context, container dockerContainer.Summary) *ContainerConfig {
 	if slices.Contains(d.Config.ContainerID, container.ID) {
 		return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(ctx, container.ID)}
 	}
@@ -605,7 +604,7 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 	// Track current running services for garbage collection
 	runningServicesID := make(map[string]bool)
 
-	services, err := d.Client.ServiceList(ctx, dockerTypes.ServiceListOptions{})
+	services, err := d.Client.ServiceList(ctx, dockerTypesSwarm.ServiceListOptions{})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
 			d.logger.Errorf("cannot connect to docker daemon for service monitoring: %v", err)
