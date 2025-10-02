@@ -109,6 +109,11 @@ func Osname(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldOsname, v))
 }
 
+// Osfamily applies equality check predicate on the "osfamily" field. It's identical to OsfamilyEQ.
+func Osfamily(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsfamily, v))
+}
+
 // Osversion applies equality check predicate on the "osversion" field. It's identical to OsversionEQ.
 func Osversion(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldOsversion, v))
@@ -757,6 +762,81 @@ func OsnameEqualFold(v string) predicate.Bouncer {
 // OsnameContainsFold applies the ContainsFold predicate on the "osname" field.
 func OsnameContainsFold(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldContainsFold(FieldOsname, v))
+}
+
+// OsfamilyEQ applies the EQ predicate on the "osfamily" field.
+func OsfamilyEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldOsfamily, v))
+}
+
+// OsfamilyNEQ applies the NEQ predicate on the "osfamily" field.
+func OsfamilyNEQ(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldOsfamily, v))
+}
+
+// OsfamilyIn applies the In predicate on the "osfamily" field.
+func OsfamilyIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldOsfamily, vs...))
+}
+
+// OsfamilyNotIn applies the NotIn predicate on the "osfamily" field.
+func OsfamilyNotIn(vs ...string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldOsfamily, vs...))
+}
+
+// OsfamilyGT applies the GT predicate on the "osfamily" field.
+func OsfamilyGT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldOsfamily, v))
+}
+
+// OsfamilyGTE applies the GTE predicate on the "osfamily" field.
+func OsfamilyGTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldOsfamily, v))
+}
+
+// OsfamilyLT applies the LT predicate on the "osfamily" field.
+func OsfamilyLT(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldOsfamily, v))
+}
+
+// OsfamilyLTE applies the LTE predicate on the "osfamily" field.
+func OsfamilyLTE(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldOsfamily, v))
+}
+
+// OsfamilyContains applies the Contains predicate on the "osfamily" field.
+func OsfamilyContains(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContains(FieldOsfamily, v))
+}
+
+// OsfamilyHasPrefix applies the HasPrefix predicate on the "osfamily" field.
+func OsfamilyHasPrefix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasPrefix(FieldOsfamily, v))
+}
+
+// OsfamilyHasSuffix applies the HasSuffix predicate on the "osfamily" field.
+func OsfamilyHasSuffix(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldHasSuffix(FieldOsfamily, v))
+}
+
+// OsfamilyIsNil applies the IsNil predicate on the "osfamily" field.
+func OsfamilyIsNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIsNull(FieldOsfamily))
+}
+
+// OsfamilyNotNil applies the NotNil predicate on the "osfamily" field.
+func OsfamilyNotNil() predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotNull(FieldOsfamily))
+}
+
+// OsfamilyEqualFold applies the EqualFold predicate on the "osfamily" field.
+func OsfamilyEqualFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEqualFold(FieldOsfamily, v))
+}
+
+// OsfamilyContainsFold applies the ContainsFold predicate on the "osfamily" field.
+func OsfamilyContainsFold(v string) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldContainsFold(FieldOsfamily, v))
 }
 
 // OsversionEQ applies the EQ predicate on the "osversion" field.

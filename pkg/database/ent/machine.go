@@ -43,6 +43,8 @@ type Machine struct {
 	AuthType string `json:"auth_type"`
 	// Osname holds the value of the "osname" field.
 	Osname string `json:"osname,omitempty"`
+	// Osfamily holds the value of the "osfamily" field.
+	Osfamily string `json:"osfamily,omitempty"`
 	// Osversion holds the value of the "osversion" field.
 	Osversion string `json:"osversion,omitempty"`
 	// Featureflags holds the value of the "featureflags" field.
@@ -86,7 +88,7 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case machine.FieldID:
 			values[i] = new(sql.NullInt64)
-		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldAuthType, machine.FieldOsname, machine.FieldOsversion, machine.FieldFeatureflags:
+		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldAuthType, machine.FieldOsname, machine.FieldOsfamily, machine.FieldOsversion, machine.FieldFeatureflags:
 			values[i] = new(sql.NullString)
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
@@ -184,6 +186,12 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field osname", values[i])
 			} else if value.Valid {
 				m.Osname = value.String
+			}
+		case machine.FieldOsfamily:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osfamily", values[i])
+			} else if value.Valid {
+				m.Osfamily = value.String
 			}
 		case machine.FieldOsversion:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -292,6 +300,9 @@ func (m *Machine) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("osname=")
 	builder.WriteString(m.Osname)
+	builder.WriteString(", ")
+	builder.WriteString("osfamily=")
+	builder.WriteString(m.Osfamily)
 	builder.WriteString(", ")
 	builder.WriteString("osversion=")
 	builder.WriteString(m.Osversion)

@@ -47,12 +47,13 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		rcMetrics := models.RemediationComponentsMetrics{}
 
 		rcMetrics.Os = &models.OSversion{
-			Name:    ptr.Of(bouncer.Osname),
-			Version: ptr.Of(bouncer.Osversion),
+			Name:    &bouncer.Osname,
+			Family:  bouncer.Osfamily,
+			Version: &bouncer.Osversion,
 		}
 		rcMetrics.Type = bouncer.Type
 		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-		rcMetrics.Version = ptr.Of(bouncer.Version)
+		rcMetrics.Version = &bouncer.Version
 		rcMetrics.Name = bouncer.Name
 
 		rcMetrics.LastPull = 0
@@ -90,11 +91,12 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		lpMetrics := models.LogProcessorsMetrics{}
 
 		lpMetrics.Os = &models.OSversion{
-			Name:    ptr.Of(lp.Osname),
-			Version: ptr.Of(lp.Osversion),
+			Name:    &lp.Osname,
+			Family:  lp.Osfamily,
+			Version: &lp.Osversion,
 		}
 		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-		lpMetrics.Version = ptr.Of(lp.Version)
+		lpMetrics.Version = &lp.Version
 		lpMetrics.Name = lp.MachineId
 
 		lpMetrics.LastPush = 0
@@ -153,9 +155,9 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	osName, osFamily, osVersion := version.DetectOS()
 
 	allMetrics.Lapi.Os = &models.OSversion{
-		Name:    ptr.Of(osName),
+		Name:    &osName,
 		Family:  osFamily,
-		Version: ptr.Of(osVersion),
+		Version: &osVersion,
 	}
 	allMetrics.Lapi.Version = ptr.Of(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
