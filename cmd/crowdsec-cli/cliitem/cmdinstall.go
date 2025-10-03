@@ -88,7 +88,7 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 
 	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
 	switch {
-	case errors.Is(err, hubops.ErrUserCanceled):
+	case errors.Is(err, hubops.ErrUserCanceled) && err != nil:
 		// not a real error, and we'll want to print the reload message anyway
 		fmt.Fprintln(os.Stdout, err.Error())
 	case ignoreError:
