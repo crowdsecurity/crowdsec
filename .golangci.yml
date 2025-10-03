@@ -479,6 +479,16 @@ linters:
           - noctx
         text: "net.LookupHost must not be called"
 
+      - linters:
+          - contextcheck
+        path: pkg/acquisition/modules/s3/s3_test.go
+        text: "Function `Configure` should pass the context parameter"
+
+      - linters:
+          - contextcheck
+        path: pkg/acquisition/modules/s3/s3_test.go
+        text: "Function `ConfigureByDSN` should pass the context parameter"
+
     paths:
       - pkg/metabase
       - third_party$
