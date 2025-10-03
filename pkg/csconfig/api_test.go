@@ -172,7 +172,7 @@ func TestLoadAPIServer(t *testing.T) {
 							CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 						},
 						ProfilesPath: "./testdata/profiles.yaml",
-						PapiLogLevel: &logLevel,
+						PapiLogLevel: logLevel,
 					},
 				},
 				DbConfig: &DatabaseCfg{
@@ -223,7 +223,7 @@ func TestLoadAPIServer(t *testing.T) {
 				Profiles:               tmpLAPI.Profiles,
 				ProfilesPath:           "./testdata/profiles.yaml",
 				UseForwardedForHeaders: false,
-				PapiLogLevel:           &logLevel,
+				PapiLogLevel:           logLevel,
 				AutoRegister: &LocalAPIAutoRegisterCfg{
 					Enable:              ptr.Of(false),
 					Token:               "",
@@ -249,7 +249,7 @@ func TestLoadAPIServer(t *testing.T) {
 			},
 			expected: &LocalApiServerCfg{
 				Enable:       ptr.Of(true),
-				PapiLogLevel: &logLevel,
+				PapiLogLevel: logLevel,
 			},
 			expectedErr: "no database configuration provided",
 		},

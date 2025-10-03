@@ -187,14 +187,14 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-func newLogLevel(curLevelPtr *log.Level, f *Flags) (*log.Level, bool) {
+func newLogLevel(curLevel log.Level, f *Flags) (log.Level, bool) {
 	// mother of all defaults
 	ret := log.InfoLevel
 	logLevelViaFlag := true
 
 	// keep if already set
-	if curLevelPtr != nil {
-		ret = *curLevelPtr
+	if curLevel != log.PanicLevel {
+		ret = curLevel
 	}
 
 	// override from flags
@@ -216,12 +216,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) (*log.Level, bool) {
 		logLevelViaFlag = false
 	}
 
-	if curLevelPtr != nil && ret == *curLevelPtr {
-		// avoid returning a new ptr to the same value
-		return curLevelPtr, logLevelViaFlag
-	}
-
-	return &ret, logLevelViaFlag
+	return ret, logLevelViaFlag
 }
 
 // LoadConfig returns a configuration parsed from configuration file
@@ -253,7 +248,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	// Configure logging
 	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogDir, cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
 		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
