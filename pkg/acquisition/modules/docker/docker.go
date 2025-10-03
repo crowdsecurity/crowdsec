@@ -89,6 +89,7 @@ func newDockerBackOffFactory() BackOffFactory {
         exp.Multiplier = 2.5
         exp.MaxInterval = 2 * time.Minute
         exp.RandomizationFactor = 0.5
+
         return exp
     }
 }
@@ -151,6 +152,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		if err != nil {
 			return fmt.Errorf("container_name_regexp: %w", err)
 		}
+
 		d.compiledContainerName = append(d.compiledContainerName, compiled)
 	}
 
@@ -159,6 +161,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		if err != nil {
 			return fmt.Errorf("container_id_regexp: %w", err)
 		}
+
 		d.compiledContainerID = append(d.compiledContainerID, compiled)
 	}
 
@@ -167,6 +170,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		if err != nil {
 			return fmt.Errorf("service_name_regexp: %w", err)
 		}
+
 		d.compiledServiceName = append(d.compiledServiceName, compiled)
 	}
 
@@ -175,6 +179,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		if err != nil {
 			return fmt.Errorf("service_id_regexp: %w", err)
 		}
+
 		d.compiledServiceID = append(d.compiledServiceID, compiled)
 	}
 
@@ -235,6 +240,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 			d.isSwarmManager = true
 			d.logger.Info("node is swarm manager, enabling swarm detection mode")
 		}
+
 		if !hasServiceConfig {
 			// we set to false cause user didnt provide service configuration even though we are a swarm manager
 			d.isSwarmManager = false
@@ -360,7 +366,7 @@ func (d *DockerSource) GetMode() string {
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (d *DockerSource) SupportedModes() []string {
+func (*DockerSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
@@ -454,19 +460,19 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 	return nil
 }
 
-func (d *DockerSource) GetMetrics() []prometheus.Collector {
+func (*DockerSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
 }
 
-func (d *DockerSource) GetAggregMetrics() []prometheus.Collector {
+func (*DockerSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
 }
 
-func (d *DockerSource) GetName() string {
+func (*DockerSource) GetName() string {
 	return "docker"
 }
 
-func (d *DockerSource) CanRun() error {
+func (*DockerSource) CanRun() error {
 	return nil
 }
 
@@ -547,6 +553,7 @@ func NewContainerConfig(baseOpts *dockerContainer.LogsOptions, id string, name s
 		Since:      baseOpts.Since,
 		Until:      baseOpts.Until,
 	}
+
 	return &ContainerConfig{
 		ID:         id,
 		Name:       name,
@@ -604,6 +611,7 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 
 	if d.Config.UseContainerLabels {
 		parsedLabels := d.getContainerLabels(ctx, container.ID)
+
 		labels, err := d.processCrowdsecLabels(parsedLabels, container.ID, "container")
 		if err != nil {
 			return nil
@@ -615,7 +623,7 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.
 	return nil
 }
 
-func (d *DockerSource) EvalService(ctx context.Context, service dockerTypesSwarm.Service) *ContainerConfig {
+func (d *DockerSource) EvalService(_ context.Context, service dockerTypesSwarm.Service) *ContainerConfig {
 	// fixed params
 	newConfig := func(labels map[string]string) *ContainerConfig {
 		// Services don't use TTY
@@ -654,6 +662,7 @@ func (d *DockerSource) EvalService(ctx context.Context, service dockerTypesSwarm
 
 	if d.Config.UseServiceLabels {
 		parsedLabels := parseLabels(service.Spec.Labels)
+
 		labels, err := d.processCrowdsecLabels(parsedLabels, service.ID, "service")
 		if err != nil {
 			return nil
@@ -690,6 +699,7 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 		} else {
 			d.logger.Errorf("service list err: %s", err)
 		}
+
 		return err
 	}
 
@@ -714,6 +724,7 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 	}
 
 	d.logger.Tracef("Reading logs from %d services", len(d.runningServiceState))
+
 	return nil
 }
 
@@ -775,6 +786,7 @@ type subscription struct {
 func (d *DockerSource) trySubscribeEvents(ctx context.Context) (*subscription, error) {
 	f := dockerFilter.NewArgs()
 	f.Add("type", "container")
+
 	if d.isSwarmManager {
 		f.Add("type", "service")
 	}
@@ -832,6 +844,7 @@ func (d *DockerSource) subscribeEvents(ctx context.Context) (*subscription, erro
 	}
 
 	d.logger.Info("successfully subscribed to Docker events")
+
 	return sub, nil
 }
 
@@ -861,11 +874,13 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 
 		case event := <-sub.events:
 			d.logger.Tracef("Received event: %+v", event)
+
 			if event.Type == dockerTypesEvents.ServiceEventType && (event.Action == dockerTypesEvents.ActionCreate || event.Action == dockerTypesEvents.ActionRemove) {
 				if err := d.checkServices(ctx, serviceChan, serviceDeleteChan); err != nil {
 					d.logger.Warnf("Failed to check services: %v", err)
 				}
 			}
+
 			if event.Type == dockerTypesEvents.ContainerEventType && (event.Action == dockerTypesEvents.ActionStart || event.Action == dockerTypesEvents.ActionDie) {
 				if err := d.checkContainers(ctx, containerChan, containerDeleteChan); err != nil {
 					d.logger.Warnf("Failed to check containers: %v", err)
@@ -953,6 +968,7 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 
 		// Other errors (connection issues, etc.) - assume container is still running
 		container.logger.Debugf("failed to inspect: %v (assuming still running)", err)
+
 		return true
 	}
 
@@ -963,6 +979,7 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 
 	isRunning := containerInfo.State.Running
 	container.logger.Debugf("running status: %v", isRunning)
+
 	return isRunning
 }
 
@@ -982,10 +999,12 @@ func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *Conta
 
 		// Other errors (connection issues, etc.) - assume service still exists
 		service.logger.Debugf("failed to inspect: %v (assuming still running)", err)
+
 		return true
 	}
 
 	service.logger.Debugf("service %s still exists", service.Name)
+
 	return true
 }
 
@@ -1082,16 +1101,20 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 			l.Module = d.GetName()
 			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
+
 			if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "acquis_type": evt.Line.Labels["type"]}).Inc()
 			}
+
 			outChan <- evt
+
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
 			// This case is to handle temporarily losing the connection to the docker socket
 			// The only known case currently is when using docker-socket-proxy (and maybe a docker daemon restart)
 			container.logger.Debugf("readerTomb dying, connection lost")
 			readerTomb.Kill(nil)
+
 			return fmt.Errorf("reader connection lost for container %s", container.Name)
 		}
 	}
@@ -1106,7 +1129,6 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 
 	for {
 		err := d.tailServiceAttempt(ctx, service, outChan, bo)
-
 		if err == nil {
 			// Successful completion - service was stopped gracefully
 			return nil
@@ -1188,15 +1210,19 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 			l.Module = d.GetName()
 			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
+
 			if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": service.Name, "acquis_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
 			}
+
 			outChan <- evt
+
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
 			// Handle connection loss similar to containers
 			service.logger.Debugf("readerTomb dying, connection lost")
 			readerTomb.Kill(nil)
+
 			return fmt.Errorf("reader connection lost for service %s", service.Name)
 		}
 	}

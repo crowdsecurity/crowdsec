@@ -201,14 +201,14 @@ type mockDockerCli struct {
 }
 
 // Simplified Info method - just return basic info without complex types
-func (cli *mockDockerCli) Info(ctx context.Context) (system.Info, error) {
+func (*mockDockerCli) Info(_ context.Context) (system.Info, error) {
 	info := system.Info{}
 	// For testing purposes, we'll set the swarm info based on our mock flag
 	// The exact type matching can be handled in integration tests
 	return info, nil
 }
 
-func (cli *mockDockerCli) ServiceList(ctx context.Context, options dockerTypes.ServiceListOptions) ([]dockerTypesSwarm.Service, error) {
+func (cli *mockDockerCli) ServiceList(_ context.Context, _ dockerTypes.ServiceListOptions) ([]dockerTypesSwarm.Service, error) {
 	if cli.services != nil {
 		return cli.services, nil
 	}
@@ -227,10 +227,11 @@ func (cli *mockDockerCli) ServiceList(ctx context.Context, options dockerTypes.S
 			},
 		},
 	}
+
 	return services, nil
 }
 
-func (cli *mockDockerCli) ServiceLogs(ctx context.Context, serviceID string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
+func (*mockDockerCli) ServiceLogs(ctx context.Context, _ string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
 	// Return test data - behavior depends on whether this is streaming or oneshot
 	data := []string{"service\n", "log\n", "test\n"}
 	ret := ""
@@ -250,6 +251,7 @@ func (cli *mockDockerCli) ServiceLogs(ctx context.Context, serviceID string, opt
 	// Streaming mode: send data then block to simulate a live service
 	// This prevents infinite retry loops in streaming tests
 	reader, writer := io.Pipe()
+
 	go func() {
 		defer writer.Close()
 		// Write the test data
@@ -269,6 +271,7 @@ func TestStreamingAcquisition(t *testing.T) {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
+
 	tests := []struct {
 		name           string
 		config         string
@@ -359,6 +362,7 @@ service_name_regexp:
 					actualLines++
 				default:
 				}
+
 				return actualLines >= ts.expectedLines
 			}, 5*time.Second, 100*time.Millisecond, "did not receive expected log lines")
 
@@ -370,7 +374,6 @@ service_name_regexp:
 			if ts.expectedLines != 0 {
 				assert.Equal(t, ts.expectedLines, actualLines)
 			}
-
 		})
 	}
 }
@@ -497,6 +500,7 @@ use_service_labels: true`,
 			result := f.EvalService(context.Background(), test.service)
 			if test.expectedMatch {
 				assert.NotNil(t, result, "Expected service to match but got nil")
+
 				if result != nil {
 					assert.Equal(t, test.service.ID, result.ID)
 					assert.Equal(t, test.service.Spec.Name, result.Name)
@@ -572,7 +576,7 @@ service_name:
 	}
 }
 
-func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
+func (*mockDockerCli) ContainerList(_ context.Context, _ dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
 	// Always return test container for the mock
 	containers := make([]dockerTypes.Container, 0)
 	container := &dockerTypes.Container{
@@ -584,7 +588,7 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerConta
 	return containers, nil
 }
 
-func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
+func (*mockDockerCli) ContainerLogs(ctx context.Context, _ string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
 	// Return test data - behavior depends on whether this is streaming or oneshot
 	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
@@ -604,6 +608,7 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 	// Streaming mode: send data then block to simulate a live container
 	// This prevents infinite retry loops in streaming tests
 	reader, writer := io.Pipe()
+
 	go func() {
 		defer writer.Close()
 		// Write the test data
@@ -617,7 +622,7 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 	return reader, nil
 }
 
-func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (dockerTypes.ContainerJSON, error) {
+func (*mockDockerCli) ContainerInspect(_ context.Context, _ string) (dockerTypes.ContainerJSON, error) {
 	r := dockerTypes.ContainerJSON{
 		ContainerJSONBase: &dockerTypes.ContainerJSONBase{
 			State: &dockerTypes.ContainerState{
@@ -632,7 +637,7 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 	return r, nil
 }
 
-func (cli *mockDockerCli) ServiceInspectWithRaw(ctx context.Context, serviceID string, opts dockerTypes.ServiceInspectOptions) (dockerTypesSwarm.Service, []byte, error) {
+func (*mockDockerCli) ServiceInspectWithRaw(_ context.Context, serviceID string, _ dockerTypes.ServiceInspectOptions) (dockerTypesSwarm.Service, []byte, error) {
 	// Return a mock service that exists
 	service := dockerTypesSwarm.Service{
 		ID: serviceID,
@@ -642,11 +647,12 @@ func (cli *mockDockerCli) ServiceInspectWithRaw(ctx context.Context, serviceID s
 			},
 		},
 	}
+
 	return service, []byte("{}"), nil
 }
 
 // Since we are mocking the docker client, we return channels that will never be used
-func (cli *mockDockerCli) Events(ctx context.Context, options dockerTypesEvents.ListOptions) (<-chan dockerTypesEvents.Message, <-chan error) {
+func (*mockDockerCli) Events(_ context.Context, _ dockerTypesEvents.ListOptions) (<-chan dockerTypesEvents.Message, <-chan error) {
 	eventsChan := make(chan dockerTypesEvents.Message)
 	errChan := make(chan error)
 
@@ -694,7 +700,9 @@ func TestOneShot(t *testing.T) {
 
 			dockerClient.Client = &mockDockerCli{}
 			out := make(chan types.Event, 100)
+
 			tomb := tomb.Tomb{}
+
 			err = dockerClient.OneShotAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
